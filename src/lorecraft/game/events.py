@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Callable
+from typing import Protocol
+
+from lorecraft.types import JsonObject
 
 
 class GameEvent(StrEnum):
@@ -52,13 +54,13 @@ WORK_EVENTS = {
 @dataclass(frozen=True)
 class Event:
     type: GameEvent
-    payload: dict[str, Any] = field(default_factory=dict)
+    payload: JsonObject = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
 class HandlerResult:
     handler_name: str
-    value: Any = None
+    value: object = None
     error: Exception | None = None
 
     @property
@@ -66,7 +68,8 @@ class HandlerResult:
         return self.error is None
 
 
-EventHandler = Callable[[Event, Any], Any]
+class EventHandler(Protocol):
+    def __call__(self, event: Event, ctx: object) -> object: ...
 
 
 @dataclass(frozen=True)
@@ -81,19 +84,25 @@ class EventBus:
     def __init__(self) -> None:
         self._handlers: dict[GameEvent, list[_RegisteredHandler]] = defaultdict(list)
 
-    def on(self, event_type: GameEvent, handler: EventHandler, *, priority: int = 0) -> None:
+    def on(
+        self, event_type: GameEvent, handler: EventHandler, *, priority: int = 0
+    ) -> None:
         handlers = self._handlers[event_type]
         handlers.append(_RegisteredHandler(priority=priority, handler=handler))
         handlers.sort(key=lambda registered: registered.priority, reverse=True)
 
-    def emit(self, event: Event, ctx: Any) -> list[HandlerResult]:
+    def emit(self, event: Event, ctx: object) -> list[HandlerResult]:
         results: list[HandlerResult] = []
         for registered in self._handlers.get(event.type, []):
             try:
                 value = registered.handler(event, ctx)
-                results.append(HandlerResult(_handler_name(registered.handler), value=value))
+                results.append(
+                    HandlerResult(_handler_name(registered.handler), value=value)
+                )
             except Exception as exc:
-                results.append(HandlerResult(_handler_name(registered.handler), error=exc))
+                results.append(
+                    HandlerResult(_handler_name(registered.handler), error=exc)
+                )
         return results
 
     def is_work_event(self, event_type: GameEvent) -> bool:

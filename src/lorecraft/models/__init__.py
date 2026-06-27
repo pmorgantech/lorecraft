@@ -1,0 +1,47 @@
+"""SQLModel table definitions for Lorecraft persistence."""
+
+from lorecraft.models.audit import AuditEvent
+from lorecraft.models.changeset import (
+    Changeset,
+    ChangesetItem,
+    ConflictScanResult,
+    WorldMigration,
+)
+from lorecraft.models.combat import CombatSession
+from lorecraft.models.interaction import PvpConsent, TradeOffer
+from lorecraft.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.models.quest import PlayerQuestProgress, Quest
+from lorecraft.models.session import PlayerSession
+from lorecraft.models.world import (
+    Exit,
+    Item,
+    NPC,
+    Room,
+    RoomItem,
+    WorldClock,
+    WorldMeta,
+)
+
+__all__ = [
+    "AuditEvent",
+    "Changeset",
+    "ChangesetItem",
+    "CombatSession",
+    "ConflictScanResult",
+    "Exit",
+    "Item",
+    "NPC",
+    "Player",
+    "PlayerQuestProgress",
+    "PlayerSession",
+    "PlayerStats",
+    "PvpConsent",
+    "Quest",
+    "Room",
+    "RoomItem",
+    "SaveSlot",
+    "TradeOffer",
+    "WorldClock",
+    "WorldMeta",
+    "WorldMigration",
+]

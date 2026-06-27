@@ -31,7 +31,9 @@ class CommandEngine:
             ctx.say(condition.reason or "You can't do that.")
             return parsed
 
-        rule_result = self.rules.check(parsed.verb, ctx, {"noun": parsed.noun, "raw": parsed.raw})
+        rule_result = self.rules.check(
+            parsed.verb, ctx, {"noun": parsed.noun, "raw": parsed.raw}
+        )
         if not rule_result.allowed:
             ctx.say(rule_result.reason or "You can't do that.")
             return parsed

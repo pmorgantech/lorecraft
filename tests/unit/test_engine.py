@@ -10,7 +10,9 @@ from lorecraft.game.transaction import TransactionContext
 
 def build_context() -> GameContext:
     return GameContext(
-        player=SimpleNamespace(id="player-1", flags={}, inventory=[], active_combat_session_id=None),
+        player=SimpleNamespace(
+            id="player-1", flags={}, inventory=[], active_combat_session_id=None
+        ),
         room=SimpleNamespace(id="tavern", disabled_commands=[], light_level=1),
         clock=SimpleNamespace(game_epoch=0),
         player_repo=None,
@@ -20,7 +22,9 @@ def build_context() -> GameContext:
         manager=None,
         bus=EventBus(),
         audit=None,
-        transaction=TransactionContext.create(actor_id="player-1", correlation_id="session-1"),
+        transaction=TransactionContext.create(
+            actor_id="player-1", correlation_id="session-1"
+        ),
         session_id="session-1",
     )
 
@@ -55,7 +59,9 @@ def test_engine_checks_rules_before_handler() -> None:
         raise AssertionError("handler should not run")
 
     rules = RuleEngine()
-    rules.register_rule("take", lambda ctx, payload: RuleResult.block("The artifact resists you."))
+    rules.register_rule(
+        "take", lambda ctx, payload: RuleResult.block("The artifact resists you.")
+    )
     ctx = build_context()
 
     CommandEngine(registry, rules).handle_command("take gem", ctx)

@@ -10,7 +10,9 @@ def test_rule_engine_allows_when_no_rules_registered() -> None:
 
 def test_rule_engine_returns_first_blocking_rule() -> None:
     engine = RuleEngine()
-    engine.register_rule("take_item", lambda ctx, payload: RuleResult.block("Bound to the altar."))
+    engine.register_rule(
+        "take_item", lambda ctx, payload: RuleResult.block("Bound to the altar.")
+    )
     engine.register_rule("take_item", lambda ctx, payload: RuleResult.allow())
 
     result = engine.check("take_item", ctx=None, payload={"item_id": "gem"})
@@ -21,10 +23,14 @@ def test_rule_engine_returns_first_blocking_rule() -> None:
 
 def test_rule_engine_carries_modified_payload_between_rules() -> None:
     engine = RuleEngine()
-    engine.register_rule("move", lambda ctx, payload: RuleResult.allow({"direction": "north"}))
+    engine.register_rule(
+        "move", lambda ctx, payload: RuleResult.allow({"direction": "north"})
+    )
     engine.register_rule(
         "move",
-        lambda ctx, payload: RuleResult.allow({"summary": f"go {payload['direction']}"}),
+        lambda ctx, payload: RuleResult.allow(
+            {"summary": f"go {payload['direction']}"}
+        ),
     )
 
     result = engine.check("move", ctx=None, payload={"direction": "n"})

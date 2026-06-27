@@ -22,8 +22,8 @@ Legend:
 ### Phase 1 — Foundation
 
 - [x] `config.py` contains environment-driven settings.
-- [ ] `models/` SQLModel table definitions.
-- [ ] `create_tables()` startup database initialization.
+- [x] `models/` SQLModel table definitions.
+- [x] `create_tables()` startup database initialization.
 - [ ] `repos/` data access wrappers.
 - [~] `game/context.py` contains `GameContext`.
 - [x] `game/transaction.py` contains `TransactionContext`.
@@ -71,8 +71,8 @@ Legend:
 
 ### Phase 5 — Combat
 
-- [ ] Combat models.
-- [ ] Player stats model.
+- [x] Combat models.
+- [x] Player stats model.
 - [ ] `services/combat.py`.
 - [ ] `npc/combat_ai.py`.
 - [ ] Combat commands: `attack`, `flee`.
@@ -124,5 +124,6 @@ Legend:
 - [x] Command registry unit tests.
 - [x] Command engine dispatch unit tests.
 - [x] Connection manager unit tests.
+- [x] Database table bootstrap unit tests.
 - [ ] Integration tests.
 - [ ] Simulation tests.

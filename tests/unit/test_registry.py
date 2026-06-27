@@ -21,7 +21,9 @@ def test_registry_blocks_disabled_room_command() -> None:
     def save(noun, ctx):
         raise AssertionError("handler should not run")
 
-    ctx = SimpleNamespace(room=SimpleNamespace(disabled_commands=["save"]), player=SimpleNamespace())
+    ctx = SimpleNamespace(
+        room=SimpleNamespace(disabled_commands=["save"]), player=SimpleNamespace()
+    )
 
     result = registry.evaluate_conditions(registry.get("save"), ctx)
 

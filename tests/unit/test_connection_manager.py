@@ -46,17 +46,25 @@ async def _test_connection_manager_broadcasts_to_room_with_exclude() -> None:
     await manager.connect("player-1", ws_1, room_id="tavern")
     await manager.connect("player-2", ws_2, room_id="tavern")
 
-    await manager.broadcast_to_room("tavern", {"type": "room_message"}, exclude="player-1")
+    await manager.broadcast_to_room(
+        "tavern", {"type": "room_message"}, exclude="player-1"
+    )
 
     assert ws_1.messages == []
     assert ws_2.messages == [{"type": "room_message"}]
 
 
-def test_connection_manager_disconnect_keeps_room_position_for_reconnect_grace() -> None:
-    asyncio.run(_test_connection_manager_disconnect_keeps_room_position_for_reconnect_grace())
+def test_connection_manager_disconnect_keeps_room_position_for_reconnect_grace() -> (
+    None
+):
+    asyncio.run(
+        _test_connection_manager_disconnect_keeps_room_position_for_reconnect_grace()
+    )
 
 
-async def _test_connection_manager_disconnect_keeps_room_position_for_reconnect_grace() -> None:
+async def _test_connection_manager_disconnect_keeps_room_position_for_reconnect_grace() -> (
+    None
+):
     manager = ConnectionManager()
     ws = FakeWebSocket()
 

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Callable
+from collections.abc import Callable
+
+from lorecraft.types import CommandContext
 
 
 class CommandScope(StrEnum):
@@ -24,7 +26,7 @@ class CommandCondition(StrEnum):
     NPC_PRESENT = "npc_present"
 
 
-CommandHandler = Callable[[str | None, Any], None]
+CommandHandler = Callable[[str | None, object], None]
 
 
 @dataclass(frozen=True)
@@ -70,7 +72,9 @@ class CommandRegistry:
     def get(self, verb: str) -> CommandDefinition | None:
         return self._commands.get(verb)
 
-    def evaluate_conditions(self, command: CommandDefinition, ctx: Any) -> ConditionResult:
+    def evaluate_conditions(
+        self, command: CommandDefinition, ctx: CommandContext
+    ) -> ConditionResult:
         disabled = set(getattr(ctx.room, "disabled_commands", []) or [])
         if command.verb in disabled:
             return ConditionResult(False, "You can't do that here.")
@@ -82,7 +86,7 @@ class CommandRegistry:
         return ConditionResult(True)
 
 
-def _evaluate_condition(condition: str, ctx: Any) -> ConditionResult:
+def _evaluate_condition(condition: str, ctx: CommandContext) -> ConditionResult:
     name, _, parameter = condition.partition(":")
 
     if name == CommandCondition.REQUIRES_LIGHT:

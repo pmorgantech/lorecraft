@@ -8,7 +8,10 @@ from lorecraft.game.transaction import TransactionContext
 def test_context_collects_messages_updates_and_emits_events() -> None:
     bus = EventBus()
     observed = []
-    bus.on(GameEvent.PLAYER_MOVED, lambda event, ctx: observed.append((event.payload, ctx.session_id)))
+    bus.on(
+        GameEvent.PLAYER_MOVED,
+        lambda event, ctx: observed.append((event.payload, ctx.session_id)),
+    )
     ctx = GameContext(
         player=SimpleNamespace(id="player-1"),
         room=SimpleNamespace(id="tavern"),
@@ -20,7 +23,9 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
         manager=None,
         bus=bus,
         audit=None,
-        transaction=TransactionContext.create(actor_id="player-1", correlation_id="session-1"),
+        transaction=TransactionContext.create(
+            actor_id="player-1", correlation_id="session-1"
+        ),
         session_id="session-1",
     )
 
