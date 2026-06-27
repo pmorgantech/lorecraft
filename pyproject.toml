@@ -1,0 +1,17 @@
+[project]
+name = "lorecraft"
+version = "0.1.0"
+description = "Persistent multiplayer text adventure engine."
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+    "basedpyright",
+    "pytest",
+    "ruff",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
