@@ -9,6 +9,7 @@
 ## Workflow
 - Make small, reviewable changes.
 - Prefer existing project patterns.
+- Aim to type hint new and changed Python code; omit hints when they would be noisy, brittle, or not easily expressible.
 - Run focused tests/lints after changes.
 - Keep `CHANGELOG.md` up to date for user-visible changes.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
