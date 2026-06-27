@@ -58,28 +58,34 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)
 
 
-def sqlite_url(database_path: str) -> str:
-    if database_path == ":memory:":
+def database_url(database_path_or_url: str) -> str:
+    if database_path_or_url == ":memory:":
         return "sqlite://"
-    if database_path.startswith("sqlite:"):
-        return database_path
-    if Path(database_path).is_absolute():
-        return f"sqlite:///{database_path}"
-    return f"sqlite:///{database_path}"
+    if "://" in database_path_or_url:
+        return database_path_or_url
+    if database_path_or_url.startswith("sqlite:"):
+        return database_path_or_url
+    if Path(database_path_or_url).is_absolute():
+        return f"sqlite:///{database_path_or_url}"
+    return f"sqlite:///{database_path_or_url}"
+
+
+def sqlite_url(database_path: str) -> str:
+    return database_url(database_path)
 
 
 def create_game_engine(
     settings: Settings | None = None, *, echo: bool = False
 ) -> Engine:
     settings = settings or load_settings()
-    return create_engine(sqlite_url(settings.database_path), echo=echo)
+    return create_engine(database_url(settings.database_path), echo=echo)
 
 
 def create_audit_engine(
     settings: Settings | None = None, *, echo: bool = False
 ) -> Engine:
     settings = settings or load_settings()
-    return create_engine(sqlite_url(settings.audit_database_path), echo=echo)
+    return create_engine(database_url(settings.audit_database_path), echo=echo)
 
 
 def create_tables(

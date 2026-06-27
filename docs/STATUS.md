@@ -24,7 +24,7 @@ Legend:
 - [x] `config.py` contains environment-driven settings.
 - [x] `models/` SQLModel table definitions.
 - [x] `create_tables()` startup database initialization.
-- [ ] `repos/` data access wrappers.
+- [x] `repos/` data access wrappers.
 - [~] `game/context.py` contains `GameContext`.
 - [x] `game/transaction.py` contains `TransactionContext`.
 - [~] `game/connection_manager.py` contains the WebSocket-style connection pool and room broadcast behavior.
@@ -125,5 +125,6 @@ Legend:
 - [x] Command engine dispatch unit tests.
 - [x] Connection manager unit tests.
 - [x] Database table bootstrap unit tests.
+- [x] Repository unit tests.
 - [ ] Integration tests.
 - [ ] Simulation tests.

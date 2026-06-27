@@ -1,0 +1,124 @@
+from sqlmodel import Session, create_engine
+
+from lorecraft.db import create_tables, database_url, sqlite_url
+from lorecraft.models.audit import AuditEvent
+from lorecraft.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.models.session import PlayerSession
+from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem
+from lorecraft.repos import AuditRepo, ItemRepo, NpcRepo, PlayerRepo, RoomRepo
+
+
+def test_database_url_preserves_sqlalchemy_urls() -> None:
+    postgres_url = "postgresql+psycopg://user:pass@localhost/lorecraft"
+
+    assert database_url(postgres_url) == postgres_url
+    assert sqlite_url(":memory:") == "sqlite://"
+    assert sqlite_url("game.db") == "sqlite:///game.db"
+
+
+def test_repos_round_trip_core_game_models() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        players = PlayerRepo(session)
+        rooms = RoomRepo(session)
+        items = ItemRepo(session)
+        npcs = NpcRepo(session)
+
+        rooms.add(
+            Room(
+                id="tavern",
+                name="Tavern",
+                description="A warm room.",
+                map_x=0,
+                map_y=0,
+            )
+        )
+        rooms.add(
+            Room(
+                id="square",
+                name="Square",
+                description="A busy square.",
+                map_x=1,
+                map_y=0,
+            )
+        )
+        session.add(Exit(room_id="tavern", direction="east", target_room_id="square"))
+        players.add(
+            Player(
+                id="player-1",
+                username="petem",
+                current_room_id="tavern",
+                respawn_room_id="tavern",
+            )
+        )
+        players.save_stats(PlayerStats(player_id="player-1", current_hp=75))
+        session.add(
+            PlayerSession(
+                id="session-1",
+                player_id="player-1",
+                connected_at=10.0,
+            )
+        )
+        session.add(
+            SaveSlot(
+                player_id="player-1",
+                slot_name="auto",
+                saved_at=20.0,
+                room_id="tavern",
+            )
+        )
+        items.add(Item(id="gem", name="Gem", description="A bright gem."))
+        items.add_to_room(RoomItem(room_id="tavern", item_id="gem"))
+        npcs.add(
+            NPC(
+                id="keeper",
+                name="Keeper",
+                description="The tavern keeper.",
+                current_room_id="tavern",
+                home_room_id="tavern",
+                dialogue_tree_id="keeper_intro",
+            )
+        )
+        session.commit()
+
+        assert players.by_username("petem").id == "player-1"
+        assert players.stats("player-1").current_hp == 75
+        assert players.active_session("player-1").id == "session-1"
+        assert [slot.slot_name for slot in players.save_slots("player-1")] == ["auto"]
+        assert rooms.active("tavern").name == "Tavern"
+        assert rooms.exit("tavern", "east").target_room_id == "square"
+        assert [room_item.item_id for room_item in items.room_items("tavern")] == [
+            "gem"
+        ]
+        assert [npc.id for npc in npcs.in_room("tavern")] == ["keeper"]
+
+
+def test_audit_repo_uses_separate_audit_session() -> None:
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=create_engine("sqlite://"), audit_engine=audit_engine)
+
+    with Session(audit_engine) as session:
+        audit = AuditRepo(session)
+        audit.record(
+            AuditEvent(
+                transaction_id="txn-1",
+                correlation_id="session-1",
+                actor_id="player-1",
+                event_type="player_moved",
+                source_type="PLAYER_COMMAND",
+                room_id="tavern",
+                game_time=1.0,
+                real_time=2.0,
+                summary="Player moved.",
+            )
+        )
+        session.commit()
+
+        assert [event.summary for event in audit.for_transaction("txn-1")] == [
+            "Player moved."
+        ]
+        assert [event.transaction_id for event in audit.for_actor("player-1")] == [
+            "txn-1"
+        ]

@@ -29,6 +29,8 @@ All notable changes to Lorecraft will be documented in this file.
 - Added SQLModel table definitions for world, player, session, quest, combat, versioning, interaction, and audit persistence.
 - Added database bootstrap helpers for creating game tables and audit tables in separate SQLite databases.
 - Added shared structural typing aliases and protocols for JSON payloads, WebSocket connections, command contexts, players, and rooms.
+- Added thin SQLModel repository wrappers for players, rooms, items, NPCs, and audit events.
+- Added repository unit tests covering core game model and audit event round trips.
 
 ### Changed
 
@@ -37,10 +39,11 @@ All notable changes to Lorecraft will be documented in this file.
 - Added `sqlmodel` as a production dependency for the persistence layer.
 - Added a BasedPyright project configuration for the `src` package and local `.venv`.
 - Replaced broad `Any` annotations in the command, event, rule, connection, and model layers with narrower protocols and JSON types.
+- Preserved full SQLAlchemy database URLs while retaining existing SQLite path handling.
 
 ### Verified
 
-- `.venv/bin/python -m pytest` passes with 22 unit tests.
+- `.venv/bin/python -m pytest` passes with 25 unit tests.
 - `.venv/bin/ruff check src tests` passes.
 - `.venv/bin/ruff format --check src tests` passes.
 - `.venv/bin/basedpyright --warnings` passes.
