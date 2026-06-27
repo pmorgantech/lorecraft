@@ -25,14 +25,14 @@ Legend:
 - [x] `models/` SQLModel table definitions.
 - [x] `create_tables()` startup database initialization.
 - [x] `repos/` data access wrappers.
-- [~] `game/context.py` contains `GameContext`.
+- [x] `game/context.py` contains `GameContext`.
 - [x] `game/transaction.py` contains `TransactionContext`.
-- [~] `game/connection_manager.py` contains the WebSocket-style connection pool and room broadcast behavior.
-- [~] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
-- [ ] `main.py` FastAPI app.
-- [ ] `/ws` WebSocket endpoint.
-- [ ] Startup/shutdown lifecycle wiring.
-- [ ] WebSocket connect/send/receive integration test.
+- [x] `game/connection_manager.py` contains the WebSocket-style connection pool and room broadcast behavior.
+- [x] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
+- [x] `main.py` FastAPI app.
+- [x] `/ws` WebSocket endpoint.
+- [x] Startup/shutdown lifecycle wiring.
+- [x] WebSocket connect/send/receive integration test.
 
 ### Phase 2 — Command Dispatch
 
@@ -126,5 +126,5 @@ Legend:
 - [x] Connection manager unit tests.
 - [x] Database table bootstrap unit tests.
 - [x] Repository unit tests.
-- [ ] Integration tests.
+- [x] Integration tests.
 - [ ] Simulation tests.

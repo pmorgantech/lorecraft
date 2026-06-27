@@ -108,6 +108,9 @@ class EventBus:
     def is_work_event(self, event_type: GameEvent) -> bool:
         return event_type in WORK_EVENTS
 
+    def handler_count(self, event_type: GameEvent) -> int:
+        return len(self._handlers.get(event_type, ()))
+
 
 def _handler_name(handler: EventHandler) -> str:
     return getattr(handler, "__name__", handler.__class__.__name__)

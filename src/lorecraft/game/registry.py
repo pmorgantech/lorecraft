@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from collections.abc import Callable
-
-from lorecraft.types import CommandContext
+from typing import Any, cast
 
 
 class CommandScope(StrEnum):
@@ -73,9 +72,10 @@ class CommandRegistry:
         return self._commands.get(verb)
 
     def evaluate_conditions(
-        self, command: CommandDefinition, ctx: CommandContext
+        self, command: CommandDefinition, ctx: object
     ) -> ConditionResult:
-        disabled = set(getattr(ctx.room, "disabled_commands", []) or [])
+        ctx_any = cast(Any, ctx)
+        disabled = set(getattr(ctx_any.room, "disabled_commands", []) or [])
         if command.verb in disabled:
             return ConditionResult(False, "You can't do that here.")
 
@@ -86,26 +86,27 @@ class CommandRegistry:
         return ConditionResult(True)
 
 
-def _evaluate_condition(condition: str, ctx: CommandContext) -> ConditionResult:
+def _evaluate_condition(condition: str, ctx: object) -> ConditionResult:
     name, _, parameter = condition.partition(":")
+    ctx_any = cast(Any, ctx)
 
     if name == CommandCondition.REQUIRES_LIGHT:
-        if getattr(ctx.room, "light_level", 1) <= 0:
+        if getattr(ctx_any.room, "light_level", 1) <= 0:
             return ConditionResult(False, "It's too dark to do that.")
     elif name == CommandCondition.NOT_IN_COMBAT:
-        if getattr(ctx.player, "active_combat_session_id", None):
+        if getattr(ctx_any.player, "active_combat_session_id", None):
             return ConditionResult(False, "You can't do that while in combat.")
     elif name == CommandCondition.IN_COMBAT:
-        if not getattr(ctx.player, "active_combat_session_id", None):
+        if not getattr(ctx_any.player, "active_combat_session_id", None):
             return ConditionResult(False, "You aren't in combat.")
     elif name == CommandCondition.FLAG_SET:
-        if not parameter or not getattr(ctx.player, "flags", {}).get(parameter):
+        if not parameter or not getattr(ctx_any.player, "flags", {}).get(parameter):
             return ConditionResult(False, "You can't do that yet.")
     elif name == CommandCondition.FLAG_NOT_SET:
-        if parameter and getattr(ctx.player, "flags", {}).get(parameter):
+        if parameter and getattr(ctx_any.player, "flags", {}).get(parameter):
             return ConditionResult(False, "You can't do that anymore.")
     elif name == CommandCondition.ITEM_IN_INVENTORY:
-        if parameter and parameter not in getattr(ctx.player, "inventory", []):
+        if parameter and parameter not in getattr(ctx_any.player, "inventory", []):
             return ConditionResult(False, "You don't have the required item.")
 
     return ConditionResult(True)

@@ -31,6 +31,9 @@ All notable changes to Lorecraft will be documented in this file.
 - Added shared structural typing aliases and protocols for JSON payloads, WebSocket connections, command contexts, players, and rooms.
 - Added thin SQLModel repository wrappers for players, rooms, items, NPCs, and audit events.
 - Added repository unit tests covering core game model and audit event round trips.
+- Added FastAPI service wiring with startup table initialization and shared app state.
+- Added `/health` and `/ws` endpoints for service health checks and player command WebSocket sessions.
+- Added direct ASGI integration tests for lifespan startup, health checks, WebSocket connection, and command dispatch.
 
 ### Changed
 
@@ -40,10 +43,12 @@ All notable changes to Lorecraft will be documented in this file.
 - Added a BasedPyright project configuration for the `src` package and local `.venv`.
 - Replaced broad `Any` annotations in the command, event, rule, connection, and model layers with narrower protocols and JSON types.
 - Preserved full SQLAlchemy database URLs while retaining existing SQLite path handling.
+- Added FastAPI and Starlette as production dependencies for the service layer.
+- Tightened `GameContext` to use concrete repository, model, event bus, and connection manager types.
 
 ### Verified
 
-- `.venv/bin/python -m pytest` passes with 25 unit tests.
+- `.venv/bin/python -m pytest` passes with 28 tests.
 - `.venv/bin/ruff check src tests` passes.
 - `.venv/bin/ruff format --check src tests` passes.
 - `.venv/bin/basedpyright --warnings` passes.

@@ -4,23 +4,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.game.transaction import TransactionContext
-from lorecraft.types import JsonObject, JsonValue, PlayerState, RoomState
+from lorecraft.models.player import Player
+from lorecraft.models.world import Room, WorldClock
+from lorecraft.repos.audit_repo import AuditRepo
+from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.npc_repo import NpcRepo
+from lorecraft.repos.player_repo import PlayerRepo
+from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.types import JsonObject, JsonValue
 
 
 @dataclass
 class GameContext:
-    player: PlayerState
-    room: RoomState
-    clock: object
-    player_repo: object | None
-    room_repo: object | None
-    item_repo: object | None
-    npc_repo: object | None
-    manager: object | None
+    player: Player
+    room: Room
+    clock: WorldClock | None
+    player_repo: PlayerRepo
+    room_repo: RoomRepo
+    item_repo: ItemRepo
+    npc_repo: NpcRepo
+    manager: ConnectionManager
     bus: EventBus
-    audit: object | None
+    audit: AuditRepo | None
     transaction: TransactionContext
     session_id: str
     messages: list[str] = field(default_factory=list)

@@ -16,14 +16,22 @@ class MessageSink(Protocol):
 
 
 class RoomState(Protocol):
-    disabled_commands: list[str]
-    light_level: int
+    @property
+    def disabled_commands(self) -> list[str]: ...
+
+    @property
+    def light_level(self) -> int: ...
 
 
 class PlayerState(Protocol):
-    active_combat_session_id: str | None
-    flags: dict[str, JsonValue]
-    inventory: list[str]
+    @property
+    def active_combat_session_id(self) -> str | None: ...
+
+    @property
+    def flags(self) -> dict[str, JsonValue]: ...
+
+    @property
+    def inventory(self) -> list[str]: ...
 
 
 class CommandContext(Protocol):
@@ -34,4 +42,4 @@ class CommandContext(Protocol):
 class JsonWebSocket(Protocol):
     def accept(self) -> Awaitable[None]: ...
 
-    def send_json(self, message: JsonObject) -> Awaitable[None]: ...
+    def send_json(self, data: JsonObject) -> Awaitable[None]: ...

@@ -34,3 +34,12 @@ def test_event_bus_identifies_work_events() -> None:
 
     assert bus.is_work_event(GameEvent.NPC_MOVE_DUE) is True
     assert bus.is_work_event(GameEvent.PLAYER_MOVED) is False
+
+
+def test_event_bus_reports_handler_count() -> None:
+    bus = EventBus()
+
+    bus.on(GameEvent.PLAYER_MOVED, lambda event, ctx: None)
+
+    assert bus.handler_count(GameEvent.PLAYER_MOVED) == 1
+    assert bus.handler_count(GameEvent.ITEM_TAKEN) == 0
