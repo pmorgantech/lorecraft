@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lorecraft Admin</title>
-  <script src="https://cdn.tailwindcss.com/3.4.1"></script>
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
     :root {
       --bg-void:   #0a0a0f;
       --bg-panel:  #11111a;
@@ -17,378 +17,583 @@
       --text-body: #c8c8d8;
       --text-dim:  #6a6a8a;
     }
-    body { background: var(--bg-void); color: var(--text-body); font-family: 'Fira Code', monospace; margin: 0; }
-    h1, h2 { font-family: 'IM Fell English', serif; color: var(--phosphor); }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--bg-void);
+      color: var(--text-body);
+      font-family: 'Fira Code', monospace;
+      font-size: 14px;
+    }
+    h1, h2 { font-family: 'IM Fell English', serif; color: var(--phosphor); margin: 0 0 0.75rem; }
+    h2 { font-size: 1.1rem; }
     .panel { background: var(--bg-panel); border: 1px solid var(--muted); border-radius: 4px; padding: 1rem; }
-    .tab { cursor: pointer; padding: 0.5rem 1rem; border-bottom: 2px solid transparent; color: var(--text-dim); }
-    .tab.active { border-bottom-color: var(--phosphor); color: var(--phosphor); }
-    .screen { display: none; } .screen.active { display: block; }
-    input, select { background: var(--bg-raised); border: 1px solid var(--muted); color: var(--text-body); padding: 0.4rem 0.6rem; border-radius: 3px; width: 100%; box-sizing: border-box; font-family: inherit; }
-    button { background: var(--bg-raised); border: 1px solid var(--muted); color: var(--phosphor); padding: 0.4rem 0.8rem; border-radius: 3px; cursor: pointer; font-family: inherit; }
+    input, select {
+      background: var(--bg-raised); border: 1px solid var(--muted); color: var(--text-body);
+      padding: 0.35rem 0.6rem; border-radius: 3px; width: 100%; font-family: inherit; font-size: inherit;
+    }
+    input:focus, select:focus { outline: 1px solid var(--phosphor); }
+    button {
+      background: var(--bg-raised); border: 1px solid var(--muted); color: var(--phosphor);
+      padding: 0.35rem 0.8rem; border-radius: 3px; cursor: pointer; font-family: inherit; font-size: inherit;
+      white-space: nowrap;
+    }
     button:hover { border-color: var(--phosphor); }
+    button:disabled { opacity: 0.4; cursor: default; }
     button.danger { color: var(--danger); border-color: var(--danger); }
+    button.danger:hover { background: #3a0000; }
     table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-    th { text-align: left; color: var(--text-dim); border-bottom: 1px solid var(--muted); padding: 0.4rem 0.6rem; }
-    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #1a1a28; }
+    th { text-align: left; color: var(--text-dim); border-bottom: 1px solid var(--muted); padding: 0.4rem 0.6rem; font-weight: normal; }
+    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #15151f; }
     tr:hover td { background: var(--bg-raised); }
-    .badge { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.75rem; }
+    .badge { display: inline-block; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.75rem; }
     .badge-green { background: #1a3a1a; color: var(--phosphor); }
     .badge-amber { background: #3a2a00; color: var(--amber); }
-    .badge-red { background: #3a0000; color: var(--danger); }
-    .badge-gray { background: var(--bg-raised); color: var(--text-dim); }
-    #error-bar { display: none; background: #3a0000; color: var(--danger); padding: 0.5rem 1rem; }
-    .online-dot { color: var(--phosphor); } .offline-dot { color: var(--muted); }
+    .badge-red   { background: #3a0000; color: var(--danger); }
+    .badge-gray  { background: var(--bg-raised); color: var(--text-dim); }
     pre { background: var(--bg-raised); padding: 0.5rem; border-radius: 3px; overflow-x: auto; font-size: 0.8rem; color: var(--text-body); }
+
+    /* ---------- Login screen ---------- */
+    #login-screen {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    #login-box { width: 360px; }
+    #login-box h1 { text-align: center; margin-bottom: 1.5rem; font-size: 1.6rem; }
+    .login-field { margin-bottom: 0.75rem; }
+    .login-field label { display: block; color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.3rem; letter-spacing: 0.05em; }
+    #l-error { color: var(--danger); font-size: 0.8rem; min-height: 1.2em; margin-top: 0.4rem; }
+
+    /* ---------- Admin shell ---------- */
+    #admin-screen {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+    }
+    #admin-topbar {
+      flex: 0 0 auto;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--muted);
+      padding: 0.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    #admin-topbar .brand { font-family: 'IM Fell English', serif; color: var(--phosphor); font-size: 1.1rem; }
+    #admin-user-label { margin-left: auto; color: var(--text-dim); font-size: 0.8rem; }
+    #error-bar { flex: 0 0 auto; display: none; background: #3a0000; color: var(--danger); padding: 0.4rem 1rem; font-size: 0.85rem; }
+    #admin-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 1rem; gap: 0.75rem; }
+
+    /* ---------- Tabs ---------- */
+    #tab-bar { flex: 0 0 auto; display: flex; gap: 0; border-bottom: 1px solid var(--muted); }
+    .tab {
+      cursor: pointer; padding: 0.45rem 1rem; border-bottom: 2px solid transparent;
+      color: var(--text-dim); user-select: none; font-size: 0.9rem;
+    }
+    .tab:hover { color: var(--text-body); }
+    .tab.active { border-bottom-color: var(--phosphor); color: var(--phosphor); }
+    #tab-panels { flex: 1; overflow: auto; }
+    .tab-panel { display: none; height: 100%; }
+    .tab-panel.active { display: flex; flex-direction: column; gap: 0.75rem; }
+
+    /* ---------- Dashboard ---------- */
+    #tab-dashboard .panel { overflow: auto; }
+    .online-dot { color: var(--phosphor); }
+    .offline-dot { color: var(--muted); }
+
+    /* ---------- World editor ---------- */
+    #world-layout { display: flex; gap: 1rem; min-height: 0; flex: 1; }
+    #world-layout .room-list { flex: 1; min-height: 0; overflow: auto; }
+    #room-editor-panel { width: 320px; flex-shrink: 0; display: none; overflow: auto; }
+    #room-editor-panel .field { margin-bottom: 0.6rem; }
+    #room-editor-panel label { display: block; color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.25rem; }
+
+    /* ---------- Scan results ---------- */
+    #cs-conflicts { display: none; }
+
+    /* ---------- Clock ---------- */
+    #clock-layout { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+    #clock-display { font-size: 1.4rem; color: var(--phosphor); margin-bottom: 0.4rem; }
+    #clock-meta { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1rem; }
+
+    /* ---------- Accounts create row ---------- */
+    #accounts-create { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    #accounts-create .field { display: flex; flex-direction: column; gap: 0.25rem; }
+    #accounts-create label { color: var(--text-dim); font-size: 0.75rem; }
+    #accounts-create input, #accounts-create select { width: auto; }
   </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
 
-<!-- Login screen -->
-<div id="login-screen" class="screen active" style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
-  <div class="panel" style="width:360px;">
-    <h1 style="text-align:center;margin-bottom:1.5rem;">Lorecraft Admin</h1>
-    <div style="margin-bottom:0.75rem;"><label style="color:var(--text-dim);font-size:0.8rem;">USERNAME</label><input id="l-username" type="text" /></div>
-    <div style="margin-bottom:0.75rem;"><label style="color:var(--text-dim);font-size:0.8rem;">PASSWORD</label><input id="l-password" type="password" /></div>
-    <button onclick="doLogin()" style="width:100%;margin-top:0.5rem;">Login</button>
-    <div id="l-error" style="color:var(--danger);margin-top:0.5rem;font-size:0.8rem;"></div>
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="login-screen">
+  <div id="login-box" class="panel">
+    <h1>Lorecraft Admin</h1>
+    <div class="login-field"><label>USERNAME</label><input id="l-username" type="text" autocomplete="username" /></div>
+    <div class="login-field"><label>PASSWORD</label><input id="l-password" type="password" autocomplete="current-password" /></div>
+    <button id="l-submit" style="width:100%;margin-top:0.25rem;">Login</button>
+    <div id="l-error"></div>
   </div>
 </div>
 
-<!-- Admin panel -->
-<div id="admin-screen" class="screen">
-  <div style="background:var(--bg-panel);border-bottom:1px solid var(--muted);padding:0.5rem 1rem;display:flex;align-items:center;gap:1rem;">
-    <span style="color:var(--phosphor);font-family:'IM Fell English',serif;">Lorecraft Admin</span>
-    <span id="admin-user-label" style="color:var(--text-dim);font-size:0.8rem;margin-left:auto;"></span>
+<!-- ═══════════════ ADMIN SHELL ═══════════════ -->
+<div id="admin-screen">
+  <div id="admin-topbar">
+    <span class="brand">Lorecraft Admin</span>
+    <span id="ws-indicator" title="Live push" style="color:var(--muted);font-size:0.75rem;">● ws</span>
+    <span id="admin-user-label"></span>
     <button onclick="logout()" style="font-size:0.75rem;">Logout</button>
   </div>
   <div id="error-bar"></div>
-  <div style="padding:1rem;">
-    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;border-bottom:1px solid var(--muted);">
-      <div class="tab active" onclick="showTab('dashboard')">Dashboard</div>
-      <div class="tab" onclick="showTab('audit')">Audit</div>
-      <div class="tab" onclick="showTab('world')">World</div>
-      <div class="tab" onclick="showTab('changesets')">Changesets</div>
-      <div class="tab" onclick="showTab('clock')">Clock</div>
-      <div class="tab" onclick="showTab('accounts')">Accounts</div>
+
+  <div id="admin-body">
+    <div id="tab-bar">
+      <div class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</div>
+      <div class="tab" data-tab="audit"      onclick="showTab('audit')">Audit</div>
+      <div class="tab" data-tab="world"      onclick="showTab('world')">World</div>
+      <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
+      <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
+      <div class="tab" data-tab="accounts"   onclick="showTab('accounts')">Accounts</div>
     </div>
 
-    <!-- Dashboard -->
-    <div id="tab-dashboard" class="screen active">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-        <h2>Live Players</h2>
-        <button onclick="loadDashboard()">↻ Refresh</button>
+    <div id="tab-panels">
+
+      <!-- Dashboard -->
+      <div id="tab-dashboard" class="tab-panel active">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Live Players</h2>
+          <button onclick="loadDashboard()">↻ Refresh</button>
+        </div>
+        <div class="panel">
+          <table>
+            <thead><tr><th>Username</th><th>Room</th><th>Online</th><th>Inv</th><th>Actions</th></tr></thead>
+            <tbody id="players-tbody"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="panel"><table><thead><tr><th>Username</th><th>Room</th><th>Status</th><th>Inventory</th><th>Actions</th></tr></thead><tbody id="players-tbody"></tbody></table></div>
-    </div>
 
-    <!-- Audit -->
-    <div id="tab-audit" class="screen">
-      <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:flex-end;flex-wrap:wrap;">
-        <div style="flex:1;min-width:120px;"><label style="color:var(--text-dim);font-size:0.75rem;">ACTOR</label><input id="f-actor" placeholder="player id or 'system'" /></div>
-        <div style="flex:1;min-width:120px;"><label style="color:var(--text-dim);font-size:0.75rem;">ROOM</label><input id="f-room" placeholder="room id" /></div>
-        <div style="flex:1;min-width:120px;"><label style="color:var(--text-dim);font-size:0.75rem;">EVENT TYPE</label><input id="f-type" placeholder="command_executed" /></div>
-        <div style="flex:0;"><label style="color:var(--text-dim);font-size:0.75rem;">LIMIT</label><input id="f-limit" value="100" style="width:70px;" /></div>
-        <button onclick="loadAudit()">Search</button>
+      <!-- Audit -->
+      <div id="tab-audit" class="tab-panel">
+        <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">ACTOR</label><input id="f-actor" placeholder="player id / system" /></div>
+          <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">ROOM</label><input id="f-room" placeholder="room id" /></div>
+          <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">TYPE</label><input id="f-type" placeholder="command_executed" /></div>
+          <div><label style="color:var(--text-dim);font-size:0.75rem;">LIMIT</label><input id="f-limit" value="100" style="width:70px;" /></div>
+          <button onclick="loadAudit()">Search</button>
+        </div>
+        <div class="panel" style="overflow-x:auto;flex:1;">
+          <table>
+            <thead><tr><th>Time</th><th>Type</th><th>Actor</th><th>Room</th><th>Sev</th><th>Summary</th></tr></thead>
+            <tbody id="audit-tbody"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="panel" style="overflow-x:auto;"><table><thead><tr><th>Time</th><th>Type</th><th>Actor</th><th>Room</th><th>Severity</th><th>Summary</th></tr></thead><tbody id="audit-tbody"></tbody></table></div>
-    </div>
 
-    <!-- World -->
-    <div id="tab-world" class="screen">
-      <div style="display:flex;gap:1rem;">
-        <div style="flex:1;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:0.75rem;">
-            <h2>Rooms</h2><button onclick="loadRooms()">↻</button>
+      <!-- World -->
+      <div id="tab-world" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Rooms</h2>
+          <button onclick="loadRooms()">↻ Refresh</button>
+        </div>
+        <div id="world-layout">
+          <div class="room-list panel">
+            <table>
+              <thead><tr><th>ID</th><th>Name</th><th>Active</th><th></th></tr></thead>
+              <tbody id="rooms-tbody"></tbody>
+            </table>
           </div>
-          <div class="panel"><table><thead><tr><th>ID</th><th>Name</th><th>Active</th><th></th></tr></thead><tbody id="rooms-tbody"></tbody></table></div>
-        </div>
-        <div id="room-editor-panel" class="panel" style="width:320px;display:none;">
-          <h2 id="room-editor-title">Edit Room</h2>
-          <div style="margin-bottom:0.5rem;"><label style="color:var(--text-dim);font-size:0.75rem;">NAME</label><input id="r-name" /></div>
-          <div style="margin-bottom:0.5rem;"><label style="color:var(--text-dim);font-size:0.75rem;">DESCRIPTION</label><input id="r-desc" /></div>
-          <div style="margin-bottom:0.5rem;display:flex;gap:0.5rem;">
-            <div style="flex:1;"><label style="color:var(--text-dim);font-size:0.75rem;">MAP X</label><input id="r-x" type="number" /></div>
-            <div style="flex:1;"><label style="color:var(--text-dim);font-size:0.75rem;">MAP Y</label><input id="r-y" type="number" /></div>
-          </div>
-          <div style="margin-bottom:0.5rem;"><label style="color:var(--text-dim);font-size:0.75rem;">LIGHT LEVEL (0-1)</label><input id="r-light" type="number" min="0" max="1" /></div>
-          <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:0.5rem;"><input id="r-active" type="checkbox" style="width:auto;" /><label style="color:var(--text-dim);">Active</label></div>
-          <div id="room-save-error" style="color:var(--danger);font-size:0.8rem;margin-bottom:0.5rem;"></div>
-          <button onclick="saveRoom()">Save Room</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Changesets -->
-    <div id="tab-changesets" class="screen">
-      <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;align-items:center;">
-        <h2>Changesets</h2>
-        <div style="margin-left:auto;display:flex;gap:0.5rem;">
-          <input id="cs-name" placeholder="Changeset name" style="width:200px;" />
-          <button onclick="createChangeset()">+ New</button>
-          <button onclick="loadChangesets()">↻</button>
-        </div>
-      </div>
-      <div class="panel"><table><thead><tr><th>Name</th><th>Status</th><th>Created by</th><th>Version</th><th>Actions</th></tr></thead><tbody id="cs-tbody"></tbody></table></div>
-      <div id="cs-conflicts" class="panel" style="margin-top:1rem;display:none;">
-        <h2 id="cs-conflicts-title">Scan Results</h2>
-        <table><thead><tr><th>Entity</th><th>ID</th><th>Severity</th><th>Description</th></tr></thead><tbody id="cs-conflicts-tbody"></tbody></table>
-      </div>
-    </div>
-
-    <!-- Clock -->
-    <div id="tab-clock" class="screen">
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
-        <div class="panel" style="min-width:260px;">
-          <h2>World Clock</h2>
-          <div id="clock-display" style="font-size:1.5rem;color:var(--phosphor);margin-bottom:0.5rem;">—</div>
-          <div id="clock-meta" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1rem;"></div>
-          <div style="display:flex;gap:0.5rem;">
-            <button onclick="clockAction('pause')">Pause</button>
-            <button onclick="clockAction('resume')">Resume</button>
-            <button onclick="loadClock()">↻</button>
+          <div id="room-editor-panel" class="panel">
+            <h2 id="room-editor-title">Edit Room</h2>
+            <div class="field"><label>NAME</label><input id="r-name" /></div>
+            <div class="field"><label>DESCRIPTION</label><input id="r-desc" /></div>
+            <div class="field" style="display:flex;gap:0.5rem;">
+              <div style="flex:1;"><label>MAP X</label><input id="r-x" type="number" /></div>
+              <div style="flex:1;"><label>MAP Y</label><input id="r-y" type="number" /></div>
+            </div>
+            <div class="field"><label>LIGHT LEVEL (0–1)</label><input id="r-light" type="number" min="0" max="1" step="0.1" /></div>
+            <div class="field" style="display:flex;align-items:center;gap:0.5rem;">
+              <input id="r-active" type="checkbox" style="width:auto;" />
+              <label style="margin:0;color:var(--text-body);">Active</label>
+            </div>
+            <div id="room-save-error" style="color:var(--danger);font-size:0.8rem;min-height:1.2em;"></div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+              <button onclick="saveRoom()" style="flex:1;">Save</button>
+              <button onclick="closeRoomEditor()" style="color:var(--text-dim);">Cancel</button>
+            </div>
           </div>
         </div>
-        <div class="panel" style="min-width:220px;">
-          <h2>Time Ratio</h2>
-          <input id="ratio-input" type="number" placeholder="60" style="width:120px;" />
-          <button onclick="setTimeRatio()" style="margin-left:0.5rem;">Set</button>
+      </div>
+
+      <!-- Changesets -->
+      <div id="tab-changesets" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+          <h2>Changesets</h2>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <input id="cs-name" placeholder="Changeset name" style="width:200px;" />
+            <button onclick="createChangeset()">+ New</button>
+            <button onclick="loadChangesets()">↻</button>
+          </div>
         </div>
-        <div class="panel" style="min-width:220px;">
-          <h2>Weather Override</h2>
-          <select id="weather-select">
-            <option value="clear">Clear</option>
-            <option value="light_rain">Light Rain</option>
-            <option value="overcast">Overcast</option>
-            <option value="hot">Hot</option>
-            <option value="thunderstorm">Thunderstorm</option>
-            <option value="heavy_rain">Heavy Rain</option>
-            <option value="fog">Fog</option>
-            <option value="snow">Snow</option>
-            <option value="blizzard">Blizzard</option>
-          </select>
-          <button onclick="setWeather()" style="margin-top:0.5rem;width:100%;">Apply</button>
+        <div class="panel">
+          <table>
+            <thead><tr><th>Name</th><th>Status</th><th>Created by</th><th>World ver</th><th>Actions</th></tr></thead>
+            <tbody id="cs-tbody"></tbody>
+          </table>
+        </div>
+        <div id="cs-conflicts" class="panel">
+          <h2 id="cs-conflicts-title">Scan Results</h2>
+          <table>
+            <thead><tr><th>Entity</th><th>ID</th><th>Severity</th><th>Description</th></tr></thead>
+            <tbody id="cs-conflicts-tbody"></tbody>
+          </table>
         </div>
       </div>
-    </div>
 
-    <!-- Accounts -->
-    <div id="tab-accounts" class="screen">
-      <div style="display:flex;gap:1rem;margin-bottom:0.75rem;align-items:flex-end;">
+      <!-- Clock -->
+      <div id="tab-clock" class="tab-panel">
+        <div id="clock-layout">
+          <div class="panel" style="min-width:260px;">
+            <h2>World Clock</h2>
+            <div id="clock-display">—</div>
+            <div id="clock-meta"></div>
+            <div style="display:flex;gap:0.5rem;">
+              <button onclick="clockAction('pause')">⏸ Pause</button>
+              <button onclick="clockAction('resume')">▶ Resume</button>
+              <button onclick="loadClock()">↻</button>
+            </div>
+          </div>
+          <div class="panel" style="min-width:200px;">
+            <h2>Time Ratio</h2>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <input id="ratio-input" type="number" min="1" placeholder="60" style="width:90px;" />
+              <span style="color:var(--text-dim);">×</span>
+              <button onclick="setTimeRatio()">Set</button>
+            </div>
+          </div>
+          <div class="panel" style="min-width:200px;">
+            <h2>Weather</h2>
+            <select id="weather-select">
+              <option value="clear">Clear</option>
+              <option value="light_rain">Light Rain</option>
+              <option value="overcast">Overcast</option>
+              <option value="hot">Hot</option>
+              <option value="thunderstorm">Thunderstorm</option>
+              <option value="heavy_rain">Heavy Rain</option>
+              <option value="fog">Fog</option>
+              <option value="snow">Snow</option>
+              <option value="blizzard">Blizzard</option>
+            </select>
+            <button onclick="setWeather()" style="margin-top:0.5rem;width:100%;">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accounts -->
+      <div id="tab-accounts" class="tab-panel">
         <h2>Admin Accounts</h2>
-        <div style="display:flex;gap:0.5rem;margin-left:auto;flex-wrap:wrap;">
-          <input id="a-username" placeholder="Username" style="width:130px;" />
-          <input id="a-password" type="password" placeholder="Password" style="width:130px;" />
-          <select id="a-role" style="width:130px;">
-            <option value="observer">Observer</option>
-            <option value="moderator">Moderator</option>
-            <option value="world-builder">World-Builder</option>
-            <option value="superadmin">Superadmin</option>
-          </select>
-          <button onclick="createAccount()">+ Create</button>
-          <button onclick="loadAccounts()">↻</button>
+        <div id="accounts-create" class="panel">
+          <div class="field"><label>USERNAME</label><input id="a-username" placeholder="username" style="width:130px;" /></div>
+          <div class="field"><label>PASSWORD</label><input id="a-password" type="password" placeholder="password" style="width:130px;" /></div>
+          <div class="field"><label>ROLE</label>
+            <select id="a-role" style="width:140px;">
+              <option value="observer">Observer</option>
+              <option value="moderator">Moderator</option>
+              <option value="world-builder">World-Builder</option>
+              <option value="superadmin">Superadmin</option>
+            </select>
+          </div>
+          <div class="field" style="justify-content:flex-end;">
+            <button onclick="createAccount()">+ Create</button>
+          </div>
+          <div class="field" style="justify-content:flex-end;">
+            <button onclick="loadAccounts()">↻</button>
+          </div>
+        </div>
+        <div class="panel">
+          <table>
+            <thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Status</th><th></th></tr></thead>
+            <tbody id="accounts-tbody"></tbody>
+          </table>
         </div>
       </div>
-      <div class="panel"><table><thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Status</th><th></th></tr></thead><tbody id="accounts-tbody"></tbody></table></div>
-    </div>
-  </div>
-</div>
+
+    </div><!-- /tab-panels -->
+  </div><!-- /admin-body -->
+</div><!-- /admin-screen -->
 
 <script>
+"use strict";
+
 const state = {
   accessToken: sessionStorage.getItem("lc_admin_token") || "",
-  username: sessionStorage.getItem("lc_admin_user") || "",
+  username:    sessionStorage.getItem("lc_admin_user")  || "",
   editingRoom: null,
+  ws: null,
 };
 
-// ---------- Auth ----------
+// ────────────────────────────────────────
+// Auth
+// ────────────────────────────────────────
+
+document.getElementById("l-submit").addEventListener("click", doLogin);
+document.getElementById("l-password").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doLogin();
+});
+document.getElementById("l-username").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("l-password").focus();
+});
+
 async function doLogin() {
   const u = document.getElementById("l-username").value.trim();
   const p = document.getElementById("l-password").value;
-  if (!u || !p) { document.getElementById("l-error").textContent = "Enter username and password."; return; }
+  const errEl = document.getElementById("l-error");
+  errEl.textContent = "";
+  if (!u || !p) { errEl.textContent = "Enter username and password."; return; }
+  document.getElementById("l-submit").disabled = true;
   try {
     const resp = await api("POST", "/admin/auth/token", {username: u, password: p}, true);
-    if (!resp.access_token) { document.getElementById("l-error").textContent = resp.detail || "Login failed."; return; }
+    if (!resp.access_token) {
+      errEl.textContent = resp.detail || "Invalid credentials.";
+      return;
+    }
     state.accessToken = resp.access_token;
     state.username = u;
     sessionStorage.setItem("lc_admin_token", resp.access_token);
     sessionStorage.setItem("lc_admin_user", u);
     showAdmin();
-  } catch(e) { document.getElementById("l-error").textContent = String(e); }
+  } catch(e) {
+    errEl.textContent = "Network error: " + String(e);
+  } finally {
+    document.getElementById("l-submit").disabled = false;
+  }
 }
 
 function logout() {
   sessionStorage.removeItem("lc_admin_token");
   sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
-  document.getElementById("login-screen").classList.add("active");
-  document.getElementById("admin-screen").classList.remove("active");
+  if (state.ws) { state.ws.close(); state.ws = null; }
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("admin-screen").style.display  = "none";
   document.getElementById("l-password").value = "";
+  document.getElementById("l-error").textContent = "";
 }
 
 function showAdmin() {
-  document.getElementById("login-screen").classList.remove("active");
-  document.getElementById("admin-screen").classList.add("active");
-  document.getElementById("admin-user-label").textContent = `Logged in as: ${state.username}`;
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("admin-screen").style.display  = "flex";
+  document.getElementById("admin-user-label").textContent = state.username;
   loadDashboard();
   connectAdminWs();
 }
 
-// ---------- HTTP ----------
+// ────────────────────────────────────────
+// HTTP
+// ────────────────────────────────────────
+
 async function api(method, path, body, noAuth) {
   const headers = {"Content-Type": "application/json"};
   if (!noAuth && state.accessToken) headers["Authorization"] = `Bearer ${state.accessToken}`;
-  const resp = await fetch(path, {method, headers, body: body ? JSON.stringify(body) : undefined});
-  return resp.json();
+  try {
+    const resp = await fetch(path, {method, headers, body: body ? JSON.stringify(body) : undefined});
+    const data = await resp.json();
+    if (!resp.ok && resp.status === 401) {
+      showError("Session expired — please log in again.");
+    }
+    return data;
+  } catch(e) {
+    showError("Network error: " + e);
+    return {};
+  }
 }
 
-// ---------- Tab routing ----------
+function showError(msg) {
+  const bar = document.getElementById("error-bar");
+  bar.textContent = msg;
+  bar.style.display = "block";
+  setTimeout(() => { bar.style.display = "none"; }, 6000);
+}
+
+// ────────────────────────────────────────
+// Tab routing
+// ────────────────────────────────────────
+
 function showTab(name) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll("[id^='tab-']").forEach(s => s.classList.remove("active"));
-  event.target.classList.add("active");
-  document.getElementById("tab-" + name).classList.add("active");
-  const loaders = {dashboard: loadDashboard, audit: loadAudit, world: loadRooms, changesets: loadChangesets, clock: loadClock, accounts: loadAccounts};
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
+  const loaders = {
+    dashboard: loadDashboard, audit: loadAudit, world: loadRooms,
+    changesets: loadChangesets, clock: loadClock, accounts: loadAccounts
+  };
   if (loaders[name]) loaders[name]();
 }
 
-// ---------- Dashboard ----------
+// ────────────────────────────────────────
+// Dashboard
+// ────────────────────────────────────────
+
 async function loadDashboard() {
   const players = await api("GET", "/admin/players");
   const tbody = document.getElementById("players-tbody");
   tbody.innerHTML = "";
   if (!Array.isArray(players)) return;
-  players.forEach(p => {
-    const dot = p.online ? `<span class="online-dot">●</span>` : `<span class="offline-dot">●</span>`;
-    tbody.innerHTML += `<tr>
-      <td>${dot} <b>${esc(p.username)}</b></td>
-      <td>${esc(p.current_room_id)}</td>
+  for (const p of players) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.online ? '<span class="online-dot">●</span>' : '<span class="offline-dot">●</span>'}
+          <b>${esc(p.username)}</b></td>
+      <td style="color:var(--amber)">${esc(p.current_room_id)}</td>
       <td>${p.online ? badge("online","green") : badge("offline","gray")}</td>
       <td>${p.inventory_count}</td>
-      <td><button onclick="teleportDialog('${esc(p.id)}')">Teleport</button>
-          <button onclick="freezePlayer('${esc(p.id)}')" style="margin-left:4px;">Freeze</button></td>
-    </tr>`;
-  });
+      <td style="white-space:nowrap;gap:4px;display:flex;">
+        <button onclick="teleportDialog('${esc(p.id)}')">Teleport</button>
+        <button onclick="freezePlayer('${esc(p.id)}')" style="margin-left:4px;">Freeze</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 async function teleportDialog(playerId) {
   const roomId = prompt("Teleport to room ID:");
   if (!roomId) return;
   const r = await api("POST", `/admin/players/${playerId}/teleport`, {room_id: roomId});
-  alert(r.status || JSON.stringify(r));
-  loadDashboard();
+  if (r.status === "teleported") loadDashboard();
+  else showError(r.detail || JSON.stringify(r));
 }
 
 async function freezePlayer(playerId) {
   const r = await api("POST", `/admin/players/${playerId}/freeze`);
-  alert(r.status || r.detail || JSON.stringify(r));
+  if (r.detail) showError(r.detail);
+  else loadDashboard();
 }
 
-// ---------- Audit ----------
+// ────────────────────────────────────────
+// Audit
+// ────────────────────────────────────────
+
 async function loadAudit() {
   const params = new URLSearchParams();
   const actor = document.getElementById("f-actor").value.trim();
-  const room = document.getElementById("f-room").value.trim();
+  const room  = document.getElementById("f-room").value.trim();
   const etype = document.getElementById("f-type").value.trim();
   const limit = document.getElementById("f-limit").value.trim();
   if (actor) params.set("actor", actor);
-  if (room) params.set("room", room);
+  if (room)  params.set("room",  room);
   if (etype) params.set("event_type", etype);
   if (limit) params.set("limit", limit);
-  const qs = params.toString() ? "?" + params.toString() : "";
+  const qs = params.size ? "?" + params : "";
   const events = await api("GET", `/admin/audit${qs}`);
   const tbody = document.getElementById("audit-tbody");
   tbody.innerHTML = "";
   if (!Array.isArray(events)) return;
-  events.forEach(e => {
-    const ts = new Date(e.real_time * 1000).toLocaleTimeString();
+  for (const e of events) {
+    const ts  = new Date(e.real_time * 1000).toLocaleTimeString();
     const sev = e.severity === "ERROR" ? "red" : e.severity === "WARNING" ? "amber" : "green";
-    tbody.innerHTML += `<tr>
-      <td style="white-space:nowrap;color:var(--text-dim)">${ts}</td>
+    const tr  = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="color:var(--text-dim);white-space:nowrap">${ts}</td>
       <td>${badge(e.event_type, "gray")}</td>
       <td style="color:var(--amber)">${esc(e.actor_id)}</td>
       <td>${esc(e.room_id)}</td>
       <td>${badge(e.severity, sev)}</td>
-      <td>${esc(e.summary)}</td>
-    </tr>`;
-  });
+      <td>${esc(e.summary)}</td>`;
+    tbody.appendChild(tr);
+  }
 }
 
-// ---------- World ----------
+// ────────────────────────────────────────
+// World
+// ────────────────────────────────────────
+
 async function loadRooms() {
   const rooms = await api("GET", "/admin/world/rooms");
   const tbody = document.getElementById("rooms-tbody");
   tbody.innerHTML = "";
   if (!Array.isArray(rooms)) return;
-  rooms.forEach(r => {
-    tbody.innerHTML += `<tr>
+  for (const r of rooms) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td style="font-family:monospace;color:var(--amber)">${esc(r.id)}</td>
       <td>${esc(r.name)}</td>
       <td>${r.is_active ? badge("active","green") : badge("inactive","gray")}</td>
-      <td><button onclick='editRoom(${JSON.stringify(JSON.stringify(r))})'>Edit</button></td>
-    </tr>`;
-  });
+      <td><button onclick='editRoom(${JSON.stringify(JSON.stringify(r))})'>Edit</button></td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 function editRoom(roomJson) {
   const r = JSON.parse(roomJson);
   state.editingRoom = r;
   document.getElementById("room-editor-title").textContent = `Edit: ${r.id}`;
-  document.getElementById("r-name").value = r.name || "";
-  document.getElementById("r-desc").value = r.description || "";
-  document.getElementById("r-x").value = r.map_x ?? 0;
-  document.getElementById("r-y").value = r.map_y ?? 0;
-  document.getElementById("r-light").value = r.light_level ?? 1;
+  document.getElementById("r-name").value    = r.name || "";
+  document.getElementById("r-desc").value    = r.description || "";
+  document.getElementById("r-x").value       = r.map_x ?? 0;
+  document.getElementById("r-y").value       = r.map_y ?? 0;
+  document.getElementById("r-light").value   = r.light_level ?? 1;
   document.getElementById("r-active").checked = r.is_active;
-  document.getElementById("room-editor-panel").style.display = "block";
   document.getElementById("room-save-error").textContent = "";
+  document.getElementById("room-editor-panel").style.display = "block";
+}
+
+function closeRoomEditor() {
+  document.getElementById("room-editor-panel").style.display = "none";
+  state.editingRoom = null;
 }
 
 async function saveRoom() {
   const r = state.editingRoom;
   if (!r) return;
   const body = {
-    name: document.getElementById("r-name").value,
+    name:        document.getElementById("r-name").value,
     description: document.getElementById("r-desc").value,
-    map_x: parseInt(document.getElementById("r-x").value),
-    map_y: parseInt(document.getElementById("r-y").value),
-    light_level: parseInt(document.getElementById("r-light").value),
-    is_active: document.getElementById("r-active").checked,
-    version: r.version,
+    map_x:       parseInt(document.getElementById("r-x").value),
+    map_y:       parseInt(document.getElementById("r-y").value),
+    light_level: parseFloat(document.getElementById("r-light").value),
+    is_active:   document.getElementById("r-active").checked,
+    version:     r.version,
   };
   const result = await api("PUT", `/admin/world/rooms/${r.id}`, body);
-  if (result.detail) { document.getElementById("room-save-error").textContent = result.detail; return; }
-  document.getElementById("room-save-error").textContent = "";
-  document.getElementById("room-editor-panel").style.display = "none";
+  if (result.detail) {
+    document.getElementById("room-save-error").textContent = result.detail;
+    return;
+  }
+  closeRoomEditor();
   loadRooms();
 }
 
-// ---------- Changesets ----------
+// ────────────────────────────────────────
+// Changesets
+// ────────────────────────────────────────
+
 async function loadChangesets() {
   const cs_list = await api("GET", "/admin/changesets");
   const tbody = document.getElementById("cs-tbody");
   tbody.innerHTML = "";
   if (!Array.isArray(cs_list)) return;
-  cs_list.forEach(cs => {
+  for (const cs of cs_list) {
     const s = cs.status;
     const sColor = s === "live" ? "green" : s === "conflicts" ? "red" : s === "ready" ? "amber" : "gray";
-    tbody.innerHTML += `<tr>
+    const canPromote = s === "ready";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td><b>${esc(cs.name)}</b></td>
       <td>${badge(s, sColor)}</td>
-      <td>${esc(cs.created_by)}</td>
-      <td>${cs.world_version || "-"}</td>
-      <td style="white-space:nowrap;">
+      <td style="color:var(--text-dim)">${esc(cs.created_by)}</td>
+      <td style="color:var(--text-dim)">${cs.world_version || "—"}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px;">
         <button onclick="scanChangeset('${cs.id}')">Scan</button>
-        <button onclick="promoteChangeset('${cs.id}')" ${s !== "ready" ? "disabled" : ""} style="margin-left:4px;">Promote</button>
-      </td>
-    </tr>`;
-  });
+        <button onclick="promoteChangeset('${cs.id}')" ${canPromote ? "" : "disabled"}>Promote</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 async function createChangeset() {
   const name = document.getElementById("cs-name").value.trim();
-  if (!name) { alert("Enter a changeset name"); return; }
+  if (!name) { showError("Enter a changeset name"); return; }
   await api("POST", "/admin/changesets", {name});
   document.getElementById("cs-name").value = "";
   loadChangesets();
@@ -397,40 +602,47 @@ async function createChangeset() {
 async function scanChangeset(id) {
   const result = await api("POST", `/admin/changesets/${id}/scan`);
   const detail = await api("GET", `/admin/changesets/${id}`);
-  const panel = document.getElementById("cs-conflicts");
-  const tbody = document.getElementById("cs-conflicts-tbody");
-  document.getElementById("cs-conflicts-title").textContent = `Scan: ${id.slice(0,8)} — ${result.status} (${result.conflict_count} conflicts)`;
+  const panel  = document.getElementById("cs-conflicts");
+  const tbody  = document.getElementById("cs-conflicts-tbody");
+  document.getElementById("cs-conflicts-title").textContent =
+    `Scan: ${id.slice(0,8)}… — ${result.status} (${result.conflict_count || 0} conflicts, ${result.error_count || 0} errors)`;
   tbody.innerHTML = "";
-  (detail.conflicts || []).forEach(c => {
+  for (const c of (detail.conflicts || [])) {
     const sev = c.severity === "ERROR" ? "red" : "amber";
-    tbody.innerHTML += `<tr>
+    const tr  = document.createElement("tr");
+    tr.innerHTML = `
       <td>${badge(c.entity_type, "gray")}</td>
-      <td style="font-family:monospace">${esc(c.entity_id.slice(0,20))}</td>
+      <td style="font-family:monospace;color:var(--amber)">${esc(String(c.entity_id).slice(0,20))}</td>
       <td>${badge(c.severity, sev)}</td>
-      <td>${esc(c.description)}</td>
-    </tr>`;
-  });
+      <td>${esc(c.description)}</td>`;
+    tbody.appendChild(tr);
+  }
   panel.style.display = "block";
   loadChangesets();
 }
 
 async function promoteChangeset(id) {
-  if (!confirm(`Promote changeset ${id.slice(0,8)} to LIVE?`)) return;
+  if (!confirm(`Promote changeset ${id.slice(0,8)}… to LIVE? This cannot be undone.`)) return;
   const result = await api("POST", `/admin/changesets/${id}/promote`);
-  alert(result.status === "live" ? "Promoted!" : JSON.stringify(result));
-  loadChangesets();
+  if (result.status === "live") loadChangesets();
+  else showError(result.detail || JSON.stringify(result));
 }
 
-// ---------- Clock ----------
+// ────────────────────────────────────────
+// Clock
+// ────────────────────────────────────────
+
 async function loadClock() {
   const c = await api("GET", "/admin/clock");
   if (c.detail) { document.getElementById("clock-display").textContent = c.detail; return; }
+  const h = String(c.current_hour).padStart(2,"0");
+  const m = String(c.current_minute).padStart(2,"0");
   document.getElementById("clock-display").textContent =
-    `Day ${c.current_day}  ${String(c.current_hour).padStart(2,"0")}:${String(c.current_minute).padStart(2,"0")}  ${c.current_season}  ${c.weather}`;
+    `Day ${c.current_day}  ${h}:${m}  ${c.current_season}  ${(c.weather||"").replace(/_/g," ")}`;
   document.getElementById("clock-meta").textContent =
     `${c.paused ? "⏸ Paused" : "▶ Running"}  ×${c.time_ratio}`;
-  if (document.getElementById("ratio-input").value === "")
-    document.getElementById("ratio-input").value = c.time_ratio;
+  const ri = document.getElementById("ratio-input");
+  if (!ri.value) ri.value = String(c.time_ratio);
 }
 
 async function clockAction(action) {
@@ -440,77 +652,120 @@ async function clockAction(action) {
 
 async function setTimeRatio() {
   const ratio = parseFloat(document.getElementById("ratio-input").value);
-  if (!ratio || ratio <= 0) { alert("Invalid ratio"); return; }
+  if (!Number.isFinite(ratio) || ratio <= 0) { showError("Invalid ratio"); return; }
   await api("POST", "/admin/clock/time-ratio", {ratio});
   loadClock();
 }
 
 async function setWeather() {
-  const weather = document.getElementById("weather-select").value;
-  await api("POST", "/admin/clock/weather", {weather});
+  await api("POST", "/admin/clock/weather", {weather: document.getElementById("weather-select").value});
   loadClock();
 }
 
-// ---------- Accounts ----------
+// ────────────────────────────────────────
+// Accounts
+// ────────────────────────────────────────
+
 async function loadAccounts() {
   const users = await api("GET", "/admin/accounts");
   const tbody = document.getElementById("accounts-tbody");
   tbody.innerHTML = "";
-  if (!Array.isArray(users)) { tbody.innerHTML = `<tr><td colspan=5 style="color:var(--danger)">${users.detail || "Forbidden"}</td></tr>`; return; }
-  users.forEach(u => {
+  if (!Array.isArray(users)) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim)">${esc(users.detail || "Forbidden — superadmin only")}</td></tr>`;
+    return;
+  }
+  for (const u of users) {
     const active = !u.revoked_at;
-    tbody.innerHTML += `<tr>
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td><b>${esc(u.username)}</b></td>
       <td>${badge(u.role, "amber")}</td>
       <td style="color:var(--text-dim)">${new Date(u.created_at * 1000).toLocaleDateString()}</td>
       <td>${active ? badge("active","green") : badge("revoked","red")}</td>
-      <td>${active ? `<button class="danger" onclick="revokeAccount('${esc(u.username)}')">Revoke</button>` : ""}</td>
-    </tr>`;
-  });
+      <td>${active ? `<button class="danger" onclick="revokeAccount('${esc(u.username)}')">Revoke</button>` : ""}</td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 async function createAccount() {
   const body = {
     username: document.getElementById("a-username").value.trim(),
     password: document.getElementById("a-password").value,
-    role: document.getElementById("a-role").value,
+    role:     document.getElementById("a-role").value,
   };
-  if (!body.username || !body.password) { alert("Username and password required"); return; }
+  if (!body.username || !body.password) { showError("Username and password required"); return; }
   const r = await api("POST", "/admin/accounts", body);
-  alert(r.status === "created" ? `Created ${r.username}` : JSON.stringify(r));
-  document.getElementById("a-username").value = "";
-  document.getElementById("a-password").value = "";
-  loadAccounts();
+  if (r.status === "created") {
+    document.getElementById("a-username").value = "";
+    document.getElementById("a-password").value = "";
+    loadAccounts();
+  } else {
+    showError(r.detail || JSON.stringify(r));
+  }
 }
 
 async function revokeAccount(username) {
   if (!confirm(`Revoke ${username}?`)) return;
   const r = await api("DELETE", `/admin/accounts/${username}`);
-  alert(r.status || JSON.stringify(r));
-  loadAccounts();
+  if (r.detail) showError(r.detail);
+  else loadAccounts();
 }
 
-// ---------- Admin WS ----------
+// ────────────────────────────────────────
+// Admin WebSocket
+// ────────────────────────────────────────
+
 function connectAdminWs() {
+  if (state.ws) { state.ws.close(); state.ws = null; }
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${proto}//${location.host}/admin/ws?token=${state.accessToken}`);
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.type === "player_connected" || msg.type === "player_disconnected" || msg.type === "player_moved") {
-      loadDashboard();
-    }
-    if (msg.type === "changeset_scan_done") { loadChangesets(); }
-    if (msg.type === "clock_tick") { /* lightweight — skip full reload */ }
+  state.ws = ws;
+
+  ws.onopen = () => {
+    document.getElementById("ws-indicator").style.color = "var(--phosphor)";
   };
-  ws.onclose = () => setTimeout(connectAdminWs, 3000);
+  ws.onclose = () => {
+    document.getElementById("ws-indicator").style.color = "var(--muted)";
+    if (state.accessToken) setTimeout(connectAdminWs, 4000);
+  };
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (["player_connected","player_disconnected","player_moved"].includes(msg.type)) {
+        // Only refresh if dashboard tab is active
+        if (document.getElementById("tab-dashboard").classList.contains("active")) loadDashboard();
+      }
+      if (msg.type === "changeset_scan_done") {
+        if (document.getElementById("tab-changesets").classList.contains("active")) loadChangesets();
+      }
+    } catch(_) {}
+  };
 }
 
-// ---------- Utilities ----------
-function esc(s) { return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function badge(text, color) { return `<span class="badge badge-${color}">${esc(text)}</span>`; }
+// ────────────────────────────────────────
+// Utilities
+// ────────────────────────────────────────
 
-// ---------- Init ----------
-if (state.accessToken) showAdmin();
+function esc(s) {
+  return String(s || "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+function badge(text, color) {
+  return `<span class="badge badge-${color}">${esc(text)}</span>`;
+}
+
+// ────────────────────────────────────────
+// Init
+// ────────────────────────────────────────
+
+if (state.accessToken) {
+  showAdmin();
+} else {
+  document.getElementById("login-screen").style.display = "flex";
+}
 </script>
 </body>
 </html>

@@ -15,6 +15,8 @@ const state = {
 const elements = {
   connectForm: document.querySelector("#connect-form"),
   playerId: document.querySelector("#player-id"),
+  disconnectRow: document.querySelector("#disconnect-row"),
+  disconnectBtn: document.querySelector("#disconnect-btn"),
   connectionState: document.querySelector("#connection-state"),
   roomStatus: document.querySelector("#room-status"),
   timeStatus: document.querySelector("#time-status"),
@@ -47,6 +49,8 @@ function setConnection(status, className = "") {
 function setCommandEnabled(enabled) {
   elements.commandInput.disabled = !enabled;
   elements.commandButton.disabled = !enabled;
+  elements.playerId.disabled = enabled;
+  elements.disconnectRow?.classList.toggle("hidden", !enabled);
 }
 
 function appendMessage(kind, text) {
@@ -275,8 +279,8 @@ function mapPoint(node, bounds) {
   const width = Math.max(1, bounds.maxX - bounds.minX);
   const height = Math.max(1, bounds.maxY - bounds.minY);
   return {
-    x: 28 + ((node.map_x - bounds.minX) / width) * 164,
-    y: 28 + ((node.map_y - bounds.minY) / height) * 164,
+    x: 30 + ((node.map_x - bounds.minX) / width) * 160,
+    y: 30 + ((node.map_y - bounds.minY) / height) * 160,
   };
 }
 
@@ -337,6 +341,9 @@ function routeMessage(message) {
       appendMessage("room_event", text);
     }
     applyUpdates(message.updates || {});
+    if (message.updates?.disconnect) {
+      state.socket?.close(1000, "quit");
+    }
     return;
   }
 
@@ -401,6 +408,10 @@ function sendCommand(command) {
 elements.connectForm.addEventListener("submit", (event) => {
   event.preventDefault();
   connect(elements.playerId.value.trim());
+});
+
+elements.disconnectBtn?.addEventListener("click", () => {
+  state.socket?.close(1000, "user disconnect");
 });
 
 elements.commandForm.addEventListener("submit", (event) => {

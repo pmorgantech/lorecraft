@@ -142,9 +142,20 @@ Legend:
 
 ### Phase 7 — Frontend Polish
 
-- [ ] Three-column Tailwind layout.
+- [x] Admin login box visibility fixed (inline `display:flex` no longer fights CSS class toggle — JS controls display directly).
+- [x] Admin panel full-height layout (`height:100vh; display:flex; flex-direction:column`) — no viewport scroll needed.
+- [x] Admin tab routing hardened (data-tab attributes, `classList.toggle` — no `event.target` fragility).
+- [x] Admin login: Enter-key support on username/password inputs.
+- [x] Admin WS live indicator (● ws dot turns phosphor green when connected).
+- [x] Admin TUI black screen fixed (`pop_screen` → `push_screen("players")` after login).
+- [x] Admin TUI login centering fixed (`LoginScreen { align: center middle; }` CSS rule).
+- [x] Admin TUI `import urllib.parse` moved to module top.
+- [x] Minimap section `overflow-hidden` added — child borders no longer bleed through rounded corners.
+- [x] `quit` command now closes the WebSocket (`disconnect: true` update handled in `app.js`).
+- [x] Disconnect button added — appears when connected, hides when offline.
+- [x] Player ID input disabled while connected (prevents mid-session reconnect confusion).
 - [ ] Full-screen map modal.
-- [ ] Responsive behavior.
+- [ ] Responsive behavior improvements.
 - [ ] Browser end-to-end testing.
 
 ### Phase 8 — Combat

@@ -6,6 +6,7 @@ import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -133,7 +134,7 @@ class LoginScreen(Screen[None]):
             return
         _save_creds({"base_url": url, "access_token": token, "username": username})
         self.app.api = api  # type: ignore[attr-defined]
-        self.app.pop_screen()
+        self.app.push_screen("players")
 
 
 class PlayersScreen(Screen[None]):
@@ -156,7 +157,7 @@ class PlayersScreen(Screen[None]):
         self.action_refresh()
 
     def action_refresh(self) -> None:
-        self.run_worker(self._load_players, exclusive=True)
+        self.run_worker(self._load_players, exclusive=True, thread=True)
 
     def _load_players(self) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -208,7 +209,7 @@ class AuditScreen(Screen[None]):
         self.action_refresh()
 
     def action_refresh(self) -> None:
-        self.run_worker(self._load_audit, exclusive=True)
+        self.run_worker(self._load_audit, exclusive=True, thread=True)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "audit-search":
@@ -221,11 +222,11 @@ class AuditScreen(Screen[None]):
         etype = self.query_one("#filter-type", Input).value.strip() or None
         params: list[str] = []
         if actor:
-            params.append(f"actor={urllib.parse.quote(actor)}")  # type: ignore[name-defined]
+            params.append(f"actor={urllib.parse.quote(actor)}")
         if room:
-            params.append(f"room={urllib.parse.quote(room)}")  # type: ignore[name-defined]
+            params.append(f"room={urllib.parse.quote(room)}")
         if etype:
-            params.append(f"event_type={urllib.parse.quote(etype)}")  # type: ignore[name-defined]
+            params.append(f"event_type={urllib.parse.quote(etype)}")
         qs = "?" + "&".join(params) if params else ""
         events = api.get(f"/admin/audit{qs}")
         log_widget = self.query_one(RichLog)
@@ -247,10 +248,6 @@ class AuditScreen(Screen[None]):
                 f"[cyan]{e.get('actor_id', '')}[/cyan] "
                 f"[white]{e.get('summary', '')}[/white]"
             )
-
-
-# Import urllib.parse inside audit load to avoid top-level import issues
-import urllib.parse  # noqa: E402
 
 
 class WorldScreen(Screen[None]):
@@ -275,7 +272,7 @@ class WorldScreen(Screen[None]):
         self.action_refresh()
 
     def action_refresh(self) -> None:
-        self.run_worker(self._load_rooms, exclusive=True)
+        self.run_worker(self._load_rooms, exclusive=True, thread=True)
 
     def _load_rooms(self) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -309,7 +306,7 @@ class WorldScreen(Screen[None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "save-room":
-            self.run_worker(self._save_room, exclusive=True)
+            self.run_worker(self._save_room, exclusive=True, thread=True)
 
     def _save_room(self) -> None:
         room = getattr(self.app, "_editing_room", None)
@@ -351,7 +348,7 @@ class ChangesetsScreen(Screen[None]):
         self.action_refresh()
 
     def action_refresh(self) -> None:
-        self.run_worker(self._load_changesets, exclusive=True)
+        self.run_worker(self._load_changesets, exclusive=True, thread=True)
 
     def _load_changesets(self) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -383,7 +380,7 @@ class ChangesetsScreen(Screen[None]):
     def action_scan(self) -> None:
         cs_id = self._selected_cs_id()
         if cs_id:
-            self.run_worker(lambda: self._scan(cs_id), exclusive=True)
+            self.run_worker(lambda: self._scan(cs_id), exclusive=True, thread=True)
 
     def _scan(self, cs_id: str) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -399,7 +396,7 @@ class ChangesetsScreen(Screen[None]):
     def action_promote(self) -> None:
         cs_id = self._selected_cs_id()
         if cs_id:
-            self.run_worker(lambda: self._promote(cs_id), exclusive=True)
+            self.run_worker(lambda: self._promote(cs_id), exclusive=True, thread=True)
 
     def _promote(self, cs_id: str) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -442,7 +439,7 @@ class ClockScreen(Screen[None]):
         self.set_interval(5, self.action_refresh)
 
     def action_refresh(self) -> None:
-        self.run_worker(self._load_clock, exclusive=True)
+        self.run_worker(self._load_clock, exclusive=True, thread=True)
 
     def _load_clock(self) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -461,7 +458,7 @@ class ClockScreen(Screen[None]):
         )
 
     def action_toggle_pause(self) -> None:
-        self.run_worker(self._toggle_pause, exclusive=True)
+        self.run_worker(self._toggle_pause, exclusive=True, thread=True)
 
     def _toggle_pause(self) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
@@ -473,9 +470,13 @@ class ClockScreen(Screen[None]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         api: _Api = self.app.api  # type: ignore[attr-defined]
         if event.button.id == "pause-btn":
-            self.run_worker(lambda: api.post("/admin/clock/pause"), exclusive=True)
+            self.run_worker(
+                lambda: api.post("/admin/clock/pause"), exclusive=True, thread=True
+            )
         elif event.button.id == "resume-btn":
-            self.run_worker(lambda: api.post("/admin/clock/resume"), exclusive=True)
+            self.run_worker(
+                lambda: api.post("/admin/clock/resume"), exclusive=True, thread=True
+            )
         elif event.button.id == "ratio-btn":
             ratio_str = self.query_one("#ratio-input", Input).value.strip()
             try:
@@ -483,6 +484,7 @@ class ClockScreen(Screen[None]):
                 self.run_worker(
                     lambda: api.post("/admin/clock/time-ratio", {"ratio": ratio}),
                     exclusive=True,
+                    thread=True,
                 )
             except ValueError:
                 self.notify("Invalid ratio", severity="error")
@@ -491,6 +493,7 @@ class ClockScreen(Screen[None]):
             self.run_worker(
                 lambda: api.post("/admin/clock/weather", {"weather": weather}),
                 exclusive=True,
+                thread=True,
             )
 
 
@@ -508,7 +511,8 @@ class LoreCraftAdminApp(App[None]):
     Header { background: #11111a; color: #a8ff78; }
     Footer { background: #11111a; }
     DataTable { height: 1fr; }
-    #login-box { align: center middle; width: 60; height: auto; padding: 2; border: solid #4a4a6a; }
+    LoginScreen { align: center middle; }
+    #login-box { width: 60; height: auto; padding: 2; border: solid #4a4a6a; }
     #login-title { text-align: center; color: #a8ff78; margin-bottom: 1; }
     #login-error { color: #ff4444; }
     #audit-filters { height: 3; }
