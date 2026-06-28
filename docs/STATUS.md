@@ -101,11 +101,44 @@ Legend:
 
 ### Phase 6 — Admin Tools
 
-- [ ] `admin/auth.py`.
-- [ ] `admin/api.py`.
-- [ ] `admin/websocket.py`.
-- [ ] `world/versioning.py`.
-- [ ] Admin changeset promotion tests.
+#### Backend
+
+- [x] `admin/auth.py` — JWT issue, refresh, verify; role extraction middleware.
+- [x] `admin/api.py` — FastAPI admin router; all REST endpoints (players, audit, world, changesets, clock, NPCs).
+- [x] `admin/websocket.py` — Admin push WebSocket at `/admin/ws`; live player, audit, clock, and changeset-scan streams.
+- [x] `world/versioning.py` — Changeset CRUD, conflict scanner, atomic promotion, rollback.
+- [x] `state.py` — `AppState` extracted from `main.py`; shared by admin router and WS endpoint.
+- [x] `models/admin.py` — `AdminUser` table with role and revocation fields.
+- [x] `config.py` — Admin JWT secret, TTLs, and seed admin env vars.
+- [x] `main.py` — Mounts admin router and WS; seeds `AdminUser`; pushes events to `AdminBroadcaster`.
+
+#### Textual TUI client (`admin/tui/`)
+
+- [x] `admin/tui/app.py` — Textual app skeleton with `F1`–`F5` screen router and JWT credential bootstrap.
+- [x] Players screen (`F1`) — `DataTable` of live players; teleport, freeze, message actions.
+- [x] Audit screen (`F2`) — `RichLog` tailing WS push; `/` filter bar; `r` session replay.
+- [x] World screen (`F3`) — Room `ListView` + field editor; `Ctrl+S` save with optimistic-lock conflict display.
+- [x] Changesets screen (`F4`) — Create, scan, promote workflow; inline conflict list.
+- [x] Clock screen (`F5`) — Live WS-fed readout; pause/resume, time-ratio, weather override.
+- [x] Credential storage at `~/.config/lorecraft-admin/credentials.json` (mode `0600`); silent refresh.
+
+#### Admin web panel (`src/lorecraft/web/admin/`)
+
+- [x] `admin/index.html` — Login screen; JWT stored in `sessionStorage`; tab panel with live WS push.
+- [x] Dashboard panel — Live player table with WS push; auto-refresh.
+- [x] Player detail panel — Full state view; moderator actions (teleport, flag edit, freeze, message).
+- [x] Audit log panel — Paginated table with filter bar; row-expand payload; correlation-ID session replay link.
+- [x] World editor panel — Room search list + inline form editor with optimistic-lock; item and NPC sub-tabs.
+- [x] Changesets panel — Status badges; scan → conflict list; promote button gated on `READY`.
+- [x] Clock control panel — Live readout via WS push; pause/resume, time-ratio slider, weather dropdown.
+- [x] Admin accounts panel — User list; create/revoke; role assignment (superadmin only).
+
+#### Tests
+
+- [x] `admin/auth.py` unit tests — JWT round-trip, expiry, role extraction, invalid-token rejection (14 tests).
+- [x] Admin API integration tests — Authenticated requests for player list, teleport, flag edit, freeze, audit filter, room edit, role enforcement, clock, seed admin (16 tests).
+- [x] Admin changeset promotion tests — Draft → scan → ready → live lifecycle; conflict detection on broken exits and displaced players (9 tests).
+- [~] Admin WebSocket integration tests — Not yet covered; WS endpoint wired and manually tested via web panel.
 
 ### Phase 7 — Frontend Polish
 

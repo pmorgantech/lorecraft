@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+import secrets
+import time
+import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -12,6 +15,10 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
+from lorecraft.admin.api import admin_router
+from lorecraft.admin.auth import hash_password
+from lorecraft.admin.broadcaster import AdminBroadcaster
+from lorecraft.admin.websocket import admin_ws_endpoint
 from lorecraft.clock.weather import register_weather_handlers
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
@@ -20,38 +27,30 @@ from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
+from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
+from lorecraft.models.admin import AdminUser
 from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Item, Room, RoomItem
+from lorecraft.models.world import Exit, Item, Room, RoomItem, WorldMeta
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
+from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
+
+log = logging.getLogger(__name__)
 
 WEB_DIR = Path(__file__).parent / "web"
 WEB_ASSETS = {
     "app.css": "text/css",
     "app.js": "text/javascript",
 }
-
-
-@dataclass
-class AppState:
-    settings: Settings
-    game_engine: Engine
-    audit_engine: Engine
-    manager: ConnectionManager
-    bus: EventBus
-    registry: CommandRegistry
-    rules: RuleEngine
-    command_engine: CommandEngine
-    clock_runner: WorldClockRunner
+ADMIN_WEB_DIR = WEB_DIR / "admin"
 
 
 def create_app(
@@ -62,28 +61,99 @@ def create_app(
 ) -> FastAPI:
     settings = settings or load_settings()
 
+    # Warn if no JWT secret; generate an ephemeral one so the server still starts.
+    effective_jwt_secret = settings.admin_jwt_secret
+    if not effective_jwt_secret:
+        effective_jwt_secret = secrets.token_hex(32)
+        log.warning(
+            "LORECRAFT_ADMIN_JWT_SECRET is not set. "
+            "Using an ephemeral random secret — admin tokens will not survive restarts."
+        )
+    # Expose the (possibly generated) secret via settings-like object without mutation.
+    resolved_settings = Settings(
+        database_path=settings.database_path,
+        audit_database_path=settings.audit_database_path,
+        world_time_ratio=settings.world_time_ratio,
+        websocket_path=settings.websocket_path,
+        disconnect_grace_seconds=settings.disconnect_grace_seconds,
+        admin_jwt_secret=effective_jwt_secret,
+        admin_jwt_access_ttl=settings.admin_jwt_access_ttl,
+        admin_jwt_refresh_ttl=settings.admin_jwt_refresh_ttl,
+        admin_seed_username=settings.admin_seed_username,
+        admin_seed_password=settings.admin_seed_password,
+        admin_seed_role=settings.admin_seed_role,
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        resolved_game_engine = game_engine or create_game_engine(settings)
-        resolved_audit_engine = audit_engine or create_audit_engine(settings)
+        resolved_game_engine = game_engine or create_game_engine(resolved_settings)
+        resolved_audit_engine = audit_engine or create_audit_engine(resolved_settings)
         create_tables(
             game_engine=resolved_game_engine,
             audit_engine=resolved_audit_engine,
-            settings=settings,
+            settings=resolved_settings,
         )
         _ensure_starter_world(resolved_game_engine)
+        _ensure_admin_seed(resolved_game_engine, resolved_settings)
+
         manager = ConnectionManager()
         bus = EventBus()
         registry = CommandRegistry()
         rules = RuleEngine()
+        admin_broadcaster = AdminBroadcaster()
         clock_runner = WorldClockRunner(
             game_engine=resolved_game_engine,
             bus=bus,
-            time_ratio=settings.world_time_ratio,
+            time_ratio=resolved_settings.world_time_ratio,
         )
         register_weather_handlers(bus, resolved_game_engine)
+
+        # Forward key bus events to admin broadcaster
+        def _push_player_moved(event: Event, ctx: object) -> None:
+            admin_broadcaster.push(
+                {
+                    "type": "player_moved",
+                    "player_id": str(event.payload.get("player_id", "")),
+                    "from_room": str(event.payload.get("from_room_id", "")),
+                    "to_room": str(event.payload.get("to_room_id", "")),
+                }
+            )
+
+        def _push_player_disconnected(event: Event, ctx: object) -> None:
+            admin_broadcaster.push(
+                {
+                    "type": "player_disconnected",
+                    "player_id": str(event.payload.get("player_id", "")),
+                    "status": "grace",
+                }
+            )
+
+        def _push_player_reconnected(event: Event, ctx: object) -> None:
+            admin_broadcaster.push(
+                {
+                    "type": "player_connected",
+                    "player_id": str(event.payload.get("player_id", "")),
+                    "username": str(event.payload.get("username", "")),
+                    "room_id": str(event.payload.get("room_id", "")),
+                }
+            )
+
+        def _push_clock_tick(event: Event, ctx: object) -> None:
+            payload = event.payload
+            admin_broadcaster.push(
+                {
+                    "type": "clock_tick",
+                    "current_epoch": float(payload.get("current_epoch", 0.0)),  # type: ignore[arg-type]
+                }
+            )
+
+        bus.on(GameEvent.PLAYER_MOVED, _push_player_moved)
+        bus.on(GameEvent.PLAYER_DISCONNECTED, _push_player_disconnected)
+        bus.on(GameEvent.PLAYER_RECONNECTED, _push_player_reconnected)
+        bus.on(GameEvent.TIME_ADVANCED, _push_clock_tick)
+
         state = AppState(
-            settings=settings,
+            settings=resolved_settings,
             game_engine=resolved_game_engine,
             audit_engine=resolved_audit_engine,
             manager=manager,
@@ -92,6 +162,7 @@ def create_app(
             rules=rules,
             command_engine=CommandEngine(registry, rules),
             clock_runner=clock_runner,
+            admin_broadcaster=admin_broadcaster,
         )
         register_all_commands(state.registry)
         state.clock_runner.initialize()
@@ -103,6 +174,7 @@ def create_app(
             await state.clock_runner.stop()
 
     app = FastAPI(title="Lorecraft", lifespan=lifespan)
+    app.include_router(admin_router, prefix="/admin")
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -119,7 +191,17 @@ def create_app(
             raise HTTPException(status_code=404)
         return Response(_read_web_asset(asset_name), media_type=media_type)
 
-    @app.websocket(settings.websocket_path)
+    @app.get("/admin", response_class=HTMLResponse)
+    async def admin_index() -> HTMLResponse:
+        html_path = ADMIN_WEB_DIR / "index.html"
+        return HTMLResponse(html_path.read_text(encoding="utf-8"))
+
+    @app.websocket("/admin/ws")
+    async def admin_websocket(websocket: WebSocket) -> None:
+        state = _get_state(websocket.app)
+        await admin_ws_endpoint(websocket, state)
+
+    @app.websocket(resolved_settings.websocket_path)
     async def websocket_endpoint(websocket: WebSocket) -> None:
         player_id = websocket.query_params.get("player_id")
         if not player_id:
@@ -164,10 +246,19 @@ def create_app(
                 if session_result.reconnected
                 else None
             )
+            player_username = player.username
             room_id = room.id
             game_session.commit()
             audit_session.commit()
 
+        state.admin_broadcaster.push(
+            {
+                "type": "player_connected",
+                "player_id": player_id,
+                "username": player_username,
+                "room_id": room_id,
+            }
+        )
         await state.manager.connect(player_id, websocket, room_id=room_id)
         try:
             await websocket.send_json(connected_payload)
@@ -222,6 +313,15 @@ def _handle_websocket_command(
                 "type": "error",
                 "message": "Player no longer exists.",
             }
+
+        # Frozen session check
+        active_session = player_repo.player_session(session_id)
+        if active_session is not None and active_session.status == "frozen":
+            return {
+                "type": "system",
+                "text": "Your session is frozen. Contact an administrator.",
+            }
+
         room = room_repo.get(player.current_room_id)
         if room is None:
             return {
@@ -383,6 +483,10 @@ def _time_snapshot(room_repo: RoomRepo) -> JsonObject:
 
 def _ensure_starter_world(game_engine: Engine) -> None:
     with Session(game_engine) as session:
+        # Ensure WorldMeta singleton
+        if session.exec(select(WorldMeta)).first() is None:
+            session.add(WorldMeta(schema_version=1))
+
         has_rooms = session.exec(select(Room)).first() is not None
         if not has_rooms:
             session.add(
@@ -434,6 +538,31 @@ def _ensure_starter_world(game_engine: Engine) -> None:
         if sword_in_room is None:
             session.add(RoomItem(room_id="tavern", item_id="old_sword"))
         session.commit()
+
+
+def _ensure_admin_seed(game_engine: Engine, settings: Settings) -> None:
+    if not settings.admin_seed_username or not settings.admin_seed_password:
+        return
+    with Session(game_engine) as session:
+        existing = session.exec(
+            select(AdminUser).where(AdminUser.username == settings.admin_seed_username)
+        ).first()
+        if existing is None:
+            session.add(
+                AdminUser(
+                    id=str(uuid.uuid4()),
+                    username=settings.admin_seed_username,
+                    password_hash=hash_password(settings.admin_seed_password),
+                    role=settings.admin_seed_role,
+                    created_at=time.time(),
+                )
+            )
+            session.commit()
+            log.info(
+                "Seeded admin user %r with role %r",
+                settings.admin_seed_username,
+                settings.admin_seed_role,
+            )
 
 
 app = create_app()

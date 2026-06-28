@@ -2,6 +2,37 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Added Phase 6 admin tools: JWT auth, role-based REST API, and admin push WebSocket at `/admin/ws`.
+- Added `admin/auth.py` — PBKDF2-HMAC-SHA256 password hashing, PyJWT access/refresh token issue and verify, role hierarchy (`observer < moderator < world-builder < superadmin`), FastAPI dependency shortcuts.
+- Added `admin/api.py` — admin router with endpoints for player management (list, state, teleport, flags, freeze/unfreeze), audit log query, world rooms/items/NPCs, changeset lifecycle (create, scan, promote), clock control (pause/resume, time-ratio, weather), and admin account management.
+- Added `admin/websocket.py` — per-connection async queue, `AdminBroadcaster` fan-out, JWT auth via `?token=` query param.
+- Added `admin/broadcaster.py` — `AdminBroadcaster` for safe push from synchronous EventBus handlers to async WS clients.
+- Added `world/versioning.py` — `VersioningService` with changeset CRUD, conflict scanner (broken exits, displaced players, held items), and atomic promotion with `WorldMeta.schema_version` bump.
+- Added `models/admin.py` — `AdminUser` SQLModel table with role and revocation support.
+- Added `state.py` — `AppState` dataclass extracted from `main.py` to break circular imports.
+- Added admin web panel at `/admin` — single-file SPA (Terminal Gothic styling) with login, live WS push, and tabs for all admin sections.
+- Added Textual TUI (`admin/tui/app.py`) as an optional `admin-tui` dependency group; F1–F5 screen routing; credential storage at `~/.config/lorecraft-admin/credentials.json`.
+- Added `LORECRAFT_ADMIN_JWT_SECRET`, `LORECRAFT_ADMIN_SEED_USERNAME`, `LORECRAFT_ADMIN_SEED_PASSWORD`, `LORECRAFT_ADMIN_SEED_ROLE` config env vars.
+- Added `pyjwt>=2.9.0` as a production dependency.
+- Added 39 new tests across `tests/unit/test_admin_auth.py`, `tests/integration/test_admin_api.py`, and `tests/integration/test_versioning.py`.
+
+### Changed
+
+- Excluded `admin/tui` from basedpyright checks (optional Textual dependency not installed in base venv).
+- Extracted `AppState` from `main.py` into `lorecraft/state.py` to allow admin router import without circular dependency.
+- Seeded `WorldMeta` singleton in `_ensure_starter_world` to support changeset promotion.
+
+### Verified
+
+- `.venv/bin/python -m pytest` passes with 89 tests.
+- `.venv/bin/ruff check src tests` passes.
+- `.venv/bin/ruff format --check src tests` passes.
+- `.venv/bin/basedpyright --warnings` passes (TUI excluded).
+
 ## [0.1.0] - 2026-06-27
 
 ### Added

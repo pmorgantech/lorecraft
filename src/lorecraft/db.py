@@ -10,6 +10,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
 from lorecraft.config import Settings, load_settings
+from lorecraft.models.admin import AdminUser
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.changeset import (
     Changeset,
@@ -34,6 +35,7 @@ from lorecraft.models.interaction import PvpConsent, TradeOffer
 
 
 GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
+    AdminUser,
     Room,
     Exit,
     Item,

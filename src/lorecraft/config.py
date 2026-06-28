@@ -13,6 +13,14 @@ class Settings:
     world_time_ratio: float = 60.0
     websocket_path: str = "/ws"
     disconnect_grace_seconds: float = 60.0
+    # Admin JWT (ephemeral random secret used if not set — not suitable for production)
+    admin_jwt_secret: str = ""
+    admin_jwt_access_ttl: int = 900  # 15 minutes
+    admin_jwt_refresh_ttl: int = 28800  # 8 hours
+    # Optional seed admin account created on first startup
+    admin_seed_username: str = ""
+    admin_seed_password: str = ""
+    admin_seed_role: str = "superadmin"
 
 
 def load_settings() -> Settings:
@@ -26,4 +34,12 @@ def load_settings() -> Settings:
         disconnect_grace_seconds=float(
             os.getenv("LORECRAFT_DISCONNECT_GRACE_SECONDS", "60.0")
         ),
+        admin_jwt_secret=os.getenv("LORECRAFT_ADMIN_JWT_SECRET", ""),
+        admin_jwt_access_ttl=int(os.getenv("LORECRAFT_ADMIN_JWT_ACCESS_TTL", "900")),
+        admin_jwt_refresh_ttl=int(
+            os.getenv("LORECRAFT_ADMIN_JWT_REFRESH_TTL", "28800")
+        ),
+        admin_seed_username=os.getenv("LORECRAFT_ADMIN_SEED_USERNAME", "admin"),
+        admin_seed_password=os.getenv("LORECRAFT_ADMIN_SEED_PASSWORD", "admin"),
+        admin_seed_role=os.getenv("LORECRAFT_ADMIN_SEED_ROLE", "superadmin"),
     )

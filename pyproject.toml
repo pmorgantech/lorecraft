@@ -5,6 +5,7 @@ description = "Persistent multiplayer text adventure engine."
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.115.0",
+    "pyjwt>=2.9.0",
     "pyyaml>=6.0.0",
     "starlette>=0.46.0,<1.0.0",
     "sqlmodel>=0.0.22",
@@ -16,12 +17,16 @@ dev = [
     "pytest",
     "ruff",
 ]
+admin-tui = [
+    "textual>=0.80.0",
+]
 
 [tool.setuptools.package-data]
-lorecraft = ["web/*"]
+lorecraft = ["web/*", "web/admin/*"]
 
 [tool.basedpyright]
 include = ["src"]
+exclude = ["src/lorecraft/admin/tui"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 venvPath = "."

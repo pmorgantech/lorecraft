@@ -1276,6 +1276,60 @@ POST /admin/npcs/{id}/spawn            # spawn NPC in room
 POST /admin/npcs/{id}/despawn
 ```
 
+### Admin WebSocket Protocol (`/admin/ws`)
+
+Separate from the player WebSocket. The admin client connects once after obtaining a JWT. The server pushes events as they occur; the client may send control commands.
+
+**Server → Admin (push events)**
+
+```json
+{"type": "player_connected",    "player_id": "...", "username": "...", "room_id": "..."}
+{"type": "player_disconnected", "player_id": "...", "status": "grace"}
+{"type": "player_moved",        "player_id": "...", "from_room": "...", "to_room": "..."}
+{"type": "audit_event",         "event": { /* AuditEvent fields */ }}
+{"type": "clock_tick",          "hour": 14, "minute": 30, "day": 5, "season": "summer", "weather": "clear"}
+{"type": "changeset_scan_done", "changeset_id": "...", "conflicts": [...], "status": "ready|conflicts"}
+{"type": "build_mode_changed",  "mode": "notify|restrict|lockout|none"}
+{"type": "error",               "code": "...", "detail": "..."}
+```
+
+**Admin → Server (control commands over WebSocket)**
+
+Prefer REST for mutations; use WebSocket only for live-subscribe actions:
+
+```json
+{"type": "subscribe_audit",   "filter": {"actor": "...", "room": "...", "event_type": "..."}}
+{"type": "unsubscribe_audit"}
+{"type": "subscribe_clock"}
+{"type": "unsubscribe_clock"}
+```
+
+### Admin Web Panel Screens
+
+Served at `/admin` (separate HTML page from the game client). Guarded by a login screen that issues and stores the JWT in `sessionStorage`. All panels use the same Terminal Gothic CSS variables as the game client for visual consistency.
+
+| Screen | Path | Min Role | Contents |
+|---|---|---|---|
+| **Dashboard** | `/admin` | observer | Live player table (name, room, session status, connected duration); auto-refreshes via WS push. |
+| **Player Detail** | `/admin/players/{id}` | observer | Full state: flags, inventory, active quest progress, session history. Moderator+: teleport, flag edit, message, freeze buttons. |
+| **Audit Log** | `/admin/audit` | observer | Paginated table with filter bar (actor, room, event type, time range). Row expand shows full payload. Correlation-ID link opens session replay. |
+| **World Editor** | `/admin/world` | world-builder | Room list with search. Clicking a room opens an inline form (name, description, light level, flags, disabled commands, exits). Saves use optimistic-lock `version` field. Item and NPC sub-tabs. |
+| **Changesets** | `/admin/changesets` | world-builder | List of changesets with status badges. Create button opens a name field. Per-changeset: scan button → conflict list with severity badges; promote button (disabled until READY). |
+| **Clock Control** | `/admin/clock` | superadmin | Live clock readout (time, day, season, weather) fed by WS push. Pause/resume toggle; time-ratio slider (1×–120×); weather override dropdown. |
+| **Admin Accounts** | `/admin/accounts` | superadmin | Admin user list; create/revoke; role assignment. |
+
+### Textual TUI Screens
+
+`admin/tui/app.py` — Textual application with a tab bar at the top for screen switching. Keyboard-driven; no mouse required. Credentials stored in `~/.config/lorecraft-admin/credentials.json` (mode `0600`); silent token refresh on startup.
+
+| Screen | Key | Min Role | Contents |
+|---|---|---|---|
+| **Players** | `F1` | observer | `DataTable` of live players (name, room, status). Selected row: `t` teleport, `f` freeze, `m` message (moderator+). |
+| **Audit** | `F2` | observer | Scrollable `RichLog` tailing live audit events. `/` opens filter bar (actor, room, event type). `r` fetches session replay for selected correlation ID. |
+| **World** | `F3` | world-builder | Left pane: room list (`ListView`). Right pane: field editor (`Input` per field). `Ctrl+S` saves; conflicts shown inline. Tab to items/NPCs. |
+| **Changesets** | `F4` | world-builder | List of changesets. `n` new, `s` scan, `p` promote, `Enter` expand conflicts. |
+| **Clock** | `F5` | superadmin | Live `Label` for time/day/season/weather (WS push). `p` pause/resume, `+`/`-` adjust time ratio, `w` override weather (opens dropdown). |
+
 ---
 
 ## 22. Frontend UI
