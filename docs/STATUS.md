@@ -50,6 +50,15 @@ Legend:
 - [ ] `services/movement.py` with `MovementService`.
 - [ ] End-to-end movement test with persistent room change.
 
+### Phase 2.5 — Minimal Web Client
+
+- [ ] Browser WebSocket client.
+- [ ] Message router.
+- [ ] Plain JavaScript state object.
+- [ ] Basic text feed and command input.
+- [ ] Basic room/status display.
+- [ ] Browser smoke/end-to-end test.
+
 ### Phase 3 — World & Time
 
 - [ ] `clock/world_clock.py` background clock loop.
@@ -60,6 +69,12 @@ Legend:
 - [ ] World YAML validator.
 - [ ] Clock/weather/item pickup tests.
 
+### Phase 3.5 — World UI
+
+- [ ] Inventory panel.
+- [ ] Minimap with fog of war.
+- [ ] Basic layout refinement.
+
 ### Phase 4 — NPCs & Quests
 
 - [ ] `npc/dialogue.py` dialogue tree walker.
@@ -69,16 +84,11 @@ Legend:
 - [ ] `services/quest.py`.
 - [ ] NPC dialogue and quest flag tests.
 
-### Phase 5 — Combat
+### Phase 4.5 — Dialogue UI
 
-- [x] Combat models.
-- [x] Player stats model.
-- [ ] `services/combat.py`.
-- [ ] `npc/combat_ai.py`.
-- [ ] Combat commands: `attack`, `flee`.
-- [ ] Combat resolution tests.
+- [ ] Dialogue overlay.
 
-### Phase 6 — Persistence & Safety
+### Phase 5 — Persistence & Safety
 
 - [ ] `services/save.py`.
 - [ ] Save/load commands.
@@ -87,7 +97,7 @@ Legend:
 - [ ] System-controlled disconnected-player state.
 - [ ] Save/disconnect/reconnect/load preservation tests.
 
-### Phase 7 — Admin Tools
+### Phase 6 — Admin Tools
 
 - [ ] `admin/auth.py`.
 - [ ] `admin/api.py`.
@@ -95,17 +105,27 @@ Legend:
 - [ ] `world/versioning.py`.
 - [ ] Admin changeset promotion tests.
 
-### Phase 8 — Frontend
+### Phase 7 — Frontend Polish
 
-- [ ] Browser WebSocket client.
-- [ ] Message router.
-- [ ] Plain JavaScript state object.
 - [ ] Three-column Tailwind layout.
-- [ ] Text feed and command input.
-- [ ] Minimap with fog of war.
-- [ ] Dialogue overlay.
 - [ ] Full-screen map modal.
-- [ ] Browser end-to-end test.
+- [ ] Responsive behavior.
+- [ ] Browser end-to-end testing.
+
+### Phase 8 — Combat
+
+- [x] Combat models.
+- [x] Player stats model.
+- [ ] `services/combat.py`.
+- [ ] `npc/combat_ai.py`.
+- [ ] Combat commands: `attack`, `flee`.
+- [ ] Combat resolution tests.
+
+### Phase 8.5 — Combat UI
+
+- [ ] Combat message styling.
+- [ ] Combat status display.
+- [ ] Combat browser update test.
 
 ### Phase 9 — Player Interaction
 

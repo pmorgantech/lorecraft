@@ -1280,6 +1280,8 @@ POST /admin/npcs/{id}/despawn
 
 ## 22. Frontend UI
 
+This section describes the complete browser experience. The implementation sequence is intentionally split in [Build Order Recommendation](#28-build-order-recommendation): first a minimal client harness to exercise WebSocket command dispatch during development, then feature-specific UI slices, then frontend polish.
+
 ### Visual Design: Terminal Gothic
 
 The UI feels like a cathode-ray terminal possessed by a medieval scribe. Dark, functional, slightly beautiful in a decayed way.
@@ -1565,7 +1567,7 @@ These are real future concerns. Do not design or build them in the initial imple
 
 ## 28. Build Order Recommendation
 
-Build in this sequence. Each layer depends on the one before it.
+Build in this sequence. The browser is split across the build order so client-facing protocol, context, event, and WebSocket behavior can be exercised as vertical slices instead of waiting until every gameplay subsystem exists. The early browser work is a harness, not the final frontend.
 
 ### Phase 1 — Foundation (no gameplay yet)
 1. `config.py` — env-driven configuration
@@ -1587,6 +1589,14 @@ Build in this sequence. Each layer depends on the one before it.
 7. `services/movement.py` — `MovementService`
 8. **Test:** Player can connect, `go north`, see a response, and change rooms.
 
+### Phase 2.5 — Minimal Web Client
+1. Single HTML file with browser WebSocket client
+2. Message router for server response, room event, error, and structured update messages
+3. Plain JavaScript state object for current room, feed, status, and connection state
+4. Basic text feed and command input
+5. Basic room/status display
+6. **Test:** Browser smoke/end-to-end test can connect, send a command, and render the response.
+
 ### Phase 3 — World & Time
 1. `clock/world_clock.py` — clock loop as background asyncio task
 2. `clock/weather.py` — weather/season state machine
@@ -1594,6 +1604,12 @@ Build in this sequence. Each layer depends on the one before it.
 4. `services/inventory.py` — `InventoryService`
 5. World YAML loader + validator
 6. **Test:** Clock advances. Weather changes. Player can pick up items.
+
+### Phase 3.5 — World UI
+1. Inventory panel backed by inventory command responses and structured updates
+2. Minimap SVG with fog-of-war
+3. Basic layout refinement around the feed, room/status display, inventory, and minimap
+4. **Test:** Browser can show room changes, inventory updates, and visited-room map state.
 
 ### Phase 4 — NPCs & Quests
 1. `npc/dialogue.py` — dialogue tree walker
@@ -1603,34 +1619,42 @@ Build in this sequence. Each layer depends on the one before it.
 5. `services/quest.py` — `QuestService`
 6. **Test:** Player can talk to an NPC, make choices, trigger quest flags.
 
-### Phase 5 — Combat
-1. `models/combat.py` — `CombatSession`, `CombatSlot`, `PlayerStats`
-2. `services/combat.py` — `CombatService`, tick resolution, damage calc
-3. `npc/combat_ai.py` — NPC decision logic
-4. `commands/combat.py` — `attack`, `flee`
-5. **Test:** Player can fight an NPC; HP changes; NPC can die and drop loot.
+### Phase 4.5 — Dialogue UI
+1. Dialogue overlay with numbered choices
+2. Command input disabled or mode-switched while dialogue is active
+3. **Test:** Browser can render dialogue choices and send a dialogue selection.
 
-### Phase 6 — Persistence & Safety
+### Phase 5 — Persistence & Safety
 1. `services/save.py` — `SaveSlotService`, auto-save triggers
 2. `commands/meta.py` — `save`, `load`
 3. Disconnect handling — grace period, reconnect, system-controlled state
 4. **Test:** Save mid-quest, disconnect, reconnect, load save — state is preserved.
 
-### Phase 7 — Admin Tools
+### Phase 6 — Admin Tools
 1. `admin/auth.py` — JWT, roles
 2. `admin/api.py` — admin REST endpoints
 3. `admin/websocket.py` — admin push WebSocket
 4. `world/versioning.py` — changesets, conflict scanner, promotion
 5. **Test:** Admin can view live players, edit a room, promote a changeset.
 
-### Phase 8 — Frontend
-1. Single HTML file: WebSocket client, message router, plain JS state object
-2. Three-column layout with Tailwind CDN
-3. Text feed + command input
-4. Minimap SVG with fog-of-war
-5. Dialogue overlay
-6. Full-screen map modal with pan/zoom
-7. **Test:** Full end-to-end in browser: connect, explore, talk to NPC, fight.
+### Phase 7 — Frontend Polish
+1. Three-column layout with Tailwind CDN
+2. Full-screen map modal with pan/zoom
+3. Responsive behavior for mobile tab layout and desktop grid layout
+4. Visual polish for the Terminal Gothic theme
+5. **Test:** Full browser end-to-end coverage: connect, explore, talk to NPC, fight.
+
+### Phase 8 — Combat
+1. `models/combat.py` — `CombatSession`, `CombatSlot`, `PlayerStats`
+2. `services/combat.py` — `CombatService`, tick resolution, damage calc
+3. `npc/combat_ai.py` — NPC decision logic
+4. `commands/combat.py` — `attack`, `flee`
+5. **Test:** Player can fight an NPC; HP changes; NPC can die and drop loot.
+
+### Phase 8.5 — Combat UI
+1. Combat message styling in the text feed
+2. Combat status display for HP, active target, and turn/tick state
+3. **Test:** Browser reflects combat start, combat updates, and combat end messages.
 
 ### Phase 9 — Player Interaction
 1. `services/trading.py` — trade offer lifecycle
