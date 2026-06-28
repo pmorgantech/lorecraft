@@ -62,13 +62,13 @@ Legend:
 
 ### Phase 3 — World & Time
 
-- [ ] `clock/world_clock.py` background clock loop.
-- [ ] `clock/weather.py` weather and season state machine.
-- [ ] Inventory commands: `look`, `take`, `drop`, `examine`, `inventory`.
-- [ ] `services/inventory.py`.
-- [ ] World YAML loader.
-- [ ] World YAML validator.
-- [ ] Clock/weather/item pickup tests.
+- [x] `clock/world_clock.py` background clock loop.
+- [x] `clock/weather.py` weather and season state machine.
+- [x] Inventory commands: `look`, `take`, `drop`, `examine`, `inventory`.
+- [x] `services/inventory.py`.
+- [x] World YAML loader.
+- [x] World YAML validator.
+- [x] Clock/weather/item pickup tests.
 
 ### Phase 3.5 — World UI
 

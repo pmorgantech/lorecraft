@@ -24,6 +24,11 @@ def test_register_all_commands_adds_meta_and_movement_commands() -> None:
     assert registry.get("quit") is not None
     assert registry.get("go") is not None
     assert registry.get("north") is registry.get("go")
+    assert registry.get("look") is not None
+    assert registry.get("take") is not None
+    assert registry.get("drop") is not None
+    assert registry.get("examine") is not None
+    assert registry.get("inventory") is not None
 
 
 def test_meta_commands_write_context_messages_and_updates() -> None:
@@ -39,7 +44,8 @@ def test_meta_commands_write_context_messages_and_updates() -> None:
         registry.get("quit").handler(None, ctx)
 
     assert ctx.messages == [
-        "Available commands: help, quit, go <direction>, north, south, east, west.",
+        "Available commands: help, quit, look, examine <item>, take <item>, "
+        "drop <item>, inventory, go <direction>, north, south, east, west.",
         "Goodbye.",
     ]
     assert ctx.updates == {"disconnect": True}

@@ -192,6 +192,51 @@ async def _test_websocket_movement_persists_room_change() -> None:
     assert audit_events[-1].event_type == "command_executed"
 
 
+def test_websocket_inventory_pickup_persists_item() -> None:
+    anyio.run(_test_websocket_inventory_pickup_persists_item)
+
+
+async def _test_websocket_inventory_pickup_persists_item() -> None:
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+    async with _lifespan(app):
+        messages = await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.receive", "text": "take old sword"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+    payloads = [
+        json.loads(message["text"])
+        for message in messages
+        if message["type"] == "websocket.send"
+    ]
+
+    with Session(game_engine) as session:
+        player = session.get(Player, "player-1")
+
+    assert payloads[1]["messages"] == ["You take Old Sword."]
+    assert payloads[1]["updates"] == {"inventory": ["old_sword"]}
+    assert player is not None
+    assert player.inventory == ["old_sword"]
+
+
 @asynccontextmanager
 async def _lifespan(app: Any) -> Any:
     receive_tx, receive_rx = anyio.create_memory_object_stream[AsgiMessage](4)

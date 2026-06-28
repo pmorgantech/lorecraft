@@ -13,6 +13,8 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
+from lorecraft.clock.weather import register_weather_handlers
+from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
@@ -24,7 +26,7 @@ from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Room
+from lorecraft.models.world import Exit, Item, Room, RoomItem
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
@@ -49,6 +51,7 @@ class AppState:
     registry: CommandRegistry
     rules: RuleEngine
     command_engine: CommandEngine
+    clock_runner: WorldClockRunner
 
 
 def create_app(
@@ -69,20 +72,35 @@ def create_app(
             settings=settings,
         )
         _ensure_starter_world(resolved_game_engine)
+        manager = ConnectionManager()
+        bus = EventBus()
+        registry = CommandRegistry()
+        rules = RuleEngine()
+        clock_runner = WorldClockRunner(
+            game_engine=resolved_game_engine,
+            bus=bus,
+            time_ratio=settings.world_time_ratio,
+        )
+        register_weather_handlers(bus, resolved_game_engine)
         state = AppState(
             settings=settings,
             game_engine=resolved_game_engine,
             audit_engine=resolved_audit_engine,
-            manager=ConnectionManager(),
-            bus=EventBus(),
-            registry=CommandRegistry(),
-            rules=RuleEngine(),
-            command_engine=CommandEngine(CommandRegistry(), RuleEngine()),
+            manager=manager,
+            bus=bus,
+            registry=registry,
+            rules=rules,
+            command_engine=CommandEngine(registry, rules),
+            clock_runner=clock_runner,
         )
         register_all_commands(state.registry)
-        state.command_engine = CommandEngine(state.registry, state.rules)
+        state.clock_runner.initialize()
+        state.clock_runner.start()
         app.state.lorecraft = state
-        yield
+        try:
+            yield
+        finally:
+            await state.clock_runner.stop()
 
     app = FastAPI(title="Lorecraft", lifespan=lifespan)
 
@@ -214,37 +232,55 @@ def _read_web_asset(asset_name: str) -> str:
 def _ensure_starter_world(game_engine: Engine) -> None:
     with Session(game_engine) as session:
         has_rooms = session.exec(select(Room)).first() is not None
-        if has_rooms:
-            return
+        if not has_rooms:
+            session.add(
+                Room(
+                    id="tavern",
+                    name="Tavern",
+                    description="A warm room.",
+                    map_x=0,
+                    map_y=0,
+                )
+            )
+            session.add(
+                Room(
+                    id="square",
+                    name="Square",
+                    description="A busy square.",
+                    map_x=1,
+                    map_y=0,
+                )
+            )
+            session.add(
+                Exit(room_id="tavern", direction="east", target_room_id="square")
+            )
 
-        session.add(
-            Room(
-                id="tavern",
-                name="Tavern",
-                description="A warm room.",
-                map_x=0,
-                map_y=0,
+        if session.get(Player, "player-1") is None:
+            session.add(
+                Player(
+                    id="player-1",
+                    username="player-1",
+                    current_room_id="tavern",
+                    respawn_room_id="tavern",
+                    visited_rooms=["tavern"],
+                )
             )
-        )
-        session.add(
-            Room(
-                id="square",
-                name="Square",
-                description="A busy square.",
-                map_x=1,
-                map_y=0,
+        if session.get(Item, "old_sword") is None:
+            session.add(
+                Item(
+                    id="old_sword",
+                    name="Old Sword",
+                    description="Nicked but serviceable.",
+                )
             )
-        )
-        session.add(Exit(room_id="tavern", direction="east", target_room_id="square"))
-        session.add(
-            Player(
-                id="player-1",
-                username="player-1",
-                current_room_id="tavern",
-                respawn_room_id="tavern",
-                visited_rooms=["tavern"],
+        sword_in_room = session.exec(
+            select(RoomItem).where(
+                RoomItem.room_id == "tavern",
+                RoomItem.item_id == "old_sword",
             )
-        )
+        ).first()
+        if sword_in_room is None:
+            session.add(RoomItem(room_id="tavern", item_id="old_sword"))
         session.commit()
 
 

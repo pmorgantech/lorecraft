@@ -43,6 +43,10 @@ All notable changes to Lorecraft will be documented in this file.
 - Added starter world bootstrap for empty databases so the browser harness can connect as `player-1`.
 - Added browser client smoke coverage for the served HTML, CSS, and JavaScript contract.
 - Added repo-local seed test database files that `start.sh` copies into `/tmp` for browser harness startup.
+- Added a persistent world clock runner with startup fast-forwarding and boundary events.
+- Added weather and season state transitions driven by day changes.
+- Added inventory inspection and item movement commands for `look`, `examine`, `take`, `drop`, and `inventory`.
+- Added YAML world validation and import helpers for rooms, exits, items, and room item placement.
 
 ### Changed
 
@@ -56,10 +60,11 @@ All notable changes to Lorecraft will be documented in this file.
 - Tightened `GameContext` to use concrete repository, model, event bus, and connection manager types.
 - Extended `CommandEngine` to commit state changes, write audit events, and flush queued domain events.
 - Packaged the browser client assets with the Python package.
+- Declared PyYAML as a production dependency for world authoring imports.
 
 ### Verified
 
-- `.venv/bin/python -m pytest` passes with 36 tests.
+- `.venv/bin/python -m pytest` passes with 45 tests.
 - `.venv/bin/ruff check src tests` passes.
 - `.venv/bin/ruff format --check src tests` passes.
 - `.venv/bin/basedpyright --warnings` passes.

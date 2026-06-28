@@ -14,7 +14,8 @@ def register_meta_commands(registry: CommandRegistry) -> None:
         del noun
         game_ctx = cast(GameContext, ctx)
         game_ctx.say(
-            "Available commands: help, quit, go <direction>, north, south, east, west."
+            "Available commands: help, quit, look, examine <item>, take <item>, "
+            "drop <item>, inventory, go <direction>, north, south, east, west."
         )
 
     @registry.register("quit", scope=CommandScope.GLOBAL)
