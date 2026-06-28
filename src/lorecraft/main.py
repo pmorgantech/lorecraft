@@ -11,6 +11,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
+from lorecraft.commands import register_all_commands
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -67,6 +68,7 @@ def create_app(
             rules=RuleEngine(),
             command_engine=CommandEngine(CommandRegistry(), RuleEngine()),
         )
+        register_all_commands(state.registry)
         state.command_engine = CommandEngine(state.registry, state.rules)
         app.state.lorecraft = state
         yield
@@ -158,10 +160,10 @@ def _handle_websocket_command(
                 correlation_id=session_id,
             ),
             session_id=session_id,
+            commit_state=game_session.commit,
+            commit_audit=audit_session.commit,
         )
         parsed = state.command_engine.handle_command(command, ctx)
-        game_session.commit()
-        audit_session.commit()
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
         response: JsonObject = {

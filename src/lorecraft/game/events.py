@@ -11,6 +11,8 @@ from lorecraft.types import JsonObject
 
 
 class GameEvent(StrEnum):
+    COMMAND_EXECUTED = "command_executed"
+    COMMAND_BLOCKED = "command_blocked"
     ITEM_TAKEN = "item_taken"
     ITEM_DROPPED = "item_dropped"
     ITEM_USED = "item_used"

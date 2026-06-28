@@ -5,12 +5,13 @@ from typing import Any
 
 import anyio
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
+from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.models.world import Exit, Room
 
 AsgiMessage = dict[str, Any]
 AsgiReceive = Callable[[], Awaitable[AsgiMessage]]
@@ -100,6 +101,92 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
         "room_messages": [],
         "updates": {},
     }
+
+    with Session(audit_engine) as session:
+        audit_events = session.exec(select(AuditEvent)).all()
+
+    assert len(audit_events) == 1
+    assert audit_events[0].event_type == "command_blocked"
+    assert audit_events[0].severity == "WARNING"
+
+
+def test_websocket_movement_persists_room_change() -> None:
+    anyio.run(_test_websocket_movement_persists_room_change)
+
+
+async def _test_websocket_movement_persists_room_change() -> None:
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+    async with _lifespan(app):
+        with Session(game_engine) as session:
+            session.add(
+                Room(
+                    id="tavern",
+                    name="Tavern",
+                    description="A warm room.",
+                    map_x=0,
+                    map_y=0,
+                )
+            )
+            session.add(
+                Room(
+                    id="square",
+                    name="Square",
+                    description="A busy square.",
+                    map_x=1,
+                    map_y=0,
+                )
+            )
+            session.add(
+                Exit(room_id="tavern", direction="east", target_room_id="square")
+            )
+            session.add(
+                Player(
+                    id="player-1",
+                    username="petem",
+                    current_room_id="tavern",
+                    respawn_room_id="tavern",
+                )
+            )
+            session.commit()
+
+        messages = await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.receive", "text": "go east"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+    payloads = [
+        json.loads(message["text"])
+        for message in messages
+        if message["type"] == "websocket.send"
+    ]
+
+    with Session(game_engine) as session:
+        player = session.get(Player, "player-1")
+    with Session(audit_engine) as session:
+        audit_events = session.exec(select(AuditEvent)).all()
+
+    assert payloads[1]["messages"] == ["You go east."]
+    assert payloads[1]["updates"] == {"room_id": "square"}
+    assert player.current_room_id == "square"
+    assert audit_events[-1].event_type == "command_executed"
 
 
 @asynccontextmanager

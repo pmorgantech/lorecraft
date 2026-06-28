@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from lorecraft.game.connection_manager import ConnectionManager
@@ -31,9 +32,12 @@ class GameContext:
     audit: AuditRepo | None
     transaction: TransactionContext
     session_id: str
+    commit_state: Callable[[], None] | None = None
+    commit_audit: Callable[[], None] | None = None
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
+    pending_events: list[Event] = field(default_factory=list)
 
     def say(self, text: str) -> None:
         self.messages.append(text)
@@ -46,3 +50,21 @@ class GameContext:
 
     def emit(self, event: GameEvent, **payload: JsonValue) -> list[HandlerResult]:
         return self.bus.emit(Event(event, payload), self)
+
+    def queue_event(self, event: GameEvent, **payload: JsonValue) -> None:
+        self.pending_events.append(Event(event, payload))
+
+    def flush_events(self) -> list[HandlerResult]:
+        results: list[HandlerResult] = []
+        for event in self.pending_events:
+            results.extend(self.bus.emit(event, self))
+        self.pending_events.clear()
+        return results
+
+    def commit_state_changes(self) -> None:
+        if self.commit_state is not None:
+            self.commit_state()
+
+    def commit_audit_events(self) -> None:
+        if self.commit_audit is not None:
+            self.commit_audit()

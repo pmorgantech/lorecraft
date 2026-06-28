@@ -42,13 +42,13 @@ Legend:
 - [x] `game/registry.py` supports command registration and aliases.
 - [~] `game/registry.py` evaluates a first pass of command conditions.
 - [x] `game/rules.py` contains `RuleEngine` with ordered rule checks.
-- [~] `game/engine.py` contains a command dispatch scaffold.
-- [ ] Full 13-step transaction/event/audit lifecycle in `handle_command()`.
-- [ ] Blocked command audit events.
-- [ ] `commands/meta.py` with `help` and `quit`.
-- [ ] `commands/movement.py` with `go` and cardinal directions.
-- [ ] `services/movement.py` with `MovementService`.
-- [ ] End-to-end movement test with persistent room change.
+- [x] `game/engine.py` contains command dispatch with state commit, audit, and event-flush lifecycle steps.
+- [~] Full 13-step transaction/event/audit lifecycle in `handle_command()`.
+- [x] Blocked command audit events.
+- [x] `commands/meta.py` with `help` and `quit`.
+- [x] `commands/movement.py` with `go` and cardinal directions.
+- [x] `services/movement.py` with `MovementService`.
+- [x] End-to-end movement test with persistent room change.
 
 ### Phase 2.5 — Minimal Web Client
 

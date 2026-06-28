@@ -34,6 +34,10 @@ All notable changes to Lorecraft will be documented in this file.
 - Added FastAPI service wiring with startup table initialization and shared app state.
 - Added `/health` and `/ws` endpoints for service health checks and player command WebSocket sessions.
 - Added direct ASGI integration tests for lifespan startup, health checks, WebSocket connection, and command dispatch.
+- Added audit recording for blocked and executed commands.
+- Added meta commands for `help` and `quit`.
+- Added movement commands and `MovementService` room transitions.
+- Added WebSocket movement integration coverage for persisted room changes.
 
 ### Changed
 
@@ -45,10 +49,11 @@ All notable changes to Lorecraft will be documented in this file.
 - Preserved full SQLAlchemy database URLs while retaining existing SQLite path handling.
 - Added FastAPI and Starlette as production dependencies for the service layer.
 - Tightened `GameContext` to use concrete repository, model, event bus, and connection manager types.
+- Extended `CommandEngine` to commit state changes, write audit events, and flush queued domain events.
 
 ### Verified
 
-- `.venv/bin/python -m pytest` passes with 28 tests.
+- `.venv/bin/python -m pytest` passes with 34 tests.
 - `.venv/bin/ruff check src tests` passes.
 - `.venv/bin/ruff format --check src tests` passes.
 - `.venv/bin/basedpyright --warnings` passes.
