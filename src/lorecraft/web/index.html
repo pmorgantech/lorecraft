@@ -4,62 +4,197 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lorecraft</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=IM+Fell+English:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="/static/app.css" />
     <script type="module" src="/static/app.js"></script>
   </head>
-  <body>
-    <main class="shell" data-app>
-      <section class="panel status-panel" aria-labelledby="status-title">
-        <div class="panel-heading">
-          <h1 id="status-title">Lorecraft</h1>
-          <span id="connection-state" class="connection-state">offline</span>
+  <body
+    class="min-h-screen bg-[var(--bg-void)] text-[var(--text-body)] antialiased"
+  >
+    <main
+      class="grid min-h-screen grid-cols-1 gap-3 p-3 lg:grid-cols-[240px_minmax(0,1fr)_240px] lg:p-4"
+      data-app
+    >
+      <aside class="grid min-h-0 gap-3 lg:grid-rows-[minmax(13rem,15rem)_1fr]">
+        <section
+          class="min-w-0 rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)]"
+          aria-labelledby="map-title"
+        >
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-[var(--muted)] px-4 py-3"
+          >
+            <h1 id="map-title" class="font-display text-base text-[var(--phosphor)]">
+              Map
+            </h1>
+            <span
+              id="map-room-label"
+              class="text-xs uppercase text-[var(--text-dim)]"
+            >
+              unknown
+            </span>
+          </div>
+          <div class="map-frame h-[13rem] p-3">
+            <svg
+              id="minimap"
+              class="minimap h-full w-full"
+              viewBox="0 0 220 220"
+              role="img"
+              aria-label="Visited rooms"
+            ></svg>
+          </div>
+        </section>
+
+        <section
+          class="min-w-0 rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)]"
+          aria-labelledby="status-title"
+        >
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-[var(--muted)] px-4 py-3"
+          >
+            <h2 id="status-title" class="font-display text-base text-[var(--phosphor)]">
+              Lorecraft
+            </h2>
+            <span
+              id="connection-state"
+              class="connection-state text-xs uppercase text-[var(--text-dim)]"
+            >
+              offline
+            </span>
+          </div>
+
+          <form id="connect-form" class="p-4">
+            <label for="player-id" class="text-xs uppercase text-[var(--text-dim)]">
+              Player
+            </label>
+            <div class="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+              <input
+                id="player-id"
+                class="min-h-10 min-w-0 rounded-md border border-[var(--muted)] bg-[var(--bg-raised)] px-3 text-[var(--text-body)]"
+                name="player-id"
+                type="text"
+                autocomplete="username"
+                value="player-1"
+                required
+              />
+              <button
+                class="min-h-10 rounded-md border border-[var(--phosphor)] bg-[var(--phosphor)] px-3 font-bold text-[#071007] disabled:border-[var(--muted)] disabled:bg-[var(--bg-raised)] disabled:text-[var(--text-dim)]"
+                type="submit"
+              >
+                Connect
+              </button>
+            </div>
+          </form>
+
+          <dl class="grid gap-4 p-4 pt-0" aria-label="Current state">
+            <div>
+              <dt class="text-xs uppercase text-[var(--text-dim)]">Room</dt>
+              <dd id="room-status" class="mt-1 break-words text-[var(--amber)]">
+                unknown
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase text-[var(--text-dim)]">Time</dt>
+              <dd id="time-status" class="mt-1 text-[var(--amber)]">--:--</dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase text-[var(--text-dim)]">Weather</dt>
+              <dd id="weather-status" class="mt-1 text-[var(--amber)]">unknown</dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase text-[var(--text-dim)]">Session</dt>
+              <dd id="session-status" class="mt-1 break-words text-[var(--amber)]">
+                none
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
+
+      <section
+        class="grid min-h-[32rem] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)] lg:min-h-0"
+        aria-labelledby="feed-title"
+      >
+        <div
+          class="flex items-baseline justify-between gap-3 border-b border-[var(--muted)] px-4 py-3"
+        >
+          <h2 id="feed-title" class="font-display text-base text-[var(--phosphor)]">
+            World
+          </h2>
+          <span id="room-summary" class="text-xs uppercase text-[var(--text-dim)]">
+            not connected
+          </span>
         </div>
-
-        <form id="connect-form" class="connect-form">
-          <label for="player-id">Player</label>
-          <div class="inline-controls">
-            <input
-              id="player-id"
-              name="player-id"
-              type="text"
-              autocomplete="username"
-              value="player-1"
-              required
-            />
-            <button type="submit">Connect</button>
-          </div>
-        </form>
-
-        <dl class="status-grid" aria-label="Current state">
-          <div>
-            <dt>Room</dt>
-            <dd id="room-status">unknown</dd>
-          </div>
-          <div>
-            <dt>Session</dt>
-            <dd id="session-status">none</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section class="panel feed-panel" aria-labelledby="feed-title">
-        <div class="panel-heading">
-          <h2 id="feed-title">World</h2>
-        </div>
-        <ol id="message-feed" class="message-feed" aria-live="polite"></ol>
-        <form id="command-form" class="command-form">
+        <ol
+          id="message-feed"
+          class="message-feed flex min-h-0 flex-col gap-2 overflow-y-auto p-4"
+          aria-live="polite"
+        ></ol>
+        <form
+          id="command-form"
+          class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-t border-[var(--muted)] p-4"
+        >
           <label class="sr-only" for="command-input">Command</label>
           <input
             id="command-input"
+            class="min-h-10 min-w-0 rounded-md border border-[var(--muted)] bg-[var(--bg-raised)] px-3 text-[var(--text-body)] disabled:text-[var(--text-dim)]"
             name="command"
             type="text"
             autocomplete="off"
             placeholder="Type a command"
             disabled
           />
-          <button type="submit" disabled>Send</button>
+          <button
+            class="min-h-10 rounded-md border border-[var(--phosphor)] bg-[var(--phosphor)] px-4 font-bold text-[#071007] disabled:border-[var(--muted)] disabled:bg-[var(--bg-raised)] disabled:text-[var(--text-dim)]"
+            type="submit"
+            disabled
+          >
+            Send
+          </button>
         </form>
       </section>
+
+      <aside class="grid min-h-0 gap-3 lg:grid-rows-[minmax(0,1fr)_14rem]">
+        <section
+          class="min-w-0 rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)]"
+          aria-labelledby="inventory-title"
+        >
+          <div
+            class="flex items-baseline justify-between gap-3 border-b border-[var(--muted)] px-4 py-3"
+          >
+            <h2
+              id="inventory-title"
+              class="font-display text-base text-[var(--phosphor)]"
+            >
+              Inventory
+            </h2>
+            <span
+              id="inventory-count"
+              class="text-xs uppercase text-[var(--text-dim)]"
+            >
+              0
+            </span>
+          </div>
+          <ul id="inventory-list" class="inventory-list grid gap-2 p-3"></ul>
+        </section>
+
+        <section
+          class="min-w-0 rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)]"
+          aria-labelledby="quest-title"
+        >
+          <div class="border-b border-[var(--muted)] px-4 py-3">
+            <h2 id="quest-title" class="font-display text-base text-[var(--phosphor)]">
+              Quests
+            </h2>
+          </div>
+          <p class="p-4 text-sm text-[var(--text-dim)]">No active quests.</p>
+        </section>
+      </aside>
     </main>
   </body>
 </html>

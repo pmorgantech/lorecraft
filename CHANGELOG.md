@@ -47,6 +47,9 @@ All notable changes to Lorecraft will be documented in this file.
 - Added weather and season state transitions driven by day changes.
 - Added inventory inspection and item movement commands for `look`, `examine`, `take`, `drop`, and `inventory`.
 - Added YAML world validation and import helpers for rooms, exits, items, and room item placement.
+- Added a Tailwind-powered world UI layout with minimap, status, feed, inventory, and quest panels.
+- Added SVG minimap rendering for visited rooms and fog-of-war adjacent rooms.
+- Added structured WebSocket UI snapshots for room, visited-room, inventory, and time state.
 
 ### Changed
 
@@ -61,6 +64,7 @@ All notable changes to Lorecraft will be documented in this file.
 - Extended `CommandEngine` to commit state changes, write audit events, and flush queued domain events.
 - Packaged the browser client assets with the Python package.
 - Declared PyYAML as a production dependency for world authoring imports.
+- Updated the browser client router to render inventory and minimap state from structured updates.
 
 ### Verified
 

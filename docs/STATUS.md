@@ -72,9 +72,10 @@ Legend:
 
 ### Phase 3.5 — World UI
 
-- [ ] Inventory panel.
-- [ ] Minimap with fog of war.
-- [ ] Basic layout refinement.
+- [x] Inventory panel.
+- [x] Minimap with fog of war.
+- [x] Basic layout refinement.
+- [x] Browser can show room changes, inventory updates, and visited-room map state.
 
 ### Phase 4 — NPCs & Quests
 

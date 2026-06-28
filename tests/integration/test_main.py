@@ -81,10 +81,16 @@ async def _test_web_client_assets_expose_minimal_browser_harness() -> None:
     assert 'id="connect-form"' in index
     assert 'id="command-form"' in index
     assert 'id="message-feed"' in index
+    assert 'id="minimap"' in index
+    assert 'id="inventory-list"' in index
+    assert "@tailwindcss/browser@4" in index
     assert "function routeMessage" in script
+    assert "function renderInventory" in script
+    assert "function renderMap" in script
     assert "const state = {" in script
     assert "new WebSocket(websocketUrl(playerId))" in script
     assert "--bg-void" in styles
+    assert ".map-room.is-fog" in styles
     assert ".message-feed" in styles
 
 
@@ -127,15 +133,15 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
     assert payloads[0]["type"] == "connected"
     assert payloads[0]["player_id"] == "player-1"
     assert payloads[0]["room_id"] == "tavern"
-    assert payloads[1] == {
-        "type": "command_result",
-        "command": "dance",
-        "verb": "dance",
-        "noun": None,
-        "messages": ["I don't understand that command."],
-        "room_messages": [],
-        "updates": {},
-    }
+    assert payloads[0]["updates"]["room"]["id"] == "tavern"
+    assert payloads[0]["updates"]["inventory"] == []
+    assert payloads[1]["type"] == "command_result"
+    assert payloads[1]["command"] == "dance"
+    assert payloads[1]["verb"] == "dance"
+    assert payloads[1]["noun"] is None
+    assert payloads[1]["messages"] == ["I don't understand that command."]
+    assert payloads[1]["room_messages"] == []
+    assert payloads[1]["updates"]["room_id"] == "tavern"
 
     with Session(audit_engine) as session:
         audit_events = session.exec(select(AuditEvent)).all()
@@ -187,7 +193,12 @@ async def _test_websocket_movement_persists_room_change() -> None:
         audit_events = session.exec(select(AuditEvent)).all()
 
     assert payloads[1]["messages"] == ["You go east."]
-    assert payloads[1]["updates"] == {"room_id": "square"}
+    assert payloads[1]["updates"]["room_id"] == "square"
+    assert payloads[1]["updates"]["room"]["id"] == "square"
+    assert {room["id"] for room in payloads[1]["updates"]["visited_rooms"]} == {
+        "square",
+        "tavern",
+    }
     assert player.current_room_id == "square"
     assert audit_events[-1].event_type == "command_executed"
 
@@ -232,7 +243,13 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
         player = session.get(Player, "player-1")
 
     assert payloads[1]["messages"] == ["You take Old Sword."]
-    assert payloads[1]["updates"] == {"inventory": ["old_sword"]}
+    assert payloads[1]["updates"]["inventory"] == [
+        {
+            "id": "old_sword",
+            "name": "Old Sword",
+            "description": "Nicked but serviceable.",
+        }
+    ]
     assert player is not None
     assert player.inventory == ["old_sword"]
 

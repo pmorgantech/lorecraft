@@ -135,10 +135,13 @@ def create_app(
             if player is None:
                 await websocket.close(code=1008, reason="unknown player")
                 return
-            room = RoomRepo(game_session).get(player.current_room_id)
+            room_repo = RoomRepo(game_session)
+            item_repo = ItemRepo(game_session)
+            room = room_repo.get(player.current_room_id)
             if room is None:
                 await websocket.close(code=1011, reason="player room not found")
                 return
+            updates = _player_ui_updates(player, room, room_repo, item_repo)
 
         await state.manager.connect(player_id, websocket, room_id=room.id)
         try:
@@ -148,6 +151,7 @@ def create_app(
                     "player_id": player_id,
                     "room_id": room.id,
                     "session_id": session_id,
+                    "updates": updates,
                 }
             )
             while True:
@@ -206,6 +210,10 @@ def _handle_websocket_command(
         parsed = state.command_engine.handle_command(command, ctx)
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
+        updates = {
+            **ctx.updates,
+            **_player_ui_updates(player, ctx.room, room_repo, ctx.item_repo),
+        }
         response: JsonObject = {
             "type": "command_result",
             "command": parsed.raw,
@@ -213,7 +221,7 @@ def _handle_websocket_command(
             "noun": parsed.noun,
             "messages": messages,
             "room_messages": room_messages,
-            "updates": ctx.updates,
+            "updates": updates,
         }
         return response
 
@@ -227,6 +235,91 @@ def _get_state(app: FastAPI) -> AppState:
 
 def _read_web_asset(asset_name: str) -> str:
     return (WEB_DIR / asset_name).read_text(encoding="utf-8")
+
+
+def _player_ui_updates(
+    player: Player,
+    room: Room,
+    room_repo: RoomRepo,
+    item_repo: ItemRepo,
+) -> JsonObject:
+    visited_rooms: list[JsonValue] = [
+        _room_snapshot(visited_room, room_repo, visited_room_ids=player.visited_rooms)
+        for visited_room in _visited_rooms(player, room_repo)
+    ]
+    return {
+        "room_id": room.id,
+        "room": _room_snapshot(room, room_repo, visited_room_ids=player.visited_rooms),
+        "visited_rooms": visited_rooms,
+        "inventory": _inventory_snapshot(player, item_repo),
+        "time": _time_snapshot(room_repo),
+    }
+
+
+def _visited_rooms(player: Player, room_repo: RoomRepo) -> list[Room]:
+    rooms: list[Room] = []
+    for room_id in player.visited_rooms:
+        room = room_repo.get(room_id)
+        if room is not None:
+            rooms.append(room)
+    return rooms
+
+
+def _room_snapshot(
+    room: Room, room_repo: RoomRepo, *, visited_room_ids: list[str]
+) -> JsonObject:
+    exits: list[JsonValue] = []
+    for exit_ in room_repo.exits(room.id):
+        target_room = room_repo.get(exit_.target_room_id)
+        target_payload: JsonObject = {
+            "direction": exit_.direction,
+            "target_room_id": exit_.target_room_id,
+            "hidden": exit_.hidden,
+            "locked": exit_.locked,
+            "visited": exit_.target_room_id in visited_room_ids,
+        }
+        if target_room is not None:
+            target_payload["target_map_x"] = target_room.map_x
+            target_payload["target_map_y"] = target_room.map_y
+        exits.append(target_payload)
+
+    return {
+        "id": room.id,
+        "name": room.name,
+        "description": room.description,
+        "map_x": room.map_x,
+        "map_y": room.map_y,
+        "exits": exits,
+    }
+
+
+def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[JsonValue]:
+    items: list[JsonValue] = []
+    for item_id in player.inventory:
+        item = item_repo.get(item_id)
+        if item is None:
+            continue
+        items.append(
+            {
+                "id": item.id,
+                "name": item.name,
+                "description": item.description,
+            }
+        )
+    return items
+
+
+def _time_snapshot(room_repo: RoomRepo) -> JsonObject:
+    clock = room_repo.world_clock()
+    if clock is None:
+        return {}
+    return {
+        "hour": clock.current_hour,
+        "minute": clock.current_minute,
+        "day": clock.current_day,
+        "season": clock.current_season,
+        "weather": clock.weather,
+    }
 
 
 def _ensure_starter_world(game_engine: Engine) -> None:

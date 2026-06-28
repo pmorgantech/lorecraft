@@ -74,7 +74,12 @@ def test_clock_runner_emits_boundary_events() -> None:
         )
         session.commit()
 
-    runner = WorldClockRunner(game_engine=engine, bus=bus, time_ratio=60.0)
+    runner = WorldClockRunner(
+        game_engine=engine,
+        bus=bus,
+        time_ratio=60.0,
+        now=lambda: 102.0,
+    )
     runner.tick()
 
     assert observed == [
