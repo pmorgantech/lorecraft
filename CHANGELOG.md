@@ -38,6 +38,11 @@ All notable changes to Lorecraft will be documented in this file.
 - Added meta commands for `help` and `quit`.
 - Added movement commands and `MovementService` room transitions.
 - Added WebSocket movement integration coverage for persisted room changes.
+- Added a minimal browser client harness with WebSocket connection, message routing, state tracking, text feed, command input, and room/session status display.
+- Added static asset routes for the browser client.
+- Added starter world bootstrap for empty databases so the browser harness can connect as `player-1`.
+- Added browser client smoke coverage for the served HTML, CSS, and JavaScript contract.
+- Added repo-local seed test database files that `start.sh` copies into `/tmp` for browser harness startup.
 
 ### Changed
 
@@ -50,10 +55,11 @@ All notable changes to Lorecraft will be documented in this file.
 - Added FastAPI and Starlette as production dependencies for the service layer.
 - Tightened `GameContext` to use concrete repository, model, event bus, and connection manager types.
 - Extended `CommandEngine` to commit state changes, write audit events, and flush queued domain events.
+- Packaged the browser client assets with the Python package.
 
 ### Verified
 
-- `.venv/bin/python -m pytest` passes with 34 tests.
+- `.venv/bin/python -m pytest` passes with 36 tests.
 - `.venv/bin/ruff check src tests` passes.
 - `.venv/bin/ruff format --check src tests` passes.
 - `.venv/bin/basedpyright --warnings` passes.

@@ -11,7 +11,7 @@ from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Room
+from lorecraft.models.world import Room
 
 AsgiMessage = dict[str, Any]
 AsgiReceive = Callable[[], Awaitable[AsgiMessage]]
@@ -31,6 +31,61 @@ async def _test_health_endpoint_initializes_lifespan() -> None:
         messages = await _run_http_get(app, "/health")
 
     assert _json_response(messages) == {"status": "ok"}
+
+
+def test_lifespan_seeds_starter_world_for_empty_database() -> None:
+    anyio.run(_test_lifespan_seeds_starter_world_for_empty_database)
+
+
+async def _test_lifespan_seeds_starter_world_for_empty_database() -> None:
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as session:
+            player = session.get(Player, "player-1")
+            rooms = session.exec(select(Room)).all()
+
+    assert player is not None
+    assert player.current_room_id == "tavern"
+    assert {room.id for room in rooms} == {"square", "tavern"}
+
+
+def test_web_client_assets_expose_minimal_browser_harness() -> None:
+    anyio.run(_test_web_client_assets_expose_minimal_browser_harness)
+
+
+async def _test_web_client_assets_expose_minimal_browser_harness() -> None:
+    app = create_app(
+        settings=Settings(database_path=":memory:", audit_database_path=":memory:")
+    )
+
+    async with _lifespan(app):
+        index = _text_response(await _run_http_get(app, "/"))
+        script = _text_response(await _run_http_get(app, "/static/app.js"))
+        styles = _text_response(await _run_http_get(app, "/static/app.css"))
+
+    assert 'id="connect-form"' in index
+    assert 'id="command-form"' in index
+    assert 'id="message-feed"' in index
+    assert "function routeMessage" in script
+    assert "const state = {" in script
+    assert "new WebSocket(websocketUrl(playerId))" in script
+    assert "--bg-void" in styles
+    assert ".message-feed" in styles
 
 
 def test_websocket_connects_and_dispatches_text_commands() -> None:
@@ -54,26 +109,6 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
         audit_engine=audit_engine,
     )
     async with _lifespan(app):
-        with Session(game_engine) as session:
-            session.add(
-                Room(
-                    id="tavern",
-                    name="Tavern",
-                    description="A warm room.",
-                    map_x=0,
-                    map_y=0,
-                )
-            )
-            session.add(
-                Player(
-                    id="player-1",
-                    username="petem",
-                    current_room_id="tavern",
-                    respawn_room_id="tavern",
-                )
-            )
-            session.commit()
-
         messages = await _run_websocket(
             app,
             query_string=b"player_id=player-1",
@@ -131,38 +166,6 @@ async def _test_websocket_movement_persists_room_change() -> None:
         audit_engine=audit_engine,
     )
     async with _lifespan(app):
-        with Session(game_engine) as session:
-            session.add(
-                Room(
-                    id="tavern",
-                    name="Tavern",
-                    description="A warm room.",
-                    map_x=0,
-                    map_y=0,
-                )
-            )
-            session.add(
-                Room(
-                    id="square",
-                    name="Square",
-                    description="A busy square.",
-                    map_x=1,
-                    map_y=0,
-                )
-            )
-            session.add(
-                Exit(room_id="tavern", direction="east", target_room_id="square")
-            )
-            session.add(
-                Player(
-                    id="player-1",
-                    username="petem",
-                    current_room_id="tavern",
-                    respawn_room_id="tavern",
-                )
-            )
-            session.commit()
-
         messages = await _run_websocket(
             app,
             query_string=b"player_id=player-1",
@@ -295,6 +298,10 @@ async def _run_websocket(
 
 
 def _json_response(messages: list[AsgiMessage]) -> dict[str, Any]:
+    return json.loads(_text_response(messages))
+
+
+def _text_response(messages: list[AsgiMessage]) -> str:
     assert messages[0]["type"] == "http.response.start"
     assert messages[0]["status"] == 200
     body = b"".join(
@@ -302,4 +309,4 @@ def _json_response(messages: list[AsgiMessage]) -> dict[str, Any]:
         for message in messages
         if message["type"] == "http.response.body"
     )
-    return json.loads(body)
+    return body.decode()

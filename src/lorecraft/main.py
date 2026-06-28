@@ -5,11 +5,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.engine import Engine
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from lorecraft.commands import register_all_commands
 from lorecraft.config import Settings, load_settings
@@ -21,12 +23,20 @@ from lorecraft.game.events import EventBus
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
+from lorecraft.models.player import Player
+from lorecraft.models.world import Exit, Room
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.types import JsonObject, JsonValue
+
+WEB_DIR = Path(__file__).parent / "web"
+WEB_ASSETS = {
+    "app.css": "text/css",
+    "app.js": "text/javascript",
+}
 
 
 @dataclass
@@ -58,6 +68,7 @@ def create_app(
             audit_engine=resolved_audit_engine,
             settings=settings,
         )
+        _ensure_starter_world(resolved_game_engine)
         state = AppState(
             settings=settings,
             game_engine=resolved_game_engine,
@@ -78,6 +89,17 @@ def create_app(
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/", response_class=HTMLResponse)
+    async def index() -> HTMLResponse:
+        return HTMLResponse(_read_web_asset("index.html"))
+
+    @app.get("/static/{asset_name}")
+    async def static_asset(asset_name: str) -> Response:
+        media_type = WEB_ASSETS.get(asset_name)
+        if media_type is None:
+            raise HTTPException(status_code=404)
+        return Response(_read_web_asset(asset_name), media_type=media_type)
 
     @app.websocket(settings.websocket_path)
     async def websocket_endpoint(websocket: WebSocket) -> None:
@@ -183,6 +205,47 @@ def _get_state(app: FastAPI) -> AppState:
     if not isinstance(state, AppState):
         raise RuntimeError("Lorecraft app state is not initialized.")
     return state
+
+
+def _read_web_asset(asset_name: str) -> str:
+    return (WEB_DIR / asset_name).read_text(encoding="utf-8")
+
+
+def _ensure_starter_world(game_engine: Engine) -> None:
+    with Session(game_engine) as session:
+        has_rooms = session.exec(select(Room)).first() is not None
+        if has_rooms:
+            return
+
+        session.add(
+            Room(
+                id="tavern",
+                name="Tavern",
+                description="A warm room.",
+                map_x=0,
+                map_y=0,
+            )
+        )
+        session.add(
+            Room(
+                id="square",
+                name="Square",
+                description="A busy square.",
+                map_x=1,
+                map_y=0,
+            )
+        )
+        session.add(Exit(room_id="tavern", direction="east", target_room_id="square"))
+        session.add(
+            Player(
+                id="player-1",
+                username="player-1",
+                current_room_id="tavern",
+                respawn_room_id="tavern",
+                visited_rooms=["tavern"],
+            )
+        )
+        session.commit()
 
 
 app = create_app()

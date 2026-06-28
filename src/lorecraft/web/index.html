@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lorecraft</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body>
+    <main class="shell" data-app>
+      <section class="panel status-panel" aria-labelledby="status-title">
+        <div class="panel-heading">
+          <h1 id="status-title">Lorecraft</h1>
+          <span id="connection-state" class="connection-state">offline</span>
+        </div>
+
+        <form id="connect-form" class="connect-form">
+          <label for="player-id">Player</label>
+          <div class="inline-controls">
+            <input
+              id="player-id"
+              name="player-id"
+              type="text"
+              autocomplete="username"
+              value="player-1"
+              required
+            />
+            <button type="submit">Connect</button>
+          </div>
+        </form>
+
+        <dl class="status-grid" aria-label="Current state">
+          <div>
+            <dt>Room</dt>
+            <dd id="room-status">unknown</dd>
+          </div>
+          <div>
+            <dt>Session</dt>
+            <dd id="session-status">none</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="panel feed-panel" aria-labelledby="feed-title">
+        <div class="panel-heading">
+          <h2 id="feed-title">World</h2>
+        </div>
+        <ol id="message-feed" class="message-feed" aria-live="polite"></ol>
+        <form id="command-form" class="command-form">
+          <label class="sr-only" for="command-input">Command</label>
+          <input
+            id="command-input"
+            name="command"
+            type="text"
+            autocomplete="off"
+            placeholder="Type a command"
+            disabled
+          />
+          <button type="submit" disabled>Send</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

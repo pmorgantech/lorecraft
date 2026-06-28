@@ -52,12 +52,13 @@ Legend:
 
 ### Phase 2.5 — Minimal Web Client
 
-- [ ] Browser WebSocket client.
-- [ ] Message router.
-- [ ] Plain JavaScript state object.
-- [ ] Basic text feed and command input.
-- [ ] Basic room/status display.
-- [ ] Browser smoke/end-to-end test.
+- [x] Browser WebSocket client.
+- [x] Message router.
+- [x] Plain JavaScript state object.
+- [x] Basic text feed and command input.
+- [x] Basic room/status display.
+- [x] Browser smoke/end-to-end test.
+- [x] Repo-local seed test databases copied by `start.sh` into `/tmp` runtime paths for browser harness startup.
 
 ### Phase 3 — World & Time
 
