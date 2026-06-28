@@ -1,0 +1,786 @@
+# Ashmoore — Sample World for Lorecraft Testing
+#
+# A small market town on the edge of a darkening wood. North of the village
+# sits a forge and apothecary; south lies the old forest road that winds
+# toward ruins, a rushing creek, and — deeper still — the caves beneath
+# the hill where something old and cold has taken up residence.
+#
+# Layout (Y increases northward, X increases eastward):
+#
+#        alch(5,9)
+#    forge(4,9)  market(5,8)
+#          square(4,8)---inn(3,8)
+#               |              |
+#           s_gate(4,7)    cellar(3,7)
+#               |
+#         forest_path(4,6)---meadow(5,6)---chapel(6,5)
+#         /                       |
+#   mill(3,6)               creek(5,5)
+#               |
+#         deep_forest(4,5)
+#               |
+#         cave_entrance(4,4)
+#               |
+#         cave_tunnel(4,3)
+#               |
+#         cave_chamber(4,2)
+#        /              \
+#  alcove(3,2)       pool(5,2)
+
+rooms:
+  # -------------------------------------------------------------------------
+  # AREA: town — The Village of Ashmoore
+  # -------------------------------------------------------------------------
+
+  - id: village_square
+    name: The Village Square of Ashmoore
+    description: >-
+      Cobblestones worn smooth by a hundred years of market-day boots radiate
+      outward from a mossy stone well at the centre. A weathervane shaped like
+      a rearing stallion creaks overhead. The smell of fresh bread drifts from
+      somewhere eastward. To the north the clash of iron rings from a forge; to
+      the west a painted sign swings above the inn. The road south leads out
+      through the old gate.
+    map_x: 4
+    map_y: 8
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: blacksmith_forge
+      - direction: east
+        target_room_id: market_stalls
+      - direction: west
+        target_room_id: wandering_crow_inn
+      - direction: south
+        target_room_id: south_gate
+
+  - id: wandering_crow_inn
+    name: The Wandering Crow Inn
+    description: >-
+      Low timbers, candle-grease on every surface, and the permanent perfume of
+      spilled ale. A stuffed crow mounted above the hearth regards you with
+      glass eyes. The landlord — a wide man with a red nose and a wary
+      expression — polishes the same tankard he has been polishing for the past
+      ten years. A narrow stair descends to the cellar; the square lies back
+      through the door to the east.
+    map_x: 3
+    map_y: 8
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: village_square
+      - direction: down
+        target_room_id: inn_cellar
+
+  - id: inn_cellar
+    name: The Inn Cellar
+    description: >-
+      Brick-arched and cool, smelling of damp earth and old barrels. Rows of
+      casks line the walls, each daubed with a chalk mark. A single tallow
+      stub gutters in an iron bracket, throwing long shadows. Rats have been
+      here recently — you can tell by the gnawed corners of a sack of meal.
+      The stair back up to the inn groans with every draft.
+    map_x: 3
+    map_y: 7
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: up
+        target_room_id: wandering_crow_inn
+
+  - id: blacksmith_forge
+    name: Forge and Hammer
+    description: >-
+      The forge exhales a wave of heat before you even cross the threshold. A
+      barrel of black water hisses where hot metal cools. Tools hang on pegs
+      with a craftsman's precision: hammers graded from tack to sledge, tongs
+      of every gauge, punches, drifts, and files. The anvil in the centre is
+      pocked and stained with a lifetime of use. A hand-lettered sign reads
+      ORDERS TAKEN, NO CREDIT.
+    map_x: 4
+    map_y: 9
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: village_square
+      - direction: east
+        target_room_id: alchemist_shop
+
+  - id: market_stalls
+    name: The Market Stalls
+    description: >-
+      Canvas canopies in faded reds and yellows shelter half a dozen cramped
+      stalls. A fishmonger haggles with a farmer over a basket of eels. Bolts
+      of undyed wool lean against a cart. A child sells paper flowers nobody
+      wants. The air is thick with the mingled scents of dried fish, tallow,
+      and horse. North, through a gap between the stalls, you can make out the
+      glass-stoppered bottles of the apothecary.
+    map_x: 5
+    map_y: 8
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: village_square
+      - direction: north
+        target_room_id: alchemist_shop
+
+  - id: alchemist_shop
+    name: "Mira's Curious Remedies"
+    description: >-
+      The shelves climb floor to ceiling and every inch is occupied: glass
+      bottles of amber, violet, and cloudy white; bundles of dried fungi
+      hung from the beams; a brass scale tilted permanently to one side as
+      though the world itself is slightly off-balance. A woman with ink-stained
+      fingers sits at a workbench grinding something that smells of copper and
+      pine. She does not look up when you enter, but she knows you are here.
+    map_x: 5
+    map_y: 9
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: market_stalls
+      - direction: west
+        target_room_id: blacksmith_forge
+
+  - id: south_gate
+    name: South Gate
+    description: >-
+      Two timber posts, reinforced with iron straps, mark where the town wall
+      once stood. The wall itself is long gone, cannibalised for foundations
+      and fence posts over the centuries, but the gate posts remain — a civic
+      memory of when Ashmoore feared its neighbours. A pitted milestone reads
+      ASHMOORE 0 LEAGUES in worn letters. Beyond it the road narrows to a
+      rutted track and plunges south into the treeline.
+    map_x: 4
+    map_y: 7
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: village_square
+      - direction: south
+        target_room_id: forest_path
+
+  # -------------------------------------------------------------------------
+  # AREA: wilderness — The Forest and Its Margins
+  # -------------------------------------------------------------------------
+
+  - id: forest_path
+    name: The Forest Road
+    description: >-
+      The road quickly loses confidence once it leaves the gate. Ruts fill with
+      standing water; the verges are choked with bracken. Old beeches arch
+      overhead and close out most of the sky. A faded set of cartwheel tracks
+      leads west toward the mill. The path to the east opens briefly onto
+      meadow before the forest swallows it again. Directly south the trees grow
+      close and the light turns greenish and unreliable.
+    map_x: 4
+    map_y: 6
+    area_id: wilderness
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: south_gate
+      - direction: east
+        target_room_id: meadow_clearing
+      - direction: west
+        target_room_id: old_mill
+      - direction: south
+        target_room_id: deep_forest
+
+  - id: meadow_clearing
+    name: The Sunlit Meadow
+    description: >-
+      A gap in the canopy lets in a column of afternoon light that falls on
+      a sweep of tall grass and wildflowers — cowslip, campion, and something
+      purple you cannot name. A buzzard turns slow circles overhead. The
+      meadow feels exposed and peaceful in a way the rest of the forest does
+      not. To the south the ground drops toward the sound of rushing water
+      and the outline of stone ruins visible through the trees beyond the
+      creek. West returns you to the forest road.
+    map_x: 5
+    map_y: 6
+    area_id: wilderness
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: forest_path
+      - direction: south
+        target_room_id: creek_crossing
+
+  - id: old_mill
+    name: The Abandoned Mill
+    description: >-
+      The waterwheel is staved in, its paddles rotted to stubs. The millstone
+      inside is cracked clean through the eye; it sits cockeyed on its spindle
+      like a broken promise. Pigeon droppings whiten the floor and rafters. A
+      smell of mould and old grain clings to the timber. Whatever fortune this
+      mill once ground out has been ground out entirely. The forest road lies
+      back to the east.
+    map_x: 3
+    map_y: 6
+    area_id: wilderness
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: forest_path
+
+  - id: creek_crossing
+    name: The Mossy Creek Crossing
+    description: >-
+      Flat stones, slick with moss, step across a fast brown creek that smells
+      of peat and cold springs. The water is only knee-deep but it moves with
+      surprising purpose. A rope, perhaps once a handrail, sags between two
+      alder trees. On the far eastern bank the ground rises toward the outline
+      of a stone ruin half-smothered in ivy. North lies the open meadow; the
+      forest continues south.
+    map_x: 5
+    map_y: 5
+    area_id: wilderness
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: meadow_clearing
+      - direction: east
+        target_room_id: ruined_chapel
+
+  - id: ruined_chapel
+    name: The Ruined Chapel
+    description: >-
+      Roofless and reclaimed. Ivy has mortared the gaps where the original
+      mortar failed; young birch trees grow through the nave floor. The altar
+      stone is still upright, its carved relief of a wheel-within-a-wheel
+      worn smooth but legible. Carved letters around the base are too eroded
+      to read in full — something about remembrance and fire. A leather satchel
+      lies open on the altar, its contents scattered. The creek and the meadow
+      are west through the ruined doorway.
+    map_x: 6
+    map_y: 5
+    area_id: wilderness
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: creek_crossing
+
+  - id: deep_forest
+    name: The Deep Forest
+    description: >-
+      The beeches give way to older things here — oaks with trunks you could
+      not encircle with both arms, their bark black with moisture. The undergrowth
+      thickens. Sound dampens. Your own footsteps sound wrong, too loud or too
+      quiet depending on where you step. Something luminescent pulses at the
+      base of a deadfall to one side — probably just foxfire on rotting wood.
+      Probably. The forest road is back north; south, the trees thin around a
+      rocky hillside with a dark opening in it.
+    map_x: 4
+    map_y: 5
+    area_id: wilderness
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: forest_path
+      - direction: south
+        target_room_id: cave_entrance
+
+  # -------------------------------------------------------------------------
+  # AREA: cave — The Hill Caves
+  # -------------------------------------------------------------------------
+
+  - id: cave_entrance
+    name: The Cave Mouth
+    description: >-
+      A crack in the hillside, widened over centuries by water and perhaps other
+      things, yawns before you. The air that breathes out of it is cool and
+      smells of wet limestone and something faintly mineral. Scratched into the
+      rock beside the entrance, barely legible, is a word in an old dialect of
+      the valley tongue — scholars have argued whether it means WARNING or
+      WELCOME. A dented lantern hangs from a piton driven into the rock face.
+      The forest lies back to the north; the darkness descends below.
+    map_x: 4
+    map_y: 4
+    area_id: cave
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: deep_forest
+      - direction: down
+        target_room_id: cave_tunnel
+
+  - id: cave_tunnel
+    name: The Winding Tunnel
+    description: >-
+      The ceiling drops to shoulder height and you are obliged to watch your
+      footing on the slick limestone. The tunnel is not entirely dark — a faint
+      phosphorescence clings to certain patches of the wall, a pale grey-green
+      that illuminates nothing but itself. Water has carved the passage smooth
+      and left small formations in the corners like frozen drips. Somewhere
+      below there is a sound: not quite dripping, not quite breathing. The cave
+      mouth is back up behind you; the tunnel descends further south.
+    map_x: 4
+    map_y: 3
+    area_id: cave
+    light_level: 1
+    exits:
+      - direction: up
+        target_room_id: cave_entrance
+      - direction: south
+        target_room_id: cave_chamber
+
+  - id: cave_chamber
+    name: The Stone Chamber
+    description: >-
+      The tunnel opens into a natural chamber perhaps thirty feet across.
+      Stalactites fringe the ceiling like stone teeth. A cold draught comes
+      from somewhere to the east, carrying the faint smell of water. To the
+      west a crack in the wall opens into a low-ceilinged alcove barely large
+      enough to stand in. The floor of the chamber is worn smooth in the
+      centre — walked, long ago, by many feet. Whatever gathered here is gone
+      now. The tunnel leads back north.
+    map_x: 4
+    map_y: 2
+    area_id: cave
+    light_level: 0
+    disabled_commands: []
+    exits:
+      - direction: north
+        target_room_id: cave_tunnel
+      - direction: east
+        target_room_id: cave_pool
+      - direction: west
+        target_room_id: cave_alcove
+
+  - id: cave_pool
+    name: The Underground Pool
+    description: >-
+      The chamber floor gives way without warning to a pool of still, perfectly
+      clear water. The bottom, visible twelve feet down, is white sand and
+      smooth pebbles. Something in the water glows with a cold blue light —
+      not bioluminescence, not phosphorescence, something else entirely. The
+      far bank is only a few yards away and the water looks fordable at the
+      edges. There are no fish. There are no sounds. The chamber lies back
+      to the west.
+    map_x: 5
+    map_y: 2
+    area_id: cave
+    light_level: 0
+    exits:
+      - direction: west
+        target_room_id: cave_chamber
+
+  - id: cave_alcove
+    name: The Hidden Alcove
+    description: >-
+      You squeeze through the crack and find yourself in a low space, the
+      ceiling so close it presses on your thoughts. Someone has been here
+      deliberately — a hollow scraped in the far wall holds objects laid with
+      care: a folded cloth, a few coins, a pouch. Whether this was a shrine or
+      a hiding place is unclear. The scratch-marks on the walls may be writing
+      or may be counting. The chamber is back through the crack to the east.
+    map_x: 3
+    map_y: 2
+    area_id: cave
+    light_level: 0
+    exits:
+      - direction: east
+        target_room_id: cave_chamber
+
+# ---------------------------------------------------------------------------
+# Items
+# ---------------------------------------------------------------------------
+
+items:
+  # --- Inn & Cellar ---
+  - id: carved_mug
+    name: Carved Wooden Mug
+    description: >-
+      A hefty mug cut from a single piece of elm. The handle is carved into
+      the shape of a crow mid-flight. It smells of ale and the years.
+    takeable: true
+    tradeable: true
+
+  - id: tallow_candle
+    name: Tallow Candle
+    description: >-
+      A squat, yellowish candle of rendered tallow. It would give decent light
+      for an hour or two before guttering. It smells exactly as bad as you
+      would expect.
+    takeable: true
+    tradeable: true
+
+  - id: old_blanket
+    name: Moth-Eaten Wool Blanket
+    description: >-
+      Heavy wool in a faded tartan pattern, more hole than blanket in the
+      corners. Still warm enough to matter on a cold night. The moths have
+      had the best of it, but there is plenty left for a human.
+    takeable: true
+    tradeable: true
+
+  - id: cellar_key
+    name: Cellar Key
+    description: >-
+      An iron key, stubby and thick, with a loop handle. The bow is stamped
+      with a crow silhouette — the inn's mark. It is heavier than it looks.
+    takeable: true
+    tradeable: false
+
+  - id: cask_stopper
+    name: Wooden Cask Stopper
+    description: >-
+      A turned wooden bung for a barrel. Smells of old wine. Someone has
+      scratched a tally into the side: fifteen marks in groups of five.
+    takeable: true
+    tradeable: true
+
+  # --- Blacksmith ---
+  - id: iron_tongs
+    name: Heavy Iron Tongs
+    description: >-
+      Blacksmith's tongs, each arm the length of your forearm. The gripping
+      jaws are carbon-blackened and bear the shallow impressions of a thousand
+      iron bars. Not a weapon, exactly, but you would not want to be struck
+      by them.
+    takeable: true
+    tradeable: true
+
+  - id: horseshoe
+    name: Freshly Forged Horseshoe
+    description: >-
+      Still warm to the touch. The iron is smooth where the hammer flattened it
+      and pocked where it was punched for nails. There is something satisfying
+      about its heft and its curve — a small, useful perfection.
+    takeable: true
+    tradeable: true
+
+  - id: sharpening_stone
+    name: Sharpening Stone
+    description: >-
+      A rectangular whetstone, fine-grained, worn concave from years of use.
+      One end is darker where oil has soaked in. It would put a decent edge
+      on a blade, given patience and a steady hand.
+    takeable: true
+    tradeable: true
+
+  # --- Market & Alchemist ---
+  - id: dried_herbs
+    name: Bundle of Dried Herbs
+    description: >-
+      A hand-tied bundle of something aromatic — rosemary, perhaps, or one of
+      the wild hill herbs the valley folk use for cooking and curing alike.
+      Brittle. Pungent. The exact species are unclear to anyone who did not
+      pick them themselves.
+    takeable: true
+    tradeable: true
+
+  - id: copper_coin
+    name: Worn Copper Coin
+    description: >-
+      A copper coin so handled that the face is a smooth oval and the legend
+      is entirely gone. It is still legal tender in the valley — the assay
+      mark on the edge is intact — but it has clearly passed through a great
+      many hands to reach this cobblestone.
+    takeable: true
+    tradeable: true
+
+  - id: cracked_vial
+    name: Cracked Glass Vial
+    description: >-
+      A small glass vial, thumb-sized, with a crack running diagonally across
+      the belly. Whatever it held is long gone. The glass is old — you can
+      tell by the slight green tint and the bubbles caught inside the walls
+      when you hold it to the light.
+    takeable: true
+    tradeable: true
+
+  - id: curious_powder
+    name: Pinch of Blue Powder
+    description: >-
+      A twist of paper containing a small amount of deep blue powder. It
+      smells faintly of copper and lavender and gives off a faint heat. The
+      paper is labelled in a small precise hand: DO NOT INHALE and a symbol
+      that might be a warning or might be a recipe.
+    takeable: true
+    tradeable: true
+
+  # --- Forest & Wilderness ---
+  - id: worn_boot
+    name: Single Worn Leather Boot
+    description: >-
+      One boot, left foot, the sole nearly worn through at the heel. The
+      upper has been oiled repeatedly and is still sound. Its companion is
+      nowhere in evidence. It suggests a story you are probably better off
+      not knowing.
+    takeable: true
+    tradeable: true
+
+  - id: strange_mushroom
+    name: Foxfire Mushroom
+    description: >-
+      A pale, waxy mushroom that gives off a cool green light — foxfire,
+      bioluminescence from the mycelium network in the deadfall where it
+      grows. It is not toxic (you think), but it is unusual. The light is
+      faint but real; in a dark room it would be just visible.
+    takeable: true
+    tradeable: true
+
+  - id: iridescent_feather
+    name: Iridescent Feather
+    description: >-
+      A large feather, perhaps a foot long, that shifts from green to blue
+      to a deep purple depending on the angle. No bird you know of sheds
+      feathers like this. It is perfectly intact, as though it fell from a
+      living wing moments ago. It is inexplicably warm.
+    takeable: true
+    tradeable: true
+
+  - id: mossy_stone
+    name: Smooth Mossy Stone
+    description: >-
+      A palm-sized stone from the creek bed, rounded by centuries of water.
+      One face is covered in a mat of vivid green moss that refuses to dry
+      out. It sits cool and damp in the hand. Perfectly ordinary. You keep
+      picking it up anyway.
+    takeable: true
+    tradeable: true
+
+  - id: torn_page
+    name: Torn Journal Page
+    description: >-
+      A water-stained page torn from a small journal. The ink has run in
+      places but most of the text survives: a personal account of something
+      seen at the creek crossing on a night with no moon. The account breaks
+      off mid-sentence. The handwriting grows larger and less careful toward
+      the end.
+    takeable: true
+    tradeable: true
+
+  - id: silver_locket
+    name: Tarnished Silver Locket
+    description: >-
+      An oval locket on a broken chain, tarnished to near-black. The clasp
+      is stiff from disuse but opens with patient pressure to reveal a tiny
+      painted portrait — a woman, middle-aged, with dark eyes and a very
+      slight smile. There is no inscription. Someone left this here on purpose.
+    takeable: true
+    tradeable: true
+
+  - id: millstone_shard
+    name: Millstone Shard
+    description: >-
+      A curved fragment of the old millstone, perhaps eight inches across.
+      The upper face still has the furrow-grooves cut by the millwright; the
+      underside is rough grey granite. Too heavy to be much use as anything,
+      but somehow impossible to put down entirely without feeling you should
+      have kept it.
+    takeable: true
+    tradeable: true
+
+  - id: rusted_saw
+    name: Rusted Handsaw
+    description: >-
+      A short-handled crosscut saw, its blade orange with surface rust. The
+      teeth are still sharp beneath the rust. The handle is cracked but the
+      wood has not split all the way through. With cleaning and oiling it
+      might work again. Right now it would work for a weapon in a pinch.
+    takeable: true
+    tradeable: true
+
+  # --- Cave ---
+  - id: old_lantern
+    name: Dented Oil Lantern
+    description: >-
+      A tin lantern with a pierced-tin shade, dented on one side. The oil
+      reservoir is nearly empty but not quite. The wick is charred at the
+      top but could catch. In the dark of the cave below it might mean the
+      difference between navigation and disaster.
+    takeable: true
+    tradeable: true
+
+  - id: bone_fragment
+    name: Gnawed Bone Fragment
+    description: >-
+      A short section of bone, perhaps from a rabbit or a small goat, clean
+      and pale. The ends are gnawed, but not by any tool — by teeth. Whatever
+      ate this here in the tunnel did so in the dark.
+    takeable: true
+    tradeable: true
+
+  - id: cave_mushroom
+    name: Pale Cave Mushroom
+    description: >-
+      A mushroom that has never seen light, white as chalk, with a cap as
+      wide as your palm. The gills are a very faint blue. It has no smell
+      at all, which is itself strange. Valley herb-lore holds that a mushroom
+      without smell is a mushroom without mercy.
+    takeable: true
+    tradeable: true
+
+  - id: iron_dagger
+    name: Crude Iron Dagger
+    description: >-
+      A short blade, more wedge than edge, clearly hammered out by someone
+      with iron but not much skill. The handle is wrapped in cord that has
+      stiffened over time. It would do damage, but it would take effort,
+      and it would not do it quietly.
+    takeable: true
+    tradeable: true
+
+  - id: glowing_crystal
+    name: Pool Crystal
+    description: >-
+      A fist-sized piece of raw crystal pulled from the shallows of the
+      underground pool. It is translucent and deep blue and gives off a
+      cold, steady light — not bright enough to read by, but bright enough
+      to know where your hands are. It feels like holding a piece of still
+      water that has forgotten to be wet.
+    takeable: true
+    tradeable: true
+
+  - id: leather_pouch
+    name: Weathered Leather Pouch
+    description: >-
+      A drawstring pouch of oiled leather, the kind a traveller would wear
+      under their shirt. It is old and the leather has stiffened but it has
+      not cracked. The inside smells of old copper and something sweet and
+      resinous. Whatever was stored here was stored with care.
+    takeable: true
+    tradeable: true
+
+  - id: ancient_coin
+    name: Ancient Gold Coin
+    description: >-
+      A gold coin twice as thick as modern minting, stamped with a profile
+      that matches no monarch in any history of the valley. The face is
+      proud, severe, and completely unrecognisable. The reverse shows the
+      wheel-within-a-wheel symbol from the chapel altar. It is warm in your
+      hand even in this cold place.
+    takeable: true
+    tradeable: false
+
+# ---------------------------------------------------------------------------
+# Room Items — where things are placed at world start
+# ---------------------------------------------------------------------------
+
+room_items:
+  # Inn
+  - room_id: wandering_crow_inn
+    item_id: carved_mug
+    quantity: 1
+  - room_id: wandering_crow_inn
+    item_id: tallow_candle
+    quantity: 2
+  - room_id: wandering_crow_inn
+    item_id: old_blanket
+    quantity: 1
+
+  # Inn Cellar
+  - room_id: inn_cellar
+    item_id: cellar_key
+    quantity: 1
+  - room_id: inn_cellar
+    item_id: cask_stopper
+    quantity: 1
+
+  # Blacksmith
+  - room_id: blacksmith_forge
+    item_id: iron_tongs
+    quantity: 1
+  - room_id: blacksmith_forge
+    item_id: horseshoe
+    quantity: 1
+  - room_id: blacksmith_forge
+    item_id: sharpening_stone
+    quantity: 1
+
+  # Market
+  - room_id: market_stalls
+    item_id: dried_herbs
+    quantity: 3
+  - room_id: market_stalls
+    item_id: copper_coin
+    quantity: 1
+
+  # Alchemist
+  - room_id: alchemist_shop
+    item_id: cracked_vial
+    quantity: 1
+  - room_id: alchemist_shop
+    item_id: curious_powder
+    quantity: 1
+
+  # Village Square
+  - room_id: village_square
+    item_id: copper_coin
+    quantity: 1
+
+  # Forest Path
+  - room_id: forest_path
+    item_id: worn_boot
+    quantity: 1
+
+  # Deep Forest
+  - room_id: deep_forest
+    item_id: strange_mushroom
+    quantity: 1
+
+  # Meadow
+  - room_id: meadow_clearing
+    item_id: iridescent_feather
+    quantity: 1
+
+  # Creek
+  - room_id: creek_crossing
+    item_id: mossy_stone
+    quantity: 1
+
+  # Chapel
+  - room_id: ruined_chapel
+    item_id: torn_page
+    quantity: 1
+  - room_id: ruined_chapel
+    item_id: silver_locket
+    quantity: 1
+
+  # Old Mill
+  - room_id: old_mill
+    item_id: millstone_shard
+    quantity: 1
+  - room_id: old_mill
+    item_id: rusted_saw
+    quantity: 1
+
+  # Cave Entrance
+  - room_id: cave_entrance
+    item_id: old_lantern
+    quantity: 1
+
+  # Cave Tunnel
+  - room_id: cave_tunnel
+    item_id: bone_fragment
+    quantity: 1
+  - room_id: cave_tunnel
+    item_id: cave_mushroom
+    quantity: 1
+
+  # Cave Chamber
+  - room_id: cave_chamber
+    item_id: iron_dagger
+    quantity: 1
+
+  # Cave Pool
+  - room_id: cave_pool
+    item_id: glowing_crystal
+    quantity: 1
+
+  # Cave Alcove
+  - room_id: cave_alcove
+    item_id: leather_pouch
+    quantity: 1
+  - room_id: cave_alcove
+    item_id: ancient_coin
+    quantity: 1

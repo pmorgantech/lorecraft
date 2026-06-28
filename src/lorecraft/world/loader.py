@@ -8,7 +8,9 @@ from typing import cast
 from sqlmodel import Session
 import yaml
 
-from lorecraft.models.world import Exit, Item, Room, RoomItem
+from lorecraft.models.dialogue import DialogueTree
+from lorecraft.models.quest import Quest
+from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import WorldDocument, validate_world_document
 
@@ -53,6 +55,34 @@ def import_world(document: WorldDocument, session: Session) -> None:
             )
         )
 
+    for tree in document.dialogue_trees:
+        nodes_dict: dict[str, object] = {}
+        for node_id, node in tree.nodes.items():
+            nodes_dict[node_id] = {
+                "text": node.text,
+                "side_effects": node.side_effects,
+                "choices": [c.model_dump() for c in node.choices],
+            }
+        session.merge(
+            DialogueTree(
+                id=tree.id,
+                tree_data=cast(
+                    JsonObject,
+                    {"root_node": tree.root_node, "nodes": nodes_dict},
+                ),
+            )
+        )
+
+    for quest in document.quests:
+        session.merge(
+            Quest(
+                id=quest.id,
+                title=quest.title,
+                description=quest.description,
+                stages=[s.model_dump() for s in quest.stages],
+            )
+        )
+
     session.flush()
 
     for room in document.rooms:
@@ -75,5 +105,22 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 room_id=room_item.room_id,
                 item_id=room_item.item_id,
                 quantity=room_item.quantity,
+            )
+        )
+
+    for npc in document.npcs:
+        session.merge(
+            NPC(
+                id=npc.id,
+                name=npc.name,
+                description=npc.description,
+                current_room_id=npc.current_room_id or npc.home_room_id,
+                home_room_id=npc.home_room_id,
+                dialogue_tree_id=npc.dialogue_tree_id,
+                behavior=npc.behavior,
+                max_hp=npc.max_hp,
+                current_hp=npc.max_hp,
+                schedule=[e.model_dump() for e in npc.schedule],
+                loot_table=cast(JsonObject, npc.loot_table),
             )
         )

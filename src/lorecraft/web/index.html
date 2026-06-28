@@ -202,9 +202,39 @@
               Quests
             </h2>
           </div>
-          <p class="p-4 text-sm text-[var(--text-dim)]">No active quests.</p>
+          <div id="quest-list">
+            <p class="p-4 text-sm text-[var(--text-dim)]">No active quests.</p>
+          </div>
         </section>
       </aside>
     </main>
+
+    <!-- Dialogue overlay -->
+    <div
+      id="dialogue-overlay"
+      class="hidden fixed inset-x-0 bottom-0 flex justify-center pb-4 px-4 pointer-events-none"
+      aria-live="polite"
+    >
+      <div
+        class="pointer-events-auto w-full max-w-xl rounded-xl border border-[var(--amber)] bg-[var(--bg-panel)] shadow-xl p-5"
+      >
+        <p
+          id="dialogue-npc-name"
+          class="font-display text-xs uppercase tracking-widest text-[var(--phosphor)] mb-2"
+        ></p>
+        <p
+          id="dialogue-node-text"
+          class="text-sm leading-relaxed mb-4 text-[var(--text-body)]"
+        ></p>
+        <div id="dialogue-choices" class="grid gap-2"></div>
+        <button
+          id="dialogue-close"
+          class="mt-3 text-xs text-[var(--text-dim)] hover:text-[var(--text-body)]"
+          type="button"
+        >
+          End conversation
+        </button>
+      </div>
+    </div>
   </body>
 </html>

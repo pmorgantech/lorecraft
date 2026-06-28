@@ -11,9 +11,11 @@ from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
 from lorecraft.repos.audit_repo import AuditRepo
+from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
+from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.types import JsonObject, JsonValue
 
@@ -34,6 +36,8 @@ class GameContext:
     session_id: str
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
+    quest_repo: QuestRepo | None = None
+    dialogue_repo: DialogueRepo | None = None
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)

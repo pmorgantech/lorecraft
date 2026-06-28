@@ -10,6 +10,7 @@ const state = {
   rooms: {},
   inventory: [],
   time: {},
+  activeQuests: {},
 };
 
 const elements = {
@@ -31,6 +32,12 @@ const elements = {
   commandForm: document.querySelector("#command-form"),
   commandInput: document.querySelector("#command-input"),
   commandButton: document.querySelector("#command-form button"),
+  dialogueOverlay: document.querySelector("#dialogue-overlay"),
+  dialogueNpcName: document.querySelector("#dialogue-npc-name"),
+  dialogueNodeText: document.querySelector("#dialogue-node-text"),
+  dialogueChoices: document.querySelector("#dialogue-choices"),
+  dialogueClose: document.querySelector("#dialogue-close"),
+  questList: document.querySelector("#quest-list"),
 };
 
 function websocketUrl(playerId) {
@@ -81,10 +88,73 @@ function applyUpdates(updates = {}) {
   if (updates.time) {
     state.time = updates.time;
   }
+  if ("dialogue" in updates) {
+    updates.dialogue ? showDialogue(updates.dialogue) : hideDialogue();
+  }
+  if (updates.quest_update) {
+    applyQuestUpdate(updates.quest_update);
+  }
 
   renderStatus();
   renderInventory();
   renderMap();
+}
+
+function showDialogue(data) {
+  if (!elements.dialogueOverlay) return;
+  elements.dialogueNpcName.textContent = data.npc_name || "";
+  elements.dialogueNodeText.textContent = data.node_text || "";
+  elements.dialogueChoices.replaceChildren();
+  for (const choice of data.choices || []) {
+    const btn = document.createElement("button");
+    btn.className =
+      "w-full text-left rounded-md border border-[var(--muted)] bg-[var(--bg-raised)] px-3 py-2 text-sm hover:border-[var(--amber)] transition-colors";
+    btn.textContent = `${choice.index}. ${choice.label}`;
+    btn.addEventListener("click", () => sendCommand(`choice ${choice.index}`));
+    elements.dialogueChoices.append(btn);
+  }
+  elements.dialogueOverlay.classList.remove("hidden");
+}
+
+function hideDialogue() {
+  elements.dialogueOverlay?.classList.add("hidden");
+}
+
+function applyQuestUpdate(update) {
+  if (!update) return;
+  const id = update.quest_id;
+  if (update.status === "completed") {
+    delete state.activeQuests[id];
+  } else {
+    state.activeQuests[id] = {
+      title: update.title || id,
+      stage_description: update.stage_description || "",
+    };
+  }
+  renderQuests();
+}
+
+function renderQuests() {
+  if (!elements.questList) return;
+  const quests = Object.values(state.activeQuests);
+  if (quests.length === 0) {
+    elements.questList.innerHTML =
+      '<p class="p-4 text-sm text-[var(--text-dim)]">No active quests.</p>';
+    return;
+  }
+  elements.questList.replaceChildren();
+  for (const quest of quests) {
+    const item = document.createElement("div");
+    item.className = "px-4 py-3 border-b border-[var(--muted)] last:border-0";
+    const title = document.createElement("div");
+    title.className = "text-sm font-bold text-[var(--amber)]";
+    title.textContent = quest.title;
+    const desc = document.createElement("p");
+    desc.className = "text-xs text-[var(--text-dim)] mt-1 leading-5";
+    desc.textContent = quest.stage_description;
+    item.append(title, desc);
+    elements.questList.append(item);
+  }
 }
 
 function renderStatus() {
@@ -373,6 +443,7 @@ function connect(playerId) {
   state.rooms = {};
   state.inventory = [];
   state.time = {};
+  state.activeQuests = {};
   setConnection("connecting");
   setCommandEnabled(false);
   applyUpdates({});
@@ -414,6 +485,10 @@ elements.disconnectBtn?.addEventListener("click", () => {
   state.socket?.close(1000, "user disconnect");
 });
 
+elements.dialogueClose?.addEventListener("click", () => {
+  sendCommand("bye");
+});
+
 elements.commandForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const command = elements.commandInput.value.trim();
@@ -436,5 +511,6 @@ window.lorecraftClient = {
   routeMessage,
   renderInventory,
   renderMap,
+  renderQuests,
   websocketUrl,
 };

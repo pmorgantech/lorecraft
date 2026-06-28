@@ -19,6 +19,7 @@ from lorecraft.models.changeset import (
     WorldMigration,
 )
 from lorecraft.models.combat import CombatSession
+from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import (
@@ -47,6 +48,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     SaveSlot,
     WorldClock,
     NPC,
+    DialogueTree,
     Quest,
     PlayerQuestProgress,
     CombatSession,

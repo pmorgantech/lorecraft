@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 SEED_GAME_DB="${SCRIPT_DIR}/test_dbs/lorecraft-dev-game.db"
 SEED_AUDIT_DB="${SCRIPT_DIR}/test_dbs/lorecraft-dev-audit.db"
+SEED_GAME_DB="${SCRIPT_DIR}/game.db"
 RUNTIME_GAME_DB="/tmp/lorecraft-dev-game.db"
 RUNTIME_AUDIT_DB="/tmp/lorecraft-dev-audit.db"
 

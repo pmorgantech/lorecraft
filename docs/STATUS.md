@@ -79,16 +79,19 @@ Legend:
 
 ### Phase 4 — NPCs & Quests
 
-- [ ] `npc/dialogue.py` dialogue tree walker.
-- [ ] `npc/scheduler.py` NPC movement via `HOUR_CHANGED`.
-- [ ] `services/dialogue.py`.
-- [ ] Social commands: `talk`, `say`.
-- [ ] `services/quest.py`.
-- [ ] NPC dialogue and quest flag tests.
+- [x] `npc/dialogue.py` dialogue tree walker.
+- [x] `npc/scheduler.py` NPC movement via `HOUR_CHANGED`.
+- [x] Social commands: `talk`, `say`, `choice`, `bye`.
+- [x] `services/quest.py` — `check_progression` subscribed to `ITEM_TAKEN`, `PLAYER_MOVED`, `ITEM_DROPPED`.
+- [x] World YAML extended: `npcs`, `dialogue_trees`, `quests` sections with validation.
+- [x] `repos/dialogue_repo.py` and `repos/quest_repo.py`.
+- [x] NPC dialogue and quest flag tests (14 new unit tests).
+- [x] Starter world seeded with Mira the Innkeeper, dialogue tree, and "Lights in the Square" quest.
 
 ### Phase 4.5 — Dialogue UI
 
-- [ ] Dialogue overlay.
+- [x] Dialogue overlay — appears with NPC name, node text, and clickable choice buttons.
+- [x] Quest tracker panel — live active-quest list with stage descriptions.
 
 ### Phase 5 — Persistence & Safety
 

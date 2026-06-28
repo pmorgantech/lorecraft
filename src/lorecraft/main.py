@@ -22,6 +22,8 @@ from lorecraft.admin.websocket import admin_ws_endpoint
 from lorecraft.clock.weather import register_weather_handlers
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
+from lorecraft.npc.scheduler import NpcScheduler
+from lorecraft.services.quest import QuestService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -32,12 +34,16 @@ from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.admin import AdminUser
+from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Item, Room, RoomItem, WorldMeta
+from lorecraft.models.quest import Quest
+from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem, WorldMeta
 from lorecraft.repos.audit_repo import AuditRepo
+from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
+from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
@@ -107,6 +113,11 @@ def create_app(
             time_ratio=resolved_settings.world_time_ratio,
         )
         register_weather_handlers(bus, resolved_game_engine)
+        NpcScheduler(resolved_game_engine).register(bus)
+        quest_service = QuestService()
+        bus.on(GameEvent.ITEM_TAKEN, quest_service.check_progression)
+        bus.on(GameEvent.PLAYER_MOVED, quest_service.check_progression)
+        bus.on(GameEvent.ITEM_DROPPED, quest_service.check_progression)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
@@ -337,6 +348,8 @@ def _handle_websocket_command(
             room_repo=room_repo,
             item_repo=ItemRepo(game_session),
             npc_repo=NpcRepo(game_session),
+            quest_repo=QuestRepo(game_session),
+            dialogue_repo=DialogueRepo(game_session),
             manager=state.manager,
             bus=state.bus,
             audit=AuditRepo(audit_session),
@@ -537,6 +550,107 @@ def _ensure_starter_world(game_engine: Engine) -> None:
         ).first()
         if sword_in_room is None:
             session.add(RoomItem(room_id="tavern", item_id="old_sword"))
+
+        if session.get(DialogueTree, "innkeeper_dialogue") is None:
+            session.add(
+                DialogueTree(
+                    id="innkeeper_dialogue",
+                    tree_data={
+                        "root_node": "greeting",
+                        "nodes": {
+                            "greeting": {
+                                "text": "Welcome to the Faded Lantern! What can I do for you?",
+                                "side_effects": {},
+                                "choices": [
+                                    {
+                                        "label": "Any news around town?",
+                                        "next_node": "town_news",
+                                        "required_flags": [],
+                                        "forbidden_flags": [],
+                                        "side_effects": {},
+                                    },
+                                    {
+                                        "label": "Nothing, thanks.",
+                                        "next_node": None,
+                                        "required_flags": [],
+                                        "forbidden_flags": [],
+                                        "side_effects": {"end_dialogue": True},
+                                    },
+                                ],
+                            },
+                            "town_news": {
+                                "text": (
+                                    "Strange lights have been seen in the eastern square at night. "
+                                    "Nobody dares investigate."
+                                ),
+                                "side_effects": {
+                                    "set_flags": ["heard_rumor"],
+                                    "start_quest": "investigate_lights",
+                                },
+                                "choices": [
+                                    {
+                                        "label": "I'll look into it.",
+                                        "next_node": "farewell_quest",
+                                        "required_flags": [],
+                                        "forbidden_flags": [],
+                                        "side_effects": {},
+                                    },
+                                    {
+                                        "label": "Sounds dangerous. Goodbye.",
+                                        "next_node": None,
+                                        "required_flags": [],
+                                        "forbidden_flags": [],
+                                        "side_effects": {"end_dialogue": True},
+                                    },
+                                ],
+                            },
+                            "farewell_quest": {
+                                "text": "Be careful out there. Come back safe.",
+                                "side_effects": {"end_dialogue": True},
+                                "choices": [],
+                            },
+                        },
+                    },
+                )
+            )
+
+        if session.get(Quest, "investigate_lights") is None:
+            session.add(
+                Quest(
+                    id="investigate_lights",
+                    title="Lights in the Square",
+                    description="Mira the innkeeper mentioned strange lights in the eastern square.",
+                    stages=[
+                        {
+                            "id": "visit_square",
+                            "description": "Visit the eastern square.",
+                            "conditions": [
+                                {"type": "room_visited", "room_id": "square"}
+                            ],
+                            "completion_flags": {"investigated_square": True},
+                            "rewards": {"xp": 50},
+                        }
+                    ],
+                )
+            )
+
+        if session.get(NPC, "innkeeper") is None:
+            session.add(
+                NPC(
+                    id="innkeeper",
+                    name="Mira the Innkeeper",
+                    description="A stout woman who surveys the room with a practiced eye.",
+                    current_room_id="tavern",
+                    home_room_id="tavern",
+                    dialogue_tree_id="innkeeper_dialogue",
+                    behavior="defensive",
+                    max_hp=50,
+                    current_hp=50,
+                    schedule=[],
+                    loot_table={},
+                )
+            )
+
         session.commit()
 
 
