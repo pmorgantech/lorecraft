@@ -92,12 +92,12 @@ Legend:
 
 ### Phase 5 — Persistence & Safety
 
-- [ ] `services/save.py`.
-- [ ] Save/load commands.
-- [ ] Disconnect grace period handling.
-- [ ] Reconnect handling.
-- [ ] System-controlled disconnected-player state.
-- [ ] Save/disconnect/reconnect/load preservation tests.
+- [x] `services/save.py`.
+- [x] Save/load commands.
+- [x] Disconnect grace period handling.
+- [x] Reconnect handling.
+- [x] System-controlled disconnected-player state.
+- [x] Save/disconnect/reconnect/load preservation tests.
 
 ### Phase 6 — Admin Tools
 

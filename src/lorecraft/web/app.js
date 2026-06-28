@@ -345,6 +345,13 @@ function routeMessage(message) {
     return;
   }
 
+  if (message.type === "reconnect_sync") {
+    state.sessionId = message.session_id || state.sessionId;
+    applyUpdates(message.updates || {});
+    appendMessage("system", "Session restored.");
+    return;
+  }
+
   appendMessage("system", JSON.stringify(message));
 }
 

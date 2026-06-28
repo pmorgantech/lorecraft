@@ -50,6 +50,9 @@ All notable changes to Lorecraft will be documented in this file.
 - Added a Tailwind-powered world UI layout with minimap, status, feed, inventory, and quest panels.
 - Added SVG minimap rendering for visited rooms and fog-of-war adjacent rooms.
 - Added structured WebSocket UI snapshots for room, visited-room, inventory, and time state.
+- Added save/load commands and `SaveSlotService` for player-owned state.
+- Added WebSocket disconnect grace, reconnect session reuse, reconnect sync payloads, and grace-expiry state handling.
+- Added system audit events for disconnect, reconnect, and expired grace transitions.
 
 ### Changed
 
@@ -65,10 +68,11 @@ All notable changes to Lorecraft will be documented in this file.
 - Packaged the browser client assets with the Python package.
 - Declared PyYAML as a production dependency for world authoring imports.
 - Updated the browser client router to render inventory and minimap state from structured updates.
+- Added SQLite compatibility handling for the save-slot `visited_rooms` column.
 
 ### Verified
 
-- `.venv/bin/python -m pytest` passes with 45 tests.
+- `.venv/bin/python -m pytest` passes with 49 tests.
 - `.venv/bin/ruff check src tests` passes.
 - `.venv/bin/ruff format --check src tests` passes.
 - `.venv/bin/basedpyright --warnings` passes.

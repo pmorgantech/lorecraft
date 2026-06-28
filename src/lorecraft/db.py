@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from pathlib import Path
 
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
@@ -100,9 +101,25 @@ def create_tables(
 
     _create_model_tables(game_engine, GAME_TABLE_MODELS)
     _create_model_tables(audit_engine, AUDIT_TABLE_MODELS)
+    _ensure_sqlite_compat_columns(game_engine)
 
 
 def _create_model_tables(engine: Engine, models: Sequence[type[SQLModel]]) -> None:
     for model in models:
         table = getattr(model, "__table__")
         table.create(engine, checkfirst=True)
+
+
+def _ensure_sqlite_compat_columns(engine: Engine) -> None:
+    if engine.dialect.name != "sqlite":
+        return
+
+    columns = {column["name"] for column in inspect(engine).get_columns("saveslot")}
+    if "visited_rooms" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE saveslot "
+                    "ADD COLUMN visited_rooms JSON NOT NULL DEFAULT '[]'"
+                )
+            )

@@ -45,6 +45,7 @@ class SaveSlot(SQLModel, table=True):
     saved_at: float
     room_id: str
     inventory: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     stats_snapshot: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     quest_progress: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

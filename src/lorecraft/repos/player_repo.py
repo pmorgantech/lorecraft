@@ -37,6 +37,38 @@ class PlayerRepo(Repository[Player, str]):
         )
         return self.session.exec(statement).first()
 
+    def player_session(self, session_id: str) -> PlayerSession | None:
+        return self.session.get(PlayerSession, session_id)
+
+    def reconnectable_session(self, player_id: str, now: float) -> PlayerSession | None:
+        statement = (
+            select(PlayerSession)
+            .where(
+                PlayerSession.player_id == player_id,
+                PlayerSession.status == "grace",
+                col(PlayerSession.grace_expires_at).is_not(None),
+                col(PlayerSession.grace_expires_at) > now,
+            )
+            .order_by(col(PlayerSession.disconnected_at).desc())
+        )
+        return self.session.exec(statement).first()
+
+    def expired_grace_sessions(
+        self, now: float, *, player_id: str | None = None
+    ) -> Sequence[PlayerSession]:
+        statement = select(PlayerSession).where(
+            PlayerSession.status == "grace",
+            col(PlayerSession.grace_expires_at).is_not(None),
+            col(PlayerSession.grace_expires_at) <= now,
+        )
+        if player_id is not None:
+            statement = statement.where(PlayerSession.player_id == player_id)
+        return self.session.exec(statement).all()
+
+    def add_session(self, player_session: PlayerSession) -> PlayerSession:
+        self.session.add(player_session)
+        return player_session
+
     def save_slots(self, player_id: str) -> Sequence[SaveSlot]:
         statement = (
             select(SaveSlot)
@@ -44,3 +76,14 @@ class PlayerRepo(Repository[Player, str]):
             .order_by(col(SaveSlot.saved_at).desc())
         )
         return self.session.exec(statement).all()
+
+    def save_slot(self, player_id: str, slot_name: str) -> SaveSlot | None:
+        statement = select(SaveSlot).where(
+            SaveSlot.player_id == player_id,
+            SaveSlot.slot_name == slot_name,
+        )
+        return self.session.exec(statement).first()
+
+    def add_save_slot(self, save_slot: SaveSlot) -> SaveSlot:
+        self.session.add(save_slot)
+        return save_slot

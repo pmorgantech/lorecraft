@@ -6,7 +6,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, Response
@@ -32,6 +31,7 @@ from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.services.save import SessionSafetyService
 from lorecraft.types import JsonObject, JsonValue
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -127,9 +127,11 @@ def create_app(
             return
 
         state = _get_state(websocket.app)
-        session_id = str(uuid4())
 
-        with Session(state.game_engine) as game_session:
+        with (
+            Session(state.game_engine) as game_session,
+            Session(state.audit_engine) as audit_session,
+        ):
             player_repo = PlayerRepo(game_session)
             player = player_repo.get(player_id)
             if player is None:
@@ -141,19 +143,36 @@ def create_app(
             if room is None:
                 await websocket.close(code=1011, reason="player room not found")
                 return
+            session_result = SessionSafetyService(
+                game_session=game_session,
+                audit_session=audit_session,
+                bus=state.bus,
+                grace_seconds=state.settings.disconnect_grace_seconds,
+            ).start_or_resume_session(player)
+            session_id = session_result.player_session.id
             updates = _player_ui_updates(player, room, room_repo, item_repo)
-
-        await state.manager.connect(player_id, websocket, room_id=room.id)
-        try:
-            await websocket.send_json(
-                {
-                    "type": "connected",
-                    "player_id": player_id,
-                    "room_id": room.id,
-                    "session_id": session_id,
-                    "updates": updates,
-                }
+            connected_payload: JsonObject = {
+                "type": "connected",
+                "player_id": player_id,
+                "room_id": room.id,
+                "session_id": session_id,
+                "reconnected": session_result.reconnected,
+                "updates": updates,
+            }
+            reconnect_payload = (
+                _reconnect_sync_payload(player, session_id, updates)
+                if session_result.reconnected
+                else None
             )
+            room_id = room.id
+            game_session.commit()
+            audit_session.commit()
+
+        await state.manager.connect(player_id, websocket, room_id=room_id)
+        try:
+            await websocket.send_json(connected_payload)
+            if reconnect_payload is not None:
+                await websocket.send_json(reconnect_payload)
             while True:
                 command = await websocket.receive_text()
                 response = _handle_websocket_command(
@@ -161,6 +180,28 @@ def create_app(
                 )
                 await websocket.send_json(response)
         except WebSocketDisconnect:
+            with (
+                Session(state.game_engine) as game_session,
+                Session(state.audit_engine) as audit_session,
+            ):
+                player = PlayerRepo(game_session).get(player_id)
+                if player is not None:
+                    SessionSafetyService(
+                        game_session=game_session,
+                        audit_session=audit_session,
+                        bus=state.bus,
+                        grace_seconds=state.settings.disconnect_grace_seconds,
+                    ).begin_grace_period(session_id, player)
+                    game_session.commit()
+                    audit_session.commit()
+                    await state.manager.broadcast_to_room(
+                        player.current_room_id,
+                        {
+                            "type": "room_event",
+                            "messages": [f"{player.username}'s connection flickers."],
+                        },
+                        exclude=player.id,
+                    )
             await state.manager.disconnect(player_id)
 
     return app
@@ -235,6 +276,24 @@ def _get_state(app: FastAPI) -> AppState:
 
 def _read_web_asset(asset_name: str) -> str:
     return (WEB_DIR / asset_name).read_text(encoding="utf-8")
+
+
+def _reconnect_sync_payload(
+    player: Player, session_id: str, updates: JsonObject
+) -> JsonObject:
+    return {
+        "type": "reconnect_sync",
+        "session_id": session_id,
+        "player": {
+            "id": player.id,
+            "username": player.username,
+            "current_room_id": player.current_room_id,
+        },
+        "room": updates["room"],
+        "inventory": updates["inventory"],
+        "time": updates["time"],
+        "updates": updates,
+    }
 
 
 def _player_ui_updates(

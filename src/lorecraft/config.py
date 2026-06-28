@@ -12,6 +12,7 @@ class Settings:
     audit_database_path: str = "audit.db"
     world_time_ratio: float = 60.0
     websocket_path: str = "/ws"
+    disconnect_grace_seconds: float = 60.0
 
 
 def load_settings() -> Settings:
@@ -22,4 +23,7 @@ def load_settings() -> Settings:
         audit_database_path=os.getenv("LORECRAFT_AUDIT_DB_PATH", "audit.db"),
         world_time_ratio=float(os.getenv("LORECRAFT_WORLD_TIME_RATIO", "60.0")),
         websocket_path=os.getenv("LORECRAFT_WEBSOCKET_PATH", "/ws"),
+        disconnect_grace_seconds=float(
+            os.getenv("LORECRAFT_DISCONNECT_GRACE_SECONDS", "60.0")
+        ),
     )

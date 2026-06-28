@@ -11,6 +11,7 @@ from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
+from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import Room
 
 AsgiMessage = dict[str, Any]
@@ -146,9 +147,11 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
     with Session(audit_engine) as session:
         audit_events = session.exec(select(AuditEvent)).all()
 
-    assert len(audit_events) == 1
-    assert audit_events[0].event_type == "command_blocked"
-    assert audit_events[0].severity == "WARNING"
+    blocked_events = [
+        event for event in audit_events if event.event_type == "command_blocked"
+    ]
+    assert len(blocked_events) == 1
+    assert blocked_events[0].severity == "WARNING"
 
 
 def test_websocket_movement_persists_room_change() -> None:
@@ -200,7 +203,7 @@ async def _test_websocket_movement_persists_room_change() -> None:
         "tavern",
     }
     assert player.current_room_id == "square"
-    assert audit_events[-1].event_type == "command_executed"
+    assert "command_executed" in [event.event_type for event in audit_events]
 
 
 def test_websocket_inventory_pickup_persists_item() -> None:
@@ -252,6 +255,123 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
     ]
     assert player is not None
     assert player.inventory == ["old_sword"]
+
+
+def test_websocket_save_and_load_preserve_player_state() -> None:
+    anyio.run(_test_websocket_save_and_load_preserve_player_state)
+
+
+async def _test_websocket_save_and_load_preserve_player_state() -> None:
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+    async with _lifespan(app):
+        messages = await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.receive", "text": "take old sword"},
+                {"type": "websocket.receive", "text": "save slot1"},
+                {"type": "websocket.receive", "text": "go east"},
+                {"type": "websocket.receive", "text": "load slot1"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+    payloads = [
+        json.loads(message["text"])
+        for message in messages
+        if message["type"] == "websocket.send"
+    ]
+
+    with Session(game_engine) as session:
+        player = session.get(Player, "player-1")
+
+    assert payloads[2]["messages"] == ["Saved to slot1."]
+    assert payloads[4]["messages"] == ["Loaded slot1."]
+    assert payloads[4]["updates"]["room_id"] == "tavern"
+    assert payloads[4]["updates"]["inventory"][0]["id"] == "old_sword"
+    assert player is not None
+    assert player.current_room_id == "tavern"
+    assert player.inventory == ["old_sword"]
+    assert player.visited_rooms == ["tavern"]
+
+
+def test_websocket_disconnect_enters_grace_and_reconnect_syncs() -> None:
+    anyio.run(_test_websocket_disconnect_enters_grace_and_reconnect_syncs)
+
+
+async def _test_websocket_disconnect_enters_grace_and_reconnect_syncs() -> None:
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            disconnect_grace_seconds=60.0,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+    async with _lifespan(app):
+        await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+        with Session(game_engine) as session:
+            grace_session = session.exec(select(PlayerSession)).one()
+            grace_session_id = grace_session.id
+            assert grace_session.status == "grace"
+            assert grace_session.grace_expires_at is not None
+
+        messages = await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+
+    payloads = [
+        json.loads(message["text"])
+        for message in messages
+        if message["type"] == "websocket.send"
+    ]
+    with Session(audit_engine) as session:
+        audit_events = session.exec(select(AuditEvent)).all()
+
+    assert payloads[0]["type"] == "connected"
+    assert payloads[0]["session_id"] == grace_session_id
+    assert payloads[0]["reconnected"] is True
+    assert payloads[1]["type"] == "reconnect_sync"
+    assert payloads[1]["updates"]["room_id"] == "tavern"
+    assert "player_disconnected" in [event.event_type for event in audit_events]
+    assert "player_reconnected" in [event.event_type for event in audit_events]
 
 
 @asynccontextmanager
