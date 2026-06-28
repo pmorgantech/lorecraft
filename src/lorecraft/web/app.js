@@ -38,6 +38,10 @@ const elements = {
   dialogueChoices: document.querySelector("#dialogue-choices"),
   dialogueClose: document.querySelector("#dialogue-close"),
   questList: document.querySelector("#quest-list"),
+  roomInfo: document.querySelector("#room-info"),
+  roomNameDisplay: document.querySelector("#room-name-display"),
+  roomDescDisplay: document.querySelector("#room-desc-display"),
+  exitCompass: document.querySelector("#exit-compass"),
 };
 
 function websocketUrl(playerId) {
@@ -157,11 +161,81 @@ function renderQuests() {
   }
 }
 
+function renderRoomInfo() {
+  const room = state.rooms[state.roomId];
+  if (!room) {
+    elements.roomInfo?.classList.add("hidden");
+    return;
+  }
+  elements.roomInfo?.classList.remove("hidden");
+  if (elements.roomNameDisplay)
+    elements.roomNameDisplay.textContent = room.name || room.id;
+  if (elements.roomDescDisplay)
+    elements.roomDescDisplay.textContent = room.description || "";
+  renderExitCompass(
+    (room.exits || []).filter((e) => !e.hidden).map((e) => e.direction),
+  );
+}
+
+const COMPASS_CELLS = [
+  { dir: "nw", label: "NW" },
+  { dir: "n", label: "N" },
+  { dir: "ne", label: "NE" },
+  { dir: "w", label: "W" },
+  { dir: null, label: "◆", center: true },
+  { dir: "e", label: "E" },
+  { dir: "sw", label: "SW" },
+  { dir: "s", label: "S" },
+  { dir: "se", label: "SE" },
+];
+
+function renderExitCompass(exitDirs) {
+  if (!elements.exitCompass) return;
+  const exits = new Set(exitDirs);
+  elements.exitCompass.replaceChildren();
+
+  for (const cell of COMPASS_CELLS) {
+    const el = document.createElement(cell.center ? "span" : "button");
+    el.textContent = cell.label;
+    if (cell.center) {
+      el.className = "exit-cell exit-cell-center";
+    } else if (exits.has(cell.dir)) {
+      el.className = "exit-cell exit-cell-open";
+      el.title = `Go ${cell.dir}`;
+      el.addEventListener("click", () => sendCommand(`go ${cell.dir}`));
+    } else {
+      el.className = "exit-cell exit-cell-closed";
+    }
+    elements.exitCompass.append(el);
+  }
+
+  const nonCardinal = exitDirs.filter(
+    (d) => !["n", "s", "e", "w", "ne", "nw", "se", "sw"].includes(d),
+  );
+  if (nonCardinal.length > 0 && elements.exitCompass.parentElement) {
+    let extra = elements.exitCompass.parentElement.querySelector(".exit-extra");
+    if (!extra) {
+      extra = document.createElement("div");
+      extra.className = "exit-extra mt-1 flex flex-wrap gap-1";
+      elements.exitCompass.parentElement.append(extra);
+    }
+    extra.replaceChildren();
+    for (const dir of nonCardinal) {
+      const btn = document.createElement("button");
+      btn.className = "exit-cell exit-cell-open px-1 w-auto text-[8px]";
+      btn.textContent = dir.toUpperCase();
+      btn.title = `Go ${dir}`;
+      btn.addEventListener("click", () => sendCommand(`go ${dir}`));
+      extra.append(btn);
+    }
+  }
+}
+
 function renderStatus() {
   const room = state.rooms[state.roomId];
   elements.roomStatus.textContent = room?.name || state.roomId || "unknown";
   elements.sessionStatus.textContent = state.sessionId || "none";
-  elements.roomSummary.textContent = room?.description || "not connected";
+  elements.roomSummary.textContent = room?.name || "not connected";
   elements.mapRoomLabel.textContent = room?.id || "unknown";
 
   if (
@@ -179,26 +253,52 @@ function renderStatus() {
     .filter(Boolean)
     .join(" / ");
   elements.weatherStatus.textContent = weather || "unknown";
+  renderRoomInfo();
+}
+
+function groupInventory(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const entry = groups.get(item.id);
+    if (entry) {
+      entry.count++;
+    } else {
+      groups.set(item.id, { ...item, count: 1 });
+    }
+  }
+  return [...groups.values()];
 }
 
 function renderInventory() {
   elements.inventoryList.replaceChildren();
   elements.inventoryCount.textContent = String(state.inventory.length);
 
-  for (const item of state.inventory) {
+  const groups = groupInventory(state.inventory);
+  for (const item of groups) {
     const node = document.createElement("li");
     node.className =
-      "rounded-md border border-[var(--muted)] bg-[var(--bg-raised)] p-3";
+      "flex items-center gap-2 rounded-md border border-[var(--muted)] bg-[var(--bg-raised)] px-3 py-2 cursor-pointer hover:border-[var(--phosphor)] transition-colors";
 
-    const name = document.createElement("div");
-    name.className = "text-sm font-bold text-[var(--amber)]";
+    const name = document.createElement("span");
+    name.className = "text-sm text-[var(--amber)] flex-1 min-w-0 truncate";
     name.textContent = item.name || item.id;
 
-    const description = document.createElement("p");
-    description.className = "mt-1 text-xs leading-5 text-[var(--text-dim)]";
-    description.textContent = item.description || "";
+    node.append(name);
 
-    node.append(name, description);
+    if (item.count > 1) {
+      const badge = document.createElement("span");
+      badge.className = "text-xs text-[var(--text-dim)] flex-shrink-0";
+      badge.textContent = `×${item.count}`;
+      node.append(badge);
+    }
+
+    node.addEventListener("click", () => {
+      appendMessage(
+        "response",
+        `${item.name || item.id}: ${item.description || "No description."}`,
+      );
+    });
+
     elements.inventoryList.append(node);
   }
 }
@@ -503,6 +603,7 @@ elements.commandForm.addEventListener("submit", (event) => {
 renderStatus();
 renderInventory();
 renderMap();
+renderRoomInfo();
 appendMessage("system", "Enter a player id and connect.");
 
 window.lorecraftClient = {

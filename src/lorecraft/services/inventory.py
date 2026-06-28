@@ -43,32 +43,47 @@ class InventoryService:
             self.look(ctx)
             return
 
-        inventory_item = ctx.item_repo.find_player_item(
+        inv_matches = ctx.item_repo.search_player_items(
             ctx.player.inventory, name_or_id
         )
-        if inventory_item is not None:
-            ctx.say(inventory_item.description)
+        room_matches = [
+            item for _, item in ctx.item_repo.search_in_room(ctx.room.id, name_or_id)
+        ]
+
+        seen: set[str] = set()
+        all_matches: list[Item] = []
+        for item in inv_matches + room_matches:
+            if item.id not in seen:
+                seen.add(item.id)
+                all_matches.append(item)
+
+        if not all_matches:
+            ctx.say("You don't see that here.")
             return
 
-        room_match = ctx.item_repo.find_in_room(ctx.room.id, name_or_id)
-        if room_match is not None:
-            _, item = room_match
-            ctx.say(item.description)
+        if len(all_matches) > 1:
+            _prompt_disambiguation(ctx, "examine", name_or_id, all_matches)
             return
 
-        ctx.say("You don't see that here.")
+        ctx.say(all_matches[0].description)
 
     def take_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
             ctx.say("Take what?")
             return
 
-        match = ctx.item_repo.find_in_room(ctx.room.id, name_or_id)
-        if match is None:
+        matches = ctx.item_repo.search_in_room(ctx.room.id, name_or_id)
+        if not matches:
             ctx.say("You don't see that here.")
             return
 
-        room_item, item = match
+        if len(matches) > 1:
+            _prompt_disambiguation(
+                ctx, "take", name_or_id, [item for _, item in matches]
+            )
+            return
+
+        room_item, item = matches[0]
         if not item.takeable:
             ctx.say("You can't take that.")
             return
@@ -91,11 +106,16 @@ class InventoryService:
             ctx.say("Drop what?")
             return
 
-        item = ctx.item_repo.find_player_item(ctx.player.inventory, name_or_id)
-        if item is None:
+        matches = ctx.item_repo.search_player_items(ctx.player.inventory, name_or_id)
+        if not matches:
             ctx.say("You don't have that.")
             return
 
+        if len(matches) > 1:
+            _prompt_disambiguation(ctx, "drop", name_or_id, matches)
+            return
+
+        item = matches[0]
         inventory = list(ctx.player.inventory)
         inventory.remove(item.id)
         ctx.player.inventory = inventory
@@ -118,3 +138,14 @@ class InventoryService:
             if item is not None:
                 items.append(item)
         return items
+
+
+def _prompt_disambiguation(
+    ctx: GameContext, verb: str, noun: str, items: list[Item]
+) -> None:
+    options = ", ".join(f"({i + 1}) {item.name}" for i, item in enumerate(items))
+    ctx.say(f"Which do you mean? {options}")
+    ctx.push_update(
+        "disambig_pending",
+        {"verb": verb, "noun": noun, "choices": [item.name for item in items]},
+    )

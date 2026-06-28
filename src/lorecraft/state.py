@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy.engine import Engine
 
@@ -14,6 +14,7 @@ from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
+from lorecraft.types import JsonObject
 
 
 @dataclass
@@ -28,3 +29,4 @@ class AppState:
     command_engine: CommandEngine
     clock_runner: WorldClockRunner
     admin_broadcaster: AdminBroadcaster
+    pending_disambig: dict[str, JsonObject] = field(default_factory=dict)

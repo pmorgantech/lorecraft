@@ -18,7 +18,7 @@
     class="min-h-screen bg-[var(--bg-void)] text-[var(--text-body)] antialiased"
   >
     <main
-      class="grid min-h-screen grid-cols-1 gap-3 p-3 lg:grid-cols-[240px_minmax(0,1fr)_240px] lg:p-4"
+      class="grid min-h-screen grid-cols-1 gap-3 p-3 lg:grid-cols-[240px_minmax(0,1fr)_240px] lg:h-screen lg:overflow-hidden lg:p-4"
       data-app
     >
       <aside class="grid min-h-0 gap-3 lg:grid-rows-[minmax(13rem,15rem)_1fr]">
@@ -127,7 +127,7 @@
       </aside>
 
       <section
-        class="grid min-h-[32rem] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)] lg:min-h-0"
+        class="grid min-h-[32rem] min-w-0 grid-rows-[auto_auto_minmax(0,1fr)_auto] rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)] lg:min-h-0"
         aria-labelledby="feed-title"
       >
         <div
@@ -139,6 +139,15 @@
           <span id="room-summary" class="text-xs uppercase text-[var(--text-dim)]">
             not connected
           </span>
+        </div>
+        <div id="room-info" class="hidden border-b border-[var(--muted)] p-3">
+          <div class="flex items-start gap-3">
+            <div class="min-w-0 flex-1">
+              <div id="room-name-display" class="font-display text-base text-[var(--amber)]"></div>
+              <p id="room-desc-display" class="mt-1 text-xs leading-4 text-[var(--text-dim)] line-clamp-2"></p>
+            </div>
+            <div id="exit-compass" class="exit-compass flex-shrink-0"></div>
+          </div>
         </div>
         <ol
           id="message-feed"
@@ -171,11 +180,11 @@
 
       <aside class="grid min-h-0 gap-3 lg:grid-rows-[minmax(0,1fr)_14rem]">
         <section
-          class="min-w-0 rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)]"
+          class="min-w-0 min-h-0 flex flex-col rounded-lg border border-[var(--muted)] bg-[var(--bg-panel)]"
           aria-labelledby="inventory-title"
         >
           <div
-            class="flex items-baseline justify-between gap-3 border-b border-[var(--muted)] px-4 py-3"
+            class="flex items-baseline justify-between gap-3 border-b border-[var(--muted)] px-4 py-3 flex-shrink-0"
           >
             <h2
               id="inventory-title"
@@ -190,7 +199,7 @@
               0
             </span>
           </div>
-          <ul id="inventory-list" class="inventory-list grid gap-2 p-3"></ul>
+          <ul id="inventory-list" class="inventory-list flex-1 overflow-y-auto grid gap-1 p-3 content-start"></ul>
         </section>
 
         <section

@@ -312,6 +312,18 @@ def create_app(
 def _handle_websocket_command(
     state: AppState, player_id: str, session_id: str, command: str
 ) -> JsonObject:
+    # Resolve a bare number as a disambiguation choice.
+    stripped = command.strip()
+    if stripped.isdigit():
+        pending = state.pending_disambig.pop(player_id, None)
+        if pending is not None:
+            choices: list[str] = pending.get("choices", [])  # type: ignore[assignment]
+            idx = int(stripped) - 1
+            if 0 <= idx < len(choices):
+                verb: str = pending.get("verb", "examine")  # type: ignore[assignment]
+                command = f"{verb} {choices[idx]}"
+            # If out of range, fall through to normal (unknown) command handling.
+
     with (
         Session(state.game_engine) as game_session,
         Session(state.audit_engine) as audit_session,
@@ -364,6 +376,12 @@ def _handle_websocket_command(
         parsed = state.command_engine.handle_command(command, ctx)
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
+
+        # Capture and store any pending disambiguation; don't send to client.
+        disambig = ctx.updates.pop("disambig_pending", None)
+        if disambig is not None and isinstance(disambig, dict):
+            state.pending_disambig[player_id] = disambig
+
         updates = {
             **ctx.updates,
             **_player_ui_updates(player, ctx.room, room_repo, ctx.item_repo),
