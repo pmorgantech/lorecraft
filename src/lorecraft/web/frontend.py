@@ -298,12 +298,12 @@ async def game_screen(
             current_room = room_repo.get(player.current_room_id)
 
         inv = _inventory_snapshot(player, item_repo)
-        exits = (
-            room_repo.get_exits_with_names(
-                player.current_room_id, visited=player.visited_rooms
-            )
-            if current_room
-            else []
+        room_panel = _room_panel_context(
+            current_room,
+            room_repo,
+            item_repo,
+            player,
+            npc_repo=NpcRepo(game_db),
         )
         map_data = _build_map_data(room_repo, player, current_room)
 
@@ -345,8 +345,8 @@ async def game_screen(
             "current_room": current_room,
             "inventory": inv,
             "feed_messages": feed_messages,
-            "exits": exits,
             "players_here": players_here,
+            **room_panel,
             **map_data,
         }
     return templates.TemplateResponse(request, "game.html", context)
@@ -379,7 +379,7 @@ async def handle_command(
         DBSession(audit_engine) as audit_db,
     ):
         pre_room_id = player.current_room_id
-        pre_inv = set(player.inventory)
+        pre_inv = list(player.inventory)
 
         player_repo = PlayerRepo(game_db)
         room_repo = RoomRepo(game_db)
@@ -452,17 +452,17 @@ async def handle_command(
         # Determine deltas
         after_player = player_repo.get(player.id) or player
         after_room = room_repo.get(after_player.current_room_id) or ctx.room
-        after_inv = set(after_player.inventory)
+        after_inv = list(after_player.inventory)
 
         room_changed = after_player.current_room_id != pre_room_id
         inv_changed = after_inv != pre_inv
 
-        exits = (
-            room_repo.get_exits_with_names(
-                after_player.current_room_id, visited=after_player.visited_rooms
-            )
-            if after_room
-            else []
+        room_panel = _room_panel_context(
+            after_room,
+            room_repo,
+            item_repo,
+            after_player,
+            npc_repo=NpcRepo(game_db),
         )
         map_data = _build_map_data(room_repo, after_player, after_room)
 
@@ -505,7 +505,7 @@ async def handle_command(
             inventory_changed=inv_changed,
             new_inventory=new_inv,
             minimap_changed=room_changed or True,  # minimap often wants refresh on move
-            exits=exits,
+            exits=room_panel["exits"],
             player_id=after_player.id,
         )
 
@@ -521,8 +521,14 @@ async def handle_command(
         if result.room_changed and result.new_room:
             room_html = templates.get_template("partials/room_description.html").render(
                 current_room=result.new_room,
-                exits=result.exits,
                 current_player=after_player,
+                **_room_panel_context(
+                    result.new_room,
+                    room_repo,
+                    item_repo,
+                    after_player,
+                    npc_repo=NpcRepo(game_db),
+                ),
             )
             response_html += (
                 f'<div id="room-description" hx-swap-oob="true">{room_html}</div>'
@@ -538,8 +544,8 @@ async def handle_command(
         if result.minimap_changed:
             map_html = templates.get_template("partials/minimap.html").render(
                 current_room=after_room,
-                exits=exits,
                 current_player=after_player,
+                **room_panel,
                 **map_data,
             )
             response_html += f'<div id="minimap" hx-swap-oob="true">{map_html}</div>'
@@ -645,12 +651,12 @@ async def partial_room(request: Request, player: Player = Depends(get_current_pl
         player = PlayerRepo(db).get(player.id) or player
         room_repo = RoomRepo(db)
         room = room_repo.get(player.current_room_id) if player.current_room_id else None
-        exits = (
-            room_repo.get_exits_with_names(
-                player.current_room_id, visited=player.visited_rooms
-            )
-            if room
-            else []
+        room_panel = _room_panel_context(
+            room,
+            room_repo,
+            ItemRepo(db),
+            player,
+            npc_repo=NpcRepo(db),
         )
     return templates.TemplateResponse(
         request,
@@ -658,8 +664,8 @@ async def partial_room(request: Request, player: Player = Depends(get_current_pl
         {
             "request": request,
             "current_room": room,
-            "exits": exits,
             "current_player": player,
+            **room_panel,
         },
     )
 
@@ -688,12 +694,12 @@ async def partial_minimap(
         player = PlayerRepo(db).get(player.id) or player
         room_repo = RoomRepo(db)
         room = room_repo.get(player.current_room_id) if player.current_room_id else None
-        exits = (
-            room_repo.get_exits_with_names(
-                player.current_room_id, visited=player.visited_rooms
-            )
-            if room
-            else []
+        room_panel = _room_panel_context(
+            room,
+            room_repo,
+            ItemRepo(db),
+            player,
+            npc_repo=NpcRepo(db),
         )
         map_data = _build_map_data(room_repo, player, room)
     return templates.TemplateResponse(
@@ -702,8 +708,8 @@ async def partial_minimap(
         {
             "request": request,
             "current_room": room,
-            "exits": exits,
             "current_player": player,
+            **room_panel,
             **map_data,
         },
     )
@@ -794,9 +800,34 @@ def _build_map_data(room_repo, player: Player, current_room: Room | None) -> dic
 # =============================================================================
 
 
+def _room_panel_context(
+    room: Room | None,
+    room_repo: RoomRepo,
+    item_repo: ItemRepo,
+    player: Player,
+    *,
+    npc_repo: NpcRepo,
+) -> dict[str, Any]:
+    from lorecraft.services.inventory import room_items_visible_labels
+
+    if room is None:
+        return {"exits": [], "items_visible": [], "npcs": []}
+
+    return {
+        "exits": room_repo.get_exits_with_names(
+            room.id,
+            visited=player.visited_rooms,
+        ),
+        "items_visible": room_items_visible_labels(room.id, item_repo.items_in_room),
+        "npcs": [npc.name for npc in npc_repo.in_room(room.id)],
+    }
+
+
 def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, Any]]:
-    items: list[dict] = []
-    for item_id in player.inventory or []:
+    from lorecraft.services.inventory import grouped_inventory_ids
+
+    items: list[dict[str, Any]] = []
+    for item_id, quantity in grouped_inventory_ids(player.inventory or []):
         item = item_repo.get(item_id)
         if not item:
             continue
@@ -805,7 +836,7 @@ def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, A
                 "id": item.id,
                 "name": item.name,
                 "description_short": (item.description or "")[:60],
-                "quantity": 1,
+                "quantity": quantity,
                 "usable": False,  # extend later
                 "droppable": True,
             }

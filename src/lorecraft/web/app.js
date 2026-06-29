@@ -259,11 +259,12 @@ function renderStatus() {
 function groupInventory(items) {
   const groups = new Map();
   for (const item of items) {
+    const quantity = item.quantity ?? 1;
     const entry = groups.get(item.id);
     if (entry) {
-      entry.count++;
+      entry.count += quantity;
     } else {
-      groups.set(item.id, { ...item, count: 1 });
+      groups.set(item.id, { ...item, count: quantity });
     }
   }
   return [...groups.values()];
@@ -271,9 +272,10 @@ function groupInventory(items) {
 
 function renderInventory() {
   elements.inventoryList.replaceChildren();
-  elements.inventoryCount.textContent = String(state.inventory.length);
-
   const groups = groupInventory(state.inventory);
+  elements.inventoryCount.textContent = String(
+    groups.reduce((total, item) => total + item.count, 0),
+  );
   for (const item of groups) {
     const node = document.createElement("li");
     node.className =
@@ -281,16 +283,10 @@ function renderInventory() {
 
     const name = document.createElement("span");
     name.className = "text-sm text-[var(--amber)] flex-1 min-w-0 truncate";
-    name.textContent = item.name || item.id;
+    const label = item.name || item.id;
+    name.textContent = item.count > 1 ? `[${item.count}] ${label}` : label;
 
     node.append(name);
-
-    if (item.count > 1) {
-      const badge = document.createElement("span");
-      badge.className = "text-xs text-[var(--text-dim)] flex-shrink-0";
-      badge.textContent = `×${item.count}`;
-      node.append(badge);
-    }
 
     node.addEventListener("click", () => {
       appendMessage(

@@ -30,15 +30,13 @@ class ItemRepo(Repository[Item, str]):
         """Return all room items that match query. Exact matches are returned first;
         if none, falls back to word-subset fuzzy matches."""
         q = _normalize_item_name(query)
-        q_words = frozenset(q.split())
+        q_words = _query_words(query)
         exact: list[tuple[RoomItem, Item]] = []
         fuzzy: list[tuple[RoomItem, Item]] = []
         for room_item, item in self.items_in_room(room_id):
-            n = _normalize_item_name(item.name)
-            i = _normalize_item_name(item.id)
-            if q in {n, i}:
+            if _item_matches_query(q, q_words, item):
                 exact.append((room_item, item))
-            elif _words_match(q_words, frozenset(n.split())):
+            elif _item_matches_words(q_words, item):
                 fuzzy.append((room_item, item))
         return exact if exact else fuzzy
 
@@ -46,7 +44,7 @@ class ItemRepo(Repository[Item, str]):
         """Return all player inventory items matching query, deduplicated by item id.
         Exact matches are returned first; if none, falls back to word-subset fuzzy matches."""
         q = _normalize_item_name(query)
-        q_words = frozenset(q.split())
+        q_words = _query_words(query)
         exact: list[Item] = []
         fuzzy: list[Item] = []
         seen: set[str] = set()
@@ -57,13 +55,37 @@ class ItemRepo(Repository[Item, str]):
             if item is None:
                 continue
             seen.add(item_id)
-            n = _normalize_item_name(item.name)
-            i = _normalize_item_name(item.id)
-            if q in {n, i}:
+            if _item_matches_query(q, q_words, item):
                 exact.append(item)
-            elif _words_match(q_words, frozenset(n.split())):
+            elif _item_matches_words(q_words, item):
                 fuzzy.append(item)
         return exact if exact else fuzzy
+
+    def inventory_slots_matching(
+        self, item_ids: Sequence[str], query: str
+    ) -> list[tuple[int, Item]]:
+        """Return inventory indices and items for every carried slot matching query."""
+        q = _normalize_item_name(query)
+        q_words = _query_words(query)
+        slots: list[tuple[int, Item]] = []
+        for index, item_id in enumerate(item_ids):
+            item = self.get(item_id)
+            if item is None:
+                continue
+            if _item_matches_query(q, q_words, item) or _item_matches_words(
+                q_words, item
+            ):
+                slots.append((index, item))
+        return slots
+
+    def expanded_room_instances(
+        self, room_id: str, query: str
+    ) -> list[tuple[RoomItem, Item]]:
+        """Expand room stacks into one entry per carried instance for indexed take."""
+        instances: list[tuple[RoomItem, Item]] = []
+        for room_item, item in self.search_in_room(room_id, query):
+            instances.extend((room_item, item) for _ in range(room_item.quantity))
+        return instances
 
     def find_in_room(
         self, room_id: str, name_or_id: str
@@ -103,6 +125,32 @@ class ItemRepo(Repository[Item, str]):
 
 def _normalize_item_name(value: str) -> str:
     return " ".join(value.casefold().split())
+
+
+def _singularize_word(word: str) -> str:
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _query_words(query: str) -> frozenset[str]:
+    words = _normalize_item_name(query).split()
+    return frozenset(_singularize_word(word) for word in words)
+
+
+def _item_name_words(item: Item) -> frozenset[str]:
+    words = _normalize_item_name(item.name).split()
+    return frozenset(_singularize_word(word) for word in words)
+
+
+def _item_matches_query(q: str, q_words: frozenset[str], item: Item) -> bool:
+    n = _normalize_item_name(item.name)
+    i = _normalize_item_name(item.id)
+    return q in {n, i}
+
+
+def _item_matches_words(q_words: frozenset[str], item: Item) -> bool:
+    return _words_match(q_words, _item_name_words(item))
 
 
 def _words_match(query_words: frozenset[str], name_words: frozenset[str]) -> bool:

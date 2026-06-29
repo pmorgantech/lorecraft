@@ -9,10 +9,7 @@
             {% for item in inventory %}
                 <li class="flex items-start justify-between gap-2 group">
                     <div class="flex-1">
-                        <span class="font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors">{{ item.name }}</span>
-                        {% if item.quantity and item.quantity > 1 %}
-                            <span class="text-emerald-600 font-mono text-[10px]">×{{ item.quantity }}</span>
-                        {% endif %}
+                        <span class="font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors">{% if item.quantity and item.quantity > 1 %}[{{ item.quantity }}] {% endif %}{{ item.name }}</span>
                         {% if item.description_short %}
                             <div class="text-[10px] text-text-muted leading-tight">{{ item.description_short }}</div>
                         {% endif %}

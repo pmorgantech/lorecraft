@@ -495,8 +495,10 @@ def _room_snapshot(
 
 
 def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[JsonValue]:
+    from lorecraft.services.inventory import grouped_inventory_ids
+
     items: list[JsonValue] = []
-    for item_id in player.inventory:
+    for item_id, quantity in grouped_inventory_ids(player.inventory):
         item = item_repo.get(item_id)
         if item is None:
             continue
@@ -505,6 +507,7 @@ def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[JsonValue]:
                 "id": item.id,
                 "name": item.name,
                 "description": item.description,
+                "quantity": quantity,
             }
         )
     return items

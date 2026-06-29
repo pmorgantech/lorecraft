@@ -4,6 +4,22 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `take`/`drop` item matching now singularizes item names as well as player input, so plural queries like `take herbs` match items named `Bundle of Dried Herbs`.
+
+### Added
+
+- `take` and `drop` now accept quantity, all, and indexed selectors: `take 2 coin`, `take 2 coins`, `take all coin`, `drop all coin`, and `take 2.coin` (second matching instance).
+- Room `look` text and web room panel now group duplicate visible items with `[quantity]` prefixes, matching inventory display.
+
+## [0.2.0] - 2026.06.29
+
+### Fixed
+
+- Inventory command text and all inventory panels now group duplicate carried items with `[quantity]` prefixes (e.g. `[2] Worn Copper Coin`).
+- HTMX inventory panel now refreshes when picking up another copy of an already-carried item (fixed set-based change detection).
+
 ### Added (Web UI refresh)
 
 - Replaced the primary player web UI with the HTMX + Alpine.js + Jinja2 server-rendered template (lorecraft_frontend_starter).

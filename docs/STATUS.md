@@ -84,6 +84,9 @@ Legend:
 - [x] Minimap with fog of war.
 - [x] Basic layout refinement.
 - [x] Browser can show room changes, inventory updates, and visited-room map state.
+- [x] Inventory command text and panels group duplicate carried items with `[quantity]` prefixes.
+- [x] `take`/`drop` quantity, all, and indexed selectors (`2 coin`, `all coin`, `2.coin`).
+- [x] Room description groups duplicate visible items with `[quantity]` prefixes.
 
 ### Phase 4 — NPCs & Quests
 

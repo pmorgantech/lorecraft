@@ -289,6 +289,7 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
             "id": "old_sword",
             "name": "Old Sword",
             "description": "Nicked but serviceable.",
+            "quantity": 1,
         }
     ]
     assert player is not None

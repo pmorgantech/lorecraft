@@ -95,6 +95,45 @@ def test_repos_round_trip_core_game_models() -> None:
         assert [npc.id for npc in npcs.in_room("tavern")] == ["keeper"]
 
 
+def test_item_repo_matches_plural_queries_against_plural_item_names() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        items = ItemRepo(session)
+        items.add(
+            Item(
+                id="dried_herbs",
+                name="Bundle of Dried Herbs",
+                description="Fragrant.",
+                takeable=True,
+            )
+        )
+        items.add(
+            Item(
+                id="copper_coin",
+                name="Worn Copper Coin",
+                description="Tarnished.",
+                takeable=True,
+            )
+        )
+        items.add_to_room(
+            RoomItem(room_id="market", item_id="dried_herbs", quantity=3),
+        )
+        items.add_to_room(
+            RoomItem(room_id="market", item_id="copper_coin", quantity=2),
+        )
+        session.commit()
+
+        herb_matches = items.search_in_room("market", "herbs")
+        coin_matches = items.search_in_room("market", "coins")
+
+    assert len(herb_matches) == 1
+    assert herb_matches[0][1].id == "dried_herbs"
+    assert len(coin_matches) == 1
+    assert coin_matches[0][1].id == "copper_coin"
+
+
 def test_audit_repo_uses_separate_audit_session() -> None:
     audit_engine = create_engine("sqlite://")
     create_tables(game_engine=create_engine("sqlite://"), audit_engine=audit_engine)

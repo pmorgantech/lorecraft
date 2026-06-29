@@ -16,11 +16,11 @@
             {{ current_room.description | safe }}
         </div>
 
-        {% if current_room.exits %}
+        {% if exits %}
         <div class="mt-3 pt-3 border-t border-zinc-800">
             <div class="text-[10px] uppercase tracking-[1px] text-text-muted mb-1">Exits</div>
             <div class="flex flex-wrap gap-1.5">
-                {% for exit in current_room.exits %}
+                {% for exit in exits %}
                     <button
                         hx-post="/command"
                         hx-vals='{"command": "go {{ exit.direction }}"}'
@@ -34,13 +34,13 @@
         </div>
         {% endif %}
 
-        {% if current_room.npcs or current_room.items_visible %}
+        {% if npcs or items_visible %}
         <div class="mt-3 text-xs text-text-muted">
-            {% if current_room.npcs %}
-                <div>Present: <span class="text-amber-400">{{ current_room.npcs | join(', ') }}</span></div>
+            {% if npcs %}
+                <div>Present: <span class="text-amber-400">{{ npcs | join(', ') }}</span></div>
             {% endif %}
-            {% if current_room.items_visible %}
-                <div class="mt-0.5">You notice: <span class="text-sky-400">{{ current_room.items_visible | join(', ') }}</span></div>
+            {% if items_visible %}
+                <div class="mt-0.5">You notice: <span class="text-sky-400">{{ items_visible | join(', ') }}</span></div>
             {% endif %}
         </div>
         {% endif %}

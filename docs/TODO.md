@@ -7,10 +7,11 @@ Bugs:
 
 ToDos:
 
-- [ ] exits mini-map
-- [ ] take N items, drop N items
+- [x] exits mini-map
+- [x] take N items, drop N items
 - [ ] timer / scheduler system
 - [ ] use command, more commands!
+- [ ] do we have entities?
 
 Wishlist:
 
