@@ -33,3 +33,22 @@ class AuditRepo(Repository[AuditEvent, int]):
             .order_by(col(AuditEvent.real_time))
         )
         return self.session.exec(statement).all()
+
+    def recent_for_room(
+        self, room_id: str, *, limit: int = 50, since_id: int | None = None
+    ) -> Sequence[AuditEvent]:
+        """Recent audit events for a room (good source for game feed)."""
+        stmt = select(AuditEvent).where(AuditEvent.room_id == room_id)
+        if since_id is not None:
+            stmt = stmt.where(col(AuditEvent.id) > since_id)
+        stmt = stmt.order_by(col(AuditEvent.real_time)).limit(limit)
+        return self.session.exec(stmt).all()
+
+    def recent_for_actor(
+        self, actor_id: str, *, limit: int = 50, since_id: int | None = None
+    ) -> Sequence[AuditEvent]:
+        stmt = select(AuditEvent).where(AuditEvent.actor_id == actor_id)
+        if since_id is not None:
+            stmt = stmt.where(col(AuditEvent.id) > since_id)
+        stmt = stmt.order_by(col(AuditEvent.real_time)).limit(limit)
+        return self.session.exec(stmt).all()

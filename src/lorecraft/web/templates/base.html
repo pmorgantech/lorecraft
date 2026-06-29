@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Lorecraft{% endblock %}</title>
+
+    <!-- Tailwind CSS Play CDN (zero build step) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
+
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    <script>
+        // Tailwind config - fantasy / terminal inspired dark theme
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent', '#10b981'); // emerald
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'mono': ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
+                            'serif': ['Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif']
+                        },
+                        colors: {
+                            'panel': '#18181b',      // zinc-900
+                            'panel-light': '#27272a', // zinc-800
+                            'accent': '#10b981',     // emerald-500
+                            'accent-dark': '#059669',
+                            'text': '#e4e4e7',       // zinc-200
+                            'text-muted': '#a1a1aa', // zinc-400
+                            'feed-bg': '#09090b',    // zinc-950
+                            'border': '#3f3f46'      // zinc-700
+                        }
+                    }
+                }
+            };
+        }
+
+        // HTMX config
+        function initializeHTMX() {
+            // Show indicator on htmx requests
+            document.body.addEventListener('htmx:beforeRequest', function(evt) {
+                const indicator = evt.target.querySelector('.htmx-indicator') ||
+                                  document.getElementById('global-indicator');
+                if (indicator) indicator.classList.remove('hidden');
+            });
+
+            document.body.addEventListener('htmx:afterRequest', function(evt) {
+                const indicator = document.getElementById('global-indicator');
+                if (indicator) indicator.classList.add('hidden');
+            });
+
+            // Error handling - show in feed or toast
+            document.body.addEventListener('htmx:responseError', function(evt) {
+                console.error('HTMX Error:', evt.detail);
+                const feed = document.getElementById('feed');
+                if (feed) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'text-red-400 text-xs p-2 border-l-2 border-red-500 bg-red-950/30';
+                    errorDiv.textContent = `Error: ${evt.detail.xhr.status} - ${evt.detail.xhr.statusText}`;
+                    feed.appendChild(errorDiv);
+                    feed.scrollTop = feed.scrollHeight;
+                }
+            });
+
+            // Allow HTMX to process dynamically added content (for WS pushes)
+            window.htmxProcess = function(element) {
+                if (window.htmx) htmx.process(element);
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTailwind();
+            initializeHTMX();
+        });
+    </script>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-zinc-950 text-zinc-200 font-mono">
+    <!-- Top nav / status bar -->
+    <nav class="border-b border-zinc-800 bg-zinc-900 px-4 py-2 flex items-center justify-between text-sm">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-500 font-bold text-lg tracking-wider">LORECRAFT</span>
+                <span class="text-xs px-1.5 py-0.5 rounded bg-emerald-900 text-emerald-400">ALPHA</span>
+            </div>
+            <div class="hidden md:flex items-center gap-3 text-xs text-zinc-500">
+                <span>World: <span class="text-zinc-400">Eldoria</span></span>
+                <span>|</span>
+                <span>Time: <span id="world-clock" class="text-emerald-400 font-mono">08:14</span></span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-xs">
+            <div class="flex items-center gap-2">
+                <span class="text-zinc-500">Player:</span>
+                <span class="font-semibold text-emerald-400">{{ current_player.name if current_player else 'Guest' }}</span>
+            </div>
+            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Connected"></div>
+
+            <!-- Global loading indicator -->
+            <div id="global-indicator" class="hidden flex items-center gap-1 text-xs text-emerald-400">
+                <svg class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span>syncing...</span>
+            </div>
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <!-- Minimal global scripts -->
+    <script src="/static/js/app.js"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

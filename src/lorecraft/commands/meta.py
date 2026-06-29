@@ -19,7 +19,7 @@ def register_meta_commands(
         del noun
         game_ctx = cast(GameContext, ctx)
         game_ctx.say(
-            "Available commands: help, quit, save [slot], load [slot], look, "
+            "Available commands: help, quit (returns to lobby), save [slot], load [slot], look, "
             "examine <item>, take <item>, drop <item>, inventory, go <direction>, "
             "north, south, east, west."
         )

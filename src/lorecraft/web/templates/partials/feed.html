@@ -1,0 +1,21 @@
+{#
+  Feed Container Partial (full wrapper)
+  Use for:
+  - Initial server render of game.html (include inside #feed or as full replace)
+  - Rare full refreshes (hx-swap="innerHTML")
+
+  For append-only incremental updates, use partials/feed_items.html instead
+  (it renders only bare .msg divs so you can hx-swap="beforeend" cleanly).
+#}
+
+<div id="feed" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg font-serif scroll-smooth"
+     data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
+    {% if feed_messages %}
+        {% include "partials/feed_items.html" %}
+    {% else %}
+        <div class="text-center py-8 text-text-muted text-xs">
+            The story begins here...<br>
+            <span class="text-emerald-600">Type a command to take your first action.</span>
+        </div>
+    {% endif %}
+</div>

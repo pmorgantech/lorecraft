@@ -1,0 +1,103 @@
+/* Lorecraft - Additional custom styles (beyond Tailwind) */
+
+:root {
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+/* Smooth scrolling for feed */
+#feed {
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #3f3f46 #09090b;
+}
+
+#feed::-webkit-scrollbar {
+    width: 6px;
+}
+#feed::-webkit-scrollbar-thumb {
+    background-color: #3f3f46;
+    border-radius: 3px;
+}
+#feed::-webkit-scrollbar-thumb:hover {
+    background-color: #52525b;
+}
+
+/* Command input focus ring (Tailwind doesn't cover all) */
+#command-input:focus {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    border-color: #059669;
+}
+
+/* Message styling refinements */
+#feed .msg {
+    transition: background-color 0.2s ease;
+}
+#feed .msg:hover {
+    background-color: rgba(63, 63, 70, 0.15);
+}
+
+/* Panel headers */
+.panel-header {
+    letter-spacing: 0.5px;
+}
+
+/* Keyboard hints */
+kbd {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    color: #10b981;
+}
+
+/* Future dialogue / overlay styles */
+.dialogue-overlay {
+    animation: fadeInScale 0.2s ease-out forwards;
+}
+
+@keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive tweaks */
+@media (max-width: 1024px) {
+    .lg\\:col-span-3, .lg\\:col-span-6 {
+        /* On smaller screens the grid collapses nicely via Tailwind */
+    }
+}
+
+/* HTMX request indicators (can be per-element too) */
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    display: inline-block !important;
+}
+
+/* Subtle border flash when new content arrives (used in game.html) */
+#feed.flash-update {
+    animation: flashBorder 0.6s ease-out;
+}
+
+@keyframes flashBorder {
+    0%, 100% { border-color: #3f3f46; }
+    50% { border-color: #10b981; }
+}
+
+/* Exit direction star (monospace visual) */
+.exit-dir.lit {
+    color: #10b981;
+    font-weight: 600;
+}
+.exit-dir.dim {
+    color: #3f3f46;
+}
+.exit-dir {
+    transition: color 0.1s ease;
+}
+.exit-dir:hover {
+    color: #34d399;
+}

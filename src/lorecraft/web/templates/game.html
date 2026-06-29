@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Lorecraft • {{ current_room.name if current_room else 'The World' }}{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-[calc(100vh-3.5rem)]" x-data="{
+    commandHistory: [],
+    historyIndex: -1,
+    showHelp: false
+}">
+    <!-- Main game area -->
+    <div class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
+
+        <!-- LEFT SIDEBAR: Room + Inventory + Minimap -->
+        <div class="flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
+
+            <!-- Room Description Panel -->
+            <div class="flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
+                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                    <span>Current Location</span>
+                    <button
+                        hx-get="/partials/room-description"
+                        hx-target="#room-description"
+                        hx-swap="outerHTML"
+                        class="text-emerald-500 hover:text-emerald-400 transition-colors"
+                        title="Refresh room">
+                        ⟳
+                    </button>
+                </div>
+                <div id="room-description" class="flex-1 min-h-0 p-3 text-sm overflow-y-auto bg-feed-bg">
+                    {% include "partials/room_description.html" %}
+                </div>
+            </div>
+
+            <!-- Inventory: flexible between room and map -->
+            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden">
+                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                    <span>Inventory</span>
+                    <span class="font-mono text-[10px] text-emerald-600">{{ inventory|length if inventory else 0 }} items</span>
+                </div>
+                <div id="inventory" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
+                    {% include "partials/inventory.html" %}
+                </div>
+            </div>
+
+            <!-- Mini-map (at bottom, size perfect - do not change) -->
+            <div class="mt-px flex-none">
+                <div class="w-full aspect-square max-h-64">
+                    {% include "partials/minimap.html" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER: Main Feed / Narrative Log -->
+        <div class="flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
+            <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                <span>The Chronicle • Live</span>
+                <div class="flex items-center gap-2 text-[10px]">
+                    <button
+                        @click="document.getElementById('feed').scrollTop = 0"
+                        class="hover:text-emerald-400 transition-colors px-1">↑ top</button>
+                    <button
+                        @click="document.getElementById('feed').scrollTop = document.getElementById('feed').scrollHeight"
+                        class="hover:text-emerald-400 transition-colors px-1">↓ bottom</button>
+                    <span class="text-emerald-600">|</span>
+                    <span class="font-mono">{{ feed_messages|length if feed_messages else 0 }} entries</span>
+                </div>
+            </div>
+
+            <!-- Feed content (append-only strategy) -->
+            <div id="feed"
+                 class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg font-serif scroll-smooth"
+                 data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
+                <!-- Initial server-rendered messages -->
+                {% include "partials/feed_items.html" %}
+            </div>
+
+            <!-- Subtle status line -->
+            <div class="px-3 py-1 border-t border-border bg-panel-light text-[10px] text-text-muted flex items-center justify-between">
+                <span>Press <kbd class="px-1 py-px bg-zinc-800 rounded text-emerald-500">/</kbd> to focus command</span>
+                <span class="hidden md:inline">Shift+Enter for multiline (future)</span>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR: Players + Combat / Events -->
+        <div class="flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
+
+            <!-- Players in Room / Online -->
+            <div class="flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden">
+                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                    <span>Here Now</span>
+                    <span class="font-mono text-emerald-600 text-[10px]" id="player-count">{{ players_here | length if players_here else 0 }}</span>
+                </div>
+                <div id="players-online" class="flex-1 p-3 text-xs overflow-y-auto bg-feed-bg">
+                    {% include "partials/players_online.html" %}
+                </div>
+            </div>
+
+            <!-- Combat / Recent Events Log (compact) -->
+            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-[120px]">
+                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                    <span>Recent Events</span>
+                </div>
+                <div id="combat-log" class="flex-1 p-2 text-[11px] overflow-y-auto bg-feed-bg font-mono space-y-0.5 text-text-muted">
+                    <div class="text-text-muted/60 italic">No recent events.</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- COMMAND INPUT BAR (fixed bottom) -->
+    <div class="border-t border-zinc-800 bg-zinc-900 p-3">
+        <form id="command-form"
+              hx-post="/command"
+              hx-target="#feed"
+              hx-swap="beforeend"
+              hx-on::after-request="handleCommandSuccess(this)"
+              class="flex gap-2 items-center"
+              x-data="{ localCommand: '' }">
+
+            <div class="flex-1 relative">
+                <input
+                    type="text"
+                    name="command"
+                    id="command-input"
+                    x-model="localCommand"
+                    placeholder="What do you do? (type 'help' for commands)"
+                    autocomplete="off"
+                    spellcheck="false"
+                    class="w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-600 text-sm px-4 py-2.5 rounded-lg outline-none placeholder:text-zinc-600 font-mono"
+                >
+                <!-- Future: autocomplete suggestions dropdown with Alpine -->
+            </div>
+
+            <button
+                type="submit"
+                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition-all text-sm font-semibold rounded-lg flex items-center gap-2 disabled:opacity-50"
+                :disabled="!localCommand.trim()">
+                <span>Send</span>
+                <span class="text-xs opacity-75">⏎</span>
+            </button>
+
+            <!-- Optional: voice input or macro buttons later -->
+        </form>
+
+        <div class="mt-1.5 flex items-center justify-between text-[10px] text-zinc-600 px-1">
+            <div>
+                <span class="cursor-pointer hover:text-zinc-400" @click="showHelp = !showHelp">help</span>
+                <span class="mx-1">•</span>
+                <span class="cursor-pointer hover:text-zinc-400">look</span>
+                <span class="mx-1">•</span>
+                <span class="cursor-pointer hover:text-zinc-400">inv</span>
+            </div>
+            <div class="hidden md:block">Connected • <span class="text-emerald-600">low latency</span></div>
+        </div>
+    </div>
+
+    <!-- Help overlay (Alpine controlled) -->
+    <div x-show="showHelp"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+         @click="showHelp = false">
+        <div @click.stop class="bg-panel border border-border rounded-xl w-full max-w-md p-6 text-sm">
+            <h3 class="font-semibold text-emerald-400 mb-3 flex items-center justify-between">
+                Quick Commands
+                <button @click="showHelp=false" class="text-text-muted hover:text-white">✕</button>
+            </h3>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                <div><span class="text-emerald-500">look</span> — examine surroundings</div>
+                <div><span class="text-emerald-500">go &lt;dir&gt;</span> — move (n/s/e/w)</div>
+                <div><span class="text-emerald-500">take &lt;item&gt;</span> — pick up</div>
+                <div><span class="text-emerald-500">talk to &lt;npc&gt;</span> — converse</div>
+                <div><span class="text-emerald-500">inv</span> or <span class="text-emerald-500">i</span> — inventory</div>
+                <div><span class="text-emerald-500">say &lt;msg&gt;</span> — chat in room</div>
+                <div><span class="text-emerald-500">attack &lt;target&gt;</span> — combat</div>
+                <div><span class="text-emerald-500">help</span> — this menu</div>
+            </div>
+            <p class="mt-4 text-[10px] text-text-muted">The world reacts to your actions in real time. Other players see what you do.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Page-specific initialization
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('command-input');
+        if (input) {
+            // Global hotkey: press / to focus command (like many games)
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    input.focus();
+                    input.select();
+                }
+                if (e.key === 'Escape' && document.activeElement === input) {
+                    input.blur();
+                }
+            });
+
+            // Always focus the command input so the user can just start typing.
+            // Do it a couple of times to win against any late DOM/HTMX settling.
+            const focusInput = () => {
+                try {
+                    input.focus();
+                } catch (_) {}
+            };
+            setTimeout(focusInput, 50);
+            setTimeout(focusInput, 250);
+            setTimeout(focusInput, 600);
+
+            // If user clicks anywhere on the main game area, re-focus input
+            const gameArea = document.querySelector('.flex.flex-col.h-\\[calc\\(100vh-3\\.5rem\\)\\]');
+            if (gameArea) {
+                gameArea.addEventListener('click', (ev) => {
+                    if (!ev.target.closest('#command-form') && !ev.target.closest('button')) {
+                        setTimeout(focusInput, 0);
+                    }
+                });
+            }
+        }
+
+        // Initial scroll feed to bottom
+        const feed = document.getElementById('feed');
+        if (feed) {
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        // Example: listen for custom events from WS or other
+        document.body.addEventListener('lorecraft:refresh-panel', function(e) {
+            const panel = e.detail.panel;
+            const el = document.getElementById(panel);
+            if (el) {
+                htmx.ajax('GET', `/partials/${panel}`, {
+                    target: el,
+                    swap: 'outerHTML'
+                });
+            }
+        });
+    });
+
+    // Called after successful HTMX command submit.
+    // Clear the input (so user can type the next command immediately)
+    // while preserving readline-style history (handled in app.js via arrow keys).
+    function handleCommandSuccess(formElement) {
+        const input = document.getElementById('command-input') || formElement.querySelector('#command-input');
+        const feed = document.getElementById('feed');
+
+        // Clear native input value
+        if (input) {
+            input.value = '';
+        }
+
+        // Reset readline browsing index (do NOT clear the actual history list)
+        if (window.LorecraftCommandHistory && typeof window.LorecraftCommandHistory.resetIndex === 'function') {
+            window.LorecraftCommandHistory.resetIndex();
+        } else if (typeof historyIndex !== 'undefined') {
+            // Fallback if exposed differently
+            try { historyIndex = -1; } catch (_) {}
+        }
+
+        // Clear Alpine reactive model (the form has x-data="{ localCommand: '' }")
+        if (typeof Alpine !== 'undefined' && formElement) {
+            try {
+                const data = Alpine.$data(formElement);
+                if (data && typeof data === 'object') {
+                    data.localCommand = '';
+                }
+            } catch (_) {}
+        }
+
+        // Also try a plain form reset (harmless for our simple form)
+        try {
+            formElement.reset();
+        } catch (_) {}
+
+        // Scroll feed
+        if (feed) {
+            setTimeout(() => {
+                feed.scrollTop = feed.scrollHeight;
+            }, 20);
+        }
+
+        // Re-focus the command input right away (readline expectation)
+        if (input) {
+            setTimeout(() => {
+                input.focus();
+            }, 0);
+        }
+
+        // Optional visual ack
+        if (feed) {
+            feed.classList.add('!border-emerald-900');
+            setTimeout(() => feed.classList.remove('!border-emerald-900'), 500);
+        }
+    }
+</script>
+{% endblock %}

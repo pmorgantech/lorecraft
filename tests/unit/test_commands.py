@@ -46,7 +46,7 @@ def test_meta_commands_write_context_messages_and_updates() -> None:
         registry.get("quit").handler(None, ctx)
 
     assert ctx.messages == [
-        "Available commands: help, quit, save [slot], load [slot], look, "
+        "Available commands: help, quit (returns to lobby), save [slot], load [slot], look, "
         "examine <item>, take <item>, drop <item>, inventory, go <direction>, "
         "north, south, east, west.",
         "Goodbye.",

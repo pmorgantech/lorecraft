@@ -28,6 +28,13 @@ Legend:
 - [x] `game/context.py` contains `GameContext`.
 - [x] `game/transaction.py` contains `TransactionContext`.
 - [x] `game/connection_manager.py` contains the WebSocket-style connection pool and room broadcast behavior.
+
+### Web UI (HTMX)
+
+- [x] Jinja2 + HTMX + Alpine server-driven frontend integrated as primary UI (`/lobby`, `/game`, `/command`, partials).
+- [x] Command flow with immediate HTML response + OOB + WS push for other players.
+- [x] Audit log used as source for narrative feed.
+- [~] Full multi-player live lists and world clock push still evolving from core events.
 - [x] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
 - [x] `main.py` FastAPI app.
 - [x] `/ws` WebSocket endpoint.
@@ -59,6 +66,7 @@ Legend:
 - [x] Basic room/status display.
 - [x] Browser smoke/end-to-end test.
 - [x] Repo-local seed test databases copied by `start.sh` into `/tmp` runtime paths for browser harness startup.
+- [x] `start.sh` bootstraps `.venv` and installs Lorecraft editably with admin tooling when needed.
 
 ### Phase 3 — World & Time
 

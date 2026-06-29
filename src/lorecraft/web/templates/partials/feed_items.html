@@ -1,0 +1,44 @@
+{#
+  Bare feed message items partial — for append-only updates via HTMX beforeend
+  Use this when doing incremental appends so we don't nest another #feed div.
+
+  Always pass a list of feed_messages (can be empty).
+  Each msg should have: id, timestamp (optional), actor (optional), text, type, meta (optional)
+#}
+
+{% for msg in feed_messages %}
+    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% else %}narrative{% endif %}"
+         data-msg-id="{{ msg.id }}">
+
+        {% if msg.timestamp %}
+        <span class="text-[10px] text-zinc-600 font-mono mr-1.5 align-super">{{ msg.timestamp }}</span>
+        {% endif %}
+
+        {% if msg.actor %}
+            <span class="font-semibold {% if msg.actor == current_player.name %}text-emerald-400{% else %}text-amber-400{% endif %}">
+                {{ msg.actor }}
+            </span>
+            <span class="text-zinc-500">:</span>
+        {% endif %}
+
+        <span class="text-zinc-200">{{ msg.text | safe }}</span>
+
+        {% if msg.meta %}
+            <span class="text-[10px] text-zinc-600 ml-1">({{ msg.meta }})</span>
+        {% endif %}
+    </div>
+{% else %}
+    {# nothing new #}
+{% endfor %}
+
+<style>
+    /* Scoped message styles (safe to include multiple times) */
+    #feed .msg, .msg {
+        padding-left: 0.5rem;
+        border-left: 2px solid transparent;
+    }
+    #feed .msg.player-action, .msg.player-action { border-left-color: #10b981; }
+    #feed .msg.system, .msg.system { border-left-color: #64748b; font-style: italic; }
+    #feed .msg.dialogue, .msg.dialogue { border-left-color: #f59e0b; }
+    #feed .msg.narrative, .msg.narrative { border-left-color: #3b82f6; }
+</style>

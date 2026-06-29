@@ -87,3 +87,7 @@ class PlayerRepo(Repository[Player, str]):
     def add_save_slot(self, save_slot: SaveSlot) -> SaveSlot:
         self.session.add(save_slot)
         return save_slot
+
+    def list_all(self, limit: int = 50) -> Sequence[Player]:
+        statement = select(Player).order_by(col(Player.username)).limit(limit)
+        return self.session.exec(statement).all()

@@ -1,0 +1,50 @@
+{#
+  Room Description Partial - re-rendered on move, world events, or manual refresh
+  Target: #room-description (outerHTML swap recommended for full panel refresh)
+#}
+
+<div id="room-description" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
+    {% if current_room %}
+        <div class="mb-2">
+            <h2 class="text-emerald-400 font-semibold text-base tracking-wide">{{ current_room.name }}</h2>
+            {% if current_room.subtitle %}
+                <p class="text-xs text-emerald-600/80 -mt-0.5">{{ current_room.subtitle }}</p>
+            {% endif %}
+        </div>
+
+        <div class="prose prose-sm prose-invert text-zinc-300 max-w-none">
+            {{ current_room.description | safe }}
+        </div>
+
+        {% if current_room.exits %}
+        <div class="mt-3 pt-3 border-t border-zinc-800">
+            <div class="text-[10px] uppercase tracking-[1px] text-text-muted mb-1">Exits</div>
+            <div class="flex flex-wrap gap-1.5">
+                {% for exit in current_room.exits %}
+                    <button
+                        hx-post="/command"
+                        hx-vals='{"command": "go {{ exit.direction }}"}'
+                        hx-target="#feed"
+                        hx-swap="beforeend"
+                        class="text-xs px-2.5 py-0.5 rounded border border-emerald-800 hover:bg-emerald-950 hover:border-emerald-700 transition-colors text-emerald-400 font-mono">
+                        {{ exit.direction }} <span class="text-emerald-700">→ {{ exit.destination_name }}</span>
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if current_room.npcs or current_room.items_visible %}
+        <div class="mt-3 text-xs text-text-muted">
+            {% if current_room.npcs %}
+                <div>Present: <span class="text-amber-400">{{ current_room.npcs | join(', ') }}</span></div>
+            {% endif %}
+            {% if current_room.items_visible %}
+                <div class="mt-0.5">You notice: <span class="text-sky-400">{{ current_room.items_visible | join(', ') }}</span></div>
+            {% endif %}
+        </div>
+        {% endif %}
+    {% else %}
+        <div class="text-text-muted text-xs italic">No location data available.</div>
+    {% endif %}
+</div>

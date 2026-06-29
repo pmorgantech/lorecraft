@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Lorecraft • Lobby{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-3.5rem)] bg-zinc-950 text-zinc-200 p-6" x-data="{ tab: 'join' }">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-4xl font-bold tracking-tighter text-emerald-400">LORECRAFT</h1>
+                <p class="text-zinc-500">A living multiplayer world</p>
+            </div>
+            {% if player %}
+            <div class="text-right">
+                <div class="text-sm text-zinc-500">Welcome back,</div>
+                <div class="font-semibold text-emerald-400">{{ player.name }}</div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-zinc-800 mb-6">
+            <button @click="tab = 'join'"
+                    :class="tab === 'join' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-zinc-500'"
+                    class="px-6 py-3 text-sm font-medium transition-colors">Join a World</button>
+            <button @click="tab = 'create'"
+                    :class="tab === 'create' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-zinc-500'"
+                    class="px-6 py-3 text-sm font-medium transition-colors">Create New Character</button>
+        </div>
+
+        <!-- JOIN / ENTER -->
+        <div class="space-y-4">
+            <h2 class="text-xl font-semibold mb-4">Choose a Player</h2>
+
+            {% if players %}
+            <div class="grid gap-3 max-w-md">
+                {% for p in players %}
+                <form method="post" action="/lobby/enter" class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-emerald-900">
+                    <div>
+                        <div class="font-semibold">{{ p.username }}</div>
+                        <div class="text-xs text-zinc-500">room: {{ p.current_room_id }}</div>
+                    </div>
+                    <input type="hidden" name="player_id" value="{{ p.id }}">
+                    <button type="submit"
+                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold rounded-lg transition-colors">
+                        Enter
+                    </button>
+                </form>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 text-center">
+                <p class="text-zinc-400">No players found in database.</p>
+            </div>
+            {% endif %}
+
+            <p class="text-xs text-zinc-500 mt-4">Tip: append <code>?player_id=player-1</code> to any game URL for direct access.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

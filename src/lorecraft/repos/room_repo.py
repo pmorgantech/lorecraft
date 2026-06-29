@@ -31,6 +31,27 @@ class RoomRepo(Repository[Room, str]):
         )
         return self.session.exec(statement).first()
 
+    def get_exits_with_names(
+        self, room_id: str, visited: list[str] | None = None
+    ) -> list[dict]:
+        """Return exits enriched for UI (direction + dest name + known)."""
+        exits = self.exits(room_id)
+        result: list[dict] = []
+        visited = visited or []
+        for ex in exits:
+            target = self.get(ex.target_room_id)
+            result.append(
+                {
+                    "direction": ex.direction,
+                    "target_room_id": ex.target_room_id,
+                    "destination_name": target.name if target else ex.target_room_id,
+                    "known": ex.target_room_id in visited if visited else True,
+                    "locked": ex.locked,
+                    "hidden": ex.hidden,
+                }
+            )
+        return result
+
     def world_clock(self) -> WorldClock | None:
         return self.session.exec(select(WorldClock)).first()
 

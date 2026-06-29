@@ -11,7 +11,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
@@ -48,6 +49,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
+from lorecraft.web.frontend import router as web_router
 
 log = logging.getLogger(__name__)
 
@@ -187,18 +189,27 @@ def create_app(
     app = FastAPI(title="Lorecraft", lifespan=lifespan)
     app.include_router(admin_router, prefix="/admin")
 
+    # New HTMX + Jinja web UI (becomes the primary player UI)
+    app.include_router(web_router)  # routes at /lobby, /game, /command, /partials/...
+
+    # Mount new static tree (css/ js/ under /static)
+    app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
+
     @app.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/", response_class=HTMLResponse)
-    async def index() -> HTMLResponse:
-        return HTMLResponse(_read_web_asset("index.html"))
+    @app.get("/", response_class=RedirectResponse)
+    async def root_redirect():
+        """New UI is now primary. Old vanilla client still available at /old if needed."""
+        return RedirectResponse("/lobby", status_code=302)
 
+    # Legacy flat static assets (kept for any direct references / old client)
     @app.get("/static/{asset_name}")
     async def static_asset(asset_name: str) -> Response:
         media_type = WEB_ASSETS.get(asset_name)
         if media_type is None:
+            # Fall through to mounted static if present in subdirs
             raise HTTPException(status_code=404)
         return Response(_read_web_asset(asset_name), media_type=media_type)
 

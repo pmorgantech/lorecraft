@@ -1,0 +1,80 @@
+{#
+  Graphical mini-map (full pane size) with exits star as picture-in-picture (top-left).
+  Star uses compact monospaced layout with tucked u/d.
+#}
+
+<div id="minimap" class="bg-panel border border-border rounded-lg overflow-hidden flex flex-col w-full h-full">
+    <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+        <span>Map</span>
+        <button
+            hx-get="/partials/minimap"
+            hx-target="#minimap"
+            hx-swap="outerHTML"
+            class="text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
+            title="Refresh">⟳</button>
+    </div>
+
+    <div class="p-1 flex-1 bg-feed-bg overflow-hidden">
+        {% if current_room %}
+            {% set avail = (exits or []) | map(attribute='direction') | map('lower') | list %}
+            {% set has_up = 'up' in avail or 'u' in avail %}
+            {% set has_down = 'down' in avail or 'd' in avail %}
+            {% set has_north = 'north' in avail or 'n' in avail %}
+            {% set has_south = 'south' in avail or 's' in avail %}
+            {% set has_east = 'east' in avail or 'e' in avail %}
+            {% set has_west = 'west' in avail or 'w' in avail %}
+            {% set has_ne = 'northeast' in avail or 'ne' in avail %}
+            {% set has_nw = 'northwest' in avail or 'nw' in avail %}
+            {% set has_se = 'southeast' in avail or 'se' in avail %}
+            {% set has_sw = 'southwest' in avail or 'sw' in avail %}
+
+            {# Find actual dir strings for go commands (fallback to standard) #}
+            {% set cmd_up = 'up' %}{% set cmd_down = 'down' %}{% set cmd_n = 'north' %}{% set cmd_s = 'south' %}
+            {% set cmd_e = 'east' %}{% set cmd_w = 'west' %}{% set cmd_ne = 'northeast' %}{% set cmd_nw = 'northwest' %}
+            {% set cmd_se = 'southeast' %}{% set cmd_sw = 'southwest' %}
+            {% for e in (exits or []) %}
+                {% set d = (e.direction or '') | lower %}
+                {% if d in ['up','u'] %}{% set cmd_up = e.direction %}{% endif %}
+                {% if d in ['down','d'] %}{% set cmd_down = e.direction %}{% endif %}
+                {% if d in ['north','n'] %}{% set cmd_n = e.direction %}{% endif %}
+                {% if d in ['south','s'] %}{% set cmd_s = e.direction %}{% endif %}
+                {% if d in ['east','e'] %}{% set cmd_e = e.direction %}{% endif %}
+                {% if d in ['west','w'] %}{% set cmd_w = e.direction %}{% endif %}
+                {% if d in ['northeast','ne'] %}{% set cmd_ne = e.direction %}{% endif %}
+                {% if d in ['northwest','nw'] %}{% set cmd_nw = e.direction %}{% endif %}
+                {% if d in ['southeast','se'] %}{% set cmd_se = e.direction %}{% endif %}
+                {% if d in ['southwest','sw'] %}{% set cmd_sw = e.direction %}{% endif %}
+            {% endfor %}
+
+            <div class="relative h-full bg-feed-bg overflow-hidden rounded border border-border">
+                {% if nearby_rooms %}
+                <svg width="100%" height="100%" viewBox="0 0 88 52" preserveAspectRatio="xMidYMid meet" class="block">
+                    {% for ln in map_lines %}
+                    <line x1="{{ ln.x1 }}" y1="{{ ln.y1 }}" x2="{{ ln.x2 }}" y2="{{ ln.y2 }}" stroke="#3f3f46" stroke-width="0.7"/>
+                    {% endfor %}
+                    {% for r in nearby_rooms %}
+                        {% set fill = '#10b981' if r.current else '#52525b' %}
+                        <circle cx="{{ r.px }}" cy="{{ r.py }}" r="2" fill="{{ fill }}" />
+                        {% if not r.current %}
+                        <circle cx="{{ r.px }}" cy="{{ r.py }}" r="2.2" fill="none" stroke="#10b981" stroke-width="0.4" opacity="0.35" />
+                        {% endif %}
+                    {% endfor %}
+                </svg>
+                {% else %}
+                <div class="w-full h-full flex items-center justify-center text-[9px] text-text-muted">no map data</div>
+                {% endif %}
+
+                <!-- exits star as picture-in-picture top-left -->
+                <div class="absolute top-0.5 left-0.5 font-mono text-sm bg-panel/95 border border-border rounded px-1 py-1 shadow select-none w-12 flex items-center justify-center">
+                    <pre class="p-0 m-0 leading-none text-center">
+<span class="exit-dir {{ 'lit cursor-pointer' if has_nw else 'dim' }}" {% if has_nw %}hx-post="/command" hx-vals='{"command":"go {{ cmd_nw }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>\</span><span class="exit-dir {{ 'lit cursor-pointer' if has_north else 'dim' }}" {% if has_north %}hx-post="/command" hx-vals='{"command":"go {{ cmd_n }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}> |</span><span class="exit-dir {{ 'lit cursor-pointer' if has_up else 'dim' }}" {% if has_up %}hx-post="/command" hx-vals='{"command":"go {{ cmd_up }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>u</span><span class="exit-dir {{ 'lit cursor-pointer' if has_ne else 'dim' }}" {% if has_ne %}hx-post="/command" hx-vals='{"command":"go {{ cmd_ne }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>/</span><br>
+<span class="exit-dir {{ 'lit cursor-pointer' if has_west else 'dim' }}" {% if has_west %}hx-post="/command" hx-vals='{"command":"go {{ cmd_w }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>-</span> <span class="text-emerald-400 font-bold">o</span> <span class="exit-dir {{ 'lit cursor-pointer' if has_east else 'dim' }}" {% if has_east %}hx-post="/command" hx-vals='{"command":"go {{ cmd_e }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>-</span><br>
+<span class="exit-dir {{ 'lit cursor-pointer' if has_sw else 'dim' }}" {% if has_sw %}hx-post="/command" hx-vals='{"command":"go {{ cmd_sw }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>/</span><span class="exit-dir {{ 'lit cursor-pointer' if has_down else 'dim' }}" {% if has_down %}hx-post="/command" hx-vals='{"command":"go {{ cmd_down }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>d</span><span class="exit-dir {{ 'lit cursor-pointer' if has_south else 'dim' }}" {% if has_south %}hx-post="/command" hx-vals='{"command":"go {{ cmd_s }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>|</span> <span class="exit-dir {{ 'lit cursor-pointer' if has_se else 'dim' }}" {% if has_se %}hx-post="/command" hx-vals='{"command":"go {{ cmd_se }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>\</span>
+                    </pre>
+                </div>
+            </div>
+        {% else %}
+            <div class="text-text-muted text-xs italic py-4 text-center">Map data unavailable</div>
+        {% endif %}
+    </div>
+</div>

@@ -4,6 +4,18 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+### Added (Web UI refresh)
+
+- Replaced the primary player web UI with the HTMX + Alpine.js + Jinja2 server-rendered template (lorecraft_frontend_starter).
+- Added `src/lorecraft/web/frontend.py` — lobby, game screen, command POST (with OOB updates), and all partial endpoints (`/partials/*`).
+- Added `templates/` (base, game, lobby, partials for feed/room/inventory/minimap/players) and `static/css+js`.
+- Wired Jinja2Templates + StaticFiles mount in `main.py`; root `/` now redirects to new lobby.
+- Lobby provides player selector using existing seeded players; game screen SSRs panels using real repos + audit log for feed.
+- `/command` executes via core CommandEngine/GameContext, returns feed items + OOB swaps for changed panels, and broadcasts `state_change` via ConnectionManager.
+- Added `recent_for_room` / `recent_for_actor` + `get_exits_with_names` + `list_all` helpers to support the UI.
+- Old vanilla client assets preserved under `/static` (flat) for backward compat during transition.
+- Command processing, feed (audit-backed), movement, inventory, and minimap exits now work via the new UI.
+
 ### Added (Phase 4 — NPCs & Quests)
 
 - Added `models/dialogue.py` — `DialogueTree` SQLModel table storing full dialogue tree as a JSON blob.
@@ -37,6 +49,7 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Changed
 
+- Updated `start.sh` to create `.venv` when missing and install Lorecraft editably with the admin TUI extra when dependencies are absent or incomplete.
 - Excluded `admin/tui` from basedpyright checks (optional Textual dependency not installed in base venv).
 - Extracted `AppState` from `main.py` into `lorecraft/state.py` to allow admin router import without circular dependency.
 - Seeded `WorldMeta` singleton in `_ensure_starter_world` to support changeset promotion.

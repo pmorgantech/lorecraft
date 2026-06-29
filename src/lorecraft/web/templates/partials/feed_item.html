@@ -1,0 +1,21 @@
+{# Single feed message item - useful for command responses or when pushing one message #}
+<div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% else %}narrative{% endif %}"
+     data-msg-id="{{ msg.id }}">
+
+    {% if msg.timestamp %}
+    <span class="text-[10px] text-zinc-600 font-mono mr-1.5 align-super">{{ msg.timestamp }}</span>
+    {% endif %}
+
+    {% if msg.actor %}
+        <span class="font-semibold {% if msg.actor == current_player.name %}text-emerald-400{% else %}text-amber-400{% endif %}">
+            {{ msg.actor }}
+        </span>
+        <span class="text-zinc-500">:</span>
+    {% endif %}
+
+    <span class="text-zinc-200">{{ msg.text | safe }}</span>
+
+    {% if msg.meta %}
+        <span class="text-[10px] text-zinc-600 ml-1">({{ msg.meta }})</span>
+    {% endif %}
+</div>
