@@ -19,12 +19,11 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
-from lorecraft.db import create_game_engine, create_audit_engine
+from lorecraft.db import create_audit_engine, create_game_engine
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus, GameEvent
-from lorecraft.game.parser import parse
+from lorecraft.game.events import EventBus
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
@@ -38,7 +37,6 @@ from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.services.audit import AuditService
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
@@ -368,7 +366,6 @@ async def handle_command(
     Returns feed fragment + OOB swaps for changed panels.
     """
     game_engine, audit_engine = _get_engines(request)
-    cmd_engine = _get_command_engine()
 
     raw = (command or "").strip()
     if not raw:
@@ -414,40 +411,6 @@ async def handle_command(
             commit_state=game_db.commit,
             commit_audit=audit_db.commit,
         )
-
-        # Parse + execute (replicates the core of CommandEngine + rules but we call the engine)
-        parsed = parse(raw)
-        if not parsed.verb:
-            ctx.say("Enter a command.")
-        else:
-            command_obj = cmd_engine.registry.get(parsed.verb)
-            if command_obj is None:
-                ctx.say("I don't understand that command.")
-            else:
-                cond = cmd_engine.registry.evaluate_conditions(command_obj, ctx)
-                if not cond.allowed:
-                    ctx.say(cond.reason or "You can't do that.")
-                else:
-                    rule_res = cmd_engine.rules.check(
-                        parsed.verb, ctx, {"noun": parsed.noun, "raw": raw}
-                    )
-                    if not rule_res.allowed:
-                        ctx.say(rule_res.reason or "You can't do that.")
-                    else:
-                        command_obj.handler(parsed.noun, ctx)
-                        ctx.commit_state_changes()
-                        # record audit like the real path
-                        AuditService.from_context(ctx).record(
-                            ctx,
-                            GameEvent.COMMAND_EXECUTED,
-                            summary=f"Command: {raw}",
-                            payload={
-                                "verb": parsed.verb,
-                                "noun": parsed.noun,
-                                "raw": raw,
-                            },
-                        )
-                        ctx.commit_audit_events()
 
         # Determine deltas
         after_player = player_repo.get(player.id) or player
@@ -530,8 +493,10 @@ async def handle_command(
                     npc_repo=NpcRepo(game_db),
                 ),
             )
-            response_html += (
-                f'<div id="room-description" hx-swap-oob="true">{room_html}</div>'
+            response_html += room_html.replace(
+                '<div id="room-description"',
+                '<div id="room-description" hx-swap-oob="true"',
+                1,
             )
 
         if result.inventory_changed:

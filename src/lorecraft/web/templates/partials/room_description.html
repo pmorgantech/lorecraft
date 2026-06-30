@@ -3,39 +3,21 @@
   Target: #room-description (outerHTML swap recommended for full panel refresh)
 #}
 
-<div id="room-description" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
+<div id="room-description" class="flex-1 min-h-0 px-3 pt-1.5 pb-2 text-sm overflow-y-auto bg-feed-bg">
     {% if current_room %}
-        <div class="mb-2">
-            <h2 class="text-emerald-400 font-semibold text-base tracking-wide">{{ current_room.name }}</h2>
+        <div class="mb-1.5">
+            <h2 class="m-0 text-emerald-400 font-semibold text-base tracking-wide leading-tight">{{ current_room.name }}</h2>
             {% if current_room.subtitle %}
-                <p class="text-xs text-emerald-600/80 -mt-0.5">{{ current_room.subtitle }}</p>
+                <p class="m-0 mt-0.5 text-xs text-emerald-600/80 leading-tight">{{ current_room.subtitle }}</p>
             {% endif %}
         </div>
 
-        <div class="prose prose-sm prose-invert text-zinc-300 max-w-none">
+        <div class="text-zinc-300 leading-snug [&_p]:m-0 [&_p+p]:mt-1.5">
             {{ current_room.description | safe }}
         </div>
 
-        {% if exits %}
-        <div class="mt-3 pt-3 border-t border-zinc-800">
-            <div class="text-[10px] uppercase tracking-[1px] text-text-muted mb-1">Exits</div>
-            <div class="flex flex-wrap gap-1.5">
-                {% for exit in exits %}
-                    <button
-                        hx-post="/command"
-                        hx-vals='{"command": "go {{ exit.direction }}"}'
-                        hx-target="#feed"
-                        hx-swap="beforeend"
-                        class="text-xs px-2.5 py-0.5 rounded border border-emerald-800 hover:bg-emerald-950 hover:border-emerald-700 transition-colors text-emerald-400 font-mono">
-                        {{ exit.direction }} <span class="text-emerald-700">→ {{ exit.destination_name }}</span>
-                    </button>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
         {% if npcs or items_visible %}
-        <div class="mt-3 text-xs text-text-muted">
+        <div class="mt-2 text-xs text-text-muted">
             {% if npcs %}
                 <div>Present: <span class="text-amber-400">{{ npcs | join(', ') }}</span></div>
             {% endif %}

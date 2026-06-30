@@ -78,8 +78,12 @@ def parse_item_target(noun: str) -> ItemTarget:
     """
     text = noun.strip()
     lowered = text.casefold()
+    if lowered in {"all", "everything"}:
+        return ItemTarget(query="", take_all=True)
     if lowered.startswith("all "):
         return ItemTarget(query=text[4:].strip(), take_all=True)
+    if lowered.startswith("everything "):
+        return ItemTarget(query=text[len("everything ") :].strip(), take_all=True)
 
     index_match = _INDEX_TARGET_RE.match(text)
     if index_match:
@@ -169,6 +173,9 @@ class InventoryService:
             self._take_indexed(target, ctx)
             return
         if target.take_all:
+            if not target.query:
+                self._take_everything_in_room(ctx)
+                return
             self._take_quantity(target, ctx, take_all=True)
             return
         if target.quantity > 1:
@@ -192,6 +199,31 @@ class InventoryService:
             self._drop_quantity(target, ctx, drop_all=False)
             return
         self._drop_one(target.query, ctx)
+
+    def _take_everything_in_room(self, ctx: GameContext) -> None:
+        room_items = list(ctx.item_repo.items_in_room(ctx.room.id))
+        if not room_items:
+            ctx.say("There is nothing here to take.")
+            return
+
+        taken_labels: list[str] = []
+        for room_item, item in room_items:
+            if not item.takeable:
+                continue
+            count = room_item.quantity
+            if count <= 0:
+                continue
+            self._remove_from_room_and_carry(ctx, room_item, item, count)
+            taken_labels.append(format_inventory_entry(item.name, count))
+            self._emit_item_taken(ctx, item.id, count=count)
+
+        if not taken_labels:
+            ctx.say("There is nothing here you can take.")
+            return
+
+        summary = ", ".join(taken_labels)
+        ctx.say(f"You take {summary}.")
+        ctx.tell_room(f"{ctx.player.username} takes {summary}.")
 
     def _take_one(self, query: str, ctx: GameContext) -> None:
         matches = ctx.item_repo.search_in_room(ctx.room.id, query)

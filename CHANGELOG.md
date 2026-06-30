@@ -4,24 +4,31 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-### Fixed
-
-- `take`/`drop` item matching now singularizes item names as well as player input, so plural queries like `take herbs` match items named `Bundle of Dried Herbs`.
-
-### Added
-
-- `take` and `drop` now accept quantity, all, and indexed selectors: `take 2 coin`, `take 2 coins`, `take all coin`, `drop all coin`, and `take 2.coin` (second matching instance).
-- Room `look` text and web room panel now group duplicate visible items with `[quantity]` prefixes, matching inventory display.
-
 ## [0.2.0] - 2026.06.29
 
 ### Fixed
 
+- `take`/`drop` item matching now singularizes item names as well as player input, so plural queries like `take herbs` match items named `Bundle of Dried Herbs`.
 - Inventory command text and all inventory panels now group duplicate carried items with `[quantity]` prefixes (e.g. `[2] Worn Copper Coin`).
+
+### Added
+
+- Integrated Lorecraft parser v1 (`lorecraft_parser_v1`): semantic roles, prepositions, adjectives, quantities, quoted strings, phrasal verbs, compound commands (`;`), optional `GameContext` fuzzy resolution with disambiguation, in-character parse errors, and diagnostic tracing.
+- Added `parse_command`, `ParseResult`, `diagnose_command`, and `registry_verb` helpers in `src/lorecraft/game/parser.py`; kept `parse()` as a backward-compatible wrapper for legacy callers.
+- Added `GameContext.get_visible_entities()` and `GameContext.get_inventory()` for parser entity resolution.
+- Wired `CommandEngine` and the HTMX frontend command path through `parse_command` (including compound execution and suggestion messages).
+- Added comprehensive parser tests in `tests/game/test_parser_comprehensive.py`.
+- Added offline parser diagnostic CLI at `tools/parser_diag.py`.
+- Added `docs/COMMAND_PARSER.md` — parser output model, command pattern taxonomy, and handler integration guidance.
+- Added `src/lorecraft/game/command_patterns.py` — `CommandPattern` enum, verb mapping, and typed role helpers (`speech_roles`, `transfer_roles`, `container_roles`, …).
+- Added pattern-grouped parser tests in `tests/game/test_parser_patterns.py` and `tests/unit/test_command_patterns.py`; shared fixture in `tests/game/conftest.py`.
+- Added `docs/parser_and_commands.md` — command authoring guide, item disambiguation layers, and Key Gallery testing notes.
+- Added `key_gallery` room (Red Key, Iron Key, Rusty Iron Key, Steel Key, Cage Key, Cage Lock, Rusty Iron Sword, Red Rose) in `world_content/world.yaml` for in-game disambiguation testing; pytest helpers live in `tests/fixtures/disambig_fixtures.py`.
+- Added `tests/unit/test_inventory_disambiguation.py` for shortened-name matching and numbered ambiguity prompts.
+- `take`/`drop` object ambiguity now defers to `InventoryService` numbered disambiguation instead of blocking at parse time.
+- `take` and `drop` now accept quantity, all, and indexed selectors: `take 2 coin`, `take 2 coins`, `take all coin`, `drop all coin`, and `take 2.coin` (second matching instance).
+- Room `look` text and web room panel now group duplicate visible items with `[quantity]` prefixes, matching inventory display.
 - HTMX inventory panel now refreshes when picking up another copy of an already-carried item (fixed set-based change detection).
-
-### Added (Web UI refresh)
-
 - Replaced the primary player web UI with the HTMX + Alpine.js + Jinja2 server-rendered template (lorecraft_frontend_starter).
 - Added `src/lorecraft/web/frontend.py` — lobby, game screen, command POST (with OOB updates), and all partial endpoints (`/partials/*`).
 - Added `templates/` (base, game, lobby, partials for feed/room/inventory/minimap/players) and `static/css+js`.

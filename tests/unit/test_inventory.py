@@ -36,6 +36,14 @@ def test_grouped_inventory_ids_preserves_order_and_counts() -> None:
 
 
 def test_parse_item_target_supports_quantity_all_and_index() -> None:
+    target = parse_item_target("all")
+    assert target.query == ""
+    assert target.take_all is True
+
+    target = parse_item_target("everything")
+    assert target.query == ""
+    assert target.take_all is True
+
     target = parse_item_target("all coin")
     assert target.query == "coin"
     assert target.take_all is True
@@ -224,6 +232,27 @@ def test_inventory_service_takes_quantity_and_plural_names() -> None:
     assert persisted is not None
     assert persisted.inventory == ["coin", "coin"]
     assert room_item.quantity == 2
+
+
+def test_inventory_service_takes_everything_in_room() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        player = _seed_coin_world(session, room_quantity=3)
+        session.commit()
+        ctx = _build_context(session, player, EventBus())
+
+        InventoryService().take_item("all", ctx)
+        session.commit()
+
+        persisted = session.get(Player, "player-1")
+        room_items = session.exec(select(RoomItem)).all()
+
+    assert ctx.messages == ["You take [3] Worn Copper Coin."]
+    assert persisted is not None
+    assert persisted.inventory == ["coin", "coin", "coin"]
+    assert room_items == []
 
 
 def test_inventory_service_takes_all_matching_items() -> None:

@@ -98,7 +98,8 @@ rooms:
       with a craftsman's precision: hammers graded from tack to sledge, tongs
       of every gauge, punches, drifts, and files. The anvil in the centre is
       pocked and stained with a lifetime of use. A hand-lettered sign reads
-      ORDERS TAKEN, NO CREDIT.
+      ORDERS TAKEN, NO CREDIT. A narrow doorway north leads to the locksmith's
+      gallery.
     map_x: 4
     map_y: 9
     area_id: town
@@ -108,6 +109,22 @@ rooms:
         target_room_id: village_square
       - direction: east
         target_room_id: alchemist_shop
+      - direction: north
+        target_room_id: key_gallery
+
+  - id: key_gallery
+    name: Locksmith's Gallery
+    description: >-
+      Pegboards and shallow trays display a confusing spread of keys, locks,
+      blades, and curios — many names differ by only a word or two. The
+      blacksmith's forge lies back to the south.
+    map_x: 4
+    map_y: 10
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: blacksmith_forge
 
   - id: market_stalls
     name: The Market Stalls
@@ -487,6 +504,55 @@ items:
     takeable: true
     tradeable: true
 
+  # --- Locksmith's Gallery (disambiguation test set) ---
+  - id: red_key
+    name: Red Key
+    description: A small key painted crimson.
+    takeable: true
+    tradeable: true
+
+  - id: iron_key
+    name: Iron Key
+    description: A plain iron key, unadorned.
+    takeable: true
+    tradeable: true
+
+  - id: rusty_iron_key
+    name: Rusty Iron Key
+    description: An iron key thick with orange rust.
+    takeable: true
+    tradeable: true
+
+  - id: steel_key
+    name: Steel Key
+    description: A bright steel key, recently cut.
+    takeable: true
+    tradeable: true
+
+  - id: cage_key
+    name: Cage Key
+    description: A delicate key for a cage latch.
+    takeable: true
+    tradeable: true
+
+  - id: cage_lock
+    name: Cage Lock
+    description: A small brass lock still mounted on a cage hasp.
+    takeable: true
+    tradeable: true
+
+  - id: rusty_iron_sword
+    name: Rusty Iron Sword
+    description: A short sword eaten through with rust.
+    takeable: true
+    tradeable: true
+
+  - id: red_rose
+    name: Red Rose
+    description: A silk rose, unnaturally perfect.
+    takeable: true
+    tradeable: true
+
   - id: cracked_vial
     name: Cracked Glass Vial
     description: >-
@@ -684,6 +750,32 @@ room_items:
     quantity: 1
   - room_id: inn_cellar
     item_id: cask_stopper
+    quantity: 1
+
+  # Locksmith's Gallery (similar item names for parser/inventory testing)
+  - room_id: key_gallery
+    item_id: red_key
+    quantity: 1
+  - room_id: key_gallery
+    item_id: iron_key
+    quantity: 1
+  - room_id: key_gallery
+    item_id: rusty_iron_key
+    quantity: 1
+  - room_id: key_gallery
+    item_id: steel_key
+    quantity: 1
+  - room_id: key_gallery
+    item_id: cage_key
+    quantity: 1
+  - room_id: key_gallery
+    item_id: cage_lock
+    quantity: 1
+  - room_id: key_gallery
+    item_id: rusty_iron_sword
+    quantity: 1
+  - room_id: key_gallery
+    item_id: red_rose
     quantity: 1
 
   # Blacksmith

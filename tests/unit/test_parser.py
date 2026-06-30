@@ -2,28 +2,53 @@ from lorecraft.game.parser import ParsedCommand, parse
 
 
 def test_direction_alias_becomes_go_command() -> None:
-    assert parse("n") == ParsedCommand(verb="go", noun="north", raw="n")
+    parsed = parse("n")
+    assert parsed.verb == "go"
+    assert parsed.noun == "north"
+    assert parsed.raw == "n"
 
 
 def test_full_direction_becomes_go_command() -> None:
-    assert parse("south") == ParsedCommand(verb="go", noun="south", raw="south")
+    parsed = parse("south")
+    assert parsed.verb == "go"
+    assert parsed.noun == "south"
+    assert parsed.raw == "south"
 
 
 def test_take_strips_articles_from_noun() -> None:
-    assert parse("take the old sword") == ParsedCommand(
-        verb="take",
-        noun="old sword",
-        raw="take the old sword",
-    )
+    parsed = parse("take the old sword")
+    assert parsed.verb == "take"
+    assert parsed.noun == "old sword"
+    assert parsed.raw == "take the old sword"
 
 
 def test_collapses_whitespace_and_normalizes_case() -> None:
-    assert parse("  GET   An   Apple  ") == ParsedCommand(
-        verb="take",
-        noun="apple",
-        raw="  GET   An   Apple  ",
-    )
+    parsed = parse("  GET   An   Apple  ")
+    assert parsed.verb == "take"
+    assert parsed.noun == "Apple"
+    assert parsed.raw == "  GET   An   Apple  "
 
 
 def test_empty_command_has_empty_verb() -> None:
-    assert parse("   ") == ParsedCommand(verb="", noun=None, raw="   ")
+    parsed = parse("   ")
+    assert parsed == ParsedCommand(verb="", raw="   ")
+    assert parsed.noun is None
+
+
+def test_l_alias_becomes_look_command() -> None:
+    parsed = parse("l")
+    assert parsed.verb == "look"
+    assert parsed.noun is None
+    assert parsed.raw == "l"
+
+
+def test_shortest_prefix_resolves_partial_verb() -> None:
+    parsed = parse("loo")
+    assert parsed.verb == "look"
+    assert parsed.noun is None
+
+
+def test_take_all_parses_bare_all_object() -> None:
+    parsed = parse("take all")
+    assert parsed.verb == "take"
+    assert parsed.noun == "all"

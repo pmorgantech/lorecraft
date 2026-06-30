@@ -610,21 +610,29 @@ The bus is synchronous and in-process. It supports:
 
 ### Parser
 
-Converts raw text input to a structured command. Keep it simple — this is not a natural language parser.
+Converts raw text input to structured commands with semantic **roles** (object, recipient,
+direction, message, …). Supports prepositions, quantities, compounds (`;`), and optional
+`GameContext` entity resolution.
+
+See **[COMMAND_PARSER.md](COMMAND_PARSER.md)** for role keys, command patterns (movement,
+speech, transfer, containers, gestures, …), handler integration guidance, and test
+conventions.
 
 ```python
 @dataclass
 class ParsedCommand:
-    verb: str           # normalized, e.g. "go", "take", "attack"
-    noun: Optional[str] # first argument, e.g. "north", "sword", "goblin"
-    raw: str            # original input, for audit log
+    verb: str
+    raw: str
+    roles: dict[str, JsonValue]       # e.g. {"object": "sword", "recipient": "Gabriel"}
+    resolved_ids: dict[str, str]      # after fuzzy match against room/inventory
+    # .noun — legacy convenience property for single-phrase handlers
 
-def parse(raw: str) -> ParsedCommand:
-    # Normalize, split, handle verb aliases
-    # "go north" → verb="go", noun="north"
-    # "n" → verb="go", noun="north"  (alias table)
-    # "take the old sword" → verb="take", noun="sword"  (strip articles)
+result = parse_command("give lead pipe to Gabriel", context=ctx)
+# → commands[0].verb == "give"
+# → roles == {"object": "lead pipe", "recipient": "Gabriel"}
 ```
+
+Pattern helpers: `src/lorecraft/game/command_patterns.py`
 
 ### Command Registry
 

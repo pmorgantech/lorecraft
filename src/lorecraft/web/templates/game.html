@@ -16,7 +16,7 @@
 
             <!-- Room Description Panel -->
             <div class="flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
-                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                <div class="px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Current Location</span>
                     <button
                         hx-get="/partials/room-description"
@@ -27,9 +27,7 @@
                         ⟳
                     </button>
                 </div>
-                <div id="room-description" class="flex-1 min-h-0 p-3 text-sm overflow-y-auto bg-feed-bg">
-                    {% include "partials/room_description.html" %}
-                </div>
+                {% include "partials/room_description.html" %}
             </div>
 
             <!-- Inventory: flexible between room and map -->

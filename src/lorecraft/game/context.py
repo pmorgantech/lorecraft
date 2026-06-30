@@ -72,3 +72,21 @@ class GameContext:
     def commit_audit_events(self) -> None:
         if self.commit_audit is not None:
             self.commit_audit()
+
+    def get_visible_entities(self) -> list[tuple[str, str, list[str]]]:
+        """Return room items and NPCs as (id, name, aliases) for parser resolution."""
+        entities: list[tuple[str, str, list[str]]] = []
+        for _room_item, item in self.item_repo.items_in_room(self.room.id):
+            entities.append((item.id, item.name, []))
+        for npc in self.npc_repo.in_room(self.room.id):
+            entities.append((npc.id, npc.name, [npc.name.lower()]))
+        return entities
+
+    def get_inventory(self) -> list[tuple[str, str, list[str]]]:
+        """Return carried items as (id, name, aliases) for parser resolution."""
+        inventory: list[tuple[str, str, list[str]]] = []
+        for item_id in self.player.inventory:
+            item = self.item_repo.get(item_id)
+            if item is not None:
+                inventory.append((item.id, item.name, []))
+        return inventory
