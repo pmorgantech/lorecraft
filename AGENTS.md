@@ -1,12 +1,14 @@
 # Repository agent instructions
 
 ## Context strategy
+
 - Start with local files and tests.
 - Use Graphify for architecture, impact analysis, dependency paths, and unfamiliar subsystems when graphify-out/graph.json exists.
 - Use Ref before changing code that depends on external APIs, libraries, SDKs, or framework behavior.
-- Use Exa for recent ecosystem research, changelogs, examples, or public issue research.
+- Create a new branch for any changes which are large in scope or risky.
 
 ## Design principles
+
 - Prefer **data-driven** configuration (world YAML, fixture modules, config files) over
   runtime branching on room names, item IDs, or other world content baked into application code.
 - Do not inspect the database for specific room/world IDs to choose behaviour at runtime
@@ -19,6 +21,7 @@
   `src/lorecraft/`. The engine loads world data from YAML/DB, not from pytest helpers.
 
 ## Workflow
+
 - Make small, reviewable changes.
 - Prefer existing project patterns.
 - Type hint all new features; omit hints only when they would be noisy, brittle, or not easily expressible.
