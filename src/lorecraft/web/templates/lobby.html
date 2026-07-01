@@ -30,7 +30,7 @@
         </div>
 
         <!-- JOIN / ENTER -->
-        <div class="space-y-4">
+        <div class="space-y-4" x-show="tab === 'join'">
             <h2 class="text-xl font-semibold mb-4">Choose a Player</h2>
 
             {% if players %}
@@ -54,8 +54,26 @@
                 <p class="text-zinc-400">No players found in database.</p>
             </div>
             {% endif %}
+        </div>
 
-            <p class="text-xs text-zinc-500 mt-4">Tip: append <code>?player_id=player-1</code> to any game URL for direct access.</p>
+        <!-- CREATE CHARACTER -->
+        <div class="space-y-4 max-w-md" x-show="tab === 'create'">
+            <h2 class="text-xl font-semibold mb-4">Create a New Character</h2>
+            <form method="post" action="/lobby/create" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
+                <div>
+                    <label for="username" class="block text-sm text-zinc-400 mb-1">Character name</label>
+                    <input type="text" id="username" name="username" required minlength="3" maxlength="30"
+                           pattern="[A-Za-z0-9_-]{3,30}"
+                           title="3-30 characters: letters, numbers, - or _ only"
+                           class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-600"
+                           placeholder="e.g. Ashen_Wanderer">
+                    <p class="text-xs text-zinc-500 mt-1">3-30 characters: letters, numbers, - or _ only.</p>
+                </div>
+                <button type="submit"
+                        class="w-full px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold rounded-lg transition-colors">
+                    Create &amp; Enter
+                </button>
+            </form>
         </div>
     </div>
 </div>

@@ -12,13 +12,14 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 **Sprint 1 (HTMX parity)** is complete: commands execute via `POST /command`, dialogue/quests/multiplayer push work, WebSocket integrates with `ConnectionManager`.
 
-Two gaps discovered during 0.2.0 were not in the original roadmap:
-1. **Player identity is dev-mode only**: `get_current_player()` trusts `?player_id=` query param + cookie with no auth. `create character` does not work; security risk flagged in `TODO.md`.
-2. **Tailwind/CSS is layered ad-hoc**: `base.html` loads Tailwind Play CDN; utility classes sprawl across 807 lines of templates, layered on top of hand-rolled `static/css/custom.css` (107 lines). Unwinding this has zero gameplay-logic risk but real visual-regression risk — isolate as separate worktree.
+One gap remains from the original roadmap:
+1. **Tailwind/CSS is layered ad-hoc**: `base.html` loads Tailwind Play CDN; utility classes sprawl across 807 lines of templates, layered on top of hand-rolled `static/css/custom.css` (107 lines). Unwinding this has zero gameplay-logic risk but real visual-regression risk — isolate as separate worktree (Sprint D).
+
+**Sprint A (player identity & session safety) is done for its stated scope** — signed session cookies replace bare `player_id` trust as the primary HTTP identity path, and character creation works. It intentionally does **not** implement password/credential accounts (`POST /auth/login` per `ARCHITECTURE.md` §29) or a signed WebSocket handshake; both are tracked as new backlog items below.
 
 ---
 
-## Sprint A — Player identity & session safety
+## Sprint A — Player identity & session safety — DONE
 
 **Goal:** Fix character creation (`TODO.md`); stop trusting bare `?player_id=` for identity. Introduce session/signed-cookie pattern at minimum. Ground-floor for `help system` expansion.
 
@@ -26,9 +27,16 @@ Two gaps discovered during 0.2.0 were not in the original roadmap:
 
 | # | Task | Status |
 |---|------|--------|
-| A.1 | Session-backed identity: signed cookie or token-based auth (no bare `player_id` trust) | [ ] |
-| A.2 | Fix `create character` logic in `frontend.py` / player creation flow | [ ] |
-| A.3 | Verify `get_current_player()` uses session-backed identity end-to-end | [ ] |
+| A.1 | Session-backed identity: signed JWT cookie (`lorecraft_session`, httponly), separate secret from admin auth, reuses `admin/auth.py` token primitives via `web/player_auth.py` | [x] |
+| A.2 | `POST /lobby/create`: validated username (3-30 chars, `[A-Za-z0-9_-]`), uniqueness check, creates `Player` + auto-login; `/lobby/enter` verifies player exists before minting a session; both redirect to plain `/game` (no `?player_id=` in the URL) | [x] |
+| A.3 | `get_current_player()` prefers the signed cookie; legacy `?player_id=`/unsigned-cookie path kept behind `Settings.allow_query_player_id` (default on) for dev/test back-compat | [x] |
+
+**Known gaps intentionally out of scope** (see `docs/TODO.md`):
+- No password/credential auth — `/lobby/enter` still lets anyone claim any existing username with no secret.
+- `/ws?player_id=...` handshake still trusts the raw query param unconditionally; not covered by the signed-cookie fix.
+- `LORECRAFT_ALLOW_QUERY_PLAYER_ID` defaults to `true`, so the legacy bypass is still reachable until flipped off in a later hardening pass.
+
+Session secret (`LORECRAFT_PLAYER_SESSION_SECRET`) is auto-generated and persisted to `.env` on first real server startup (`ensure_persisted_secret()` in `config.py`); test runs always pass explicit `Settings(...)` and never touch disk.
 
 ---
 
@@ -127,6 +135,9 @@ Two gaps discovered during 0.2.0 were not in the original roadmap:
 
 | Item | Notes |
 |------|-------|
+| Password/credential accounts (`POST /auth/login`, register-on-first-login) | `ARCHITECTURE.md` §29 original intent; Sprint A shipped signed sessions + character creation but not credentials |
+| Signed WebSocket handshake | `/ws?player_id=...` still trusts the raw query param; needs a short-lived ticket or equivalent tied to the session cookie |
+| Retire `LORECRAFT_ALLOW_QUERY_PLAYER_ID` legacy fallback | Flip default off once browser + test callers use the signed cookie exclusively (Sprint A follow-up hardening) |
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | Bug/todo letterbox | In-world or admin-facing feedback |
 | Inventory encumbrance / wear slots | After equipment + combat |
@@ -170,4 +181,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-01 — Roadmap revised post-0.2.0: Sprint 1 complete; gaps discovered (player identity, CSS layering) added as A & D; sprints resequenced per architecture review.*
+*Last updated: 2026-07-01 — Sprint A (player identity & session safety) complete: signed session cookies, working character creation. Password auth and signed WS handshake moved to backlog as explicitly scoped-out follow-ups.*

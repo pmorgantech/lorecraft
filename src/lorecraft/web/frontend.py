@@ -10,7 +10,10 @@ Server-driven UI:
 
 from __future__ import annotations
 
+import re
+import secrets
 import time
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -41,6 +44,13 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject
+from lorecraft.web.player_auth import (
+    PLAYER_SESSION_COOKIE,
+    create_player_token,
+    decode_player_id,
+)
+
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,30}$")
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
@@ -52,6 +62,7 @@ _audit_engine = None
 _command_registry: CommandRegistry | None = None
 _rule_engine: RuleEngine | None = None
 _fallback_bus: EventBus | None = None
+_fallback_player_secret: str | None = None
 
 
 def _get_engines(request: Request | None = None):
@@ -154,15 +165,75 @@ def _get_bus(request: Request) -> EventBus:
     return _fallback_bus
 
 
+def _player_session_secret(app_state: AppState | None) -> str:
+    """Secret used to sign/verify the player session cookie.
+
+    Prefers the one resolved at app startup (persisted to .env for real
+    servers, see `main.create_app`). Falls back to a per-process random
+    secret when the router is used standalone (no app.state.lorecraft),
+    matching the pattern used for the command registry/rule engine above.
+    """
+    if app_state is not None and app_state.settings.player_session_secret:
+        return app_state.settings.player_session_secret
+    global _fallback_player_secret
+    if _fallback_player_secret is None:
+        _fallback_player_secret = secrets.token_hex(32)
+    return _fallback_player_secret
+
+
+def _player_session_ttl(app_state: AppState | None) -> int:
+    if app_state is not None:
+        return app_state.settings.player_session_ttl_seconds
+    return 60 * 60 * 24 * 7
+
+
+def _set_player_session_cookie(
+    resp: HTMLResponse | RedirectResponse, player_id: str, app_state: AppState | None
+) -> None:
+    ttl = _player_session_ttl(app_state)
+    token = create_player_token(player_id, _player_session_secret(app_state), ttl)
+    resp.set_cookie(
+        key=PLAYER_SESSION_COOKIE,
+        value=token,
+        max_age=ttl,
+        httponly=True,
+        samesite="lax",
+    )
+
+
 async def get_current_player(request: Request) -> Player:
-    """Dev-friendly player resolution via ?player_id= or cookie. Falls back to seeded player-1."""
+    """Resolve the current player.
+
+    Prefers the signed `lorecraft_session` cookie minted by `/lobby/enter` and
+    `/lobby/create` (see `lorecraft.web.player_auth`) — this is the only path
+    that can't be forged by a client. Falls back to the legacy dev/test path
+    (`?player_id=`/`&pid=` or an unsigned `player_id` cookie) when no valid
+    signed session is present, gated by `Settings.allow_query_player_id`
+    (default on; see docs/TODO.md and docs/NEXT_STEPS.md Sprint A).
+    """
+    app_state = _get_app_state(request)
+    game_engine, _ = _get_engines(request)
+
+    session_token = request.cookies.get(PLAYER_SESSION_COOKIE)
+    if session_token:
+        signed_player_id = decode_player_id(
+            session_token, _player_session_secret(app_state)
+        )
+        if signed_player_id:
+            with DBSession(game_engine) as db:
+                signed_player = PlayerRepo(db).get(signed_player_id)
+            if signed_player is not None:
+                return signed_player
+
+    if app_state is not None and not app_state.settings.allow_query_player_id:
+        raise HTTPException(status_code=401, detail="No active session")
+
     explicit_id = request.query_params.get("player_id") or request.query_params.get(
         "pid"
     )
     cookie_id = request.cookies.get("player_id")
     # Explicit query param wins so multiple browser profiles/tabs can use ?player_id=.
     player_id = explicit_id or cookie_id
-    game_engine, _ = _get_engines(request)
 
     with DBSession(game_engine) as db:
         repo = PlayerRepo(db)
@@ -288,12 +359,58 @@ async def lobby(request: Request, player: Player | None = Depends(get_current_pl
 
 
 @router.post("/lobby/enter", response_class=RedirectResponse)
-async def enter_world(player_id: str = Form(...)):
-    """Set player and go to game. We set a cookie for convenience across HTMX calls."""
-    resp = RedirectResponse(url=f"/game?player_id={player_id}", status_code=303)
-    resp.set_cookie(
-        key="player_id", value=player_id, max_age=60 * 60 * 24 * 7, httponly=False
+async def enter_world(request: Request, player_id: str = Form(...)):
+    """Verify the chosen player exists, then log in via a signed session cookie."""
+    game_engine, _ = _get_engines(request)
+    with DBSession(game_engine) as db:
+        player = PlayerRepo(db).get(player_id)
+    if player is None:
+        raise HTTPException(status_code=404, detail="Unknown player")
+
+    app_state = _get_app_state(request)
+    resp = RedirectResponse(url="/game", status_code=303)
+    _set_player_session_cookie(resp, player.id, app_state)
+    return resp
+
+
+@router.post("/lobby/create", response_class=RedirectResponse)
+async def create_character(request: Request, username: str = Form(...)):
+    """Create a new player character and log in via a signed session cookie."""
+    username = username.strip()
+    if not _USERNAME_RE.match(username):
+        raise HTTPException(
+            status_code=400,
+            detail="Username must be 3-30 characters: letters, numbers, - or _ only.",
+        )
+
+    app_state = _get_app_state(request)
+    start_room = (
+        app_state.settings.seed_player_start_room if app_state else "village_square"
     )
+    game_engine, _ = _get_engines(request)
+
+    with DBSession(game_engine) as db:
+        repo = PlayerRepo(db)
+        room_repo = RoomRepo(db)
+        if repo.by_username(username) is not None:
+            raise HTTPException(status_code=409, detail="That name is already taken.")
+        if room_repo.get(start_room) is None:
+            raise HTTPException(
+                status_code=500, detail="Starting room is not configured."
+            )
+        player = Player(
+            id=str(uuid.uuid4()),
+            username=username,
+            current_room_id=start_room,
+            respawn_room_id=start_room,
+            visited_rooms=[start_room],
+        )
+        db.add(player)
+        db.commit()
+        db.refresh(player)
+
+    resp = RedirectResponse(url="/game", status_code=303)
+    _set_player_session_cookie(resp, player.id, app_state)
     return resp
 
 

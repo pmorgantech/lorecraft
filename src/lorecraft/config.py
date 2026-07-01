@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import secrets
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Populate os.environ from a repo-root .env file (if present) before any
+# Settings are read. Real env vars already set always take precedence.
+load_dotenv()
 
 
 @dataclass(frozen=True)
@@ -25,10 +33,24 @@ class Settings:
     seed_player_id: str = "player-1"
     seed_player_username: str = "player-1"
     seed_player_start_room: str = "village_square"
+    # Player session JWT (persisted to .env if not set — see ensure_persisted_secret)
+    player_session_secret: str = ""
+    player_session_ttl_seconds: int = 60 * 60 * 24 * 7  # 7 days
+    # Dev/back-compat fallback: trust ?player_id=/&pid= and the legacy unsigned
+    # cookie when no signed session cookie is present. Flip off once all
+    # clients (browser + tests) use the signed session cookie exclusively.
+    allow_query_player_id: bool = True
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def load_settings() -> Settings:
-    """Load settings from environment variables."""
+    """Load settings from environment variables (and .env, via load_dotenv above)."""
 
     return Settings(
         database_path=os.getenv("LORECRAFT_DB_PATH", "game.db"),
@@ -54,4 +76,36 @@ def load_settings() -> Settings:
         seed_player_start_room=os.getenv(
             "LORECRAFT_SEED_PLAYER_START_ROOM", "village_square"
         ),
+        player_session_secret=os.getenv("LORECRAFT_PLAYER_SESSION_SECRET", ""),
+        player_session_ttl_seconds=int(
+            os.getenv("LORECRAFT_PLAYER_SESSION_TTL_SECONDS", str(60 * 60 * 24 * 7))
+        ),
+        allow_query_player_id=_env_bool("LORECRAFT_ALLOW_QUERY_PLAYER_ID", True),
     )
+
+
+def ensure_persisted_secret(
+    var_name: str, *, env_path: Path = Path(".env"), length: int = 32
+) -> str:
+    """Return the value of `var_name`, generating and persisting one to `.env` if unset.
+
+    Unlike the ephemeral admin JWT secret fallback, this is meant for secrets that
+    should survive process restarts (e.g. player session signing keys) without
+    requiring the operator to set them manually. Only call this from a real
+    server entrypoint — never from test setup — since it writes to disk.
+    """
+    existing = os.getenv(var_name)
+    if existing:
+        return existing
+
+    value = secrets.token_hex(length)
+    line = f"{var_name}={value}"
+    if env_path.exists():
+        content = env_path.read_text()
+        if content and not content.endswith("\n"):
+            content += "\n"
+        env_path.write_text(content + line + "\n")
+    else:
+        env_path.write_text(line + "\n")
+    os.environ[var_name] = value
+    return value
