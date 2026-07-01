@@ -3,15 +3,19 @@
 Bugs:
 
 - [ ] Inventory quirkiness (item aliases, refer to items by shortened names, prompt for ambiguity)
-- [ ] Command prompt takes whole vertical space before "Connect" is clicked
 
 ToDos:
 
-- [x] exits mini-map
-- [x] take N items, drop N items
+- [ ] create character does not work
+- [ ] exposing the player id in the uri may be a security risk, esp with no auth
 - [ ] timer / scheduler system
 - [ ] use command, more commands!
-- [ ] do we have entities?
+- [ ] offline/irl commands ( /system, @someone )
+- [ ] bug/todo system (letterbox, safe to update TODO.md?)
+- [ ] inventory encumbrance? When/how do we get to supporting this? Carry slots, wear slots, etc.
+- [ ] help system?
+- [x] take N items, drop N items
+- [x] exits mini-map
 
 Wishlist:
 

@@ -34,7 +34,7 @@ Legend:
 - [x] Jinja2 + HTMX + Alpine server-driven frontend integrated as primary UI (`/lobby`, `/game`, `/command`, partials).
 - [x] Command flow with immediate HTML response + OOB + WS push for other players.
 - [x] Audit log used as source for narrative feed.
-- [~] Full multi-player live lists and world clock push still evolving from core events.
+- [~] Multi-player live lists use `ConnectionManager` when WS connected; world clock SSR + WS `time_update` handler added; full clock push from server events still evolving.
 - [x] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
 - [x] `main.py` FastAPI app.
 - [x] `/ws` WebSocket endpoint.
@@ -168,6 +168,7 @@ Legend:
 - [x] `quit` command now closes the WebSocket (`disconnect: true` update handled in `app.js`).
 - [x] Disconnect button added — appears when connected, hides when offline.
 - [x] Player ID input disabled while connected (prevents mid-session reconnect confusion).
+- [x] HTMX `POST /command` executes via `CommandEngine`; dialogue overlay and quest tracker ported from vanilla client.
 - [ ] Full-screen map modal.
 - [ ] Responsive behavior improvements.
 - [ ] Browser end-to-end testing.

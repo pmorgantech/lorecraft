@@ -1627,6 +1627,157 @@ These are real future concerns. Do not design or build them in the initial imple
 
 ---
 
+## 28. Gaps & Future Considerations
+
+Lower-severity items identified during architecture review. None of these block Phase 1–9 implementation, but each should get a deliberate decision before it becomes load-bearing.
+
+### Authentication & Security Hardening
+
+**LAN-party auth hardening, if this ever leaves the LAN:** Local accounts (username + password) deliberately skip login rate limiting, password reset, and email verification — reasonable for a same-room trusted group, not reasonable if the server is ever exposed beyond that. Add login attempt throttling and consider the no-verification model before any non-LAN deployment; this is also the trigger point for adding Google OAuth as a second provider.
+
+**Action:** When the engine moves to a real domain, add login attempt throttling and revisit the no-verification model before any non-LAN deployment.
+
+### Command Throughput & Rate Limiting
+
+**Distinct from the deferred anti-cheat item** — this is about basic stability. One player spamming commands shouldn't be able to degrade the experience for the room. A simple per-session token bucket in `ConnectionManager` would cover it.
+
+**Action:** Implement a per-session token bucket (e.g., 1 command per 200ms, burst of 5) as a stabilization gate, not exploit detection.
+
+### Audit Log Retention & Archival Policy
+
+**audit.db grows forever with no stated rotation, compaction, or cold-storage plan.** Needs a policy before it becomes an operational problem.
+
+**Action:** Before shipping, define a policy (e.g., archive events older than N days to compressed JSON, keep recent window queryable in audit.db).
+
+### Changeset Staleness & Lifespan Management
+
+**Carried over from Builder Mode design:** A DRAFT changeset and its builder clone can live indefinitely if abandoned. Need a TTL or staleness flag so abandoned drafts don't accumulate.
+
+**Action:** Unresolved. A DRAFT changeset should have a policy (e.g., auto-flag stale after N days, require explicit renewal, or garbage-collect on server startup).
+
+### Conflict Auto-Resolve Acknowledgment Policy
+
+**Conflict scanner can surface auto-resolvable conflicts (player displacement, etc.).** Current doc text assumes acknowledgment is required; hasn't been explicitly confirmed whether auto-resolvable conflicts should require explicit sign-off or can pass through silently.
+
+**Action:** Decide before Builder Mode ships: require explicit acknowledgment of auto-resolvable conflicts, or allow them through silently?
+
+### Engine Code-Schema Migrations
+
+**World Versioning (Section 19) handles content migrations (renamed flags/rooms in world data). It does not cover engine migrations** (e.g., adding a column to Player). A separate tool (Alembic, given the SQLAlchemy stack) is needed and isn't yet specified.
+
+**Action:** Specify a migration strategy for engine-side schema changes (Alembic or equivalent) before any incompatible schema revision.
+
+### Process Supervision
+
+**The engine is explicitly single-process by design (Section 1).** That process needs a supervisor (systemd unit, container restart policy, or equivalent) with a health check, since there's no redundancy to fall back on.
+
+**Action:** Document the expected deployment unit (systemd, container, etc.) and health-check endpoint before shipping to production.
+
+---
+
+## 29. Build Order Recommendation
+
+Build in this sequence. The browser is split across the build order so client-facing protocol, context, event, and WebSocket behavior can be exercised as vertical slices instead of waiting until every gameplay subsystem exists. The early browser work is a harness, not the final frontend.
+
+### Phase 1 — Foundation (no gameplay yet)
+1. `config.py` — env-driven configuration
+2. `models/` — all SQLModel table definitions; `create_tables()` at startup
+3. `repos/` — thin data access wrappers
+4. `game/context.py` — `GameContext` and `TransactionContext`
+5. `game/connection_manager.py` — WebSocket connection pool
+6. `game/events.py` — `GameEvent` enum and `EventBus`
+7. `main.py` — FastAPI app, `/ws` WebSocket endpoint, startup/shutdown lifecycle
+8. **Test:** Can a player register (first login creates the account), log in, obtain a ws ticket, connect a WebSocket, and send/receive JSON messages?
+
+### Phase 2 — Command Dispatch
+1. `game/parser.py` — raw text → `ParsedCommand`
+2. `game/registry.py` — command registration, condition evaluation
+3. `game/rules.py` — `RuleEngine` (empty rule set initially)
+4. `game/engine.py` — `handle_command()` with the full 13-step lifecycle
+5. `commands/meta.py` — `help`, `quit`
+6. `commands/movement.py` — `go`, cardinal directions
+7. `services/movement.py` — `MovementService`
+8. **Test:** Player can connect, `go north`, see a response, and change rooms.
+
+### Phase 2.5 — Minimal Web Client
+1. Single HTML file with browser WebSocket client (login form → POST /auth/login, fetch ws-ticket, connect)
+2. Message router for server response, room event, error, and structured update messages
+3. Plain JavaScript state object for current room, feed, status, and connection state
+4. Basic text feed and command input
+5. Basic room/status display
+6. **Test:** Browser smoke/end-to-end test can log in, connect, send a command, and render the response.
+
+### Phase 3 — World & Time
+1. `clock/world_clock.py` — clock loop as background asyncio task
+2. `clock/weather.py` — weather/season state machine
+3. `commands/inventory.py` — `look`, `take`, `drop`, `examine`, `inventory`
+4. `services/inventory.py` — `InventoryService`
+5. World YAML loader + validator
+6. **Test:** Clock advances. Weather changes. Player can pick up items.
+
+### Phase 3.5 — World UI
+1. Inventory panel backed by inventory command responses and structured updates
+2. Minimap SVG with fog-of-war
+3. Basic layout refinement around the feed, room/status display, inventory, and minimap
+4. **Test:** Browser can show room changes, inventory updates, and visited-room map state.
+
+### Phase 4 — NPCs & Quests
+1. `npc/dialogue.py` — dialogue tree walker
+2. `npc/scheduler.py` — NPC movement via `HOUR_CHANGED`
+3. `services/dialogue.py` — `DialogueService`
+4. `commands/social.py` — `talk`, `say`
+5. `services/quest.py` — `QuestService`
+6. **Test:** Player can talk to an NPC, make choices, trigger quest flags.
+
+### Phase 4.5 — Dialogue UI
+1. Dialogue overlay with numbered choices
+2. Command input disabled or mode-switched while dialogue is active
+3. **Test:** Browser can render dialogue choices and send a dialogue selection.
+
+### Phase 5 — Persistence & Safety
+1. `services/save.py` — `SaveSlotService`, auto-save triggers
+2. `commands/meta.py` — `save`, `load`
+3. Disconnect handling — grace period, reconnect, system-controlled state
+4. **Test:** Save mid-quest, disconnect, reconnect, load save — state is preserved.
+
+### Phase 6 — Admin Tools
+1. `admin/auth.py` — JWT, roles
+2. `admin/api.py` — admin REST endpoints
+3. `admin/websocket.py` — admin push WebSocket
+4. `world/versioning.py` — changesets, conflict scanner, promotion
+5. **Test:** Admin can view live players, edit a room, promote a changeset.
+
+### Phase 7 — Frontend Polish
+1. Three-column CSS Grid layout with custom-property theming (Terminal Gothic)
+2. Full-screen map modal with pan/zoom
+3. Responsive behavior for mobile tab layout and desktop grid layout
+4. Visual polish for the Terminal Gothic theme
+5. **Test:** Full browser end-to-end coverage: connect, explore, talk to NPC, fight.
+
+### Phase 8 — Combat
+1. `models/combat.py` — `CombatSession`, `CombatSlot`, `PlayerStats`
+2. `services/combat.py` — `CombatService`, tick resolution, damage calc
+3. `npc/combat_ai.py` — NPC decision logic
+4. `commands/combat.py` — `attack`, `flee`
+5. **Test:** Player can fight an NPC; HP changes; NPC can die and drop loot.
+
+### Phase 8.5 — Combat UI
+1. Combat message styling in the text feed
+2. Combat status display for HP, active target, and turn/tick state
+3. **Test:** Browser reflects combat start, combat updates, and combat end messages.
+
+### Phase 9 — Player Interaction
+1. `services/trading.py` — trade offer lifecycle
+2. `commands/social.py` — `trade`, `pvp challenge`, `pvp accept`
+3. PvP consent system
+4. **Test:** Two players can trade items; PvP requires mutual consent.
+
+---
+
+*End of implementation guide. All systems described here have been designed across multiple architecture sessions. Where a system notes open questions (magic model, PvP griefing, changeset staleness), those are intentionally unresolved and should be designed before implementing that specific feature.*
+
+---
+
 ## 28. Build Order Recommendation
 
 Build in this sequence. The browser is split across the build order so client-facing protocol, context, event, and WebSocket behavior can be exercised as vertical slices instead of waiting until every gameplay subsystem exists. The early browser work is a harness, not the final frontend.
