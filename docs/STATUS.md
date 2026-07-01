@@ -42,6 +42,16 @@ Legend:
 - [x] Startup/shutdown lifecycle wiring.
 - [x] WebSocket connect/send/receive integration test.
 
+### Player Identity & Session Safety (Sprint A)
+
+- [x] `web/player_auth.py` — signed JWT player session cookie (`lorecraft_session`, httponly, `samesite=lax`), reusing `admin/auth.py` token primitives with a separate secret and `token_type="player"` so it can never be replayed as an admin token.
+- [x] `Settings.player_session_secret` — auto-generated and persisted to `.env` on first real server startup via `config.ensure_persisted_secret()`; ephemeral per-process fallback for tests/router-standalone use (never writes to disk).
+- [x] `get_current_player()` prefers the signed cookie; legacy `?player_id=`/unsigned-cookie dev path retained behind `Settings.allow_query_player_id` (default on).
+- [x] `POST /lobby/create` — validated username (3-30 chars, `[A-Za-z0-9_-]`), uniqueness check, creates `Player` at `seed_player_start_room`, auto-login.
+- [x] `POST /lobby/enter` — verifies the player exists before minting a session; both lobby routes redirect to plain `/game` (no `player_id` in the URL).
+- [x] Lobby UI "Create New Character" tab wired to a real form.
+- [~] Not a full account system: no password/credential check on `/lobby/enter`, and `/ws?player_id=...` still trusts the raw query param independent of the signed cookie. See `docs/TODO.md`.
+
 ### Phase 2 — Command Dispatch
 
 - [x] `game/parser.py` converts raw text into `ParsedCommand`.

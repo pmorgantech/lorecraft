@@ -4,8 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+### Security
+
+- `/lobby/enter` and `/lobby/create` now issue a signed, httponly JWT session cookie (`lorecraft_session`) instead of redirecting to `/game?player_id=...` — player identity is no longer echoed in the URL or trusted from an unsigned cookie on the primary login path. The legacy `?player_id=`/unsigned-cookie fallback still exists for dev/test convenience, gated behind `LORECRAFT_ALLOW_QUERY_PLAYER_ID` (default on).
+
 ### Fixed
 
+- `create character` now works: `POST /lobby/create` validates the username, creates the player, and logs them in.
 - HTMX `POST /command` now calls `CommandEngine.handle_command()` (commands were previously not executed).
 - WebSocket client connects to `/ws?player_id=…` instead of the non-existent `/ws/game` path.
 - Dev seed DB (`test_dbs/`) regenerated from Ashmoore `world_content/world.yaml`; `player-1` now starts at `village_square` with working exits.
@@ -20,6 +25,11 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Added
 
+- `lorecraft.web.player_auth` — signed JWT player session cookie helpers (`create_player_token`/`decode_player_id`), reusing `admin/auth.py` token primitives with a separate secret.
+- `POST /lobby/create` — character creation endpoint with username validation and uniqueness check; wired to a new "Create New Character" form in `lobby.html`.
+- `config.ensure_persisted_secret()` — generates and persists a secret to `.env` on first use (used for `LORECRAFT_PLAYER_SESSION_SECRET`); only called from the real server entrypoint, never during tests.
+- Config env vars: `LORECRAFT_PLAYER_SESSION_SECRET`, `LORECRAFT_PLAYER_SESSION_TTL_SECONDS`, `LORECRAFT_ALLOW_QUERY_PLAYER_ID`.
+- `python-dotenv` dependency — loads `.env` into the environment at startup.
 - `lorecraft.world.bootstrap` — YAML-driven empty-DB import and configurable dev player seeding.
 - Config env vars: `LORECRAFT_WORLD_YAML_PATH`, `LORECRAFT_SEED_PLAYER_ID`, `LORECRAFT_SEED_PLAYER_USERNAME`, `LORECRAFT_SEED_PLAYER_START_ROOM`.
 - NPC (Mira), dialogue tree, and sample quest in `world_content/world.yaml` for Ashmoore playtesting.
@@ -34,6 +44,7 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Changed
 
+- `main.create_app()` uses `dataclasses.replace()` to build `resolved_settings` instead of manually re-listing every `Settings` field — fixes a latent bug where `world_yaml_path`/`seed_player_*` overrides passed via an explicit `Settings(...)` were silently dropped.
 - `import_world.py` wipes NPCs, dialogue trees, and quests on `--fresh`; seeds `player-1` and `player-2`; resets players on fresh import.
 - `start.sh` copies `test_dbs/` seed databases again (not `game.db`).
 - Admin and integration tests updated for Ashmoore room IDs (`village_square`, `wandering_crow_inn`, `market_stalls`, etc.).
