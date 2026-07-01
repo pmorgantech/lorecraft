@@ -8,6 +8,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -25,7 +26,7 @@ from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.npc.scheduler import NpcScheduler
 from lorecraft.services.quest import QuestService
-from lorecraft.config import Settings, load_settings
+from lorecraft.config import Settings, ensure_persisted_secret, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
@@ -66,6 +67,10 @@ def create_app(
     game_engine: Engine | None = None,
     audit_engine: Engine | None = None,
 ) -> FastAPI:
+    # Track whether settings came from the environment (real entrypoint) vs. were
+    # explicitly constructed by a caller (tests). Only the former persists a
+    # generated player session secret to disk.
+    used_env_settings = settings is None
     settings = settings or load_settings()
 
     # Warn if no JWT secret; generate an ephemeral one so the server still starts.
@@ -76,23 +81,34 @@ def create_app(
             "LORECRAFT_ADMIN_JWT_SECRET is not set. "
             "Using an ephemeral random secret — admin tokens will not survive restarts."
         )
-    # Expose the (possibly generated) secret via settings-like object without mutation.
-    resolved_settings = Settings(
-        database_path=settings.database_path,
-        audit_database_path=settings.audit_database_path,
-        world_time_ratio=settings.world_time_ratio,
-        websocket_path=settings.websocket_path,
-        disconnect_grace_seconds=settings.disconnect_grace_seconds,
-        admin_jwt_secret=effective_jwt_secret,
-        admin_jwt_access_ttl=settings.admin_jwt_access_ttl,
-        admin_jwt_refresh_ttl=settings.admin_jwt_refresh_ttl,
-        admin_seed_username=settings.admin_seed_username,
-        admin_seed_password=settings.admin_seed_password,
-        admin_seed_role=settings.admin_seed_role,
-    )
+
+    # Expose the (possibly generated) admin secret via a settings-like object
+    # without mutation. dataclasses.replace carries forward every other field,
+    # so newly added Settings fields don't need to be re-listed here.
+    resolved_settings = replace(settings, admin_jwt_secret=effective_jwt_secret)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # Resolve the player session secret at actual startup (not at
+        # create_app()/import time) so merely importing this module — which
+        # every test does via `app = create_app()` below — never writes to
+        # disk. Only a real `.env`-backed startup (used_env_settings) persists
+        # a generated secret; explicit-Settings callers (tests) get an
+        # ephemeral one, matching the admin JWT secret fallback above.
+        app_settings = resolved_settings
+        if not app_settings.player_session_secret:
+            if used_env_settings:
+                player_secret = ensure_persisted_secret(
+                    "LORECRAFT_PLAYER_SESSION_SECRET"
+                )
+                log.info(
+                    "LORECRAFT_PLAYER_SESSION_SECRET was not set; generated one "
+                    "and saved it to .env."
+                )
+            else:
+                player_secret = secrets.token_hex(32)
+            app_settings = replace(app_settings, player_session_secret=player_secret)
+
         resolved_game_engine = game_engine or create_game_engine(resolved_settings)
         resolved_audit_engine = audit_engine or create_audit_engine(resolved_settings)
         create_tables(
@@ -165,7 +181,7 @@ def create_app(
         bus.on(GameEvent.TIME_ADVANCED, _push_clock_tick)
 
         state = AppState(
-            settings=resolved_settings,
+            settings=app_settings,
             game_engine=resolved_game_engine,
             audit_engine=resolved_audit_engine,
             manager=manager,
