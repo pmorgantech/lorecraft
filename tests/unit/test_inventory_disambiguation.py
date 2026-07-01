@@ -185,3 +185,22 @@ class TestParserAndInventoryIntegration:
 
         assert ctx.messages[0].startswith("Which do you mean?")
         assert ctx.updates["disambig_pending"]["verb"] == "take"
+
+    def test_command_engine_examine_key_reaches_inventory_disambig(self) -> None:
+        engine = create_engine("sqlite://")
+        create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+        with Session(engine) as session:
+            player = _seed_gallery_player(session)
+            session.commit()
+            ctx = _build_context(session, player)
+            registry = CommandRegistry()
+            from lorecraft.commands.inventory import register_inventory_commands
+
+            register_inventory_commands(registry)
+            cmd_engine = CommandEngine(registry, RuleEngine())
+
+            cmd_engine.handle_command("examine key", ctx)
+
+        assert ctx.messages[0].startswith("Which do you mean?")
+        assert ctx.updates["disambig_pending"]["verb"] == "examine"

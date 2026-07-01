@@ -121,10 +121,12 @@ class TestAmbiguity:
         assert result.commands[0].roles.get("object") == "key"
         assert "object" not in result.commands[0].resolved_ids
 
-    def test_ambiguous_examine_still_blocks_at_parser(self, mock_context):
+    def test_ambiguous_examine_defers_to_inventory_layer(self, mock_context):
         result = parse_command("examine key", context=mock_context)
-        assert result.error_message is not None
-        assert "which" in result.error_message.lower()
+        assert not result.error_message
+        assert result.commands[0].verb == "examine"
+        assert result.commands[0].roles.get("target") == "key"
+        assert "target" not in result.commands[0].resolved_ids
 
 
 class TestErrorsAndEdges:

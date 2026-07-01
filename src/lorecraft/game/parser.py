@@ -183,6 +183,15 @@ PHRASAL_ROLE_HINTS = {
     "look in": "destination",
 }
 
+# Verbs whose command handler prompts its own numbered disambiguation
+# (via InventoryService._prompt_disambiguation) rather than relying on the
+# parser's in-character "which did you mean" error.
+DEFERRED_DISAMBIGUATION_ROLE = {
+    "take": "object",
+    "drop": "object",
+    "examine": "target",
+}
+
 
 @dataclass(frozen=True)
 class ParsedCommand:
@@ -582,8 +591,9 @@ def parse_command(
                 continue
             resolved_id, suggestions, note = resolve_phrase(phrase)
             if suggestions:
-                # take/drop object ambiguity → InventoryService numbered prompts
-                if not (verb in {"take", "drop"} and role_key == "object"):
+                # Some verbs implement their own numbered disambiguation prompt
+                # (InventoryService) — defer to it instead of erroring here.
+                if DEFERRED_DISAMBIGUATION_ROLE.get(verb) != role_key:
                     return ParseResult(error_message=note, suggestions=suggestions)
                 resolved_id = None
             if resolved_id:
