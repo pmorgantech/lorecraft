@@ -57,9 +57,6 @@ cover/
 
 # Django stuff:
 *.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
 
 # Flask stuff:
 instance/
@@ -219,3 +216,9 @@ __marimo__/
 
 # Ignore the semantic graphs for now
 graphify-out/
+
+# Misc documentation in PDF format
+*.pdf
+
+# Do not commit the test dbs for now - these are seeded from import scripts
+test_dbs/

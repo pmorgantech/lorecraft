@@ -91,3 +91,19 @@ class PlayerRepo(Repository[Player, str]):
     def list_all(self, limit: int = 50) -> Sequence[Player]:
         statement = select(Player).order_by(col(Player.username)).limit(limit)
         return self.session.exec(statement).all()
+
+    def latest_session(self, player_id: str) -> PlayerSession | None:
+        statement = (
+            select(PlayerSession)
+            .where(PlayerSession.player_id == player_id)
+            .order_by(col(PlayerSession.connected_at).desc())
+        )
+        return self.session.exec(statement).first()
+
+    def in_room(self, room_id: str) -> Sequence[Player]:
+        statement = (
+            select(Player)
+            .where(Player.current_room_id == room_id)
+            .order_by(col(Player.username))
+        )
+        return self.session.exec(statement).all()

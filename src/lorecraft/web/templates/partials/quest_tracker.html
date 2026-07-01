@@ -1,0 +1,13 @@
+{# Active quest list — right sidebar panel #}
+<div id="quest-tracker" class="flex-1 p-3 text-xs overflow-y-auto bg-feed-bg space-y-2">
+    {% for quest in active_quests %}
+    <div class="border-l-2 border-amber-600/70 pl-2 py-1">
+        <div class="font-serif text-amber-400 text-sm">{{ quest.title }}</div>
+        {% if quest.stage_description %}
+        <div class="text-zinc-500 mt-0.5 leading-snug">{{ quest.stage_description }}</div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="text-zinc-600 italic">No active quests.</div>
+    {% endfor %}
+</div>

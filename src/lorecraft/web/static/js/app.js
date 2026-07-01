@@ -39,13 +39,14 @@
       return;
     }
 
-    // TODO: Replace with your actual WS endpoint from backend ConnectionManager
-    // Example: ws://localhost:8000/ws/game/{room_id}?player_id=xxx
+    const wsPath = window.LORECRAFT_WS_PATH || "/ws";
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const base =
-      window.LORECRAFT_WS_URL || `ws://${window.location.host}/ws/game`;
-    const wsUrl = base.includes("?")
+      window.LORECRAFT_WS_URL ||
+      `${protocol}//${window.location.host}${wsPath}`;
+    const wsUrl = base.includes("player_id=")
       ? base
-      : `${base}?player_id=${encodeURIComponent(pid)}`;
+      : `${base}${base.includes("?") ? "&" : "?"}player_id=${encodeURIComponent(pid)}`;
 
     console.log("[Lorecraft] Connecting to WS:", wsUrl);
 
@@ -121,9 +122,16 @@
               if (newLast) feedEl.dataset.lastId = newLast;
               feedEl.scrollTop = feedEl.scrollHeight;
             });
-        } else if (data.html || data.content) {
-          // Fallback: server pushed ready HTML fragment
-          appendToFeed(data.html || data.content);
+        } else if (data.html || data.content || data.text) {
+          appendToFeed(data.html || data.content || data.text);
+        }
+        break;
+
+      case "room_event":
+        if (data.messages && Array.isArray(data.messages)) {
+          data.messages.forEach((msg) => appendToFeed(msg));
+        } else if (data.text) {
+          appendToFeed(data.text);
         }
         break;
 
@@ -146,15 +154,18 @@
       case "world_update":
         // Refresh multiple panels without full page reload
         const panels = data.affected_panels ||
-          data.panels || ["room-description", "inventory"];
+          data.panels || ["room-description", "inventory", "players-online"];
         panels.forEach((panelId) => {
           const el = document.getElementById(panelId);
-          if (el) {
-            htmx.ajax("GET", `/partials/${panelId}`, {
-              target: el,
-              swap: "outerHTML",
-            });
+          if (!el) return;
+          if (panelId === "players-online") {
+            refreshPlayersOnline();
+            return;
           }
+          htmx.ajax("GET", `/partials/${panelId}`, {
+            target: el,
+            swap: "outerHTML",
+          });
         });
         break;
 
@@ -175,14 +186,7 @@
 
       case "player_joined":
       case "player_left":
-        // Refresh players list
-        const playersEl = document.getElementById("players-online");
-        if (playersEl) {
-          htmx.ajax("GET", "/partials/players-online", {
-            target: playersEl,
-            swap: "innerHTML",
-          });
-        }
+        refreshPlayersOnline();
         break;
 
       case "connected":
@@ -191,8 +195,17 @@
           "[Lorecraft] WS session ready for player",
           data.player_id || data.player?.id || "unknown",
         );
-        // The new UI primarily drives via HTTP/HTMX; WS is for cross-player pushes.
-        // We can optionally force a panel refresh here if needed.
+        if (data.updates?.time) {
+          updateWorldClock(data.updates.time);
+        }
+        refreshPlayersOnline();
+        break;
+
+      case "time_update":
+      case "clock_tick":
+        if (data.hour !== undefined) {
+          updateWorldClock(data);
+        }
         break;
 
       default:
@@ -210,6 +223,23 @@
           }
         }
     }
+  }
+
+  function refreshPlayersOnline() {
+    const playersEl = document.getElementById("players-online");
+    if (!playersEl || !window.htmx) return;
+    htmx.ajax("GET", "/partials/players-online", {
+      target: playersEl,
+      swap: "outerHTML",
+    });
+  }
+
+  function updateWorldClock(time) {
+    const el = document.getElementById("world-clock");
+    if (!el || !time) return;
+    const hour = time.hour ?? 0;
+    const minute = time.minute ?? 0;
+    el.textContent = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   }
 
   function appendToFeed(htmlOrText) {

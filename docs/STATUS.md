@@ -21,7 +21,7 @@ Legend:
 
 ### Phase 1 — Foundation
 
-- [x] `config.py` contains environment-driven settings.
+- [x] `config.py` contains environment-driven settings (including `LORECRAFT_WORLD_YAML_PATH` and dev player seed vars).
 - [x] `models/` SQLModel table definitions.
 - [x] `create_tables()` startup database initialization.
 - [x] `repos/` data access wrappers.
@@ -34,7 +34,8 @@ Legend:
 - [x] Jinja2 + HTMX + Alpine server-driven frontend integrated as primary UI (`/lobby`, `/game`, `/command`, partials).
 - [x] Command flow with immediate HTML response + OOB + WS push for other players.
 - [x] Audit log used as source for narrative feed.
-- [~] Multi-player live lists use `ConnectionManager` when WS connected; world clock SSR + WS `time_update` handler added; full clock push from server events still evolving.
+- [x] HTMX `POST /command` executes via `CommandEngine` (movement, inventory, dialogue, quest OOB updates).
+- [~] Multi-player live lists use `ConnectionManager.is_connected()` and `players_in_room()` when WS connected; world clock SSR + WS `time_update` handler added; full clock push from server events still evolving.
 - [x] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
 - [x] `main.py` FastAPI app.
 - [x] `/ws` WebSocket endpoint.
@@ -76,6 +77,7 @@ Legend:
 - [x] `services/inventory.py`.
 - [x] World YAML loader.
 - [x] World YAML validator.
+- [x] `world/bootstrap.py` — empty-DB YAML import and configurable dev player seed (replaces hardcoded starter world in `main.py`).
 - [x] Clock/weather/item pickup tests.
 
 ### Phase 3.5 — World UI
@@ -204,7 +206,9 @@ Legend:
 - [x] Game context unit tests.
 - [x] Command registry unit tests.
 - [x] Command engine dispatch unit tests.
-- [x] Connection manager unit tests.
+- [~] Connection manager unit tests — `is_connected()` covered; prior async room/broadcast tests removed pending rewrite.
+- [x] HTMX command dispatch integration tests (`test_frontend_command.py`).
+- [x] World bootstrap unit tests (`test_world_bootstrap.py`).
 - [x] Database table bootstrap unit tests.
 - [x] Repository unit tests.
 - [x] Integration tests.

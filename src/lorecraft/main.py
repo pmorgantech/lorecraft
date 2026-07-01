@@ -35,10 +35,9 @@ from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.admin import AdminUser
-from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.player import Player
-from lorecraft.models.quest import Quest
-from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem, WorldMeta
+from lorecraft.models.world import Room
+from lorecraft.world.bootstrap import ensure_world_bootstrapped
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
@@ -101,7 +100,7 @@ def create_app(
             audit_engine=resolved_audit_engine,
             settings=resolved_settings,
         )
-        _ensure_starter_world(resolved_game_engine)
+        ensure_world_bootstrapped(resolved_game_engine, resolved_settings)
         _ensure_admin_seed(resolved_game_engine, resolved_settings)
 
         manager = ConnectionManager()
@@ -283,6 +282,15 @@ def create_app(
         )
         await state.manager.connect(player_id, websocket, room_id=room_id)
         try:
+            await state.manager.broadcast_to_room(
+                room_id,
+                {
+                    "type": "player_joined",
+                    "player_id": player_id,
+                    "username": player_username,
+                },
+                exclude=player_id,
+            )
             await websocket.send_json(connected_payload)
             if reconnect_payload is not None:
                 await websocket.send_json(reconnect_payload)
@@ -310,11 +318,29 @@ def create_app(
                     await state.manager.broadcast_to_room(
                         player.current_room_id,
                         {
-                            "type": "room_event",
-                            "messages": [f"{player.username}'s connection flickers."],
+                            "type": "feed_append",
+                            "content": f"{player.username}'s connection flickers.",
+                            "message_type": "room_event",
                         },
                         exclude=player.id,
                     )
+                    await state.manager.broadcast_to_room(
+                        player.current_room_id,
+                        {
+                            "type": "state_change",
+                            "affected_panels": ["players-online"],
+                            "actor_id": player.id,
+                        },
+                        exclude=player.id,
+                    )
+            await state.manager.broadcast_to_room(
+                room_id,
+                {
+                    "type": "player_left",
+                    "player_id": player_id,
+                    "username": player_username,
+                },
+            )
             await state.manager.disconnect(player_id)
 
     return app
@@ -524,166 +550,6 @@ def _time_snapshot(room_repo: RoomRepo) -> JsonObject:
         "season": clock.current_season,
         "weather": clock.weather,
     }
-
-
-def _ensure_starter_world(game_engine: Engine) -> None:
-    with Session(game_engine) as session:
-        # Ensure WorldMeta singleton
-        if session.exec(select(WorldMeta)).first() is None:
-            session.add(WorldMeta(schema_version=1))
-
-        has_rooms = session.exec(select(Room)).first() is not None
-        if not has_rooms:
-            session.add(
-                Room(
-                    id="tavern",
-                    name="Tavern",
-                    description="A warm room.",
-                    map_x=0,
-                    map_y=0,
-                )
-            )
-            session.add(
-                Room(
-                    id="square",
-                    name="Square",
-                    description="A busy square.",
-                    map_x=1,
-                    map_y=0,
-                )
-            )
-            session.add(
-                Exit(room_id="tavern", direction="east", target_room_id="square")
-            )
-
-        if session.get(Player, "player-1") is None:
-            session.add(
-                Player(
-                    id="player-1",
-                    username="player-1",
-                    current_room_id="tavern",
-                    respawn_room_id="tavern",
-                    visited_rooms=["tavern"],
-                )
-            )
-        if session.get(Item, "old_sword") is None:
-            session.add(
-                Item(
-                    id="old_sword",
-                    name="Old Sword",
-                    description="Nicked but serviceable.",
-                )
-            )
-        sword_in_room = session.exec(
-            select(RoomItem).where(
-                RoomItem.room_id == "tavern",
-                RoomItem.item_id == "old_sword",
-            )
-        ).first()
-        if sword_in_room is None:
-            session.add(RoomItem(room_id="tavern", item_id="old_sword"))
-
-        if session.get(DialogueTree, "innkeeper_dialogue") is None:
-            session.add(
-                DialogueTree(
-                    id="innkeeper_dialogue",
-                    tree_data={
-                        "root_node": "greeting",
-                        "nodes": {
-                            "greeting": {
-                                "text": "Welcome to the Faded Lantern! What can I do for you?",
-                                "side_effects": {},
-                                "choices": [
-                                    {
-                                        "label": "Any news around town?",
-                                        "next_node": "town_news",
-                                        "required_flags": [],
-                                        "forbidden_flags": [],
-                                        "side_effects": {},
-                                    },
-                                    {
-                                        "label": "Nothing, thanks.",
-                                        "next_node": None,
-                                        "required_flags": [],
-                                        "forbidden_flags": [],
-                                        "side_effects": {"end_dialogue": True},
-                                    },
-                                ],
-                            },
-                            "town_news": {
-                                "text": (
-                                    "Strange lights have been seen in the eastern square at night. "
-                                    "Nobody dares investigate."
-                                ),
-                                "side_effects": {
-                                    "set_flags": ["heard_rumor"],
-                                    "start_quest": "investigate_lights",
-                                },
-                                "choices": [
-                                    {
-                                        "label": "I'll look into it.",
-                                        "next_node": "farewell_quest",
-                                        "required_flags": [],
-                                        "forbidden_flags": [],
-                                        "side_effects": {},
-                                    },
-                                    {
-                                        "label": "Sounds dangerous. Goodbye.",
-                                        "next_node": None,
-                                        "required_flags": [],
-                                        "forbidden_flags": [],
-                                        "side_effects": {"end_dialogue": True},
-                                    },
-                                ],
-                            },
-                            "farewell_quest": {
-                                "text": "Be careful out there. Come back safe.",
-                                "side_effects": {"end_dialogue": True},
-                                "choices": [],
-                            },
-                        },
-                    },
-                )
-            )
-
-        if session.get(Quest, "investigate_lights") is None:
-            session.add(
-                Quest(
-                    id="investigate_lights",
-                    title="Lights in the Square",
-                    description="Mira the innkeeper mentioned strange lights in the eastern square.",
-                    stages=[
-                        {
-                            "id": "visit_square",
-                            "description": "Visit the eastern square.",
-                            "conditions": [
-                                {"type": "room_visited", "room_id": "square"}
-                            ],
-                            "completion_flags": {"investigated_square": True},
-                            "rewards": {"xp": 50},
-                        }
-                    ],
-                )
-            )
-
-        if session.get(NPC, "innkeeper") is None:
-            session.add(
-                NPC(
-                    id="innkeeper",
-                    name="Mira the Innkeeper",
-                    description="A stout woman who surveys the room with a practiced eye.",
-                    current_room_id="tavern",
-                    home_room_id="tavern",
-                    dialogue_tree_id="innkeeper_dialogue",
-                    behavior="defensive",
-                    max_hp=50,
-                    current_hp=50,
-                    schedule=[],
-                    loot_table={},
-                )
-            )
-
-        session.commit()
 
 
 def _ensure_admin_seed(game_engine: Engine, settings: Settings) -> None:

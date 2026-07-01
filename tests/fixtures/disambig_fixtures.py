@@ -25,9 +25,9 @@ class GalleryExitLink:
 
 
 STARTER_WORLD_GALLERY_LINK = GalleryExitLink(
-    parent_room_id="square",
-    to_gallery="south",
-    from_gallery="north",
+    parent_room_id="blacksmith_forge",
+    to_gallery="north",
+    from_gallery="south",
 )
 
 

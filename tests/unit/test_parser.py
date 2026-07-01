@@ -52,3 +52,10 @@ def test_take_all_parses_bare_all_object() -> None:
     parsed = parse("take all")
     assert parsed.verb == "take"
     assert parsed.noun == "all"
+
+
+def test_choice_number_parses_as_single_index() -> None:
+    parsed = parse("choice 1")
+    assert parsed.verb == "choice"
+    assert parsed.noun == "1"
+    assert parsed.roles["choice_index"] == 1

@@ -36,9 +36,7 @@
                     <span>Inventory</span>
                     <span class="font-mono text-[10px] text-emerald-600">{{ inventory | sum(attribute='quantity') if inventory else 0 }} items</span>
                 </div>
-                <div id="inventory" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
-                    {% include "partials/inventory.html" %}
-                </div>
+                {% include "partials/inventory.html" %}
             </div>
 
             <!-- Mini-map (at bottom, size perfect - do not change) -->
@@ -89,23 +87,21 @@
                     <span>Here Now</span>
                     <span class="font-mono text-emerald-600 text-[10px]" id="player-count">{{ players_here | length if players_here else 0 }}</span>
                 </div>
-                <div id="players-online" class="flex-1 p-3 text-xs overflow-y-auto bg-feed-bg">
-                    {% include "partials/players_online.html" %}
-                </div>
+                {% include "partials/players_online.html" %}
             </div>
 
-            <!-- Combat / Recent Events Log (compact) -->
+            <!-- Quest tracker -->
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-[120px]">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                    <span>Recent Events</span>
+                    <span>Quests</span>
                 </div>
-                <div id="combat-log" class="flex-1 p-2 text-[11px] overflow-y-auto bg-feed-bg font-mono space-y-0.5 text-text-muted">
-                    <div class="text-text-muted/60 italic">No recent events.</div>
-                </div>
+                {% include "partials/quest_tracker.html" %}
             </div>
         </div>
 
     </div>
+
+    {% include "partials/dialogue.html" %}
 
     <!-- COMMAND INPUT BAR (fixed bottom) -->
     <div class="border-t border-zinc-800 bg-zinc-900 p-3">

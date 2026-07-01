@@ -33,10 +33,14 @@ from lorecraft.models.world import Room
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.services.save import SessionSafetyService
+from lorecraft.state import AppState
+from lorecraft.types import JsonObject
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
@@ -84,12 +88,27 @@ def _get_engines(request: Request | None = None):
     return _game_engine, _audit_engine
 
 
-def _get_command_engine() -> CommandEngine:
+def _get_app_state(request: Request | None) -> AppState | None:
+    if request is None:
+        return None
+    try:
+        state = getattr(request.app.state, "lorecraft", None)
+        if isinstance(state, AppState):
+            return state
+    except Exception:
+        pass
+    return None
+
+
+def _get_command_engine(request: Request | None = None) -> CommandEngine:
+    app_state = _get_app_state(request)
+    if app_state is not None:
+        return app_state.command_engine
+
     global _command_registry, _rule_engine
     if _command_registry is None:
         _command_registry = CommandRegistry()
         _rule_engine = RuleEngine()
-        # Register commands (duplicates main registration but idempotent for now)
         from lorecraft.commands import register_all_commands
 
         register_all_commands(_command_registry)
@@ -137,15 +156,17 @@ def _get_bus(request: Request) -> EventBus:
 
 async def get_current_player(request: Request) -> Player:
     """Dev-friendly player resolution via ?player_id= or cookie. Falls back to seeded player-1."""
-    player_id = (
-        request.cookies.get("player_id")
-        or request.query_params.get("player_id")
-        or request.query_params.get("pid")
+    explicit_id = request.query_params.get("player_id") or request.query_params.get(
+        "pid"
     )
+    cookie_id = request.cookies.get("player_id")
+    # Explicit query param wins so multiple browser profiles/tabs can use ?player_id=.
+    player_id = explicit_id or cookie_id
     game_engine, _ = _get_engines(request)
 
     with DBSession(game_engine) as db:
         repo = PlayerRepo(db)
+        room_repo = RoomRepo(db)
         if player_id:
             p = repo.get(player_id)
             if p:
@@ -154,6 +175,10 @@ async def get_current_player(request: Request) -> Player:
             p = repo.by_username(player_id)
             if p:
                 return p
+            if explicit_id:
+                p = _create_dev_player(db, room_repo, explicit_id)
+                if p is not None:
+                    return p
 
         # Fallback to first available player (dev)
         players = list(repo.list_all(limit=1))
@@ -236,6 +261,9 @@ class CommandResult:
     minimap_changed: bool = False
     exits: list[dict] = field(default_factory=list)
     player_id: str = ""
+    dialogue: JsonObject | None = None
+    dialogue_changed: bool = False
+    quest_changed: bool = False
 
 
 # =============================================================================
@@ -336,7 +364,17 @@ async def game_screen(
                 }
             ]
 
-        players_here = [{"name": player.username, "is_self": True, "is_online": True}]
+        quest_repo = QuestRepo(game_db)
+        dialogue_repo = DialogueRepo(game_db)
+        active_quests = _active_quests_snapshot(player, quest_repo)
+        dialogue = dialogue_panel_state(player.flags, NpcRepo(game_db), dialogue_repo)
+        world_time = _world_time_snapshot(room_repo)
+        players_here = _players_here(
+            player,
+            current_room.id if current_room else None,
+            _get_real_manager(request),
+            player_repo,
+        )
         context = {
             "request": request,
             "current_player": player,
@@ -344,6 +382,9 @@ async def game_screen(
             "inventory": inv,
             "feed_messages": feed_messages,
             "players_here": players_here,
+            "active_quests": active_quests,
+            "dialogue": dialogue,
+            "world_time": world_time,
             **room_panel,
             **map_data,
         }
@@ -388,6 +429,13 @@ async def handle_command(
             return HTMLResponse('<div class="msg system">You are nowhere.</div>')
 
         audit_repo = AuditRepo(audit_db)
+        app_state = _get_app_state(request)
+        grace_seconds = (
+            app_state.settings.disconnect_grace_seconds if app_state else 60.0
+        )
+        _expire_grace_periods(
+            game_db, audit_db, _get_bus(request), grace_seconds=grace_seconds
+        )
 
         # Build a transaction / context similar to the websocket path
         session_id = f"web-{int(time.time() * 1000)}"
@@ -412,20 +460,40 @@ async def handle_command(
             commit_audit=audit_db.commit,
         )
 
-        # Determine deltas
+        command_text = _resolve_command_text(raw, player.id, app_state, player.flags)
+        _get_command_engine(request).handle_command(command_text, ctx)
+
+        disambig = ctx.updates.pop("disambig_pending", None)
+        if (
+            disambig is not None
+            and isinstance(disambig, dict)
+            and app_state is not None
+        ):
+            app_state.pending_disambig[player.id] = disambig
+
+        quest_changed = "quest_update" in ctx.updates
+
         after_player = player_repo.get(player.id) or player
+        npc_repo = NpcRepo(game_db)
+        dialogue_repo = DialogueRepo(game_db)
+        dialogue_snapshot = dialogue_panel_state(
+            after_player.flags, npc_repo, dialogue_repo
+        )
+        had_dialogue = bool(player.flags.get(_NPC_KEY))
+        has_dialogue = dialogue_snapshot is not None
+        dialogue_changed = "dialogue" in ctx.updates or had_dialogue or has_dialogue
         after_room = room_repo.get(after_player.current_room_id) or ctx.room
         after_inv = list(after_player.inventory)
 
         room_changed = after_player.current_room_id != pre_room_id
-        inv_changed = after_inv != pre_inv
+        inv_changed = after_inv != pre_inv or "inventory" in ctx.updates
 
         room_panel = _room_panel_context(
             after_room,
             room_repo,
             item_repo,
             after_player,
-            npc_repo=NpcRepo(game_db),
+            npc_repo=npc_repo,
         )
         map_data = _build_map_data(room_repo, after_player, after_room)
 
@@ -467,9 +535,12 @@ async def handle_command(
             new_room=after_room,
             inventory_changed=inv_changed,
             new_inventory=new_inv,
-            minimap_changed=room_changed or True,  # minimap often wants refresh on move
+            minimap_changed=room_changed,
             exits=room_panel["exits"],
             player_id=after_player.id,
+            dialogue=dialogue_snapshot,
+            dialogue_changed=dialogue_changed,
+            quest_changed=quest_changed,
         )
 
         # Render main response (feed items appended)
@@ -493,18 +564,14 @@ async def handle_command(
                     npc_repo=NpcRepo(game_db),
                 ),
             )
-            response_html += room_html.replace(
-                '<div id="room-description"',
-                '<div id="room-description" hx-swap-oob="true"',
-                1,
-            )
+            response_html += _mark_oob_swap(room_html, "room-description")
 
         if result.inventory_changed:
             inv_html = templates.get_template("partials/inventory.html").render(
                 inventory=result.new_inventory,
                 current_player=after_player,
             )
-            response_html += f'<div id="inventory" hx-swap-oob="true">{inv_html}</div>'
+            response_html += _mark_oob_swap(inv_html, "inventory")
 
         if result.minimap_changed:
             map_html = templates.get_template("partials/minimap.html").render(
@@ -515,51 +582,132 @@ async def handle_command(
             )
             response_html += f'<div id="minimap" hx-swap-oob="true">{map_html}</div>'
 
-        # Also update players list (lightweight)
+        if result.dialogue_changed:
+            dialogue_html = templates.get_template("partials/dialogue.html").render(
+                dialogue=result.dialogue,
+                request=request,
+            )
+            response_html += _mark_oob_swap(dialogue_html, "dialogue-overlay")
+
+        if result.quest_changed:
+            quest_repo = QuestRepo(game_db)
+            quest_html = templates.get_template("partials/quest_tracker.html").render(
+                active_quests=_active_quests_snapshot(after_player, quest_repo),
+            )
+            response_html += _mark_oob_swap(quest_html, "quest-tracker")
+
         try:
             players_html = templates.get_template(
                 "partials/players_online.html"
             ).render(
-                players_here=[
-                    {"name": after_player.username, "is_self": True, "is_online": True}
-                ],
+                players_here=_players_here(
+                    after_player,
+                    after_player.current_room_id,
+                    _get_real_manager(request),
+                    player_repo,
+                ),
                 current_player=after_player,
             )
-            response_html += (
-                f'<div id="players-online" hx-swap-oob="true">{players_html}</div>'
-            )
+            response_html += _mark_oob_swap(players_html, "players-online")
         except Exception:
             pass
 
-        # Broadcast to room for other clients
         mgr = _get_real_manager(request)
-        if mgr and after_player.current_room_id:
-            try:
-                await mgr.broadcast_to_room(
-                    after_player.current_room_id,
-                    {
-                        "type": "state_change",
-                        "affected_panels": [
-                            "room-description",
-                            "inventory",
-                            "minimap",
-                            "players-online",
-                        ],
-                        "actor_id": after_player.id,
-                    },
-                    exclude=after_player.id,
-                )
-            except Exception:
-                pass
+        if mgr:
+            broadcast_room = (
+                pre_room_id
+                if room_changed and pre_room_id
+                else after_player.current_room_id
+            )
+            for room_msg in ctx.room_messages:
+                if broadcast_room:
+                    try:
+                        await mgr.broadcast_to_room(
+                            broadcast_room,
+                            {
+                                "type": "feed_append",
+                                "content": str(room_msg),
+                                "message_type": "room_event",
+                            },
+                            exclude=after_player.id,
+                        )
+                    except Exception:
+                        pass
+            if after_player.current_room_id:
+                try:
+                    await mgr.broadcast_to_room(
+                        after_player.current_room_id,
+                        {
+                            "type": "state_change",
+                            "affected_panels": [
+                                "room-description",
+                                "inventory",
+                                "minimap",
+                                "players-online",
+                            ],
+                            "actor_id": after_player.id,
+                        },
+                        exclude=after_player.id,
+                    )
+                except Exception:
+                    pass
 
         final_resp = HTMLResponse(content=response_html)
         if disconnect_requested:
-            final_resp.headers["HX-Redirect"] = "/lobby"
-            if mgr:
+            active_session = player_repo.active_session(after_player.id)
+            if active_session is not None:
+                SessionSafetyService(
+                    game_session=game_db,
+                    audit_session=audit_db,
+                    bus=_get_bus(request),
+                    grace_seconds=grace_seconds,
+                ).begin_grace_period(active_session.id, after_player)
+                game_db.commit()
+                audit_db.commit()
+
+            if mgr and after_player.current_room_id:
+                room_id = after_player.current_room_id
+                for room_msg in ctx.room_messages:
+                    try:
+                        await mgr.broadcast_to_room(
+                            room_id,
+                            {
+                                "type": "feed_append",
+                                "content": str(room_msg),
+                                "message_type": "room_event",
+                            },
+                            exclude=after_player.id,
+                        )
+                    except Exception:
+                        pass
+                try:
+                    await mgr.broadcast_to_room(
+                        room_id,
+                        {
+                            "type": "player_left",
+                            "player_id": after_player.id,
+                            "username": after_player.username,
+                            "presence": "grace",
+                        },
+                        exclude=after_player.id,
+                    )
+                    await mgr.broadcast_to_room(
+                        room_id,
+                        {
+                            "type": "state_change",
+                            "affected_panels": ["players-online"],
+                            "actor_id": after_player.id,
+                        },
+                        exclude=after_player.id,
+                    )
+                except Exception:
+                    pass
                 try:
                     await mgr.disconnect(after_player.id)
                 except Exception:
                     pass
+
+            final_resp.headers["HX-Redirect"] = "/lobby"
         return final_resp
 
 
@@ -684,11 +832,23 @@ async def partial_minimap(
 async def partial_players(
     request: Request, player: Player = Depends(get_current_player)
 ):
-    game_engine, _ = _get_engines(request)
-    with DBSession(game_engine) as db:
-        p = PlayerRepo(db).get(player.id) or player
-        # For MVP just show self + note. Real multi-player list can come from ConnectionManager later.
-        players_here = [{"name": p.username, "is_self": True, "is_online": True}]
+    game_engine, audit_engine = _get_engines(request)
+    app_state = _get_app_state(request)
+    grace_seconds = app_state.settings.disconnect_grace_seconds if app_state else 60.0
+    with DBSession(game_engine) as game_db, DBSession(audit_engine) as audit_db:
+        _expire_grace_periods(
+            game_db,
+            audit_db,
+            _get_bus(request),
+            grace_seconds=grace_seconds,
+        )
+        p = PlayerRepo(game_db).get(player.id) or player
+        players_here = _players_here(
+            p,
+            p.current_room_id,
+            _get_real_manager(request),
+            PlayerRepo(game_db),
+        )
     return templates.TemplateResponse(
         request,
         "partials/players_online.html",
@@ -763,6 +923,187 @@ def _build_map_data(room_repo, player: Player, current_room: Room | None) -> dic
 # =============================================================================
 # Internal helpers
 # =============================================================================
+
+
+def _resolve_command_text(
+    raw: str,
+    player_id: str,
+    app_state: AppState | None,
+    player_flags: JsonObject | None = None,
+) -> str:
+    from lorecraft.npc.dialogue import _NPC_KEY
+
+    stripped = raw.strip()
+    if not stripped.isdigit():
+        return raw
+
+    if player_flags and player_flags.get(_NPC_KEY):
+        return f"choice {stripped}"
+
+    if app_state is None:
+        return raw
+    pending = app_state.pending_disambig.pop(player_id, None)
+    if pending is None:
+        return raw
+    choices: list[str] = pending.get("choices", [])  # type: ignore[assignment]
+    idx = int(stripped) - 1
+    if 0 <= idx < len(choices):
+        verb: str = pending.get("verb", "examine")  # type: ignore[assignment]
+        return f"{verb} {choices[idx]}"
+    return raw
+
+
+def _create_dev_player(
+    db: DBSession, room_repo: RoomRepo, player_id: str
+) -> Player | None:
+    """Create a dev/test player at village_square when explicitly requested."""
+    start_room = "village_square"
+    if room_repo.get(start_room) is None:
+        return None
+    player = Player(
+        id=player_id,
+        username=player_id,
+        current_room_id=start_room,
+        respawn_room_id=start_room,
+        visited_rooms=[start_room],
+    )
+    db.add(player)
+    db.commit()
+    db.refresh(player)
+    return player
+
+
+def _active_quests_snapshot(
+    player: Player, quest_repo: QuestRepo
+) -> list[dict[str, Any]]:
+    quests: list[dict[str, Any]] = []
+    for progress in quest_repo.active_progress(player.id):
+        quest = quest_repo.get(progress.quest_id)
+        if quest is None:
+            continue
+        stage = next(
+            (s for s in quest.stages if s["id"] == progress.current_stage_id),
+            None,
+        )
+        quests.append(
+            {
+                "quest_id": progress.quest_id,
+                "title": quest.title,
+                "stage_description": str(stage.get("description", "")) if stage else "",
+                "status": progress.status,
+            }
+        )
+    return quests
+
+
+def _world_time_snapshot(room_repo: RoomRepo) -> dict[str, Any]:
+    clock = room_repo.world_clock()
+    if clock is None:
+        return {}
+    return {
+        "hour": clock.current_hour,
+        "minute": clock.current_minute,
+        "day": clock.current_day,
+        "season": clock.current_season,
+        "weather": clock.weather,
+    }
+
+
+def _mark_oob_swap(html: str, element_id: str) -> str:
+    """Mark a rendered partial for HTMX out-of-band swap by element id."""
+    needle = f'id="{element_id}"'
+    if needle not in html:
+        return html
+    return html.replace(needle, f'{needle} hx-swap-oob="true"', 1)
+
+
+def _format_idle_duration(seconds: float) -> str:
+    """Compact idle label for the Here Now panel."""
+    total_minutes = max(0, int(seconds // 60))
+    if total_minutes < 1:
+        return "Away"
+    if total_minutes < 60:
+        return f"Idle {total_minutes}m"
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    if minutes:
+        return f"Idle {hours}h{minutes}m"
+    return f"Idle {hours}h"
+
+
+def _presence_for_player(
+    player_id: str,
+    *,
+    manager: ConnectionManager | None,
+    player_repo: PlayerRepo,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Presence state for Here Now: online, grace (reconnecting), or away/idle."""
+    current_time = time.time() if now is None else now
+    if manager is not None and manager.is_connected(player_id):
+        return {
+            "is_online": True,
+            "presence": "online",
+            "status_label": None,
+        }
+
+    session = player_repo.latest_session(player_id)
+    if session is not None and session.status == "grace":
+        return {
+            "is_online": False,
+            "presence": "grace",
+            "status_label": "Reconnecting…",
+        }
+
+    idle_seconds = 0.0
+    if session is not None and session.disconnected_at is not None:
+        idle_seconds = current_time - session.disconnected_at
+    label = _format_idle_duration(idle_seconds) if idle_seconds >= 60 else "Away"
+    return {
+        "is_online": False,
+        "presence": "away",
+        "status_label": label,
+    }
+
+
+def _players_here(
+    player: Player,
+    room_id: str | None,
+    manager: ConnectionManager | None,
+    player_repo: PlayerRepo,
+) -> list[dict[str, Any]]:
+    def _entry(other: Player) -> dict[str, Any]:
+        presence = _presence_for_player(
+            other.id, manager=manager, player_repo=player_repo
+        )
+        return {
+            "name": other.username,
+            "is_self": other.id == player.id,
+            **presence,
+        }
+
+    if not room_id:
+        return [_entry(player)]
+
+    entries = [_entry(other) for other in player_repo.in_room(room_id)]
+    if not any(entry["is_self"] for entry in entries):
+        entries.insert(0, _entry(player))
+    return entries
+
+
+def _expire_grace_periods(
+    game_db: DBSession,
+    audit_db: DBSession,
+    bus: EventBus,
+    *,
+    grace_seconds: float,
+) -> None:
+    SessionSafetyService(
+        game_session=game_db,
+        audit_session=audit_db,
+        bus=bus,
+        grace_seconds=grace_seconds,
+    ).expire_due_grace_periods()
 
 
 def _room_panel_context(

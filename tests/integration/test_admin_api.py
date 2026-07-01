@@ -246,15 +246,15 @@ async def _test_teleport() -> None:
             app,
             "POST",
             "/admin/players/player-1/teleport",
-            body={"room_id": "square"},
+            body={"room_id": "market_stalls"},
             token=token,
         )
     assert status == 200
-    assert data["room_id"] == "square"
+    assert data["room_id"] == "market_stalls"
     with Session(game_engine) as session:
         player = session.get(Player, "player-1")
     assert player is not None
-    assert player.current_room_id == "square"
+    assert player.current_room_id == "market_stalls"
 
 
 def test_set_player_flags_merges_flags() -> None:
@@ -324,7 +324,7 @@ async def _test_list_rooms() -> None:
     assert status == 200
     assert isinstance(data, list)
     room_ids = {r["id"] for r in data}
-    assert "tavern" in room_ids
+    assert "village_square" in room_ids
 
 
 def test_update_room_changes_name() -> None:
@@ -340,20 +340,20 @@ async def _test_update_room() -> None:
     async with _lifespan(app):
         # Get current version first
         _, rooms = await _http(app, "GET", "/admin/world/rooms", token=token)
-        tavern = next(r for r in rooms if r["id"] == "tavern")
+        inn = next(r for r in rooms if r["id"] == "wandering_crow_inn")
         status, data = await _http(
             app,
             "PUT",
-            "/admin/world/rooms/tavern",
-            body={"name": "The Golden Flagon", "version": tavern["version"]},
+            "/admin/world/rooms/wandering_crow_inn",
+            body={"name": "The Golden Flagon", "version": inn["version"]},
             token=token,
         )
     assert status == 200
     with Session(game_engine) as session:
-        room = session.get(Room, "tavern")
+        room = session.get(Room, "wandering_crow_inn")
     assert room is not None
     assert room.name == "The Golden Flagon"
-    assert room.version == tavern["version"] + 1
+    assert room.version == inn["version"] + 1
 
 
 def test_update_room_version_conflict_returns_409() -> None:
@@ -370,7 +370,7 @@ async def _test_version_conflict() -> None:
         status, _ = await _http(
             app,
             "PUT",
-            "/admin/world/rooms/tavern",
+            "/admin/world/rooms/wandering_crow_inn",
             body={"name": "Fake", "version": 999},
             token=token,
         )
@@ -394,12 +394,12 @@ async def _test_observer_cannot_edit() -> None:
     token = _access_token("observer")
     async with _lifespan(app):
         _, rooms = await _http(app, "GET", "/admin/world/rooms", token=token)
-        tavern = next(r for r in rooms if r["id"] == "tavern")
+        inn = next(r for r in rooms if r["id"] == "wandering_crow_inn")
         status, _ = await _http(
             app,
             "PUT",
-            "/admin/world/rooms/tavern",
-            body={"name": "X", "version": tavern["version"]},
+            "/admin/world/rooms/wandering_crow_inn",
+            body={"name": "X", "version": inn["version"]},
             token=token,
         )
     assert status == 403

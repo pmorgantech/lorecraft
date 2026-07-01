@@ -29,6 +29,7 @@ def register_meta_commands(
         del noun
         game_ctx = cast(GameContext, ctx)
         game_ctx.say("Goodbye.")
+        game_ctx.tell_room(f"{game_ctx.player.username} leaves the game.")
         game_ctx.push_update("disconnect", True)
 
     @registry.register("save", scope=CommandScope.GLOBAL)

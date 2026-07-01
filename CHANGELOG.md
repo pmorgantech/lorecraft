@@ -4,6 +4,43 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- HTMX `POST /command` now calls `CommandEngine.handle_command()` (commands were previously not executed).
+- WebSocket client connects to `/ws?player_id=…` instead of the non-existent `/ws/game` path.
+- Dev seed DB (`test_dbs/`) regenerated from Ashmoore `world_content/world.yaml`; `player-1` now starts at `village_square` with working exits.
+- Removed hardcoded tavern/Mira/sword quest seed from `main.py`; empty databases bootstrap from `world_content/world.yaml` via `lorecraft.world.bootstrap`.
+- Lobby and game templates use `current_player.username` instead of the nonexistent `name` field.
+- Dialogue `choice 1` / numeric replies parse correctly (`choice_index`); bare digits during conversation map to `choice N`.
+- HTMX out-of-band swaps for the dialogue overlay (and other panels) now attach `hx-swap-oob` even when partial markup splits attributes across lines.
+- Dialogue overlay hides reliably on `bye` / End conversation (no conflicting Tailwind `flex` + `hidden` classes).
+- Terminal dialogue nodes (e.g. Mira’s farewell) show their final line in the overlay instead of closing before the text appears.
+- `quit` starts the disconnect grace period, notifies the room, and refreshes Here Now for other clients.
+- WebSocket disconnect broadcasts feed text and refreshes the player list for roommates.
+
+### Added
+
+- `lorecraft.world.bootstrap` — YAML-driven empty-DB import and configurable dev player seeding.
+- Config env vars: `LORECRAFT_WORLD_YAML_PATH`, `LORECRAFT_SEED_PLAYER_ID`, `LORECRAFT_SEED_PLAYER_USERNAME`, `LORECRAFT_SEED_PLAYER_START_ROOM`.
+- NPC (Mira), dialogue tree, and sample quest in `world_content/world.yaml` for Ashmoore playtesting.
+- Dialogue overlay and quest tracker partials for the HTMX game UI (OOB swaps on talk/quest updates).
+- `dialogue_panel_state()` — rebuilds overlay content from persisted dialogue flags (node text and choices).
+- `ConnectionManager.is_connected()` and Here Now presence from DB room occupancy plus live WS status.
+- Here Now labels: online (green), grace **(Reconnecting…)**, away/idle (grey, e.g. `Idle 2h4m`).
+- Dev `player-2` seeded for multi-player testing; `?player_id=` overrides the lobby cookie.
+- World clock SSR in the game header; WS client handlers for `time_update` and `clock_tick`.
+- Integration tests for HTMX command dispatch, dialogue choices, farewell nodes, and `bye` (`tests/integration/test_frontend_command.py`).
+- Unit tests for world bootstrap, dialogue panel state, player presence, OOB markup, and `choice` parsing.
+
+### Changed
+
+- `import_world.py` wipes NPCs, dialogue trees, and quests on `--fresh`; seeds `player-1` and `player-2`; resets players on fresh import.
+- `start.sh` copies `test_dbs/` seed databases again (not `game.db`).
+- Admin and integration tests updated for Ashmoore room IDs (`village_square`, `wandering_crow_inn`, `market_stalls`, etc.).
+- Key gallery disambiguation fixture exit link updated for Ashmoore topology (`blacksmith_forge`).
+- Dialogue overlay styles NPC lines as a quoted blockquote; End conversation is a numbered option matching other choices.
+- Removed duplicate panel wrapper IDs in `game.html` (inventory, Here Now) so OOB swaps target a single element.
+
 ## [0.2.0] - 2026.06.29
 
 ### Fixed

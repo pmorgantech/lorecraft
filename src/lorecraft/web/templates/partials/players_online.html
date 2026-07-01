@@ -2,10 +2,12 @@
 <div id="players-online" class="flex-1 p-3 text-xs overflow-y-auto bg-feed-bg">
     <div class="space-y-1">
         {% for player in players_here %}
-            <div class="flex items-center gap-2 {% if player.is_self %}text-emerald-400{% else %}text-zinc-400{% endif %}">
-                <span class="inline-block w-1.5 h-1.5 rounded-full {% if player.is_online %}bg-emerald-500{% else %}bg-zinc-600{% endif %}"></span>
+            <div class="flex items-center gap-2 {% if player.is_self %}text-emerald-400{% elif player.presence == 'grace' %}text-amber-400/90{% else %}text-zinc-500{% endif %}">
+                <span class="inline-block w-1.5 h-1.5 rounded-full {% if player.presence == 'online' %}bg-emerald-500{% elif player.presence == 'grace' %}bg-amber-500 animate-pulse{% else %}bg-zinc-600{% endif %}"></span>
                 <span>{{ player.name }}</span>
-                {% if player.title %}<span class="text-[10px] text-zinc-600">({{ player.title }})</span>{% endif %}
+                {% if player.status_label %}
+                    <span class="text-[10px] text-zinc-600">({{ player.status_label }})</span>
+                {% endif %}
             </div>
         {% else %}
             <div class="text-text-muted text-xs italic">No other players here.</div>

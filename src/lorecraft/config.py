@@ -21,6 +21,10 @@ class Settings:
     admin_seed_username: str = ""
     admin_seed_password: str = ""
     admin_seed_role: str = "superadmin"
+    world_yaml_path: str = "world_content/world.yaml"
+    seed_player_id: str = "player-1"
+    seed_player_username: str = "player-1"
+    seed_player_start_room: str = "village_square"
 
 
 def load_settings() -> Settings:
@@ -42,4 +46,12 @@ def load_settings() -> Settings:
         admin_seed_username=os.getenv("LORECRAFT_ADMIN_SEED_USERNAME", "admin"),
         admin_seed_password=os.getenv("LORECRAFT_ADMIN_SEED_PASSWORD", "admin"),
         admin_seed_role=os.getenv("LORECRAFT_ADMIN_SEED_ROLE", "superadmin"),
+        world_yaml_path=os.getenv(
+            "LORECRAFT_WORLD_YAML_PATH", "world_content/world.yaml"
+        ),
+        seed_player_id=os.getenv("LORECRAFT_SEED_PLAYER_ID", "player-1"),
+        seed_player_username=os.getenv("LORECRAFT_SEED_PLAYER_USERNAME", "player-1"),
+        seed_player_start_room=os.getenv(
+            "LORECRAFT_SEED_PLAYER_START_ROOM", "village_square"
+        ),
     )

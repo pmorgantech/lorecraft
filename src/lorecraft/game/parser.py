@@ -199,12 +199,16 @@ class ParsedCommand:
             return str(self.roles["direction"])
         if "message" in self.roles:
             return str(self.roles["message"])
+        if "choice_index" in self.roles:
+            return str(self.roles["choice_index"])
         for role_key in ("object", "target", "recipient"):
             if role_key not in self.roles:
                 continue
             phrase = str(self.roles[role_key])
-            parts: list[str] = []
             quantity = self.roles.get("quantity")
+            if quantity is not None and str(quantity) == phrase:
+                return phrase
+            parts: list[str] = []
             if quantity is not None:
                 parts.append(str(quantity))
             adjectives = self.roles.get("adjectives")
@@ -436,6 +440,17 @@ def parse_command(
         )
 
     rest = tokens[1:]
+    if verb in {"choice", "choose"} and len(rest) == 1 and rest[0].isdigit():
+        return ParseResult(
+            commands=[
+                ParsedCommand(
+                    verb=verb,
+                    raw=raw,
+                    roles={"choice_index": int(rest[0])},
+                )
+            ]
+        )
+
     if verb in {"go", "move"} and len(rest) == 1:
         direction = rest[0].lower()
         if direction in DIRECTION_ALIASES:

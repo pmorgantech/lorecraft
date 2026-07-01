@@ -54,9 +54,13 @@ kbd {
     color: #10b981;
 }
 
-/* Future dialogue / overlay styles */
-.dialogue-overlay {
+/* Dialogue overlay — animate in only while visible */
+.dialogue-overlay:not(.hidden) {
     animation: fadeInScale 0.2s ease-out forwards;
+}
+.dialogue-overlay.hidden {
+    display: none !important;
+    pointer-events: none !important;
 }
 
 @keyframes fadeInScale {

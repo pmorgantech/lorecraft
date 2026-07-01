@@ -28,14 +28,25 @@ sys.path.insert(0, str(repo_root / "src"))
 from sqlmodel import Session, create_engine, select  # noqa: E402
 
 from lorecraft.db import create_tables  # noqa: E402
-from lorecraft.models.world import Exit, Item, Room, RoomItem, WorldMeta  # noqa: E402
+from lorecraft.models.dialogue import DialogueTree  # noqa: E402
 from lorecraft.models.player import Player  # noqa: E402
+from lorecraft.models.quest import PlayerQuestProgress, Quest  # noqa: E402
+from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem, WorldMeta  # noqa: E402
 from lorecraft.world.loader import load_world_yaml  # noqa: E402
-from lorecraft.config import load_settings  # noqa: E402
+from lorecraft.config import Settings, load_settings  # noqa: E402
+from lorecraft.world.bootstrap import ensure_seed_player  # noqa: E402
 
 
 def _wipe_world(session: Session) -> None:
-    """Delete all room-placement and structural world data."""
+    """Delete world content (rooms, items, NPCs, dialogue, quests)."""
+    for progress in session.exec(select(PlayerQuestProgress)).all():
+        session.delete(progress)
+    for npc in session.exec(select(NPC)).all():
+        session.delete(npc)
+    for tree in session.exec(select(DialogueTree)).all():
+        session.delete(tree)
+    for quest in session.exec(select(Quest)).all():
+        session.delete(quest)
     for ri in session.exec(select(RoomItem)).all():
         session.delete(ri)
     for ex in session.exec(select(Exit)).all():
@@ -103,26 +114,41 @@ def main() -> None:
         session.commit()
 
     print(
-        f"  Imported {len(doc.rooms)} rooms, {len(doc.items)} items, {len(doc.room_items)} room placements."
+        f"  Imported {len(doc.rooms)} rooms, {len(doc.items)} items, "
+        f"{len(doc.room_items)} room placements, {len(doc.npcs)} npcs, "
+        f"{len(doc.quests)} quests."
     )
 
-    # Ensure a test player exists
+    seed_settings = Settings(
+        seed_player_id="player-1",
+        seed_player_username="player-1",
+        seed_player_start_room="village_square",
+    )
     with Session(game_engine) as session:
-        if session.exec(select(Player)).first() is None:
-            starting_room = "village_square"
-            session.add(
-                Player(
-                    id="player-1",
-                    username="player-1",
-                    current_room_id=starting_room,
-                    respawn_room_id=starting_room,
-                    visited_rooms=[starting_room],
+        for dev_id in ("player-1", "player-2"):
+            player = session.get(Player, dev_id)
+            if player is None:
+                ensure_seed_player(
+                    session,
+                    seed_settings,
+                    player_id=dev_id,
+                    username=dev_id,
                 )
-            )
-            session.commit()
-            print(f"  Created test player 'player-1' at '{starting_room}'.")
-        else:
-            print("  Player(s) already exist — skipping player seed.")
+                print(
+                    f"  Created test player '{dev_id}' at "
+                    f"'{seed_settings.seed_player_start_room}'."
+                )
+            elif args.fresh:
+                player.current_room_id = seed_settings.seed_player_start_room
+                player.respawn_room_id = seed_settings.seed_player_start_room
+                player.visited_rooms = [seed_settings.seed_player_start_room]
+                player.inventory = []
+                player.flags = {}
+                print(
+                    f"  Reset test player '{dev_id}' to "
+                    f"'{seed_settings.seed_player_start_room}'."
+                )
+        session.commit()
 
     print("Done.")
 

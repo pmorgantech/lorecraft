@@ -11,6 +11,8 @@ from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
+    from lorecraft.repos.dialogue_repo import DialogueRepo
+    from lorecraft.repos.npc_repo import NpcRepo
 
 _NPC_KEY = "_dialogue_npc_id"
 _NODE_KEY = "_dialogue_node_id"
@@ -74,6 +76,28 @@ class DialogueService:
         ctx.player.flags = flags
         ctx.push_update("dialogue", None)
 
+    def _push_dialogue_panel(
+        self,
+        ctx: GameContext,
+        *,
+        npc_name: str,
+        node_text: str,
+        choices: list[JsonObject],
+        terminal: bool = False,
+    ) -> None:
+        ctx.push_update(
+            "dialogue",
+            {
+                "npc_name": npc_name,
+                "node_text": node_text,
+                "choices": [
+                    {"index": i + 1, "label": str(choice.get("label", ""))}
+                    for i, choice in enumerate(choices)
+                ],
+                "terminal": terminal,
+            },
+        )
+
     def _show_node(
         self, tree: JsonObject, node_id: str, npc_name: str, ctx: GameContext
     ) -> None:
@@ -84,34 +108,81 @@ class DialogueService:
             return
         text = str(node.get("text", ""))
         ctx.say(f"{npc_name}: {text}")
-        _apply_side_effects(node.get("side_effects", {}), ctx)  # type: ignore[arg-type]
         visible = _visible_choices(node, ctx)
-        if not visible:
-            self._end(ctx)
-            return
-        ctx.push_update(
-            "dialogue",
-            {
-                "npc_name": npc_name,
-                "node_text": text,
-                "choices": [
-                    {"index": i + 1, "label": str(c.get("label", ""))}
-                    for i, c in enumerate(visible)
-                ],
-            },
+        terminal = not visible
+
+        node_effects: JsonObject = node.get("side_effects", {}) or {}  # type: ignore[assignment]
+        if terminal and node_effects.get("end_dialogue"):
+            node_effects = {
+                key: value
+                for key, value in node_effects.items()
+                if key != "end_dialogue"
+            }
+        _apply_side_effects(node_effects, ctx)
+
+        self._push_dialogue_panel(
+            ctx,
+            npc_name=npc_name,
+            node_text=text,
+            choices=visible,
+            terminal=terminal,
         )
 
 
-def _visible_choices(node: JsonObject, ctx: GameContext) -> list[JsonObject]:
+def dialogue_panel_state(
+    player_flags: JsonObject,
+    npc_repo: NpcRepo,
+    dialogue_repo: DialogueRepo,
+) -> JsonObject | None:
+    """Build dialogue overlay payload from persisted player dialogue flags."""
+    npc_id = player_flags.get(_NPC_KEY)
+    node_id = player_flags.get(_NODE_KEY)
+    if not npc_id or not node_id:
+        return None
+
+    npc = npc_repo.get(str(npc_id))
+    if npc is None or not npc.dialogue_tree_id:
+        return None
+    tree_record = dialogue_repo.get(npc.dialogue_tree_id)
+    if tree_record is None:
+        return None
+
+    tree = tree_record.tree_data
+    nodes: JsonObject = tree.get("nodes", {})  # type: ignore[assignment]
+    node: JsonObject = nodes.get(str(node_id), {})  # type: ignore[assignment]
+    if not node:
+        return None
+
+    visible = _visible_choices_for_flags(node, player_flags)
+    terminal = not visible
+
+    return {
+        "npc_name": npc.name,
+        "node_text": str(node.get("text", "")),
+        "choices": [
+            {"index": i + 1, "label": str(choice.get("label", ""))}
+            for i, choice in enumerate(visible)
+        ],
+        "terminal": terminal,
+    }
+
+
+def _visible_choices_for_flags(
+    node: JsonObject, player_flags: JsonObject
+) -> list[JsonObject]:
     choices = node.get("choices", [])
     visible: list[JsonObject] = []
     for choice in choices:  # type: ignore[union-attr]
         required = choice.get("required_flags", [])
         forbidden = choice.get("forbidden_flags", [])
-        if all(ctx.player.flags.get(str(f)) for f in required):
-            if not any(ctx.player.flags.get(str(f)) for f in forbidden):
+        if all(player_flags.get(str(flag)) for flag in required):
+            if not any(player_flags.get(str(flag)) for flag in forbidden):
                 visible.append(choice)  # type: ignore[arg-type]
     return visible
+
+
+def _visible_choices(node: JsonObject, ctx: GameContext) -> list[JsonObject]:
+    return _visible_choices_for_flags(node, ctx.player.flags)
 
 
 def _apply_side_effects(effects: JsonObject, ctx: GameContext) -> None:

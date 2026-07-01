@@ -1,0 +1,44 @@
+{# Dialogue overlay — OOB-swapped when ctx.updates["dialogue"] changes #}
+<div
+    id="dialogue-overlay"
+    class="fixed inset-x-0 bottom-20 justify-center px-4 z-40 pointer-events-none dialogue-overlay {% if dialogue %}flex{% else %}hidden{% endif %}"
+    aria-live="polite">
+    <div class="pointer-events-auto w-full max-w-xl rounded-xl border border-amber-600/60 bg-panel shadow-xl p-5">
+        {% if dialogue %}
+        <p class="font-serif text-xs uppercase tracking-widest text-amber-400 mb-3">
+            {{ dialogue.npc_name }}
+        </p>
+        <blockquote class="mb-4 border-l-4 border-amber-500/80 bg-amber-950/25 rounded-r-lg pl-4 pr-3 py-3">
+            <p class="text-base leading-relaxed text-zinc-100 font-serif">
+                <span class="text-amber-500/90 text-xl leading-none align-top mr-1">&ldquo;</span>{{ dialogue.node_text }}<span class="text-amber-500/90 text-xl leading-none align-bottom ml-1">&rdquo;</span>
+            </p>
+        </blockquote>
+        <div class="grid gap-2">
+            {% for choice in dialogue.choices %}
+            <button
+                type="button"
+                class="text-left text-sm px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:border-emerald-600 hover:text-emerald-400 transition-colors"
+                hx-post="/command"
+                hx-target="#feed"
+                hx-swap="beforeend"
+                hx-vals='{"command": "choice {{ choice.index }}"}'
+                hx-on::after-request="handleCommandSuccess(document.getElementById('command-form'))">
+                <span class="text-emerald-500 font-mono">{{ choice.index }}.</span>
+                {{ choice.label }}
+            </button>
+            {% endfor %}
+            <button
+                type="button"
+                class="text-left text-sm px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900 hover:border-amber-600 hover:text-amber-300 transition-colors"
+                hx-post="/command"
+                hx-target="#feed"
+                hx-swap="beforeend"
+                hx-vals='{"command": "bye"}'
+                hx-on::after-request="handleCommandSuccess(document.getElementById('command-form'))">
+                <span class="text-amber-500 font-mono">{{ dialogue.choices|length + 1 }}.</span>
+                End conversation
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>

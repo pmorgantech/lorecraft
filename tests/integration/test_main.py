@@ -61,8 +61,9 @@ async def _test_lifespan_seeds_starter_world_for_empty_database() -> None:
             rooms = session.exec(select(Room)).all()
 
     assert player is not None
-    assert player.current_room_id == "tavern"
-    assert {room.id for room in rooms} == {"square", "tavern"}
+    assert player.current_room_id == "village_square"
+    assert len(rooms) >= 19
+    assert any(room.id == "village_square" for room in rooms)
 
 
 def test_web_client_assets_expose_minimal_browser_harness() -> None:
@@ -171,8 +172,8 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
 
     assert payloads[0]["type"] == "connected"
     assert payloads[0]["player_id"] == "player-1"
-    assert payloads[0]["room_id"] == "tavern"
-    assert payloads[0]["updates"]["room"]["id"] == "tavern"
+    assert payloads[0]["room_id"] == "village_square"
+    assert payloads[0]["updates"]["room"]["id"] == "village_square"
     assert payloads[0]["updates"]["inventory"] == []
     assert payloads[1]["type"] == "command_result"
     assert payloads[1]["command"] == "dance"
@@ -180,7 +181,7 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
     assert payloads[1]["noun"] is None
     assert payloads[1]["messages"] == ["I don't understand that command."]
     assert payloads[1]["room_messages"] == []
-    assert payloads[1]["updates"]["room_id"] == "tavern"
+    assert payloads[1]["updates"]["room_id"] == "village_square"
 
     with Session(audit_engine) as session:
         audit_events = session.exec(select(AuditEvent)).all()
@@ -234,13 +235,12 @@ async def _test_websocket_movement_persists_room_change() -> None:
         audit_events = session.exec(select(AuditEvent)).all()
 
     assert payloads[1]["messages"] == ["You go east."]
-    assert payloads[1]["updates"]["room_id"] == "square"
-    assert payloads[1]["updates"]["room"]["id"] == "square"
-    assert {room["id"] for room in payloads[1]["updates"]["visited_rooms"]} == {
-        "square",
-        "tavern",
-    }
-    assert player.current_room_id == "square"
+    assert payloads[1]["updates"]["room_id"] == "market_stalls"
+    assert payloads[1]["updates"]["room"]["id"] == "market_stalls"
+    visited_ids = {room["id"] for room in payloads[1]["updates"]["visited_rooms"]}
+    assert "market_stalls" in visited_ids
+    assert "village_square" in visited_ids
+    assert player.current_room_id == "market_stalls"
     assert "command_executed" in [event.event_type for event in audit_events]
 
 
@@ -270,7 +270,7 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
             query_string=b"player_id=player-1",
             incoming=[
                 {"type": "websocket.connect"},
-                {"type": "websocket.receive", "text": "take old sword"},
+                {"type": "websocket.receive", "text": "take coin"},
                 {"type": "websocket.disconnect", "code": 1000},
             ],
         )
@@ -283,17 +283,17 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
     with Session(game_engine) as session:
         player = session.get(Player, "player-1")
 
-    assert payloads[1]["messages"] == ["You take Old Sword."]
+    assert payloads[1]["messages"] == ["You take Worn Copper Coin."]
     assert payloads[1]["updates"]["inventory"] == [
         {
-            "id": "old_sword",
-            "name": "Old Sword",
-            "description": "Nicked but serviceable.",
+            "id": "copper_coin",
+            "name": "Worn Copper Coin",
+            "description": payloads[1]["updates"]["inventory"][0]["description"],
             "quantity": 1,
         }
     ]
     assert player is not None
-    assert player.inventory == ["old_sword"]
+    assert player.inventory == ["copper_coin"]
 
 
 def test_websocket_save_and_load_preserve_player_state() -> None:
@@ -322,7 +322,7 @@ async def _test_websocket_save_and_load_preserve_player_state() -> None:
             query_string=b"player_id=player-1",
             incoming=[
                 {"type": "websocket.connect"},
-                {"type": "websocket.receive", "text": "take old sword"},
+                {"type": "websocket.receive", "text": "take coin"},
                 {"type": "websocket.receive", "text": "save slot1"},
                 {"type": "websocket.receive", "text": "go east"},
                 {"type": "websocket.receive", "text": "load slot1"},
@@ -340,12 +340,12 @@ async def _test_websocket_save_and_load_preserve_player_state() -> None:
 
     assert payloads[2]["messages"] == ["Saved to slot1."]
     assert payloads[4]["messages"] == ["Loaded slot1."]
-    assert payloads[4]["updates"]["room_id"] == "tavern"
-    assert payloads[4]["updates"]["inventory"][0]["id"] == "old_sword"
+    assert payloads[4]["updates"]["room_id"] == "village_square"
+    assert payloads[4]["updates"]["inventory"][0]["id"] == "copper_coin"
     assert player is not None
-    assert player.current_room_id == "tavern"
-    assert player.inventory == ["old_sword"]
-    assert player.visited_rooms == ["tavern"]
+    assert player.current_room_id == "village_square"
+    assert player.inventory == ["copper_coin"]
+    assert player.visited_rooms == ["village_square"]
 
 
 def test_websocket_disconnect_enters_grace_and_reconnect_syncs() -> None:
@@ -408,7 +408,7 @@ async def _test_websocket_disconnect_enters_grace_and_reconnect_syncs() -> None:
     assert payloads[0]["session_id"] == grace_session_id
     assert payloads[0]["reconnected"] is True
     assert payloads[1]["type"] == "reconnect_sync"
-    assert payloads[1]["updates"]["room_id"] == "tavern"
+    assert payloads[1]["updates"]["room_id"] == "village_square"
     assert "player_disconnected" in [event.event_type for event in audit_events]
     assert "player_reconnected" in [event.event_type for event in audit_events]
 

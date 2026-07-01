@@ -21,6 +21,9 @@ class ConnectionManager:
         if room_id is not None:
             self.move_player(player_id, self._player_rooms.get(player_id), room_id)
 
+    def is_connected(self, player_id: str) -> bool:
+        return player_id in self._connections
+
     async def disconnect(self, player_id: str) -> None:
         self._connections.pop(player_id, None)
 

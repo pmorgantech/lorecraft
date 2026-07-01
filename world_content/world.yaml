@@ -876,3 +876,67 @@ room_items:
   - room_id: cave_alcove
     item_id: ancient_coin
     quantity: 1
+
+# ---------------------------------------------------------------------------
+# Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
+# ---------------------------------------------------------------------------
+
+dialogue_trees:
+  - id: innkeeper_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Welcome to the Wandering Crow! What can I do for you?
+        side_effects: {}
+        choices:
+          - label: Any news around town?
+            next_node: town_news
+          - label: Nothing, thanks.
+            side_effects:
+              end_dialogue: true
+      town_news:
+        text: >-
+          Strange lights have been seen near the market stalls at night.
+          Nobody dares investigate.
+        side_effects:
+          set_flags:
+            - heard_rumor
+          start_quest: investigate_lights
+        choices:
+          - label: I'll look into it.
+            next_node: farewell_quest
+          - label: Sounds dangerous. Goodbye.
+            side_effects:
+              end_dialogue: true
+      farewell_quest:
+        text: Be careful out there. Come back safe.
+        side_effects:
+          end_dialogue: true
+        choices: []
+
+npcs:
+  - id: innkeeper
+    name: Mira the Innkeeper
+    description: >-
+      A stout woman who surveys the room with a practiced eye.
+    home_room_id: wandering_crow_inn
+    current_room_id: wandering_crow_inn
+    dialogue_tree_id: innkeeper_dialogue
+    behavior: defensive
+
+quests:
+  - id: investigate_lights
+    title: Lights in the Square
+    description: >-
+      Mira the innkeeper mentioned strange lights near the market stalls.
+    stages:
+      - id: visit_market
+        description: Visit the market stalls east of the village square.
+        conditions:
+          - type: room_visited
+            room_id: market_stalls
+        completion_flags:
+          investigated_market: true
+        rewards:
+          xp: 50

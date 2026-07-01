@@ -12,7 +12,12 @@ from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.player import Player
 from lorecraft.models.world import NPC, Room
-from lorecraft.npc.dialogue import DialogueService, _NPC_KEY, _NODE_KEY
+from lorecraft.npc.dialogue import (
+    DialogueService,
+    _NPC_KEY,
+    _NODE_KEY,
+    dialogue_panel_state,
+)
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
@@ -104,6 +109,28 @@ def _engine() -> object:
     return e
 
 
+def test_dialogue_panel_state_reads_active_node_from_flags() -> None:
+    e = _engine()
+    with Session(e) as session:
+        player = _seed(session)
+        session.commit()
+        ctx = _ctx(session, player)
+        DialogueService().start("keeper", ctx)
+        session.commit()
+        session.refresh(player)
+
+        panel = dialogue_panel_state(
+            player.flags,
+            NpcRepo(session),
+            DialogueRepo(session),
+        )
+
+    assert panel is not None
+    assert panel["npc_name"] == "Keeper"
+    assert panel["node_text"] == "Hello, traveler."
+    assert len(panel["choices"]) == 2
+
+
 def test_start_shows_root_node_and_choices() -> None:
     e = _engine()
     with Session(e) as session:
@@ -148,8 +175,11 @@ def test_choose_advances_to_next_node_and_applies_side_effects() -> None:
         service.choose(1, ctx)
 
         assert player.flags.get("asked_news") is True
-        # news node has no choices → terminal → dialogue ends
-        assert ctx.updates.get("dialogue") is None
+        dialogue = ctx.updates.get("dialogue")
+        assert isinstance(dialogue, dict)
+        assert dialogue["node_text"] == "Strange things afoot."
+        assert dialogue.get("terminal") is True
+        assert dialogue["choices"] == []
         assert "Keeper: Strange things afoot." in ctx.messages
 
 
