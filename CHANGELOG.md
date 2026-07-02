@@ -4,6 +4,10 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+### Summary
+
+**Foundation Band (Sprints 5–7) Complete** — Core engine hardening locked in via 46 new characterization tests. Error handling unified (typed exceptions, logged everywhere), type safety enforced (basedpyright standard mode, 0 errors), and current behavior documented before major refactors. Sprints 8–9 (module decomposition, service consistency) queued. All 336 tests passing.
+
 ### Added
 
 - **Sprint 7.4: Event-Flow Characterization Tests** — 10 unit tests locking in event-bus behavior before Sprint 8–9 refactors. Covers: event emission order and priority-based handler execution (higher priority runs first); exception isolation (one handler's error doesn't block others); multiple event types and handlers per event; handler result collection with success/error status; work-event classification. Tests verify core event dispatch guarantees. Tests in `tests/integration/test_event_flow.py`.

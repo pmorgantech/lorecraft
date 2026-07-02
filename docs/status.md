@@ -7,9 +7,10 @@ The architecture overview remains the design reference; this file is the working
 
 > **Current focus (2026-07-02):** Foundation-first. The `CODE_AUDIT.md` findings drive
 > Sprints 5–15 (errors, types, tests, decomposition, service consistency, extensibility
-> seams, tooling). Sprints 5–6 complete (error handling, type safety); Sprint 7
-> (web/admin characterization tests) in progress. Combat/trading/PvP are gated behind
-> the roadmap's foundation exit criteria — no feature expansion until the core is sound.
+> seams, tooling). Sprints 5–7 complete (error handling, type safety, characterization
+> tests locking in 46 tests across web/admin layers). Sprint 8 (module decomposition)
+> next. Combat/trading/PvP are gated behind the roadmap's foundation exit criteria —
+> no feature expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
 
@@ -19,7 +20,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [ ] |
-| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–6 complete; Sprint 7 complete |
+| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–7 complete; 8–9 queued |
 | Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
 | Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
 
