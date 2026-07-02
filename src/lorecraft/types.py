@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable
-from typing import Protocol, TypeAlias
+from typing import TYPE_CHECKING, Protocol, TypeAlias
+
+if TYPE_CHECKING:
+    from lorecraft.game.context import GameContext
 
 
 JsonScalar: TypeAlias = str | int | float | bool | None
@@ -43,3 +46,9 @@ class JsonWebSocket(Protocol):
     def accept(self) -> Awaitable[None]: ...
 
     def send_json(self, data: JsonObject) -> Awaitable[None]: ...
+
+
+class CommandHandler(Protocol):
+    """A command handler — must accept noun and GameContext, return None."""
+
+    def __call__(self, noun: str | None, ctx: GameContext) -> None: ...

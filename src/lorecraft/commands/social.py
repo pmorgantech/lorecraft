@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 from lorecraft.game.context import GameContext
 from lorecraft.game.registry import CommandRegistry, CommandScope
 from lorecraft.npc.dialogue import DialogueService, _NPC_KEY
@@ -18,16 +16,15 @@ def register_social_commands(registry: CommandRegistry) -> None:
         scope=CommandScope.SOCIAL,
         help="talk <name> — start a conversation with an NPC",
     )
-    def talk_command(noun: str | None, ctx: object) -> None:
-        game_ctx = cast(GameContext, ctx)
+    def talk_command(noun: str | None, ctx: GameContext) -> None:
         if noun is None:
-            game_ctx.say("Talk to whom?")
+            ctx.say("Talk to whom?")
             return
-        npc = game_ctx.npc_repo.find_in_room(game_ctx.room.id, noun)
+        npc = ctx.npc_repo.find_in_room(ctx.room.id, noun)
         if npc is None:
-            game_ctx.say(f"There is no {noun} here.")
+            ctx.say(f"There is no {noun} here.")
             return
-        service.start(npc.id, game_ctx)
+        service.start(npc.id, ctx)
 
     @registry.register(
         "choice",
@@ -35,33 +32,31 @@ def register_social_commands(registry: CommandRegistry) -> None:
         scope=CommandScope.SOCIAL,
         help="choice <number> — pick a dialogue reply",
     )
-    def choice_command(noun: str | None, ctx: object) -> None:
-        game_ctx = cast(GameContext, ctx)
-        if not game_ctx.player.flags.get(_NPC_KEY):
-            game_ctx.say("You are not in a conversation.")
+    def choice_command(noun: str | None, ctx: GameContext) -> None:
+        if not ctx.player.flags.get(_NPC_KEY):
+            ctx.say("You are not in a conversation.")
             return
         if noun is None:
-            game_ctx.say("Choose a number.")
+            ctx.say("Choose a number.")
             return
         try:
             index = int(noun)
         except ValueError:
-            game_ctx.say("Enter the number of your choice.")
+            ctx.say("Enter the number of your choice.")
             return
-        service.choose(index, game_ctx)
+        service.choose(index, ctx)
 
     @registry.register(
         "say",
         scope=CommandScope.SOCIAL,
         help="say <message> — speak aloud to the room",
     )
-    def say_command(noun: str | None, ctx: object) -> None:
-        game_ctx = cast(GameContext, ctx)
+    def say_command(noun: str | None, ctx: GameContext) -> None:
         if noun is None:
-            game_ctx.say("Say what?")
+            ctx.say("Say what?")
             return
-        game_ctx.say(f'You say: "{noun}"')
-        game_ctx.tell_room(f'{game_ctx.player.username} says: "{noun}"')
+        ctx.say(f'You say: "{noun}"')
+        ctx.tell_room(f'{ctx.player.username} says: "{noun}"')
 
     @registry.register(
         "bye",
@@ -70,11 +65,10 @@ def register_social_commands(registry: CommandRegistry) -> None:
         scope=CommandScope.SOCIAL,
         help="bye — end the current conversation",
     )
-    def bye_command(noun: str | None, ctx: object) -> None:
-        game_ctx = cast(GameContext, ctx)
+    def bye_command(noun: str | None, ctx: GameContext) -> None:
         del noun
-        if not game_ctx.player.flags.get(_NPC_KEY):
-            game_ctx.say("You are not speaking with anyone.")
+        if not ctx.player.flags.get(_NPC_KEY):
+            ctx.say("You are not speaking with anyone.")
             return
-        service.end(game_ctx)
-        game_ctx.say("Farewell.")
+        service.end(ctx)
+        ctx.say("Farewell.")

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from collections.abc import Callable
 from typing import Any, cast
+
+from lorecraft.types import CommandHandler
 
 
 class CommandScope(StrEnum):
@@ -23,9 +25,6 @@ class CommandCondition(StrEnum):
     FLAG_NOT_SET = "flag_not_set"
     ITEM_IN_INVENTORY = "item_in_inventory"
     NPC_PRESENT = "npc_present"
-
-
-CommandHandler = Callable[[str | None, object], None]
 
 
 @dataclass(frozen=True)

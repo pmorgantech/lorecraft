@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 from lorecraft.game.context import GameContext
 from lorecraft.game.registry import CommandRegistry, CommandScope
 from lorecraft.npc.dialogue import _NPC_KEY
@@ -52,35 +50,33 @@ def register_meta_commands(
         scope=CommandScope.GLOBAL,
         help="help — show this list",
     )
-    def help_command(noun: str | None, ctx: object) -> None:
+    def help_command(noun: str | None, ctx: GameContext) -> None:
         del noun
-        game_ctx = cast(GameContext, ctx)
-        game_ctx.say("\n".join(_build_help_lines(registry, game_ctx)))
+        ctx.say("\n".join(_build_help_lines(registry, ctx)))
 
     @registry.register(
         "quit",
         scope=CommandScope.GLOBAL,
         help="quit — return to the lobby",
     )
-    def quit_command(noun: str | None, ctx: object) -> None:
+    def quit_command(noun: str | None, ctx: GameContext) -> None:
         del noun
-        game_ctx = cast(GameContext, ctx)
-        game_ctx.say("Goodbye.")
-        game_ctx.tell_room(f"{game_ctx.player.username} leaves the game.")
-        game_ctx.push_update("disconnect", True)
+        ctx.say("Goodbye.")
+        ctx.tell_room(f"{ctx.player.username} leaves the game.")
+        ctx.push_update("disconnect", True)
 
     @registry.register(
         "save",
         scope=CommandScope.GLOBAL,
         help="save [slot] — save your progress",
     )
-    def save_command(noun: str | None, ctx: object) -> None:
-        service.save(noun, cast(GameContext, ctx))
+    def save_command(noun: str | None, ctx: GameContext) -> None:
+        service.save(noun, ctx)
 
     @registry.register(
         "load",
         scope=CommandScope.GLOBAL,
         help="load [slot] — load a saved game",
     )
-    def load_command(noun: str | None, ctx: object) -> None:
-        service.load(noun, cast(GameContext, ctx))
+    def load_command(noun: str | None, ctx: GameContext) -> None:
+        service.load(noun, ctx)
