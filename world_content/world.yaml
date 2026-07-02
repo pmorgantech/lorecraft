@@ -534,6 +534,8 @@ items:
     description: A delicate key for a cage latch.
     takeable: true
     tradeable: true
+    usable_with:
+      - cage_lock
 
   - id: cage_lock
     name: Cage Lock
@@ -546,6 +548,9 @@ items:
     description: A short sword eaten through with rust.
     takeable: true
     tradeable: true
+    aliases:
+      - blade
+      - shortsword
 
   - id: red_rose
     name: Red Rose

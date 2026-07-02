@@ -18,6 +18,7 @@ Legend:
 - [x] `make test` runs the focused test suite.
 - [x] Package version is synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
 - [x] `CHANGELOG.md` exists and includes the current release entry.
+- [x] Graphify wired into the workflow: `make install-hooks` now installs a real `.githooks/post-commit` hook, and a Claude Code `SessionStart` hook (`.claude/hooks/session-start.sh`) refreshes `graphify-out/graph.json`. Both no-op cleanly (exit 0) when the `graphify` binary isn't installed locally.
 
 ### Phase 1 — Foundation
 
@@ -63,10 +64,13 @@ Legend:
 - [x] `game/engine.py` contains command dispatch with state commit, audit, and event-flush lifecycle steps.
 - [~] Full 13-step transaction/event/audit lifecycle in `handle_command()`.
 - [x] Blocked command audit events.
-- [x] `commands/meta.py` with `help` and `quit`.
-- [x] `commands/movement.py` with `go` and cardinal directions.
+- [x] `commands/meta.py` with `help` (context-aware: dialogue/combat/`disabled_commands`) and `quit`.
+- [x] `commands/movement.py` with `go`, cardinal directions, `unlock`/`lock` (persist `Exit.locked`).
 - [x] `services/movement.py` with `MovementService`.
 - [x] End-to-end movement test with persistent room change.
+- [x] Item `aliases` (YAML/model/loader) for parser fuzzy resolution and `ItemRepo` search.
+- [x] `use <item> [on/with <other>]` + `InventoryService.use_item()`, wiring `Item.usable_with`.
+- [x] `give <item> to <name>` + `InventoryService.give_item()` for NPC hand-offs.
 
 ### Phase 2.5 — Minimal Web Client
 
@@ -189,6 +193,7 @@ Legend:
 
 - [x] Combat models.
 - [x] Player stats model.
+- [x] `services/scheduler.py` — DB-backed `ScheduledJob` table; `SchedulerService.schedule()`/`cancel()`; dispatches due jobs as `GameEvent.SCHEDULED_JOB_DUE` on every `TIME_ADVANCED` tick. The scheduling primitive combat (and NPC/world delayed effects) will run on.
 - [ ] `services/combat.py`.
 - [ ] `npc/combat_ai.py`.
 - [ ] Combat commands: `attack`, `flee`.

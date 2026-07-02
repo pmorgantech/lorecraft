@@ -33,6 +33,7 @@ from lorecraft.models.world import (
 )
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.interaction import PvpConsent, TradeOffer
+from lorecraft.models.scheduler import ScheduledJob
 
 
 GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
@@ -58,6 +59,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     ConflictScanResult,
     TradeOffer,
     PvpConsent,
+    ScheduledJob,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)
@@ -126,4 +128,11 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                     "ALTER TABLE saveslot "
                     "ADD COLUMN visited_rooms JSON NOT NULL DEFAULT '[]'"
                 )
+            )
+
+    item_columns = {column["name"] for column in inspect(engine).get_columns("item")}
+    if "aliases" not in item_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE item ADD COLUMN aliases JSON NOT NULL DEFAULT '[]'")
             )

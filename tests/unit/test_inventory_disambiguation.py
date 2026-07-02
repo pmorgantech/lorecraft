@@ -103,6 +103,21 @@ class TestItemRepoShortNames:
                 == "rusty_iron_key"
             )
 
+    def test_alias_matches_item_not_named_by_alias(self) -> None:
+        engine = create_engine("sqlite://")
+        create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+        with Session(engine) as session:
+            seed_disambig_gallery(session, link=None)
+            session.commit()
+            items = ItemRepo(session)
+
+            blade_matches = items.search_in_room(DISAMBIG_ROOM_ID, "blade")
+            assert {item.id for _, item in blade_matches} == {"rusty_iron_sword"}
+
+            shortsword_matches = items.search_in_room(DISAMBIG_ROOM_ID, "shortsword")
+            assert {item.id for _, item in shortsword_matches} == {"rusty_iron_sword"}
+
 
 class TestInventoryAmbiguityPrompts:
     def test_take_key_prompts_numbered_choices(self) -> None:
@@ -185,3 +200,22 @@ class TestParserAndInventoryIntegration:
 
         assert ctx.messages[0].startswith("Which do you mean?")
         assert ctx.updates["disambig_pending"]["verb"] == "take"
+
+    def test_command_engine_examine_key_reaches_inventory_disambig(self) -> None:
+        engine = create_engine("sqlite://")
+        create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+        with Session(engine) as session:
+            player = _seed_gallery_player(session)
+            session.commit()
+            ctx = _build_context(session, player)
+            registry = CommandRegistry()
+            from lorecraft.commands.inventory import register_inventory_commands
+
+            register_inventory_commands(registry)
+            cmd_engine = CommandEngine(registry, RuleEngine())
+
+            cmd_engine.handle_command("examine key", ctx)
+
+        assert ctx.messages[0].startswith("Which do you mean?")
+        assert ctx.updates["disambig_pending"]["verb"] == "examine"

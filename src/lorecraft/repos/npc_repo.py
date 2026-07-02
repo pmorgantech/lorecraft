@@ -17,3 +17,14 @@ class NpcRepo(Repository[NPC, str]):
     def in_room(self, room_id: str) -> Sequence[NPC]:
         statement = select(NPC).where(NPC.current_room_id == room_id)
         return self.session.exec(statement).all()
+
+    def find_in_room(self, room_id: str, name_or_id: str) -> NPC | None:
+        query = name_or_id.strip().lower()
+        return next(
+            (
+                npc
+                for npc in self.in_room(room_id)
+                if npc.name.lower().startswith(query)
+            ),
+            None,
+        )

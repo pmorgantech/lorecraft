@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.events import Event, EventBus, GameEvent, HandlerResult
+from lorecraft.game.parser import ParsedCommand
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
@@ -42,6 +43,7 @@ class GameContext:
     room_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
+    parsed_command: ParsedCommand | None = None
 
     def say(self, text: str) -> None:
         self.messages.append(text)
@@ -77,7 +79,7 @@ class GameContext:
         """Return room items and NPCs as (id, name, aliases) for parser resolution."""
         entities: list[tuple[str, str, list[str]]] = []
         for _room_item, item in self.item_repo.items_in_room(self.room.id):
-            entities.append((item.id, item.name, []))
+            entities.append((item.id, item.name, list(item.aliases)))
         for npc in self.npc_repo.in_room(self.room.id):
             entities.append((npc.id, npc.name, [npc.name.lower()]))
         return entities
@@ -88,5 +90,5 @@ class GameContext:
         for item_id in self.player.inventory:
             item = self.item_repo.get(item_id)
             if item is not None:
-                inventory.append((item.id, item.name, []))
+                inventory.append((item.id, item.name, list(item.aliases)))
         return inventory

@@ -4,13 +4,9 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-### Security
-
-- `/lobby/enter` and `/lobby/create` now issue a signed, httponly JWT session cookie (`lorecraft_session`) instead of redirecting to `/game?player_id=...` — player identity is no longer echoed in the URL or trusted from an unsigned cookie on the primary login path. The legacy `?player_id=`/unsigned-cookie fallback still exists for dev/test convenience, gated behind `LORECRAFT_ALLOW_QUERY_PLAYER_ID` (default on).
-
 ### Fixed
 
-- `create character` now works: `POST /lobby/create` validates the username, creates the player, and logs them in.
+- Ambiguous `examine`/`inspect`/`x` targets now defer to `InventoryService`'s numbered disambiguation prompt (`disambig_pending` + choice number) instead of blocking at parse time with a plain "Perhaps you meant" list — matching `take`/`drop` behavior.
 - HTMX `POST /command` now calls `CommandEngine.handle_command()` (commands were previously not executed).
 - WebSocket client connects to `/ws?player_id=…` instead of the non-existent `/ws/game` path.
 - Dev seed DB (`test_dbs/`) regenerated from Ashmoore `world_content/world.yaml`; `player-1` now starts at `village_square` with working exits.
@@ -25,11 +21,17 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Added
 
-- `lorecraft.web.player_auth` — signed JWT player session cookie helpers (`create_player_token`/`decode_player_id`), reusing `admin/auth.py` token primitives with a separate secret.
-- `POST /lobby/create` — character creation endpoint with username validation and uniqueness check; wired to a new "Create New Character" form in `lobby.html`.
-- `config.ensure_persisted_secret()` — generates and persists a secret to `.env` on first use (used for `LORECRAFT_PLAYER_SESSION_SECRET`); only called from the real server entrypoint, never during tests.
-- Config env vars: `LORECRAFT_PLAYER_SESSION_SECRET`, `LORECRAFT_PLAYER_SESSION_TTL_SECONDS`, `LORECRAFT_ALLOW_QUERY_PLAYER_ID`.
-- `python-dotenv` dependency — loads `.env` into the environment at startup.
+- `services/scheduler.py` — `SchedulerService`, a persistent DB-backed job scheduler (Sprint 3, roadmap). `schedule(job_type, at_game_epoch, payload)` persists a `ScheduledJob` row; on every `TIME_ADVANCED` tick it marks due jobs `dispatched` and emits `GameEvent.SCHEDULED_JOB_DUE` for each so owning subsystems (combat, NPC movement, delayed world effects) can react without the scheduler knowing any game rules. `cancel(job_id)` marks a pending job cancelled. Wired into `AppState.scheduler` / `main.py` alongside the clock runner and NPC scheduler.
+- `models/scheduler.py` — `ScheduledJob` table (`job_type`, `due_at_epoch`, `status`, `payload`, `created_at`), registered in `db.GAME_TABLE_MODELS`.
+- `repos/scheduler_repo.py` — `SchedulerRepo.due(current_epoch)` for querying pending jobs at or before a game epoch.
+- Graphify actually connected to the dev workflow: `make install-hooks` previously pointed `core.hooksPath` at a `.githooks/` directory that didn't exist. Added `.githooks/post-commit` (refreshes `graphify-out/graph.json` after each commit) and a Claude Code `SessionStart` hook (`.claude/settings.json` + `.claude/hooks/session-start.sh`) so web sessions get the graph refreshed automatically. `scripts/graphify-refresh.sh` now skips gracefully (exit 0) instead of failing when the `graphify` binary isn't installed.
+- Item `aliases` (YAML/model/loader/validator) so players can refer to an item by a nickname sharing no words with its name (e.g. "blade"/"shortsword" for Rusty Iron Sword); wired through `GameContext.get_visible_entities()`/`get_inventory()` for parser fuzzy resolution and `ItemRepo` room/inventory search.
+- Context-aware `help`: generated from real command metadata (`CommandDefinition.help_text`, `CommandRegistry.all_commands()`) instead of a hardcoded string; varies by dialogue (social + global only), combat (`NOT_IN_COMBAT`-gated commands drop out), and `Room.disabled_commands`.
+- `use <item> [on/with <other>]` + `InventoryService.use_item()` — wires the previously-orphaned `Item.usable_with` field into gameplay; combining two items whose `usable_with` lists reference each other emits `GameEvent.ITEM_USED`. Added a `cage_key`/`cage_lock` `usable_with` example to `world_content/world.yaml`.
+- `GameContext.parsed_command` — the dispatch loop now stashes the current `ParsedCommand` on context before invoking a handler, so handlers can read secondary roles (e.g. `use X on Y`, `give X to Y`) via `command_patterns.py` helpers instead of only the single noun string.
+- `give <item> to <name>` + `InventoryService.give_item()` — hands a carried item to an NPC in the room and emits `GameEvent.ITEM_GIVEN`.
+- `unlock <direction>` / `lock <direction>` + `MovementService.unlock()`/`lock()` — persist `Exit.locked` (while carrying `key_item_id`) so an exit unlocked once no longer needs the key for later movement, including by other players.
+- `NpcRepo.find_in_room()` — shared NPC name lookup used by `talk` and `give`.
 - `lorecraft.world.bootstrap` — YAML-driven empty-DB import and configurable dev player seeding.
 - Config env vars: `LORECRAFT_WORLD_YAML_PATH`, `LORECRAFT_SEED_PLAYER_ID`, `LORECRAFT_SEED_PLAYER_USERNAME`, `LORECRAFT_SEED_PLAYER_START_ROOM`.
 - NPC (Mira), dialogue tree, and sample quest in `world_content/world.yaml` for Ashmoore playtesting.
@@ -44,7 +46,6 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Changed
 
-- `main.create_app()` uses `dataclasses.replace()` to build `resolved_settings` instead of manually re-listing every `Settings` field — fixes a latent bug where `world_yaml_path`/`seed_player_*` overrides passed via an explicit `Settings(...)` were silently dropped.
 - `import_world.py` wipes NPCs, dialogue trees, and quests on `--fresh`; seeds `player-1` and `player-2`; resets players on fresh import.
 - `start.sh` copies `test_dbs/` seed databases again (not `game.db`).
 - Admin and integration tests updated for Ashmoore room IDs (`village_square`, `wandering_crow_inn`, `market_stalls`, etc.).

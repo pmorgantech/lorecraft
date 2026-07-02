@@ -94,6 +94,7 @@ class CommandEngine:
             self._record_blocked(ctx, parsed, "rule_blocked", reason)
             return None
 
+        ctx.parsed_command = parsed
         command.handler(parsed.noun, ctx)
         ctx.commit_state_changes()
         self._record_success(ctx, parsed)
