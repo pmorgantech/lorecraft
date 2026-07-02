@@ -16,6 +16,7 @@ class GameEvent(StrEnum):
     ITEM_TAKEN = "item_taken"
     ITEM_DROPPED = "item_dropped"
     ITEM_USED = "item_used"
+    ITEM_GIVEN = "item_given"
     PLAYER_MOVED = "player_moved"
     PLAYER_DIED = "player_died"
     PLAYER_RESPAWNED = "player_respawned"

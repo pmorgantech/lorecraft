@@ -23,8 +23,7 @@ def register_social_commands(registry: CommandRegistry) -> None:
         if noun is None:
             game_ctx.say("Talk to whom?")
             return
-        npcs = game_ctx.npc_repo.in_room(game_ctx.room.id)
-        npc = next((n for n in npcs if n.name.lower().startswith(noun.lower())), None)
+        npc = game_ctx.npc_repo.find_in_room(game_ctx.room.id, noun)
         if npc is None:
             game_ctx.say(f"There is no {noun} here.")
             return

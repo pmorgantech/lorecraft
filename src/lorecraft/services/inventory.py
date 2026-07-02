@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from lorecraft.game.command_patterns import (
     ROLE_DESTINATION,
     ROLE_INSTRUMENT,
+    ROLE_RECIPIENT,
     ROLE_TARGET,
     role_str,
 )
@@ -437,6 +438,54 @@ class InventoryService:
             ctx.say(f"Using the {item.name} with the {other.name} does nothing.")
 
         self._emit_item_used(ctx, item.id, other_item_id=other.id)
+
+    def give_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Give what?")
+            return
+
+        parsed = ctx.parsed_command
+        recipient_phrase = role_str(parsed, ROLE_RECIPIENT) if parsed else None
+        if not recipient_phrase:
+            ctx.say("Give it to whom?")
+            return
+
+        npc = ctx.npc_repo.find_in_room(ctx.room.id, recipient_phrase)
+        if npc is None:
+            ctx.say(f"There is no {recipient_phrase} here.")
+            return
+
+        matches = ctx.item_repo.search_player_items(ctx.player.inventory, name_or_id)
+        if not matches:
+            ctx.say("You don't have that.")
+            return
+        if len(matches) > 1:
+            _prompt_disambiguation(ctx, "give", name_or_id, matches)
+            return
+
+        slots = ctx.item_repo.inventory_slots_matching(ctx.player.inventory, name_or_id)
+        if not slots:
+            ctx.say("You don't have that.")
+            return
+
+        item = matches[0]
+        self._remove_from_inventory_only(ctx, [slots[0][0]])
+        ctx.say(f"You give the {item.name} to {npc.name}.")
+        ctx.tell_room(f"{ctx.player.username} gives {item.name} to {npc.name}.")
+        ctx.queue_event(
+            GameEvent.ITEM_GIVEN,
+            player_id=ctx.player.id,
+            room_id=ctx.room.id,
+            item_id=item.id,
+            npc_id=npc.id,
+        )
+
+    def _remove_from_inventory_only(self, ctx: GameContext, indices: list[int]) -> None:
+        inventory = list(ctx.player.inventory)
+        for index in sorted(indices, reverse=True):
+            inventory.pop(index)
+        ctx.player.inventory = inventory
+        ctx.push_update("inventory", list(ctx.player.inventory))
 
     def _find_carried_or_visible(self, query: str, ctx: GameContext) -> list[Item]:
         inv_matches = ctx.item_repo.search_player_items(ctx.player.inventory, query)

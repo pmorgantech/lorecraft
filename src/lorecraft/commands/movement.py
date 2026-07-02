@@ -29,3 +29,19 @@ def register_movement_commands(
             game_ctx.say("Go where?")
             return
         service.move(noun, game_ctx)
+
+    @registry.register(
+        "unlock",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="unlock <direction> — unlock an exit if you carry its key",
+    )
+    def unlock_command(noun: str | None, ctx: object) -> None:
+        service.unlock(noun, cast(GameContext, ctx))
+
+    @registry.register(
+        "lock",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="lock <direction> — lock an exit if you carry its key",
+    )
+    def lock_command(noun: str | None, ctx: object) -> None:
+        service.lock(noun, cast(GameContext, ctx))

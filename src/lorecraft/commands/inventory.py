@@ -68,3 +68,11 @@ def register_inventory_commands(
     )
     def use_command(noun: str | None, ctx: object) -> None:
         service.use_item(noun, cast(GameContext, ctx))
+
+    @registry.register(
+        "give",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="give <item> to <name> — hand a carried item to an NPC",
+    )
+    def give_command(noun: str | None, ctx: object) -> None:
+        service.give_item(noun, cast(GameContext, ctx))
