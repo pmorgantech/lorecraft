@@ -413,6 +413,71 @@ class ChangesetsScreen(Screen[None]):
         self.notify("Enter name in console — not yet wired to a dialog in this build")
 
 
+class IssuesScreen(Screen[None]):
+    TITLE = "Issues (F6)"
+    BINDINGS = [
+        Binding("r", "refresh", "Refresh"),
+        Binding("n", "new_issue", "New"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Horizontal(id="issues-filters"):
+            yield Input(placeholder="status", id="filter-status")
+            yield Input(placeholder="priority", id="filter-priority")
+            yield Input(placeholder="component", id="filter-component")
+            yield Button("Search", id="issues-search")
+        yield DataTable(id="issues-table")
+        yield Static(
+            "n=new (title prompt)  enter cell to select  r=refresh", id="issues-hint"
+        )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one(DataTable)
+        table.add_columns("ID", "Type", "Title", "Status", "Priority", "Component")
+        self.action_refresh()
+
+    def action_refresh(self) -> None:
+        self.run_worker(self._load_issues, exclusive=True, thread=True)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "issues-search":
+            self.action_refresh()
+
+    def _load_issues(self) -> None:
+        api: _Api = self.app.api  # type: ignore[attr-defined]
+        status = self.query_one("#filter-status", Input).value.strip()
+        priority = self.query_one("#filter-priority", Input).value.strip()
+        component = self.query_one("#filter-component", Input).value.strip()
+        params: list[str] = []
+        if status:
+            params.append(f"status={urllib.parse.quote(status)}")
+        if priority:
+            params.append(f"priority={urllib.parse.quote(priority)}")
+        if component:
+            params.append(f"component={urllib.parse.quote(component)}")
+        qs = "?" + "&".join(params) if params else ""
+        issues = api.get(f"/admin/issues{qs}")
+        table = self.query_one(DataTable)
+        table.clear()
+        if not isinstance(issues, list):
+            return
+        for issue in issues:
+            table.add_row(
+                issue.get("id", ""),
+                issue.get("type", ""),
+                issue.get("title", "")[:40],
+                issue.get("status", ""),
+                issue.get("priority", ""),
+                issue.get("component", ""),
+                key=issue.get("id", ""),
+            )
+
+    def action_new_issue(self) -> None:
+        self.notify("New issue: use the web panel for now (needs a text form)")
+
+
 class ClockScreen(Screen[None]):
     TITLE = "Clock (F5)"
     BINDINGS = [
@@ -519,6 +584,7 @@ class LoreCraftAdminApp(App[None]):
     #room-editor { width: 40; padding: 1; border: solid #4a4a6a; }
     #clock-panel { padding: 2; }
     #clock-display { color: #a8ff78; text-style: bold; }
+    #issues-filters { height: 3; }
     """
 
     BINDINGS = [
@@ -527,6 +593,7 @@ class LoreCraftAdminApp(App[None]):
         Binding("f3", "switch_screen('world')", "World", priority=True),
         Binding("f4", "switch_screen('changesets')", "Changesets", priority=True),
         Binding("f5", "switch_screen('clock')", "Clock", priority=True),
+        Binding("f6", "switch_screen('issues')", "Issues", priority=True),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -536,6 +603,7 @@ class LoreCraftAdminApp(App[None]):
         "world": WorldScreen,
         "changesets": ChangesetsScreen,
         "clock": ClockScreen,
+        "issues": IssuesScreen,
     }
 
     def __init__(self) -> None:

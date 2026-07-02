@@ -23,6 +23,7 @@ from lorecraft.admin.websocket import admin_ws_endpoint
 from lorecraft.clock.weather import register_weather_handlers
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
+from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.npc.scheduler import NpcScheduler
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.scheduler import SchedulerService
@@ -91,6 +92,7 @@ def create_app(
         admin_seed_password=settings.admin_seed_password,
         admin_seed_role=settings.admin_seed_role,
         world_yaml_path=settings.world_yaml_path,
+        issues_yaml_path=settings.issues_yaml_path,
         seed_player_id=settings.seed_player_id,
         seed_player_username=settings.seed_player_username,
         seed_player_start_room=settings.seed_player_start_room,
@@ -110,6 +112,11 @@ def create_app(
         )
         ensure_world_bootstrapped(resolved_game_engine, resolved_settings)
         _ensure_admin_seed(resolved_game_engine, resolved_settings)
+        with Session(resolved_game_engine) as issues_session:
+            ensure_issues_bootstrapped(
+                issues_session, resolved_settings.issues_yaml_path
+            )
+            issues_session.commit()
 
         manager = ConnectionManager()
         bus = EventBus()

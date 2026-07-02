@@ -8,6 +8,7 @@ from lorecraft.admin.auth import auth_router
 from lorecraft.admin.routers.accounts import router as accounts_router
 from lorecraft.admin.routers.audit import router as audit_router
 from lorecraft.admin.routers.clock import router as clock_router
+from lorecraft.admin.routers.issues import router as issues_router
 from lorecraft.admin.routers.players import router as players_router
 from lorecraft.admin.routers.world import router as world_router
 
@@ -18,3 +19,4 @@ admin_router.include_router(audit_router)
 admin_router.include_router(world_router)
 admin_router.include_router(clock_router)
 admin_router.include_router(accounts_router)
+admin_router.include_router(issues_router)

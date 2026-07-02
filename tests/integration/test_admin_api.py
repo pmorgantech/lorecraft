@@ -687,3 +687,91 @@ async def _test_seed_admin() -> None:
         )
     assert status == 200
     assert "access_token" in data
+
+
+# ---------------------------------------------------------------------------
+# Issues
+# ---------------------------------------------------------------------------
+
+
+def test_create_and_list_issues(tmp_path) -> None:
+    anyio.run(_test_create_and_list_issues, tmp_path)
+
+
+async def _test_create_and_list_issues(tmp_path) -> None:
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        issues_yaml_path=str(tmp_path / "issues.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="moderator")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="moderator")
+        status, created = await _http(
+            app,
+            "POST",
+            "/admin/issues",
+            body={
+                "title": "Movement race condition",
+                "type": "bug",
+                "priority": "high",
+            },
+            token=token,
+        )
+        assert status == 200
+        assert created["title"] == "Movement race condition"
+        assert created["status"] == "open"
+        assert created["created_by"] == "testadmin"
+
+        status, listed = await _http(app, "GET", "/admin/issues", token=token)
+        assert status == 200
+        assert any(i["id"] == created["id"] for i in listed)
+
+    # Admin mutation re-exports the YAML mirror to disk.
+    assert (tmp_path / "issues.yaml").is_file()
+
+
+def test_update_issue_status(tmp_path) -> None:
+    anyio.run(_test_update_issue_status, tmp_path)
+
+
+async def _test_update_issue_status(tmp_path) -> None:
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        issues_yaml_path=str(tmp_path / "issues.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="moderator")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="moderator")
+        _, created = await _http(
+            app, "POST", "/admin/issues", body={"title": "Fix it"}, token=token
+        )
+        status, updated = await _http(
+            app,
+            "PUT",
+            f"/admin/issues/{created['id']}",
+            body={"status": "resolved"},
+            token=token,
+        )
+        assert status == 200
+        assert updated["status"] == "resolved"
+
+        status, missing = await _http(
+            app,
+            "PUT",
+            "/admin/issues/does-not-exist",
+            body={"status": "open"},
+            token=token,
+        )
+        assert status == 404

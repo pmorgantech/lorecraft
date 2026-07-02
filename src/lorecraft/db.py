@@ -20,6 +20,7 @@ from lorecraft.models.changeset import (
 )
 from lorecraft.models.combat import CombatSession
 from lorecraft.models.dialogue import DialogueTree
+from lorecraft.models.issue import Issue
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import (
@@ -60,6 +61,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     TradeOffer,
     PvpConsent,
     ScheduledJob,
+    Issue,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)
