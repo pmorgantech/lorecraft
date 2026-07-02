@@ -90,6 +90,13 @@ def create_app(
         admin_seed_username=settings.admin_seed_username,
         admin_seed_password=settings.admin_seed_password,
         admin_seed_role=settings.admin_seed_role,
+        world_yaml_path=settings.world_yaml_path,
+        seed_player_id=settings.seed_player_id,
+        seed_player_username=settings.seed_player_username,
+        seed_player_start_room=settings.seed_player_start_room,
+        player_session_secret=settings.player_session_secret,
+        player_session_ttl_seconds=settings.player_session_ttl_seconds,
+        allow_query_player_id=settings.allow_query_player_id,
     )
 
     @asynccontextmanager

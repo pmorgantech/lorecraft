@@ -228,7 +228,12 @@ async def get_current_player(request: Request) -> Player:
             if signed_player is not None:
                 return signed_player
 
-    if app_state is not None and not app_state.settings.allow_query_player_id:
+    # Check if legacy fallback (query player_id) is allowed.
+    # If app_state is available, use its setting; otherwise default to False (conservative).
+    allow_legacy = (
+        app_state.settings.allow_query_player_id if app_state is not None else False
+    )
+    if not allow_legacy:
         raise HTTPException(status_code=401, detail="No active session")
 
     explicit_id = request.query_params.get("player_id") or request.query_params.get(
