@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from typing import TypeVar
 
 from sqlmodel import Session, select
 
@@ -12,6 +13,8 @@ from lorecraft.models.world import Item, RoomItem
 from lorecraft.repos.base import Repository
 
 log = logging.getLogger(__name__)
+
+_C = TypeVar("_C")
 
 
 class ItemRepo(Repository[Item, str]):
@@ -33,24 +36,29 @@ class ItemRepo(Repository[Item, str]):
     def search_in_room(self, room_id: str, query: str) -> list[tuple[RoomItem, Item]]:
         """Return all room items that match query. Exact matches are returned first;
         if none, falls back to word-subset fuzzy matches."""
-        q = _normalize_item_name(query)
-        q_words = _query_words(query)
-        exact: list[tuple[RoomItem, Item]] = []
-        fuzzy: list[tuple[RoomItem, Item]] = []
-        for room_item, item in self.items_in_room(room_id):
-            if _item_matches_query(q, q_words, item):
-                exact.append((room_item, item))
-            elif _item_matches_words(q_words, item):
-                fuzzy.append((room_item, item))
-        return exact if exact else fuzzy
+        return _best_matches(query, self.items_in_room(room_id))
 
     def search_player_items(self, item_ids: Sequence[str], query: str) -> list[Item]:
         """Return all player inventory items matching query, deduplicated by item id.
         Exact matches are returned first; if none, falls back to word-subset fuzzy matches."""
-        q = _normalize_item_name(query)
-        q_words = _query_words(query)
-        exact: list[Item] = []
-        fuzzy: list[Item] = []
+        matches = _best_matches(query, self._unique_carried_items(item_ids))
+        return [item for _, item in matches]
+
+    def inventory_slots_matching(
+        self, item_ids: Sequence[str], query: str
+    ) -> list[tuple[int, Item]]:
+        """Return inventory indices and items for every carried slot matching query."""
+        candidates = (
+            (index, item)
+            for index, item_id in enumerate(item_ids)
+            if (item := self.get(item_id)) is not None
+        )
+        return _any_matches(query, candidates)
+
+    def _unique_carried_items(
+        self, item_ids: Sequence[str]
+    ) -> Iterable[tuple[str, Item]]:
+        """Carried items deduplicated by item id, preserving first-seen order."""
         seen: set[str] = set()
         for item_id in item_ids:
             if item_id in seen:
@@ -59,28 +67,7 @@ class ItemRepo(Repository[Item, str]):
             if item is None:
                 continue
             seen.add(item_id)
-            if _item_matches_query(q, q_words, item):
-                exact.append(item)
-            elif _item_matches_words(q_words, item):
-                fuzzy.append(item)
-        return exact if exact else fuzzy
-
-    def inventory_slots_matching(
-        self, item_ids: Sequence[str], query: str
-    ) -> list[tuple[int, Item]]:
-        """Return inventory indices and items for every carried slot matching query."""
-        q = _normalize_item_name(query)
-        q_words = _query_words(query)
-        slots: list[tuple[int, Item]] = []
-        for index, item_id in enumerate(item_ids):
-            item = self.get(item_id)
-            if item is None:
-                continue
-            if _item_matches_query(q, q_words, item) or _item_matches_words(
-                q_words, item
-            ):
-                slots.append((index, item))
-        return slots
+            yield item_id, item
 
     def expanded_room_instances(
         self, room_id: str, query: str
@@ -189,3 +176,48 @@ def _item_matches_words(q_words: frozenset[str], item: Item) -> bool:
 def _words_match(query_words: frozenset[str], name_words: frozenset[str]) -> bool:
     """Return True if every word in the query appears in the item name."""
     return bool(query_words) and query_words.issubset(name_words)
+
+
+def _match_kind(q: str, q_words: frozenset[str], item: Item) -> int:
+    """0 = no match, 1 = fuzzy word-subset match, 2 = exact name/id/alias match."""
+    if _item_matches_query(q, q_words, item):
+        return 2
+    if _item_matches_words(q_words, item):
+        return 1
+    return 0
+
+
+def _best_matches(
+    query: str, candidates: Iterable[tuple[_C, Item]]
+) -> list[tuple[_C, Item]]:
+    """The one item matcher: exact matches win; fall back to fuzzy matches
+    only when there are no exact ones. Order is preserved within each bucket."""
+    q = _normalize_item_name(query)
+    q_words = _query_words(query)
+    exact: list[tuple[_C, Item]] = []
+    fuzzy: list[tuple[_C, Item]] = []
+    for candidate, item in candidates:
+        kind = _match_kind(q, q_words, item)
+        if kind == 2:
+            exact.append((candidate, item))
+        elif kind == 1:
+            fuzzy.append((candidate, item))
+    return exact if exact else fuzzy
+
+
+def _any_matches(
+    query: str, candidates: Iterable[tuple[_C, Item]]
+) -> list[tuple[_C, Item]]:
+    """Every candidate matching query (exact or fuzzy), preserving position order.
+
+    Used for indexed inventory slot selection, where each slot is an
+    independent, positionally-addressable unit rather than a group to
+    collapse down to "best" matches.
+    """
+    q = _normalize_item_name(query)
+    q_words = _query_words(query)
+    return [
+        (candidate, item)
+        for candidate, item in candidates
+        if _match_kind(q, q_words, item) != 0
+    ]
