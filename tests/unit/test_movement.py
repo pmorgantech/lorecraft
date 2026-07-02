@@ -53,6 +53,102 @@ def test_movement_service_moves_player_and_queues_event() -> None:
     ]
 
 
+def test_unlock_requires_the_right_key() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Exit(
+                room_id="tavern",
+                direction="north",
+                target_room_id="square",
+                locked=True,
+                key_item_id="brass_key",
+            )
+        )
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().unlock("north", ctx)
+
+    assert ctx.messages == ["You don't have the right key."]
+
+
+def test_unlock_persists_and_allows_future_keyless_movement() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Exit(
+                room_id="tavern",
+                direction="north",
+                target_room_id="square",
+                locked=True,
+                key_item_id="brass_key",
+            )
+        )
+        player = _seed_player(session)
+        player.inventory = ["brass_key"]
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().unlock("north", ctx)
+        session.commit()
+
+        assert ctx.messages == ["You unlock the way north. It is now unlocked."]
+
+        ctx.messages.clear()
+        player.inventory = []
+        MovementService().move("north", ctx)
+
+    assert ctx.messages == ["You go north."]
+
+
+def test_lock_sets_exit_locked_when_key_carried() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Exit(
+                room_id="tavern",
+                direction="north",
+                target_room_id="square",
+                locked=False,
+                key_item_id="brass_key",
+            )
+        )
+        player = _seed_player(session)
+        player.inventory = ["brass_key"]
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().lock("north", ctx)
+
+    assert ctx.messages == ["You lock the way north. It is now locked."]
+
+
+def test_unlock_without_direction_prompts() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().unlock(None, ctx)
+
+    assert ctx.messages == ["Unlock which way?"]
+
+
 def test_movement_service_blocks_missing_exit() -> None:
     engine = create_engine("sqlite://")
     create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))

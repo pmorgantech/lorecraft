@@ -143,14 +143,31 @@ def _item_name_words(item: Item) -> frozenset[str]:
     return frozenset(_singularize_word(word) for word in words)
 
 
+def _item_alias_word_sets(item: Item) -> list[frozenset[str]]:
+    return [
+        frozenset(
+            _singularize_word(word) for word in _normalize_item_name(alias).split()
+        )
+        for alias in item.aliases
+    ]
+
+
 def _item_matches_query(q: str, q_words: frozenset[str], item: Item) -> bool:
     n = _normalize_item_name(item.name)
     i = _normalize_item_name(item.id)
-    return q in {n, i}
+    if q in {n, i}:
+        return True
+    aliases = {_normalize_item_name(alias) for alias in item.aliases}
+    return q in aliases
 
 
 def _item_matches_words(q_words: frozenset[str], item: Item) -> bool:
-    return _words_match(q_words, _item_name_words(item))
+    if _words_match(q_words, _item_name_words(item)):
+        return True
+    return any(
+        _words_match(q_words, alias_words)
+        for alias_words in _item_alias_word_sets(item)
+    )
 
 
 def _words_match(query_words: frozenset[str], name_words: frozenset[str]) -> bool:

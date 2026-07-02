@@ -36,11 +36,11 @@ The engine is ahead of the new browser client: dialogue, quests, and multiplayer
 
 | # | Task | Status |
 |---|------|--------|
-| 2.1 | Item `aliases` in YAML/model; wire through `GameContext.get_visible_entities()` | [ ] |
-| 2.2 | Finish inventory disambiguation bug (`docs/TODO.md`) | [ ] |
-| 2.3 | Context-aware `help` (dialogue, combat, per-room disabled commands) | [ ] |
-| 2.4 | `use` command + `InventoryService.use_item()` | [ ] |
-| 2.5 | 2–3 more parser patterns (`give`, `open`, containers) | [ ] |
+| 2.1 | Item `aliases` in YAML/model; wire through `GameContext.get_visible_entities()` | [x] |
+| 2.2 | Finish inventory disambiguation bug (`docs/TODO.md`) | [x] |
+| 2.3 | Context-aware `help` (dialogue, combat, per-room disabled commands) | [x] |
+| 2.4 | `use` command + `InventoryService.use_item()` | [x] |
+| 2.5 | 2–3 more parser patterns (`give`, `open`, containers) | [~] `give` + `lock`/`unlock` (on the existing `Exit.locked`/`key_item_id` fields) shipped; `open`/container-holding items deferred — needs new Item/state modeling |
 
 ---
 
@@ -136,4 +136,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-06-29 — Sprint 1 complete; dev seed aligned to Ashmoore.*
+*Last updated: 2026-07-02 — Sprint 2 complete (container/open patterns deferred, see 2.5); dev seed aligned to Ashmoore.*

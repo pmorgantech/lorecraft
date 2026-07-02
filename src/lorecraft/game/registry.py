@@ -35,6 +35,7 @@ class CommandDefinition:
     aliases: tuple[str, ...] = ()
     scope: CommandScope = CommandScope.WORLD
     conditions: tuple[str | CommandCondition, ...] = ()
+    help_text: str = ""
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,7 @@ class ConditionResult:
 @dataclass
 class CommandRegistry:
     _commands: dict[str, CommandDefinition] = field(default_factory=dict)
+    _order: list[CommandDefinition] = field(default_factory=list)
 
     def register(
         self,
@@ -53,6 +55,7 @@ class CommandRegistry:
         *aliases: str,
         scope: CommandScope = CommandScope.WORLD,
         conditions: list[str | CommandCondition] | None = None,
+        help: str = "",
     ) -> Callable[[CommandHandler], CommandHandler]:
         def decorator(handler: CommandHandler) -> CommandHandler:
             definition = CommandDefinition(
@@ -61,15 +64,21 @@ class CommandRegistry:
                 scope=scope,
                 conditions=tuple(conditions or ()),
                 handler=handler,
+                help_text=help,
             )
             for key in (verb, *aliases):
                 self._commands[key] = definition
+            self._order.append(definition)
             return handler
 
         return decorator
 
     def get(self, verb: str) -> CommandDefinition | None:
         return self._commands.get(verb)
+
+    def all_commands(self) -> list[CommandDefinition]:
+        """Distinct registered commands in registration order (aliases deduplicated)."""
+        return list(self._order)
 
     def evaluate_conditions(
         self, command: CommandDefinition, ctx: object

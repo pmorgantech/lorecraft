@@ -53,10 +53,13 @@ Legend:
 - [x] `game/engine.py` contains command dispatch with state commit, audit, and event-flush lifecycle steps.
 - [~] Full 13-step transaction/event/audit lifecycle in `handle_command()`.
 - [x] Blocked command audit events.
-- [x] `commands/meta.py` with `help` and `quit`.
-- [x] `commands/movement.py` with `go` and cardinal directions.
+- [x] `commands/meta.py` with `help` (context-aware: dialogue/combat/`disabled_commands`) and `quit`.
+- [x] `commands/movement.py` with `go`, cardinal directions, `unlock`/`lock` (persist `Exit.locked`).
 - [x] `services/movement.py` with `MovementService`.
 - [x] End-to-end movement test with persistent room change.
+- [x] Item `aliases` (YAML/model/loader) for parser fuzzy resolution and `ItemRepo` search.
+- [x] `use <item> [on/with <other>]` + `InventoryService.use_item()`, wiring `Item.usable_with`.
+- [x] `give <item> to <name>` + `InventoryService.give_item()` for NPC hand-offs.
 
 ### Phase 2.5 — Minimal Web Client
 

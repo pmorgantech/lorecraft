@@ -127,3 +127,10 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                     "ADD COLUMN visited_rooms JSON NOT NULL DEFAULT '[]'"
                 )
             )
+
+    item_columns = {column["name"] for column in inspect(engine).get_columns("item")}
+    if "aliases" not in item_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE item ADD COLUMN aliases JSON NOT NULL DEFAULT '[]'")
+            )

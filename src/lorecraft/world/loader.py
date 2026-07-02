@@ -50,6 +50,7 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 description=item.description,
                 takeable=item.takeable,
                 tradeable=item.tradeable,
+                aliases=item.aliases,
                 usable_with=item.usable_with,
                 loot_table=cast(JsonObject, item.loot_table),
             )
