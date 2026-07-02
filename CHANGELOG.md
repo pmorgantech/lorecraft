@@ -6,9 +6,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Summary
 
-**Sprints 8.1–8.2 Complete** — Module decomposition: 3 modules (web), 2 modules (parser). Reduced `web/frontend.py` 1,306→784 lines, `game/parser.py` 778→399 lines. All 336 tests passing. Sprint 8.3 (admin API routers) in progress. Unblocks Sprint 9 (service consistency wiring).
+**Sprint 8 Complete** — Module decomposition across web, parser, and admin API layers. `web/frontend.py` 1,306→784 lines (+2 modules), `game/parser.py` 778→399 lines (+2 modules), `admin/api.py` 817→20 lines (+5 per-resource routers). All 336 tests passing. Unblocks Sprint 9 (service consistency wiring).
 
 ### Added
+
+- **Sprint 8.3: Admin API Decomposition** — Split `admin/api.py` (817 lines) into per-resource routers under `admin/routers/`:
+  - `players.py` (191 lines) — list/state/teleport/flags/freeze/unfreeze
+  - `audit.py` (93 lines) — query_audit, session_replay
+  - `world.py` (357 lines) — rooms, items, NPCs, and changesets (create/scan/promote)
+  - `clock.py` (125 lines) — get/pause/resume/time-ratio/weather
+  - `accounts.py` (93 lines) — list/create/revoke admin accounts
+  - `admin/api.py` now 20 lines: mounts `auth_router` + the 5 resource routers onto `admin_router`. Same route paths, same `admin_router` export, so `main.py` required no changes.
+  - HTTPException raises remain at the route layer per router (already separated from game-state logic — no service-layer HTTP leakage to fix).
+  - All 23 admin API integration tests pass unchanged; basedpyright 0 errors on `admin/`.
 
 - **Sprint 8.2: Parser Grammar Extraction** — Split `game/parser.py` (778 lines) into:
   - `game/grammar.py` (322 lines) — Grammar constants (ARTICLES, PREPOSITIONS, PHRASAL_VERBS, DIRECTIONS, VERB_ALIASES, etc), text processing (normalize, tokenize, make_phrase), semantic rules (extract_quantity_and_adjectives, direct_role_for_verb, find_first_preposition, map_prep_to_role), fuzzy matching (score_match).

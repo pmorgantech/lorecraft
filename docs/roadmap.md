@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–8.2 complete (error handling, type safety, characterization tests, web+parser module decomposition). Sprint 8.3 (admin API decomposition) scaffolded and ready for implementation. **Next up: Sprint 8.3 completion, then Sprint 9 (service consistency wiring).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–8 complete (error handling, type safety, characterization tests, web+parser+admin API module decomposition). **Next up: Sprint 9 (service consistency wiring).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–8 complete (error handling, type safety, characterization tests, web+parser decomposition). Sprint 8.3 (admin API routers) scaffolded; Sprint 9 (service consistency) next.
+**Current progress:** Sprints 5–8 complete (error handling, type safety, characterization tests, web+parser+admin API decomposition). Sprint 9 (service consistency) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -129,7 +129,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 7.3 | Admin WebSocket integration tests | [x] |
 | 7.4 | Event-flow integration tests: command → event → service reaction → client update; handler-ordering assertions | [x] |
 
-## Sprint 8 — Module decomposition ✅ (8.1–8.2 complete; 8.3 scaffolded)
+## Sprint 8 — Module decomposition ✅
 
 **Goal:** No module over ~400 lines with mixed concerns. Audit §2.6.
 
@@ -137,7 +137,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 |---|------|--------|
 | 8.1 | Split `web/frontend.py` (1,306→780 lines) → `session.py` (380), `rendering.py` (180); replaced `getattr`-chain state access with explicit dependency injection functions | [x] |
 | 8.2 | Extract `game/grammar.py` (322 lines) and `game/diagnostics.py` (119 lines) from `game/parser.py` (774→407 lines); re-exports for backwards compatibility | [x] |
-| 8.3 | Split `admin/api.py` (817 lines) into per-resource routers (`players/`, `world/`, `clock/`, `accounts/`); move `HTTPException` out of game-state logic (typed errors → HTTP translation at the route layer) | [~] |
+| 8.3 | Split `admin/api.py` (817→20 lines) into per-resource routers under `admin/routers/`: `players.py` (191), `audit.py` (93), `world.py` (357, incl. items/NPCs/changesets), `clock.py` (125), `accounts.py` (93); `admin_router` now just mounts them, same route paths and status codes | [x] |
 
 ## Sprint 9 — Service consistency & wiring
 
@@ -317,4 +317,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprints 8.1–8.2 complete (module decomposition: web/parser split into focused modules). Sprint 8.3 (admin API routers) scaffolded and ready. Next: complete Sprint 8.3, then move to Sprint 9 (service consistency wiring).*
+*Last updated: 2026-07-02 — Sprint 8 complete (module decomposition: web/parser/admin API split into focused modules). Next: Sprint 9 (service consistency wiring).*
