@@ -1,0 +1,213 @@
+from typing import cast
+
+import pytest
+from sqlmodel import Session, create_engine
+
+from lorecraft.analytics import (
+    InvalidRangeError,
+    npc_interaction_counts,
+    parse_range,
+    player_hours,
+    quest_completion_counts,
+    top_commands,
+)
+from lorecraft.db import create_tables
+from lorecraft.game.events import GameEvent
+from lorecraft.models.audit import AuditEvent
+from lorecraft.models.session import PlayerSession
+from lorecraft.types import JsonObject
+
+
+def _game_engine():
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    return engine
+
+
+def _audit_engine():
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=create_engine("sqlite://"), audit_engine=audit_engine)
+    return audit_engine
+
+
+def _event(
+    *,
+    event_type: str,
+    real_time: float,
+    target_id: str | None = None,
+    payload: dict[str, str] | None = None,
+) -> AuditEvent:
+    return AuditEvent(
+        transaction_id="tx-1",
+        correlation_id="corr-1",
+        actor_id="player-1",
+        event_type=event_type,
+        source_type="player",
+        target_id=target_id,
+        room_id="square",
+        game_time=0.0,
+        real_time=real_time,
+        summary="",
+        payload_json=cast(JsonObject, payload or {}),
+    )
+
+
+@pytest.mark.parametrize(
+    "range_str,expected_seconds",
+    [("24h", 86400), ("7d", 604800), ("2w", 1209600), ("30m", 1800)],
+)
+def test_parse_range_valid(range_str: str, expected_seconds: int) -> None:
+    assert parse_range(range_str) == expected_seconds
+
+
+def test_parse_range_rejects_invalid_format() -> None:
+    with pytest.raises(InvalidRangeError):
+        parse_range("banana")
+
+
+def test_top_commands_counts_by_verb_within_range() -> None:
+    engine = _audit_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now,
+                payload={"verb": "look"},
+            )
+        )
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now,
+                payload={"verb": "look"},
+            )
+        )
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now,
+                payload={"verb": "take"},
+            )
+        )
+        # Outside range — excluded.
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now - 1_000_000,
+                payload={"verb": "take"},
+            )
+        )
+        # Wrong event type — excluded.
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_BLOCKED.value,
+                real_time=now,
+                payload={"verb": "take"},
+            )
+        )
+        session.commit()
+
+        result = top_commands(session, since=now - 100, limit=20)
+
+    assert result == [{"verb": "look", "count": 2}, {"verb": "take", "count": 1}]
+
+
+def test_npc_interaction_counts_scoped_to_single_npc() -> None:
+    engine = _audit_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        session.add(
+            _event(
+                event_type=GameEvent.NPC_ATTACKED.value,
+                real_time=now,
+                target_id="npc-mira",
+            )
+        )
+        session.add(
+            _event(
+                event_type=GameEvent.NPC_ATTACKED.value,
+                real_time=now,
+                target_id="npc-mira",
+            )
+        )
+        session.add(
+            _event(
+                event_type=GameEvent.NPC_ATTACKED.value,
+                real_time=now,
+                target_id="npc-aldric",
+            )
+        )
+        session.commit()
+
+        all_counts = npc_interaction_counts(session, since=now - 100)
+        mira_only = npc_interaction_counts(session, since=now - 100, npc_id="npc-mira")
+
+    assert {c["npc_id"]: c["interactions"] for c in all_counts} == {
+        "npc-mira": 2,
+        "npc-aldric": 1,
+    }
+    assert mira_only == [{"npc_id": "npc-mira", "interactions": 2}]
+
+
+def test_quest_completion_counts_by_quest_id() -> None:
+    engine = _audit_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        session.add(
+            _event(
+                event_type=GameEvent.QUEST_COMPLETED.value,
+                real_time=now,
+                payload={"quest_id": "find_sword"},
+            )
+        )
+        session.add(
+            _event(
+                event_type=GameEvent.QUEST_COMPLETED.value,
+                real_time=now,
+                payload={"quest_id": "find_sword"},
+            )
+        )
+        session.commit()
+
+        result = quest_completion_counts(session, since=now - 100)
+
+    assert result == [{"quest_id": "find_sword", "completions": 2}]
+
+
+def test_player_hours_sums_session_duration() -> None:
+    engine = _game_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        session.add(
+            PlayerSession(
+                id="sess-1",
+                player_id="player-1",
+                connected_at=now - 3600,
+                disconnected_at=now,
+            )
+        )
+        session.add(
+            PlayerSession(
+                id="sess-2",
+                player_id="player-1",
+                connected_at=now - 1800,
+                disconnected_at=now,
+            )
+        )
+        # Still connected — counted through `now`.
+        session.add(
+            PlayerSession(
+                id="sess-3",
+                player_id="player-2",
+                connected_at=now - 900,
+                disconnected_at=None,
+            )
+        )
+        session.commit()
+
+        result = player_hours(session, since=now - 10000, now=now)
+
+    result_map = {r["player_id"]: r["hours"] for r in result}
+    assert result_map["player-1"] == 1.5
+    assert result_map["player-2"] == 0.25

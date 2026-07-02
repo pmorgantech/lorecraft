@@ -104,6 +104,8 @@ async def _http(
     if token:
         headers.append((b"authorization", f"Bearer {token}".encode()))
 
+    raw_path, _sep, query_string = path.partition("?")
+
     with anyio.fail_after(5):
         await app(
             {
@@ -111,9 +113,9 @@ async def _http(
                 "asgi": {"version": "3.0"},
                 "method": method.upper(),
                 "scheme": "http",
-                "path": path,
-                "raw_path": path.encode(),
-                "query_string": b"",
+                "path": raw_path,
+                "raw_path": raw_path.encode(),
+                "query_string": query_string.encode(),
                 "headers": headers,
                 "client": ("testclient", 50000),
                 "server": ("testserver", 80),
@@ -829,3 +831,48 @@ async def _test_create_list_and_delete_news(tmp_path) -> None:
         assert not any(n["id"] == created["id"] for n in listed_after)
 
     assert (tmp_path / "news.yaml").is_file()
+
+
+# ---------------------------------------------------------------------------
+# Analytics
+# ---------------------------------------------------------------------------
+
+
+def test_analytics_endpoints_return_empty_lists_with_no_data() -> None:
+    anyio.run(_test_analytics_endpoints_empty)
+
+
+async def _test_analytics_endpoints_empty() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        for path in (
+            "/admin/analytics/commands",
+            "/admin/analytics/npcs",
+            "/admin/analytics/quests",
+            "/admin/analytics/player-hours",
+        ):
+            status, data = await _http(app, "GET", path, token=token)
+            assert status == 200
+            assert data == []
+
+
+def test_analytics_invalid_range_returns_400() -> None:
+    anyio.run(_test_analytics_invalid_range)
+
+
+async def _test_analytics_invalid_range() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(
+            app, "GET", "/admin/analytics/commands?range=notarange", token=token
+        )
+        assert status == 400
+        assert "detail" in data

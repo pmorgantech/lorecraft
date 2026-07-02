@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from lorecraft.admin.auth import auth_router
 from lorecraft.admin.routers.accounts import router as accounts_router
+from lorecraft.admin.routers.analytics import router as analytics_router
 from lorecraft.admin.routers.audit import router as audit_router
 from lorecraft.admin.routers.clock import router as clock_router
 from lorecraft.admin.routers.issues import router as issues_router
@@ -22,3 +23,4 @@ admin_router.include_router(clock_router)
 admin_router.include_router(accounts_router)
 admin_router.include_router(issues_router)
 admin_router.include_router(news_router)
+admin_router.include_router(analytics_router)
