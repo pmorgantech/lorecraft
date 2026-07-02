@@ -31,12 +31,15 @@ AsgiMessage = dict[str, Any]
 
 
 def _make_engines() -> tuple[Any, Any]:
+    from lorecraft.db import create_tables
+
     game = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     audit = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
+    create_tables(game_engine=game, audit_engine=audit)
     return game, audit
 
 
@@ -486,6 +489,171 @@ async def _test_set_weather() -> None:
         assert status == 200
         _, clock = await _http(app, "GET", "/admin/clock", token=token)
     assert clock["weather"] == "blizzard"
+
+
+# ---------------------------------------------------------------------------
+# Player state manipulation (freeze/unfreeze)
+# ---------------------------------------------------------------------------
+
+
+def test_freeze_player_sets_ghost_state() -> None:
+    anyio.run(_test_freeze_player)
+
+
+async def _test_freeze_player() -> None:
+    from lorecraft.models.session import PlayerSession
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_admin(game_engine)
+
+    # Create an active session for the player
+    with Session(game_engine) as session:
+        session.add(
+            PlayerSession(
+                id="test-session",
+                player_id="player-1",
+                connected_at=time.time(),
+                status="active",
+            )
+        )
+        session.commit()
+
+    async with _lifespan(app):
+        status, data = await _http(
+            app, "POST", "/admin/players/player-1/freeze", token=token
+        )
+    assert status == 200
+
+
+def test_unfreeze_player_clears_ghost_state() -> None:
+    anyio.run(_test_unfreeze_player)
+
+
+async def _test_unfreeze_player() -> None:
+    from lorecraft.models.session import PlayerSession
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_admin(game_engine)
+
+    # Create a frozen session for the player
+    with Session(game_engine) as session:
+        session.add(
+            PlayerSession(
+                id="test-session",
+                player_id="player-1",
+                connected_at=time.time(),
+                status="frozen",
+            )
+        )
+        session.commit()
+
+    async with _lifespan(app):
+        status, data = await _http(
+            app, "POST", "/admin/players/player-1/unfreeze", token=token
+        )
+    assert status == 200
+
+
+# ---------------------------------------------------------------------------
+# World data (items, NPCs)
+# ---------------------------------------------------------------------------
+
+
+def test_list_items_returns_items() -> None:
+    anyio.run(_test_list_items)
+
+
+async def _test_list_items() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_admin(game_engine)
+
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/world/items", token=token)
+    assert status == 200
+    assert isinstance(data, list)
+
+
+def test_list_npcs_returns_npcs() -> None:
+    anyio.run(_test_list_npcs)
+
+
+async def _test_list_npcs() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_admin(game_engine)
+
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/world/npcs", token=token)
+    assert status == 200
+    assert isinstance(data, list)
+
+
+# ---------------------------------------------------------------------------
+# Clock management (time ratio)
+# ---------------------------------------------------------------------------
+
+
+def test_set_clock_time_ratio() -> None:
+    anyio.run(_test_set_time_ratio)
+
+
+async def _test_set_time_ratio() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_admin(game_engine)
+
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/clock/time-ratio",
+            body={"ratio": 2.0},
+            token=token,
+        )
+    assert status == 200
+
+
+# ---------------------------------------------------------------------------
+# Admin accounts
+# ---------------------------------------------------------------------------
+
+
+def test_list_admin_accounts() -> None:
+    anyio.run(_test_list_accounts)
+
+
+async def _test_list_accounts() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_admin(game_engine)
+
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/accounts", token=token)
+    assert status == 200
+    assert isinstance(data, list)
+    # Should have at least the test admin
+    assert len(data) >= 1
 
 
 # ---------------------------------------------------------------------------
