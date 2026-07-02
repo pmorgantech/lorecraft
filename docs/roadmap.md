@@ -1,6 +1,6 @@
 # Lorecraft — Roadmap
 
-Working roadmap derived from `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, and recent 0.2.0 development (HTMX migration + parser v1).
+Working roadmap derived from `docs/ARCHITECTURE.md`, `docs/STATUS.md`, and recent 0.2.0 development (HTMX migration + parser v1).
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
@@ -34,12 +34,12 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ## Sprint 2 — Command depth
 
-**Goal:** Close `docs/TODO.md` gameplay gaps before combat.
+**Goal:** Close gameplay gaps (item aliases, disambiguation, help, use/give/lock) before combat.
 
 | # | Task | Status |
 |---|------|--------|
 | 2.1 | Item `aliases` in YAML/model; wire through `GameContext.get_visible_entities()` | [x] |
-| 2.2 | Finish inventory disambiguation bug (`docs/TODO.md`) | [x] |
+| 2.2 | Finish inventory disambiguation bug | [x] |
 | 2.3 | Context-aware `help` (dialogue, combat, per-room disabled commands) | [x] |
 | 2.4 | `use` command + `InventoryService.use_item()` | [x] |
 | 2.5 | 2–3 more parser patterns (`give`, `open`, containers) | [~] `give` + `lock`/`unlock` (on the existing `Exit.locked`/`key_item_id` fields) shipped; `open`/container-holding items deferred — needs new Item/state modeling |
@@ -170,7 +170,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ---
 
-## Backlog (from `docs/TODO.md`)
+## Backlog
 
 | Item | Notes |
 |------|-------|

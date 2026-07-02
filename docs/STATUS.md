@@ -1,7 +1,20 @@
 # Implementation Status
 
-This checklist tracks implementation progress against `docs/ARCHITECTURE.md`.
+This checklist tracks implementation progress against `docs/ARCHITECTURE.md` phases.
 The architecture overview remains the design reference; this file is the working status tracker.
+
+**See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–16).**
+
+## Phase-to-Sprint Mapping
+
+| Architecture Phase | Roadmap Sprints | Status |
+|---|---|---|
+| Phase 1–3 (Foundation, dispatch, world/time) | Sprint 1 (HTMX parity) | [x] |
+| Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
+| Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
+| Phase 7 (Frontend polish) | Sprint 2, 7–13 | [~] |
+| Phase 8–8.5 (Combat) | Sprint 3–6 | [ ] |
+| Phase 9 (Player interaction) | Sprint 14–16 | [ ] |
 
 Legend:
 - `[x]` Implemented and covered by focused tests where practical.
@@ -51,7 +64,7 @@ Legend:
 - [x] `POST /lobby/create` — validated username (3-30 chars, `[A-Za-z0-9_-]`), uniqueness check, creates `Player` at `seed_player_start_room`, auto-login.
 - [x] `POST /lobby/enter` — verifies the player exists before minting a session; both lobby routes redirect to plain `/game` (no `player_id` in the URL).
 - [x] Lobby UI "Create New Character" tab wired to a real form.
-- [~] Not a full account system: no password/credential check on `/lobby/enter`, and `/ws?player_id=...` still trusts the raw query param independent of the signed cookie. See `docs/TODO.md`.
+- [~] Not a full account system: no password/credential check on `/lobby/enter`, and `/ws?player_id=...` still trusts the raw query param independent of the signed cookie. See backlog in `docs/roadmap.md`.
 
 ### Phase 2 — Command Dispatch
 

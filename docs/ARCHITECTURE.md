@@ -2,7 +2,9 @@
 
 > **Purpose:** This document is a complete, authoritative implementation reference synthesized from all design sessions. It is intended as the primary handoff artifact for Claude Code / Codex to begin building the engine. Read it fully before writing any code.
 >
-> **Implementation status:** Track completed and pending work in [`STATUS.md`](STATUS.md).
+> **Implementation status:**
+> - **Current progress:** See [`roadmap.md`](roadmap.md) (Sprints 1–3 complete; Sprints 4–16 planned)
+> - **Detailed checklist:** See [`STATUS.md`](STATUS.md) (tracks Phases 1–9 completion)
 
 ---
 
