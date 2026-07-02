@@ -6,16 +6,22 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Summary
 
-**Sprint 8.1 Complete** — Web frontend decomposition (1,306 lines → 784 lines in routes). Extracted `web/session.py` (380 lines: dependency injection, state snapshots, presence helpers) and `web/rendering.py` (180 lines: template output, feed formatting). All 255 tests passing. Unblocks Sprint 9 (service consistency wiring).
+**Sprints 8.1–8.2 Complete** — Module decomposition: 3 modules (web), 2 modules (parser). Reduced `web/frontend.py` 1,306→784 lines, `game/parser.py` 778→399 lines. All 336 tests passing. Sprint 8.3 (admin API routers) in progress. Unblocks Sprint 9 (service consistency wiring).
 
 ### Added
 
+- **Sprint 8.2: Parser Grammar Extraction** — Split `game/parser.py` (778 lines) into:
+  - `game/grammar.py` (322 lines) — Grammar constants (ARTICLES, PREPOSITIONS, PHRASAL_VERBS, DIRECTIONS, VERB_ALIASES, etc), text processing (normalize, tokenize, make_phrase), semantic rules (extract_quantity_and_adjectives, direct_role_for_verb, find_first_preposition, map_prep_to_role), fuzzy matching (score_match).
+  - `game/diagnostics.py` (119 lines) — ParseDiagnostics dataclass, diagnose_command, print_diagnostics for parser debugging.
+  - `parser.py` now 399 lines, focused on command parsing (ParsedCommand, ParseResult, parse_command, parse). Re-exports diagnostics for backwards compatibility.
+- Fuzzy matching and grammar rules now reusable for alternative parsers or CLI modes.
+- All parser tests passing (37 comprehensive tests + full integration suite).
+
 - **Sprint 8.1: Web Frontend Decomposition** — Split `web/frontend.py` (1,306 lines) into three focused modules:
-  - `web/session.py` — Dependency injection (get_engines, get_app_state, get_command_engine, get_manager, get_bus), session auth (player_session_secret, set_player_session_cookie, ensure_player_session), state snapshots (inventory_snapshot, room_panel_context, active_quests_snapshot, world_time_snapshot), presence helpers (format_idle_duration, presence_for_player, players_here), grace period expiration. CommandResult dataclass moved here.
-  - `web/rendering.py` — Template rendering (build_map_data, audit_to_feed, feed_items_html), HTML output formatting (mark_oob_swap), command resolution (resolve_command_text), dev player creation.
-  - `frontend.py` — Now 784 lines, focused exclusively on FastAPI routing and HTTP endpoints. Updated all endpoint handlers and test imports.
-- Replaced `getattr`-chain state access in dependency injection with explict functions (FastAPI `Depends()` ready for next phase).
-- All Sprint 7 characterization tests verify decomposition did not change behavior (255 passing).
+  - `web/session.py` (380 lines) — Dependency injection (get_engines, get_app_state, get_command_engine, get_manager, get_bus), session auth (player_session_secret, set_player_session_cookie, ensure_player_session), state snapshots (inventory_snapshot, room_panel_context, active_quests_snapshot, world_time_snapshot), presence helpers (format_idle_duration, presence_for_player, players_here), grace period expiration, CommandResult dataclass.
+  - `web/rendering.py` (180 lines) — Template rendering (build_map_data, audit_to_feed, feed_items_html), HTML output formatting (mark_oob_swap), command resolution (resolve_command_text), dev player creation.
+  - `frontend.py` (784 lines) — Focuses exclusively on FastAPI routing and HTTP endpoints. Updated all endpoint handlers and test imports.
+- Replaced `getattr`-chain state access in dependency injection with explicit functions (FastAPI `Depends()` ready for Sprint 9).
 
 ### Added
 

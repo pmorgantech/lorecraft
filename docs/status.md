@@ -8,9 +8,9 @@ The architecture overview remains the design reference; this file is the working
 > **Current focus (2026-07-02):** Foundation-first. The `CODE_AUDIT.md` findings drive
 > Sprints 5–15 (errors, types, tests, decomposition, service consistency, extensibility
 > seams, tooling). Sprints 5–8 complete (error handling, type safety, characterization
-> tests, web decomposition into 3 modules). Sprint 9 (service consistency) next.
-> Combat/trading/PvP are gated behind the roadmap's foundation exit criteria —
-> no feature expansion until the core is sound.
+> tests, web+parser decomposition). Sprint 8.3 (admin API routers) in progress.
+> Sprint 9 (service consistency) next. Combat/trading/PvP are gated behind the
+> roadmap's foundation exit criteria — no feature expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
 
