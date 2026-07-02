@@ -33,6 +33,7 @@ from lorecraft.models.world import (
 )
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.interaction import PvpConsent, TradeOffer
+from lorecraft.models.scheduler import ScheduledJob
 
 
 GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
@@ -58,6 +59,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     ConflictScanResult,
     TradeOffer,
     PvpConsent,
+    ScheduledJob,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

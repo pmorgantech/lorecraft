@@ -18,6 +18,7 @@ Legend:
 - [x] `make test` runs the focused test suite.
 - [x] Package version is synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
 - [x] `CHANGELOG.md` exists and includes the current release entry.
+- [x] Graphify wired into the workflow: `make install-hooks` now installs a real `.githooks/post-commit` hook, and a Claude Code `SessionStart` hook (`.claude/hooks/session-start.sh`) refreshes `graphify-out/graph.json`. Both no-op cleanly (exit 0) when the `graphify` binary isn't installed locally.
 
 ### Phase 1 — Foundation
 
@@ -182,6 +183,7 @@ Legend:
 
 - [x] Combat models.
 - [x] Player stats model.
+- [x] `services/scheduler.py` — DB-backed `ScheduledJob` table; `SchedulerService.schedule()`/`cancel()`; dispatches due jobs as `GameEvent.SCHEDULED_JOB_DUE` on every `TIME_ADVANCED` tick. The scheduling primitive combat (and NPC/world delayed effects) will run on.
 - [ ] `services/combat.py`.
 - [ ] `npc/combat_ai.py`.
 - [ ] Combat commands: `attack`, `flee`.

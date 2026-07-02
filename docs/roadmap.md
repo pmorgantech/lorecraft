@@ -12,7 +12,7 @@ Sprints are scoped small (1–2 tasks, one subsystem) on purpose, so each sprint
 
 Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/quests, save/disconnect, admin tools). Version **0.2.0** added parser v1, quantity inventory, and the HTMX primary UI.
 
-Sprints 1–2 closed out HTMX parity and command-depth gaps. Remaining work (combat foundation, polish, player interaction) is broken into small, single-focus sprints below.
+Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. Remaining work (combat core, polish, player interaction) is broken into small, single-focus sprints below.
 
 ---
 
@@ -52,7 +52,7 @@ Sprints 1–2 closed out HTMX parity and command-depth gaps. Remaining work (com
 
 | # | Task | Status |
 |---|------|--------|
-| 3.1 | `services/scheduler.py` — DB-backed jobs on `TIME_ADVANCED` | [ ] |
+| 3.1 | `services/scheduler.py` — DB-backed jobs on `TIME_ADVANCED` | [x] |
 
 ---
 
