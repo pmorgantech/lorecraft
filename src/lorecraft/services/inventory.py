@@ -6,9 +6,16 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+from lorecraft.game.command_patterns import (
+    ROLE_DESTINATION,
+    ROLE_INSTRUMENT,
+    ROLE_TARGET,
+    role_str,
+)
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
 from lorecraft.models.world import Item, RoomItem
+from lorecraft.types import JsonValue
 
 
 def grouped_inventory_ids(item_ids: Sequence[str]) -> list[tuple[str, int]]:
@@ -390,6 +397,72 @@ class InventoryService:
         ctx.item_repo.increment_room_item(ctx.room.id, item.id, quantity=count)
         ctx.push_update("inventory", list(ctx.player.inventory))
 
+    def use_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Use what?")
+            return
+
+        matches = self._find_carried_or_visible(name_or_id, ctx)
+        if not matches:
+            ctx.say("You don't have that.")
+            return
+        if len(matches) > 1:
+            _prompt_disambiguation(ctx, "use", name_or_id, matches)
+            return
+
+        item = matches[0]
+        other_phrase = _use_target_phrase(ctx)
+        if other_phrase is None:
+            if item.usable_with:
+                ctx.say(f"You need to use the {item.name} with something specific.")
+            else:
+                ctx.say(f"You use the {item.name}, but nothing happens.")
+            self._emit_item_used(ctx, item.id)
+            return
+
+        other_matches = self._find_carried_or_visible(other_phrase, ctx)
+        if not other_matches:
+            ctx.say(f"You don't see {other_phrase} here.")
+            return
+        if len(other_matches) > 1:
+            names = ", ".join(sorted({other.name for other in other_matches}))
+            ctx.say(f"Which do you mean: {names}?")
+            return
+
+        other = other_matches[0]
+        if _items_combine(item, other):
+            ctx.say(f"You use the {item.name} with the {other.name}. It works!")
+            ctx.tell_room(f"{ctx.player.username} uses {item.name} with {other.name}.")
+        else:
+            ctx.say(f"Using the {item.name} with the {other.name} does nothing.")
+
+        self._emit_item_used(ctx, item.id, other_item_id=other.id)
+
+    def _find_carried_or_visible(self, query: str, ctx: GameContext) -> list[Item]:
+        inv_matches = ctx.item_repo.search_player_items(ctx.player.inventory, query)
+        room_matches = [
+            item for _, item in ctx.item_repo.search_in_room(ctx.room.id, query)
+        ]
+        seen: set[str] = set()
+        combined: list[Item] = []
+        for candidate in inv_matches + room_matches:
+            if candidate.id not in seen:
+                seen.add(candidate.id)
+                combined.append(candidate)
+        return combined
+
+    def _emit_item_used(
+        self, ctx: GameContext, item_id: str, *, other_item_id: str | None = None
+    ) -> None:
+        payload: dict[str, JsonValue] = {
+            "player_id": ctx.player.id,
+            "room_id": ctx.room.id,
+            "item_id": item_id,
+        }
+        if other_item_id is not None:
+            payload["other_item_id"] = other_item_id
+        ctx.queue_event(GameEvent.ITEM_USED, **payload)
+
     def _emit_item_taken(self, ctx: GameContext, item_id: str, *, count: int) -> None:
         for _ in range(count):
             ctx.queue_event(
@@ -421,6 +494,22 @@ def room_items_visible_labels(
         format_inventory_entry(item.name, room_item.quantity)
         for room_item, item in room_items
     )
+
+
+def _use_target_phrase(ctx: GameContext) -> str | None:
+    """Secondary role for ``use <item> on/with <other>`` from the parsed command."""
+    parsed = ctx.parsed_command
+    if parsed is None:
+        return None
+    return (
+        role_str(parsed, ROLE_DESTINATION)
+        or role_str(parsed, ROLE_INSTRUMENT)
+        or role_str(parsed, ROLE_TARGET)
+    )
+
+
+def _items_combine(item: Item, other: Item) -> bool:
+    return other.id in item.usable_with or item.id in other.usable_with
 
 
 def _unique_items(items: Sequence[Item]) -> list[Item]:

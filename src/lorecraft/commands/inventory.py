@@ -60,3 +60,11 @@ def register_inventory_commands(
     def inventory_command(noun: str | None, ctx: object) -> None:
         del noun
         service.inventory(cast(GameContext, ctx))
+
+    @registry.register(
+        "use",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="use <item> [on/with <other>] — use an item, optionally combined with another",
+    )
+    def use_command(noun: str | None, ctx: object) -> None:
+        service.use_item(noun, cast(GameContext, ctx))

@@ -190,6 +190,7 @@ DEFERRED_DISAMBIGUATION_ROLE = {
     "take": "object",
     "drop": "object",
     "examine": "target",
+    "use": "object",
 }
 
 

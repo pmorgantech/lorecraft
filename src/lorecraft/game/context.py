@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.events import Event, EventBus, GameEvent, HandlerResult
+from lorecraft.game.parser import ParsedCommand
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
@@ -42,6 +43,7 @@ class GameContext:
     room_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
+    parsed_command: ParsedCommand | None = None
 
     def say(self, text: str) -> None:
         self.messages.append(text)

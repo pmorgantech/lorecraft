@@ -38,6 +38,7 @@ class SimilarItemSpec:
     description: str
     takeable: bool = True
     aliases: tuple[str, ...] = ()
+    usable_with: tuple[str, ...] = ()
 
 
 SIMILAR_ITEM_SPECS: tuple[SimilarItemSpec, ...] = (
@@ -49,7 +50,12 @@ SIMILAR_ITEM_SPECS: tuple[SimilarItemSpec, ...] = (
         "An iron key thick with orange rust.",
     ),
     SimilarItemSpec("steel_key", "Steel Key", "A bright steel key, recently cut."),
-    SimilarItemSpec("cage_key", "Cage Key", "A delicate key for a cage latch."),
+    SimilarItemSpec(
+        "cage_key",
+        "Cage Key",
+        "A delicate key for a cage latch.",
+        usable_with=("cage_lock",),
+    ),
     SimilarItemSpec(
         "cage_lock",
         "Cage Lock",
@@ -81,6 +87,7 @@ def seed_similar_items(session: Session) -> None:
                     description=spec.description,
                     takeable=spec.takeable,
                     aliases=list(spec.aliases),
+                    usable_with=list(spec.usable_with),
                 )
             )
 
