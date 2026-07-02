@@ -167,6 +167,7 @@ def dialogue_panel_state(
 def _visible_choices_for_flags(
     node: JsonObject, player_flags: JsonObject
 ) -> list[JsonObject]:
+    """Check choices using the condition registry (flag-based only, no ctx)."""
     choices = node.get("choices", [])
     visible: list[JsonObject] = []
     for choice in choices:  # type: ignore[union-attr]
@@ -178,8 +179,27 @@ def _visible_choices_for_flags(
     return visible
 
 
+def _choice_visible(choice: JsonObject, ctx: GameContext) -> bool:
+    """Evaluate all conditions on a choice using the registry; all must pass."""
+    from lorecraft.npc.dialogue_conditions import get_registry
+
+    registry = get_registry()
+    conditions: JsonObject = {}
+    # Extract all condition fields (anything that's a registry predicate)
+    for key, value in choice.items():  # type: ignore[union-attr]
+        if key in registry:
+            conditions[key] = value
+    return registry.evaluate(conditions, ctx)
+
+
 def _visible_choices(node: JsonObject, ctx: GameContext) -> list[JsonObject]:
-    return _visible_choices_for_flags(node, ctx.player.flags)
+    """Return choices visible given conditions; uses registry for extensibility."""
+    choices = node.get("choices", [])
+    visible: list[JsonObject] = []
+    for choice in choices:  # type: ignore[union-attr]
+        if _choice_visible(choice, ctx):
+            visible.append(choice)  # type: ignore[arg-type]
+    return visible
 
 
 def _apply_side_effects(effects: JsonObject, ctx: GameContext) -> None:
