@@ -14,6 +14,7 @@ from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
+from lorecraft.services.container import ServiceContainer
 from lorecraft.services.scheduler import SchedulerService
 from lorecraft.types import JsonObject
 
@@ -31,4 +32,5 @@ class AppState:
     clock_runner: WorldClockRunner
     admin_broadcaster: AdminBroadcaster
     scheduler: SchedulerService
+    services: ServiceContainer
     pending_disambig: dict[str, JsonObject] = field(default_factory=dict)

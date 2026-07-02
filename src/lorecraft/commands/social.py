@@ -7,8 +7,10 @@ from lorecraft.game.registry import CommandRegistry, CommandScope
 from lorecraft.npc.dialogue import DialogueService, _NPC_KEY
 
 
-def register_social_commands(registry: CommandRegistry) -> None:
-    service = DialogueService()
+def register_social_commands(
+    registry: CommandRegistry, dialogue_service: DialogueService | None = None
+) -> None:
+    service = dialogue_service or DialogueService()
 
     @registry.register(
         "talk",

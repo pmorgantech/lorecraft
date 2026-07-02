@@ -24,7 +24,7 @@ from lorecraft.clock.weather import register_weather_handlers
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.npc.scheduler import NpcScheduler
-from lorecraft.services.quest import QuestService
+from lorecraft.services.container import ServiceContainer
 from lorecraft.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
@@ -125,10 +125,8 @@ def create_app(
         NpcScheduler(resolved_game_engine).register(bus)
         scheduler = SchedulerService(resolved_game_engine)
         scheduler.register(bus)
-        quest_service = QuestService()
-        bus.on(GameEvent.ITEM_TAKEN, quest_service.check_progression)
-        bus.on(GameEvent.PLAYER_MOVED, quest_service.check_progression)
-        bus.on(GameEvent.ITEM_DROPPED, quest_service.check_progression)
+        services = ServiceContainer.build()
+        services.quest.register(bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
@@ -186,8 +184,9 @@ def create_app(
             clock_runner=clock_runner,
             admin_broadcaster=admin_broadcaster,
             scheduler=scheduler,
+            services=services,
         )
-        register_all_commands(state.registry)
+        register_all_commands(state.registry, state.services)
         state.clock_runner.initialize()
         state.clock_runner.start()
         app.state.lorecraft = state
