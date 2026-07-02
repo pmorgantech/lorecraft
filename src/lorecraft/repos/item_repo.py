@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Sequence
 
 from sqlmodel import Session, select
 
+from lorecraft.errors import ConflictError
 from lorecraft.models.world import Item, RoomItem
 from lorecraft.repos.base import Repository
+
+log = logging.getLogger(__name__)
 
 
 class ItemRepo(Repository[Item, str]):
@@ -102,6 +106,18 @@ class ItemRepo(Repository[Item, str]):
         return room_item
 
     def remove_from_room(self, room_item: RoomItem, quantity: int = 1) -> None:
+        if quantity > room_item.quantity:
+            log.error(
+                "item_quantity_underflow: item_id=%s room_id=%s requested=%d available=%d",
+                room_item.item_id,
+                room_item.room_id,
+                quantity,
+                room_item.quantity,
+            )
+            raise ConflictError(
+                f"Attempted to remove {quantity} but only {room_item.quantity} available",
+                "conflict_quantity_underflow",
+            )
         room_item.quantity -= quantity
         if room_item.quantity <= 0:
             self.session.delete(room_item)

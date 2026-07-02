@@ -1,5 +1,18 @@
 # Repository agent instructions
 
+## Current focus: foundation before features (2026-07-01)
+
+The core engine must be very well designed, well tooled, well tested, and internally
+consistent **before** expanding commands or adding combat/trading/PvP. Do not skimp on
+code design and quality.
+
+- `CODE_AUDIT.md` findings + the `docs/roadmap.md` foundation band (Sprints 5–15) are the
+  active work queue. Feature sprints (16+) are gated behind the roadmap's foundation exit criteria.
+- When touching code, leave it more consistent than found: typed errors from
+  `lorecraft/errors.py` (once it exists) instead of silent `except Exception`; no new
+  `cast(GameContext, ctx)`; one service-wiring style; no new mixed-concern mega-modules.
+- Prefer finishing or removing a half-done seam over adding a new one.
+
 ## Context strategy
 
 - Start with local files and tests.

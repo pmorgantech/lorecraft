@@ -10,6 +10,7 @@ Server-driven UI:
 
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 import time
@@ -50,6 +51,8 @@ from lorecraft.web.player_auth import (
     decode_player_id,
 )
 
+log = logging.getLogger(__name__)
+
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,30}$")
 
 router = APIRouter()
@@ -81,8 +84,8 @@ def _get_engines(request: Request | None = None):
                 ae = getattr(lore, "audit_engine", None)
                 if ge is not None and ae is not None:
                     return ge, ae
-        except Exception:
-            pass
+        except (AttributeError, TypeError):
+            log.debug("app_state_engine_access_failed")
 
     # Module-level fallback
     global _game_engine, _audit_engine
@@ -106,8 +109,8 @@ def _get_app_state(request: Request | None) -> AppState | None:
         state = getattr(request.app.state, "lorecraft", None)
         if isinstance(state, AppState):
             return state
-    except Exception:
-        pass
+    except (AttributeError, TypeError):
+        log.debug("app_state_access_failed")
     return None
 
 
@@ -147,8 +150,8 @@ def _get_real_manager(request: Request) -> ConnectionManager | None:
         state = getattr(request.app.state, "lorecraft", None)
         if state and hasattr(state, "manager"):
             return state.manager
-    except Exception:
-        pass
+    except (AttributeError, TypeError):
+        log.debug("app_state_manager_access_failed")
     return None
 
 
@@ -157,8 +160,8 @@ def _get_bus(request: Request) -> EventBus:
         state = getattr(request.app.state, "lorecraft", None)
         if state and hasattr(state, "bus"):
             return state.bus
-    except Exception:
-        pass
+    except (AttributeError, TypeError):
+        log.debug("app_state_bus_access_failed")
     global _fallback_bus
     if _fallback_bus is None:
         _fallback_bus = EventBus()
@@ -290,13 +293,14 @@ async def get_current_player(request: Request) -> Player:
             db.refresh(dev)
             return dev
         except Exception as ex:
+            log.error("dev_player_creation_failed: %s", str(ex))
             # last last resort
             try:
                 any_p = list(repo.list_all(limit=1))
                 if any_p:
                     return any_p[0]
-            except Exception:
-                pass
+            except Exception as list_ex:
+                log.error("fallback_player_list_failed: %s", str(list_ex))
             raise HTTPException(
                 status_code=404, detail=f"No player and could not create fallback: {ex}"
             ) from ex
@@ -726,8 +730,8 @@ async def handle_command(
                 current_player=after_player,
             )
             response_html += _mark_oob_swap(players_html, "players-online")
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("players_template_render_failed: %s", str(e))
 
         mgr = _get_real_manager(request)
         if mgr:
@@ -748,8 +752,8 @@ async def handle_command(
                             },
                             exclude=after_player.id,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("room_feed_broadcast_failed: %s", str(e))
             if after_player.current_room_id:
                 try:
                     await mgr.broadcast_to_room(
@@ -766,8 +770,8 @@ async def handle_command(
                         },
                         exclude=after_player.id,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.debug("state_change_broadcast_failed: %s", str(e))
 
         final_resp = HTMLResponse(content=response_html)
         if disconnect_requested:
@@ -795,8 +799,8 @@ async def handle_command(
                             },
                             exclude=after_player.id,
                         )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        log.debug("disconnect_feed_broadcast_failed: %s", str(e))
                 try:
                     await mgr.broadcast_to_room(
                         room_id,
@@ -817,12 +821,12 @@ async def handle_command(
                         },
                         exclude=after_player.id,
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.debug("disconnect_broadcast_failed: %s", str(e))
                 try:
                     await mgr.disconnect(after_player.id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    log.debug("manager_disconnect_failed: %s", str(e))
 
             final_resp.headers["HX-Redirect"] = "/lobby"
         return final_resp
@@ -861,8 +865,8 @@ async def partial_feed(
             try:
                 since_int = int(since)
                 events = [e for e in events if (e.id or 0) > since_int]
-            except Exception:
-                pass
+            except ValueError:
+                log.debug("feed_since_parse_failed: %s", since)
 
         messages = [_audit_to_feed(e, player) for e in reversed(events)]
         template_name = "partials/feed_items.html" if since else "partials/feed.html"

@@ -3,7 +3,12 @@
 This checklist tracks implementation progress against `docs/architecture.md` phases.
 The architecture overview remains the design reference; this file is the working status tracker.
 
-**See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–16).**
+**See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–23).**
+
+> **Current focus (2026-07-01):** Foundation-first. The `CODE_AUDIT.md` findings drive
+> Sprints 5–15 (errors, types, tests, decomposition, service consistency, extensibility
+> seams, tooling). Combat/trading/PvP are gated behind the roadmap's foundation exit
+> criteria — no feature expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
 
@@ -12,9 +17,10 @@ The architecture overview remains the design reference; this file is the working
 | Phase 1–3 (Foundation, dispatch, world/time) | Sprint 1 (HTMX parity) | [x] |
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
-| Phase 7 (Frontend polish) | Sprint 2, 7–13 | [~] |
-| Phase 8–8.5 (Combat) | Sprint 3–6 | [ ] |
-| Phase 9 (Player interaction) | Sprint 14–16 | [ ] |
+| Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [ ] |
+| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprint 5 complete |
+| Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
+| Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
 
 Legend:
 - `[x]` Implemented and covered by focused tests where practical.

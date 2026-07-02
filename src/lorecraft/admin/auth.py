@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 import time
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from lorecraft.models.admin import AdminUser
+
+log = logging.getLogger(__name__)
 
 ROLE_LEVELS: dict[str, int] = {
     "observer": 0,
@@ -107,8 +110,9 @@ async def get_current_admin(
     state = _lorecraft_state(request)
     try:
         token = decode_token(creds.credentials, state.settings.admin_jwt_secret)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    except jwt.InvalidTokenError as e:
+        log.error("admin_token_decode_failed: %s", str(e))
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from e
     if token.token_type != "access":
         raise HTTPException(status_code=401, detail="Expected access token")
     return token
@@ -199,8 +203,11 @@ async def refresh(body: _RefreshBody, request: Request) -> dict[str, str | int]:
     secret = state.settings.admin_jwt_secret
     try:
         token = decode_token(body.refresh_token, secret)
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    except jwt.InvalidTokenError as e:
+        log.error("refresh_token_decode_failed: %s", str(e))
+        raise HTTPException(
+            status_code=401, detail="Invalid or expired refresh token"
+        ) from e
     if token.token_type != "refresh":
         raise HTTPException(status_code=401, detail="Expected refresh token")
     access_ttl: int = state.settings.admin_jwt_access_ttl

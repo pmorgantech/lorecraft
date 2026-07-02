@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import logging
 import shlex
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
@@ -11,6 +12,8 @@ from lorecraft.types import JsonValue
 
 if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
+
+log = logging.getLogger(__name__)
 
 ARTICLES = {"a", "an", "the", "some", "one"}
 
@@ -526,7 +529,8 @@ def parse_command(
             visible = context.get_visible_entities()
             inventory = context.get_inventory()
             candidates = list(visible) + list(inventory)
-        except Exception:
+        except Exception as e:
+            log.debug("get_suggestions_context_access_failed: %s", str(e))
             candidates = []
 
         def resolve_phrase(

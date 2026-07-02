@@ -8,7 +8,13 @@ token even if secrets were ever mixed up.
 
 from __future__ import annotations
 
+import logging
+
+import jwt
+
 from lorecraft.admin.auth import create_token, decode_token
+
+log = logging.getLogger(__name__)
 
 PLAYER_SESSION_COOKIE = "lorecraft_session"
 _TOKEN_TYPE = "player"
@@ -23,7 +29,8 @@ def decode_player_id(token: str, secret: str) -> str | None:
     """Return the player id encoded in `token`, or None if invalid/expired/wrong type."""
     try:
         payload = decode_token(token, secret)
-    except Exception:
+    except jwt.InvalidTokenError as e:
+        log.error("player_token_decode_failed: %s", str(e))
         return None
     if payload.token_type != _TOKEN_TYPE:
         return None
