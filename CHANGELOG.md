@@ -6,9 +6,17 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Summary
 
-**Sprints 8–9 Complete** — Module decomposition (web/parser/admin API split into 9 focused modules) followed by service consistency: one `ServiceContainer` built once and threaded through command registration and event wiring, a shared `register(bus)` convention across all gameplay services, DRY'd inventory take/drop logic, and one consolidated item-matching helper in `ItemRepo`. All 336 tests passing throughout; basedpyright 0 errors on `src/`. Unblocks Sprint 10 (extensibility seams).
+**Sprints 8–10 Complete** — Module decomposition (web/parser/admin split into 9 focused modules), service consistency (ServiceContainer, register(bus) convention), and extensibility seams (pluggable registries for dialogue side effects, dialogue/command conditions, feature-registration pattern documented). All 336 tests passing throughout; basedpyright 0 errors on `src/`. Foundation gate now gating Sprints 11–15 work; combat/trading/PvP gated behind foundation exit criteria.
 
 ### Added
+
+- **Sprint 10.4: Feature Registration Pattern** — `docs/feature-registration.md` documents the pattern for adding new gameplay features (combat, trading, PvP) without core edits: features define models, services, commands, and register with pluggable registries (CommandRegistry, CommandConditionRegistry, SideEffectRegistry, dialogue ConditionRegistry, RuleEngine, and ServiceContainer). Example structure shown for future combat feature (Sprint 18).
+
+- **Sprint 10.3: Pluggable Command Conditions** — `game/command_conditions.py` — CommandConditionRegistry with pluggable condition predicates. Replaced hardcoded `_evaluate_condition` if/elif chain in registry.py with registry.evaluate(). Built-in conditions (requires_light, not_in_combat, flag_set, item_in_inventory, etc.) registered at module load; new predicates can be added without core edits.
+
+- **Sprint 10.2: Pluggable Dialogue Conditions** — `npc/dialogue_conditions.py` — ConditionRegistry for dialogue choice/exit visibility. Replaced hardcoded flag checks in _visible_choices with registry-based _choice_visible() that evaluates all condition fields via registered predicates (required_flags, forbidden_flags initially; level_check, has_item, etc. can be added).
+
+- **Sprint 10.1: Pluggable Dialogue Side Effects** — `npc/side_effects.py` — SideEffectRegistry replacing hardcoded if/elif branches in _apply_side_effects. Built-in handlers (set_flags, clear_flags, give_item, start_quest, end_dialogue) registered at module load; new effects can be added without touching dialogue.py.
 
 - **Sprint 9.4: Item Matcher Consolidation** — Replaced three near-identical inline matching loops in `repos/item_repo.py` with one `_match_kind()` classifier plus two thin aggregators: `_best_matches()` (exact-wins, fuzzy-fallback; used by `search_in_room`/`search_player_items`) and `_any_matches()` (position-preserving any-match filter; used by `inventory_slots_matching`, which must stay positionally addressable for indexed take/drop like "2.sword"). Verified position ordering is unchanged with a mixed exact/fuzzy manual check. Same public API, same behavior.
 

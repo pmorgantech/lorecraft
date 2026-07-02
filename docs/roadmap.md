@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–9 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring). Sprint 10 (extensibility seams) next.
+**Current progress:** Sprints 5–10 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams). Sprint 11 (browser E2E harness) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -150,16 +150,16 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 9.3 | DRY the six near-identical take/drop methods in `services/inventory.py` (shared find→disambiguate→act helper) | [x] |
 | 9.4 | Consolidate item-matching logic in `repos/item_repo.py` into one matcher | [x] |
 
-## Sprint 10 — Extensibility seams
+## Sprint 10 — Extensibility seams ✅
 
 **Goal:** New mechanics hook in via data/registration, not core edits. Audit §3.3.
 
 | # | Task | Status |
 |---|------|--------|
-| 10.1 | Pluggable dialogue side effects (handler registry replacing the hardcoded `set_flags`/`give_item`/`start_quest` branches in `npc/dialogue.py`) | [ ] |
-| 10.2 | Pluggable dialogue/exit conditions (predicate types beyond flags: level, item, quest state) | [ ] |
-| 10.3 | Pluggable command conditions (registry instead of the hardcoded `_evaluate_condition` chain) | [ ] |
-| 10.4 | Decide + document the feature-registration pattern (models/commands/events/rules per feature) — combat will be its first consumer | [ ] |
+| 10.1 | Pluggable dialogue side effects (handler registry replacing the hardcoded `set_flags`/`give_item`/`start_quest` branches in `npc/dialogue.py`) | [x] |
+| 10.2 | Pluggable dialogue/exit conditions (predicate types beyond flags: level, item, quest state) | [x] |
+| 10.3 | Pluggable command conditions (registry instead of the hardcoded `_evaluate_condition` chain) | [x] |
+| 10.4 | Decide + document the feature-registration pattern (models/commands/events/rules per feature) — combat will be its first consumer | [x] |
 
 ## Sprint 11 — Browser E2E harness
 
@@ -317,4 +317,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 9 complete (service consistency: ServiceContainer in AppState, register(bus) convention, DRY'd inventory take/drop, consolidated item matcher). Next: Sprint 10 (extensibility seams).*
+*Last updated: 2026-07-02 — Sprint 10 complete (extensibility seams: pluggable dialogue side effects, dialogue/command conditions, feature-registration pattern documented). Next: Sprint 11 (browser E2E harness).*
