@@ -9,9 +9,9 @@ The architecture overview remains the design reference; this file is the working
 > Sprints 5–15 (errors, types, tests, decomposition, service consistency, extensibility
 > seams, tooling). Sprints 5–10 complete (error handling, type safety, characterization
 > tests, module decomposition, service consistency/wiring, extensibility seams/patterns).
-> Sprint 10.5 (tooling infrastructure: issues/news/CLI/analytics) next, followed by
-> Sprint 11 (browser E2E harness). Combat/trading/PvP are gated behind the foundation
-> exit criteria — no feature expansion until the core is sound.
+> Sprint 10.5 (tooling infrastructure: issues/news/world-CLI/analytics/content-linting)
+> complete, followed by Sprint 11 (browser E2E harness). Combat/trading/PvP are gated
+> behind the foundation exit criteria — no feature expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
 
@@ -21,7 +21,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [ ] |
-| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–10 complete; 10.5 tooling next; 11–15 queued |
+| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–10.5 complete; 11–15 queued |
 | Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
 | Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
 
@@ -211,15 +211,15 @@ Legend:
 - [ ] Responsive behavior improvements.
 - [ ] Browser end-to-end testing.
 
-### Tooling & Admin Infrastructure (Sprint 10.5)
+### Tooling & Admin Infrastructure (Sprint 10.5) ✅
 
 **See:** [`tooling_infrastructure.md`](tooling_infrastructure.md) for full design.
 
-- [ ] Issue tracking system: `docs/issues.yaml`, CRUD API, admin TUI (F6), web panel tabs
-- [ ] News & announcements: `docs/news.yaml`, in-game `/news`, RSS feed, admin UI (TUI F7)
-- [ ] World management CLI: import/export/validate/diff/stats commands
-- [ ] Analytics API foundation: metric collection and query endpoints
-- [ ] Content validation & linting: dead refs, unreachable rooms, circular deps detection
+- [x] Issue tracking system — `docs/issues.yaml` (YAML↔DB sync via `lorecraft.content.issues`), `GET/POST/PUT /admin/issues`, admin TUI F6, web panel Issues tab
+- [x] News & announcements — `docs/news.yaml`, in-game `news` command, unauthenticated `/api/news` (JSON) + `/api/news/feed` (RSS 2.0), admin CRUD, TUI F7, web panel News tab
+- [x] World management CLI — `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}`; `export_world_document()` in `world/loader.py`
+- [x] Analytics API foundation — `lorecraft.analytics` query functions (top commands, NPC interactions, quest completions from the audit log; player-hours from `PlayerSession`) via `GET /admin/analytics/{commands,npcs,quests,player-hours}`. No dashboard yet (by design); latency/event-bus-depth metrics wait on Sprint 13 instrumentation.
+- [x] Content validation & linting — `lorecraft.tools.validators`: dangling dialogue node refs, room reachability, dead item refs, duplicate item names per room, oversized item stacks. Wired into `world_cli.py validate --start-room --strict`. Circular quest dependencies not checked — no quest-to-quest dependency field exists in the schema yet.
 
 ### Phase 8 — Combat
 

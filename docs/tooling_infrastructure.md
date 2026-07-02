@@ -1,6 +1,6 @@
 # Tooling Infrastructure — Design & Implementation Plan
 
-**Status:** Design phase (Sprint 10.5 incoming)
+**Status:** Implemented (Sprint 10.5 complete)
 **Last updated:** 2026-07-02
 
 ---
@@ -536,4 +536,8 @@ tests/
 
 ---
 
-*Last updated: 2026-07-02 — Design phase. Implementation begins Sprint 10.5.*
+*Last updated: 2026-07-02 — Sprint 10.5 implemented. Deviations from this design doc:*
+- *Analytics endpoints are grounded in data the engine already records (the audit log, `PlayerSession`) rather than new instrumentation — see `lorecraft.analytics`. Command latency/event-bus-depth metrics wait on Sprint 13 instrumentation, as this doc's own "Analytics Foundation" section anticipated.*
+- *Issues/News auto-sync is one-way YAML→DB on startup (only when the DB has no rows yet) plus DB→YAML export on every admin mutation. Git-based external-edit detection/merge was not implemented — out of scope for this sprint.*
+- *Circular quest dependency checking was not implemented: `QuestStageData` has no quest-to-quest dependency field in the schema today, so there's nothing to scan for a cycle in.*
+- *Seasonal events (`docs/news.yaml`'s `seasonal_events` section) and TUI/web dashboards for analytics were left out of scope, matching "no dashboard yet" in this doc's Analytics section.*
