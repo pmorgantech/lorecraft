@@ -88,8 +88,12 @@ class PlayerRepo(Repository[Player, str]):
         self.session.add(save_slot)
         return save_slot
 
-    def list_all(self, limit: int = 50) -> Sequence[Player]:
-        statement = select(Player).order_by(col(Player.username)).limit(limit)
+    def list_all(
+        self, *, offset: int = 0, limit: int | None = None
+    ) -> Sequence[Player]:
+        statement = select(Player).order_by(col(Player.username)).offset(offset)
+        if limit is not None:
+            statement = statement.limit(limit)
         return self.session.exec(statement).all()
 
     def latest_session(self, player_id: str) -> PlayerSession | None:

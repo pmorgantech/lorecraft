@@ -25,7 +25,7 @@ lorecraft = ["web/*", "web/admin/*"]
 include = ["src"]
 exclude = ["src/lorecraft/admin/tui"]
 pythonVersion = "3.12"
-typeCheckingMode = "basic"
+typeCheckingMode = "standard"
 venvPath = "."
 venv = ".venv"
 

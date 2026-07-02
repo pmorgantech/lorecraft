@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -115,10 +116,11 @@ def build_game_context(
     All entry points (websocket, scheduler, tests) should use this factory
     to ensure consistent construction and full wiring of all fields.
     """
+    now = time.time()
     return GameContext(
         player=player,
         room=room,
-        clock=clock or WorldClock(),
+        clock=clock or WorldClock(game_epoch=now, real_epoch=now),
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),

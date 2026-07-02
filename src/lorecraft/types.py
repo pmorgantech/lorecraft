@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable
-from typing import TYPE_CHECKING, Protocol, TypeAlias
+from typing import TYPE_CHECKING, Protocol, TypeAlias, TypedDict
 
 if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
@@ -52,3 +52,49 @@ class CommandHandler(Protocol):
     """A command handler — must accept noun and GameContext, return None."""
 
     def __call__(self, noun: str | None, ctx: GameContext) -> None: ...
+
+
+# WebSocket and API payload schemas
+
+
+class WsFeedAppend(TypedDict):
+    """WebSocket feed_append message."""
+
+    type: str  # "feed_append"
+    content: str
+    message_type: str
+
+
+class WsStateChange(TypedDict):
+    """WebSocket state_change message."""
+
+    type: str  # "state_change"
+    affected_panels: list[str]
+    actor_id: str
+
+
+class WsPlayerLeft(TypedDict):
+    """WebSocket player_left message."""
+
+    type: str  # "player_left"
+    player_id: str
+    username: str
+    presence: str
+
+
+class WsNarrative(TypedDict):
+    """WebSocket narrative message."""
+
+    type: str  # "narrative"
+    html: str
+
+
+class ApiStatusResponse(TypedDict, total=False):
+    """Common API response with status field."""
+
+    status: str
+    player_id: str
+    room_id: str
+    id: str
+    version: int
+    username: str
