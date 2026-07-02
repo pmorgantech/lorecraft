@@ -12,7 +12,7 @@ Sprints are scoped small (1–2 tasks, one subsystem) on purpose, so each sprint
 
 Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/quests, save/disconnect, admin tools). Version **0.2.0** added parser v1, quantity inventory, and the HTMX primary UI.
 
-Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. Remaining work (combat core, polish, player interaction) is broken into small, single-focus sprints below.
+Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. **Player authentication (Sprint 4) comes next** as the foundation for production security, followed by combat (Sprints 5–7), polish (Sprints 8–14), and player interaction (Sprints 15–17).
 
 ---
 
@@ -56,117 +56,136 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ---
 
-## Sprint 4 — Combat core services
+## Sprint 4 — Player authentication (production hardening)
+
+**Goal:** Phase 7 per `architecture.md` §21 — full account system with password auth, JWT tokens, and signed WebSocket handshake. Foundation for all production deployments.
+
+**See:** [`player_authentication.md`](player_authentication.md) for detailed workflows and code examples.
+
+| # | Task | Status |
+|---|------|--------|
+| 4.1 | `POST /auth/login` — account creation on first login, password hashing (bcrypt/argon2) | [ ] |
+| 4.2 | JWT access tokens (15min lifetime) + refresh token rotation (8hr lifetime) | [ ] |
+| 4.3 | `POST /auth/ws-ticket` — single-use, 60-second WebSocket ticket exchange | [ ] |
+| 4.4 | WebSocket handshake: validate ticket, map to player_id, attach to ConnectionManager | [ ] |
+| 4.5 | `/auth/refresh` endpoint for refresh token rotation | [ ] |
+| 4.6 | Retire legacy `?player_id=` query param fallback (was gated by `LORECRAFT_ALLOW_QUERY_PLAYER_ID`) | [ ] |
+| 4.7 | OAuth extensibility hooks (Google OIDC callback stubs for future LAN-party deployments) | [ ] |
+| 4.8 | Integration tests: login, token refresh, WS ticket validation, expired token rejection | [ ] |
+
+---
+
+## Sprint 5 — Combat core services
 
 **Goal:** Server-side combat resolution, no commands or UI yet.
 
 | # | Task | Status |
 |---|------|--------|
-| 4.1 | `services/combat.py` — sessions, ticks, damage, death/respawn | [ ] |
-| 4.2 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
+| 5.1 | `services/combat.py` — sessions, ticks, damage, death/respawn | [ ] |
+| 5.2 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
 
 ---
 
-## Sprint 5 — Combat commands + UI
+## Sprint 6 — Combat commands + UI
 
 **Goal:** Expose combat to players.
 
 | # | Task | Status |
 |---|------|--------|
-| 5.1 | `commands/combat.py` — `attack`, `flee`; complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 5.2 | Combat UI in HTMX feed + status panel | [ ] |
+| 6.1 | `commands/combat.py` — `attack`, `flee`; complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
+| 6.2 | Combat UI in HTMX feed + status panel | [ ] |
 
 ---
 
-## Sprint 6 — Combat testing
+## Sprint 7 — Combat testing
 
 **Goal:** Close out Phase 8/8.5 with coverage.
 
 | # | Task | Status |
 |---|------|--------|
-| 6.1 | Integration + browser tests for combat loop | [ ] |
+| 7.1 | Integration + browser tests for combat loop | [ ] |
 
 ---
 
-## Sprint 7 — Full-screen map
+## Sprint 8 — Full-screen map
 
 | # | Task | Status |
 |---|------|--------|
-| 7.1 | Full-screen map modal (pan/zoom) | [ ] |
+| 8.1 | Full-screen map modal (pan/zoom) | [ ] |
 
 ---
 
-## Sprint 8 — Mobile layout
+## Sprint 9 — Mobile layout
 
 | # | Task | Status |
 |---|------|--------|
-| 8.1 | Responsive mobile tab layout | [ ] |
+| 9.1 | Responsive mobile tab layout | [ ] |
 
 ---
 
-## Sprint 9 — World clock/weather push
+## Sprint 10 — World clock/weather push
 
 | # | Task | Status |
 |---|------|--------|
-| 9.1 | World clock / weather status bar push via WS | [ ] |
+| 10.1 | World clock / weather status bar push via WS | [ ] |
 
 ---
 
-## Sprint 10 — Admin WebSocket tests
+## Sprint 11 — Admin WebSocket tests
 
 | # | Task | Status |
 |---|------|--------|
-| 10.1 | Admin WebSocket integration tests | [ ] |
+| 11.1 | Admin WebSocket integration tests | [ ] |
 
 ---
 
-## Sprint 11 — Browser E2E harness
+## Sprint 12 — Browser E2E harness
 
 | # | Task | Status |
 |---|------|--------|
-| 11.1 | Browser end-to-end test harness for HTMX UI | [ ] |
+| 12.1 | Browser end-to-end test harness for HTMX UI | [ ] |
 
 ---
 
-## Sprint 12 — Simulation harness MVP
+## Sprint 13 — Simulation harness MVP
 
 | # | Task | Status |
 |---|------|--------|
-| 12.1 | Simulation harness MVP (`tests/simulation/`) | [ ] |
+| 13.1 | Simulation harness MVP (`tests/simulation/`) | [ ] |
 
 ---
 
-## Sprint 13 — Unify command lifecycle
+## Sprint 14 — Unify command lifecycle
 
 | # | Task | Status |
 |---|------|--------|
-| 13.1 | Unify 13-step lifecycle across `/ws` and `/command` paths | [ ] |
+| 14.1 | Unify 13-step lifecycle across `/ws` and `/command` paths | [ ] |
 
 ---
 
-## Sprint 14 — Trading
+## Sprint 15 — Trading
 
 **Goal:** Phase 9 per `architecture.md` §28.
 
 | # | Task | Status |
 |---|------|--------|
-| 14.1 | `services/trading.py` + trade commands | [ ] |
+| 15.1 | `services/trading.py` + trade commands | [ ] |
 
 ---
 
-## Sprint 15 — PvP consent
+## Sprint 16 — PvP consent
 
 | # | Task | Status |
 |---|------|--------|
-| 15.1 | PvP consent + challenge/accept | [ ] |
+| 16.1 | PvP consent + challenge/accept | [ ] |
 
 ---
 
-## Sprint 16 — Multiplayer trade/PvP tests
+## Sprint 17 — Multiplayer trade/PvP tests
 
 | # | Task | Status |
 |---|------|--------|
-| 16.1 | Multi-player trade and PvP tests | [ ] |
+| 17.1 | Multi-player trade and PvP tests | [ ] |
 
 ---
 
@@ -177,7 +196,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | Bug/todo letterbox | In-world or admin-facing feedback |
 | Inventory encumbrance / wear slots | After equipment + combat |
-| Playback scripts / many-player harness | Tied to simulation harness (Sprint 12.1) |
+| Playback scripts / many-player harness | Tied to simulation harness (Sprint 13.1) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
 
 ---
@@ -194,7 +213,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ## Build-order reference
 
-See `docs/architecture.md` §28. Combat (Sprints 3–6) is the next major architecture milestone after HTMX parity and command depth, followed by polish (Sprints 7–13) and player interaction (Sprints 14–16).
+See `docs/architecture.md` §28. Player authentication (Sprint 4) must come before combat—it's the foundation for production security. Combat (Sprints 5–7) follows, then polish (Sprints 8–14) and player interaction (Sprints 15–17).
 
 ---
 
@@ -221,4 +240,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Renamed from NEXT_STEPS.md; remaining sprints (3–5) broken into 14 smaller, single-focus sprints (3–16) to reduce per-sprint context.*
+*Last updated: 2026-07-02 — Player authentication (Sprint 4) inserted as production-security foundation before combat. Sprints 4–16 renumbered to 5–17.*
