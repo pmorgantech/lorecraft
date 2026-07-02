@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprint 5 complete (error handling); Sprint 6 (type safety) next.
+**Current progress:** Sprints 5–6 complete (error handling, type safety); Sprint 7 (characterization tests) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -106,17 +106,17 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 5.4 | Guard quantity underflow in `ItemRepo.remove_from_room` (raise/log instead of silent delete) | [x] |
 | 5.5 | Unit tests for error paths (every custom exception exercised) | [x] |
 
-## Sprint 6 — Type safety
+## Sprint 6 — Type safety ✅
 
 **Goal:** basedpyright verifies real invariants. Audit §2.2.
 
 | # | Task | Status |
 |---|------|--------|
-| 6.1 | Type `CommandHandler` as `Callable[[str | None, GameContext], None]` (Protocol in `types.py` or `TYPE_CHECKING` import); delete all 18 `cast(GameContext, ctx)` | [ ] |
-| 6.2 | Replace `cast(Any, ctx)` + `getattr(..., default)` condition evaluation in `game/registry.py` with typed access — conditions must fail closed, not open | [ ] |
-| 6.3 | Single `build_game_context()` factory used by all entry points; make `quest_repo`/`dialogue_repo`/`audit` required and delete their None-guards | [ ] |
-| 6.4 | `TypedDict` schemas for WS payloads and HTMX/JSON responses | [ ] |
-| 6.5 | Raise basedpyright to `standard` mode on `src/` and hold it there | [ ] |
+| 6.1 | Type `CommandHandler` as `Callable[[str | None, GameContext], None]` (Protocol in `types.py` or `TYPE_CHECKING` import); delete all 18 `cast(GameContext, ctx)` | [x] |
+| 6.2 | Replace `cast(Any, ctx)` + `getattr(..., default)` condition evaluation in `game/registry.py` with typed access — conditions must fail closed, not open | [x] |
+| 6.3 | Single `build_game_context()` factory used by all entry points; make `quest_repo`/`dialogue_repo`/`audit` required and delete their None-guards | [x] |
+| 6.4 | `TypedDict` schemas for WS payloads and HTMX/JSON responses | [x] |
+| 6.5 | Raise basedpyright to `standard` mode on `src/` and hold it there | [x] |
 
 ## Sprint 7 — Web & admin characterization tests
 
