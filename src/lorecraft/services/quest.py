@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from lorecraft.game.events import Event, GameEvent
+from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
@@ -13,6 +13,11 @@ if TYPE_CHECKING:
 
 
 class QuestService:
+    def register(self, bus: EventBus) -> None:
+        bus.on(GameEvent.ITEM_TAKEN, self.check_progression)
+        bus.on(GameEvent.PLAYER_MOVED, self.check_progression)
+        bus.on(GameEvent.ITEM_DROPPED, self.check_progression)
+
     def check_progression(self, event: Event, ctx: object) -> None:
         from lorecraft.game.context import GameContext as _GC
 
