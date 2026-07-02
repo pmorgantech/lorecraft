@@ -6,6 +6,11 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
+from lorecraft.game.diagnostics import (
+    ParseDiagnostics,
+    ParseStep,
+    diagnose_command,
+)
 from lorecraft.game.grammar import (
     DEFERRED_DISAMBIGUATION_ROLE,
     DIRECTION_ALIASES,
@@ -29,6 +34,19 @@ if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
 
 log = logging.getLogger(__name__)
+
+__all__ = [
+    "ParsedCommand",
+    "ParseResult",
+    "ParseDiagnostics",
+    "ParseStep",
+    "parse_command",
+    "parse",
+    "diagnose_command",
+    "normalize",
+    "tokenize",
+    "registry_verb",
+]
 
 
 @dataclass(frozen=True)
