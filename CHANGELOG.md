@@ -6,7 +6,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Summary
 
-**Foundation Band (Sprints 5–7) Complete** — Core engine hardening locked in via 46 new characterization tests. Error handling unified (typed exceptions, logged everywhere), type safety enforced (basedpyright standard mode, 0 errors), and current behavior documented before major refactors. Sprints 8–9 (module decomposition, service consistency) queued. All 336 tests passing.
+**Sprint 8.1 Complete** — Web frontend decomposition (1,306 lines → 784 lines in routes). Extracted `web/session.py` (380 lines: dependency injection, state snapshots, presence helpers) and `web/rendering.py` (180 lines: template output, feed formatting). All 255 tests passing. Unblocks Sprint 9 (service consistency wiring).
+
+### Added
+
+- **Sprint 8.1: Web Frontend Decomposition** — Split `web/frontend.py` (1,306 lines) into three focused modules:
+  - `web/session.py` — Dependency injection (get_engines, get_app_state, get_command_engine, get_manager, get_bus), session auth (player_session_secret, set_player_session_cookie, ensure_player_session), state snapshots (inventory_snapshot, room_panel_context, active_quests_snapshot, world_time_snapshot), presence helpers (format_idle_duration, presence_for_player, players_here), grace period expiration. CommandResult dataclass moved here.
+  - `web/rendering.py` — Template rendering (build_map_data, audit_to_feed, feed_items_html), HTML output formatting (mark_oob_swap), command resolution (resolve_command_text), dev player creation.
+  - `frontend.py` — Now 784 lines, focused exclusively on FastAPI routing and HTTP endpoints. Updated all endpoint handlers and test imports.
+- Replaced `getattr`-chain state access in dependency injection with explict functions (FastAPI `Depends()` ready for next phase).
+- All Sprint 7 characterization tests verify decomposition did not change behavior (255 passing).
 
 ### Added
 
