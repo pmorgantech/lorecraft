@@ -5,14 +5,19 @@ from __future__ import annotations
 from typing import cast
 
 from lorecraft.game.context import GameContext
-from lorecraft.game.registry import CommandRegistry
+from lorecraft.game.registry import CommandRegistry, CommandScope
 from lorecraft.npc.dialogue import DialogueService, _NPC_KEY
 
 
 def register_social_commands(registry: CommandRegistry) -> None:
     service = DialogueService()
 
-    @registry.register("talk", "speak")
+    @registry.register(
+        "talk",
+        "speak",
+        scope=CommandScope.SOCIAL,
+        help="talk <name> — start a conversation with an NPC",
+    )
     def talk_command(noun: str | None, ctx: object) -> None:
         game_ctx = cast(GameContext, ctx)
         if noun is None:
@@ -25,7 +30,12 @@ def register_social_commands(registry: CommandRegistry) -> None:
             return
         service.start(npc.id, game_ctx)
 
-    @registry.register("choice", "choose")
+    @registry.register(
+        "choice",
+        "choose",
+        scope=CommandScope.SOCIAL,
+        help="choice <number> — pick a dialogue reply",
+    )
     def choice_command(noun: str | None, ctx: object) -> None:
         game_ctx = cast(GameContext, ctx)
         if not game_ctx.player.flags.get(_NPC_KEY):
@@ -41,7 +51,11 @@ def register_social_commands(registry: CommandRegistry) -> None:
             return
         service.choose(index, game_ctx)
 
-    @registry.register("say")
+    @registry.register(
+        "say",
+        scope=CommandScope.SOCIAL,
+        help="say <message> — speak aloud to the room",
+    )
     def say_command(noun: str | None, ctx: object) -> None:
         game_ctx = cast(GameContext, ctx)
         if noun is None:
@@ -50,7 +64,13 @@ def register_social_commands(registry: CommandRegistry) -> None:
         game_ctx.say(f'You say: "{noun}"')
         game_ctx.tell_room(f'{game_ctx.player.username} says: "{noun}"')
 
-    @registry.register("bye", "farewell", "goodbye")
+    @registry.register(
+        "bye",
+        "farewell",
+        "goodbye",
+        scope=CommandScope.SOCIAL,
+        help="bye — end the current conversation",
+    )
     def bye_command(noun: str | None, ctx: object) -> None:
         game_ctx = cast(GameContext, ctx)
         del noun

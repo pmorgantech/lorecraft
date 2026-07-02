@@ -45,23 +45,101 @@ def test_meta_commands_write_context_messages_and_updates() -> None:
         registry.get("help").handler(None, ctx)
         registry.get("quit").handler(None, ctx)
 
-    assert ctx.messages == [
-        "Available commands: help, quit (returns to lobby), save [slot], load [slot], look, "
-        "examine <item>, take <item>, drop <item>, inventory, go <direction>, "
-        "north, south, east, west.",
-        "Goodbye.",
-    ]
+    assert ctx.messages[0].startswith("Available commands:")
+    assert "  help — show this list" in ctx.messages[0]
+    assert "  go <direction>" in ctx.messages[0]
+    assert ctx.messages[1] == "Goodbye."
     assert ctx.updates == {"disconnect": True}
+    # Dialogue-reply commands are hidden until a conversation is active.
+    assert "choice <number>" not in ctx.messages[0]
+    assert "bye — end" not in ctx.messages[0]
 
 
-def _build_context(session: Session) -> GameContext:
-    player = Player(
+def test_help_shows_dialogue_commands_and_hides_world_commands_in_conversation() -> (
+    None
+):
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        player = Player(
+            id="player-1",
+            username="petem",
+            current_room_id="tavern",
+            respawn_room_id="tavern",
+            flags={"_dialogue_npc_id": "mira"},
+        )
+        ctx = _build_context(session, player=player)
+
+        registry.get("help").handler(None, ctx)
+
+    assert ctx.messages[0].startswith("You are in conversation.")
+    assert "choice <number>" in ctx.messages[0]
+    assert "bye — end" in ctx.messages[0]
+    assert "help — show this list" in ctx.messages[0]
+    assert "go <direction>" not in ctx.messages[0]
+    assert "take <item>" not in ctx.messages[0]
+
+
+def test_help_hides_out_of_combat_commands_during_combat() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        player = Player(
+            id="player-1",
+            username="petem",
+            current_room_id="tavern",
+            respawn_room_id="tavern",
+            active_combat_session_id="combat-1",
+        )
+        ctx = _build_context(session, player=player)
+
+        registry.get("help").handler(None, ctx)
+
+    assert ctx.messages[0].startswith("You are in combat.")
+    assert "go <direction>" not in ctx.messages[0]
+    assert "take <item>" not in ctx.messages[0]
+    assert "help — show this list" in ctx.messages[0]
+
+
+def test_help_respects_room_disabled_commands() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        room = Room(
+            id="tavern",
+            name="Tavern",
+            description="A warm room.",
+            map_x=0,
+            map_y=0,
+            disabled_commands=["take"],
+        )
+        ctx = _build_context(session, room=room)
+
+        registry.get("help").handler(None, ctx)
+
+    assert "take <item>" not in ctx.messages[0]
+    assert "drop <item>" in ctx.messages[0]
+
+
+def _build_context(
+    session: Session, *, player: Player | None = None, room: Room | None = None
+) -> GameContext:
+    player = player or Player(
         id="player-1",
         username="petem",
         current_room_id="tavern",
         respawn_room_id="tavern",
     )
-    room = Room(
+    room = room or Room(
         id="tavern",
         name="Tavern",
         description="A warm room.",
