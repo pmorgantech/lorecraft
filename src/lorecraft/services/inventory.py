@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import TypeVar
 
 from lorecraft.game.command_patterns import (
     ROLE_DESTINATION,
@@ -17,6 +18,8 @@ from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
 from lorecraft.models.world import Item, RoomItem
 from lorecraft.types import JsonValue
+
+_M = TypeVar("_M")
 
 
 def grouped_inventory_ids(item_ids: Sequence[str]) -> list[tuple[str, int]]:
@@ -111,6 +114,47 @@ def parse_item_target(noun: str) -> ItemTarget:
 
 
 class InventoryService:
+    def _resolve_single(
+        self,
+        ctx: GameContext,
+        *,
+        verb: str,
+        query: str,
+        matches: Sequence[_M],
+        item_of: Callable[[_M], Item],
+        not_found_msg: str,
+    ) -> _M | None:
+        """Shared find→disambiguate step for a pre-resolved match list.
+
+        Returns the single match, or ``None`` after messaging the player
+        (either a "not found" message or a numbered disambiguation prompt).
+        """
+        if not matches:
+            ctx.say(not_found_msg)
+            return None
+        if len(matches) > 1:
+            _prompt_disambiguation(ctx, verb, query, [item_of(m) for m in matches])
+            return None
+        return matches[0]
+
+    def _do_take(
+        self, ctx: GameContext, room_item: RoomItem, item: Item, count: int
+    ) -> None:
+        self._remove_from_room_and_carry(ctx, room_item, item, count)
+        label = format_inventory_entry(item.name, count)
+        ctx.say(f"You take {label}.")
+        ctx.tell_room(f"{ctx.player.username} takes {label}.")
+        self._emit_item_taken(ctx, item.id, count=count)
+
+    def _do_drop(
+        self, ctx: GameContext, indices: list[int], item: Item, count: int
+    ) -> None:
+        self._remove_from_inventory_slots(ctx, indices, item, count)
+        label = format_inventory_entry(item.name, count)
+        ctx.say(f"You drop {label}.")
+        ctx.tell_room(f"{ctx.player.username} drops {label}.")
+        self._emit_item_dropped(ctx, item.id, count=count)
+
     def look(self, ctx: GameContext) -> None:
         ctx.say(ctx.room.name)
         ctx.say(ctx.room.description)
@@ -147,29 +191,18 @@ class InventoryService:
             self.look(ctx)
             return
 
-        inv_matches = ctx.item_repo.search_player_items(
-            ctx.player.inventory, name_or_id
+        all_matches = self._find_carried_or_visible(name_or_id, ctx)
+        match = self._resolve_single(
+            ctx,
+            verb="examine",
+            query=name_or_id,
+            matches=all_matches,
+            item_of=lambda item: item,
+            not_found_msg="You don't see that here.",
         )
-        room_matches = [
-            item for _, item in ctx.item_repo.search_in_room(ctx.room.id, name_or_id)
-        ]
-
-        seen: set[str] = set()
-        all_matches: list[Item] = []
-        for item in inv_matches + room_matches:
-            if item.id not in seen:
-                seen.add(item.id)
-                all_matches.append(item)
-
-        if not all_matches:
-            ctx.say("You don't see that here.")
+        if match is None:
             return
-
-        if len(all_matches) > 1:
-            _prompt_disambiguation(ctx, "examine", name_or_id, all_matches)
-            return
-
-        ctx.say(all_matches[0].description)
+        ctx.say(match.description)
 
     def take_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
@@ -235,42 +268,40 @@ class InventoryService:
 
     def _take_one(self, query: str, ctx: GameContext) -> None:
         matches = ctx.item_repo.search_in_room(ctx.room.id, query)
-        if not matches:
-            ctx.say("You don't see that here.")
+        match = self._resolve_single(
+            ctx,
+            verb="take",
+            query=query,
+            matches=matches,
+            item_of=lambda m: m[1],
+            not_found_msg="You don't see that here.",
+        )
+        if match is None:
             return
 
-        if len(matches) > 1:
-            _prompt_disambiguation(ctx, "take", query, [item for _, item in matches])
-            return
-
-        room_item, item = matches[0]
+        room_item, item = match
         if not item.takeable:
             ctx.say("You can't take that.")
             return
 
-        self._remove_from_room_and_carry(ctx, room_item, item, 1)
-        ctx.say(f"You take {item.name}.")
-        ctx.tell_room(f"{ctx.player.username} takes {item.name}.")
-        self._emit_item_taken(ctx, item.id, count=1)
+        self._do_take(ctx, room_item, item, 1)
 
     def _take_quantity(
         self, target: ItemTarget, ctx: GameContext, *, take_all: bool
     ) -> None:
         matches = ctx.item_repo.search_in_room(ctx.room.id, target.query)
-        if not matches:
-            ctx.say("You don't see that here.")
+        match = self._resolve_single(
+            ctx,
+            verb="take",
+            query=target.query,
+            matches=matches,
+            item_of=lambda m: m[1],
+            not_found_msg="You don't see that here.",
+        )
+        if match is None:
             return
 
-        if len(matches) > 1:
-            _prompt_disambiguation(
-                ctx,
-                "take",
-                target.query,
-                [item for _, item in matches],
-            )
-            return
-
-        room_item, item = matches[0]
+        room_item, item = match
         if not item.takeable:
             ctx.say("You can't take that.")
             return
@@ -281,19 +312,15 @@ class InventoryService:
             ctx.say("You don't see that here.")
             return
 
-        self._remove_from_room_and_carry(ctx, room_item, item, count)
-        label = format_inventory_entry(item.name, count)
-        ctx.say(f"You take {label}.")
-        ctx.tell_room(f"{ctx.player.username} takes {label}.")
-        self._emit_item_taken(ctx, item.id, count=count)
+        self._do_take(ctx, room_item, item, count)
 
     def _take_indexed(self, target: ItemTarget, ctx: GameContext) -> None:
         expanded = ctx.item_repo.expanded_room_instances(ctx.room.id, target.query)
-        if not expanded:
-            ctx.say("You don't see that here.")
-            return
-
-        if target.index is None or target.index < 1 or target.index > len(expanded):
+        if (
+            not expanded
+            or target.index is None
+            or not (1 <= target.index <= len(expanded))
+        ):
             ctx.say("You don't see that here.")
             return
 
@@ -302,19 +329,19 @@ class InventoryService:
             ctx.say("You can't take that.")
             return
 
-        self._remove_from_room_and_carry(ctx, room_item, item, 1)
-        ctx.say(f"You take {item.name}.")
-        ctx.tell_room(f"{ctx.player.username} takes {item.name}.")
-        self._emit_item_taken(ctx, item.id, count=1)
+        self._do_take(ctx, room_item, item, 1)
 
     def _drop_one(self, query: str, ctx: GameContext) -> None:
         matches = ctx.item_repo.search_player_items(ctx.player.inventory, query)
-        if not matches:
-            ctx.say("You don't have that.")
-            return
-
-        if len(matches) > 1:
-            _prompt_disambiguation(ctx, "drop", query, matches)
+        match = self._resolve_single(
+            ctx,
+            verb="drop",
+            query=query,
+            matches=matches,
+            item_of=lambda item: item,
+            not_found_msg="You don't have that.",
+        )
+        if match is None:
             return
 
         slots = ctx.item_repo.inventory_slots_matching(ctx.player.inventory, query)
@@ -322,11 +349,7 @@ class InventoryService:
             ctx.say("You don't have that.")
             return
 
-        item = matches[0]
-        self._remove_from_inventory_slots(ctx, [slots[0][0]], item, 1)
-        ctx.say(f"You drop {item.name}.")
-        ctx.tell_room(f"{ctx.player.username} drops {item.name}.")
-        self._emit_item_dropped(ctx, item.id, count=1)
+        self._do_drop(ctx, [slots[0][0]], match, 1)
 
     def _drop_quantity(
         self, target: ItemTarget, ctx: GameContext, *, drop_all: bool
@@ -339,18 +362,20 @@ class InventoryService:
             return
 
         unique_items = _unique_items([slot_item for _, slot_item in slots])
-        if len(unique_items) > 1:
-            _prompt_disambiguation(ctx, "drop", target.query, unique_items)
+        match = self._resolve_single(
+            ctx,
+            verb="drop",
+            query=target.query,
+            matches=unique_items,
+            item_of=lambda item: item,
+            not_found_msg="You don't have that.",
+        )
+        if match is None:
             return
 
         count = len(slots) if drop_all else min(target.quantity, len(slots))
-        item = slots[0][1]
         indices = [index for index, _ in slots[:count]]
-        self._remove_from_inventory_slots(ctx, indices, item, count)
-        label = format_inventory_entry(item.name, count)
-        ctx.say(f"You drop {label}.")
-        ctx.tell_room(f"{ctx.player.username} drops {label}.")
-        self._emit_item_dropped(ctx, item.id, count=count)
+        self._do_drop(ctx, indices, match, count)
 
     def _drop_indexed(self, target: ItemTarget, ctx: GameContext) -> None:
         slots = ctx.item_repo.inventory_slots_matching(
@@ -404,14 +429,17 @@ class InventoryService:
             return
 
         matches = self._find_carried_or_visible(name_or_id, ctx)
-        if not matches:
-            ctx.say("You don't have that.")
-            return
-        if len(matches) > 1:
-            _prompt_disambiguation(ctx, "use", name_or_id, matches)
+        item = self._resolve_single(
+            ctx,
+            verb="use",
+            query=name_or_id,
+            matches=matches,
+            item_of=lambda m: m,
+            not_found_msg="You don't have that.",
+        )
+        if item is None:
             return
 
-        item = matches[0]
         other_phrase = _use_target_phrase(ctx)
         if other_phrase is None:
             if item.usable_with:
@@ -456,11 +484,15 @@ class InventoryService:
             return
 
         matches = ctx.item_repo.search_player_items(ctx.player.inventory, name_or_id)
-        if not matches:
-            ctx.say("You don't have that.")
-            return
-        if len(matches) > 1:
-            _prompt_disambiguation(ctx, "give", name_or_id, matches)
+        item = self._resolve_single(
+            ctx,
+            verb="give",
+            query=name_or_id,
+            matches=matches,
+            item_of=lambda m: m,
+            not_found_msg="You don't have that.",
+        )
+        if item is None:
             return
 
         slots = ctx.item_repo.inventory_slots_matching(ctx.player.inventory, name_or_id)
@@ -468,7 +500,6 @@ class InventoryService:
             ctx.say("You don't have that.")
             return
 
-        item = matches[0]
         self._remove_from_inventory_only(ctx, [slots[0][0]])
         ctx.say(f"You give the {item.name} to {npc.name}.")
         ctx.tell_room(f"{ctx.player.username} gives {item.name} to {npc.name}.")
