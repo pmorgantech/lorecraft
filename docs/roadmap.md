@@ -118,7 +118,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 6.4 | `TypedDict` schemas for WS payloads and HTMX/JSON responses | [x] |
 | 6.5 | Raise basedpyright to `standard` mode on `src/` and hold it there | [x] |
 
-## Sprint 7 — Web & admin characterization tests
+## Sprint 7 — Web & admin characterization tests ✅
 
 **Goal:** Lock in current behavior *before* the Sprint 8–9 refactors. Audit §2.3.
 
@@ -127,7 +127,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 7.1 | Characterization tests for `web/frontend.py`: state resolution, session reconnect edge cases, feed pagination, error rendering | [x] |
 | 7.2 | Admin API endpoint tests (target ~80% of `admin/api.py` routes) | [x] |
 | 7.3 | Admin WebSocket integration tests | [x] |
-| 7.4 | Event-flow integration tests: command → event → service reaction → client update; handler-ordering assertions | [ ] |
+| 7.4 | Event-flow integration tests: command → event → service reaction → client update; handler-ordering assertions | [x] |
 
 ## Sprint 8 — Module decomposition
 
