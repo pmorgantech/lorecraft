@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Installed via `make install-hooks` (git config core.hooksPath .githooks).
+# Keeps graphify-out/graph.json fresh after each commit so Graphify-backed
+# architecture context (see AGENTS.md) reflects the current tree.
+set -uo pipefail
+
+root="$(git rev-parse --show-toplevel 2>/dev/null || exit 0)"
+"$root/scripts/graphify-refresh.sh" || true
