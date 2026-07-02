@@ -157,6 +157,7 @@
       <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
       <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
       <div class="tab" data-tab="issues"     onclick="showTab('issues')">Issues</div>
+      <div class="tab" data-tab="news"       onclick="showTab('news')">News</div>
       <div class="tab" data-tab="accounts"   onclick="showTab('accounts')">Accounts</div>
     </div>
 
@@ -333,6 +334,43 @@
         </div>
       </div>
 
+      <!-- News -->
+      <div id="tab-news" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>News &amp; Announcements</h2>
+          <button onclick="loadNews()">↻ Refresh</button>
+        </div>
+        <div id="news-create" class="panel">
+          <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">TITLE</label><input id="n-title" placeholder="Announcement title" style="width:220px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">TYPE</label>
+              <select id="n-type" style="width:120px;">
+                <option value="bulletin">bulletin</option>
+                <option value="server">server</option>
+                <option value="event">event</option>
+                <option value="maintenance">maintenance</option>
+                <option value="patch">patch</option>
+              </select>
+            </div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">PRIORITY</label>
+              <select id="n-priority" style="width:110px;">
+                <option value="low">low</option>
+                <option value="normal" selected>normal</option>
+                <option value="high">high</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;min-width:200px;"><label style="color:var(--text-dim);font-size:0.75rem;">BODY</label><input id="n-body" placeholder="Announcement body" /></div>
+            <button onclick="createNews()">+ Publish</button>
+          </div>
+        </div>
+        <div class="panel" style="overflow-x:auto;flex:1;">
+          <table>
+            <thead><tr><th>ID</th><th>Type</th><th>Title</th><th>Priority</th><th>Published</th><th></th></tr></thead>
+            <tbody id="news-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Accounts -->
       <div id="tab-accounts" class="tab-panel">
         <h2>Admin Accounts</h2>
@@ -469,7 +507,7 @@ function showTab(name) {
   const loaders = {
     dashboard: loadDashboard, audit: loadAudit, world: loadRooms,
     changesets: loadChangesets, clock: loadClock, issues: loadIssues,
-    accounts: loadAccounts
+    news: loadNews, accounts: loadAccounts
   };
   if (loaders[name]) loaders[name]();
 }
@@ -762,6 +800,53 @@ async function updateIssueStatus(issueId, status) {
   const r = await api("PUT", `/admin/issues/${issueId}`, {status});
   if (r.detail) showError(r.detail);
   else loadIssues();
+}
+
+// ────────────────────────────────────────
+// News
+// ────────────────────────────────────────
+
+async function loadNews() {
+  const items = await api("GET", "/admin/news");
+  const tbody = document.getElementById("news-tbody");
+  tbody.innerHTML = "";
+  if (!Array.isArray(items)) return;
+  const priColor = {low: "gray", normal: "amber", high: "red"};
+  for (const n of items) {
+    const published = new Date(n.published_at * 1000).toLocaleDateString();
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="font-family:monospace;color:var(--amber)">${esc(n.id)}</td>
+      <td>${badge(n.type, "gray")}</td>
+      <td><b>${esc(n.title)}</b></td>
+      <td>${badge(n.priority, priColor[n.priority] || "gray")}</td>
+      <td style="color:var(--text-dim)">${published}</td>
+      <td><button class="danger" onclick="deleteNews('${esc(n.id)}')">Delete</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+async function createNews() {
+  const title = document.getElementById("n-title").value.trim();
+  if (!title) { showError("Enter a title"); return; }
+  const body = {
+    title,
+    type: document.getElementById("n-type").value,
+    priority: document.getElementById("n-priority").value,
+    body: document.getElementById("n-body").value.trim(),
+  };
+  const r = await api("POST", "/admin/news", body);
+  if (r.detail) { showError(r.detail); return; }
+  document.getElementById("n-title").value = "";
+  document.getElementById("n-body").value = "";
+  loadNews();
+}
+
+async function deleteNews(newsId) {
+  if (!confirm(`Delete news item ${newsId}?`)) return;
+  const r = await api("DELETE", `/admin/news/${newsId}`);
+  if (r.detail) showError(r.detail);
+  else loadNews();
 }
 
 // ────────────────────────────────────────

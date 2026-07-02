@@ -24,6 +24,7 @@ from lorecraft.clock.weather import register_weather_handlers
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.content.issues import ensure_issues_bootstrapped
+from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.npc.scheduler import NpcScheduler
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.scheduler import SchedulerService
@@ -43,6 +44,7 @@ from lorecraft.world.bootstrap import ensure_world_bootstrapped
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
@@ -51,6 +53,7 @@ from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
 from lorecraft.web.frontend import router as web_router
+from lorecraft.web.news_api import router as news_api_router
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +96,7 @@ def create_app(
         admin_seed_role=settings.admin_seed_role,
         world_yaml_path=settings.world_yaml_path,
         issues_yaml_path=settings.issues_yaml_path,
+        news_yaml_path=settings.news_yaml_path,
         seed_player_id=settings.seed_player_id,
         seed_player_username=settings.seed_player_username,
         seed_player_start_room=settings.seed_player_start_room,
@@ -117,6 +121,9 @@ def create_app(
                 issues_session, resolved_settings.issues_yaml_path
             )
             issues_session.commit()
+        with Session(resolved_game_engine) as news_session:
+            ensure_news_bootstrapped(news_session, resolved_settings.news_yaml_path)
+            news_session.commit()
 
         manager = ConnectionManager()
         bus = EventBus()
@@ -207,6 +214,7 @@ def create_app(
 
     # New HTMX + Jinja web UI (becomes the primary player UI)
     app.include_router(web_router)  # routes at /lobby, /game, /command, /partials/...
+    app.include_router(news_api_router)  # public /api/news, /api/news/feed
 
     # Mount new static tree (css/ js/ under /static)
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
@@ -416,6 +424,7 @@ def _handle_websocket_command(
             npc_repo=NpcRepo(game_session),
             quest_repo=QuestRepo(game_session),
             dialogue_repo=DialogueRepo(game_session),
+            news_repo=NewsRepo(game_session),
             manager=state.manager,
             bus=state.bus,
             audit=AuditRepo(audit_session),

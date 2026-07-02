@@ -17,6 +17,7 @@ from lorecraft.models.world import Room, WorldClock
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
@@ -42,6 +43,7 @@ class GameContext:
     commit_audit: Callable[[], None] | None = None
     quest_repo: QuestRepo | None = None
     dialogue_repo: DialogueRepo | None = None
+    news_repo: NewsRepo | None = None
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
@@ -127,6 +129,7 @@ def build_game_context(
         npc_repo=NpcRepo(session),
         quest_repo=QuestRepo(session),
         dialogue_repo=DialogueRepo(session),
+        news_repo=NewsRepo(session),
         manager=manager,
         bus=bus,
         audit=AuditRepo(session) if create_audit_repo else None,

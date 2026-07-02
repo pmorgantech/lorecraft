@@ -3,6 +3,7 @@
 from lorecraft.commands.inventory import register_inventory_commands
 from lorecraft.commands.meta import register_meta_commands
 from lorecraft.commands.movement import register_movement_commands
+from lorecraft.commands.news import register_news_commands
 from lorecraft.commands.social import register_social_commands
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.services.container import ServiceContainer
@@ -23,3 +24,4 @@ def register_all_commands(
     register_movement_commands(registry, services.movement)
     register_inventory_commands(registry, services.inventory)
     register_social_commands(registry, services.dialogue)
+    register_news_commands(registry)

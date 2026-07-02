@@ -1,0 +1,14 @@
+format_version: "1.0"
+announcements:
+  - id: news-2026-07-02-tooling
+    type: patch
+    title: "Admin tooling: issues & news"
+    body: |
+      The admin panel now tracks issues and announcements in repo-tracked
+      YAML, synced live from the TUI and web admin panel.
+    author: "Game Master"
+    published_at: 2026-07-02T12:00:00Z
+    expires_at: null
+    priority: normal
+    icon: "scroll"
+    tags: [sprint-10.5, tooling]

@@ -27,6 +27,7 @@ from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
@@ -378,6 +379,7 @@ async def handle_command(
             npc_repo=NpcRepo(game_db),
             quest_repo=QuestRepo(game_db),
             dialogue_repo=DialogueRepo(game_db),
+            news_repo=NewsRepo(game_db),
             manager=get_real_manager(request) or get_manager(),
             bus=get_bus(request),
             audit=audit_repo,

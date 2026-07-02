@@ -478,6 +478,45 @@ class IssuesScreen(Screen[None]):
         self.notify("New issue: use the web panel for now (needs a text form)")
 
 
+class NewsScreen(Screen[None]):
+    TITLE = "News (F7)"
+    BINDINGS = [Binding("r", "refresh", "Refresh")]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield DataTable(id="news-table")
+        yield Static("r=refresh  (create/edit via the web panel)", id="news-hint")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one(DataTable)
+        table.add_columns("ID", "Type", "Title", "Priority", "Published")
+        self.action_refresh()
+
+    def action_refresh(self) -> None:
+        self.run_worker(self._load_news, exclusive=True, thread=True)
+
+    def _load_news(self) -> None:
+        api: _Api = self.app.api  # type: ignore[attr-defined]
+        items = api.get("/admin/news")
+        table = self.query_one(DataTable)
+        table.clear()
+        if not isinstance(items, list):
+            return
+        for item in items:
+            published = time.strftime(
+                "%Y-%m-%d", time.localtime(item.get("published_at", 0))
+            )
+            table.add_row(
+                item.get("id", ""),
+                item.get("type", ""),
+                item.get("title", "")[:40],
+                item.get("priority", ""),
+                published,
+                key=item.get("id", ""),
+            )
+
+
 class ClockScreen(Screen[None]):
     TITLE = "Clock (F5)"
     BINDINGS = [
@@ -594,6 +633,7 @@ class LoreCraftAdminApp(App[None]):
         Binding("f4", "switch_screen('changesets')", "Changesets", priority=True),
         Binding("f5", "switch_screen('clock')", "Clock", priority=True),
         Binding("f6", "switch_screen('issues')", "Issues", priority=True),
+        Binding("f7", "switch_screen('news')", "News", priority=True),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -604,6 +644,7 @@ class LoreCraftAdminApp(App[None]):
         "changesets": ChangesetsScreen,
         "clock": ClockScreen,
         "issues": IssuesScreen,
+        "news": NewsScreen,
     }
 
     def __init__(self) -> None:

@@ -775,3 +775,57 @@ async def _test_update_issue_status(tmp_path) -> None:
             token=token,
         )
         assert status == 404
+
+
+# ---------------------------------------------------------------------------
+# News
+# ---------------------------------------------------------------------------
+
+
+def test_create_list_and_delete_news(tmp_path) -> None:
+    anyio.run(_test_create_list_and_delete_news, tmp_path)
+
+
+async def _test_create_list_and_delete_news(tmp_path) -> None:
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        news_yaml_path=str(tmp_path / "news.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="moderator")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="moderator")
+        status, created = await _http(
+            app,
+            "POST",
+            "/admin/news",
+            body={"title": "Welcome to Ashmoore", "type": "server", "body": "Hello!"},
+            token=token,
+        )
+        assert status == 200
+        assert created["title"] == "Welcome to Ashmoore"
+        assert created["author"] == "testadmin"
+
+        status, listed = await _http(app, "GET", "/admin/news", token=token)
+        assert status == 200
+        assert any(n["id"] == created["id"] for n in listed)
+
+        status, feed = await _http(app, "GET", "/api/news")
+        assert status == 200
+        assert any(n["id"] == created["id"] for n in feed)
+
+        status, _ = await _http(
+            app, "DELETE", f"/admin/news/{created['id']}", token=token
+        )
+        assert status == 200
+
+        status, listed_after = await _http(app, "GET", "/admin/news", token=token)
+        assert status == 200
+        assert not any(n["id"] == created["id"] for n in listed_after)
+
+    assert (tmp_path / "news.yaml").is_file()
