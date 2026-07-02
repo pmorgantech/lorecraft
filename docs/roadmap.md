@@ -126,7 +126,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 |---|------|--------|
 | 7.1 | Characterization tests for `web/frontend.py`: state resolution, session reconnect edge cases, feed pagination, error rendering | [x] |
 | 7.2 | Admin API endpoint tests (target ~80% of `admin/api.py` routes) | [x] |
-| 7.3 | Admin WebSocket integration tests | [ ] |
+| 7.3 | Admin WebSocket integration tests | [x] |
 | 7.4 | Event-flow integration tests: command → event → service reaction → client update; handler-ordering assertions | [ ] |
 
 ## Sprint 8 — Module decomposition

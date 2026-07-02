@@ -19,7 +19,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [ ] |
-| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–6 complete; 7.1–7.2 complete |
+| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–6 complete; 7.1–7.3 complete |
 | Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
 | Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
 
