@@ -1,4 +1,9 @@
-"""Dialogue choice/exit condition registry: pluggable predicates for visibility."""
+"""Dialogue choice/exit condition registry: pluggable predicates for visibility.
+
+See docs/feature-registration.md for the complete feature registration pattern,
+which shows how to plug new predicates (combat.has_combat_target, etc.) for
+dialogue conditions without touching dialogue.py.
+"""
 
 from __future__ import annotations
 

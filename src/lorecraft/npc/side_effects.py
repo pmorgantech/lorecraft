@@ -1,4 +1,9 @@
-"""Dialogue side effect registry: pluggable handlers for quest/item/flag effects."""
+"""Dialogue side effect registry: pluggable handlers for quest/item/flag effects.
+
+See docs/feature-registration.md for the complete feature registration pattern,
+which shows how to plug new side effects (combat.start_combat, etc.) without
+modifying dialogue.py.
+"""
 
 from __future__ import annotations
 

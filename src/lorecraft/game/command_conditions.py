@@ -1,4 +1,9 @@
-"""Command condition registry: pluggable predicates for command availability."""
+"""Command condition registry: pluggable predicates for command availability.
+
+See docs/feature-registration.md for the complete feature registration pattern,
+which shows how to plug new condition predicates (combat.has_combat_target, etc.)
+without touching core engine code.
+"""
 
 from __future__ import annotations
 
