@@ -1,8 +1,10 @@
-# Lorecraft — Next Steps
+# Lorecraft — Roadmap
 
 Working roadmap derived from `docs/ARCHITECTURE.md`, `docs/STATUS.md`, `docs/TODO.md`, and recent 0.2.0 development (HTMX migration + parser v1).
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` not started
+
+Sprints are scoped small (1–2 tasks, one subsystem) on purpose, so each sprint/task can be picked up with minimal context.
 
 ---
 
@@ -10,7 +12,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
 Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/quests, save/disconnect, admin tools). Version **0.2.0** added parser v1, quantity inventory, and the HTMX primary UI.
 
-The engine is ahead of the new browser client: dialogue, quests, and multiplayer push existed in the vanilla client but are not fully ported to HTMX yet.
+Sprints 1–2 closed out HTMX parity and command-depth gaps. Remaining work (combat foundation, polish, player interaction) is broken into small, single-focus sprints below.
 
 ---
 
@@ -44,44 +46,127 @@ The engine is ahead of the new browser client: dialogue, quests, and multiplayer
 
 ---
 
-## Sprint 3 — Scheduler + combat foundation
+## Sprint 3 — Scheduler foundation
 
-**Goal:** Phase 8 per `ARCHITECTURE.md` §28.
+**Goal:** Phase 8 per `ARCHITECTURE.md` §28 — the scheduling primitive combat will run on.
 
 | # | Task | Status |
 |---|------|--------|
 | 3.1 | `services/scheduler.py` — DB-backed jobs on `TIME_ADVANCED` | [ ] |
-| 3.2 | `services/combat.py` — sessions, ticks, damage, death/respawn | [ ] |
-| 3.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
-| 3.4 | `commands/combat.py` — `attack`, `flee`; complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 3.5 | Combat UI in HTMX feed + status panel | [ ] |
-| 3.6 | Integration + browser tests for combat loop | [ ] |
 
 ---
 
-## Sprint 4 — Polish + confidence
+## Sprint 4 — Combat core services
 
-**Goal:** Phase 7 completion and test infrastructure.
+**Goal:** Server-side combat resolution, no commands or UI yet.
 
 | # | Task | Status |
 |---|------|--------|
-| 4.1 | Full-screen map modal (pan/zoom) | [ ] |
-| 4.2 | Responsive mobile tab layout | [ ] |
-| 4.3 | World clock / weather status bar push via WS | [ ] |
-| 4.4 | Admin WebSocket integration tests | [ ] |
-| 4.5 | Browser end-to-end test harness for HTMX UI | [ ] |
-| 4.6 | Simulation harness MVP (`tests/simulation/`) | [ ] |
-| 4.7 | Unify 13-step lifecycle across `/ws` and `/command` paths | [ ] |
+| 4.1 | `services/combat.py` — sessions, ticks, damage, death/respawn | [ ] |
+| 4.2 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
 
 ---
 
-## Sprint 5 — Player interaction (Phase 9)
+## Sprint 5 — Combat commands + UI
+
+**Goal:** Expose combat to players.
 
 | # | Task | Status |
 |---|------|--------|
-| 5.1 | `services/trading.py` + trade commands | [ ] |
-| 5.2 | PvP consent + challenge/accept | [ ] |
-| 5.3 | Multi-player trade and PvP tests | [ ] |
+| 5.1 | `commands/combat.py` — `attack`, `flee`; complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
+| 5.2 | Combat UI in HTMX feed + status panel | [ ] |
+
+---
+
+## Sprint 6 — Combat testing
+
+**Goal:** Close out Phase 8/8.5 with coverage.
+
+| # | Task | Status |
+|---|------|--------|
+| 6.1 | Integration + browser tests for combat loop | [ ] |
+
+---
+
+## Sprint 7 — Full-screen map
+
+| # | Task | Status |
+|---|------|--------|
+| 7.1 | Full-screen map modal (pan/zoom) | [ ] |
+
+---
+
+## Sprint 8 — Mobile layout
+
+| # | Task | Status |
+|---|------|--------|
+| 8.1 | Responsive mobile tab layout | [ ] |
+
+---
+
+## Sprint 9 — World clock/weather push
+
+| # | Task | Status |
+|---|------|--------|
+| 9.1 | World clock / weather status bar push via WS | [ ] |
+
+---
+
+## Sprint 10 — Admin WebSocket tests
+
+| # | Task | Status |
+|---|------|--------|
+| 10.1 | Admin WebSocket integration tests | [ ] |
+
+---
+
+## Sprint 11 — Browser E2E harness
+
+| # | Task | Status |
+|---|------|--------|
+| 11.1 | Browser end-to-end test harness for HTMX UI | [ ] |
+
+---
+
+## Sprint 12 — Simulation harness MVP
+
+| # | Task | Status |
+|---|------|--------|
+| 12.1 | Simulation harness MVP (`tests/simulation/`) | [ ] |
+
+---
+
+## Sprint 13 — Unify command lifecycle
+
+| # | Task | Status |
+|---|------|--------|
+| 13.1 | Unify 13-step lifecycle across `/ws` and `/command` paths | [ ] |
+
+---
+
+## Sprint 14 — Trading
+
+**Goal:** Phase 9 per `ARCHITECTURE.md` §28.
+
+| # | Task | Status |
+|---|------|--------|
+| 14.1 | `services/trading.py` + trade commands | [ ] |
+
+---
+
+## Sprint 15 — PvP consent
+
+| # | Task | Status |
+|---|------|--------|
+| 15.1 | PvP consent + challenge/accept | [ ] |
+
+---
+
+## Sprint 16 — Multiplayer trade/PvP tests
+
+| # | Task | Status |
+|---|------|--------|
+| 16.1 | Multi-player trade and PvP tests | [ ] |
 
 ---
 
@@ -92,7 +177,7 @@ The engine is ahead of the new browser client: dialogue, quests, and multiplayer
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | Bug/todo letterbox | In-world or admin-facing feedback |
 | Inventory encumbrance / wear slots | After equipment + combat |
-| Playback scripts / many-player harness | Tied to simulation harness (Sprint 4.6) |
+| Playback scripts / many-player harness | Tied to simulation harness (Sprint 12.1) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
 
 ---
@@ -109,7 +194,7 @@ The engine is ahead of the new browser client: dialogue, quests, and multiplayer
 
 ## Build-order reference
 
-See `docs/ARCHITECTURE.md` §28. Combat (Phase 8) is the next major architecture milestone after HTMX parity and command depth.
+See `docs/ARCHITECTURE.md` §28. Combat (Sprints 3–6) is the next major architecture milestone after HTMX parity and command depth, followed by polish (Sprints 7–13) and player interaction (Sprints 14–16).
 
 ---
 
@@ -136,4 +221,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 2 complete (container/open patterns deferred, see 2.5); dev seed aligned to Ashmoore.*
+*Last updated: 2026-07-02 — Renamed from NEXT_STEPS.md; remaining sprints (3–5) broken into 14 smaller, single-focus sprints (3–16) to reduce per-sprint context.*
