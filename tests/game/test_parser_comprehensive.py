@@ -129,6 +129,18 @@ class TestAmbiguity:
         assert "target" not in result.commands[0].resolved_ids
 
 
+class TestAliasResolution:
+    def test_examine_resolves_item_by_alias(self, mock_context):
+        result = parse_command("examine blade", context=mock_context)
+        assert not result.error_message
+        assert result.commands[0].resolved_ids.get("target") == "rusty_iron_sword"
+
+    def test_examine_resolves_item_by_second_alias(self, mock_context):
+        result = parse_command("examine shortsword", context=mock_context)
+        assert not result.error_message
+        assert result.commands[0].resolved_ids.get("target") == "rusty_iron_sword"
+
+
 class TestErrorsAndEdges:
     def test_empty(self):
         result = parse_command("")

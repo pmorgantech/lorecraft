@@ -46,6 +46,7 @@ class ItemData(BaseModel):
     description: str
     takeable: bool = True
     tradeable: bool = True
+    aliases: list[str] = Field(default_factory=list)
     usable_with: list[str] = Field(default_factory=list)
     loot_table: dict[str, object] = Field(default_factory=dict)
 

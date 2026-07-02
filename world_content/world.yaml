@@ -546,6 +546,9 @@ items:
     description: A short sword eaten through with rust.
     takeable: true
     tradeable: true
+    aliases:
+      - blade
+      - shortsword
 
   - id: red_rose
     name: Red Rose

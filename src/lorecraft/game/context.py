@@ -77,7 +77,7 @@ class GameContext:
         """Return room items and NPCs as (id, name, aliases) for parser resolution."""
         entities: list[tuple[str, str, list[str]]] = []
         for _room_item, item in self.item_repo.items_in_room(self.room.id):
-            entities.append((item.id, item.name, []))
+            entities.append((item.id, item.name, list(item.aliases)))
         for npc in self.npc_repo.in_room(self.room.id):
             entities.append((npc.id, npc.name, [npc.name.lower()]))
         return entities
@@ -88,5 +88,5 @@ class GameContext:
         for item_id in self.player.inventory:
             item = self.item_repo.get(item_id)
             if item is not None:
-                inventory.append((item.id, item.name, []))
+                inventory.append((item.id, item.name, list(item.aliases)))
         return inventory

@@ -37,6 +37,7 @@ class SimilarItemSpec:
     name: str
     description: str
     takeable: bool = True
+    aliases: tuple[str, ...] = ()
 
 
 SIMILAR_ITEM_SPECS: tuple[SimilarItemSpec, ...] = (
@@ -58,6 +59,7 @@ SIMILAR_ITEM_SPECS: tuple[SimilarItemSpec, ...] = (
         "rusty_iron_sword",
         "Rusty Iron Sword",
         "A short sword eaten through with rust.",
+        aliases=("blade", "shortsword"),
     ),
     SimilarItemSpec("red_rose", "Red Rose", "A silk rose, unnaturally perfect."),
 )
@@ -65,7 +67,7 @@ SIMILAR_ITEM_SPECS: tuple[SimilarItemSpec, ...] = (
 
 def similar_item_entities() -> list[tuple[str, str, list[str]]]:
     """Parser/inventory candidate tuples: (id, name, aliases)."""
-    return [(spec.id, spec.name, []) for spec in SIMILAR_ITEM_SPECS]
+    return [(spec.id, spec.name, list(spec.aliases)) for spec in SIMILAR_ITEM_SPECS]
 
 
 def seed_similar_items(session: Session) -> None:
@@ -78,6 +80,7 @@ def seed_similar_items(session: Session) -> None:
                     name=spec.name,
                     description=spec.description,
                     takeable=spec.takeable,
+                    aliases=list(spec.aliases),
                 )
             )
 

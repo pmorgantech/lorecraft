@@ -40,6 +40,7 @@ class Item(SQLModel, table=True):
     description: str
     takeable: bool = True
     tradeable: bool = True
+    aliases: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     usable_with: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
 
