@@ -6,9 +6,17 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Summary
 
-**Sprint 8 Complete** — Module decomposition across web, parser, and admin API layers. `web/frontend.py` 1,306→784 lines (+2 modules), `game/parser.py` 778→399 lines (+2 modules), `admin/api.py` 817→20 lines (+5 per-resource routers). All 336 tests passing. Unblocks Sprint 9 (service consistency wiring).
+**Sprints 8–9 Complete** — Module decomposition (web/parser/admin API split into 9 focused modules) followed by service consistency: one `ServiceContainer` built once and threaded through command registration and event wiring, a shared `register(bus)` convention across all gameplay services, DRY'd inventory take/drop logic, and one consolidated item-matching helper in `ItemRepo`. All 336 tests passing throughout; basedpyright 0 errors on `src/`. Unblocks Sprint 10 (extensibility seams).
 
 ### Added
+
+- **Sprint 9.4: Item Matcher Consolidation** — Replaced three near-identical inline matching loops in `repos/item_repo.py` with one `_match_kind()` classifier plus two thin aggregators: `_best_matches()` (exact-wins, fuzzy-fallback; used by `search_in_room`/`search_player_items`) and `_any_matches()` (position-preserving any-match filter; used by `inventory_slots_matching`, which must stay positionally addressable for indexed take/drop like "2.sword"). Verified position ordering is unchanged with a mixed exact/fuzzy manual check. Same public API, same behavior.
+
+- **Sprint 9.3: Inventory Take/Drop DRY** — Added `InventoryService._resolve_single()` (shared find→disambiguate step, generic over match shape via an `item_of` extractor) and `_do_take()`/`_do_drop()` (shared act step: remove, say, tell_room, emit event). Applied to `_take_one`, `_take_quantity`, `_take_indexed`, `_drop_one`, `_drop_quantity`, `_drop_indexed`, plus `examine`/`use_item`/`give_item` which had the same boilerplate. Behavior preserved exactly (same messages, same disambiguation prompts, same event counts).
+
+- **Sprint 9.2: Event-Wiring Convention** — `QuestService.register(bus)` added, matching the convention already used by `NpcScheduler`/`SchedulerService`. Replaces the three inline `bus.on(GameEvent.X, quest_service.check_progression)` calls in `main.py`'s lifespan with one `services.quest.register(bus)` call.
+
+- **Sprint 9.1: Service Container** — `services/container.py` — `ServiceContainer` dataclass holding the five stateless gameplay services (movement, inventory, save, dialogue, quest), built once via `ServiceContainer.build()`. `AppState` now carries a `services` field; `main.py` builds one container per app lifespan and passes it to both command registration and event wiring instead of each command module (and `main.py`'s inline `QuestService()`) constructing its own. `register_all_commands(registry, services=None)` defaults to a fresh container so existing direct-call test sites and the `web/session.py` standalone fallback keep working unchanged. `register_social_commands` gained an optional `dialogue_service` parameter, matching the other three command modules.
 
 - **Sprint 8.3: Admin API Decomposition** — Split `admin/api.py` (817 lines) into per-resource routers under `admin/routers/`:
   - `players.py` (191 lines) — list/state/teleport/flags/freeze/unfreeze

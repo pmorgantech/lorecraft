@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–8 complete (error handling, type safety, characterization tests, web+parser+admin API module decomposition). **Next up: Sprint 9 (service consistency wiring).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–9 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring). **Next up: Sprint 10 (extensibility seams).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–8 complete (error handling, type safety, characterization tests, web+parser+admin API decomposition). Sprint 9 (service consistency) next.
+**Current progress:** Sprints 5–9 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring). Sprint 10 (extensibility seams) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -139,16 +139,16 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 8.2 | Extract `game/grammar.py` (322 lines) and `game/diagnostics.py` (119 lines) from `game/parser.py` (774→407 lines); re-exports for backwards compatibility | [x] |
 | 8.3 | Split `admin/api.py` (817→20 lines) into per-resource routers under `admin/routers/`: `players.py` (191), `audit.py` (93), `world.py` (357, incl. items/NPCs/changesets), `clock.py` (125), `accounts.py` (93); `admin_router` now just mounts them, same route paths and status codes | [x] |
 
-## Sprint 9 — Service consistency & wiring
+## Sprint 9 — Service consistency & wiring ✅
 
 **Goal:** One way to construct, wire, and use services. Audit §3.1.
 
 | # | Task | Status |
 |---|------|--------|
-| 9.1 | Service container/registry in `AppState`; remove ad-hoc `Service()` instantiation from the four command modules | [ ] |
-| 9.2 | One event-wiring convention: every service exposes `register(bus)`; replace the inline `bus.on()` quest wiring in `main.py` | [ ] |
-| 9.3 | DRY the six near-identical take/drop methods in `services/inventory.py` (shared find→disambiguate→act helper) | [ ] |
-| 9.4 | Consolidate item-matching logic in `repos/item_repo.py` into one matcher | [ ] |
+| 9.1 | Service container/registry in `AppState`; remove ad-hoc `Service()` instantiation from the four command modules | [x] |
+| 9.2 | One event-wiring convention: every service exposes `register(bus)`; replace the inline `bus.on()` quest wiring in `main.py` | [x] |
+| 9.3 | DRY the six near-identical take/drop methods in `services/inventory.py` (shared find→disambiguate→act helper) | [x] |
+| 9.4 | Consolidate item-matching logic in `repos/item_repo.py` into one matcher | [x] |
 
 ## Sprint 10 — Extensibility seams
 
@@ -317,4 +317,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 8 complete (module decomposition: web/parser/admin API split into focused modules). Next: Sprint 9 (service consistency wiring).*
+*Last updated: 2026-07-02 — Sprint 9 complete (service consistency: ServiceContainer in AppState, register(bus) convention, DRY'd inventory take/drop, consolidated item matcher). Next: Sprint 10 (extensibility seams).*
