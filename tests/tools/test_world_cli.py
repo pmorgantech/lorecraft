@@ -230,3 +230,44 @@ rooms:
     assert code == 0
     assert "rooms:          1" in out
     assert "items:          0" in out
+
+
+def test_validate_reports_lint_warnings_without_failing_by_default(tmp_path) -> None:
+    world_file = tmp_path / "world.yaml"
+    world_file.write_text(_SAMPLE_WORLD, encoding="utf-8")
+
+    code, out = _run(["validate", "--file", str(world_file), "--start-room", "tavern"])
+    assert code == 0
+    assert "Schema valid" in out
+
+
+def test_validate_strict_fails_on_lint_warnings(tmp_path) -> None:
+    world_file = tmp_path / "world.yaml"
+    world_data = yaml.safe_load(_SAMPLE_WORLD)
+    world_data["rooms"].append(
+        {
+            "id": "island",
+            "name": "Island",
+            "description": "Cut off.",
+            "map_x": 5,
+            "map_y": 5,
+        }
+    )
+    world_file.write_text(yaml.safe_dump(world_data), encoding="utf-8")
+
+    code, out = _run(["validate", "--file", str(world_file), "--start-room", "tavern"])
+    assert code == 0
+    assert "island" in out
+    assert "unreachable" in out
+
+    code, out = _run(
+        [
+            "validate",
+            "--file",
+            str(world_file),
+            "--start-room",
+            "tavern",
+            "--strict",
+        ]
+    )
+    assert code == 1

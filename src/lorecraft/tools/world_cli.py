@@ -25,6 +25,7 @@ from lorecraft.db import create_tables, database_url
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.quest import Quest
 from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem
+from lorecraft.tools.validators import run_all_checks
 from lorecraft.world.loader import export_world_document, load_world_yaml
 from lorecraft.world.validator import (
     WorldDocument,
@@ -99,6 +100,19 @@ def cmd_validate(args: argparse.Namespace) -> int:
         f"{len(document.npcs)} NPCs, {len(document.quests)} quests)"
     )
     print("✓ All room/item/NPC references resolved")
+
+    lint = run_all_checks(document, start_room_id=args.start_room)
+    for warning in lint.warnings:
+        print(f"⚠ {warning}")
+    for error in lint.errors:
+        print(f"✗ {error}")
+    if not lint.warnings and not lint.errors:
+        print("✓ No lint warnings")
+
+    if lint.errors:
+        return 1
+    if lint.warnings and args.strict:
+        return 1
     return 0
 
 
@@ -219,6 +233,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_validate = subparsers.add_parser("validate", help="Validate world YAML")
     p_validate.add_argument("--file", required=True)
+    p_validate.add_argument(
+        "--start-room", help="Room id to check reachability from (optional)"
+    )
+    p_validate.add_argument(
+        "--strict", action="store_true", help="Exit non-zero on lint warnings too"
+    )
     p_validate.set_defaults(func=cmd_validate)
 
     p_diff = subparsers.add_parser(
