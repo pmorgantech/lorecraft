@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
-import difflib
 import logging
-import shlex
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
+from lorecraft.game.grammar import (
+    DEFERRED_DISAMBIGUATION_ROLE,
+    DIRECTION_ALIASES,
+    DIRECTIONS,
+    PHRASAL_ROLE_HINTS,
+    PHRASAL_VERBS,
+    direct_role_for_verb,
+    extract_quantity_and_adjectives,
+    find_first_preposition,
+    make_phrase,
+    map_prep_to_role,
+    normalize,
+    registry_verb,
+    resolve_verb_token,
+    score_match,
+    tokenize,
+)
 from lorecraft.types import JsonValue
 
 if TYPE_CHECKING:
@@ -15,191 +30,11 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-ARTICLES = {"a", "an", "the", "some", "one"}
-
-PREPOSITIONS = {
-    "on",
-    "in",
-    "into",
-    "to",
-    "at",
-    "with",
-    "from",
-    "onto",
-    "upon",
-    "under",
-    "behind",
-    "inside",
-    "out",
-    "off",
-    "about",
-}
-PREP_TO_ROLE = {
-    "on": "destination",
-    "in": "destination",
-    "into": "destination",
-    "to": "recipient",
-    "at": "target",
-    "with": "instrument",
-    "from": "source",
-    "about": "topic",
-}
-
-PHRASAL_VERBS = {
-    "pick up": "take",
-    "look at": "examine",
-    "look in": "examine",
-    "go to": "move",
-}
-
-TOKEN_VERB_ALIASES = {
-    "l": "look",
-    "i": "inventory",
-    "inv": "inventory",
-    "x": "examine",
-    "examine": "examine",
-    "inspect": "examine",
-}
-
-DIRECTION_ALIASES = {
-    "n": "north",
-    "s": "south",
-    "e": "east",
-    "w": "west",
-    "ne": "northeast",
-    "nw": "northwest",
-    "se": "southeast",
-    "sw": "southwest",
-    "u": "up",
-    "d": "down",
-}
-
-DIRECTIONS = frozenset(
-    {
-        "north",
-        "south",
-        "east",
-        "west",
-        "up",
-        "down",
-        "northeast",
-        "northwest",
-        "southeast",
-        "southwest",
-        *DIRECTION_ALIASES.values(),
-    }
-)
-
-VERB_ALIASES = {
-    "n": "move",
-    "north": "move",
-    "south": "move",
-    "east": "move",
-    "west": "move",
-    "up": "move",
-    "down": "move",
-    "get": "take",
-    "grab": "take",
-    "pick": "take",
-}
-
-REGISTRY_VERB_ALIASES = {"move": "go"}
-
-KNOWN_COMMAND_VERBS = frozenset(
-    {
-        "look",
-        "take",
-        "drop",
-        "examine",
-        "inspect",
-        "inventory",
-        "go",
-        "help",
-        "quit",
-        "save",
-        "load",
-        "talk",
-        "speak",
-        "choice",
-        "choose",
-        "say",
-        "bye",
-        "farewell",
-        "goodbye",
-        "north",
-        "south",
-        "east",
-        "west",
-        *TOKEN_VERB_ALIASES.values(),
-        *VERB_ALIASES.values(),
-        *PHRASAL_VERBS.values(),
-    }
-)
-
-QUANTITY_WORDS = {"all", "everything", "some"}
-
-MODIFIER_WORDS = frozenset(
-    {
-        "red",
-        "blue",
-        "green",
-        "black",
-        "white",
-        "small",
-        "large",
-        "big",
-        "old",
-        "new",
-        "worn",
-        "healing",
-        "brass",
-        "iron",
-        "sharp",
-        "rusty",
-        "broken",
-        "golden",
-        "silver",
-        "wooden",
-    }
-)
-
-OBJECT_VERBS = frozenset(
-    {
-        "take",
-        "give",
-        "put",
-        "wear",
-        "remove",
-        "drop",
-        "buy",
-        "use",
-        "say",
-        "whisper",
-        "shout",
-        "yell",
-        "scream",
-    }
-)
-
-PHRASAL_ROLE_HINTS = {
-    "look at": "target",
-    "look in": "destination",
-}
-
-# Verbs whose command handler prompts its own numbered disambiguation
-# (via InventoryService._prompt_disambiguation) rather than relying on the
-# parser's in-character "which did you mean" error.
-DEFERRED_DISAMBIGUATION_ROLE = {
-    "take": "object",
-    "drop": "object",
-    "examine": "target",
-    "use": "object",
-    "give": "object",
-}
-
 
 @dataclass(frozen=True)
 class ParsedCommand:
+    """Parsed command with verb, roles, and optional resolved entity IDs."""
+
     verb: str
     raw: str
     roles: dict[str, JsonValue] = field(default_factory=dict)
@@ -235,117 +70,11 @@ class ParsedCommand:
 
 @dataclass(frozen=True)
 class ParseResult:
+    """Result of parsing a command string."""
+
     commands: list[ParsedCommand] = field(default_factory=list)
     error_message: str | None = None
     suggestions: list[str] = field(default_factory=list)
-
-
-@dataclass
-class ParseStep:
-    name: str
-    details: dict[str, JsonValue] = field(default_factory=dict)
-
-
-@dataclass
-class ParseDiagnostics:
-    raw: str
-    normalized: str = ""
-    tokens: list[str] = field(default_factory=list)
-    steps: list[ParseStep] = field(default_factory=list)
-    final_result: ParseResult | None = None
-    error: str | None = None
-
-
-def registry_verb(verb: str) -> str:
-    return REGISTRY_VERB_ALIASES.get(verb, verb)
-
-
-def _resolve_shortest_verb_prefix(token: str) -> str | None:
-    """Resolve a partial verb to the shortest unique registered command match."""
-    matches = sorted(
-        {verb for verb in KNOWN_COMMAND_VERBS if verb.startswith(token)},
-        key=len,
-    )
-    if not matches or matches[0] == token:
-        return None
-    shortest_len = len(matches[0])
-    shortest = [verb for verb in matches if len(verb) == shortest_len]
-    if len(shortest) == 1:
-        return shortest[0]
-    return None
-
-
-def _resolve_verb_token(verb_token: str) -> str:
-    if verb_token in TOKEN_VERB_ALIASES:
-        return TOKEN_VERB_ALIASES[verb_token]
-    if verb_token in VERB_ALIASES:
-        return VERB_ALIASES[verb_token]
-    if verb_token in KNOWN_COMMAND_VERBS:
-        return verb_token
-    prefix_match = _resolve_shortest_verb_prefix(verb_token)
-    if prefix_match is not None:
-        return prefix_match
-    return verb_token
-
-
-def normalize(text: str) -> str:
-    if not text:
-        return ""
-    return " ".join(text.strip().lower().split())
-
-
-def tokenize(text: str) -> list[str]:
-    text = text.strip()
-    if not text:
-        return []
-    try:
-        return shlex.split(text)
-    except ValueError:
-        return text.split()
-
-
-def _make_phrase(token_list: list[str]) -> str | None:
-    if not token_list:
-        return None
-    cleaned: list[str] = []
-    for tok in token_list:
-        for word in tok.split():
-            if word.lower() not in ARTICLES:
-                cleaned.append(word)
-    return " ".join(cleaned) if cleaned else None
-
-
-def _extract_quantity_and_adjectives(
-    phrase: str | None,
-) -> tuple[int | None, list[str], str | None]:
-    if not phrase:
-        return None, [], None
-    words = phrase.split()
-    quantity: int | None = None
-    start = 0
-    if words and words[0].isdigit():
-        quantity = int(words[0])
-        start = 1
-    remaining = words[start:]
-    if not remaining:
-        return quantity, [], None
-    if quantity is not None:
-        return quantity, [], " ".join(remaining)
-    if remaining[0] in QUANTITY_WORDS:
-        return quantity, [], " ".join(remaining)
-    if len(remaining) > 1 and all(
-        word.lower() in MODIFIER_WORDS for word in remaining[:-1]
-    ):
-        return quantity, remaining[:-1], remaining[-1]
-    return quantity, [], " ".join(remaining)
-
-
-def _direct_role_for_verb(verb: str) -> str:
-    if verb in OBJECT_VERBS:
-        return "object"
-    if verb in {"talk", "ask"}:
-        return "recipient"
-    return "target"
 
 
 def _assign_direct_role(
@@ -358,7 +87,8 @@ def _assign_direct_role(
     noun: str | None,
     direct_phrase: str | None,
 ) -> None:
-    role_key = direct_role or _direct_role_for_verb(verb)
+    """Assign the direct semantic role based on verb and parsed components."""
+    role_key = direct_role or direct_role_for_verb(verb)
     if quantity is not None:
         roles["quantity"] = quantity
     if adjectives:
@@ -367,18 +97,6 @@ def _assign_direct_role(
         roles[role_key] = noun
     elif direct_phrase:
         roles[role_key] = direct_phrase
-
-
-def _find_first_preposition(tokens: list[str]) -> tuple[int, str] | None:
-    for index, token in enumerate(tokens):
-        lowered = token.lower()
-        if lowered in PREPOSITIONS:
-            return index, lowered
-    return None
-
-
-def _map_prep_to_role(prep: str) -> str:
-    return PREP_TO_ROLE.get(prep, "target")
 
 
 def parse_command(
@@ -436,7 +154,7 @@ def parse_command(
             ]
         )
 
-    verb = _resolve_verb_token(verb_token)
+    verb = resolve_verb_token(verb_token)
     phrasal_role_hint: str | None = None
 
     for length in (3, 2):
@@ -475,20 +193,20 @@ def parse_command(
                     ParsedCommand(verb="move", raw=raw, roles={"direction": direction})
                 ]
             )
-    if verb == "look" and _find_first_preposition(rest) is not None:
+    if verb == "look" and find_first_preposition(rest) is not None:
         verb = "examine"
 
-    prep_info = _find_first_preposition(rest)
+    prep_info = find_first_preposition(rest)
     roles: dict[str, JsonValue] = {}
 
     if prep_info:
         index, prep = prep_info
         direct_tokens = rest[:index]
         indirect_tokens = rest[index + 1 :]
-        direct_phrase = _make_phrase(direct_tokens)
-        indirect_phrase = _make_phrase(indirect_tokens)
+        direct_phrase = make_phrase(direct_tokens)
+        indirect_phrase = make_phrase(indirect_tokens)
 
-        quantity, adjectives, noun = _extract_quantity_and_adjectives(direct_phrase)
+        quantity, adjectives, noun = extract_quantity_and_adjectives(direct_phrase)
         _assign_direct_role(
             roles,
             verb,
@@ -499,13 +217,13 @@ def parse_command(
             direct_phrase=direct_phrase,
         )
 
-        role_for_prep = _map_prep_to_role(prep)
+        role_for_prep = map_prep_to_role(prep)
         if indirect_phrase:
             roles[role_for_prep] = indirect_phrase
         roles.setdefault("preposition", prep)
     else:
-        direct_phrase = _make_phrase(rest)
-        quantity, adjectives, noun = _extract_quantity_and_adjectives(direct_phrase)
+        direct_phrase = make_phrase(rest)
+        quantity, adjectives, noun = extract_quantity_and_adjectives(direct_phrase)
         _assign_direct_role(
             roles,
             verb,
@@ -544,9 +262,9 @@ def parse_command(
                     continue
                 entity_id, name = item[0], item[1]
                 aliases = item[2] if len(item) > 2 else []
-                score = _score_match(phrase, name, aliases)
-                if score > 0.5:
-                    matches.append((score, entity_id, name))
+                score_val = score_match(phrase, name, aliases)
+                if score_val > 0.5:
+                    matches.append((score_val, entity_id, name))
             if not matches:
                 return None, [], ""
             matches.sort(reverse=True)
@@ -597,8 +315,6 @@ def parse_command(
                 continue
             resolved_id, suggestions, note = resolve_phrase(phrase)
             if suggestions:
-                # Some verbs implement their own numbered disambiguation prompt
-                # (InventoryService) — defer to it instead of erroring here.
                 if DEFERRED_DISAMBIGUATION_ROLE.get(verb) != role_key:
                     return ParseResult(error_message=note, suggestions=suggestions)
                 resolved_id = None
@@ -618,9 +334,9 @@ def parse_command(
                     continue
                 entity_id, name = item[0], item[1]
                 aliases = item[2] if len(item) > 2 else []
-                score = _score_match(phrase, name, aliases)
-                if score > 0.5:
-                    matches.append((score, entity_id, name))
+                score_val = score_match(phrase, name, aliases)
+                if score_val > 0.5:
+                    matches.append((score_val, entity_id, name))
             if not matches:
                 return None, ""
             matches.sort(reverse=True)
@@ -671,108 +387,3 @@ def parse(raw: str) -> ParsedCommand:
         resolved_ids=command.resolved_ids,
         parse_notes=command.parse_notes,
     )
-
-
-def _score_match(query: str, name: str, aliases: list[str] | None = None) -> float:
-    normalized_query = normalize(query)
-    normalized_name = normalize(name)
-    if not normalized_query:
-        return 0.0
-    if normalized_query == normalized_name:
-        return 1.0
-    if normalized_query in normalized_name or normalized_name in normalized_query:
-        return 0.9
-    query_words = set(normalized_query.split())
-    name_words = set(normalized_name.split())
-    if query_words and name_words:
-        overlap = len(query_words & name_words) / max(len(query_words), len(name_words))
-        if overlap > 0.4:
-            return 0.6 + 0.3 * overlap
-    ratio = difflib.SequenceMatcher(None, normalized_query, normalized_name).ratio()
-    best_alias = max(
-        (_score_match(normalized_query, alias) for alias in (aliases or [])),
-        default=0.0,
-    )
-    return max(ratio * 0.8, best_alias)
-
-
-def diagnose_command(
-    raw: str,
-    context: GameContext | None = None,
-    *,
-    verbose: bool = True,
-) -> ParseDiagnostics:
-    diag = ParseDiagnostics(raw=raw)
-    diag.normalized = normalize(raw)
-    diag.tokens = tokenize(diag.normalized)
-    diag.steps.append(
-        ParseStep(
-            "normalize_tokenize",
-            {
-                "normalized": diag.normalized,
-                "tokens": cast(JsonValue, diag.tokens),
-            },
-        )
-    )
-
-    result = parse_command(raw, context=context)
-    diag.final_result = result
-
-    if result.commands:
-        diag.steps.append(
-            ParseStep(
-                "final_commands",
-                {
-                    "count": len(result.commands),
-                    "verbs": cast(
-                        JsonValue, [command.verb for command in result.commands]
-                    ),
-                    "roles": cast(
-                        JsonValue, [command.roles for command in result.commands]
-                    ),
-                },
-            )
-        )
-    else:
-        diag.error = result.error_message
-        diag.steps.append(
-            ParseStep(
-                "error",
-                {
-                    "message": result.error_message,
-                    "suggestions": cast(JsonValue, result.suggestions),
-                },
-            )
-        )
-
-    if verbose:
-        _print_diagnostics(diag)
-    return diag
-
-
-def _print_diagnostics(diag: ParseDiagnostics) -> None:
-    print(f"\n{'=' * 60}")
-    print("LORECRAFT PARSER DIAGNOSTICS")
-    print(f"Raw input : {diag.raw!r}")
-    print(f"Normalized: {diag.normalized}")
-    print(f"Tokens    : {diag.tokens}")
-    print("-" * 60)
-    for step in diag.steps:
-        print(f"\n[ {step.name} ]")
-        for key, value in step.details.items():
-            print(f"  {key}: {value}")
-    if diag.final_result:
-        print("\n--- FINAL RESULT ---")
-        if diag.final_result.commands:
-            for index, command in enumerate(diag.final_result.commands):
-                print(f"Command {index + 1}: verb={command.verb}")
-                print(f"  roles: {command.roles}")
-                if command.resolved_ids:
-                    print(f"  resolved: {command.resolved_ids}")
-                if command.parse_notes:
-                    print(f"  notes: {command.parse_notes}")
-        if diag.final_result.error_message:
-            print(f"Error (in-character): {diag.final_result.error_message}")
-            if diag.final_result.suggestions:
-                print(f"Suggestions: {diag.final_result.suggestions}")
-    print("=" * 60 + "\n")
