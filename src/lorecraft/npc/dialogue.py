@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import time
 from typing import TYPE_CHECKING
 
-from lorecraft.game.events import GameEvent
-from lorecraft.models.quest import PlayerQuestProgress
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
@@ -186,60 +183,15 @@ def _visible_choices(node: JsonObject, ctx: GameContext) -> list[JsonObject]:
 
 
 def _apply_side_effects(effects: JsonObject, ctx: GameContext) -> None:
-    if not effects:
-        return
-    for flag in effects.get("set_flags", []):  # type: ignore[union-attr]
-        ctx.player.flags = {**ctx.player.flags, str(flag): True}
-    for flag in effects.get("clear_flags", []):  # type: ignore[union-attr]
-        flags = {**ctx.player.flags}
-        flags.pop(str(flag), None)
-        ctx.player.flags = flags
-    give_item = effects.get("give_item")
-    if give_item:
-        item_id = str(give_item)
-        item = ctx.item_repo.get(item_id)
-        if item and item_id not in ctx.player.inventory:
-            ctx.player.inventory = [*ctx.player.inventory, item_id]
-            ctx.say(f"You receive {item.name}.")
-            ctx.push_update("inventory", list(ctx.player.inventory))
-    start_quest = effects.get("start_quest")
-    if start_quest and ctx.quest_repo is not None:
-        _start_quest(str(start_quest), ctx)
-    if effects.get("end_dialogue"):
-        flags = {**ctx.player.flags}
-        flags.pop(_NPC_KEY, None)
-        flags.pop(_NODE_KEY, None)
-        ctx.player.flags = flags
-        ctx.push_update("dialogue", None)
+    """Apply dialogue side effects using the registered handlers."""
+    from lorecraft.npc.side_effects import get_registry
+
+    registry = get_registry()
+    registry.apply(effects, ctx)
 
 
 def _start_quest(quest_id: str, ctx: GameContext) -> None:
-    if ctx.quest_repo is None:
-        return
-    quest = ctx.quest_repo.get(quest_id)
-    if quest is None or not quest.stages:
-        return
-    if ctx.quest_repo.player_progress(ctx.player.id, quest_id) is not None:
-        return
-    first_stage = quest.stages[0]
-    ctx.quest_repo.add_progress(
-        PlayerQuestProgress(
-            player_id=ctx.player.id,
-            quest_id=quest_id,
-            current_stage_id=str(first_stage["id"]),
-            status="active",
-            started_at=time.time(),
-        )
-    )
-    ctx.say(f"Quest started: {quest.title}.")
-    ctx.push_update(
-        "quest_update",
-        {
-            "quest_id": quest_id,
-            "title": quest.title,
-            "stage_id": str(first_stage["id"]),
-            "stage_description": str(first_stage.get("description", "")),
-            "status": "active",
-        },
-    )
-    ctx.queue_event(GameEvent.QUEST_UPDATED, quest_id=quest_id, player_id=ctx.player.id)
+    """Start a quest for the player. Kept for backward compatibility with tests."""
+    from lorecraft.npc.side_effects import _handle_start_quest
+
+    _handle_start_quest(quest_id, ctx)
