@@ -6,7 +6,7 @@ find test data for similar item names.
 
 Related references:
 
-- [COMMAND_PARSER.md](COMMAND_PARSER.md) — parser output model and pattern taxonomy
+- [command_parser.md](command_parser.md) — parser output model and pattern taxonomy
 - `src/lorecraft/game/command_patterns.py` — typed role helpers
 - `tests/fixtures/disambig_fixtures.py` — pytest-only similar-item test room
 

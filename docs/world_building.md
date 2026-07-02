@@ -35,17 +35,17 @@ room_items:
     item_id: iron_sword
     quantity: 1
 
-# npcs: NPC definitions (see DIALOGUE_NPCs_QUESTS.md)
+# npcs: NPC definitions (see dialogue_npcs_quests.md)
 npcs:
   - id: blacksmith_thor
     # ... npc fields
 
-# dialogue_trees: Dialogue definitions (see DIALOGUE_NPCs_QUESTS.md)
+# dialogue_trees: Dialogue definitions (see dialogue_npcs_quests.md)
 dialogue_trees:
   - id: blacksmith_dialogue
     # ... dialogue fields
 
-# quests: Quest definitions (see DIALOGUE_NPCs_QUESTS.md)
+# quests: Quest definitions (see dialogue_npcs_quests.md)
 quests:
   - id: fetch_ore
     # ... quest fields
@@ -681,6 +681,6 @@ Validation errors will raise `WorldValidationError` with details.
 
 ## Next Steps
 
-1. **Read DIALOGUE_NPCs_QUESTS.md** to populate your world with characters and objectives.
+1. **Read dialogue_npcs_quests.md** to populate your world with characters and objectives.
 2. **Playtest** by moving through rooms, picking up items, reading descriptions.
 3. **Iterate** based on feel: does navigation flow? Are descriptions evocative? Do items feel purposeful?

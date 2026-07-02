@@ -4,7 +4,7 @@
 >
 > **Implementation status:**
 > - **Current progress:** See [`roadmap.md`](roadmap.md) (Sprints 1–3 complete; Sprints 4–16 planned)
-> - **Detailed checklist:** See [`STATUS.md`](STATUS.md) (tracks Phases 1–9 completion)
+> - **Detailed checklist:** See [`status.md`](status.md) (tracks Phases 1–9 completion)
 
 ---
 
@@ -616,7 +616,7 @@ Converts raw text input to structured commands with semantic **roles** (object, 
 direction, message, …). Supports prepositions, quantities, compounds (`;`), and optional
 `GameContext` entity resolution.
 
-See **[COMMAND_PARSER.md](COMMAND_PARSER.md)** for role keys, command patterns (movement,
+See **[command_parser.md](command_parser.md)** for role keys, command patterns (movement,
 speech, transfer, containers, gestures, …), handler integration guidance, and test
 conventions.
 

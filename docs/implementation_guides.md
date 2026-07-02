@@ -8,10 +8,10 @@ This directory contains focused, code-focused implementation guides extracted fr
 
 | Guide | Subsystem | Purpose |
 |-------|-----------|---------|
-| [PLAYER_AUTHENTICATION.md](PLAYER_AUTHENTICATION.md) | Player Authentication (§21) | Local username/password auth, JWT flow, WebSocket ticket system, OAuth extensibility |
-| [DISCONNECT_HANDLING.md](DISCONNECT_HANDLING.md) | Disconnect Handling (§18) | Grace periods, reconnection, system-controlled state, combat pause behavior |
-| [WORLD_VERSIONING_CHANGESETS.md](WORLD_VERSIONING_CHANGESETS.md) | World Versioning & Changesets (§19) | Changeset lifecycle, Builder Mode, lazy migration, conflict scanning |
-| [COMBAT_SYSTEM.md](COMBAT_SYSTEM.md) | Combat System (§15) | Tick-based combat, damage resolution, NPC AI, kill credit, loot drops |
+| [player_authentication.md](player_authentication.md) | Player Authentication (§21) | Local username/password auth, JWT flow, WebSocket ticket system, OAuth extensibility |
+| [disconnect_handling.md](disconnect_handling.md) | Disconnect Handling (§18) | Grace periods, reconnection, system-controlled state, combat pause behavior |
+| [world_versioning_changesets.md](world_versioning_changesets.md) | World Versioning & Changesets (§19) | Changeset lifecycle, Builder Mode, lazy migration, conflict scanning |
+| [combat_system.md](combat_system.md) | Combat System (§15) | Tick-based combat, damage resolution, NPC AI, kill credit, loot drops |
 
 ## What's in Each Guide
 
@@ -23,7 +23,7 @@ Each implementation guide includes:
 4. **Configuration** — Environment variables and tuning knobs
 5. **Testing** — Pytest patterns for unit and integration tests
 
-### PLAYER_AUTHENTICATION.md
+### player_authentication.md
 
 **Covers:**
 - Account creation on first login (no separate registration)
@@ -41,7 +41,7 @@ Each implementation guide includes:
 - WebSocket handshake with ticket validation
 - Google OAuth callback handler (for future use)
 
-### DISCONNECT_HANDLING.md
+### disconnect_handling.md
 
 **Covers:**
 - Grace period behavior (60 seconds default)
@@ -59,7 +59,7 @@ Each implementation guide includes:
 - `ConnectionManager` integration
 - Scheduler integration for expiration checks
 
-### WORLD_VERSIONING_CHANGESETS.md
+### world_versioning_changesets.md
 
 **Covers:**
 - Changeset lifecycle (DRAFT → SCANNING → READY → LIVE)
@@ -78,7 +78,7 @@ Each implementation guide includes:
 - `create_builder_clone()` — SQLite clone setup
 - Room displacement and fallback handling
 
-### COMBAT_SYSTEM.md
+### combat_system.md
 
 **Covers:**
 - Tick-based combat model (speed determines action frequency)
@@ -105,7 +105,7 @@ Each implementation guide includes:
 
 ### During Implementation
 
-1. **Start with [ARCHITECTURE.md](ARCHITECTURE.md)** — Get the full picture, understand the 5-layer model (Services → Rules → Transactions → Events → Scheduler)
+1. **Start with [architecture.md](architecture.md)** — Get the full picture, understand the 5-layer model (Services → Rules → Transactions → Events → Scheduler)
 2. **Pick a subsystem** — When implementing a specific feature, jump to the corresponding guide
 3. **Follow the code examples** — Copy patterns, adapt to your codebase
 4. **Run the tests** — Each guide includes pytest patterns; use them as templates
@@ -117,27 +117,27 @@ When reviewing a pull request touching authentication, combat, or world state, r
 ### For Onboarding
 
 New developers should:
-1. Read [ARCHITECTURE.md § 1–5](ARCHITECTURE.md#1-project-identity--philosophy) for foundational concepts
-2. Skim the [Build Order Recommendation (§28)](ARCHITECTURE.md#29-build-order-recommendation) to understand phase dependencies
+1. Read [architecture.md § 1–5](architecture.md#1-project-identity--philosophy) for foundational concepts
+2. Skim the [Build Order Recommendation (§28)](architecture.md#29-build-order-recommendation) to understand phase dependencies
 3. Deep-dive into the guide for the phase they're working on
 
 ---
 
-## Relationship to ARCHITECTURE.md
+## Relationship to architecture.md
 
-The comprehensive [ARCHITECTURE.md](ARCHITECTURE.md) remains the source of truth for the overall design. These guides are **extracted vertical slices** that provide:
+The comprehensive [architecture.md](architecture.md) remains the source of truth for the overall design. These guides are **extracted vertical slices** that provide:
 
 - **More code:** Actual Python/SQLModel examples, not pseudocode
 - **More detail:** Implementation edge cases, testing patterns
 - **More context:** Why specific design choices were made
 
-Think of ARCHITECTURE.md as the blueprint and these guides as the contractor's handbook.
+Think of architecture.md as the blueprint and these guides as the contractor's handbook.
 
 ---
 
 ## Open Questions & Future Work
 
-See [ARCHITECTURE.md § Gaps & Future Considerations](ARCHITECTURE.md#28-gaps--future-considerations) for:
+See [architecture.md § Gaps & Future Considerations](architecture.md#28-gaps--future-considerations) for:
 
 - LAN-party auth hardening for off-LAN deployment
 - Command throughput rate limiting
@@ -152,7 +152,7 @@ See [ARCHITECTURE.md § Gaps & Future Considerations](ARCHITECTURE.md#28-gaps--f
 
 When adding a new major subsystem:
 
-1. Update [ARCHITECTURE.md](ARCHITECTURE.md) with the high-level design (following §1–28 structure)
+1. Update [architecture.md](architecture.md) with the high-level design (following §1–28 structure)
 2. Create a focused implementation guide (following the pattern here)
 3. Update this index
 

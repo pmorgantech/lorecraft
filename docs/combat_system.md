@@ -506,4 +506,4 @@ async def test_combat_tick_resolution():
 
 ---
 
-*See also: [ARCHITECTURE.md § Combat System](ARCHITECTURE.md#15-subsystem-combat-system)*
+*See also: [architecture.md § Combat System](architecture.md#15-subsystem-combat-system)*

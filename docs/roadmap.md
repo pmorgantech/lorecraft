@@ -1,6 +1,6 @@
 # Lorecraft — Roadmap
 
-Working roadmap derived from `docs/ARCHITECTURE.md`, `docs/STATUS.md`, and recent 0.2.0 development (HTMX migration + parser v1).
+Working roadmap derived from `docs/architecture.md`, `docs/status.md`, and recent 0.2.0 development (HTMX migration + parser v1).
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
@@ -48,7 +48,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ## Sprint 3 — Scheduler foundation
 
-**Goal:** Phase 8 per `ARCHITECTURE.md` §28 — the scheduling primitive combat will run on.
+**Goal:** Phase 8 per `architecture.md` §28 — the scheduling primitive combat will run on.
 
 | # | Task | Status |
 |---|------|--------|
@@ -146,7 +146,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ## Sprint 14 — Trading
 
-**Goal:** Phase 9 per `ARCHITECTURE.md` §28.
+**Goal:** Phase 9 per `architecture.md` §28.
 
 | # | Task | Status |
 |---|------|--------|
@@ -194,7 +194,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ## Build-order reference
 
-See `docs/ARCHITECTURE.md` §28. Combat (Sprints 3–6) is the next major architecture milestone after HTMX parity and command depth, followed by polish (Sprints 7–13) and player interaction (Sprints 14–16).
+See `docs/architecture.md` §28. Combat (Sprints 3–6) is the next major architecture milestone after HTMX parity and command depth, followed by polish (Sprints 7–13) and player interaction (Sprints 14–16).
 
 ---
 

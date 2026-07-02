@@ -1,6 +1,6 @@
 # Implementation Status
 
-This checklist tracks implementation progress against `docs/ARCHITECTURE.md` phases.
+This checklist tracks implementation progress against `docs/architecture.md` phases.
 The architecture overview remains the design reference; this file is the working status tracker.
 
 **See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–16).**

@@ -68,7 +68,7 @@ All notable changes to Lorecraft will be documented in this file.
 - Wired `CommandEngine` and the HTMX frontend command path through `parse_command` (including compound execution and suggestion messages).
 - Added comprehensive parser tests in `tests/game/test_parser_comprehensive.py`.
 - Added offline parser diagnostic CLI at `tools/parser_diag.py`.
-- Added `docs/COMMAND_PARSER.md` — parser output model, command pattern taxonomy, and handler integration guidance.
+- Added `docs/command_parser.md` — parser output model, command pattern taxonomy, and handler integration guidance.
 - Added `src/lorecraft/game/command_patterns.py` — `CommandPattern` enum, verb mapping, and typed role helpers (`speech_roles`, `transfer_roles`, `container_roles`, …).
 - Added pattern-grouped parser tests in `tests/game/test_parser_patterns.py` and `tests/unit/test_command_patterns.py`; shared fixture in `tests/game/conftest.py`.
 - Added `docs/parser_and_commands.md` — command authoring guide, item disambiguation layers, and Key Gallery testing notes.
@@ -137,7 +137,7 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Added
 
-- Added `docs/STATUS.md` to track implementation progress against the architecture overview.
+- Added `docs/status.md` to track implementation progress against the architecture overview.
 - Added initial `src/lorecraft` package scaffold for the multiplayer text adventure engine.
 - Added environment-driven settings in `lorecraft.config`.
 - Added core game primitives:
@@ -187,7 +187,7 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Changed
 
-- Documented the project package layout as `src/lorecraft` in `docs/ARCHITECTURE.md`.
+- Documented the project package layout as `src/lorecraft` in `docs/architecture.md`.
 - Configured pytest to import package code from `src`.
 - Added `sqlmodel` as a production dependency for the persistence layer.
 - Added a BasedPyright project configuration for the `src` package and local `.venv`.

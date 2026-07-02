@@ -27,7 +27,7 @@
 - Type hint all new features; omit hints only when they would be noisy, brittle, or not easily expressible.
 - Write unit tests for all new features.
 - After new code, run focused: unit tests, formatter, and basedpyright on modified or new files.
-- Keep `docs/STATUS.md` updated with current implementation progress.
+- Keep `docs/status.md` updated with current implementation progress.
 - Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
 - Summarize changed files, risks, and verification.

@@ -72,7 +72,7 @@ If the player reconnects before `grace_expires_at`:
 1. **Reattach to existing PlayerSession**
 2. **PlayerSession.status → "active"**
 3. Resume combat if applicable (unpause the player's slots)
-4. Send **full reconnect sync message** (see [WebSocket Protocol](ARCHITECTURE.md#23-websocket-protocol))
+4. Send **full reconnect sync message** (see [WebSocket Protocol](architecture.md#23-websocket-protocol))
 5. Emit **PLAYER_RECONNECTED**
 
 ```python
@@ -407,4 +407,4 @@ async def test_grace_period_expiration():
 
 ---
 
-*See also: [ARCHITECTURE.md § Disconnect Handling](ARCHITECTURE.md#18-subsystem-disconnect-handling)*
+*See also: [architecture.md § Disconnect Handling](architecture.md#18-subsystem-disconnect-handling)*

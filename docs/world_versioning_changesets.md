@@ -515,4 +515,4 @@ async def test_changeset_draft_to_live():
 
 ---
 
-*See also: [ARCHITECTURE.md § World Versioning & Changesets](ARCHITECTURE.md#19-subsystem-world-versioning--changesets)*
+*See also: [architecture.md § World Versioning & Changesets](architecture.md#19-subsystem-world-versioning--changesets)*
