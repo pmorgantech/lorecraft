@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–9 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring). **Next up: Sprint 10 (extensibility seams).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–10 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams). **Next up: Sprint 10.5 (tooling infrastructure).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–10 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams). Sprint 11 (browser E2E harness) next.
+**Current progress:** Sprints 5–10 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams). Sprint 10.5 (tooling infrastructure) in progress. Sprint 11 (browser E2E harness) follows.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -160,6 +160,20 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 10.2 | Pluggable dialogue/exit conditions (predicate types beyond flags: level, item, quest state) | [x] |
 | 10.3 | Pluggable command conditions (registry instead of the hardcoded `_evaluate_condition` chain) | [x] |
 | 10.4 | Decide + document the feature-registration pattern (models/commands/events/rules per feature) — combat will be its first consumer | [x] |
+
+## Sprint 10.5 — Tooling Infrastructure
+
+**Goal:** Admin/dev tooling foundation: repo-tracked issues & news, world CLI suite, analytics API, content validation. Unblocks Sprint 11+ (can log failures, record metrics, validate content).
+
+| # | Task | Status |
+|---|------|--------|
+| 10.5.1 | Issues system: `docs/issues.yaml`, CRUD routes, admin TUI (F6) + web panel tabs | [ ] |
+| 10.5.2 | News & announcements: `docs/news.yaml`, in-game `/news`, RSS feed, admin UI (TUI F7) | [ ] |
+| 10.5.3 | World management CLI: import/export/validate/diff/stats commands; call from admin world manager | [ ] |
+| 10.5.4 | Analytics API foundation: metric queries ready (no dashboard yet, driven by Sprint 13 instrumentation) | [ ] |
+| 10.5.5 | Content validation & linting: dead references, unreachable rooms, circular quests, etc. | [ ] |
+
+**See:** [`tooling_infrastructure.md`](tooling_infrastructure.md) for full architecture and design details.
 
 ## Sprint 11 — Browser E2E harness
 
@@ -280,11 +294,14 @@ All must be true before combat/trading work starts:
 | Item | Notes |
 |------|-------|
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
-| Bug/todo letterbox | In-world or admin-facing feedback |
+| ~~Bug/todo letterbox~~ | Implemented in Sprint 10.5 as issues tracking system |
 | Inventory encumbrance / wear slots | After equipment + combat |
 | Playback scripts / many-player harness | Tied to simulation harness (Sprint 12.1) |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
+| Player-facing bug reports | In-game `/report-bug` command (after core issues system stable) |
+| Analytics dashboard & visualizations | After Sprint 13 instrumentation (Sprint 14+) |
+| Database inspector / state editor | Admin tool for advanced troubleshooting (Post-foundation) |
 
 ---
 
@@ -317,4 +334,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 10 complete (extensibility seams: pluggable dialogue side effects, dialogue/command conditions, feature-registration pattern documented). Next: Sprint 11 (browser E2E harness).*
+*Last updated: 2026-07-02 — Sprint 10 complete (extensibility seams). Sprint 10.5 (tooling infrastructure) designed and ready to implement. Next: Sprint 11 (browser E2E harness) after tooling completes.*
