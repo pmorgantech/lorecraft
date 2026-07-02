@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from sqlmodel import Session
+
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.game.parser import ParsedCommand
@@ -92,3 +94,42 @@ class GameContext:
             if item is not None:
                 inventory.append((item.id, item.name, list(item.aliases)))
         return inventory
+
+
+def build_game_context(
+    session: Session,
+    player: Player,
+    room: Room,
+    *,
+    bus: EventBus,
+    manager: ConnectionManager,
+    transaction: TransactionContext,
+    session_id: str,
+    clock: WorldClock | None = None,
+    create_audit_repo: bool = False,
+    commit_state: Callable[[], None] | None = None,
+    commit_audit: Callable[[], None] | None = None,
+) -> GameContext:
+    """Factory for GameContext — wires all repos and services.
+
+    All entry points (websocket, scheduler, tests) should use this factory
+    to ensure consistent construction and full wiring of all fields.
+    """
+    return GameContext(
+        player=player,
+        room=room,
+        clock=clock or WorldClock(),
+        player_repo=PlayerRepo(session),
+        room_repo=RoomRepo(session),
+        item_repo=ItemRepo(session),
+        npc_repo=NpcRepo(session),
+        quest_repo=QuestRepo(session),
+        dialogue_repo=DialogueRepo(session),
+        manager=manager,
+        bus=bus,
+        audit=AuditRepo(session) if create_audit_repo else None,
+        transaction=transaction,
+        session_id=session_id,
+        commit_state=commit_state,
+        commit_audit=commit_audit,
+    )
