@@ -4,7 +4,7 @@ from lorecraft.db import create_tables
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
 from lorecraft.repos import RoomRepo
-from lorecraft.web.frontend import _build_map_data
+from lorecraft.web.rendering import build_map_data
 
 
 def test_build_map_data_handles_equal_distance_rooms() -> None:
@@ -52,7 +52,7 @@ def test_build_map_data_handles_equal_distance_rooms() -> None:
         )
         current_room = room_repo.get("center")
 
-        map_data = _build_map_data(room_repo, player, current_room)
+        map_data = build_map_data(room_repo, player, current_room)
 
     assert len(map_data["nearby_rooms"]) == 3
     assert {room["id"] for room in map_data["nearby_rooms"]} == {
@@ -104,7 +104,7 @@ def test_build_map_data_north_travel_places_previous_room_south() -> None:
         )
         current_room = room_repo.get("forge")
 
-        map_data = _build_map_data(room_repo, player, current_room)
+        map_data = build_map_data(room_repo, player, current_room)
 
     by_id = {room["id"]: room for room in map_data["nearby_rooms"]}
     current = by_id["forge"]

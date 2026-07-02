@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.web.frontend import _format_idle_duration, _presence_for_player
+from lorecraft.web.session import format_idle_duration, presence_for_player
 
 
 class _FakeManager:
@@ -34,14 +34,14 @@ class _FakePlayerRepo:
 
 
 def test_format_idle_duration_compact() -> None:
-    assert _format_idle_duration(30) == "Away"
-    assert _format_idle_duration(125) == "Idle 2m"
-    assert _format_idle_duration(7440) == "Idle 2h4m"
-    assert _format_idle_duration(7200) == "Idle 2h"
+    assert format_idle_duration(30) == "Away"
+    assert format_idle_duration(125) == "Idle 2m"
+    assert format_idle_duration(7440) == "Idle 2h4m"
+    assert format_idle_duration(7200) == "Idle 2h"
 
 
 def test_presence_online_when_ws_connected() -> None:
-    presence = _presence_for_player(
+    presence = presence_for_player(
         "player-1",
         manager=_FakeManager({"player-1"}),
         player_repo=_FakePlayerRepo(None),
@@ -51,7 +51,7 @@ def test_presence_online_when_ws_connected() -> None:
 
 
 def test_presence_grace_when_session_in_grace() -> None:
-    presence = _presence_for_player(
+    presence = presence_for_player(
         "player-1",
         manager=_FakeManager(set()),
         player_repo=_FakePlayerRepo(_FakeSession(status="grace")),
@@ -61,7 +61,7 @@ def test_presence_grace_when_session_in_grace() -> None:
 
 
 def test_presence_idle_after_disconnect() -> None:
-    presence = _presence_for_player(
+    presence = presence_for_player(
         "player-1",
         manager=_FakeManager(set()),
         player_repo=_FakePlayerRepo(

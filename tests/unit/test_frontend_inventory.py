@@ -4,7 +4,7 @@ from lorecraft.db import create_tables
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item
 from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.web.frontend import _inventory_snapshot
+from lorecraft.web.session import inventory_snapshot
 
 
 def test_inventory_snapshot_groups_duplicate_items() -> None:
@@ -36,7 +36,7 @@ def test_inventory_snapshot_groups_duplicate_items() -> None:
         session.add(player)
         session.commit()
 
-        snapshot = _inventory_snapshot(player, ItemRepo(session))
+        snapshot = inventory_snapshot(player, ItemRepo(session))
 
     assert snapshot == [
         {
