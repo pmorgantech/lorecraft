@@ -212,3 +212,81 @@ async def _test_login_invalid_username_returns_400() -> None:
             body={"username": "a", "password": "hunter2"},
         )
     assert status == 400
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/refresh
+# ---------------------------------------------------------------------------
+
+
+def test_refresh_issues_new_access_and_refresh_tokens() -> None:
+    anyio.run(_test_refresh_issues_new_access_and_refresh_tokens)
+
+
+async def _test_refresh_issues_new_access_and_refresh_tokens() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "refresher", "password": "hunter2"},
+        )
+        status, data = await _http(
+            app,
+            "POST",
+            "/auth/refresh",
+            body={"refresh_token": login_data["refresh_token"]},
+        )
+    assert status == 200
+    assert data["player_id"] == login_data["player_id"]
+    assert data["access_token"] != login_data["access_token"]
+    assert data["refresh_token"] != login_data["refresh_token"]
+
+
+def test_refresh_rejects_access_token() -> None:
+    anyio.run(_test_refresh_rejects_access_token)
+
+
+async def _test_refresh_rejects_access_token() -> None:
+    """An access token presented as a refresh token must be rejected."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "confused", "password": "hunter2"},
+        )
+        status, _ = await _http(
+            app,
+            "POST",
+            "/auth/refresh",
+            body={"refresh_token": login_data["access_token"]},
+        )
+    assert status == 401
+
+
+def test_refresh_rejects_garbage_token() -> None:
+    anyio.run(_test_refresh_rejects_garbage_token)
+
+
+async def _test_refresh_rejects_garbage_token() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/auth/refresh",
+            body={"refresh_token": "not-a-jwt"},
+        )
+    assert status == 401

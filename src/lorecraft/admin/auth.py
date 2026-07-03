@@ -76,6 +76,9 @@ def create_token(
         "type": token_type,
         "iat": now,
         "exp": now + ttl_seconds,
+        # Unique per call so two tokens issued within the same second (e.g.
+        # back-to-back refresh-token rotations) never collide byte-for-byte.
+        "jti": secrets.token_hex(8),
     }
     return jwt.encode(payload, secret, algorithm=_ALGORITHM)
 

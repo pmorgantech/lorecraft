@@ -209,3 +209,54 @@ async def login(body: LoginBody, request: Request) -> dict[str, object]:
         "player_id": player_id,
         "created": created,
     }
+
+
+# ---------------------------------------------------------------------------
+# Router: POST /auth/refresh
+# ---------------------------------------------------------------------------
+
+
+class RefreshBody(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh")
+async def refresh(body: RefreshBody, request: Request) -> dict[str, object]:
+    """Exchange a refresh token for a new access+refresh pair (rotation).
+
+    Like `admin.auth`'s `/admin/auth/refresh`, rotation here means a new
+    refresh token is issued on every use — there's no server-side token
+    blocklist, so the old refresh token remains cryptographically valid
+    until its own expiry rather than being immediately revoked. Consistent
+    with the rest of the codebase's stateless-JWT approach.
+    """
+    app_state = get_app_state(request)
+    if app_state is None:
+        raise HTTPException(status_code=500, detail="Server not ready")
+    secret = player_session_secret(app_state)
+
+    try:
+        payload = decode_token(body.refresh_token, secret)
+    except jwt.InvalidTokenError as e:
+        log.error("player_refresh_token_decode_failed: %s", str(e))
+        raise HTTPException(
+            status_code=401, detail="Invalid or expired refresh token"
+        ) from e
+    if payload.token_type != "refresh":
+        raise HTTPException(status_code=401, detail="Expected refresh token")
+
+    player_id = payload.username
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        if PlayerRepo(db).get(player_id) is None:
+            raise HTTPException(status_code=401, detail="Player not found")
+
+    access_ttl = app_state.settings.player_access_token_ttl_seconds
+    refresh_ttl = app_state.settings.player_refresh_token_ttl_seconds
+    return {
+        "access_token": issue_access_token(player_id, secret, access_ttl),
+        "refresh_token": issue_refresh_token(player_id, secret, refresh_ttl),
+        "token_type": "bearer",
+        "expires_in": access_ttl,
+        "player_id": player_id,
+    }
