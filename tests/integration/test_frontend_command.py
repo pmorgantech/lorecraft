@@ -17,7 +17,14 @@ from lorecraft.models.player import Player
 
 AsgiMessage = dict[str, Any]
 
-_SETTINGS = Settings(database_path=":memory:", audit_database_path=":memory:")
+# allow_query_player_id=True: these tests exercise the command-dispatch
+# protocol directly via ?player_id=/cookie, not the login UI added in
+# Sprint 4 (see docs/roadmap.md 4.6) — a deliberate opt-in, not an oversight.
+_SETTINGS = Settings(
+    database_path=":memory:",
+    audit_database_path=":memory:",
+    allow_query_player_id=True,
+)
 
 
 def _make_engines() -> tuple[Any, Any]:

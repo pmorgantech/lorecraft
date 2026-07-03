@@ -72,7 +72,11 @@ def test_web_client_assets_expose_minimal_browser_harness() -> None:
 
 async def _test_web_client_assets_expose_minimal_browser_harness() -> None:
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:")
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        )
     )
 
     async with _lifespan(app):
@@ -150,7 +154,11 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
         poolclass=StaticPool,
     )
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -209,7 +217,11 @@ async def _test_websocket_movement_persists_room_change() -> None:
         poolclass=StaticPool,
     )
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -260,7 +272,11 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
         poolclass=StaticPool,
     )
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -312,7 +328,11 @@ async def _test_websocket_save_and_load_preserve_player_state() -> None:
         poolclass=StaticPool,
     )
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -368,6 +388,7 @@ async def _test_websocket_disconnect_enters_grace_and_reconnect_syncs() -> None:
             database_path=":memory:",
             audit_database_path=":memory:",
             disconnect_grace_seconds=60.0,
+            allow_query_player_id=True,
         ),
         game_engine=game_engine,
         audit_engine=audit_engine,

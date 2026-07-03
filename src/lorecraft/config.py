@@ -45,10 +45,13 @@ class Settings:
     player_refresh_token_ttl_seconds: int = 28800  # 8 hours
     # Single-use WebSocket ticket TTL (POST /auth/ws-ticket -> WS ?ticket=)
     player_ws_ticket_ttl_seconds: float = 60.0
-    # Dev/back-compat fallback: trust ?player_id=/&pid= and the legacy unsigned
-    # cookie when no signed session cookie is present. Flip off once all
-    # clients (browser + tests) use the signed session cookie exclusively.
-    allow_query_player_id: bool = True
+    # Dev/back-compat fallback: trust ?player_id=/&pid= (HTTP) and the raw
+    # /ws?player_id= handshake param (WebSocket) instead of a signed session
+    # cookie / ws-ticket. Off by default since Sprint 4 (player auth) shipped
+    # the real login + WS-ticket flow — the browser and JSON API no longer
+    # need it. Test fixtures that intentionally connect directly (protocol-
+    # level tests, not exercising the login UI) opt back in explicitly.
+    allow_query_player_id: bool = False
     # Root logger level for lorecraft.observability.configure_logging()
     log_level: str = "INFO"
 

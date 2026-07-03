@@ -294,9 +294,10 @@ async def _test_forged_session_cookie_does_not_grant_identity() -> None:
             cookies={PLAYER_SESSION_COOKIE: "not-a-real-token"},
         )
 
-    # Falls through to the legacy dev fallback (allow_query_player_id defaults
-    # on) rather than granting a forged identity or crashing.
-    assert status == 200
+    # allow_query_player_id defaults off since Sprint 4 (docs/roadmap.md
+    # 4.6), so an invalid cookie with no legacy fallback available is a
+    # hard 401 — not a silent fallback to a dev/test player.
+    assert status == 401
     assert "not-a-real-token" not in html
 
 
@@ -335,3 +336,27 @@ async def _test_allow_query_player_id_disabled_requires_signed_session() -> None
         )
         assert status == 200
         assert "Signed_Only" in html
+
+
+def test_lobby_page_is_reachable_with_no_session_at_all() -> None:
+    """GET /lobby must not require a session — it's where one is created.
+
+    Regression test: with allow_query_player_id defaulting off (Sprint
+    4.6), a naive Depends(get_current_player) on the lobby route would
+    401 a brand-new visitor before they could ever log in.
+    """
+    anyio.run(_test_lobby_page_is_reachable_with_no_session_at_all)
+
+
+async def _test_lobby_page_is_reachable_with_no_session_at_all() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+
+    async with _lifespan(app):
+        status, _, html = await _request(app, "GET", "/lobby")
+
+    assert status == 200
+    assert "Log In" in html
+    assert "Create New Character" in html

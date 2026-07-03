@@ -137,6 +137,11 @@ def simulation_server_factory(
             world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
             seed_player_id="",
             seed_player_username="",
+            # VirtualPlayer connects directly with ?player_id= to exercise
+            # the raw wire protocol (see virtual_player.py's docstring) —
+            # not the login UI, so it needs the legacy fallback explicitly
+            # (off by default since Sprint 4; see docs/roadmap.md 4.6).
+            allow_query_player_id=True,
         )
         app = create_app(settings=settings)
         live_server = _LiveServer(app)

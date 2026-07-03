@@ -7,6 +7,12 @@ Focus areas:
 - Session reconnect edge cases: grace period handling, reconnection flow
 - Feed pagination: ?since= parameter, chronological ordering
 - Error rendering: error page structure, HTTP status codes
+
+Most tests here construct `Settings(..., allow_query_player_id=True)` — a
+deliberate opt-in to the legacy `?player_id=`/cookie fallback (off by
+default since Sprint 4's login/WS-ticket flow shipped; see docs/roadmap.md
+4.6), since these tests exercise state resolution directly rather than the
+login UI.
 """
 
 from __future__ import annotations
@@ -201,7 +207,11 @@ async def _test_game_screen_initial_state_shows_player_in_current_room() -> None
     """Verify /game renders initial state with player, room, inventory, feed."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -224,7 +234,11 @@ async def _test_game_screen_state_includes_current_player() -> None:
     """Verify game screen context has player, room, inventory, etc."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -247,7 +261,11 @@ async def _test_game_screen_state_includes_inventory() -> None:
     """Verify /game shows player inventory."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -280,7 +298,11 @@ async def _test_game_screen_state_includes_room_description() -> None:
     """Verify /game shows current room description."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -301,7 +323,11 @@ async def _test_game_screen_feed_excludes_raw_command_records() -> None:
     """Verify initial feed excludes COMMAND_EXECUTED audit events."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -339,7 +365,11 @@ async def _test_game_screen_handles_missing_room() -> None:
     """Verify game screen handles player in nonexistent room gracefully."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -397,7 +427,11 @@ async def _test_game_screen_shows_players_online_status() -> None:
     """Verify /game includes players_here panel with online status."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -418,7 +452,11 @@ async def _test_partials_players_online_endpoint_exists() -> None:
     """Verify /partials/players-online endpoint works."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -439,7 +477,11 @@ async def _test_partials_players_online_shows_presence_status() -> None:
     """Verify players-online partial includes presence indicators."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -466,7 +508,11 @@ async def _test_grace_period_session_status_query() -> None:
     """Verify session can be in grace status and is shown correctly."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -508,7 +554,11 @@ async def _test_feed_partial_endpoint_exists() -> None:
     """Verify /partials/feed endpoint responds."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -529,7 +579,11 @@ async def _test_feed_partial_with_since_returns_feed_items() -> None:
     """Verify /partials/feed?since=X returns only newer messages."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -578,7 +632,11 @@ async def _test_feed_orders_messages_chronologically() -> None:
     """Verify feed messages are in chronological order (oldest first)."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -622,7 +680,11 @@ async def _test_feed_excludes_command_events_from_display() -> None:
     """Verify COMMAND event types are filtered from feed display."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -708,7 +770,11 @@ async def _test_game_screen_empty_feed_on_first_entry() -> None:
     """Verify first-time entry shows welcome message or empty feed gracefully."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -745,7 +811,11 @@ async def _test_command_response_includes_feed_html() -> None:
     """Verify POST /command response includes feed items HTML."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -770,7 +840,11 @@ async def _test_empty_command_returns_empty_feed() -> None:
     """Verify empty/whitespace command returns empty feed without error."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -795,7 +869,11 @@ async def _test_command_oob_swaps_are_valid_html() -> None:
     """Verify OOB swap responses have valid HTML structure."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -823,7 +901,11 @@ async def _test_room_panel_partial_without_room_returns_gracefully() -> None:
     """Verify /partials/room-description handles missing room gracefully."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -852,7 +934,11 @@ async def _test_inventory_partial_with_many_items() -> None:
     """Verify /partials/inventory renders many items without error."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )
@@ -884,7 +970,11 @@ async def _test_minimap_partial_with_visited_rooms() -> None:
     """Verify /partials/minimap renders with visited rooms."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
-        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
         game_engine=game_engine,
         audit_engine=audit_engine,
     )

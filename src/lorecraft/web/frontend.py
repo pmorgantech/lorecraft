@@ -167,13 +167,28 @@ async def get_current_player(request: Request) -> Player:
             ) from ex
 
 
+async def get_current_player_optional(request: Request) -> Player | None:
+    """Like `get_current_player`, but returns None instead of raising 401.
+
+    Only for `GET /lobby`: that page must be reachable with *no* session at
+    all (it's where a session is created), unlike every other route in this
+    router, which should correctly 401 without one.
+    """
+    try:
+        return await get_current_player(request)
+    except HTTPException:
+        return None
+
+
 # =============================================================================
 # LOBBY (password-protected login/create — see web/auth.py)
 # =============================================================================
 
 
 @router.get("/lobby", response_class=HTMLResponse)
-async def lobby(request: Request, player: Player | None = Depends(get_current_player)):
+async def lobby(
+    request: Request, player: Player | None = Depends(get_current_player_optional)
+):
     """Lobby: log in to an existing character or create a new one, both password-protected."""
     context = {
         "request": request,
