@@ -252,10 +252,12 @@ exploration, which it serves.
 
 > **Design docs:** [`inventory_equipment.md`](inventory_equipment.md) (Sprints 16–17),
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
+> [`death_resurrection.md`](death_resurrection.md) (Sprint 25 death penalty),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
 > [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
-> registries), [`transit_systems.md`](transit_systems.md) (Sprint 23). The trade-economy
-> design doc is still TBD — see [`wishlist.md`](wishlist.md) for its current spec.
+> registries), [`transit_systems.md`](transit_systems.md) (Sprint 23), and
+> [`trade_economy.md`](trade_economy.md) (Sprint 22). The signature systems now all have
+> design docs.
 
 ## Sprint 16 — Item & world state modeling
 
@@ -324,13 +326,15 @@ on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → 
 ## Sprint 22 — Trading & economy
 
 **Goal:** A living economy where *where* you buy/sell matters (pillar #2). Currency → NPC shops
-→ regional pricing. **Signature pairing:** the transit network (Sprint 23) is the trade network.
+→ regional pricing → banks. **Signature pairing:** the transit network (Sprint 23) is the trade
+network. **See [`trade_economy.md`](trade_economy.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 22.1 | Currency model; item value from `quality`; NPC vendor shops (buy/sell), bartering skill affects price | [ ] |
-| 22.2 | Regional price differences + finite stock restocking on the world clock (buy-low/sell-high loop) | [ ] |
-| 22.3 | Player-to-player `offer`/`accept` trade handshake (multi-player transaction safety) | [ ] |
+| 22.1 | Currency model (carried `coins`); item `value` × `quality` pricing; NPC vendor shops (`buy`/`sell`/`list`), bartering skill + reputation flex price | [ ] |
+| 22.2 | Regional price differences + per-good bias + finite stock restocking on the world clock (buy-low/sell-high loop) | [ ] |
+| 22.3 | Banks: `BankAccount`, `deposit`/`withdraw`/`balance` at branches, one account/many branches (safe from death & robbery) | [ ] |
+| 22.4 | Player-to-player `offer`/`accept` trade handshake (atomic escrow swap; multi-player transaction safety) | [ ] |
 
 ## Sprint 23 — Transit & travel systems
 
@@ -359,12 +363,14 @@ Extends the stage/flag quest system with branch conditions and mechanism puzzles
 
 **Goal:** Server-side combat resolution, no commands/UI yet. First consumer of the
 feature-registration pattern (10.4), reading equipment-derived stats. **Deliberately below
-trade/transit/quests** — combat serves stories, it isn't the loop. **See [`combat_system.md`](combat_system.md).**
+trade/transit/quests** — combat serves stories, it isn't the loop. **See [`combat_system.md`](combat_system.md)
+and [`death_resurrection.md`](death_resurrection.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 25.1 | `services/combat.py` — sessions, ticks, damage, death/respawn (soft-respawn default; death penalty TBD) | [ ] |
-| 25.2 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
+| 25.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
+| 25.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
+| 25.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
 
 ## Sprint 26 — Combat commands + UI (avoidance-first)
 

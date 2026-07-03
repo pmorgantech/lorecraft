@@ -193,6 +193,32 @@ Beyond the basic currency→shops→P2P ladder in *Gameplay systems* below:
 - **Rare & seasonal goods** — availability tied to season/weather/events, rewarding travel and
   timing.
 
+### Robbers & highway risk 💚 (ties money, travel & death)
+
+NPC (later PvP) threats that make *carrying* wealth risky — the stick that makes banks and safe
+transit worth using. Shares its whole core with [`death_resurrection.md`](death_resurrection.md):
+**carried is at risk, banked is safe.**
+
+- **Highwaymen / footpads** — hostile NPCs on wilderness roads or in shady districts who can
+  **rob without killing**: a successful robbery skims a slice of carried `coins` (and maybe a
+  carried item); banked money and equipped/bound gear are untouched. Lower stakes than death,
+  same lesson.
+- **Avoidance-first, per the pillars** — talk your way out (persuasion), bribe them, sneak past
+  (stealth), or fight ([`combat_system.md`](combat_system.md)) — robbery is an *encounter*, not
+  an unavoidable tax. Reputation/standing (Sprint 18) can matter (a known friend of the guard,
+  or of the thieves).
+- **Risk-tiered geography** — safe roads vs. dangerous shortcuts; the fast route may be the
+  risky one, trading time against safety (pairs with transit + the fatigue/condition mechanic).
+- **Threat scales with what you carry** — hauling a fat purse of trade profit between towns is
+  exactly when you're a target, which is exactly when you *should* have banked or split it.
+  Makes the trade loop a real decision, not a spreadsheet.
+- **Later:** player-robber roles, bounties, guard NPCs, fences for stolen goods — all deferred;
+  v1 is just "NPCs can rob carried wealth, banks/transit mitigate it."
+
+Design intent noted 2026-07-03 (product owner). No dedicated design doc yet; the money-at-risk
+mechanics are specified in [`death_resurrection.md`](death_resurrection.md) §8. Sprint TBD —
+naturally lands after banks (Sprint 22) and combat (Sprint 25).
+
 ### Quests & puzzles 💚 (core pillar)
 
 - **Branching quests with consequences** — choices that change world state, NPC standing, and
@@ -344,7 +370,7 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 | How deep is survival (fatigue/sleep/hunger)? | Character-condition scope | Light/flavor, per-world toggle |
 | Skills: use-based vs. XP-based improvement? | Progression feel | Use-based (fits exploration) |
 | Attributes: minimal spread or none? | Character system | Minimal, non-combat-framed |
-| Death penalty: soft respawn vs. loss vs. permadeath? | Combat feel | Soft (revisit) |
+| Death penalty: soft respawn vs. loss vs. permadeath? | Combat feel | **Resolved: resurrect + lose some carried coins/loot** ([`death_resurrection.md`](death_resurrection.md)) |
 | NPC combat before PvP? | Sprint 18–22 order | Yes |
 | Currency model shape (what is "money")? | Trading, tickets, shops | Undecided |
 | Regional pricing + transit as the trade network? | Trade/transit design | Yes — signature pairing |
