@@ -1,0 +1,352 @@
+# Lorecraft — Wishlist & Idea Backlog
+
+> **Purpose:** A menu of gaps, unimplemented ideas, and "wouldn't-it-be-cool" features
+> gathered from a planning session comparing Lorecraft against classic MUDs (Evennia,
+> Ranvier, SMAUG, Aardwolf, Materia Magica) — 2026-07-03.
+>
+> **This is not a roadmap.** Nothing here is committed. The roadmap
+> ([`roadmap.md`](roadmap.md)) is the authoritative work queue; items graduate *into* it
+> only after they're chosen and scoped. This file is where ideas live before that.
+
+## Guiding stance: borrow selectively, don't clone
+
+Lorecraft is **not** trying to be a standard MUD. The classic MUD feature set (guilds,
+clans, 240-level grinds, permadeath economies) is a menu, not a spec. We take the systems
+that fit Lorecraft's feel — a living, narrative, browser-based world — and leave the rest.
+Some genre-standard features are **explicit non-goals** unless a real reason appears.
+
+### Design pillars (2026-07-03)
+
+The experience Lorecraft is reaching for, in priority order:
+
+1. **Exploration** — discovering places, secrets, and lore is a first-class reward, not
+   filler between fights.
+2. **Trading** — a living economy where knowing *where* to buy and sell matters (pairs
+   directly with the transit systems below).
+3. **Questing** — branching, consequence-bearing stories, not fetch-quest checklists.
+4. **Puzzle-solving** — environmental and lore puzzles, item combination, investigation.
+
+**Combat is a supporting system, not the centerpiece.** It's welcome, but it should be one
+of several ways to resolve a situation (alongside stealth, persuasion, bribery, cleverness),
+often *avoidable*. Design combat to serve exploration/quests, not the other way around. This
+reframes several mechanics below: character stats exist to gate exploration and social play,
+not just to compute damage.
+
+Each item below is tagged:
+
+- 💚 **Want** — aligned with Lorecraft's direction; strong candidate for a future sprint.
+- 🤔 **Maybe** — interesting, but needs a design decision or player demand first.
+- 🚫 **Probably not** — genre-standard but not obviously right for Lorecraft; noted so the
+  decision is deliberate, not accidental.
+
+---
+
+## Featured idea: travel & transit systems 💚
+
+**The single most-wanted item from this session.** Materia Magica's getting-around systems —
+**ferries, hot-air balloons, rail transit with tickets, and travel animations** — are a
+standout example of world-as-experience rather than world-as-grid. This is a great fit for
+Lorecraft's narrative, real-time, browser-based feel and doesn't depend on combat or economy.
+
+What it could include:
+
+- **Scheduled vehicles** — a ferry or balloon that departs on a world-clock cadence (built
+  naturally on the existing `SchedulerService` + `TIME_ADVANCED` tick). Miss the boat, wait
+  for the next one. The vehicle is a moving "room" whose exits change as it travels.
+- **Tickets as items** — buy/hold a ticket item; boarding checks for it (reuses the
+  existing item + condition system, and later the currency model). Route-specific tickets,
+  one-use vs. pass.
+- **Travel animation** — timed narrative beats streamed to the feed during transit
+  ("The balloon lifts above the rooftops…" → "Clouds thin; the coast comes into view…" →
+  arrival). A perfect consumer of the WS push + scheduler primitives already in place.
+- **Transit modes** — rail (fixed stops, fast), ferry (water-gated routes), balloon
+  (scenic, weather-affected?), maybe a fast-travel/recall for known destinations.
+- **Weather interplay** — balloon grounded in a storm; ferry delayed by fog. Ties into the
+  existing `clock/weather.py` state machine for emergent texture.
+
+Why it's attractive now: it's **mostly buildable on primitives Lorecraft already has**
+(scheduler, world clock, weather, items, conditions, WS push, moving-room concept) and
+delivers a lot of world personality without waiting on combat/economy. A minimal first cut
+(one scheduled ferry with a ticket check and a 3-beat travel animation) would be a strong,
+self-contained sprint and a showcase for the feature-registration pattern.
+
+Open design questions:
+- Is a vehicle a special `Room` with dynamic exits, or a new first-class entity?
+- Do off-vehicle players see it arrive/depart (a moving presence on the map)?
+- How do tickets interact with the (future) currency model — free for now, priced later?
+
+---
+
+## Mechanics ideas menu
+
+A deliberately large brainstorm of mechanics that serve the exploration / trade / quest /
+puzzle pillars. Not everything here should be built — the point is a rich menu to pick from.
+Where possible, each notes what Lorecraft primitive it builds on.
+
+### Inventory & equipment 💚 (foundational — wanted next)
+
+The most-requested near-term system. Needed before wear-slot-dependent content, trading depth,
+and most combat.
+
+- **Wear / wield slots** — head, face, neck, shoulders/cloak, torso, back, arms, hands (×2 or
+  gloves), fingers (rings ×2), waist/belt, legs, feet, plus wielded main/off-hand and a
+  light-source slot. Items declare which slot(s) they occupy (data on the `Item` model);
+  `Player` gains an equipment map. `wear`/`remove`/`wield` commands. Equipped items grant
+  passive effects (traits, warmth, light, carry capacity, skill bonuses) — **not just combat
+  stats**, per the pillars.
+- **Encumbrance / carry weight** — items have weight; carrying too much slows travel and
+  drains fatigue faster. Makes bags and pack animals meaningful; creates trade-off decisions
+  during exploration. Keep it forgiving, not a spreadsheet.
+- **Containers / nested inventory** — bags, pouches, backpacks, chests. A container is an item
+  that holds items (recursive). Enables organization, weight reduction (a "bag of holding"),
+  and puzzle/quest stashes. Pairs with the deferred `open`/container modeling noted in Sprint 2.5.
+- **Durability / condition** — items wear out or degrade (weather-exposed gear, torches burn
+  down). Drives repair services, trade in consumables, and a light-source survival loop.
+- **Item quality & rarity tiers** — common → legendary, affecting value and trade demand.
+- **Bound vs. tradeable / attunement** — quest items bind to a player; some gear must be
+  attuned. Protects quest integrity and shapes the economy.
+- **Consumables & charges** — potions, food, scrolls, lantern oil, tickets (ties to transit).
+
+### Character condition & survival 🤔 (fatigue / sleep — wanted as ideas)
+
+Light survival texture that rewards planning and makes the world feel physical. Keep it
+*flavor and pacing*, not punishing micro-management. Runs naturally on the existing
+`SchedulerService` + `TIME_ADVANCED` world-clock tick.
+
+- **Fatigue / stamina** — depletes with travel distance, encumbrance, strenuous actions;
+  restored by resting and sleeping. Low fatigue penalizes perception/skill checks (you miss
+  hidden exits when exhausted) — directly serves exploration. `rest`/`sleep`/`camp` commands.
+- **Sleep** — players need periodic sleep; sleeping advances time, restores fatigue, and is a
+  natural **content-delivery hook** (dreams as lore/vision/quest nudges). Safe sleep (inns,
+  camps) vs. unsafe sleep (wilderness — interruptions, risk). Ties to day/night.
+- **Hunger / thirst** — *optional, lightweight.* Rations as trade goods and a reason to visit
+  taverns; avoid making it a chore. Could be a per-world toggle.
+- **Wounds / afflictions as puzzle gates** — a sprained ankle slows travel, snow-blindness
+  blocks a vista, poison needs an antidote. Afflictions as *content*, not just HP loss —
+  creates quests (find the healer, brew the cure) rather than annoyance.
+- **Rested / well-fed bonuses** — positive modifiers for good self-care, framed as carrots
+  rather than sticks for neglect.
+- **Warmth / exposure** — weather + terrain + equipped clothing interact (a cloak matters in a
+  blizzard). Builds on `clock/weather.py`; gives clothing non-combat purpose.
+- **Light & darkness** — dark rooms need a light source (torch/lantern with fuel) or you can't
+  see exits/items. A classic exploration mechanic and a gentle resource loop.
+
+### Traits, skills & character identity 🤔 (traits — wanted as ideas)
+
+Defines *who* a character is in ways that gate exploration and social play, not just combat.
+Best implemented as pluggable modifiers via the existing registry pattern rather than hardcoded.
+
+- **Traits** — persistent passive modifiers chosen at creation or earned: *keen-eyed* (better
+  hidden-exit detection), *night-owl* (no penalty in darkness), *silver-tongued* (better
+  prices/persuasion), *claustrophobic* (penalties underground), *cartographer* (auto-maps),
+  *iron-stomach*, *light-sleeper*. Traits can be boons and banes for character texture.
+- **Backgrounds / origins** — a starting package of traits, skills, starting gear, and known
+  lore. Gives replayability and shapes early dialogue ("Ah, a former sailor…").
+- **Skills** — perception, lockpicking, bartering, cartography, survival, lore/appraisal,
+  stealth, persuasion, swimming/climbing. Skills gate exploration (find secrets, cross terrain)
+  and social/trade outcomes far more than combat. Improve through *use* rather than XP grind.
+- **Attributes** — a light STR/DEX/INT-style spread, but explicitly framed for non-combat use
+  (STR = carry weight, INT = lore checks, etc.). Keep minimal; resist stat bloat.
+- **Reputation / standing** — per-NPC and per-faction opinion that unlocks dialogue, prices,
+  quests, and access. The social spine of a quest-driven world. NPCs *remember* you.
+- **Knowledge / lore flags** — "known facts" a player accumulates that unlock dialogue options
+  and puzzle solutions (already partly expressible via the flag system). Turns exploration into
+  a knowledge-progression system parallel to leveling.
+- **Languages** — some NPCs/signs/books require a language; learning one is a quest reward.
+
+### Exploration depth 💚 (core pillar)
+
+- **Discovery rewards** — finding a new room, landmark, or vista grants a tangible reward
+  (lore, a knowledge flag, a small progression tick). Exploration *is* progression. Builds on
+  the existing minimap fog-of-war.
+- **Hidden exits & secret rooms** — perception/search-gated passages; `search` command;
+  trait/skill and fatigue interactions. Rewards attentive play.
+- **Cartography / player mapping** — the map fills in as you explore; a *cartographer* trait or
+  bought maps reveal more; sellable/tradeable maps as goods (ties to trade).
+- **Terrain & travel** — room/exit terrain types (road, forest, mountain, water) affect travel
+  time, fatigue cost, and required skills/gear (climbing, swimming). Makes geography meaningful
+  and pairs with transit (roads are fast, wilderness is slow).
+- **Environmental storytelling** — rooms with examinable detail, readable objects (books,
+  inscriptions, signs), layered `examine` targets. Cheap, high-texture content.
+- **Journal / auto-log** — the game records discovered places, met NPCs, learned lore, and
+  active clues — a living quest/exploration log. Great UI panel candidate.
+
+### Trading & economy depth 💚 (core pillar — expands the roadmap Sprint 21 stub)
+
+Beyond the basic currency→shops→P2P ladder in *Gameplay systems* below:
+
+- **Regional price differences** — goods cost different amounts in different places; the core
+  trade loop is buy-low-here, sell-high-there. **This is the killer pairing with transit
+  systems** — the ferry/rail network *is* the trade network. Exploration feeds trade feeds
+  exploration.
+- **Bartering skill & reputation pricing** — prices flex with skill, standing, and haggling.
+- **Supply & demand / stock** — shops have finite stock that restocks on the world clock;
+  flooding a market drops prices. Emergent, driven by existing scheduler.
+- **Caravans / trade routes / commissions** — deliver goods between towns for profit; escort or
+  investigate when they go missing (quest hooks). A whole quest genre falls out of this.
+- **Rare & seasonal goods** — availability tied to season/weather/events, rewarding travel and
+  timing.
+
+### Quests & puzzles 💚 (core pillar)
+
+- **Branching quests with consequences** — choices that change world state, NPC standing, and
+  later options — not linear fetch chains. The current stage/flag system is a start; extend
+  toward branch conditions and consequence side-effects (registry-friendly).
+- **Environmental & mechanism puzzles** — levers, pressure plates, sequenced switches, doors
+  keyed to items or knowledge. Needs the deferred item/room *state* modeling (Sprint 2.5 note).
+- **Item-combination puzzles** — combine/apply items to solve problems (a craft-*like* mechanic
+  framed as puzzle-solving rather than production grind).
+- **Riddles & lore puzzles** — answers gated by knowledge flags gathered through exploration;
+  investigation quests where you assemble clues in the journal.
+- **NPC memory & relationship state** — NPCs recall past interactions and react; unlocks
+  dialogue and quests. Overlaps with reputation above; the backbone of a story-driven world.
+- **Timed / scheduled quests** — deadlines and world-clock-driven events (the festival is
+  tonight; the tide turns at dusk). Runs on the existing scheduler + clock.
+- **Non-combat resolutions** — quests solvable by stealth, persuasion, bribery, or cleverness,
+  not only violence — central to the "combat is optional" pillar.
+
+### Combat, reframed as a supporting system 🤔
+
+Combat stays on the roadmap (Sprints 18–20) but is **deliberately not the centerpiece**:
+
+- **Avoidance as first-class** — stealth, persuasion, bribery, and clever item use should
+  resolve most encounters without a fight. Combat is a fallback, not the default.
+- **Non-lethal outcomes** — subdue, intimidate, drive off, or flee; death is one outcome among
+  several, and often not the interesting one.
+- **Encounters serve stories** — fights exist to raise stakes in quests/exploration, not as a
+  grind loop for XP. No "kill 10 rats." See the death-penalty decision (lean soft).
+
+---
+
+## Gameplay systems
+
+### Combat 💚 (already on the roadmap)
+Sprints 18–20. **Recommendation from planning: NPC combat first, PvP later** — simpler state
+machine, lets death/respawn mechanics settle before adding player-vs-player. First real
+consumer of the feature-registration pattern.
+
+**Decide before shipping:** death penalty model — soft respawn (Aardwolf-style, non-punitive)
+vs. item/currency loss vs. permadeath. This shapes the whole risk/reward feel.
+
+### Trading & currency 💚 (partly on the roadmap)
+Sprint 21. Needs scoping. Suggested order:
+1. **Currency model** — is it gold? Persists on `Player`? Items need a value field.
+2. **NPC shops** — static vendor NPCs (buy/sell) before player-to-player trading.
+3. **Player-to-player trade** — `offer`/`accept` handshake; validates multi-player transaction
+   safety (good simulation-harness target).
+4. *Defer:* auctions, dynamic pricing, marketplaces — until there's real trading volume.
+
+### PvP 🤔 (on the roadmap, Sprint 22)
+Consent-based (challenge/accept) reusing the combat system. **Design choice pending:** soft
+opt-in PvP (most modern MUDs, Aardwolf's "99% harmless") vs. anything more punishing. Lean
+soft unless Lorecraft wants a darker RP tone.
+
+### Leveling & progression 🤔
+Player model has an unused `level` field. No XP or skills yet. **Deliberately deferred** —
+design *after* combat is real and there's player feedback. If pursued: model XP→level
+separately from combat stats. Multi-class (Materia Magica's parallel tracks) only after
+single-class is solid, if ever.
+
+### Crafting 🤔
+No system today. Defer until players ask. If built: start with simple `A + B → C` recipes;
+avoid deep material trees; keep it independent from combat-loot progression so it's optional.
+
+---
+
+## Getting around & world texture
+
+### Travel & transit systems 💚
+See **Featured idea** above. Top candidate.
+
+### Weather-driven world events 🤔
+The weather/season state machine exists but mostly flavors descriptions. Could drive real
+mechanics: storms delaying transit, seasonal NPC behavior, weather-gated content. Low-cost
+texture on top of an existing subsystem.
+
+### Fast travel / recall 🤔
+A "recall" or "known destinations" fast-travel could pair naturally with the transit theme
+(e.g., a rail pass unlocks quick hops between visited stations). Fits the travel-animation
+idea.
+
+---
+
+## World-building & tooling
+
+### In-game builder commands (OLC-style) 🤔
+SMAUG's `redit`/`medit`/`oedit` let builders edit rooms/mobs/objects live in-game. Lorecraft
+has form-based **web** editors + YAML import/export instead, which works. In-game `/redit`-style
+commands would be more immersive for builders but duplicate existing logic. **Enhance the web
+editor UX first** (autocomplete, validation); consider in-game editors only if builders ask.
+
+### Scripting layer for builders 🤔 (significant design decision)
+Today: builders configure **YAML only**; custom behavior needs backend code (via the pluggable
+registries). Established MUDs expose a scripting layer — Evennia (Python modules), Ranvier
+(JS behaviors), Aardwolf/SMAUG (embedded Lua / MobProgs).
+
+**Recommendation: hold the decision.** Watch the combat/trading implementations. If YAML starts
+getting complex/repetitive to express desired behavior, *that's* the signal. Options when the
+time comes:
+- **Python modules** (Evennia model) — full power, VCS-friendly, needs builder coding skill.
+- **Embedded Lua** (Aardwolf model) — sandboxed, builder-friendly, in-game editable, needs a
+  binding layer.
+- **Stay YAML-only** — safest; extend via backend registries as needed.
+
+### News & announcements ✅
+Already shipped (Sprint 10.5): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here
+only to note it's *done*, not wanted.
+
+---
+
+## Social & meta layers
+
+### Guilds / clans 🚫 (leaning non-goal)
+Genre-standard (Aardwolf clans own recall rooms, treasuries, morgues; SMAUG councils). **The
+user is not sure Lorecraft wants these.** Heavy social meta-layer that assumes a large,
+competitive playerbase. Parking as *probably not* unless the game grows a community that
+actually forms groups and asks for shared identity/spaces. Revisit only then.
+
+### Player-run economy at scale 🚫
+Auctions, player shops, clan banks, dynamic markets. Presupposes a busy economy Lorecraft
+doesn't have. Not now; maybe never, depending on scale.
+
+### Player groups / parties 🤔
+Lighter-weight than guilds: temporary parties for shared travel or content. Could pair well
+with the transit theme (board the ferry together). Worth considering *if* co-op content
+appears, without committing to the full guild apparatus.
+
+---
+
+## Architectural patterns worth keeping (not gaps — validation)
+
+The planning comparison confirmed Lorecraft already matches modern-MUD best practice on:
+
+- **Data-driven world building** (YAML → importer → DB) — same as Ranvier/Evennia.
+- **Feature registration / pluggable registries** — same spirit as Ranvier behaviors.
+- **Event-driven architecture** (`EventBus` + service subscribers).
+- **Audit log as source of truth** — canonical, replayable history.
+- **World state vs. player state separation** — never conflated.
+
+These aren't wishlist items; they're the foundation the wishlist builds on.
+
+---
+
+## Decisions to make (when items graduate to the roadmap)
+
+| Question | Affects | Current lean |
+|---|---|---|
+| Inventory/equipment before combat? | Sprint order | **Yes — foundational, wanted next** |
+| How deep is survival (fatigue/sleep/hunger)? | Character-condition scope | Light/flavor, per-world toggle |
+| Skills: use-based vs. XP-based improvement? | Progression feel | Use-based (fits exploration) |
+| Attributes: minimal spread or none? | Character system | Minimal, non-combat-framed |
+| Death penalty: soft respawn vs. loss vs. permadeath? | Combat feel | Soft (revisit) |
+| NPC combat before PvP? | Sprint 18–22 order | Yes |
+| Currency model shape (what is "money")? | Trading, tickets, shops | Undecided |
+| Regional pricing + transit as the trade network? | Trade/transit design | Yes — signature pairing |
+| Scripting layer: Python / Lua / YAML-only? | Builder extensibility | Hold; decide during combat |
+| Guilds/clans: in or out? | Social scope | Leaning out |
+| Vehicle = special Room or new entity? | Transit design | Undecided |
+
+---
+
+*Created 2026-07-03 from an architecture + MUD-comparison planning session. Update as ideas
+are chosen (move to [`roadmap.md`](roadmap.md)) or explicitly dropped.*

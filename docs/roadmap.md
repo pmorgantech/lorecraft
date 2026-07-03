@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 4–15 complete (player authentication, error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. Sprints 16–17 (full-screen map, mobile layout) are next; combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow.
+**Current:** Sprints 4–15 complete (player authentication, error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. The feature band (Sprints 16+) was **re-sequenced 2026-07-03** around Lorecraft's design pillars (Exploration > Trading > Questing > Puzzles; combat is a supporting system, not the centerpiece): item state & inventory/equipment (16–17) → traits/skills & exploration (18–20) → condition/trade/transit (21–23) → quests/puzzles (24) → combat/PvP (25–29). See [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -237,61 +237,161 @@ All must be true before combat/trading work starts:
 
 ---
 
-# Feature band (Sprints 16–23) — gated on foundation exit criteria
+# Feature band (Sprints 16+) — gated on foundation exit criteria
 
-## Sprint 16 — Full-screen map
+**Re-sequenced 2026-07-03** to reflect Lorecraft's design pillars — **Exploration > Trading >
+Questing > Puzzle-solving, with combat as a *supporting* system, not the centerpiece** (see
+[`wishlist.md`](wishlist.md) → *Design pillars*). The old sequence front-loaded combat
+(Sprints 18–20 of the previous plan); the new sequence front-loads the systems those pillars
+depend on — item state, inventory/equipment, exploration, traits/skills — and moves combat
+below trading/transit/quests as a fallback resolution path rather than the main loop.
 
-| # | Task | Status |
-|---|------|--------|
-| 16.1 | Full-screen map modal (pan/zoom) | [ ] |
+Ordering follows dependencies: item state → equipment → traits/skills/exploration → condition
+→ trade → transit → quests/puzzles → combat → PvP. UI polish (map, mobile) sits alongside
+exploration, which it serves.
 
-## Sprint 17 — Mobile layout
+> **Design docs:** [`inventory_equipment.md`](inventory_equipment.md) (Sprints 16–17),
+> [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
+> [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
+> [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
+> registries). Transit and trade-economy design docs are still TBD — see
+> [`wishlist.md`](wishlist.md) for their current specs.
 
-| # | Task | Status |
-|---|------|--------|
-| 17.1 | Responsive mobile tab layout | [ ] |
+## Sprint 16 — Item & world state modeling
 
-## Sprint 18 — Combat core services
-
-**Goal:** Server-side combat resolution, no commands or UI yet. Built as the first consumer of the feature-registration pattern (10.4).
-
-| # | Task | Status |
-|---|------|--------|
-| 18.1 | `services/combat.py` — sessions, ticks, damage, death/respawn | [ ] |
-| 18.2 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
-
-## Sprint 19 — Combat commands + UI
-
-| # | Task | Status |
-|---|------|--------|
-| 19.1 | `commands/combat.py` — `attack`, `flee`; complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 19.2 | Combat UI in HTMX feed + status panel | [ ] |
-
-## Sprint 20 — Combat testing
+**Goal:** The deferred Sprint 2.5 `open`/container/state prerequisite. Per-instance item state
+so items can be worn, burned, opened, and puzzle-wired. Foundation for equipment, containers,
+durability, light sources, and mechanism puzzles. **See [`inventory_equipment.md`](inventory_equipment.md) §7.**
 
 | # | Task | Status |
 |---|------|--------|
-| 20.1 | Integration + browser tests for combat loop | [ ] |
+| 16.1 | Layer A item fields (`slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects`) on `Item`; YAML loader + validators | [ ] |
+| 16.2 | `ItemInstance` table (durability/`is_open`/`lit`/`state`) for items that need state; stateless stackables stay as ID lists | [ ] |
 
-## Sprint 21 — Trading
+## Sprint 17 — Inventory & equipment
 
-**Goal:** Phase 9 per `architecture.md` §28.
-
-| # | Task | Status |
-|---|------|--------|
-| 21.1 | `services/trading.py` + trade commands | [ ] |
-
-## Sprint 22 — PvP consent
+**Goal:** Wear/wield slots, encumbrance, containers. Equipment grants **non-combat** effects
+(light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](inventory_equipment.md) §3–6, §9.**
 
 | # | Task | Status |
 |---|------|--------|
-| 22.1 | PvP consent + challenge/accept | [ ] |
+| 17.1 | `Player.equipment` slot map; `wear`/`remove`/`wield`/`equipment` commands via `InventoryService`; `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` events | [ ] |
+| 17.2 | Encumbrance bands from weight + `carry_bonus`; `EquipmentEffects.resolve()` (runtime-derived, never stored) | [ ] |
+| 17.3 | Containers: `put in` / `take from`, nesting, worn-container capacity; light/darkness gate (`Room.light_level` + lit source) | [ ] |
 
-## Sprint 23 — Multiplayer trade/PvP tests
+## Sprint 18 — Traits & skills
+
+**Goal:** Character identity that gates exploration and social play. Use-based skills, a trait
+registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats` (attributes
++ `skills` dict). **See [`combat_system.md`](combat_system.md) stat model + [`wishlist.md`](wishlist.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 23.1 | Multi-player trade and PvP tests | [ ] |
+| 18.1 | Trait registry (pluggable, like dialogue side-effects); traits from equipment/background/earned; boon+bane modifiers | [ ] |
+| 18.2 | Use-based skill improvement (perception, lockpicking, bartering, cartography, survival, persuasion); skill-check helper | [ ] |
+| 18.3 | Reputation/standing per NPC + faction; unlocks dialogue/prices/quests (extends flags + NPC memory) | [ ] |
+
+## Sprint 19 — Exploration depth
+
+**Goal:** Make discovery a first-class reward (the top pillar). Search-gated secrets, terrain,
+journal, cartography. Builds on existing minimap fog and `Exit.hidden`/`condition_flags`.
+
+| # | Task | Status |
+|---|------|--------|
+| 19.1 | `search` command + hidden-exit/secret-room reveal gated on perception skill + traits + light; discovery rewards (knowledge flags, progression tick) | [ ] |
+| 19.2 | Terrain types on rooms/exits affecting travel time, fatigue cost, and required skill/gear; environmental `examine` layering | [ ] |
+| 19.3 | Journal / auto-log panel (discovered places, met NPCs, learned lore, active clues); player cartography reveal | [ ] |
+
+## Sprint 20 — Map & mobile UI
+
+**Goal:** UI polish that serves exploration (was Sprints 16–17 of the previous plan).
+
+| # | Task | Status |
+|---|------|--------|
+| 20.1 | Full-screen map modal (pan/zoom), integrated with cartography reveal | [ ] |
+| 20.2 | Responsive mobile tab layout | [ ] |
+
+## Sprint 21 — Character condition (fatigue / sleep)
+
+**Goal:** Light survival texture that rewards planning; per-world toggle, not punishing. Runs
+on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → Character condition.**
+
+| # | Task | Status |
+|---|------|--------|
+| 21.1 | Fatigue/stamina drained by travel/encumbrance/actions; low fatigue penalizes skill checks; `rest`/`sleep`/`camp` | [ ] |
+| 21.2 | Sleep advances time + restores fatigue + dream/lore hook; safe vs. unsafe sleep; warmth/exposure via weather + worn clothing | [ ] |
+
+## Sprint 22 — Trading & economy
+
+**Goal:** A living economy where *where* you buy/sell matters (pillar #2). Currency → NPC shops
+→ regional pricing. **Signature pairing:** the transit network (Sprint 23) is the trade network.
+
+| # | Task | Status |
+|---|------|--------|
+| 22.1 | Currency model; item value from `quality`; NPC vendor shops (buy/sell), bartering skill affects price | [ ] |
+| 22.2 | Regional price differences + finite stock restocking on the world clock (buy-low/sell-high loop) | [ ] |
+| 22.3 | Player-to-player `offer`/`accept` trade handshake (multi-player transaction safety) | [ ] |
+
+## Sprint 23 — Transit & travel systems
+
+**Goal:** The signature Materia-Magica-inspired feature — ferries, balloons, rail with tickets
+and travel animation. Built on scheduler + world clock + weather + WS push. **See [`wishlist.md`](wishlist.md) → Featured idea** (dedicated design doc TBD before this sprint).
+
+| # | Task | Status |
+|---|------|--------|
+| 23.1 | Scheduled vehicle as a moving room (dynamic exits on clock cadence); ticket items gate boarding | [ ] |
+| 23.2 | Travel animation (timed narrative beats via WS push); weather interplay (grounded balloon, fogged ferry) | [ ] |
+
+## Sprint 24 — Quests & puzzles depth
+
+**Goal:** Branching, consequence-bearing quests and environmental/lore puzzles (pillars #3–4).
+Extends the stage/flag quest system with branch conditions and mechanism puzzles.
+
+| # | Task | Status |
+|---|------|--------|
+| 24.1 | Branch conditions + consequence side-effects on quests (world-state/standing changes); NPC memory of past interactions | [ ] |
+| 24.2 | Mechanism & item-combination puzzles on `ItemInstance.state` (levers, dials, sequences) via pluggable conditions/side-effects; timed clock-driven quest events | [ ] |
+
+## Sprint 25 — Combat core services (supporting system)
+
+**Goal:** Server-side combat resolution, no commands/UI yet. First consumer of the
+feature-registration pattern (10.4), reading equipment-derived stats. **Deliberately below
+trade/transit/quests** — combat serves stories, it isn't the loop. **See [`combat_system.md`](combat_system.md).**
+
+| # | Task | Status |
+|---|------|--------|
+| 25.1 | `services/combat.py` — sessions, ticks, damage, death/respawn (soft-respawn default; death penalty TBD) | [ ] |
+| 25.2 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
+
+## Sprint 26 — Combat commands + UI (avoidance-first)
+
+**Goal:** Combat as one resolution among several — stealth/persuasion/bribery/flee are
+first-class alternatives; non-lethal outcomes supported.
+
+| # | Task | Status |
+|---|------|--------|
+| 26.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
+| 26.2 | Combat UI in HTMX feed + status panel | [ ] |
+
+## Sprint 27 — Combat testing
+
+| # | Task | Status |
+|---|------|--------|
+| 27.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
+
+## Sprint 28 — PvP consent
+
+**Goal:** Consent-based, opt-in PvP reusing the combat system. Soft by default.
+
+| # | Task | Status |
+|---|------|--------|
+| 28.1 | PvP consent + challenge/accept | [ ] |
+
+## Sprint 29 — Multiplayer trade / PvP / transit tests
+
+| # | Task | Status |
+|---|------|--------|
+| 29.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
 
 ---
 
@@ -313,7 +413,9 @@ All must be true before combat/trading work starts:
 
 ## Build-order reference
 
-See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication (Sprint 4) → foundation hardening (Sprints 5–15) → **foundation gate** → UI features + combat (Sprints 16–20) → player interaction (Sprints 21–23).
+See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication (Sprint 4) → foundation hardening (Sprints 5–15) → **foundation gate** → item state & inventory/equipment (16–17) → traits/skills & exploration + UI (18–20) → condition/trade/transit (21–23) → quests & puzzles (24) → combat (25–27) → PvP + multiplayer tests (28–29).
+
+**Note (2026-07-03):** the feature band was re-sequenced from the original combat-first order to a pillar-driven order (Exploration > Trading > Questing > Puzzles; combat supporting). `architecture.md` §28's phase list predates this and is kept for historical reference — this roadmap is authoritative for sequencing.
 
 ---
 
@@ -340,4 +442,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — Sprint 4 complete (player authentication: password login, JWT access/refresh, single-use WS tickets, retired the `?player_id=` trust default, OAuth extensibility stub). Sprints 4–15 all complete; foundation gate green. Next: Sprint 16 (full-screen map).*
+*Last updated: 2026-07-03 — Feature band (Sprints 16+) re-sequenced around design pillars (Exploration > Trading > Questing > Puzzles; combat as a supporting system, not the centerpiece); combat moved from Sprints 18–20 down to 25–27. See [`wishlist.md`](wishlist.md) (pillars + mechanics menu) and [`inventory_equipment.md`](inventory_equipment.md) (Sprints 16–17 design). Sprints 4–15 complete; foundation gate green. Next: Sprint 16 (item & world state modeling).*

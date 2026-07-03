@@ -17,8 +17,12 @@ The architecture overview remains the design reference; this file is the working
 > MVP (`tests/simulation/`), observability & CI quality gates, unified command
 > lifecycle (rollback-on-error, shared `/ws`/`POST /command` room-broadcast step), and
 > core UX completion (world clock/weather WS push to all players, multi-player live
-> lists refresh on room-leave). **Foundation gate is green.** Next: Sprints 16–17 (UI
-> polish), then combat/trading/PvP (Sprints 18–23).
+> lists refresh on room-leave). **Foundation gate is green.** The feature band (Sprints 16+)
+> was **re-sequenced 2026-07-03** around design pillars (Exploration > Trading > Questing >
+> Puzzles; combat is a supporting system, not the centerpiece) — see [`wishlist.md`](wishlist.md)
+> and [`inventory_equipment.md`](inventory_equipment.md). Next: Sprint 16 (item & world state
+> modeling), then inventory/equipment (17), traits/skills & exploration (18–20); combat moved
+> down to Sprints 25–27.
 
 ## Phase-to-Sprint Mapping
 
@@ -27,10 +31,19 @@ The architecture overview remains the design reference; this file is the working
 | Phase 1–3 (Foundation, dispatch, world/time) | Sprint 1 (HTMX parity) | [x] |
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
-| Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [~] Sprint 4 (auth) complete; 15 complete; 16–17 (map, mobile) queued |
+| Phase 7 (Auth + frontend polish) | Sprints 4, 20 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 20 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
-| Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
-| Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
+| Item state / inventory / equipment | Sprints 16–17 (gated) | [ ] |
+| Traits/skills, exploration, condition | Sprints 18–21 (gated) | [ ] |
+| Phase 9 (Trading + transit) | Sprints 22–23 (gated) | [ ] |
+| Quests & puzzles depth | Sprint 24 (gated) | [ ] |
+| Phase 8–8.5 (Combat, supporting) | Sprints 25–27 (gated) | [ ] |
+| PvP + multiplayer tests | Sprints 28–29 (gated) | [ ] |
+
+> **Feature band re-sequenced 2026-07-03** around design pillars (Exploration > Trading >
+> Questing > Puzzles; combat as a supporting system). Roadmap is authoritative for sequencing;
+> the architecture-phase numbers above are historical. See [`roadmap.md`](roadmap.md),
+> [`wishlist.md`](wishlist.md), and [`inventory_equipment.md`](inventory_equipment.md).
 
 Legend:
 - `[x]` Implemented and covered by focused tests where practical.
