@@ -1,509 +1,221 @@
-# Combat System Implementation Guide
+# Combat System — Design
 
-## Overview
-
-Combat is **tick-based**, leveraging the real-time world clock. Multiple players can fight the same NPC concurrently on independent rhythms. Combat is resolved each tick via damage rolls, healing, and AI decisions.
+> **Status:** Implementation-ready design (2026-07-03 deep revision; replaces the pre-Tier-1
+> implementation guide). Roadmap
+> [Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system); PvP reuse in
+> [Sprint 34](roadmap.md#sprint-34--pvp-consent). Combat is a **supporting** system
+> (Exploration > Trading > Questing > Puzzles) — it serves stories; stealth/persuasion/
+> bribery/flee are first-class alternatives ([Sprint 32](roadmap.md#sprint-32--combat-commands--ui-avoidance-first)).
+>
+> **Tier 1 dependencies ([`engine_core.md`](engine_core.md)):** hp **meter** (§3.3) — there
+> are no `current_hp` columns by the time combat lands; **timed effects** (§3.4) for
+> buffs/debuffs; **modifier resolver** (§3.5) for derived attack/defense/armor; **seedable
+> `ctx.rng` + `skill_check`** (§3.6) — module-level `random` is lint-banned; **item
+> stacks/slots** (§3.2) — the wielded weapon is the `main_hand` slot stack, there is no
+> `equipped_weapon_id`; **exchange** (§3.7) for death coin-loss
+> ([`death_resurrection.md`](death_resurrection.md)).
+>
+> Combat ships as `features/combat/` per [`feature-registration.md`](feature-registration.md) —
+> its first full consumer. Nothing here edits core engine files.
 
 ---
 
-## Combat Model: Tick-Based with Speed
+## 1. Combat model: tick-based with speed
+
+Combat is **tick-based on the world clock**, via the existing `SchedulerService`. Multiple
+players can fight the same NPC concurrently on independent rhythms.
 
 Each combatant has:
-- **speed:** Number of game ticks between actions (e.g., 10 ticks = slower, 5 ticks = faster)
-- **next_action_tick:** The game epoch at which they will act next
 
-```
-CombatSession
-  ├── combatant: Player A (speed=10 ticks, next_action=tick 1000)
-  ├── combatant: Player B (speed=15 ticks, next_action=tick 1500)
-  └── combatant: NPC (speed=12 ticks, next_action=tick 1200)
-```
+- **speed** — game ticks between actions (lower = faster), derived at session start:
+  `player_speed = resolve_for(session, player, "combat.speed", base=10 - (agility - 10) // 2)`;
+  NPC speed from YAML (default 10).
+- **next_action_epoch** — the game epoch at which they act next.
 
-On each `COMBAT_TICK_DUE` work event (emitted by the scheduler): resolve actions for any combatant whose `next_action_tick <= current_tick`.
+On each due tick, resolve actions for every combatant whose `next_action_epoch <= now`.
+
+### Scheduling (decided)
+
+One mechanism: `SchedulerService.schedule("combat_tick", at_game_epoch, payload={"session_id": ...})`.
+`CombatService.register(bus)` listens for `SCHEDULED_JOB_DUE` and filters
+`payload["job_type"] == "combat_tick"` — the same convention every scheduled subsystem uses.
+The legacy `GameEvent.COMBAT_TICK_DUE` member is not used for dispatch (it predates the
+generic scheduler; leave it in the enum, don't wire it). Handlers receive a
+`SchedulerEventContext(game_engine, bus, rng)` — they open their own session, commit it
+themselves, and use `event_ctx.rng` for all rolls (engine_core §3.0/§3.6).
 
 ---
 
-## Stat Model
+## 2. Stat model
 
-Six core attributes serving both combat and world-skill roles:
+Six core attributes on `PlayerStats`, serving both combat and world-skill roles:
 
-| Stat | Combat Role | World Role |
+| Stat | Combat role | World role |
 |---|---|---|
 | **Strength** | Melee damage bonus | Forced entry, heavy object interaction |
 | **Agility** | Hit chance, speed | Lockpicking, evasion, stealth |
-| **Vitality** | Max HP, HP regen | Endurance, poison resistance |
+| **Vitality** | hp meter maximum, regen | Endurance, poison resistance |
 | **Intellect** | Magic power (future) | Puzzle solving, lore checks |
 | **Presence** | NPC persuasion, threat | Dialogue branch unlocks, intimidation |
-| **Fortitude** | Armor effectiveness | Disease resistance, willpower checks |
+| **Fortitude** | Defense threshold | Disease resistance, willpower checks |
 
-```python
-class PlayerStats(SQLModel, table=True):
-    player_id: str = Field(primary_key=True, foreign_key="player.id")
-    strength: int = 10
-    agility: int = 10
-    vitality: int = 10
-    intellect: int = 10
-    presence: int = 10
-    fortitude: int = 10
-    max_hp: int = 100
-    current_hp: int = 100
-    level: int = 1
-    xp: int = 0
-    xp_to_next: int = 100
-    skills: dict = Field(default_factory=dict, sa_column=Column(JSON))  # skill_name → 0-100
-```
+**Runtime hp is the `"hp"` meter** (engine_core §3.3): maximum =
+`resolve_for(entity, "meter.hp.max", base=PlayerStats.max_hp | NPC.max_hp)`; damage/healing =
+`MeterService.adjust()`. **Never store derived stats** — attack/defense/armor are resolved
+per use from base stats + equipment + traits + active effects:
 
-**Important:** Derived stats (armor, resistances) are computed at runtime from base stats + equipment + buffs. Never store derived stats.
+| Resolver key | Base | Typical contributors |
+|---|---|---|
+| `stat.strength` (etc.) | the `PlayerStats` column | equipment `stat_bonus`, traits, `weakened` effect |
+| `combat.armor` | 0 | worn armor `effects: [{type: armor, amount: n}]` |
+| `combat.speed` | agility-derived | haste/slow effects |
+
+The `armor` effect descriptor is registered by the combat feature (same descriptor registry
+as [`inventory_equipment.md`](inventory_equipment.md) §3). Weapon damage is **data on the
+weapon**, also a descriptor — `effects: [{type: weapon_damage, min: 2, max: 7}]` — no new
+`Item` columns.
 
 ---
 
-## Combat Session Lifecycle
+## 3. Session lifecycle
 
-### 1. Session Creation
+`CombatSession` already exists (`models/combat.py`: `id, room_id, started_at, status,
+combatants: list[JsonObject]`). Combatant entries hold **tick bookkeeping only** —
+`{"entity_type", "entity_id", "speed", "next_action_epoch", "damage_dealt": {...}}`.
+**hp is never copied into the session** (it lives in the meter; copying it was the old
+design's dupe-state bug).
 
-A player attacks an NPC, triggering combat:
+### Start (`attack` command, Sprint 32)
+
+1. Resolve target NPC/player in room (item-matcher conventions).
+2. `ctx.rules.check("attack", ctx, {"target_id": ...})` — **fail-closed** gate: PvP consent,
+   NPC protection, room no-combat flags all veto here (engine_core §2).
+3. Create session; set `Player.active_combat_session_id`; schedule the first `combat_tick`;
+   emit `COMBAT_STARTED` (exists in the enum); narrate via `ctx.say`/`ctx.tell_room`.
+
+### Tick resolution (`CombatService.resolve_tick`, Sprint 31)
+
+For each ready combatant, in **deterministic order** (by `entity_id` — audit-regression
+depends on stable iteration, engine_core §3.0):
+
+- **Player action:** dequeued queued action or default `attack`.
+- **NPC action:** `npc/combat_ai.py` decides from YAML `behavior` (§5).
+- Resolve (§4), apply damage via `MeterService.adjust`, record `damage_dealt`, advance
+  `next_action_epoch += speed`, broadcast a `combat_update` WS message to the room
+  (via `ConnectionManager.broadcast_to_room`).
+
+End conditions: all NPCs dead/fled, or all players dead/fled → §6. Otherwise schedule the
+next `combat_tick`.
+
+### Death mid-session
+
+`MeterService.adjust` crossing hp to 0 emits `METER_DEPLETED` — the **death module**
+([`death_resurrection.md`](death_resurrection.md)) owns what happens to a player; the combat
+service only removes the dead combatant from the session. For NPCs the combat service emits
+`NPC_DIED`, drops loot (§7), and schedules respawn from `NPC.respawn_seconds`.
+
+---
+
+## 4. Attack resolution (all rolls through `rng`)
 
 ```python
-@register("attack", scope=CommandScope.WORLD, conditions=[CommandCondition.NOT_IN_COMBAT])
-async def do_attack(target: str, ctx: GameContext):
-    """
-    Player attacks an NPC or consensual player.
-    """
-    # 1. Find target NPC or player
-    npc = ctx.npc_repo.find_in_room(target, ctx.room.id)
-
-    if not npc:
-        ctx.say("You don't see that here.")
-        return
-
-    # 2. Check rule engine (PvP consent, NPC behavior, etc.)
-    rule_result = ctx.rules.check("attack", ctx, {"target_id": npc.id})
-    if not rule_result.allowed:
-        ctx.say(rule_result.reason or "You can't do that.")
-        return
-
-    # 3. Create combat session
-    session = await ctx.combat_service.create_session(
-        player_id=ctx.player.id,
-        npc_id=npc.id,
-        room_id=ctx.room.id,
-        ctx=ctx
+def resolve_attack(rng: GameRng, session: Session, attacker, defender, weapon: Item | None) -> AttackResult:
+    # To-hit: the Tier 1 skill_check (engine_core §3.6) — same helper as lockpicking/barter.
+    check = skill_check(
+        rng,
+        base=resolve_for(session, attacker, "stat.agility", base_agility) * TO_HIT_SCALE,
+        difficulty=defense_threshold(session, defender),   # fortitude + armor derived
+        key="combat.to_hit",
     )
+    if not check.success:
+        return AttackResult(hit=False)
 
-    ctx.player.active_combat_session_id = session.id
-    ctx.say(f"Combat with {npc.name} begins!")
-    ctx.tell_room(f"{ctx.player.username} attacks {npc.name}!")
-    ctx.emit(GameEvent.COMBAT_STARTED, {
-        "session_id": session.id,
-        "player_id": ctx.player.id,
-        "npc_id": npc.id,
-        "room_id": ctx.room.id,
-    })
-
-
-async def create_session(self, player_id: str, npc_id: str, room_id: str, ctx: GameContext) -> CombatSession:
-    """
-    Create a new combat session.
-    """
-    player = ctx.player_repo.get(player_id)
-    npc = ctx.npc_repo.get(npc_id)
-
-    # Compute initial speed from stats
-    player_speed = 10 - (ctx.player_stats.agility - 10) // 2  # Lower speed = faster
-    npc_speed = 10  # NPCs have fixed speed
-
-    session = CombatSession(
-        id=str(uuid.uuid4()),
-        room_id=room_id,
-        started_at=ctx.clock.game_epoch,
-        status="active",
-        combatants=[
-            {
-                "entity_id": player_id,
-                "entity_type": "player",
-                "next_action_tick": ctx.clock.game_epoch + player_speed,
-                "speed": player_speed,
-                "hp": player.stats.current_hp,
-                "max_hp": player.stats.max_hp,
-            },
-            {
-                "entity_id": npc_id,
-                "entity_type": "npc",
-                "next_action_tick": ctx.clock.game_epoch + npc_speed,
-                "speed": npc_speed,
-                "hp": npc.current_hp,
-                "max_hp": npc.max_hp,
-            }
-        ]
-    )
-
-    ctx.audit.record(ctx, GameEvent.COMBAT_STARTED, target_id=npc_id)
-    ctx.session.add(session)
-    ctx.session.commit()
-
-    # Schedule the first combat tick
-    scheduler.schedule(
-        "combat_tick",
-        at_game_epoch=ctx.clock.game_epoch + 1,
-        payload={"session_id": session.id}
-    )
-
-    return session
+    dmin, dmax = weapon_damage(weapon)          # weapon_damage descriptor; UNARMED_RANGE if None
+    raw = rng.randint(dmin, dmax) + strength_bonus(session, attacker)
+    dealt = max(0, round(raw - resolve_for(session, defender, "combat.armor", 0.0)))
+    crit = check.margin >= CRIT_MARGIN          # margin-based crit, deterministic given the roll
+    return AttackResult(hit=True, damage=dealt * (2 if crit else 1), crit=crit)
 ```
 
-### 2. Combat Tick Resolution
-
-On each `COMBAT_TICK_DUE` event:
-
-```python
-async def resolve_combat_tick(session_id: str, ctx: GameContext):
-    """
-    Resolve actions for all combatants whose next_action_tick has arrived.
-    """
-    session = ctx.session.query(CombatSession).filter(
-        CombatSession.id == session_id
-    ).first()
-
-    if not session or session.status != "active":
-        return
-
-    current_tick = ctx.clock.game_epoch
-
-    # Find combatants ready to act
-    ready = [c for c in session.combatants if c["next_action_tick"] <= current_tick]
-
-    for combatant in ready:
-        entity_id = combatant["entity_id"]
-        entity_type = combatant["entity_type"]
-
-        if entity_type == "player":
-            # Player's next action (from queue or AI)
-            player = ctx.player_repo.get(entity_id)
-            action = dequeue_player_action(entity_id)  # Or default to "attack"
-
-            if action:
-                target = find_action_target(session, entity_id)
-                await resolve_player_action(session, combatant, action, target, ctx)
-
-        elif entity_type == "npc":
-            # NPC decision logic
-            npc = ctx.npc_repo.get(entity_id)
-            decision = npc_combat_ai.decide(npc, session, ctx)
-            await resolve_npc_action(session, combatant, decision, ctx)
-
-        # Reschedule this combatant's next action
-        combatant["next_action_tick"] = current_tick + combatant["speed"]
-
-    # Check for session end (all NPCs dead or all players fled)
-    if should_end_combat(session):
-        await end_combat_session(session, ctx)
-    else:
-        # Schedule next tick
-        scheduler.schedule(
-            "combat_tick",
-            at_game_epoch=current_tick + 1,
-            payload={"session_id": session.id}
-        )
-```
-
-### 3. Damage Resolution
-
-```python
-def resolve_attack(attacker: dict, defender: dict, weapon: Item, ctx: GameContext) -> dict:
-    """
-    Roll to hit, compute damage, apply armor.
-    Returns: {"hit": bool, "damage": int, "message": str}
-    """
-    # Hit roll: d20 + agility modifier
-    d20 = random.randint(1, 20)
-    attacker_agility = ctx.player_stats.agility if attacker["entity_type"] == "player" else 10
-    hit_roll = d20 + (attacker_agility - 10) // 2
-
-    # Defender's defense threshold (derived from armor + fortitude)
-    defender_fortitude = 10  # Simplified; would be loaded from DB
-    defense_threshold = 10 + (defender_fortitude - 10) // 2
-
-    if hit_roll < defense_threshold:
-        return {"hit": False, "damage": 0, "message": f"Miss!"}
-
-    # Damage roll
-    weapon_min = weapon.damage_min if hasattr(weapon, 'damage_min') else 5
-    weapon_max = weapon.damage_max if hasattr(weapon, 'damage_max') else 12
-    raw_damage = weapon_min + random.randint(0, weapon_max - weapon_min)
-
-    # Strength bonus
-    attacker_strength = ctx.player_stats.strength if attacker["entity_type"] == "player" else 10
-    raw_damage += (attacker_strength - 10) // 2
-
-    # Armor reduction (simplified)
-    armor_reduction = 2  # Would be loaded from defender's equipment
-    final_damage = max(0, raw_damage - armor_reduction)
-
-    # Critical hit (natural 20)
-    if d20 == 20:
-        final_damage *= 2
-        return {"hit": True, "damage": final_damage, "message": f"Critical hit! {final_damage} damage!"}
-
-    return {"hit": True, "damage": final_damage, "message": f"Hit! {final_damage} damage."}
-
-
-async def resolve_player_action(session: CombatSession, attacker: dict, action: str, target: dict, ctx: GameContext):
-    """
-    Resolve a player's combat action.
-    """
-    if action == "attack":
-        player = ctx.player_repo.get(attacker["entity_id"])
-        # Get player's equipped weapon
-        weapon = ctx.item_repo.get(player.equipped_weapon_id) if player.equipped_weapon_id else Item(
-            id="fist",
-            name="Fists",
-            damage_min=1,
-            damage_max=3
-        )
-
-        result = resolve_attack(attacker, target, weapon, ctx)
-
-        if result["hit"]:
-            target["hp"] -= result["damage"]
-            ctx.audit.record(ctx, GameEvent.PLAYER_ATTACKED, target_id=target["entity_id"])
-
-        # Broadcast to room
-        player_name = ctx.player_repo.get(attacker["entity_id"]).username
-        target_name = ctx.npc_repo.get(target["entity_id"]).name if target["entity_type"] == "npc" else ctx.player_repo.get(target["entity_id"]).username
-
-        await ctx.manager.broadcast_to_room(session.room_id, {
-            "type": "combat_update",
-            "session_id": session.id,
-            "message": f"{player_name} {result['message']} {target_name}",
-            "log": [result]
-        })
-```
-
-### 4. Session End
-
-When combat resolves (all NPCs dead, all players fled, etc.):
-
-```python
-async def end_combat_session(session: CombatSession, ctx: GameContext):
-    """
-    End a combat session and clean up.
-    """
-    session.status = "resolved"
-
-    # Award XP to surviving players
-    for combatant in session.combatants:
-        if combatant["entity_type"] == "player" and combatant["hp"] > 0:
-            player = ctx.player_repo.get(combatant["entity_id"])
-            xp_earned = 100  # Simplified
-            player.stats.xp += xp_earned
-            player.active_combat_session_id = None
-            ctx.audit.record(ctx, GameEvent.COMBAT_ENDED, target_id=combatant["entity_id"], summary=f"Awarded {xp_earned} XP")
-
-    # Clean up dead NPCs
-    for combatant in session.combatants:
-        if combatant["entity_type"] == "npc" and combatant["hp"] <= 0:
-            npc = ctx.npc_repo.get(combatant["entity_id"])
-            npc.current_hp = 0
-            await drop_loot(npc, session.room_id, ctx)
-            ctx.audit.record(ctx, GameEvent.NPC_DIED, target_id=npc.id)
-
-            # Respawn if configured
-            if npc.respawn_seconds:
-                scheduler.schedule(
-                    "npc_respawn",
-                    at_game_epoch=ctx.clock.game_epoch + npc.respawn_seconds,
-                    payload={"npc_id": npc.id}
-                )
-
-    ctx.session.commit()
-
-    # Emit event
-    ctx.emit(GameEvent.COMBAT_ENDED, {"session_id": session.id})
-
-    # Broadcast to room
-    await ctx.manager.broadcast_to_room(session.room_id, {
-        "type": "system",
-        "text": "Combat has ended."
-    })
-```
+Constants (`TO_HIT_SCALE`, `CRIT_MARGIN`, `UNARMED_RANGE`) are feature config —
+world-overridable, not engine constants. The wielded weapon is read from the `main_hand`
+slot: `stacks_for_owner("player", id)` filtered to `slot == "main_hand"` (engine_core §3.2;
+there is **no** `equipped_weapon_id`).
 
 ---
 
-## NPC Combat AI
+## 5. NPC combat AI (`npc/combat_ai.py`, Sprint 31.3)
 
-NPCs have distinct behaviors:
+Behavior modes come from `NPC.behavior` (YAML; the column exists):
 
-```python
-class NPCCombatBehavior(str, Enum):
-    AGGRESSIVE    # Attacks on sight or when threatened
-    DEFENSIVE     # Fights back when attacked, may flee if losing
-    COWARDLY      # Flees early (< 50% HP); negotiates if cornered
-    TERRITORIAL   # Attacks only in their zone, otherwise ignores
-    GUARD         # Calls for reinforcements instead of fleeing
+| Behavior | Policy |
+|---|---|
+| `aggressive` | always attack |
+| `defensive` | attack; flee below 30% hp |
+| `cowardly` | flee below 50%; below 10% and cornered → `dialogue` (negotiate) |
+| `territorial` | attack only while `session.room_id == npc.home_room_id`; else flee |
+| `guard` | never flees; `call_reinforcements` (emits an event other guards react to) |
 
+hp fractions read the NPC's hp meter. Fleeing moves the NPC to `home_room_id`, removes it
+from the session, and emits `NPC_FLED` (exists in the enum). Thresholds are per-behavior
+config, overridable per NPC in YAML. Decisions may use `rng` (e.g. flee direction) — never
+module `random`.
 
-async def npc_combat_ai_decide(npc: NPC, session: CombatSession, ctx: GameContext) -> str:
-    """
-    NPC decision logic fires each time their combat tick resolves.
-    """
-    npc_combatant = next(c for c in session.combatants if c["entity_id"] == npc.id)
-    hp_percent = npc_combatant["hp"] / npc_combatant["max_hp"]
-
-    if npc.behavior == "aggressive":
-        return "attack"
-
-    elif npc.behavior == "defensive":
-        if hp_percent < 0.3:
-            return "flee"
-        return "attack"
-
-    elif npc.behavior == "cowardly":
-        if hp_percent < 0.5:
-            if hp_percent < 0.1:
-                # Cornered — negotiate
-                return "dialogue"
-            return "flee"
-        return "attack"
-
-    elif npc.behavior == "territorial":
-        # Check if in home zone
-        zone = npc.home_zone or None
-        if zone and session.room_id != npc.home_room_id:
-            return "flee"
-        return "attack"
-
-    elif npc.behavior == "guard":
-        return "call_reinforcements"
-
-    return "idle"
-```
-
-### Fleeing
-
-When an NPC flees, it transitions back to its schedule:
-
-```python
-async def resolve_npc_flee(npc: NPC, session: CombatSession, ctx: GameContext):
-    """
-    NPC flees combat. Transition back to schedule or FLED waypoint.
-    """
-    npc.current_room_id = npc.home_room_id  # Or a FLED waypoint
-
-    # Remove from combat session
-    session.combatants = [c for c in session.combatants if c["entity_id"] != npc.id]
-
-    if not session.combatants or all(c["entity_type"] == "player" for c in session.combatants):
-        # All NPCs fled or dead
-        await end_combat_session(session, ctx)
-
-    ctx.emit(GameEvent.NPC_FLED, {"npc_id": npc.id, "session_id": session.id})
-```
+**Avoidance-first (Sprint 32):** `flee`, `subdue`, `intimidate`, and dialogue-mid-combat are
+commands/outcomes of equal rank with `attack`; non-lethal end states set session status
+`"resolved_nonlethal"` and emit `COMBAT_ENDED` with an `outcome` payload field.
 
 ---
 
-## Kill Credit & Loot Ownership
+## 6. Session end, kill credit & loot
 
-Multiple players can fight the same NPC. Credit is **participation-based**, not last-hit:
-
-```python
-def compute_kill_credit(session: CombatSession) -> dict[str, float]:
-    """
-    Compute XP/loot share based on damage dealt.
-    Returns: {player_id: credit_fraction}
-    """
-    damage_by_player = {}
-    total_damage = 0
-
-    # Simplified: track damage in combat log
-    for log_entry in session.combat_log:
-        if log_entry["attacker_type"] == "player":
-            player_id = log_entry["attacker_id"]
-            damage = log_entry["damage"]
-            damage_by_player[player_id] = damage_by_player.get(player_id, 0) + damage
-            total_damage += damage
-
-    if total_damage == 0:
-        return {}
-
-    credit = {}
-    for player_id, damage in damage_by_player.items():
-        credit[player_id] = damage / total_damage
-
-    return credit
-
-
-async def drop_loot(npc: NPC, room_id: str, ctx: GameContext):
-    """
-    Drop loot from NPC death.
-    """
-    if not npc.loot_table:
-        return
-
-    for item_id, drop_chance in npc.loot_table.items():
-        if random.random() < drop_chance:
-            item = ctx.item_repo.get(item_id)
-            room_item = RoomItem(room_id=room_id, item_id=item_id, quantity=1)
-            ctx.session.add(room_item)
-
-    ctx.session.commit()
-```
+- Credit is **participation-based, not last-hit**: each combatant entry accumulated
+  `damage_dealt` per target; credit fraction = damage share. XP award (if/when leveling
+  matters — see [`wishlist.md`](wishlist.md), progression is exploration-led) and loot
+  rights both use it.
+- Loot: roll `NPC.loot_table` with `rng`, then `ItemLocationService.spawn()` into the room —
+  or into a lootable corpse container if the world enables NPC corpses (same corpse mechanism
+  as player death). Coin drops are `LedgerService.credit` to the corpse/room-holder — never a
+  bare integer.
+- Cleanup: clear every surviving player's `active_combat_session_id`; session status
+  `"resolved"`; emit `COMBAT_ENDED`; the room gets a final `combat_update` + narration.
 
 ---
 
-## Combat-Gated Commands
+## 7. Combat-gated commands
 
-Commands like `SLEEP`, `FAST_TRAVEL`, `TRADE` require condition `NOT_IN_COMBAT`:
-
-```python
-class CommandCondition(str, Enum):
-    NOT_IN_COMBAT = "not_in_combat"
-    IN_COMBAT = "in_combat"
-
-
-def evaluate_condition(condition: CommandCondition, ctx: GameContext) -> bool:
-    if condition == CommandCondition.NOT_IN_COMBAT:
-        return ctx.player.active_combat_session_id is None
-    elif condition == CommandCondition.IN_COMBAT:
-        return ctx.player.active_combat_session_id is not None
-    # ... other conditions
-```
+Already wired (Sprint 10): `not_in_combat` / `in_combat` conditions exist in
+`game/command_conditions.py` reading `Player.active_combat_session_id`. Commands like
+`sleep`, `board`, `trade` declare `conditions=["not_in_combat"]`. Sprint 32 completes the
+condition set (`has_combat_target`, `NPC_PRESENT`) via the same registry — availability
+gates are conditions; integrity gates (consent) are rules (engine_core §2).
 
 ---
 
-## Testing
+## 8. Events (all already in `game/events.py` — no new members needed)
 
-```python
-@pytest.mark.asyncio
-async def test_combat_tick_resolution():
-    """Verify that combat tick resolves actions."""
-    db = create_in_memory_db()
-    ctx = build_test_context(db)
-
-    player = create_test_player(db, "warrior")
-    npc = create_test_npc(db, "goblin")
-
-    # Create combat session
-    session = await ctx.combat_service.create_session(
-        player_id=player.id,
-        npc_id=npc.id,
-        room_id=ctx.room.id,
-        ctx=ctx
-    )
-
-    # Simulate combat tick
-    await resolve_combat_tick(session.id, ctx)
-
-    # Verify damage was dealt
-    session_updated = db.query(CombatSession).filter(
-        CombatSession.id == session.id
-    ).first()
-    npc_combatant = next(
-        c for c in session_updated.combatants if c["entity_id"] == npc.id
-    )
-
-    assert npc_combatant["hp"] < npc_combatant["max_hp"]
-```
+`COMBAT_STARTED`, `COMBAT_ENDED`, `PLAYER_ATTACKED`, `NPC_ATTACKED`, `NPC_DIED`, `NPC_FLED`,
+`PLAYER_DIED` / `PLAYER_RESPAWNED` (emitted by the death module, not combat). Audit payloads
+include `session_id`, damage, and outcome — the audit-regression harness diffs a scripted
+fight, which is why every roll goes through the seeded `rng` and iteration order is fixed.
 
 ---
 
-*See also: [architecture.md § Combat System](architecture.md#15-subsystem-combat-system)*
+## 9. Testing (Sprint 33)
+
+- **Unit:** attack resolution across armor/crit/unarmed branches with a seeded `GameRng`
+  (exact expected sequences); AI decision table per behavior × hp fraction; speed/scheduling
+  math; kill-credit shares; deterministic combatant ordering.
+- **Integration:** full fight through `POST /command` and `/ws` (attack → ticks → NPC death →
+  loot on floor); flee path; non-lethal path; combat-gated command refusals.
+- **Simulation:** two players fighting one NPC concurrently over real sockets (credit split,
+  no lost updates on the shared hp meter); **audit-regression**: a seeded scripted fight run
+  against two fresh servers diffs identical (the §3.6 determinism contract, end-to-end).
+
+---
+
+*See [`engine_core.md`](engine_core.md) (primitives), [`death_resurrection.md`](death_resurrection.md)
+(death/respawn policy), [`inventory_equipment.md`](inventory_equipment.md) (weapon/armor as
+effect descriptors), [`feature-registration.md`](feature-registration.md) (module layout), and
+[architecture.md §15](architecture.md#15-subsystem-combat-system) (original subsystem sketch,
+superseded where it conflicts with this doc).*

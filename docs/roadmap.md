@@ -256,7 +256,7 @@ stock, corpses, and trade escrow. **See [`engine_core.md`](engine_core.md) §3.1
 
 | # | Task | Status |
 |---|------|--------|
-| 16.1 | Owned-stack abstraction + `(owner_type, owner_id, slot?)` location; one atomic `move_stack` (audited, rollback-safe); migrate `Player.inventory`/`RoomItem` behind it so consumers see one shape | [ ] |
+| 16.1 | `ItemStack` + `(owner_type, owner_id, slot?)` location + holder registry; one atomic `ItemLocationService.move()` (rollback-safe); **replace** `Player.inventory`/`RoomItem` outright (column/table deleted — full blast-radius table in [`engine_core.md`](engine_core.md) §3.2) | [ ] |
 | 16.2 | `ItemInstance` carrier + pluggable component registry (durability/openable/lit/container register like dialogue side-effects); `bound`/soulbound flag | [ ] |
 
 ## Sprint 17 — Determinism: seedable RNG & skill-check
@@ -267,7 +267,7 @@ combat/skills/trade. **See [`engine_core.md`](engine_core.md) §3.6, §4b.**
 | # | Task | Status |
 |---|------|--------|
 | 17.1 | Seedable `ctx.rng` service threaded through `GameContext` (per-run seed); lint-ban module-level `random` in feature code | [ ] |
-| 17.2 | `skill_check(actor, skill, difficulty, modifiers) → outcome` helper on `ctx.rng` (one check path for perception/lockpicking/barter/combat) | [ ] |
+| 17.2 | `skill_check(rng, base, difficulty, modifiers) → CheckResult` helper (roll-under d100, 5/95 bounds — one check path for perception/lockpicking/barter/combat) | [ ] |
 
 ## Sprint 18 — Modifier resolution
 
@@ -285,7 +285,7 @@ not one column per resource. **See [`engine_core.md`](engine_core.md) §3.3–3.
 
 | # | Task | Status |
 |---|------|--------|
-| 19.1 | `Meter` primitive (bounded, optional regen, scheduler tick); migrate `PlayerStats.current_hp/max_hp` onto it as the proof; low values feed the §18 resolver | [ ] |
+| 19.1 | `Meter` primitive (bounded, optional regen, scheduler tick, `METER_DEPLETED`); migrate `current_hp` (player + NPC) onto it as the proof — `max_hp` stays as the definitional base | [ ] |
 | 19.2 | `ActiveEffect` (clock-driven expiry, swept by scheduler) + trait registry (named boon/bane modifier-bundles) feeding the resolver | [ ] |
 
 ## Sprint 20 — Ledger & atomic transfer
@@ -295,7 +295,7 @@ not one column per resource. **See [`engine_core.md`](engine_core.md) §3.3–3.
 
 | # | Task | Status |
 |---|------|--------|
-| 20.1 | Coin balance as an attribute of any holder (player/bank/corpse); atomic `transfer(from, to, coins?, stacks?)` with accept-time revalidation (escrow), reusing the [Sprint 14](#sprint-14--unify-command-lifecycle-) rollback; integrity gates via `RuleEngine` (fail-closed), not conditions | [ ] |
+| 20.1 | `CoinBalance` on any registered holder (player/bank/corpse/shop); atomic multi-leg `execute_exchange(legs)` — validate all, then apply all (escrow = accept-time revalidation), reusing the [Sprint 14](#sprint-14--unify-command-lifecycle-) rollback; integrity gates via `RuleEngine` (fail-closed), not conditions | [ ] |
 
 ## Sprint 21 — Scheduled moving entity ("moving room")
 
@@ -538,4 +538,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — Inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green. Next: build [Sprint 16](#sprint-16--item-locationownership--instance-state) (item location/ownership + component state) and [Sprint 17](#sprint-17--determinism-seedable-rng--skill-check) (seedable RNG + skill-check) first — the two most expensive to retrofit.*
+*Last updated: 2026-07-03 — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](inventory_equipment.md), [`trade_economy.md`](trade_economy.md), [`transit_systems.md`](transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green. Next: build [Sprint 16](#sprint-16--item-locationownership--instance-state) (item location/ownership + component state) and [Sprint 17](#sprint-17--determinism-seedable-rng--skill-check) (seedable RNG + skill-check) first — the two most expensive to retrofit.*

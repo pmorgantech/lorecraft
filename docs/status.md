@@ -23,10 +23,13 @@ The architecture overview remains the design reference; this file is the working
 > **engine-first Tier 1 primitives band** ahead of the Tier 2 feature modules — see
 > [`engine_core.md`](engine_core.md) for the framework/game boundary, [`wishlist.md`](wishlist.md)
 > for the pillars, and [`inventory_equipment.md`](inventory_equipment.md) for the item/equipment
-> design. Next: Sprint 16 (item location/ownership + component state), then Sprint 17 (seedable
-> RNG + skill-check) — the two Tier 1 primitives most expensive to retrofit. Tier 2 feature work
-> (item components, equipment, traits/skills, exploration…) now starts at Sprint 22; combat moved
-> down to Sprints 31–33.
+> design. All six design docs went through a same-day deep-dive revision and are
+> **implementation-ready** — `engine_core.md` §3 holds the binding Tier 1 specs (schemas, APIs,
+> invariants, migration blast-radius tables); the feature docs are aligned to them with
+> superseded drafts called out inline. Next: Sprint 16 (item location/ownership + component
+> state), then Sprint 17 (seedable RNG + skill-check) — the two Tier 1 primitives most expensive
+> to retrofit. Tier 2 feature work (item components, equipment, traits/skills, exploration…)
+> now starts at Sprint 22; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 

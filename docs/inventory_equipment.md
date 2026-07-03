@@ -1,9 +1,18 @@
 # Inventory, Equipment & Item State — Design
 
-> **Status:** Design (2026-07-03). First feature to promote off [`wishlist.md`](wishlist.md)
-> after the foundation gate. Implements the "Inventory & equipment 💚 (foundational)" and
-> the item-state prerequisites for "Character condition", "Exploration depth", and
-> "Quests & puzzles" mechanics.
+> **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
+> First feature to promote off [`wishlist.md`](wishlist.md) after the foundation gate.
+> Implements the "Inventory & equipment 💚 (foundational)" and the item-state prerequisites for
+> "Character condition", "Exploration depth", and "Quests & puzzles" mechanics.
+>
+> **Tier 1 dependencies (build first — [`engine_core.md`](engine_core.md)):** this feature is
+> the first Tier 2 consumer of the **item location/ownership model** (`ItemStack` +
+> `ItemLocationService`, engine_core §3.2,
+> [Sprint 16](roadmap.md#sprint-16--item-locationownership--instance-state)), the **component
+> registry** (`ItemInstance` + `ComponentDef`, §3.1, Sprint 16), and the **modifier resolver**
+> (§3.5, [Sprint 18](roadmap.md#sprint-18--modifier-resolution)). Schemas for stacks, instances,
+> holders, and modifiers live in `engine_core.md` and are **not** re-specified here; this doc
+> defines what the inventory/equipment feature *registers and adds on top*.
 >
 > **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): equipment
 > exists to gate **exploration** (light, warmth, carry capacity, skill bonuses) and **trade**
@@ -12,25 +21,23 @@
 
 ---
 
-## 1. Where we are today
+## 1. Where we build from (after Sprint 16)
 
-Current models (`src/lorecraft/models/`):
+By the time this feature starts, Tier 1 has already replaced the old item storage:
 
-- **`Player.inventory: list[str]`** — a flat list of item IDs. Duplicates repeat for quantity.
-  No equipped state, no containers, no per-instance data.
-- **`Item`** — `id, name, description, takeable, tradeable, aliases, usable_with, loot_table`.
-  **No** `slot`, `weight`, `wearable`, `quality`, or `durability`.
-- **`RoomItem`** — has `quantity`; item stacks on the floor already work.
+- **`ItemStack`** rows are the *only* item location representation — `Player.inventory` and
+  `RoomItem` no longer exist (engine_core §3.2). Carried = `Location("player", id)`; on the
+  floor = `Location("room", id)`; equipped = `Location("player", id, slot="head")`.
+- **`ItemInstance`** carries per-instance `state`, keyed by component name (engine_core §3.1).
+- **`Item.bound: bool`** already exists (Sprint 16); this feature registers its enforcement.
 - **`PlayerStats`** — six attributes (STR/AGI/VIT/INT/PRE/FOR), `max_hp`, `skills: dict`.
-  Equipment is expected to feed *derived* stats (see [`combat_system.md`](combat_system.md):
-  "Never store derived stats").
+  Equipment feeds *derived* values via the modifier resolver — never stored back.
 - **`Room.light_level: int`** and **`Exit.hidden` / `Exit.condition_flags`** already exist —
   the light/darkness and hidden-exit mechanics have partial data support to build on.
 
-`services/inventory.py` already centralizes take/drop/give/use via a shared
-find→disambiguate→act helper (Sprint 9.3) and the consolidated item matcher (Sprint 9.4).
-**New commands (`wear`, `remove`, `wield`, `put`, `open`) extend that service, they don't
-fork it.**
+`services/inventory.py` centralizes take/drop/give/use over stacks (rewired in Sprint 16) via
+the shared find→disambiguate→act helper and the consolidated item matcher. **New commands
+(`wear`, `remove`, `wield`, `put`, `open`) extend that service, they don't fork it.**
 
 ---
 
@@ -40,19 +47,19 @@ Three layers, built in order. Each is independently shippable.
 
 | Layer | Adds | Unblocks |
 |---|---|---|
-| **A. Item definition fields** | `slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity` on `Item` | equipment, encumbrance, light |
-| **B. Equipment & encumbrance** | `Player.equipment` map; `wear`/`remove`/`wield`; weight totals | passive effects, combat, trade value |
-| **C. Item state & containers** | per-instance item state (`ItemInstance`); `open`/`put`/`take from`; durability; nesting | puzzles, durability, lanterns, quest stashes |
+| **A. Item definition fields** ([Sprint 22](roadmap.md#sprint-22--standard-item-components--definition-fields).1) | `slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects` on `Item` | equipment, encumbrance, light |
+| **B. Equipment & encumbrance** ([Sprint 23](roadmap.md#sprint-23--inventory--equipment).1–.2) | slot-bearing stacks; `wear`/`remove`/`wield`; carry capacity via resolver | passive effects, combat, trade value |
+| **C. Standard components & containers** ([Sprint 22](roadmap.md#sprint-22--standard-item-components--definition-fields).2 + [Sprint 23](roadmap.md#sprint-23--inventory--equipment).3) | `durability`/`openable`/`lit`/`container`/`mechanism` components; `open`/`put`/`take from`; nesting | puzzles, durability, lanterns, quest stashes |
 
-Layers A+B are the "inventory & equipment" sprint. Layer C is the deferred Sprint 2.5
-`open`/container/state modeling — it's the shared prerequisite for containers, durability,
-light-source fuel, and mechanism puzzles, so it lives here.
+Layer C is the deferred Sprint 2.5 `open`/container/state modeling — the shared prerequisite
+for containers, durability, light-source fuel, and mechanism puzzles.
 
 ---
 
 ## 3. Layer A — Item definition fields
 
-Additive, nullable/defaulted fields on `Item` so existing world YAML keeps loading unchanged:
+Additive, nullable/defaulted fields on `Item` so existing world YAML keeps loading unchanged
+(`bound` arrives with Sprint 16; the rest land here):
 
 ```python
 class Item(SQLModel, table=True):
@@ -61,39 +68,38 @@ class Item(SQLModel, table=True):
     wearable: bool = False           # worn (armor/clothing) vs. wielded (weapon/tool/light)
     weight: float = 0.0              # units; drives encumbrance (§5)
     quality: str = "common"          # common|fine|superior|rare|legendary — value & trade
-    max_durability: int | None = None  # None = indestructible; else current tracked per-instance (§7)
-    light: int = 0                   # light radius/level this item emits when equipped/lit (§8)
+    max_durability: int | None = None  # None = indestructible; else tracked per-instance (§7)
+    light: int = 0                   # light radius/level this item emits when equipped & lit (§8)
     capacity: float | None = None    # if set, item is a container holding up to `capacity` weight (§6)
-    effects: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))  # passive effects (§4)
+    bound: bool = False              # Sprint 16 field: can't be dropped/sold/traded; kept on death
+    effects: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))  # (§9)
 ```
 
-`effects` is a list of pluggable effect descriptors (registry-driven, mirroring the dialogue
-side-effect and condition registries from [Sprint 10](roadmap.md#sprint-10--extensibility-seams-)), e.g.:
+`effects` is a list of pluggable **effect descriptors** (registry-driven, mirroring the
+dialogue side-effect registries from
+[Sprint 10](roadmap.md#sprint-10--extensibility-seams-)), e.g.:
 
 ```yaml
 effects:
-  - type: stat_bonus     # strength +2
-    stat: strength
-    amount: 2
-  - type: grant_trait    # while equipped, character is "warm"
-    trait: warm
-  - type: skill_bonus    # +10 perception
-    skill: perception
-    amount: 10
-  - type: carry_bonus    # +20 carry capacity (a backpack worn)
-    amount: 20
+  - { type: stat_bonus,  stat: strength,     amount: 2 }
+  - { type: grant_trait, trait: warm }
+  - { type: skill_bonus, skill: perception,  amount: 10 }
+  - { type: carry_bonus, amount: 20 }        # a worn backpack
 ```
 
-**Effects are resolved at runtime** from currently-equipped items — never persisted onto
-`PlayerStats`. This matches the combat doc's derived-stat rule and lets `unwear` cleanly
-reverse a bonus.
+Each descriptor `type` is registered with a compiler to Tier 1 terms (§9): `stat_bonus` →
+`Modifier(key="stat.strength", kind="add", amount=2)`; `skill_bonus` →
+`Modifier(key="skill.perception", kind="add", amount=10)`; `carry_bonus` →
+`Modifier(key="carry_capacity", kind="add", amount=20)`; `grant_trait` feeds the trait
+source, not a modifier. Unknown descriptor types are a **content-lint error**, not a runtime
+fallthrough.
 
 ---
 
 ## 4. Layer B — Equipment slots
 
 Slots are **data**, not hardcoded, so worlds can add slots without engine edits. A default
-slot set ships in config / world meta:
+slot set ships as feature config, overridable in world meta:
 
 | Slot key | Kind | Typical item | Non-combat effect example |
 |---|---|---|---|
@@ -110,33 +116,39 @@ slot set ships in config / world meta:
 | `feet` | worn | boots | terrain traversal (climbing) |
 | `main_hand` | wielded | weapon, tool | combat; tools gate actions (pick, torch) |
 | `off_hand` | wielded | shield, lantern | armor; **light source** |
-| `light` | wielded | torch, lantern | **light (§8)** — may alias `off_hand` |
 
-Player gains an equipment map (slot key → item id/instance):
+**Storage (decided — supersedes the earlier `Player.equipment` JSON-map draft and
+`combat_system.md`'s old `equipped_weapon_id`):** equipped-ness **is a location**. Wearing a
+helm is `ItemLocationService.move(stack, Location("player", player_id, slot="head"), 1)`;
+removing it moves the stack back to `slot=None`. There is no equipment column of any kind —
+one storage model for carried, equipped, and contained (engine_core §3.2, §4.e).
 
-```python
-class Player(SQLModel, table=True):
-    # ... existing fields ...
-    equipment: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))  # slot -> item ref
-```
+This feature registers with the Tier 1 holder registry:
+
+- a **move validator on `player`** for `slot is not None`: slot key must be in the configured
+  slot set (`ValidationError`), the item must be `wearable` (worn slots) or wieldable
+  (`main_hand`/`off_hand`), the item's `slot` must match (rings may go in either finger slot —
+  the validator owns that mapping), and the slot must be empty (`ConflictError`; the `wear`
+  command offers swap by first moving the occupant out).
+- **rules (fail-closed, engine_core §2)**: `bound` items refuse `drop`/`give`/`sell` via a
+  `RuleEngine` rule checked at the command layer — not inside `move()`.
 
 Commands (extend `InventoryService`):
 
-- `wear <item>` / `remove <item>` — worn items; validates `wearable` and `slot` free (or swap).
+- `wear <item>` / `remove <item>` — worn items.
 - `wield <item>` / `unwield` — `main_hand`/`off_hand`.
-- `equipment` / `eq` — list equipped items by slot.
+- `equipment` / `eq` — list equipped items by slot (reads `stacks_for_owner`, `slot != None`).
 
-`GameContext.get_visible_entities()` and the item matcher already resolve names/aliases;
-equip commands reuse that resolution. Equipping/removing emits events
-(`ITEM_EQUIPPED` / `ITEM_UNEQUIPPED`) so services (combat, exploration, condition) recompute
-derived state.
+Equipping/removing emits **new `GameEvent` members added in this sprint**: `ITEM_EQUIPPED` /
+`ITEM_UNEQUIPPED` (`player_id, item_id, slot, instance_id?`) so combat, exploration, and
+condition recompute derived state.
 
 ---
 
 ## 5. Encumbrance
 
-Total carried weight = sum of `weight` over inventory + equipped items, minus container
-reductions (§6). Bands (tunable, forgiving by default):
+Total carried weight = Σ `Item.weight × quantity` over all the player's stacks (loose,
+equipped, and container contents — reduced rates per §6). Bands (tunable, forgiving):
 
 | Band | Threshold | Effect |
 |---|---|---|
@@ -144,82 +156,85 @@ reductions (§6). Bands (tunable, forgiving by default):
 | Burdened | ≤ 1.5× | travel costs extra fatigue (ties to condition mechanic) |
 | Overloaded | > 1.5× | cannot pick up more; travel heavily penalized |
 
-Carry capacity derives from `PlayerStats.strength` + `carry_bonus` effects (a worn backpack).
-Encumbrance is the first real consumer of the fatigue/condition system — keep the hook
-(`ctx` exposes current carried weight) even if the fatigue sprint lands later.
+Carry capacity is **resolved, never stored** (engine_core §3.5):
+`resolve_for(session, player, "carry_capacity", base=carry_base(strength))` — the equipment
+modifier source contributes `carry_bonus` descriptors automatically. "Cannot pick up more" is
+this feature's move validator on the `player` holder (mechanical, Tier 1 hook); the fatigue
+cost lands with [Sprint 27](roadmap.md#sprint-27--character-condition-fatigue--sleep) but the
+band computation ships here.
 
 ---
 
 ## 6. Layer C — Containers & nested inventory
 
-A container is an `Item` with `capacity` set. It holds other items up to `capacity` weight.
-Containers may **reduce** effective carried weight (a "bag of holding" style reduction factor)
-or simply organize.
+A container is an `Item` with `capacity` set — which makes the **`container` component**
+(§7) apply, so every container is instanced. Contents are ordinary stacks at
+`Location("container", <instance_id>)` — **never** serialized into instance state.
 
-- `put <item> in <container>` / `take <item> from <container>`.
+- `put <item> in <container>` / `take <item> from <container>` — both are `move()` calls.
 - Worn containers (backpack in `back`) contribute `carry_bonus`; their contents count at a
-  reduced rate.
-- Containers can nest (a pouch in a backpack) — bounded recursion depth to avoid abuse.
-- World/room chests are containers too (a `RoomItem` with `capacity`), enabling quest stashes
-  and puzzle rewards.
-
-This requires per-instance data (a specific bag holds specific items), which motivates §7.
+  reduced rate (feature config; the weight sum in §5 applies it).
+- Nesting works naturally (a pouch's stack lives at the backpack's container location);
+  Tier 1's cycle guard (engine_core §3.2 invariant 5) prevents a bag containing itself, and
+  this feature's container move-validator enforces a max nesting depth (default 3) and
+  capacity/open checks.
+- World/room chests: the YAML loader `spawn()`s the chest item into the room; because the
+  container component applies, it gets an instance — quest stashes and puzzle rewards are
+  stacks inside it.
 
 ---
 
-## 7. Item instances & state
+## 7. Standard components (registered by this feature)
 
-Flat `list[str]` item IDs can't express "*this* torch is 40% burned" or "*this* chest is
-open and holds a key". Introduce a per-instance record **only for items that need state**
-(stateless stackables stay as ID lists / `RoomItem` quantities — no migration churn):
+Per-instance state uses the Tier 1 component registry (engine_core §3.1) — instance `state`
+is keyed by component name; there are **no typed columns** on `ItemInstance`. This feature
+registers the standard set:
 
-```python
-class ItemInstance(SQLModel, table=True):
-    id: str = Field(primary_key=True)
-    item_id: str = Field(foreign_key="item.id", index=True)   # definition
-    owner_type: str        # "player" | "room" | "container"
-    owner_id: str          # player id / room id / container instance id
-    durability: int | None = None   # current; from Item.max_durability
-    is_open: bool = False            # containers, chests, doors-as-items
-    lit: bool = False                # light sources
-    state: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))  # puzzle/mechanism state
-```
+| Component | `applies_to` | Initial state | Read/written by |
+|---|---|---|---|
+| `durability` | `item.max_durability is not None` | `{"current": item.max_durability}` | use/weather decrements; at 0 → item becomes broken (repair = trade hook) |
+| `openable` | container or `openable` flag in YAML | `{"open": false}` | `open`/`close` commands; container move-validator requires open |
+| `lit` | `item.light > 0` | `{"lit": false}` | `light`/`extinguish`; fuel = durability drain per world tick while lit |
+| `container` | `item.capacity is not None` | `{}` (contents are stacks, not state) | capacity/nesting validator |
+| `mechanism` | explicit YAML `mechanism:` block | the block's initial values | pluggable conditions/side effects (puzzles, [Sprint 30](roadmap.md#sprint-30--quests--puzzles-depth)) |
 
-- **Durability** decrements on use / weather exposure; at 0 the item breaks or becomes
-  "broken" (repairable via a service NPC — a trade hook). Drives consumable trade.
-- **`lit`** + `Item.light` + `Room.light_level` implement the light/darkness exploration
-  mechanic: in a dark room, only a lit light source reveals exits/items.
-- **`state`** is the generic bag for mechanism puzzles (lever positions, dial codes) — read by
-  pluggable conditions, written by pluggable side effects (same registries as dialogue).
-
-`open <item>` toggles `is_open` for containers/chests; puzzle mechanisms use their own
-verbs registered via the command/condition registries.
+Each ships a `validate` for content lint. A stateless stackable (coin, salt sack) matches no
+component and stays a fungible quantity-N stack — no instance, no churn.
 
 ---
 
 ## 8. Light & darkness (exploration payoff)
 
-Already half-modeled (`Room.light_level`). Rule: if `Room.light_level == 0` (or "dark") and
-the player has no lit light source (equipped item with `light > 0` and `lit == True`), the
-room description hides exits and items ("It is pitch black. You need a light."). A lit lantern
-consumes fuel (durability) over world-clock ticks — a gentle resource loop that makes
-exploration deliberate and creates demand for oil/torches (trade).
+Already half-modeled (`Room.light_level`). Rule: if `Room.light_level == 0` and the player
+has no **equipped** item with `light > 0` whose instance state has `lit == true`, the room
+description hides exits and items ("It is pitch black. You need a light."). A lit lantern
+drains durability on world-clock ticks (an `TIME_ADVANCED` handler registered by this
+feature) — a gentle resource loop that makes exploration deliberate and creates demand for
+oil/torches (trade).
 
 ---
 
 ## 9. Effects resolution (runtime, not stored)
 
-A single `EquipmentEffects.resolve(player)` helper walks equipped items' `effects`, sums
-`stat_bonus`/`skill_bonus`/`carry_bonus`, and collects granted traits. Consumers:
+**Superseded draft note:** the earlier `EquipmentEffects.resolve()` helper is replaced by the
+Tier 1 modifier resolver (engine_core §3.5). This feature ships two registrations:
 
-- **Combat** — reads derived STR/armor (per `combat_system.md`).
-- **Exploration** — reads derived `perception`/`survival` skills for hidden-exit and terrain
-  checks; reads granted traits (`warm`, `sure-footed`).
-- **Encumbrance** — reads `carry_bonus`.
-- **Trade** — reads `quality` for pricing.
+1. an **equipment `ModifierSource`**: walk the player's `slot != None` stacks, compile each
+   item's `effects` descriptors into `Modifier`s (see §3) with `source=f"item:{item.id}"`;
+2. an **equipment trait source**: `grant_trait` descriptors → the Tier 1 trait registry.
 
-Never write these back to `PlayerStats`. Recompute on `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` or
-lazily per command.
+Consumers simply call `resolve_for(...)` with the right key:
+
+- **Combat** — `stat.strength`, armor keys (per [`combat_system.md`](combat_system.md)).
+- **Exploration** — `skill.perception` / `skill.survival` for hidden-exit and terrain checks;
+  granted traits (`warm`, `sure-footed`).
+- **Encumbrance** — `carry_capacity` (§5).
+- **Trade** — `quality` multiplies price (that's the trade module's own pipeline, not a
+  modifier — see [`trade_economy.md`](trade_economy.md) §3).
+
+Never write derived values back to `PlayerStats`. Recompute lazily per command (the resolver
+is never cached — engine_core §3.5); `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` exist for services
+that keep UI state.
 
 ---
 
@@ -253,21 +268,28 @@ items:
     weight: 1.0
     light: 3
     max_durability: 500      # fuel ticks
+  - id: sealed_letter
+    name: "sealed letter"
+    bound: true              # quest item: can't be dropped, sold, or lost on death
 ```
 
 Content validators (`lorecraft.tools.validators`) gain checks: unknown `slot`, `wearable`
-item with no `slot`, `capacity` on a non-takeable item, `effects` referencing unknown
-stat/skill/trait keys.
+item with no `slot`, `capacity` on a non-takeable item, unknown `effects` descriptor `type`,
+descriptors referencing unknown stat/skill/trait keys, plus each component's `validate` over
+any YAML-declared initial state (engine_core §3.1).
 
 ---
 
 ## 11. Testing
 
-- **Unit:** slot occupancy/swap, encumbrance bands, effects resolution (equip → bonus →
-  unequip reverses), container capacity limits, durability→break, light-gated visibility.
+- **Unit:** slot occupancy/swap via move-validator, encumbrance bands, descriptor→modifier
+  compilation (equip → bonus → unequip reverses), container capacity/nesting/open checks,
+  durability→break, light-gated visibility, bound-item rule refusals.
 - **Integration:** `wear`/`remove`/`wield`/`put`/`open` through `POST /command` and `/ws`;
-  equipment survives save/load and disconnect/reconnect.
-- **Simulation:** two players contending for a single wearable; a lantern burning out mid-session.
+  equipment survives save/load and disconnect/reconnect (equipment is stacks, so the Sprint 16
+  save format already covers it — assert the slot survives).
+- **Simulation:** two players contending for a single wearable; a lantern burning out
+  mid-session (scheduler-driven durability drain observed over a real socket).
 - **Content lint:** the validator checks above.
 
 ---
@@ -281,5 +303,6 @@ stat/skill/trait keys.
 
 ---
 
-*See [`roadmap.md`](roadmap.md) for the sprint breakdown and [`wishlist.md`](wishlist.md) for
-the full mechanics menu this is the first slice of.*
+*See [`engine_core.md`](engine_core.md) §3.1–§3.2/§3.5 for the primitives this feature
+consumes, [`roadmap.md`](roadmap.md) for the sprint breakdown, and [`wishlist.md`](wishlist.md)
+for the full mechanics menu this is the first slice of.*

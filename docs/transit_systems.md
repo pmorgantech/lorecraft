@@ -1,8 +1,17 @@
 # Transit & Travel Systems — Design
 
-> **Status:** Design (2026-07-03). Roadmap **[Sprint 29](roadmap.md#sprint-29--transit--travel-systems)** (see [`roadmap.md`](roadmap.md)).
+> **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
+> Roadmap **[Sprint 29](roadmap.md#sprint-29--transit--travel-systems)** (see [`roadmap.md`](roadmap.md)).
 > The signature Materia-Magica-inspired feature: ferries, balloons, rail, and caravans that
 > move on the world clock, take tickets, and animate on the minimap.
+>
+> **Tier 1 dependencies (build first — [`engine_core.md`](engine_core.md)):** the **route
+> runner** (`RouteSpec`/`MobileRouteState`/`MobileRouteService` + `RouteHooks`, engine_core
+> §3.8, [Sprint 21](roadmap.md#sprint-21--scheduled-moving-entity-moving-room)) owns the
+> vehicle state machine, scheduler wiring, and position interpolation. This feature supplies
+> **line semantics only**: routes built from its YAML, doors/boarding, tickets, weather
+> grounding, and the `transit_update` message. Where the earlier draft specified a
+> `TransitVehicleState` table and a hand-rolled state machine, both are superseded (§4–§5).
 >
 > **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): **Exploration**
 > (the network *is* how you reach new areas) and **Trading** — the signature pairing is
@@ -13,10 +22,12 @@
 
 ## 1. Where we build from (existing primitives)
 
-Nothing here needs new engine infrastructure — it composes systems already in place:
+Everything composes engine infrastructure that exists by the end of the Tier 1 band:
 
-- **`SchedulerService`** (`services/scheduler.py`) — DB-backed `ScheduledJob`s dispatched as
-  `SCHEDULED_JOB_DUE` on every `TIME_ADVANCED` tick. **This drives every vehicle.**
+- **`MobileRouteService`** (engine_core §3.8) — the generic route runner: state machine
+  (`at_stop → in_transit → at_stop`, reverse/loop), scheduler jobs (`job_type="mobile_route"`),
+  `may_depart`/`on_depart`/`on_arrive`/`on_tick` hooks, progress + position interpolation.
+  **This drives every vehicle** — transit writes no timing or state-machine code.
 - **`WorldClock`** — `game_epoch`, `current_hour/minute/day`, `weather`. Timetables and
   weather delays read from here.
 - **`Room.map_x` / `map_y` / `area_id`** — real map coordinates + area grouping. Stops are
@@ -122,15 +133,15 @@ class TransitStop(SQLModel, table=True):
     travel_ticks: int = 20                        # ticks from THIS stop to the next
     boarding: bool = True                         # express passes through non-boarding stops
 
-class TransitVehicleState(SQLModel, table=True):  # runtime position; one row per line
-    line_id: str = Field(primary_key=True, foreign_key="transitline.id")
-    status: str = "at_stop"                        # "at_stop" | "in_transit" | "grounded"
-    current_seq: int = 0                           # last stop reached
-    next_seq: int = 1
-    direction: int = 1                             # +1 / -1 (reversing lines)
-    depart_epoch: float | None = None             # game_epoch of departure from current stop
-    arrive_epoch: float | None = None             # scheduled arrival at next stop
 ```
+
+**Runtime vehicle state (superseded draft):** there is **no `TransitVehicleState` table** —
+runtime position is the Tier 1 `MobileRouteState` row (engine_core §3.8), keyed
+`route_id = f"transit:{line_id}"`. At app lifespan the transit module builds a `RouteSpec`
+per line from `TransitStop` rows (`Waypoint(position_id=stop.room_id, x=room.map_x,
+y=room.map_y, dwell_ticks, travel_ticks)`, plus `reverses`/`loop` and
+`tick_pushes` from `animate_minimap`) and calls `MobileRouteService.add_route(spec, hooks)`.
+"Grounded" is the runner's generic `halted` status with a transit-supplied reason (§10).
 
 Tickets are plain `Item`s (§1); no new ticket table. Journeys for model 3b:
 
@@ -148,7 +159,8 @@ class TransitJourney(SQLModel, table=True):       # only for 3b virtual travel
 
 ## 5. Vehicle lifecycle (the state machine)
 
-Driven entirely by `SchedulerService`. A line's vehicle cycles:
+Driven entirely by the Tier 1 route runner (which itself runs on `SchedulerService`). A
+line's vehicle cycles:
 
 ```
  at_stop(A) ──depart──▶ in_transit(A→B) ──arrive──▶ at_stop(B) ──depart──▶ …
@@ -156,24 +168,18 @@ Driven entirely by `SchedulerService`. A line's vehicle cycles:
      └──────────────── reverse / loop at terminal ◀────────────────────────┘
 ```
 
-1. **at_stop(S):** boarding exit is logically open (players may `board`/`disembark`). Schedule
-   a `transit_depart` job at `now + dwell_ticks`.
-2. **depart:** on the job, if the line is `weather_sensitive` and
-   `clock.weather in blocking_weather` → set `status=grounded`, broadcast a delay
-   (`"The balloon is grounded — high winds."`), reschedule a re-check. Otherwise: close doors,
-   broadcast departure to (a) station-S occupants (`"The ferry pulls away from Saltmarsh Pier."`)
-   and (b) vehicle occupants (`"The ferry casts off."`); set `status=in_transit`,
-   `depart_epoch=now`, `arrive_epoch = now + segment.travel_ticks`; schedule a `transit_arrive`
-   job at `arrive_epoch`; if `animate_minimap`, schedule periodic `transit_tick` jobs (§9).
-3. **in_transit(S→T):** each `transit_tick` computes `progress = (now - depart)/(arrive - depart)`
-   and pushes `transit_update` (§9). Express lines skip non-`boarding` stops — they simply have
-   a longer single segment between terminals.
-4. **arrive:** on the job, set `status=at_stop`, `current_seq=T`; open doors; broadcast arrival
-   to station-T occupants (`"The ferry arrives at Gull Rock."`) and vehicle occupants; advance
-   `next_seq`/`direction` (reverse at terminals unless `loop`); go to step 1.
+The cycle, dwell timing, index/direction advance, reverse/loop, and all scheduler jobs are the
+Tier 1 runner's (engine_core §3.8). Transit implements the four `RouteHooks`:
 
-State transitions are audited (`TRANSIT_DEPARTED` / `TRANSIT_ARRIVED`) so the audit-regression
-simulation harness can diff a timetable run.
+| Hook | Transit behavior |
+|---|---|
+| `may_depart` | if `weather_sensitive` and `clock.weather in blocking_weather` → return a reason string (`"grounded: storm"`); the runner sets `halted` and re-checks after `dwell_ticks`. Transit narrates the delay (`"The balloon is grounded — high winds."`). Return `None` to go. |
+| `on_depart` | close doors (boarding flag off); broadcast departure to (a) station occupants (`"The ferry pulls away from Saltmarsh Pier."`) and (b) vehicle-room occupants (`"The ferry casts off."`); audit `TRANSIT_DEPARTED`. |
+| `on_tick` | receives interpolated `progress` 0..1; emit the `transit_update` WS message (§9). Only lines with `animate_minimap` set `tick_pushes > 0`. |
+| `on_arrive` | open doors at the new stop; broadcast arrival to station + vehicle occupants; audit `TRANSIT_ARRIVED`. Express lines: non-`boarding` stops are still waypoints (for animation), but `on_arrive` keeps doors closed there. |
+
+`TRANSIT_DEPARTED` / `TRANSIT_ARRIVED` (new additive `GameEvent` members) keep the
+audit-regression simulation harness able to diff a timetable run.
 
 ---
 
@@ -335,8 +341,10 @@ express line has ≥2 boarding stops; `blocking_weather` values are known weathe
 
 ## 14. Testing
 
-- **Unit:** state machine transitions (at_stop→in_transit→at_stop, reverse at terminals, loop);
-  interpolation math; express skip-through; ticket validation/consumption; weather grounding.
+- **Unit:** the state machine, reverse/loop, and interpolation are **Tier 1's tests**
+  (engine_core §3.8) — don't re-test them here. Transit units: RouteSpec construction from
+  YAML; hook behavior (doors on express non-boarding stops, weather `may_depart` reasons);
+  ticket validation/consumption; timetable derivation.
 - **Integration:** `board`/`disembark`/`schedule` via `POST /command` and `/ws`; ticket
   consumed; disembark places player in the right station; missing-ticket and departed-vehicle
   errors.

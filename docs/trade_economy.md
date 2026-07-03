@@ -1,7 +1,16 @@
 # Trade & Economy — Design
 
-> **Status:** Design (2026-07-03). Roadmap **[Sprint 28](roadmap.md#sprint-28--trading--economy)** (see [`roadmap.md`](roadmap.md)).
+> **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
+> Roadmap **[Sprint 28](roadmap.md#sprint-28--trading--economy)** (see [`roadmap.md`](roadmap.md)).
 > Currency, vendor shops, regional pricing, player-to-player trade, and banks.
+>
+> **Tier 1 dependencies (build first — [`engine_core.md`](engine_core.md)):** the **ledger +
+> atomic exchange** (`CoinBalance`, `LedgerService.execute_exchange`, engine_core §3.7,
+> [Sprint 20](roadmap.md#sprint-20--ledger--atomic-transfer)) — there is **no `Player.coins`
+> column**; the **item location model** (§3.2 — this feature registers the `shop` and `escrow`
+> holder types); the **skill-check helper** (§3.6) for barter/appraise. Every money or item
+> movement in this doc is one `execute_exchange` call; this feature never mutates balances or
+> stacks directly.
 >
 > **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): **Trading** is
 > pillar #2, and the signature pairing is *transit network = trade network* — regional price
@@ -13,7 +22,8 @@
 
 ## 1. Where we build from (existing primitives)
 
-- **`Player`** — no money field yet; add carried `coins`. `inventory: list[str]` holds items.
+- **Ledger** (engine_core §3.7) — carried money is `CoinBalance("player", player_id)`,
+  created lazily at first credit. Items are `ItemStack`s (§3.2); there is no inventory list.
 - **`Item`** — has `tradeable`; **no** `value`. Add a base `value`; final price derives from
   `value` × `quality` (from [`inventory_equipment.md`](inventory_equipment.md)) × regional/skill
   modifiers.
@@ -28,24 +38,26 @@
 
 ## 2. Currency model
 
-Two balances, deliberately split so death and robbery have stakes:
+Two balances, deliberately split so death and robbery have stakes. **Both are ledger holders**
+(engine_core §3.7) — no money columns anywhere:
+
+| Money | Ledger holder | Risk |
+|---|---|---|
+| **Carried** | `CoinBalance("player", player_id)` | spendable anywhere; **at risk** on death/robbery |
+| **Banked** | `CoinBalance("bank_account", account_id)` | safe; only accessible at a branch (§9) |
 
 ```python
-class Player(SQLModel, table=True):
-    # ... existing fields ...
-    coins: int = 0          # CARRIED money — spendable anywhere, AT RISK on death/robbery
-
-class BankAccount(SQLModel, table=True):
-    player_id: str = Field(primary_key=True, foreign_key="player.id")
-    balance: int = 0        # BANKED money — safe from death/robbery, only at a bank branch (§9)
+class BankAccount(SQLModel, table=True):     # identity/ownership only — balance lives in the ledger
+    id: str = Field(primary_key=True)        # uuid4
+    player_id: str = Field(foreign_key="player.id", unique=True, index=True)
 ```
 
-- **Carried `coins`** — what you spend at shops and hand to other players; what you can lose.
-- **Banked `balance`** — safe, but only accessible at a bank branch. Creates the risk/convenience
-  tension that makes banks (and robbers) matter.
+This feature registers the `bank_account` and `shop` holder types (and `escrow`, §8) with the
+Tier 1 holder registry. A corpse's dropped coins are `CoinBalance("container", corpse_instance_id)`
+([`death_resurrection.md`](death_resurrection.md)) — same mechanism, zero special-casing.
 
-Single currency ("coins") for now; multi-currency is a non-goal (§13). Coins are a scalar, not
-inventory items, so they don't consume carry weight.
+Single currency ("coins") for now; multi-currency is a non-goal (§13). Coins are a ledger
+scalar, not inventory items, so they don't consume carry weight.
 
 ---
 
@@ -96,11 +108,21 @@ Commands (`features/economy/commands.py`):
 | Command | Effect |
 |---|---|
 | `list` / `shop` | show the current room's shop stock with derived buy prices |
-| `buy <item> [qty]` | validate coins + stock → transfer item, deduct coins, decrement stock |
-| `sell <item> [qty]` | vendor buys (if `tradeable` + category matches) → add coins, add to stock |
-| `appraise <item>` | show a value estimate (accuracy scales with `appraisal` skill) |
+| `buy <item> [qty]` | validate stock; coins move player→shop via `execute_exchange`; stock decrements; item `spawn()`s to the player |
+| `sell <item> [qty]` | vendor buys (if `tradeable` + category matches, **and not `bound`** — a fail-closed rule); coins move shop→player; the player's stack is `destroy()`ed; stock increments |
+| `appraise <item>` | show a value estimate (accuracy scales with `appraisal` via `skill_check`) |
 
-Buying/selling emits `ITEM_PURCHASED` / `ITEM_SOLD` (audited).
+**Money flow (decided):** a shop holds `CoinBalance("shop", shop_id)`, seeded with a
+configurable float at world import (via `LedgerService.credit`, audited) and topped back up on
+the restock schedule. Buy/sell therefore go through the same conserving `execute_exchange` as
+every other flow — and a shop *can* run out of cash for the day, which is a feature (sell your
+furs across towns, not all in one). `ShopStock.quantity` is vendor listing state, not stacks:
+items materialize as `ItemStack`s only when bought (a `-1` unlimited row never materializes
+until purchase).
+
+Buying/selling emits `ITEM_PURCHASED` / `ITEM_SOLD` — new `GameEvent` members (additive
+one-line enum entries are the sanctioned core edit for features; the registries handle
+everything else).
 
 ---
 
@@ -145,13 +167,19 @@ Lightweight, clock-driven, emergent:
 
 ## 8. Player-to-player trade
 
-A safe two-party handshake (no item/coin loss to bugs or scams-by-disconnect):
+A safe two-party handshake (no item/coin loss to bugs or scams-by-disconnect), built directly
+on `execute_exchange` (engine_core §3.7 — the escrow shape is **decided** there):
 
-- `offer <item|coins> to <player>` builds a pending offer; `accept` / `decline` resolves it.
-- Both sides' goods are escrowed in the transaction and swapped atomically, or the whole thing
-  rolls back (reuses the [Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-) rollback-on-error lifecycle).
-- Only `tradeable` items; bound/quest items refuse (from [`inventory_equipment.md`](inventory_equipment.md)).
-- A strong simulation-harness target (two real WS clients, concurrent accept, disconnect mid-trade).
+- `offer <item|coins> to <player>` records intent (a `TradeOffer` row: both sides' promised
+  coins + stack ids, a TTL) and **moves nothing**.
+- `accept` composes **one** `execute_exchange` with both directions as legs. Validation of
+  every leg at accept-time *is* the escrow revalidation — if either side no longer holds the
+  goods, the whole exchange raises `ConflictError` and nothing moves. Command-lifecycle
+  rollback ([Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-)) covers crashes.
+- Policy gates run **before** the exchange as fail-closed `RuleEngine` rules (engine_core §2):
+  `tradeable`, not `bound`, both players present in the same room, offer not expired.
+- A strong simulation-harness target (two real WS clients, concurrent `accept` — exactly one
+  succeeds; disconnect mid-trade loses nothing).
 
 ---
 
@@ -162,8 +190,10 @@ Banks are economy infrastructure **and** the death/robbery safety valve.
 - A **bank branch** is an NPC or room feature (data-driven, like shops). Banking commands only
   work at a branch — that's the whole point (safe money you must travel to reach).
 - Commands: `deposit <amount>`, `withdraw <amount>`, `balance`.
-- `deposit` moves carried `coins` → `BankAccount.balance`; `withdraw` reverses. Banked money is
-  **immune to death loss and robbery** ([`death_resurrection.md`](death_resurrection.md)).
+- `deposit` is one `execute_exchange` leg, `("player", id)` → `("bank_account", account_id)`;
+  `withdraw` reverses. Banked money is **immune to death loss and robbery**
+  ([`death_resurrection.md`](death_resurrection.md)) simply because the death/robbery code
+  only ever touches the `("player", id)` holder.
 - **One logical account, many branches** — deposit in Saltmarsh, withdraw in the capital. This
   makes banks a *travel and trade convenience* (carry less cash on dangerous routes), not just a
   vault. Naturally reinforces the transit/trade loop.
@@ -223,8 +253,11 @@ Validators (`lorecraft.tools.validators`): shop stock item ids exist; `value` pr
 
 ## 12. Testing
 
-- **Unit:** price derivation (quality/region/demand/barter/rep stacking + caps); buy/sell coin
-  and stock math; demand adjustment; deposit/withdraw invariants (no coin creation/loss).
+- **Unit:** price derivation (quality/region/demand/barter/rep stacking + caps — caps clamped
+  in this module *before* becoming `mult` factors, per engine_core §3.5); buy/sell coin and
+  stock math; demand adjustment; deposit/withdraw invariants. **Conservation:** across any
+  buy/sell/trade/deposit sequence, total coins and the item multiset change only at audited
+  `credit`/`spawn`/`destroy` boundaries (engine_core §3.7 invariant, asserted end-to-end).
 - **Integration:** `buy`/`sell`/`list`/`deposit`/`withdraw` via `POST /command` and `/ws`;
   insufficient-funds, out-of-stock, untradeable, not-at-a-branch errors; balances survive
   save/load and disconnect/reconnect.
