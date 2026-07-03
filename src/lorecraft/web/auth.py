@@ -343,3 +343,30 @@ async def refresh(body: RefreshBody, request: Request) -> dict[str, object]:
         "expires_in": access_ttl,
         "player_id": player_id,
     }
+
+
+# ---------------------------------------------------------------------------
+# OAuth extensibility hook (Sprint 4.7)
+# ---------------------------------------------------------------------------
+#
+# PlayerAuth.provider/provider_subject already generalize beyond "local":
+# provider="google", provider_subject=<google_sub> works with the exact same
+# table shape (see docs/player_authentication.md). This stub marks where a
+# real provider integration plugs in — exchanging an authorization code for
+# an ID token, verifying it, and looking up/creating a PlayerAuth row by
+# (provider, provider_subject) — without pretending to implement it, since
+# that needs a registered OAuth client (client id/secret, redirect URI) this
+# LAN-party engine doesn't have configured. Not wired into any client.
+
+
+@router.post("/oauth/{provider}/callback")
+async def oauth_callback(provider: str) -> None:
+    """Extension point for a future OAuth provider (e.g. `google`).
+
+    Deliberately unimplemented: raises 501 rather than silently accepting
+    requests it can't actually authenticate. See module docstring above.
+    """
+    raise HTTPException(
+        status_code=501,
+        detail=f"OAuth provider '{provider}' is not configured on this server.",
+    )

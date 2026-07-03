@@ -511,3 +511,22 @@ async def _test_ws_ticket_via_session_cookie() -> None:
     )
     assert status == 200
     assert "ws_ticket" in json.loads(body_bytes)
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/oauth/{provider}/callback (Sprint 4.7 extensibility stub)
+# ---------------------------------------------------------------------------
+
+
+def test_oauth_callback_stub_returns_501() -> None:
+    anyio.run(_test_oauth_callback_stub_returns_501)
+
+
+async def _test_oauth_callback_stub_returns_501() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        status, _ = await _http(app, "POST", "/auth/oauth/google/callback")
+    assert status == 501
