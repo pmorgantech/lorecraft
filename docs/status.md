@@ -3,7 +3,7 @@
 This checklist tracks implementation progress against `docs/architecture.md` phases.
 The architecture overview remains the design reference; this file is the working status tracker.
 
-**See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–23).**
+**See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–35).**
 
 > **Current focus (2026-07-03):** Foundation-first, now including production auth.
 > Sprint 4 (player authentication — password login, JWT access/refresh tokens,
@@ -17,12 +17,16 @@ The architecture overview remains the design reference; this file is the working
 > MVP (`tests/simulation/`), observability & CI quality gates, unified command
 > lifecycle (rollback-on-error, shared `/ws`/`POST /command` room-broadcast step), and
 > core UX completion (world clock/weather WS push to all players, multi-player live
-> lists refresh on room-leave). **Foundation gate is green.** The feature band (Sprints 16+)
-> was **re-sequenced 2026-07-03** around design pillars (Exploration > Trading > Questing >
-> Puzzles; combat is a supporting system, not the centerpiece) — see [`wishlist.md`](wishlist.md)
-> and [`inventory_equipment.md`](inventory_equipment.md). Next: Sprint 16 (item & world state
-> modeling), then inventory/equipment (17), traits/skills & exploration (18–20); combat moved
-> down to Sprints 25–27.
+> lists refresh on room-leave). **Foundation gate is green.** The post-foundation work was
+> **re-sequenced twice on 2026-07-03**: first around design pillars (Exploration > Trading >
+> Questing > Puzzles; combat is a supporting system, not the centerpiece), then split into an
+> **engine-first Tier 1 primitives band** ahead of the Tier 2 feature modules — see
+> [`engine_core.md`](engine_core.md) for the framework/game boundary, [`wishlist.md`](wishlist.md)
+> for the pillars, and [`inventory_equipment.md`](inventory_equipment.md) for the item/equipment
+> design. Next: Sprint 16 (item location/ownership + component state), then Sprint 17 (seedable
+> RNG + skill-check) — the two Tier 1 primitives most expensive to retrofit. Tier 2 feature work
+> (item components, equipment, traits/skills, exploration…) now starts at Sprint 22; combat moved
+> down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -31,17 +35,20 @@ The architecture overview remains the design reference; this file is the working
 | Phase 1–3 (Foundation, dispatch, world/time) | Sprint 1 (HTMX parity) | [x] |
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
-| Phase 7 (Auth + frontend polish) | Sprints 4, 20 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 20 |
+| Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
-| Item state / inventory / equipment | Sprints 16–17 (gated) | [ ] |
-| Traits/skills, exploration, condition | Sprints 18–21 (gated) | [ ] |
-| Phase 9 (Trading + transit) | Sprints 22–23 (gated) | [ ] |
-| Quests & puzzles depth | Sprint 24 (gated) | [ ] |
-| Phase 8–8.5 (Combat, supporting) | Sprints 25–27 (gated) | [ ] |
-| PvP + multiplayer tests | Sprints 28–29 (gated) | [ ] |
+| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [ ] |
+| Item state / inventory / equipment | Sprints 22–23 (gated) | [ ] |
+| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
+| Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
+| Quests & puzzles depth | Sprint 30 (gated) | [ ] |
+| Phase 8–8.5 (Combat, supporting) | Sprints 31–33 (gated) | [ ] |
+| PvP + multiplayer tests | Sprints 34–35 (gated) | [ ] |
 
-> **Feature band re-sequenced 2026-07-03** around design pillars (Exploration > Trading >
-> Questing > Puzzles; combat as a supporting system). Roadmap is authoritative for sequencing;
+> **Post-foundation work re-sequenced twice on 2026-07-03:** first around design pillars
+> (Exploration > Trading > Questing > Puzzles; combat as a supporting system), then split into
+> an engine-first Tier 1 primitives band (Sprints 16–21, see [`engine_core.md`](engine_core.md))
+> ahead of the Tier 2 feature band (now Sprints 22–35). Roadmap is authoritative for sequencing;
 > the architecture-phase numbers above are historical. See [`roadmap.md`](roadmap.md),
 > [`wishlist.md`](wishlist.md), and [`inventory_equipment.md`](inventory_equipment.md).
 

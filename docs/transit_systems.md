@@ -1,13 +1,13 @@
 # Transit & Travel Systems — Design
 
-> **Status:** Design (2026-07-03). Roadmap **Sprint 23** (see [`roadmap.md`](roadmap.md)).
+> **Status:** Design (2026-07-03). Roadmap **[Sprint 29](roadmap.md#sprint-29--transit--travel-systems)** (see [`roadmap.md`](roadmap.md)).
 > The signature Materia-Magica-inspired feature: ferries, balloons, rail, and caravans that
 > move on the world clock, take tickets, and animate on the minimap.
 >
 > **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): **Exploration**
 > (the network *is* how you reach new areas) and **Trading** — the signature pairing is
 > *transit network = trade network*: regional price differences ([`roadmap.md`](roadmap.md)
-> Sprint 22) only matter if getting goods between towns takes time, money, and planning.
+> [Sprint 28](roadmap.md#sprint-28--trading--economy)) only matter if getting goods between towns takes time, money, and planning.
 
 ---
 
@@ -27,8 +27,8 @@ Nothing here needs new engine infrastructure — it composes systems already in 
   `transit_update` push reuse these.
 - **WS message pattern** — `time_update` / `state_change` / `room_event` (`main.py`,
   `web/static/js/app.js` switch). We add one new type: **`transit_update`** (§9).
-- **`Item`** — tickets are items (gating boarding); fares tie to the Sprint 22 currency model.
-- **Pluggable conditions / side-effects** registries (Sprint 10) and the
+- **`Item`** — tickets are items (gating boarding); fares tie to the [Sprint 28](roadmap.md#sprint-28--trading--economy) currency model.
+- **Pluggable conditions / side-effects** registries ([Sprint 10](roadmap.md#sprint-10--extensibility-seams-)) and the
   [feature-registration pattern](feature-registration.md) — transit ships as a self-contained
   feature module.
 
@@ -205,7 +205,7 @@ Both are the same machine; only `service_type` + per-stop `boarding` differ. A s
 
 - `ticket_item_id` names an `Item` the player must hold to `board`. `ticket_consumed` decides
   single-use ticket vs. reusable pass.
-- Tickets are sold by vendor NPCs (Sprint 22 shops); fare pricing rides on the Sprint 22
+- Tickets are sold by vendor NPCs ([Sprint 28](roadmap.md#sprint-28--trading--economy) shops); fare pricing rides on the [Sprint 28](roadmap.md#sprint-28--trading--economy)
   currency model. Until then a line can be `ticket_item_id: null` (free) or gated on a
   quest-granted pass item.
 - Passes as trade/quest rewards: a "Rail Pass" that unlocks fast hops between visited stations
@@ -356,10 +356,10 @@ express line has ≥2 boarding stops; `blocking_weather` values are known weathe
 - **Open:** does missing an express connection strand a player, or is there always a slow local
   fallback? (Lean: always a slow fallback so no one is hard-stuck.)
 - **Open:** fare = flat per-line or per-segment distance? (Lean: flat per boarding until the
-  Sprint 22 economy says otherwise.)
+  [Sprint 28](roadmap.md#sprint-28--trading--economy) economy says otherwise.)
 
 ---
 
-*See [`roadmap.md`](roadmap.md) Sprint 23, [`wishlist.md`](wishlist.md) → Featured idea, and
+*See [`roadmap.md`](roadmap.md) [Sprint 29](roadmap.md#sprint-29--transit--travel-systems), [`wishlist.md`](wishlist.md) → Featured idea, and
 [`inventory_equipment.md`](inventory_equipment.md) (tickets are items). Built on
 [`feature-registration.md`](feature-registration.md).*

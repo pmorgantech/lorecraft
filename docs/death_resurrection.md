@@ -1,8 +1,8 @@
 # Death & Resurrection — Design
 
 > **Status:** Design (2026-07-03). Resolves the long-standing **death-penalty open question**
-> (roadmap Sprint 25.1, [`wishlist.md`](wishlist.md) decisions table). Referenced by the combat
-> sprints ([`combat_system.md`](combat_system.md), Sprints 25–27) and PvP (Sprint 28).
+> (roadmap Sprint 31.1, [`wishlist.md`](wishlist.md) decisions table). Referenced by the combat
+> sprints ([`combat_system.md`](combat_system.md), [Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system)) and PvP ([Sprint 34](roadmap.md#sprint-34--pvp-consent)).
 >
 > **Design intent (from the product owner, 2026-07-03):** death is **not** permanent. You are
 > **resurrected**, but you **lose some money and some loot**. Meaningful sting, not a
@@ -24,7 +24,7 @@ Much of the respawn scaffolding already exists:
 - **`ItemInstance` containers** ([`inventory_equipment.md`](inventory_equipment.md)) — a **corpse
   is a container** holding dropped loot; reuses the container model, no new mechanism.
 - **`SchedulerService`** — corpse decay timer.
-- **Rollback lifecycle** (Sprint 14) — death is applied as one auditable transaction.
+- **Rollback lifecycle** ([Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-)) — death is applied as one auditable transaction.
 
 ---
 
@@ -88,7 +88,7 @@ to hustle back to your corpse.
 ## 5. Weakened debuff (soft anti-spam)
 
 A short post-resurrection penalty (e.g. reduced stats / slower actions for a few minutes,
-implemented as a temporary trait via the Sprint 18 trait registry) discourages zerg-rushing the
+implemented as a temporary trait via the [Sprint 24](roadmap.md#sprint-24--traits--skills) trait registry) discourages zerg-rushing the
 same fight and gives death a felt weight without lasting harm. Fades on its own; no corpse-run
 required to clear it.
 
@@ -115,7 +115,7 @@ code changes. A per-world `pvp_death` override (§7) allows different rules for 
 
 ---
 
-## 7. PvP interaction (Sprint 28)
+## 7. PvP interaction (Sprint 34)
 
 When the killer is another player (`pvp_consent` duels):
 
@@ -174,7 +174,7 @@ All on the existing audit trail; the audit-regression harness can diff a scripte
 
 ---
 
-*See [`roadmap.md`](roadmap.md) Sprints 25 (combat death/respawn) & 28 (PvP),
+*See [`roadmap.md`](roadmap.md) [Sprints 31](roadmap.md#sprint-31--combat-core-services-supporting-system) (combat death/respawn) & 34 (PvP),
 [`combat_system.md`](combat_system.md), [`trade_economy.md`](trade_economy.md) (banks vs.
 carried money), [`inventory_equipment.md`](inventory_equipment.md) (corpse = container), and
 [`wishlist.md`](wishlist.md) (robbers).*

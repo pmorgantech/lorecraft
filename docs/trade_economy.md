@@ -1,6 +1,6 @@
 # Trade & Economy — Design
 
-> **Status:** Design (2026-07-03). Roadmap **Sprint 22** (see [`roadmap.md`](roadmap.md)).
+> **Status:** Design (2026-07-03). Roadmap **[Sprint 28](roadmap.md#sprint-28--trading--economy)** (see [`roadmap.md`](roadmap.md)).
 > Currency, vendor shops, regional pricing, player-to-player trade, and banks.
 >
 > **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): **Trading** is
@@ -20,8 +20,8 @@
 - **`NPC`** — has `loot_table`; add optional vendor/shop config so an NPC can buy/sell.
 - **`Room.area_id`** — regional pricing keys off area (or per-shop overrides).
 - **`WorldClock`** — supply/demand restock runs on `TIME_ADVANCED` via `SchedulerService`.
-- **`PlayerStats.skills`** — `bartering` skill flexes prices (Sprint 18 traits/skills).
-- **Reputation/standing** (Sprint 18) — flexes prices and unlocks stock.
+- **`PlayerStats.skills`** — `bartering` skill flexes prices ([Sprint 24](roadmap.md#sprint-24--traits--skills) traits/skills).
+- **Reputation/standing** ([Sprint 24](roadmap.md#sprint-24--traits--skills)) — flexes prices and unlocks stock.
 - **Transaction/event lifecycle** — every purchase/sale/trade is one transaction, audited.
 
 ---
@@ -61,8 +61,8 @@ sell_price = round(buy_price × sell_ratio)      # sell_ratio ~0.4–0.6; shops 
 - `quality_mult` — common→legendary from [`inventory_equipment.md`](inventory_equipment.md).
 - `region_mult` — §5 regional pricing.
 - `demand_mult` — §6 supply/demand.
-- `barter_discount` — from the `bartering` skill (Sprint 18); capped (e.g. ≤ 25%).
-- `rep_discount` — standing with the vendor/faction (Sprint 18); capped.
+- `barter_discount` — from the `bartering` skill ([Sprint 24](roadmap.md#sprint-24--traits--skills)); capped (e.g. ≤ 25%).
+- `rep_discount` — standing with the vendor/faction ([Sprint 24](roadmap.md#sprint-24--traits--skills)); capped.
 
 Deriving at runtime (not storing prices) matches the derived-stat rule used across the engine.
 
@@ -136,10 +136,10 @@ Lightweight, clock-driven, emergent:
 
 ## 7. Bartering & reputation
 
-- `bartering` skill (use-based, Sprint 18) improves buy/sell terms within a cap; improves through
+- `bartering` skill (use-based, [Sprint 24](roadmap.md#sprint-24--traits--skills)) improves buy/sell terms within a cap; improves through
   use, fitting the exploration-progression ethos.
 - Standing with a vendor/faction unlocks restricted stock and better prices; hostility raises
-  prices or refuses service. Reputation is the social spine (Sprint 18) reused here.
+  prices or refuses service. Reputation is the social spine ([Sprint 24](roadmap.md#sprint-24--traits--skills)) reused here.
 
 ---
 
@@ -149,7 +149,7 @@ A safe two-party handshake (no item/coin loss to bugs or scams-by-disconnect):
 
 - `offer <item|coins> to <player>` builds a pending offer; `accept` / `decline` resolves it.
 - Both sides' goods are escrowed in the transaction and swapped atomically, or the whole thing
-  rolls back (reuses the Sprint 14 rollback-on-error lifecycle).
+  rolls back (reuses the [Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-) rollback-on-error lifecycle).
 - Only `tradeable` items; bound/quest items refuse (from [`inventory_equipment.md`](inventory_equipment.md)).
 - A strong simulation-harness target (two real WS clients, concurrent accept, disconnect mid-trade).
 
@@ -247,7 +247,7 @@ Validators (`lorecraft.tools.validators`): shop stock item ids exist; `value` pr
 
 ---
 
-*See [`roadmap.md`](roadmap.md) Sprint 22, [`transit_systems.md`](transit_systems.md) (fares +
+*See [`roadmap.md`](roadmap.md) [Sprint 28](roadmap.md#sprint-28--trading--economy), [`transit_systems.md`](transit_systems.md) (fares +
 the trade-network pairing), [`death_resurrection.md`](death_resurrection.md) (banks vs. carried
 money), and [`inventory_equipment.md`](inventory_equipment.md) (item value/quality). Built on
 [`feature-registration.md`](feature-registration.md).*

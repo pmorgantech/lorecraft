@@ -23,9 +23,9 @@ Sprints are scoped small (1–2 tasks, one subsystem) on purpose, so each sprint
 
 Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/quests, save/disconnect, admin tools). Version **0.2.0** added parser v1, quantity inventory, and the HTMX primary UI.
 
-Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
+[Sprints 1–3](#sprint-1--htmx-parity-playtesting-unblock-) closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 4–15 complete (player authentication, error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. The feature band (Sprints 16+) was **re-sequenced 2026-07-03** around Lorecraft's design pillars (Exploration > Trading > Questing > Puzzles; combat is a supporting system, not the centerpiece): item state & inventory/equipment (16–17) → traits/skills & exploration (18–20) → condition/trade/transit (21–23) → quests/puzzles (24) → combat/PvP (25–29). See [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Current:** [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete (player authentication, error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. The post-foundation work was **re-sequenced 2026-07-03**: first around Lorecraft's design pillars (Exploration > Trading > Questing > Puzzles; combat is a supporting system, not the centerpiece), then split into an **engine-first Tier 1 band** ([`engine_core.md`](engine_core.md)) ahead of the Tier 2 feature modules: **Tier 1 engine primitives (16–21)** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests/puzzles (30) → combat/PvP (31–35). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -82,7 +82,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 | 4.3 | `POST /auth/ws-ticket` — single-use, 60-second WebSocket ticket exchange | [x] Accepts either `Authorization: Bearer <access_token>` (API clients) or the signed `lorecraft_session` cookie (the browser, which can't easily attach custom headers to a same-origin fetch but sends cookies automatically). Ticket storage is an in-memory dict on `AppState` (`ws_tickets`), matching the existing `pending_disambig` pattern — fine for this engine's single-process deployment target. |
 | 4.4 | WebSocket handshake: validate ticket, map to player_id, attach to ConnectionManager | [x] `main.py`'s `_resolve_ws_player_id()`: a `?ticket=` param is authoritative — invalid/expired/reused rejects the connection outright (1008) rather than silently falling back to `?player_id=`, which would defeat the point of tickets. |
 | 4.5 | `/auth/refresh` endpoint for refresh token rotation | [x] Also verifies the player still exists (guards against refreshing into a deleted account), mirroring `admin/auth.py`'s `/admin/auth/refresh`. |
-| 4.6 | Retire legacy `?player_id=` query param fallback (was gated by `LORECRAFT_ALLOW_QUERY_PLAYER_ID`) | [x] `Settings.allow_query_player_id` now defaults to `False`. Not deleted outright — kept as an explicit opt-in for test fixtures that intentionally exercise the wire protocol directly (`tests/simulation/`'s `VirtualPlayer`, several state-resolution integration tests), since removing it would break the Sprint 11/12 harnesses for no real security benefit (trusted local test processes, not real clients). Surfaced and fixed a chicken-and-egg bug: `GET /lobby` depended on `get_current_player`, which now 401s with no session — meaning a brand-new visitor couldn't reach the page that lets them log in. New `get_current_player_optional()` fixes this for `/lobby` only; every other route correctly keeps requiring a session. |
+| 4.6 | Retire legacy `?player_id=` query param fallback (was gated by `LORECRAFT_ALLOW_QUERY_PLAYER_ID`) | [x] `Settings.allow_query_player_id` now defaults to `False`. Not deleted outright — kept as an explicit opt-in for test fixtures that intentionally exercise the wire protocol directly (`tests/simulation/`'s `VirtualPlayer`, several state-resolution integration tests), since removing it would break the [Sprint 11](#sprint-11--browser-e2e-harness-)/12 harnesses for no real security benefit (trusted local test processes, not real clients). Surfaced and fixed a chicken-and-egg bug: `GET /lobby` depended on `get_current_player`, which now 401s with no session — meaning a brand-new visitor couldn't reach the page that lets them log in. New `get_current_player_optional()` fixes this for `/lobby` only; every other route correctly keeps requiring a session. |
 | 4.7 | OAuth extensibility hooks (Google OIDC callback stubs for future LAN-party deployments) | [x] `POST /auth/oauth/{provider}/callback` stub — `PlayerAuth.provider`/`provider_subject` already generalize to non-local providers with no schema change needed. Returns 501 rather than pretending to implement OAuth (needs a registered client id/secret/redirect URI this engine doesn't have configured); not wired into any client. |
 | 4.8 | Integration tests: login, token refresh, WS ticket validation, expired token rejection | [x] `tests/integration/test_player_authentication.py` (15 tests) + `tests/unit/test_player_login.py` (9 tests) + updated `tests/integration/test_player_session.py` for the new password-protected lobby. Covers account creation/verification/wrong-password, refresh rotation + expired/garbage/wrong-type rejection, ws-ticket issuance (bearer + cookie) + single-use + TTL expiry + expired-access-token rejection, and the OAuth stub. Full suite (unit/integration/e2e/simulation) green throughout — the e2e run caught the `/lobby` chicken-and-egg bug above before it could ship. |
 
@@ -94,7 +94,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–15 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). Foundation band done — see exit criteria below.
+**Current progress:** [Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-) complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). Foundation band done — see exit criteria below.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -104,7 +104,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 |---|------|--------|
 | 5.1 | `lorecraft/errors.py` — `GameError`, `ValidationError`, `NotFoundError`, `PermissionError`, `ConflictError` (with machine-readable `code`) | [x] |
 | 5.2 | Eliminate the 22 silent `except Exception` blocks: catch specific exceptions, log all of them (`web/frontend.py` ×12, `web/player_auth.py`, `admin/websocket.py` ×3, `admin/auth.py` ×2) | [x] |
-| 5.3 | Services raise typed errors; command handlers translate to `ctx.say()` in one shared wrapper | [~] prepared via errors.py; integration in Sprint 9 |
+| 5.3 | Services raise typed errors; command handlers translate to `ctx.say()` in one shared wrapper | [~] prepared via errors.py; integration in [Sprint 9](#sprint-9--service-consistency--wiring-) |
 | 5.4 | Guard quantity underflow in `ItemRepo.remove_from_room` (raise/log instead of silent delete) | [x] |
 | 5.5 | Unit tests for error paths (every custom exception exercised) | [x] |
 
@@ -122,7 +122,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 ## Sprint 7 — Web & admin characterization tests ✅
 
-**Goal:** Lock in current behavior *before* the Sprint 8–9 refactors. Audit §2.3.
+**Goal:** Lock in current behavior *before* the [Sprint 8–9](#sprint-8--module-decomposition-) refactors. Audit §2.3.
 
 | # | Task | Status |
 |---|------|--------|
@@ -165,14 +165,14 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 ## Sprint 10.5 — Tooling Infrastructure ✅
 
-**Goal:** Admin/dev tooling foundation: repo-tracked issues & news, world CLI suite, analytics API, content validation. Unblocks Sprint 11+ (can log failures, record metrics, validate content).
+**Goal:** Admin/dev tooling foundation: repo-tracked issues & news, world CLI suite, analytics API, content validation. Unblocks [Sprint 11](#sprint-11--browser-e2e-harness-)+ (can log failures, record metrics, validate content).
 
 | # | Task | Status |
 |---|------|--------|
 | 10.5.1 | Issues system: `docs/issues.yaml`, CRUD routes, admin TUI (F6) + web panel tabs | [x] |
 | 10.5.2 | News & announcements: `docs/news.yaml`, in-game `/news`, RSS feed, admin UI (TUI F7) | [x] |
 | 10.5.3 | World management CLI: import/export/validate/diff/stats commands; call from admin world manager | [x] |
-| 10.5.4 | Analytics API foundation: metric queries ready (no dashboard yet, driven by Sprint 13 instrumentation) | [x] |
+| 10.5.4 | Analytics API foundation: metric queries ready (no dashboard yet, driven by [Sprint 13](#sprint-13--observability--ci-quality-gates-) instrumentation) | [x] |
 | 10.5.5 | Content validation & linting: dead references, unreachable rooms, circular quests, etc. | [x] |
 
 **See:** [`tooling_infrastructure.md`](tooling_infrastructure.md) for full architecture and design details. Circular quest dependency checking was scoped out — `QuestStageData` has no quest-to-quest dependency field in the schema today.
@@ -187,11 +187,11 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 ## Sprint 12 — Simulation harness MVP ✅
 
-**Goal:** Real-protocol, multi-player scripted scenarios per `architecture.md` §25 — a third test transport alongside ASGI-transport integration tests and the Sprint 11 browser E2E harness.
+**Goal:** Real-protocol, multi-player scripted scenarios per `architecture.md` §25 — a third test transport alongside ASGI-transport integration tests and the [Sprint 11](#sprint-11--browser-e2e-harness-) browser E2E harness.
 
 | # | Task | Status |
 |---|------|--------|
-| 12.1 | Simulation harness MVP (`tests/simulation/`) | [x] `virtual_player.py` — `VirtualPlayer` wraps a real `websockets` client against `/ws` (not an ASGI shortcut); `send_command()`/`run_script()` with optional timing jitter, `wait_for_broadcast()` for pushed (non-reply) messages. `conftest.py` — `simulation_server`/`simulation_server_factory` fixtures boot the real app under `uvicorn` on a background thread against a disposable per-test sqlite DB and the real `world_content/world.yaml` (same pattern as Sprint 11's `live_server`, no synthetic world content). `test_multiplayer_scenarios.py` — two real connections: `player_joined` broadcast fan-out on connect, and concurrent `take` of a single-quantity item (no duplication/loss). `test_audit_regression.py` — runs a fixed script against two independent fresh servers and diffs the normalized audit trail, per the "capture, diff after changes" pattern in `architecture.md` §25. New `simulation` pytest marker, excluded from `make test`/plain `pytest` like `e2e` (`make test-simulation`); no new install required (`websockets`/`httpx` were already transitive via `fastapi[standard]`, now declared explicitly in the `dev` extra). Noted but intentionally not fixed here: the raw `/ws` command loop didn't yet re-broadcast `room_messages` to other occupants the way `POST /command` does — fixed by Sprint 14.1. |
+| 12.1 | Simulation harness MVP (`tests/simulation/`) | [x] `virtual_player.py` — `VirtualPlayer` wraps a real `websockets` client against `/ws` (not an ASGI shortcut); `send_command()`/`run_script()` with optional timing jitter, `wait_for_broadcast()` for pushed (non-reply) messages. `conftest.py` — `simulation_server`/`simulation_server_factory` fixtures boot the real app under `uvicorn` on a background thread against a disposable per-test sqlite DB and the real `world_content/world.yaml` (same pattern as [Sprint 11](#sprint-11--browser-e2e-harness-)'s `live_server`, no synthetic world content). `test_multiplayer_scenarios.py` — two real connections: `player_joined` broadcast fan-out on connect, and concurrent `take` of a single-quantity item (no duplication/loss). `test_audit_regression.py` — runs a fixed script against two independent fresh servers and diffs the normalized audit trail, per the "capture, diff after changes" pattern in `architecture.md` §25. New `simulation` pytest marker, excluded from `make test`/plain `pytest` like `e2e` (`make test-simulation`); no new install required (`websockets`/`httpx` were already transitive via `fastapi[standard]`, now declared explicitly in the `dev` extra). Noted but intentionally not fixed here: the raw `/ws` command loop didn't yet re-broadcast `room_messages` to other occupants the way `POST /command` does — fixed by Sprint 14.1. |
 
 ## Sprint 13 — Observability & CI quality gates ✅
 
@@ -205,11 +205,11 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 ## Sprint 14 — Unify command lifecycle ✅
 
-**Goal:** One 13-step transaction/event/audit lifecycle shared by `/ws` and `/command` paths (long-standing `[~]` STATUS item). Easier after Sprint 8 decomposition.
+**Goal:** One 13-step transaction/event/audit lifecycle shared by `/ws` and `/command` paths (long-standing `[~]` STATUS item). Easier after [Sprint 8](#sprint-8--module-decomposition-) decomposition.
 
 | # | Task | Status |
 |---|------|--------|
-| 14.1 | Extract shared lifecycle; both entry points call it; add rollback-on-error semantics | [x] **Rollback-on-error** — `CommandEngine._execute_parsed` (`game/engine.py`) now catches exceptions from the command handler instead of letting them propagate uncaught. On a crash: `GameContext.rollback_state_changes()` (new `rollback_state` callable, wired at both entry points to the DB session's `.rollback`) undoes any half-applied state; `ctx.messages`/`room_messages`/`updates`/`pending_events` are cleared so no partial narration leaks out (architecture.md §26's golden rule: never tell clients something happened until the DB says it happened); a generic error message replaces it; a new `GameEvent.COMMAND_FAILED` audit event (severity ERROR) records the crash. **Broadcast unification** — new `game/broadcast.py`'s `broadcast_command_effects()` is the one place step 12 (room broadcast) now lives; both `main.py`'s `/ws` command loop (now `async`) and `web/frontend.py`'s `POST /command` call it after `CommandEngine.handle_command()` returns, closing the gap Sprint 12's simulation tests surfaced (the raw `/ws` path never re-broadcast `ctx.room_messages`/`state_change` to other room occupants the way `POST /command` did). Verified with a new simulation test exercising the previously-broken path over a real socket, plus the full existing suite (unit/integration/e2e/simulation) unchanged. **Construction unification (follow-up)** — `game/context.py`'s `build_game_context()` factory (added Sprint 6.3, meant to be "the" `GameContext` construction path) turned out to be unused by both real entry points. Extended it to accept `audit_session` (a separate `Session`, matching real usage — replacing the old same-session `create_audit_repo` bool) and `rollback_state`, and to pass `clock` straight through rather than synthesizing a fallback `WorldClock` (a fabricated clock would be silently wrong data, not a safe default). `main.py` and `web/frontend.py` now both call it instead of constructing `GameContext` inline. |
+| 14.1 | Extract shared lifecycle; both entry points call it; add rollback-on-error semantics | [x] **Rollback-on-error** — `CommandEngine._execute_parsed` (`game/engine.py`) now catches exceptions from the command handler instead of letting them propagate uncaught. On a crash: `GameContext.rollback_state_changes()` (new `rollback_state` callable, wired at both entry points to the DB session's `.rollback`) undoes any half-applied state; `ctx.messages`/`room_messages`/`updates`/`pending_events` are cleared so no partial narration leaks out (architecture.md §26's golden rule: never tell clients something happened until the DB says it happened); a generic error message replaces it; a new `GameEvent.COMMAND_FAILED` audit event (severity ERROR) records the crash. **Broadcast unification** — new `game/broadcast.py`'s `broadcast_command_effects()` is the one place step 12 (room broadcast) now lives; both `main.py`'s `/ws` command loop (now `async`) and `web/frontend.py`'s `POST /command` call it after `CommandEngine.handle_command()` returns, closing the gap [Sprint 12](#sprint-12--simulation-harness-mvp-)'s simulation tests surfaced (the raw `/ws` path never re-broadcast `ctx.room_messages`/`state_change` to other room occupants the way `POST /command` did). Verified with a new simulation test exercising the previously-broken path over a real socket, plus the full existing suite (unit/integration/e2e/simulation) unchanged. **Construction unification (follow-up)** — `game/context.py`'s `build_game_context()` factory (added Sprint 6.3, meant to be "the" `GameContext` construction path) turned out to be unused by both real entry points. Extended it to accept `audit_session` (a separate `Session`, matching real usage — replacing the old same-session `create_audit_repo` bool) and `rollback_state`, and to pass `clock` straight through rather than synthesizing a fallback `WorldClock` (a fabricated clock would be silently wrong data, not a safe default). `main.py` and `web/frontend.py` now both call it instead of constructing `GameContext` inline. |
 
 ## Sprint 15 — Core UX completion ✅
 
@@ -226,18 +226,89 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 All must be true before combat/trading work starts:
 
-- [x] Zero silent `except Exception` blocks in `src/` (Sprint 5)
-- [x] Zero `cast(GameContext, ctx)` / `cast(Any, ctx)` in `src/`; basedpyright `standard` mode clean (Sprint 6)
+- [x] Zero silent `except Exception` blocks in `src/` ([Sprint 5](#sprint-5--error-handling--exception-hierarchy-))
+- [x] Zero `cast(GameContext, ctx)` / `cast(Any, ctx)` in `src/`; basedpyright `standard` mode clean ([Sprint 6](#sprint-6--type-safety-))
 - [x] One `GameContext` construction path; no optional repo fields — **fixed (2026-07-02):** `build_game_context()` now accepts `audit_session` (a separate `Session`, matching real usage) instead of the old same-session `create_audit_repo` bool, `rollback_state`, and passes `clock` straight through instead of synthesizing a fallback `WorldClock`. Both `main.py`'s `/ws` loop and `web/frontend.py`'s `POST /command` call it instead of constructing `GameContext` inline.
-- [x] No module >~500 lines with mixed concerns (Sprint 8)
+- [x] No module >~500 lines with mixed concerns ([Sprint 8](#sprint-8--module-decomposition-))
 - [x] One service wiring convention; no inline `bus.on()` in `main.py` (Sprint 9.2)
-- [x] Web + admin layers have integration coverage; CI enforces coverage, types, and lint (Sprint 7 + Sprint 13.3)
+- [x] Web + admin layers have integration coverage; CI enforces coverage, types, and lint ([Sprint 7](#sprint-7--web--admin-characterization-tests-) + Sprint 13.3)
 - [x] Feature-registration pattern documented and demonstrated (10.4)
-- [x] All `[~]` STATUS partials either finished or explicitly retired — Sprint 14 closed the `/ws`/`/command` broadcast-lifecycle gap; Sprint 15 closed world clock/weather WS push (15.1) and the multi-player live-lists refresh gap on room-leave (15.2)
+- [x] All `[~]` STATUS partials either finished or explicitly retired — [Sprint 14](#sprint-14--unify-command-lifecycle-) closed the `/ws`/`/command` broadcast-lifecycle gap; [Sprint 15](#sprint-15--core-ux-completion-) closed world clock/weather WS push (15.1) and the multi-player live-lists refresh gap on room-leave (15.2)
 
 ---
 
-# Feature band (Sprints 16+) — gated on foundation exit criteria
+# Engine core band (Tier 1 primitives) — Sprints 16–21
+
+**Engine-first (2026-07-03).** The eight cross-cutting Tier 1 primitives from
+[`engine_core.md`](engine_core.md) are built here, **before** the Tier 2 feature modules that
+consume them ([Sprints 22](#sprint-22--standard-item-components--definition-fields)+). Rationale: several feature sprints share these primitives; building
+them per-sprint yields N opinionated implementations and blurs the framework/game boundary. Order
+follows dependency + leverage ([`engine_core.md`](engine_core.md) §6) — the two most expensive to
+retrofit (unified item location/ownership, and a seedable `ctx.rng` the audit-regression harness
+depends on) go first. These primitives are **content-agnostic**: no named skills, slots, factions,
+or damage formulas live here.
+
+## Sprint 16 — Item location/ownership & instance state
+
+**Goal:** One way to say where an item lives and to move it atomically; per-instance state via
+registered components. Highest-leverage primitives — they underpin equipment, containers, shop
+stock, corpses, and trade escrow. **See [`engine_core.md`](engine_core.md) §3.1–3.2, §4a/§4f.**
+
+| # | Task | Status |
+|---|------|--------|
+| 16.1 | Owned-stack abstraction + `(owner_type, owner_id, slot?)` location; one atomic `move_stack` (audited, rollback-safe); migrate `Player.inventory`/`RoomItem` behind it so consumers see one shape | [ ] |
+| 16.2 | `ItemInstance` carrier + pluggable component registry (durability/openable/lit/container register like dialogue side-effects); `bound`/soulbound flag | [ ] |
+
+## Sprint 17 — Determinism: seedable RNG & skill-check
+
+**Goal:** All random resolution reproducible so the [Sprint 12](#sprint-12--simulation-harness-mvp-) audit-regression harness can cover
+combat/skills/trade. **See [`engine_core.md`](engine_core.md) §3.6, §4b.**
+
+| # | Task | Status |
+|---|------|--------|
+| 17.1 | Seedable `ctx.rng` service threaded through `GameContext` (per-run seed); lint-ban module-level `random` in feature code | [ ] |
+| 17.2 | `skill_check(actor, skill, difficulty, modifiers) → outcome` helper on `ctx.rng` (one check path for perception/lockpicking/barter/combat) | [ ] |
+
+## Sprint 18 — Modifier resolution
+
+**Goal:** One runtime resolver for bonuses from many sources, with a defined stacking order and
+caps. Generalizes the doc's `EquipmentEffects.resolve()`. **See [`engine_core.md`](engine_core.md) §3.5, §4d.**
+
+| # | Task | Status |
+|---|------|--------|
+| 18.1 | Modifier resolver: buckets **flat add → multiplier → clamp/cap**; collects from equipment `effects`, traits, active effects, region; never stored (recompute on change / lazily) | [ ] |
+
+## Sprint 19 — Meters & timed effects
+
+**Goal:** Named bounded clock-tickable resources, and expiring buffs/debuffs — one primitive each,
+not one column per resource. **See [`engine_core.md`](engine_core.md) §3.3–3.4.**
+
+| # | Task | Status |
+|---|------|--------|
+| 19.1 | `Meter` primitive (bounded, optional regen, scheduler tick); migrate `PlayerStats.current_hp/max_hp` onto it as the proof; low values feed the §18 resolver | [ ] |
+| 19.2 | `ActiveEffect` (clock-driven expiry, swept by scheduler) + trait registry (named boon/bane modifier-bundles) feeding the resolver | [ ] |
+
+## Sprint 20 — Ledger & atomic transfer
+
+**Goal:** A coin balance on any holder + one atomic multi-party transfer for coins *and* items.
+**See [`engine_core.md`](engine_core.md) §3.7, §4c/§4g.**
+
+| # | Task | Status |
+|---|------|--------|
+| 20.1 | Coin balance as an attribute of any holder (player/bank/corpse); atomic `transfer(from, to, coins?, stacks?)` with accept-time revalidation (escrow), reusing the [Sprint 14](#sprint-14--unify-command-lifecycle-) rollback; integrity gates via `RuleEngine` (fail-closed), not conditions | [ ] |
+
+## Sprint 21 — Scheduled moving entity ("moving room")
+
+**Goal:** The moving-room carrier transit rides on; also serves wandering NPCs/patrols later.
+**See [`engine_core.md`](engine_core.md) §3.8.**
+
+| # | Task | Status |
+|---|------|--------|
+| 21.1 | Scheduled moving-room carrier + position-interpolation state machine (`at_stop → in_transit → arrive`, reverse/loop) + position push; line semantics (express/local, tickets, weather) stay Tier 2 ([Sprint 29](#sprint-29--transit--travel-systems)) | [ ] |
+
+---
+
+# Feature band (Sprints 22+) — Tier 2 modules & content, gated on foundation exit criteria
 
 **Re-sequenced 2026-07-03** to reflect Lorecraft's design pillars — **Exploration > Trading >
 Questing > Puzzle-solving, with combat as a *supporting* system, not the centerpiece** (see
@@ -250,38 +321,54 @@ Ordering follows dependencies: item state → equipment → traits/skills/explor
 → trade → transit → quests/puzzles → combat → PvP. UI polish (map, mobile) sits alongside
 exploration, which it serves.
 
-> **Design docs:** [`inventory_equipment.md`](inventory_equipment.md) (Sprints 16–17),
+> **Engine-first (2026-07-03):** the feature band decomposes into **Tier 1 engine primitives →
+> Tier 2 standard modules → Tier 3 content** per [`engine_core.md`](engine_core.md) — the anchor
+> doc for the framework/game boundary. Directive: **design Tier 1 now, implement most of Tier 1
+> before Tier 2.** Eight cross-cutting primitives (item location/ownership, component state,
+> meters, timed effects, modifier resolver, seedable RNG + skill-check, ledger/atomic transfer,
+> moving-entity) sit underneath [Sprints 22–35](#sprint-22--standard-item-components--definition-fields); building them per-sprint would yield N opinionated
+> implementations and blur the boundary. The two most expensive to retrofit — the unified item
+> location/ownership model and a seedable `ctx.rng` (audit-regression-critical) — go first. See
+> [`engine_core.md`](engine_core.md) §3 (primitives), §4 (cross-doc surprises caught), §6 (build
+> order). The Tier 1 work is now sequenced as **[Sprints 16–21](#sprint-16--item-locationownership--instance-state)** (the Engine core band below); the
+> Tier 2 feature band shifts to **[Sprints 22–35](#sprint-22--standard-item-components--definition-fields)**.
+
+> **Design docs:** [`engine_core.md`](engine_core.md) (Tier boundary + Tier 1 primitives — read first),
+> [`inventory_equipment.md`](inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
-> [`death_resurrection.md`](death_resurrection.md) (Sprint 25 death penalty),
+> [`death_resurrection.md`](death_resurrection.md) ([Sprint 31](#sprint-31--combat-core-services-supporting-system) death penalty),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
 > [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
-> registries), [`transit_systems.md`](transit_systems.md) (Sprint 23), and
-> [`trade_economy.md`](trade_economy.md) (Sprint 22). The signature systems now all have
+> registries), [`transit_systems.md`](transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
+> [`trade_economy.md`](trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
 > design docs.
 
-## Sprint 16 — Item & world state modeling
+## Sprint 22 — Standard item components & definition fields
 
-**Goal:** The deferred Sprint 2.5 `open`/container/state prerequisite. Per-instance item state
-so items can be worn, burned, opened, and puzzle-wired. Foundation for equipment, containers,
-durability, light sources, and mechanism puzzles. **See [`inventory_equipment.md`](inventory_equipment.md) §7.**
+**Goal:** *Tier 2 realization* of item content on the [Sprint 16](#sprint-16--item-locationownership--instance-state) engine model — the deferred
+Sprint 2.5 `open`/container/state prerequisite. The per-instance carrier, item-location model, and
+component registry are **Tier 1 ([Sprint 16](#sprint-16--item-locationownership--instance-state))**; this sprint adds the Layer A `Item` definition
+fields and the *standard components* (durability, light, container, openable) on top, so items can
+be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.md) §3.1–3.2 and
+[`inventory_equipment.md`](inventory_equipment.md) §7.**
 
 | # | Task | Status |
 |---|------|--------|
-| 16.1 | Layer A item fields (`slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects`) on `Item`; YAML loader + validators | [ ] |
-| 16.2 | `ItemInstance` table (durability/`is_open`/`lit`/`state`) for items that need state; stateless stackables stay as ID lists | [ ] |
+| 22.1 | Layer A item fields (`slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects`, `bound`) on `Item`; YAML loader + validators | [ ] |
+| 22.2 | Register durability/`is_open`/`lit`/container as **standard components** on the [Sprint 16](#sprint-16--item-locationownership--instance-state) `ItemInstance`/component model; `open` + state verbs (stateless stackables stay as ID stacks) | [ ] |
 
-## Sprint 17 — Inventory & equipment
+## Sprint 23 — Inventory & equipment
 
 **Goal:** Wear/wield slots, encumbrance, containers. Equipment grants **non-combat** effects
 (light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](inventory_equipment.md) §3–6, §9.**
 
 | # | Task | Status |
 |---|------|--------|
-| 17.1 | `Player.equipment` slot map; `wear`/`remove`/`wield`/`equipment` commands via `InventoryService`; `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` events | [ ] |
-| 17.2 | Encumbrance bands from weight + `carry_bonus`; `EquipmentEffects.resolve()` (runtime-derived, never stored) | [ ] |
-| 17.3 | Containers: `put in` / `take from`, nesting, worn-container capacity; light/darkness gate (`Room.light_level` + lit source) | [ ] |
+| 23.1 | `Player.equipment` slot map; `wear`/`remove`/`wield`/`equipment` commands via `InventoryService`; `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` events | [ ] |
+| 23.2 | Encumbrance bands from weight + `carry_bonus`; `EquipmentEffects.resolve()` (runtime-derived, never stored) | [ ] |
+| 23.3 | Containers: `put in` / `take from`, nesting, worn-container capacity; light/darkness gate (`Room.light_level` + lit source) | [ ] |
 
-## Sprint 18 — Traits & skills
+## Sprint 24 — Traits & skills
 
 **Goal:** Character identity that gates exploration and social play. Use-based skills, a trait
 registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats` (attributes
@@ -289,54 +376,54 @@ registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats
 
 | # | Task | Status |
 |---|------|--------|
-| 18.1 | Trait registry (pluggable, like dialogue side-effects); traits from equipment/background/earned; boon+bane modifiers | [ ] |
-| 18.2 | Use-based skill improvement (perception, lockpicking, bartering, cartography, survival, persuasion); skill-check helper | [ ] |
-| 18.3 | Reputation/standing per NPC + faction; unlocks dialogue/prices/quests (extends flags + NPC memory) | [ ] |
+| 24.1 | Trait registry (pluggable, like dialogue side-effects); traits from equipment/background/earned; boon+bane modifiers | [ ] |
+| 24.2 | Use-based skill improvement (perception, lockpicking, bartering, cartography, survival, persuasion); skill-check helper | [ ] |
+| 24.3 | Reputation/standing per NPC + faction; unlocks dialogue/prices/quests (extends flags + NPC memory) | [ ] |
 
-## Sprint 19 — Exploration depth
+## Sprint 25 — Exploration depth
 
 **Goal:** Make discovery a first-class reward (the top pillar). Search-gated secrets, terrain,
 journal, cartography. Builds on existing minimap fog and `Exit.hidden`/`condition_flags`.
 
 | # | Task | Status |
 |---|------|--------|
-| 19.1 | `search` command + hidden-exit/secret-room reveal gated on perception skill + traits + light; discovery rewards (knowledge flags, progression tick) | [ ] |
-| 19.2 | Terrain types on rooms/exits affecting travel time, fatigue cost, and required skill/gear; environmental `examine` layering | [ ] |
-| 19.3 | Journal / auto-log panel (discovered places, met NPCs, learned lore, active clues); player cartography reveal | [ ] |
+| 25.1 | `search` command + hidden-exit/secret-room reveal gated on perception skill + traits + light; discovery rewards (knowledge flags, progression tick) | [ ] |
+| 25.2 | Terrain types on rooms/exits affecting travel time, fatigue cost, and required skill/gear; environmental `examine` layering | [ ] |
+| 25.3 | Journal / auto-log panel (discovered places, met NPCs, learned lore, active clues); player cartography reveal | [ ] |
 
-## Sprint 20 — Map & mobile UI
+## Sprint 26 — Map & mobile UI
 
 **Goal:** UI polish that serves exploration (was Sprints 16–17 of the previous plan).
 
 | # | Task | Status |
 |---|------|--------|
-| 20.1 | Full-screen map modal (pan/zoom), integrated with cartography reveal | [ ] |
-| 20.2 | Responsive mobile tab layout | [ ] |
+| 26.1 | Full-screen map modal (pan/zoom), integrated with cartography reveal | [ ] |
+| 26.2 | Responsive mobile tab layout | [ ] |
 
-## Sprint 21 — Character condition (fatigue / sleep)
+## Sprint 27 — Character condition (fatigue / sleep)
 
 **Goal:** Light survival texture that rewards planning; per-world toggle, not punishing. Runs
 on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → Character condition.**
 
 | # | Task | Status |
 |---|------|--------|
-| 21.1 | Fatigue/stamina drained by travel/encumbrance/actions; low fatigue penalizes skill checks; `rest`/`sleep`/`camp` | [ ] |
-| 21.2 | Sleep advances time + restores fatigue + dream/lore hook; safe vs. unsafe sleep; warmth/exposure via weather + worn clothing | [ ] |
+| 27.1 | Fatigue/stamina drained by travel/encumbrance/actions; low fatigue penalizes skill checks; `rest`/`sleep`/`camp` | [ ] |
+| 27.2 | Sleep advances time + restores fatigue + dream/lore hook; safe vs. unsafe sleep; warmth/exposure via weather + worn clothing | [ ] |
 
-## Sprint 22 — Trading & economy
+## Sprint 28 — Trading & economy
 
 **Goal:** A living economy where *where* you buy/sell matters (pillar #2). Currency → NPC shops
-→ regional pricing → banks. **Signature pairing:** the transit network (Sprint 23) is the trade
+→ regional pricing → banks. **Signature pairing:** the transit network ([Sprint 29](#sprint-29--transit--travel-systems)) is the trade
 network. **See [`trade_economy.md`](trade_economy.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 22.1 | Currency model (carried `coins`); item `value` × `quality` pricing; NPC vendor shops (`buy`/`sell`/`list`), bartering skill + reputation flex price | [ ] |
-| 22.2 | Regional price differences + per-good bias + finite stock restocking on the world clock (buy-low/sell-high loop) | [ ] |
-| 22.3 | Banks: `BankAccount`, `deposit`/`withdraw`/`balance` at branches, one account/many branches (safe from death & robbery) | [ ] |
-| 22.4 | Player-to-player `offer`/`accept` trade handshake (atomic escrow swap; multi-player transaction safety) | [ ] |
+| 28.1 | Currency model (carried `coins`); item `value` × `quality` pricing; NPC vendor shops (`buy`/`sell`/`list`), bartering skill + reputation flex price | [ ] |
+| 28.2 | Regional price differences + per-good bias + finite stock restocking on the world clock (buy-low/sell-high loop) | [ ] |
+| 28.3 | Banks: `BankAccount`, `deposit`/`withdraw`/`balance` at branches, one account/many branches (safe from death & robbery) | [ ] |
+| 28.4 | Player-to-player `offer`/`accept` trade handshake (atomic escrow swap; multi-player transaction safety) | [ ] |
 
-## Sprint 23 — Transit & travel systems
+## Sprint 29 — Transit & travel systems
 
 **Goal:** The signature Materia-Magica-inspired feature — multiple travel modes between areas
 (ferry, rail, balloon, caravan) that are slow or fast, run end-to-end (express) or make multiple
@@ -345,21 +432,21 @@ stops (local), and animate on the minimap. Built on scheduler + world clock + we
 
 | # | Task | Status |
 |---|------|--------|
-| 23.1 | Data model (`TransitLine`/`TransitStop`/`TransitVehicleState`) + YAML `transit:` section + validators; data-driven modes/speeds/stopping patterns | [ ] |
-| 23.2 | Scheduler-driven vehicle state machine (at_stop→in_transit→arrive, reverse/loop); moving-room `board`/`disembark`/`schedule`; ticket-item gating | [ ] |
-| 23.3 | `transit_update` WS message + minimap marker animation (interpolated between stop coords); weather grounding/delay (balloon/ferry) | [ ] |
+| 29.1 | Data model (`TransitLine`/`TransitStop`/`TransitVehicleState`) + YAML `transit:` section + validators; data-driven modes/speeds/stopping patterns | [ ] |
+| 29.2 | Scheduler-driven vehicle state machine (at_stop→in_transit→arrive, reverse/loop); moving-room `board`/`disembark`/`schedule`; ticket-item gating | [ ] |
+| 29.3 | `transit_update` WS message + minimap marker animation (interpolated between stop coords); weather grounding/delay (balloon/ferry) | [ ] |
 
-## Sprint 24 — Quests & puzzles depth
+## Sprint 30 — Quests & puzzles depth
 
 **Goal:** Branching, consequence-bearing quests and environmental/lore puzzles (pillars #3–4).
 Extends the stage/flag quest system with branch conditions and mechanism puzzles.
 
 | # | Task | Status |
 |---|------|--------|
-| 24.1 | Branch conditions + consequence side-effects on quests (world-state/standing changes); NPC memory of past interactions | [ ] |
-| 24.2 | Mechanism & item-combination puzzles on `ItemInstance.state` (levers, dials, sequences) via pluggable conditions/side-effects; timed clock-driven quest events | [ ] |
+| 30.1 | Branch conditions + consequence side-effects on quests (world-state/standing changes); NPC memory of past interactions | [ ] |
+| 30.2 | Mechanism & item-combination puzzles on `ItemInstance.state` (levers, dials, sequences) via pluggable conditions/side-effects; timed clock-driven quest events | [ ] |
 
-## Sprint 25 — Combat core services (supporting system)
+## Sprint 31 — Combat core services (supporting system)
 
 **Goal:** Server-side combat resolution, no commands/UI yet. First consumer of the
 feature-registration pattern (10.4), reading equipment-derived stats. **Deliberately below
@@ -368,39 +455,39 @@ and [`death_resurrection.md`](death_resurrection.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 25.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
-| 25.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
-| 25.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
+| 31.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
+| 31.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
+| 31.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
 
-## Sprint 26 — Combat commands + UI (avoidance-first)
+## Sprint 32 — Combat commands + UI (avoidance-first)
 
 **Goal:** Combat as one resolution among several — stealth/persuasion/bribery/flee are
 first-class alternatives; non-lethal outcomes supported.
 
 | # | Task | Status |
 |---|------|--------|
-| 26.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 26.2 | Combat UI in HTMX feed + status panel | [ ] |
+| 32.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
+| 32.2 | Combat UI in HTMX feed + status panel | [ ] |
 
-## Sprint 27 — Combat testing
+## Sprint 33 — Combat testing
 
 | # | Task | Status |
 |---|------|--------|
-| 27.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
+| 33.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
 
-## Sprint 28 — PvP consent
+## Sprint 34 — PvP consent
 
 **Goal:** Consent-based, opt-in PvP reusing the combat system. Soft by default.
 
 | # | Task | Status |
 |---|------|--------|
-| 28.1 | PvP consent + challenge/accept | [ ] |
+| 34.1 | PvP consent + challenge/accept | [ ] |
 
-## Sprint 29 — Multiplayer trade / PvP / transit tests
+## Sprint 35 — Multiplayer trade / PvP / transit tests
 
 | # | Task | Status |
 |---|------|--------|
-| 29.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
+| 35.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
 
 ---
 
@@ -409,20 +496,20 @@ first-class alternatives; non-lethal outcomes supported.
 | Item | Notes |
 |------|-------|
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
-| ~~Bug/todo letterbox~~ | Implemented in Sprint 10.5 as issues tracking system |
+| ~~Bug/todo letterbox~~ | Implemented in [Sprint 10.5](#sprint-105--tooling-infrastructure-) as issues tracking system |
 | Inventory encumbrance / wear slots | After equipment + combat |
 | `lorecraft.tools.simulation` CLI (JSON scenario files, N-bot load runs, latency/throughput reports) | Enhancement on top of the Sprint 12.1 pytest-based harness; see `tooling_infrastructure.md` §5 |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
 | Player-facing bug reports | In-game `/report-bug` command (after core issues system stable) |
-| Analytics dashboard & visualizations | After Sprint 13 instrumentation (Sprint 14+) |
+| Analytics dashboard & visualizations | After [Sprint 13](#sprint-13--observability--ci-quality-gates-) instrumentation ([Sprint 14](#sprint-14--unify-command-lifecycle-)+) |
 | Database inspector / state editor | Admin tool for advanced troubleshooting (Post-foundation) |
 
 ---
 
 ## Build-order reference
 
-See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication (Sprint 4) → foundation hardening (Sprints 5–15) → **foundation gate** → item state & inventory/equipment (16–17) → traits/skills & exploration + UI (18–20) → condition/trade/transit (21–23) → quests & puzzles (24) → combat (25–27) → PvP + multiplayer tests (28–29).
+See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → combat (31–33) → PvP + multiplayer tests (34–35).
 
 **Note (2026-07-03):** the feature band was re-sequenced from the original combat-first order to a pillar-driven order (Exploration > Trading > Questing > Puzzles; combat supporting). `architecture.md` §28's phase list predates this and is kept for historical reference — this roadmap is authoritative for sequencing.
 
@@ -451,4 +538,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — Feature band (Sprints 16+) re-sequenced around design pillars (Exploration > Trading > Questing > Puzzles; combat as a supporting system, not the centerpiece); combat moved from Sprints 18–20 down to 25–27. See [`wishlist.md`](wishlist.md) (pillars + mechanics menu) and [`inventory_equipment.md`](inventory_equipment.md) (Sprints 16–17 design). Sprints 4–15 complete; foundation gate green. Next: Sprint 16 (item & world state modeling).*
+*Last updated: 2026-07-03 — Inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green. Next: build [Sprint 16](#sprint-16--item-locationownership--instance-state) (item location/ownership + component state) and [Sprint 17](#sprint-17--determinism-seedable-rng--skill-check) (seedable RNG + skill-check) first — the two most expensive to retrofit.*

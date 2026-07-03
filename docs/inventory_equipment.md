@@ -68,7 +68,7 @@ class Item(SQLModel, table=True):
 ```
 
 `effects` is a list of pluggable effect descriptors (registry-driven, mirroring the dialogue
-side-effect and condition registries from Sprint 10), e.g.:
+side-effect and condition registries from [Sprint 10](roadmap.md#sprint-10--extensibility-seams-)), e.g.:
 
 ```yaml
 effects:

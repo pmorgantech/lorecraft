@@ -79,7 +79,7 @@ Resolved / remaining design questions:
   `disembark` gate entry, no static exits. A lighter virtual-journey variant covers abstract
   fast-travel. *(Resolved in the design doc.)*
 - Off-vehicle players *do* see arrivals/departures and can watch the vehicle cross the minimap.
-- Tickets are items; free or quest-pass for now, priced once the Sprint 22 economy lands.
+- Tickets are items; free or quest-pass for now, priced once the [Sprint 28](roadmap.md#sprint-28--trading--economy) economy lands.
 
 ---
 
@@ -177,7 +177,7 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
 - **Journal / auto-log** — the game records discovered places, met NPCs, learned lore, and
   active clues — a living quest/exploration log. Great UI panel candidate.
 
-### Trading & economy depth 💚 (core pillar — designed in `trade_economy.md`, roadmap Sprint 22)
+### Trading & economy depth 💚 (core pillar — designed in `trade_economy.md`, roadmap Sprint 28)
 
 Beyond the basic currency→shops→P2P ladder in *Gameplay systems* below:
 
@@ -205,7 +205,7 @@ transit worth using. Shares its whole core with [`death_resurrection.md`](death_
   same lesson.
 - **Avoidance-first, per the pillars** — talk your way out (persuasion), bribe them, sneak past
   (stealth), or fight ([`combat_system.md`](combat_system.md)) — robbery is an *encounter*, not
-  an unavoidable tax. Reputation/standing (Sprint 18) can matter (a known friend of the guard,
+  an unavoidable tax. Reputation/standing ([Sprint 24](roadmap.md#sprint-24--traits--skills)) can matter (a known friend of the guard,
   or of the thieves).
 - **Risk-tiered geography** — safe roads vs. dangerous shortcuts; the fast route may be the
   risky one, trading time against safety (pairs with transit + the fatigue/condition mechanic).
@@ -217,7 +217,7 @@ transit worth using. Shares its whole core with [`death_resurrection.md`](death_
 
 Design intent noted 2026-07-03 (product owner). No dedicated design doc yet; the money-at-risk
 mechanics are specified in [`death_resurrection.md`](death_resurrection.md) §8. Sprint TBD —
-naturally lands after banks (Sprint 22) and combat (Sprint 25).
+naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)) and combat ([Sprint 31](roadmap.md#sprint-31--combat-core-services-supporting-system)).
 
 ### Quests & puzzles 💚 (core pillar)
 
@@ -239,7 +239,7 @@ naturally lands after banks (Sprint 22) and combat (Sprint 25).
 
 ### Combat, reframed as a supporting system 🤔
 
-Combat stays on the roadmap (Sprints 18–20) but is **deliberately not the centerpiece**:
+Combat stays on the roadmap ([Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system)) but is **deliberately not the centerpiece**:
 
 - **Avoidance as first-class** — stealth, persuasion, bribery, and clever item use should
   resolve most encounters without a fight. Combat is a fallback, not the default.
@@ -248,12 +248,107 @@ Combat stays on the roadmap (Sprints 18–20) but is **deliberately not the cent
 - **Encounters serve stories** — fights exist to raise stakes in quests/exploration, not as a
   grind loop for XP. No "kill 10 rats." See the death-penalty decision (lean soft).
 
+### Seeded from MUD patch notes & client comparison (2026-07-03)
+
+A batch of ideas mined from another MUD's patch notes (Alyria/Materia-Magica-style) and
+Aardwolf's help system + Fractals-of-the-Weave notes. **De-narrativized on purpose** — we keep
+the mechanic/primitive, not the lore. Grouped provisionally here ("keep all for now"); some will
+later graduate into the themed subsections above or get pruned.
+
+#### Player settings, accessibility & client UX 💚
+
+Classic clients expose a big `set` menu (`set unformatted-text`, `set vitals-percent`,
+clickable-links, `page_length`, AFK/away). The transferable idea is a **per-account preferences
+layer**, persisted on the account and read by the render layer.
+
+- **Preferences system** — display density, feed verbosity, panel visibility, timestamp format,
+  reduced-motion (transit/map animation off), colourblind-safe palette. One settings blob, one
+  place rendering reads it.
+- **Accessibility mode** — an "unformatted / high-contrast / screen-reader-friendly" mode. A
+  browser client can do this *better* than a terminal MUD (semantic HTML, ARIA, real font
+  scaling) — a genuine differentiator, and far cheaper to bake in early than to retrofit.
+- **Examine surfaces affordances + live state** — `look`/`examine` shows *available verbs*
+  ("you can: read, take, light") and *live per-instance state* (charges, cooldown, "requires a
+  key"). Builds on [Sprint 22](roadmap.md#sprint-22--standard-item-components--definition-fields) `ItemInstance` state.
+- **Clickable entity affordances** — items/NPCs/exits in the feed are clickable → examine/act.
+  Browser-native; terminal clients bolt this on with plugins, we get it for free.
+
+#### More exploration & world-state ideas
+
+- **Collectible "marks" / attunements 💚** — named passive badges earned by *discovering* things
+  ("Mark of Groundwater — go explore"): a progression track parallel to leveling, fed by
+  exploration not combat. Some cosmetic/lore, some small mechanical boons (soft-capped, below).
+  Builds on flags + trait registry ([Sprint 24](roadmap.md#sprint-24--traits--skills)). Pillar #1.
+- **Celestial cycles — moons & tides 💚** — the clock already tracks time/season/weather; add
+  lunar phase(s) and tides as world state. Gates content: moon-keyed doors/rituals (puzzles),
+  tides that shift a ferry schedule or reveal a causeway (transit + exploration), night-only
+  encounters. Small extension, three-pillar reach. Builds on `clock/weather.py` + scheduler.
+- **World-placed shrines / altars 🤔** — discoverable stations offering a set of *mutually
+  exclusive* boons, one active per station, bought with a token currency; multiple stations
+  stack. An exploration reward + light respec-able customization + currency sink in one. The
+  mutex-per-station rule keeps it from becoming a flat power-stack.
+- **Timed room effects / auras 💚 (engine primitive)** — apply an effect to a *room* for a
+  duration with a cooldown, scheduler-driven (seeded by "germinate is now a 1-hour room effect").
+  A general tool: puzzle timers (a plate opens a gate for 30s), weather hazards, lingering zones,
+  farming growth. Worth naming as a primitive — lots of content wants it. Builds on
+  `SchedulerService` + `TIME_ADVANCED`.
+
+#### Systems & balance design notes
+
+- **Soft caps / diminishing returns 💚 (principle, not a feature)** — "no 100% resistance",
+  "+damage tiered drop-off". Bake into the trait/skill/effect maths *from [Sprint 24](roadmap.md#sprint-24--traits--skills)*: modifiers
+  stack with diminishing returns and hard ceilings so nothing goes degenerate. A shared
+  `apply_modifier`/soft-cap helper. Cheap now, painful to walk back later.
+- **Effect exclusivity groups 🤔** — affects/traits/marks can declare a mutex group so opposed or
+  same-family effects don't stack ("Courage and Fear are mutex"). Small but important trait detail.
+- **Multiple / alternate currencies 🤔** — event tokens, faction scrip alongside base gold. Design
+  implication for **[Sprint 28](roadmap.md#sprint-28--trading--economy)**: model currency as a *keyed quantity map* (`{coins, festival_tokens,
+  …}`), not a single int — near-free now, expensive to retrofit.
+- **Item sockets / augments + lifespans 🤔** — heavily stripped from Aardwolf's "relics": items can
+  hold per-instance sub-modifiers (sockets), and some items have a lifespan and transform on expiry.
+  Natural extension of `ItemInstance.state` (Sprint 22.2); the *socket* kernel is the keeper — resist
+  over-building the rest.
+- **Variable-cost / scalable commands 🤔** — a command takes a numeric arg that scales its cost *and*
+  effect (`brew 3` = spend 3 reagents for a bigger result). Expressive for any future resource pool.
+- **Repeatable / daily objectives 🤔 (with a caveat)** — reset-window design (the noon-vs-midnight
+  boundary is a real scheduler UX detail). **Tension:** dailies are the grind loop the pillars reject
+  — only pursue as *rotating discovery/trade* goals ("bring goods from three towns today"), never
+  combat treadmills.
+- **Categorized, searchable help / codex 💚** — Aardwolf's `HELP CONTENTS` / `CONTENTS <category>` /
+  `INDEX <letter>` / `HELP <keyword>` is a browsable, indexed knowledge base. Lorecraft's context-aware
+  `help` can grow into a searchable **codex panel/modal** (categories + full-text search + clickable
+  cross-links), merged with the journal/lore log. Browser-native.
+- **Player-facing world graphs / stats 🤔** — Alteraeon-style `graph` command: aggregate world
+  statistics players can browse (hourly/daily player load, economy/gold offsets, alignment
+  distribution), available both in-game *and* on the web. Distinct from the admin analytics
+  ([Sprint 13](roadmap.md#sprint-13--observability--ci-quality-gates-) latency/instrumentation) — this is the *public* "what is the whole world doing"
+  view. Reuses the [Sprint 13](roadmap.md#sprint-13--observability--ci-quality-gates-) metric queries + the `dataviz` skill for rendering; a natural
+  browser panel/page. Light community-texture feature, no gameplay dependency.
+- **Instanced minigames / scenarios 🤔** — themed self-contained challenge areas (Fractals of the
+  Weave: Unseelie Court, caravan defense) that repop on a timer (every 60h, *unannounced* — players
+  learn the rhythm) and restore vitals at checkpoints. Good fit for the feature-registration pattern +
+  scheduler; the caravan-defense one pairs with the trade-route idea. Defer, but a strong "special
+  content" mould.
+
+#### Smaller design details (one line each)
+
+- **Always-allowed commands under status effects** — communication/social verbs still work while
+  stunned/paralyzed/"casting". Ties to the command-lifecycle + context-aware availability.
+- **Conditional item possession** — items that vanish when the holder stops meeting their requirements.
+  Extends bound/attunement.
+- **Room/entity flags constrain NPC behaviour** — a `SAFE` flag NPCs won't teleport/wander into;
+  directly supports the safe-vs-dangerous geography behind robbers.
+- **NPC perception overrides stealth** — "shopkeepers always see shoppers": rules for where stealth
+  *shouldn't* apply (commerce, key NPCs).
+- **Feature flags for staged content** — ship-dark content that unlocks on a flag/date ("finished but
+  not released until X"). Minor infra.
+
 ---
 
 ## Gameplay systems
 
 ### Combat 💚 (already on the roadmap)
-Sprints 25–27 (moved down from the original 18–20 in the 2026-07-03 pillar re-sequence —
+[Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system) (moved down from the original 18–20 in the 2026-07-03 pillar re-sequence —
 combat is a supporting system, not the centerpiece). **NPC combat first, PvP later** — simpler
 state machine, lets death/respawn mechanics settle before adding player-vs-player. First real
 consumer of the feature-registration pattern.
@@ -262,11 +357,11 @@ consumer of the feature-registration pattern.
 lose some carried coins/loot; banked and equipped/bound items are safe).
 
 ### Trading & currency 💚 (on the roadmap)
-Sprint 22. Designed in [`trade_economy.md`](trade_economy.md): currency (carried `coins` +
+[Sprint 28](roadmap.md#sprint-28--trading--economy). Designed in [`trade_economy.md`](trade_economy.md): currency (carried `coins` +
 `BankAccount`) → NPC shops → regional pricing → banks → player-to-player trade.
 *Deferred:* auctions, dynamic global market — until there's real trading volume.
 
-### PvP 🤔 (on the roadmap, Sprint 28)
+### PvP 🤔 (on the roadmap, Sprint 34)
 Consent-based (challenge/accept) reusing the combat system. **Design choice pending:** soft
 opt-in PvP (most modern MUDs, Aardwolf's "99% harmless") vs. anything more punishing. Lean
 soft unless Lorecraft wants a darker RP tone.
@@ -300,6 +395,52 @@ idea.
 
 ---
 
+## Client UI, layout & presentation 💚 (from Aardwolf/MUSHclient screenshots, 2026-07-03)
+
+Three classic MUSHclient/Aardwolf multi-pane layouts were reviewed for pane/layout/style ideas.
+Lorecraft is browser-based, so most of these map onto HTMX panels it already has (room, inventory,
+minimap, players-online, quest tracker, world-clock bar) — the value is in *what deserves its own
+pane* and *how information is separated*.
+
+Patterns worth stealing:
+
+- **Separate the communication log from the narrative feed 💚** — every screenshot devotes a whole
+  pane to channel/social chatter (Friend/Newbie/Helper/Auction), *distinct* from the main
+  room/action feed. **The single biggest takeaway:** chat should never scroll your room description
+  or quest/combat output out of view. Split "world/narrative feed" from "social/channel feed" into
+  two panes (or tabs).
+- **Persistent stats & vitals panel 💚** — attributes + vitals (HP/mana/moves) + progression
+  (XP-to-level, gold, quest/trivia points) always visible, never in the scroll. Once traits/skills
+  exist ([Sprint 24](roadmap.md#sprint-24--traits--skills)), the *identity* numbers live here, not in the feed.
+- **Bar gauges alongside numbers 💚** — HP/mana/moves/"TNL"/enemy as coloured progress bars *and* raw
+  numbers. Cheap, high-readability; a browser does this beautifully. Reserve an **enemy/target bar**
+  slot for when combat exists.
+- **Two map zoom levels 🤔** — a *local* minimap (immediate rooms + exits + coords) and a *zoomed-out
+  region/area map* (tiled grid, colour-coded rooms) shown together. Lorecraft has one fog-of-war
+  minimap; the region view pairs with the planned full-screen map modal ([Sprint 26](roadmap.md#sprint-26--map--mobile-ui)) + cartography
+  ([Sprint 25](roadmap.md#sprint-25--exploration-depth)) — consider local-inline + region-modal rather than two always-on maps (screen budget).
+- **Colour-coded, prefixed channels 💚** — each channel has a consistent colour + bracket tag
+  (`(Friend)`, `[Newbie]`, `Auction:`) so the eye filters instantly. Cheap semantic styling in the
+  browser; pairs with the accessibility/palette preference above.
+- **Structured room header 💚** — room name + exits + "who/what is here" as a consistent styled header
+  before prose. Lorecraft's room panel already does much of this; keep exits and occupant list
+  *structured and clickable*, not buried in text.
+- **Inline prompt line with vitals 🤔** — terminal clients repeat `<hp/mana/moves …>` each prompt. The
+  browser equivalent is the persistent status bar (already have the world-clock bar) — no need to
+  repeat inline, but the *idea* (vitals always one glance away) is the point.
+
+Style notes: dark theme, high-contrast semantic colours, monospace for map/exits, generous use of
+colour to encode *type* (channel, NPC, exit, item, quest) — all of which Lorecraft can do more
+accessibly than a terminal via real CSS/ARIA. Feeds directly into **Player settings & accessibility**
+above (palette, reduced-motion, unformatted mode).
+
+**Layout budget note:** the screenshots pack 5–6 panes because desktop MUSHclient has the room.
+Lorecraft's responsive/mobile goal (Sprint 26.2) means panes must collapse into tabs on small screens
+— so decide a *priority order* (feed > vitals > map > social > inventory > quests) for what stays
+visible vs. what tabs away.
+
+---
+
 ## World-building & tooling
 
 ### In-game builder commands (OLC-style) 🤔
@@ -320,6 +461,31 @@ time comes:
 - **Embedded Lua** (Aardwolf model) — sandboxed, builder-friendly, in-game editable, needs a
   binding layer.
 - **Stay YAML-only** — safest; extend via backend registries as needed.
+
+### Context-attached commands 🤔 (distilled from Evennia cmdsets, 2026-07-03)
+
+Evennia attaches command *sets* to objects — a Tree carries `climb`/`chop`, a Clock carries
+`check time` — so verbs appear only when the relevant object is present or held. That
+object-scoped-verb idea is a strong fit for the exploration/puzzle pillars (a `pull` lever that
+exists in only one room; a `read` inscription on one item). **Adopt the concept, not the machinery.**
+
+- Lorecraft's parser is already *more* capable than Evennia's base (semantic roles + entity
+  resolution + fuzzy disambiguation + `;`/"it" chaining), so the evolution isn't in parsing — it's
+  in *where commands come from*: today `CommandRegistry` is a single flat global set.
+- Low-complexity path: keep the flat registry, and let world data (rooms/items/NPCs, or a feature via
+  the registration pattern) **contribute context verbs gated by the existing condition registry**
+  (`object_present:lever`, `item_in_inventory:sundial`). We already have the symmetric half —
+  `Room.disabled_commands` *removes* verbs; this *adds* them.
+- **Explicitly skip** Evennia's cmdset merge algebra (priorities, Union/Replace/Remove merge types,
+  reverse-priority grouped merging) and its `yield`-based command pausing — the first is exactly the
+  complexity we distrust; the second is better served by our scheduler + `pending_disambig` (and
+  doesn't even survive a reload in Evennia).
+- Cheap hygiene win spotted along the way: the registry silently overwrites on key/alias collision —
+  a dev-time collision warning would catch accidental clashes (Evennia's hard-won "avoid duplicate
+  aliases" lesson).
+- Cheap wins for when in-game admin/OOC commands land (backlog `/system`, `@someone`): per-command
+  **permission locks** (a simple predicate, not Evennia's lockfunc DSL) and **optional-prefix**
+  matching (`@look` == `look` when unambiguous).
 
 ### Engine / game-data separation 💚 (architectural — plan for it, don't do it yet)
 
@@ -362,7 +528,7 @@ world/setting is actually wanted — don't build the split speculatively before 
 exists. Revisit this note at that point.
 
 ### News & announcements ✅
-Already shipped (Sprint 10.5): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here
+Already shipped ([Sprint 10.5](roadmap.md#sprint-105--tooling-infrastructure-)): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here
 only to note it's *done*, not wanted.
 
 ---
@@ -398,9 +564,9 @@ into the world.
   maybe a couple of onboarding-specific flags (`tutorial_complete`) and a `skip tutorial`
   command.
 
-**When to act:** natural pairing with traits/backgrounds (Sprint 18) for the creation-flavor
+**When to act:** natural pairing with traits/backgrounds ([Sprint 24](roadmap.md#sprint-24--traits--skills)) for the creation-flavor
 part, and useful any time after — doesn't block other feature work. Not yet scheduled on the
-roadmap; a good candidate once Sprint 18 (traits/skills) lands, since that's what gives
+roadmap; a good candidate once [Sprint 24](roadmap.md#sprint-24--traits--skills) (traits/skills) lands, since that's what gives
 character creation something to actually choose.
 
 ---
@@ -447,7 +613,7 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 | Skills: use-based vs. XP-based improvement? | Progression feel | Use-based (fits exploration) |
 | Attributes: minimal spread or none? | Character system | Minimal, non-combat-framed |
 | Death penalty: soft respawn vs. loss vs. permadeath? | Combat feel | **Resolved: resurrect + lose some carried coins/loot** ([`death_resurrection.md`](death_resurrection.md)) |
-| NPC combat before PvP? | Sprint 25–28 order | Yes |
+| NPC combat before PvP? | [Sprint 31–34](roadmap.md#sprint-31--combat-core-services-supporting-system) order | Yes |
 | Currency model shape (what is "money")? | Trading, tickets, shops | **Resolved: carried `coins` + safe `BankAccount`** ([`trade_economy.md`](trade_economy.md)) |
 | Regional pricing + transit as the trade network? | Trade/transit design | Yes — signature pairing |
 | Scripting layer: Python / Lua / YAML-only? | Builder extensibility | Hold; decide during combat |
@@ -455,6 +621,10 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 | Vehicle = special Room or new entity? | Transit design | **Resolved: moving-room** ([`transit_systems.md`](transit_systems.md)) |
 | Engine/game-data split: when to act? | Repo structure, scripting design | Plan for it now; execute once scripting is decided or a 2nd world is wanted |
 | Tutorial/character-creation: engine feature or content? | Onboarding design | Content (scripted, per-world) — reuses dialogue/quest primitives, not new engine mechanism |
+| Split social/channel feed from narrative feed? | Client UI/layout | **Yes — biggest screenshot takeaway** |
+| Currency model: single int or keyed quantity map? | Trade ([Sprint 28](roadmap.md#sprint-28--trading--economy)) | Keyed map — cheap now, expensive to retrofit |
+| Soft caps / diminishing returns on modifiers? | Traits/skills ([Sprint 24](roadmap.md#sprint-24--traits--skills)) | Yes — bake in from the start |
+| Player settings/preferences: engine feature? | Accessibility, UX | Yes — thread through the render layer early |
 
 ---
 
