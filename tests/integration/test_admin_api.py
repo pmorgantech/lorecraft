@@ -860,6 +860,22 @@ async def _test_analytics_endpoints_empty() -> None:
             assert data == []
 
 
+def test_analytics_latency_returns_zeroed_percentiles_with_no_data() -> None:
+    anyio.run(_test_analytics_latency_empty)
+
+
+async def _test_analytics_latency_empty() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/analytics/latency", token=token)
+        assert status == 200
+        assert data == {"p50": 0.0, "p95": 0.0, "p99": 0.0, "count": 0}
+
+
 def test_analytics_invalid_range_returns_400() -> None:
     anyio.run(_test_analytics_invalid_range)
 

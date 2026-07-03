@@ -11,6 +11,7 @@ from sqlmodel import Session
 from lorecraft.admin.auth import Observer
 from lorecraft.analytics import (
     InvalidRangeError,
+    command_latency_percentiles,
     npc_interaction_counts,
     parse_range,
     player_hours,
@@ -71,3 +72,13 @@ async def analytics_player_hours(
     since = _since(range)
     with Session(state.game_engine) as session:
         return player_hours(session, since=since)
+
+
+@router.get("/latency")
+async def analytics_latency(
+    request: Request, _: Observer, range: str = "24h"
+) -> dict[str, float]:
+    state = _state(request)
+    since = _since(range)
+    with Session(state.audit_engine) as session:
+        return command_latency_percentiles(session, since=since)

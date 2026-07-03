@@ -43,3 +43,27 @@ def test_event_bus_reports_handler_count() -> None:
 
     assert bus.handler_count(GameEvent.PLAYER_MOVED) == 1
     assert bus.handler_count(GameEvent.ITEM_TAKEN) == 0
+
+
+def test_event_bus_records_handler_duration() -> None:
+    bus = EventBus()
+    bus.on(GameEvent.PLAYER_MOVED, lambda event, ctx: None)
+
+    results = bus.emit(Event(GameEvent.PLAYER_MOVED), ctx=None)
+
+    assert len(results) == 1
+    assert results[0].duration_ms >= 0.0
+
+
+def test_event_bus_records_handler_duration_even_on_error() -> None:
+    bus = EventBus()
+
+    def broken(event, ctx):
+        raise RuntimeError("boom")
+
+    bus.on(GameEvent.ITEM_TAKEN, broken)
+
+    results = bus.emit(Event(GameEvent.ITEM_TAKEN), ctx=None)
+
+    assert results[0].ok is False
+    assert results[0].duration_ms >= 0.0

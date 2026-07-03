@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–12 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP). **Next up: Sprint 13 (observability & CI quality gates).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–13 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates). **Next up: Sprint 14 (unify command lifecycle).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–12 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP). Sprint 13 (observability & CI quality gates) next.
+**Current progress:** Sprints 5–13 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates). Sprint 14 (unify command lifecycle) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -191,15 +191,15 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 |---|------|--------|
 | 12.1 | Simulation harness MVP (`tests/simulation/`) | [x] `virtual_player.py` — `VirtualPlayer` wraps a real `websockets` client against `/ws` (not an ASGI shortcut); `send_command()`/`run_script()` with optional timing jitter, `wait_for_broadcast()` for pushed (non-reply) messages. `conftest.py` — `simulation_server`/`simulation_server_factory` fixtures boot the real app under `uvicorn` on a background thread against a disposable per-test sqlite DB and the real `world_content/world.yaml` (same pattern as Sprint 11's `live_server`, no synthetic world content). `test_multiplayer_scenarios.py` — two real connections: `player_joined` broadcast fan-out on connect, and concurrent `take` of a single-quantity item (no duplication/loss). `test_audit_regression.py` — runs a fixed script against two independent fresh servers and diffs the normalized audit trail, per the "capture, diff after changes" pattern in `architecture.md` §25. New `simulation` pytest marker, excluded from `make test`/plain `pytest` like `e2e` (`make test-simulation`); no new install required (`websockets`/`httpx` were already transitive via `fastapi[standard]`, now declared explicitly in the `dev` extra). Noted but intentionally not fixed here: the raw `/ws` command loop doesn't yet re-broadcast `room_messages` to other occupants the way `POST /command` does — tracked by Sprint 14 (unify command lifecycle). |
 
-## Sprint 13 — Observability & CI quality gates
+## Sprint 13 — Observability & CI quality gates ✅
 
 **Goal:** Regressions can't land silently. Audit §4.2, §5.2.
 
 | # | Task | Status |
 |---|------|--------|
-| 13.1 | Structured logging (stdlib `logging` with correlation/transaction IDs from `TransactionContext`; today only 2 files log at all) | [ ] |
-| 13.2 | Command latency + event-handler timing instrumentation | [ ] |
-| 13.3 | CI: pytest + coverage threshold + basedpyright + ruff as required checks | [ ] |
+| 13.1 | Structured logging (stdlib `logging` with correlation/transaction IDs from `TransactionContext`) | [x] `observability.py` — `configure_logging()` attaches a correlation-aware formatter/filter to the root logger (idempotent, level from new `Settings.log_level`/`LORECRAFT_LOG_LEVEL`); `bind_transaction_context()` publishes a `TransactionContext`'s `transaction_id`/`correlation_id` to a `contextvars.ContextVar` for the duration of one command, so every `log.*` call anywhere in that call stack (services, event handlers, repos) picks the IDs up automatically — no signature threading needed. Wired into both command entry points (`main.py`'s `/ws` loop, `web/frontend.py`'s `POST /command`) and `create_app()`. |
+| 13.2 | Command latency + event-handler timing instrumentation | [x] `CommandEngine._execute_parsed` times each command handler call and stamps `duration_ms` onto the `COMMAND_EXECUTED` audit event payload (`game/engine.py`); `EventBus.emit()` times each handler dispatch, records it on `HandlerResult.duration_ms`, and logs `event=... handler=... duration_ms=... depth=<handlers registered>` at DEBUG (`game/events.py`). New `analytics.command_latency_percentiles()` (p50/p95/p99 from `duration_ms`) + `GET /admin/analytics/latency`. |
+| 13.3 | CI: pytest + coverage threshold + basedpyright + ruff as required checks | [x] `.github/workflows/ci.yml` — three required jobs on push/PR to `main`: `quality` (`make lint` + `make typecheck` + `make test-cov`), `simulation` (`make test-simulation`), `e2e` (Playwright + `pytest tests/e2e`). `make test-cov` runs the default suite with `pytest-cov`; `[tool.coverage.report] fail_under = 80` in `pyproject.toml` (current baseline ~82%). New `make lint`/`make typecheck` targets. Fixed a latent bug found while wiring this up: `tests/simulation/*.py`'s `from tests.simulation.conftest import ...` only worked under `python -m pytest` (which prepends cwd to `sys.path`), not bare `pytest` (what `make test-simulation` and CI actually run) — `pythonpath` in `pyproject.toml` now includes `"."` alongside `"src"`. |
 
 ## Sprint 14 — Unify command lifecycle
 
@@ -224,14 +224,14 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 All must be true before combat/trading work starts:
 
-- [ ] Zero silent `except Exception` blocks in `src/`
-- [ ] Zero `cast(GameContext, ctx)` / `cast(Any, ctx)` in `src/`; basedpyright `standard` mode clean
-- [ ] One `GameContext` construction path; no optional repo fields
-- [ ] No module >~500 lines with mixed concerns
-- [ ] One service wiring convention; no inline `bus.on()` in `main.py`
-- [ ] Web + admin layers have integration coverage; CI enforces coverage, types, and lint
-- [ ] Feature-registration pattern documented and demonstrated (10.4)
-- [ ] All `[~]` STATUS partials either finished or explicitly retired
+- [x] Zero silent `except Exception` blocks in `src/` (Sprint 5)
+- [x] Zero `cast(GameContext, ctx)` / `cast(Any, ctx)` in `src/`; basedpyright `standard` mode clean (Sprint 6)
+- [x] One `GameContext` construction path; no optional repo fields (Sprint 6.3)
+- [x] No module >~500 lines with mixed concerns (Sprint 8)
+- [x] One service wiring convention; no inline `bus.on()` in `main.py` (Sprint 9.2)
+- [x] Web + admin layers have integration coverage; CI enforces coverage, types, and lint (Sprint 7 + Sprint 13.3)
+- [x] Feature-registration pattern documented and demonstrated (10.4)
+- [ ] All `[~]` STATUS partials either finished or explicitly retired — remaining: Sprint 14 (unify `/ws`/`/command` lifecycle), Sprint 15 (world clock/weather WS push, multi-player live lists)
 
 ---
 
@@ -338,4 +338,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 12 complete (simulation harness MVP: real WebSocket clients against a live server, `tests/simulation/`). Next: Sprint 13 (observability & CI quality gates).*
+*Last updated: 2026-07-02 — Sprint 13 complete (structured logging with correlation/transaction IDs, command latency + event-handler timing instrumentation, CI quality gates in `.github/workflows/ci.yml`). Next: Sprint 14 (unify command lifecycle).*

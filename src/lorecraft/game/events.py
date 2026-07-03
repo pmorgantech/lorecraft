@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
 
 from lorecraft.types import JsonObject
+
+log = logging.getLogger(__name__)
 
 
 class GameEvent(StrEnum):
@@ -65,6 +69,7 @@ class HandlerResult:
     handler_name: str
     value: object = None
     error: Exception | None = None
+    duration_ms: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -95,17 +100,29 @@ class EventBus:
         handlers.sort(key=lambda registered: registered.priority, reverse=True)
 
     def emit(self, event: Event, ctx: object) -> list[HandlerResult]:
+        handlers = self._handlers.get(event.type, [])
         results: list[HandlerResult] = []
-        for registered in self._handlers.get(event.type, []):
+        for registered in handlers:
+            handler_name = _handler_name(registered.handler)
+            start = time.perf_counter()
             try:
                 value = registered.handler(event, ctx)
+                duration_ms = (time.perf_counter() - start) * 1000
                 results.append(
-                    HandlerResult(_handler_name(registered.handler), value=value)
+                    HandlerResult(handler_name, value=value, duration_ms=duration_ms)
                 )
             except Exception as exc:
+                duration_ms = (time.perf_counter() - start) * 1000
                 results.append(
-                    HandlerResult(_handler_name(registered.handler), error=exc)
+                    HandlerResult(handler_name, error=exc, duration_ms=duration_ms)
                 )
+            log.debug(
+                "event_handler event=%s handler=%s duration_ms=%.3f depth=%d",
+                event.type.value,
+                handler_name,
+                duration_ms,
+                len(handlers),
+            )
         return results
 
     def is_work_event(self, event_type: GameEvent) -> bool:

@@ -24,6 +24,7 @@ from lorecraft.game.context import GameContext
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
+from lorecraft.observability import bind_transaction_context
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
@@ -369,6 +370,9 @@ async def handle_command(
         )
 
         session_id = f"web-{int(time.time() * 1000)}"
+        transaction = TransactionContext.create(
+            actor_id=player.id, correlation_id=session_id
+        )
         ctx = GameContext(
             player=player,
             room=room,
@@ -383,16 +387,17 @@ async def handle_command(
             manager=get_real_manager(request) or get_manager(),
             bus=get_bus(request),
             audit=audit_repo,
-            transaction=TransactionContext.create(
-                actor_id=player.id, correlation_id=session_id
-            ),
+            transaction=transaction,
             session_id=session_id,
             commit_state=game_db.commit,
             commit_audit=audit_db.commit,
         )
 
         command_text = resolve_command_text(raw, player.id, app_state, player.flags)
-        get_command_engine(request).handle_command(command_text, ctx)
+        with bind_transaction_context(
+            transaction.transaction_id, transaction.correlation_id
+        ):
+            get_command_engine(request).handle_command(command_text, ctx)
 
         disambig = ctx.updates.pop("disambig_pending", None)
         if (

@@ -5,6 +5,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.analytics import (
     InvalidRangeError,
+    command_latency_percentiles,
     npc_interaction_counts,
     parse_range,
     player_hours,
@@ -35,7 +36,7 @@ def _event(
     event_type: str,
     real_time: float,
     target_id: str | None = None,
-    payload: dict[str, str] | None = None,
+    payload: dict[str, str | float] | None = None,
 ) -> AuditEvent:
     return AuditEvent(
         transaction_id="tx-1",
@@ -173,6 +174,43 @@ def test_quest_completion_counts_by_quest_id() -> None:
         result = quest_completion_counts(session, since=now - 100)
 
     assert result == [{"quest_id": "find_sword", "completions": 2}]
+
+
+def test_command_latency_percentiles_computed_from_duration_ms() -> None:
+    engine = _audit_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        for duration_ms in [10.0, 20.0, 30.0, 40.0, 100.0]:
+            session.add(
+                _event(
+                    event_type=GameEvent.COMMAND_EXECUTED.value,
+                    real_time=now,
+                    payload={"verb": "look", "duration_ms": duration_ms},
+                )
+            )
+        # Outside range — excluded.
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now - 1_000_000,
+                payload={"verb": "look", "duration_ms": 9999.0},
+            )
+        )
+        session.commit()
+
+        result = command_latency_percentiles(session, since=now - 100)
+
+    assert result["count"] == 5
+    assert result["p50"] == 30.0
+    assert result["p99"] == 100.0
+
+
+def test_command_latency_percentiles_empty_when_no_events() -> None:
+    engine = _audit_engine()
+    with Session(engine) as session:
+        result = command_latency_percentiles(session, since=0.0)
+
+    assert result == {"p50": 0.0, "p95": 0.0, "p99": 0.0, "count": 0}
 
 
 def test_player_hours_sums_session_duration() -> None:

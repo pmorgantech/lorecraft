@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from dataclasses import dataclass
 
 from lorecraft.game.context import GameContext
@@ -11,6 +13,8 @@ from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.services.audit import AuditService
 from lorecraft.types import JsonObject, JsonValue
+
+log = logging.getLogger(__name__)
 
 
 def _command_audit_payload(parsed: ParsedCommand, **extra: str) -> JsonObject:
@@ -95,10 +99,13 @@ class CommandEngine:
             return None
 
         ctx.parsed_command = parsed
+        start = time.perf_counter()
         command.handler(parsed.noun, ctx)
+        duration_ms = (time.perf_counter() - start) * 1000
         ctx.commit_state_changes()
-        self._record_success(ctx, parsed)
+        self._record_success(ctx, parsed, duration_ms)
         ctx.flush_events()
+        log.info("command_executed verb=%s duration_ms=%.2f", parsed.verb, duration_ms)
         return parsed
 
     def _record_blocked(
@@ -118,8 +125,11 @@ class CommandEngine:
         )
         ctx.commit_audit_events()
 
-    def _record_success(self, ctx: GameContext, parsed: ParsedCommand) -> None:
+    def _record_success(
+        self, ctx: GameContext, parsed: ParsedCommand, duration_ms: float
+    ) -> None:
         payload = _command_audit_payload(parsed)
+        payload["duration_ms"] = round(duration_ms, 3)
         AuditService.from_context(ctx).record(
             ctx,
             GameEvent.COMMAND_EXECUTED,

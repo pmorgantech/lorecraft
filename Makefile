@@ -1,10 +1,23 @@
 
-.PHONY: ai-graph test test-e2e test-simulation install-hooks
+.PHONY: ai-graph test test-cov test-e2e test-simulation lint typecheck install-hooks
 ai-graph:
 	./scripts/graphify-refresh.sh
 
 test:
 	pytest
+
+# Sprint 13 CI gate: default suite with a coverage threshold (fails under the
+# [tool.coverage.report] fail_under in pyproject.toml). Requires the dev extra
+# (pytest-cov).
+test-cov:
+	pytest --cov=src/lorecraft --cov-report=term-missing
+
+lint:
+	ruff check .
+	ruff format --check .
+
+typecheck:
+	basedpyright
 
 # Browser end-to-end tests (Sprint 11). Requires the e2e extra + browser binaries;
 # excluded from `make test` / plain `pytest` by the default "-m not e2e" addopts.

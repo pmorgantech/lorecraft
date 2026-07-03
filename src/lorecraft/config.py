@@ -42,6 +42,8 @@ class Settings:
     # cookie when no signed session cookie is present. Flip off once all
     # clients (browser + tests) use the signed session cookie exclusively.
     allow_query_player_id: bool = True
+    # Root logger level for lorecraft.observability.configure_logging()
+    log_level: str = "INFO"
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -85,6 +87,7 @@ def load_settings() -> Settings:
             os.getenv("LORECRAFT_PLAYER_SESSION_TTL_SECONDS", str(60 * 60 * 24 * 7))
         ),
         allow_query_player_id=_env_bool("LORECRAFT_ALLOW_QUERY_PLAYER_ID", True),
+        log_level=os.getenv("LORECRAFT_LOG_LEVEL", "INFO"),
     )
 
 

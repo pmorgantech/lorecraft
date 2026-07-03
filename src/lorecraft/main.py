@@ -40,6 +40,7 @@ from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.admin import AdminUser
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
+from lorecraft.observability import bind_transaction_context, configure_logging
 from lorecraft.world.bootstrap import ensure_world_bootstrapped
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
@@ -72,6 +73,7 @@ def create_app(
     audit_engine: Engine | None = None,
 ) -> FastAPI:
     settings = settings or load_settings()
+    configure_logging(settings.log_level)
 
     # Warn if no JWT secret; generate an ephemeral one so the server still starts.
     effective_jwt_secret = settings.admin_jwt_secret
@@ -414,6 +416,10 @@ def _handle_websocket_command(
                 "message": "Player room no longer exists.",
             }
 
+        transaction = TransactionContext.create(
+            actor_id=player.id,
+            correlation_id=session_id,
+        )
         ctx = GameContext(
             player=player,
             room=room,
@@ -428,15 +434,15 @@ def _handle_websocket_command(
             manager=state.manager,
             bus=state.bus,
             audit=AuditRepo(audit_session),
-            transaction=TransactionContext.create(
-                actor_id=player.id,
-                correlation_id=session_id,
-            ),
+            transaction=transaction,
             session_id=session_id,
             commit_state=game_session.commit,
             commit_audit=audit_session.commit,
         )
-        parsed = state.command_engine.handle_command(command, ctx)
+        with bind_transaction_context(
+            transaction.transaction_id, transaction.correlation_id
+        ):
+            parsed = state.command_engine.handle_command(command, ctx)
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
 

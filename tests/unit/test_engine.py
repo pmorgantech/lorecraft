@@ -99,6 +99,31 @@ def test_engine_records_blocked_command_audit_event() -> None:
     assert events[0].payload_json["reason_type"] == "unknown_command"
 
 
+def test_engine_records_duration_ms_on_successful_command_audit_event() -> None:
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("look")
+    def look(noun, ctx):
+        ctx.say("The tavern is quiet.")
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        ctx = build_persistent_context(game_session, audit_session)
+
+        CommandEngine(registry, RuleEngine()).handle_command("look", ctx)
+
+        events = audit_session.exec(select(AuditEvent)).all()
+
+    assert len(events) == 1
+    assert events[0].event_type == "command_executed"
+    duration_ms = events[0].payload_json["duration_ms"]
+    assert isinstance(duration_ms, (int, float))
+    assert duration_ms >= 0.0
+
+
 def build_persistent_context(
     game_session: Session, audit_session: Session
 ) -> GameContext:

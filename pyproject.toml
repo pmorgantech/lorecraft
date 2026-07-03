@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["basedpyright", "pytest", "ruff", "httpx", "websockets"]
+dev = ["basedpyright", "pytest", "pytest-cov", "ruff", "httpx", "websockets"]
 admin-tui = ["textual>=0.80.0"]
 e2e = ["playwright>=1.47.0"]
 
@@ -41,3 +41,11 @@ markers = [
   "e2e: browser end-to-end tests against a live server (require `pip install -e .[e2e]` + `playwright install chromium`); run with `make test-e2e`",
   "simulation: multi-player simulation harness tests against a live server with real WebSocket clients; run with `make test-simulation`",
 ]
+
+[tool.coverage.run]
+source = ["src/lorecraft"]
+
+[tool.coverage.report]
+# CI's required gate (make test-cov) fails under this; see Makefile.
+fail_under = 80
+skip_covered = false

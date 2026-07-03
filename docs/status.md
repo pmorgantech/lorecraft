@@ -12,9 +12,11 @@ The architecture overview remains the design reference; this file is the working
 > Sprint 10.5 (tooling infrastructure: issues/news/world-CLI/analytics/content-linting)
 > complete. Sprint 11 (browser E2E harness — Playwright against a live server,
 > `tests/e2e/`) complete. Sprint 12 (simulation harness MVP — real WebSocket clients
-> against a live server, `tests/simulation/`) complete. Next: Sprint 13 (observability &
-> CI quality gates). Combat/trading/PvP are gated behind the foundation exit criteria —
-> no feature expansion until the core is sound.
+> against a live server, `tests/simulation/`) complete. Sprint 13 (observability & CI
+> quality gates — structured logging, command/event timing instrumentation,
+> `.github/workflows/ci.yml`) complete. Next: Sprint 14 (unify command lifecycle).
+> Combat/trading/PvP are gated behind the foundation exit criteria — no feature
+> expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
 
@@ -223,7 +225,7 @@ Legend:
 - [x] Issue tracking system — `docs/issues.yaml` (YAML↔DB sync via `lorecraft.content.issues`), `GET/POST/PUT /admin/issues`, admin TUI F6, web panel Issues tab
 - [x] News & announcements — `docs/news.yaml`, in-game `news` command, unauthenticated `/api/news` (JSON) + `/api/news/feed` (RSS 2.0), admin CRUD, TUI F7, web panel News tab
 - [x] World management CLI — `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}`; `export_world_document()` in `world/loader.py`
-- [x] Analytics API foundation — `lorecraft.analytics` query functions (top commands, NPC interactions, quest completions from the audit log; player-hours from `PlayerSession`) via `GET /admin/analytics/{commands,npcs,quests,player-hours}`. No dashboard yet (by design); latency/event-bus-depth metrics wait on Sprint 13 instrumentation.
+- [x] Analytics API foundation — `lorecraft.analytics` query functions (top commands, NPC interactions, quest completions from the audit log; player-hours from `PlayerSession`; command latency percentiles from Sprint 13 instrumentation) via `GET /admin/analytics/{commands,npcs,quests,player-hours,latency}`. No dashboard yet (by design).
 - [x] Content validation & linting — `lorecraft.tools.validators`: dangling dialogue node refs, room reachability, dead item refs, duplicate item names per room, oversized item stacks. Wired into `world_cli.py validate --start-room --strict`. Circular quest dependencies not checked — no quest-to-quest dependency field exists in the schema yet.
 
 ### Browser E2E Harness (Sprint 11) ✅
@@ -240,6 +242,15 @@ Legend:
 - [x] `tests/simulation/test_audit_regression.py` — runs a fixed command script against two independent fresh servers and asserts the normalized audit trail (event type, summary, target, room, severity — excluding run-specific IDs/timestamps) is identical, per the "capture, diff after changes" pattern in `architecture.md` §25.
 - [x] New `simulation` pytest marker, excluded from `pytest`/`make test` by default (`-m "not simulation"`); `make test-simulation` runs it explicitly. No new install required — `websockets`/`httpx` were already transitive dependencies of `fastapi[standard]`, now declared explicitly in the `dev` extra.
 - Known gap surfaced (not fixed here, by design): the raw `/ws` command loop doesn't yet re-broadcast `room_messages` to other room occupants the way `POST /command` does. Tracked by Sprint 14 (unify the `/ws`/`/command` lifecycle).
+
+### Observability & CI Quality Gates (Sprint 13) ✅
+
+- [x] `observability.py` — `configure_logging()` attaches a correlation-aware `Formatter`/`Filter` pair to the root logger (idempotent; level from new `Settings.log_level`/`LORECRAFT_LOG_LEVEL` env var, default `INFO`); `bind_transaction_context()` publishes a `TransactionContext`'s `transaction_id`/`correlation_id` to a `contextvars.ContextVar` for the duration of one command, so every `log.*` call in the resulting call stack (services, event handlers, repos) picks the IDs up automatically without threading them through signatures. Wired into `create_app()` and both command entry points (`main.py`'s `/ws` loop, `web/frontend.py`'s `POST /command`).
+- [x] `game/engine.py`'s `CommandEngine._execute_parsed` times each command handler invocation and stamps `duration_ms` onto the `COMMAND_EXECUTED` audit event payload; also logs `command_executed verb=... duration_ms=...` at INFO.
+- [x] `game/events.py`'s `EventBus.emit()` times each handler dispatch, records it on a new `HandlerResult.duration_ms` field, and logs `event=... handler=... duration_ms=... depth=<handlers registered for this event type>` at DEBUG.
+- [x] `analytics.command_latency_percentiles()` — p50/p95/p99 command latency (ms) computed from `duration_ms` on `COMMAND_EXECUTED` audit events; exposed via `GET /admin/analytics/latency`.
+- [x] `.github/workflows/ci.yml` — three required jobs on push/PR to `main`: `quality` (`make lint` → `ruff check` + `ruff format --check`; `make typecheck` → `basedpyright`; `make test-cov` → default suite + coverage gate), `simulation` (`make test-simulation`), `e2e` (Playwright install + `pytest tests/e2e -m e2e`). New `pytest-cov` dev dependency; `[tool.coverage.report] fail_under = 80` in `pyproject.toml` (baseline ~82%).
+- [x] Fixed a latent bug surfaced while dry-running the CI commands locally: `tests/simulation/*.py` imports `tests.simulation.conftest`, which only resolved under `python -m pytest` (prepends the repo root to `sys.path`) — bare `pytest` (what `make test-simulation` and CI actually invoke) failed with `ModuleNotFoundError`. Fixed by adding `"."` to `pythonpath` in `[tool.pytest.ini_options]`.
 
 ### Phase 8 — Combat
 

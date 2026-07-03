@@ -1,10 +1,12 @@
 """Analytics query functions over the audit log and player sessions.
 
-Sprint 10.5 foundation: query functions only, computed from data the engine
-already records (the audit log, player sessions) — no dashboard, no new
-instrumentation. Metrics that need dedicated instrumentation (command
-latency percentiles, event bus queue depth) are deferred to Sprint 13 and
-intentionally not exposed here.
+Sprint 10.5 foundation: query functions computed from data the engine already
+records (the audit log, player sessions) — no dashboard. Sprint 13 added
+`command_latency_percentiles`, sourced from the `duration_ms` field
+`CommandEngine` now stamps onto every `COMMAND_EXECUTED` audit event payload
+(see `game/engine.py`); event-handler timing itself lives only in structured
+DEBUG logs (`game/events.py`'s `EventBus.emit`), not the audit log, so it has
+no query function here.
 """
 
 from __future__ import annotations
@@ -93,6 +95,40 @@ def quest_completion_counts(session: Session, *, since: float) -> list[dict[str,
         {"quest_id": quest_id, "completions": count}
         for quest_id, count in counts.most_common()
     ]
+
+
+def command_latency_percentiles(session: Session, *, since: float) -> dict[str, float]:
+    """p50/p95/p99 command handler latency (ms) since `since`.
+
+    Sourced from `duration_ms` on `COMMAND_EXECUTED` audit event payloads
+    (stamped by `CommandEngine._record_success`). Older events recorded
+    before Sprint 13 have no `duration_ms` and are excluded.
+    """
+    stmt = select(AuditEvent).where(
+        AuditEvent.event_type == GameEvent.COMMAND_EXECUTED.value,
+        col(AuditEvent.real_time) >= since,
+    )
+    durations = sorted(
+        float(duration)
+        for event in session.exec(stmt).all()
+        if isinstance(duration := event.payload_json.get("duration_ms"), (int, float))
+    )
+    if not durations:
+        return {"p50": 0.0, "p95": 0.0, "p99": 0.0, "count": 0}
+    return {
+        "p50": _percentile(durations, 0.50),
+        "p95": _percentile(durations, 0.95),
+        "p99": _percentile(durations, 0.99),
+        "count": len(durations),
+    }
+
+
+def _percentile(sorted_values: list[float], fraction: float) -> float:
+    """Nearest-rank percentile; `sorted_values` must be sorted ascending."""
+    if not sorted_values:
+        return 0.0
+    index = min(len(sorted_values) - 1, int(len(sorted_values) * fraction))
+    return round(sorted_values[index], 3)
 
 
 def player_hours(
