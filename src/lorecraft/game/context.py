@@ -21,6 +21,7 @@ from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.types import JsonObject, JsonValue
 
 
@@ -32,6 +33,7 @@ class GameContext:
     player_repo: PlayerRepo
     room_repo: RoomRepo
     item_repo: ItemRepo
+    stack_repo: StackRepo
     npc_repo: NpcRepo
     manager: ConnectionManager
     bus: EventBus
@@ -139,6 +141,7 @@ def build_game_context(
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
+        stack_repo=StackRepo(session),
         npc_repo=NpcRepo(session),
         quest_repo=QuestRepo(session),
         dialogue_repo=DialogueRepo(session),
