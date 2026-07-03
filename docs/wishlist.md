@@ -70,10 +70,16 @@ delivers a lot of world personality without waiting on combat/economy. A minimal
 (one scheduled ferry with a ticket check and a 3-beat travel animation) would be a strong,
 self-contained sprint and a showcase for the feature-registration pattern.
 
-Open design questions:
-- Is a vehicle a special `Room` with dynamic exits, or a new first-class entity?
-- Do off-vehicle players see it arrive/depart (a moving presence on the map)?
-- How do tickets interact with the (future) currency model — free for now, priced later?
+**Now designed:** see [`transit_systems.md`](transit_systems.md) — multiple data-driven modes
+(ferry/rail/balloon/caravan), local vs. express stopping patterns, per-segment speed, minimap
+animation, ticket-gating, and weather delays, all driven by the existing scheduler + world clock.
+
+Resolved / remaining design questions:
+- Vehicle = a special `Room` (moving-room model) — passengers are its occupants; `board`/
+  `disembark` gate entry, no static exits. A lighter virtual-journey variant covers abstract
+  fast-travel. *(Resolved in the design doc.)*
+- Off-vehicle players *do* see arrivals/departures and can watch the vehicle cross the minimap.
+- Tickets are items; free or quest-pass for now, priced once the Sprint 22 economy lands.
 
 ---
 
@@ -344,7 +350,7 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 | Regional pricing + transit as the trade network? | Trade/transit design | Yes — signature pairing |
 | Scripting layer: Python / Lua / YAML-only? | Builder extensibility | Hold; decide during combat |
 | Guilds/clans: in or out? | Social scope | Leaning out |
-| Vehicle = special Room or new entity? | Transit design | Undecided |
+| Vehicle = special Room or new entity? | Transit design | **Resolved: moving-room** ([`transit_systems.md`](transit_systems.md)) |
 
 ---
 

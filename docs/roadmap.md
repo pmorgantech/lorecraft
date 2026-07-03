@@ -254,8 +254,8 @@ exploration, which it serves.
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
 > [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
-> registries). Transit and trade-economy design docs are still TBD — see
-> [`wishlist.md`](wishlist.md) for their current specs.
+> registries), [`transit_systems.md`](transit_systems.md) (Sprint 23). The trade-economy
+> design doc is still TBD — see [`wishlist.md`](wishlist.md) for its current spec.
 
 ## Sprint 16 — Item & world state modeling
 
@@ -334,13 +334,16 @@ on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → 
 
 ## Sprint 23 — Transit & travel systems
 
-**Goal:** The signature Materia-Magica-inspired feature — ferries, balloons, rail with tickets
-and travel animation. Built on scheduler + world clock + weather + WS push. **See [`wishlist.md`](wishlist.md) → Featured idea** (dedicated design doc TBD before this sprint).
+**Goal:** The signature Materia-Magica-inspired feature — multiple travel modes between areas
+(ferry, rail, balloon, caravan) that are slow or fast, run end-to-end (express) or make multiple
+stops (local), and animate on the minimap. Built on scheduler + world clock + weather + WS push.
+**See [`transit_systems.md`](transit_systems.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 23.1 | Scheduled vehicle as a moving room (dynamic exits on clock cadence); ticket items gate boarding | [ ] |
-| 23.2 | Travel animation (timed narrative beats via WS push); weather interplay (grounded balloon, fogged ferry) | [ ] |
+| 23.1 | Data model (`TransitLine`/`TransitStop`/`TransitVehicleState`) + YAML `transit:` section + validators; data-driven modes/speeds/stopping patterns | [ ] |
+| 23.2 | Scheduler-driven vehicle state machine (at_stop→in_transit→arrive, reverse/loop); moving-room `board`/`disembark`/`schedule`; ticket-item gating | [ ] |
+| 23.3 | `transit_update` WS message + minimap marker animation (interpolated between stop coords); weather grounding/delay (balloon/ferry) | [ ] |
 
 ## Sprint 24 — Quests & puzzles depth
 
