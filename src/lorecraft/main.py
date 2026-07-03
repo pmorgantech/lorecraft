@@ -50,6 +50,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
+from lorecraft.web.auth import router as player_auth_router
 from lorecraft.web.frontend import router as web_router
 from lorecraft.web.news_api import router as news_api_router
 
@@ -101,6 +102,9 @@ def create_app(
         seed_player_start_room=settings.seed_player_start_room,
         player_session_secret=settings.player_session_secret,
         player_session_ttl_seconds=settings.player_session_ttl_seconds,
+        player_access_token_ttl_seconds=settings.player_access_token_ttl_seconds,
+        player_refresh_token_ttl_seconds=settings.player_refresh_token_ttl_seconds,
+        player_ws_ticket_ttl_seconds=settings.player_ws_ticket_ttl_seconds,
         allow_query_player_id=settings.allow_query_player_id,
     )
 
@@ -238,6 +242,9 @@ def create_app(
     # New HTMX + Jinja web UI (becomes the primary player UI)
     app.include_router(web_router)  # routes at /lobby, /game, /command, /partials/...
     app.include_router(news_api_router)  # public /api/news, /api/news/feed
+    app.include_router(
+        player_auth_router
+    )  # /auth/login, /auth/refresh, /auth/ws-ticket
 
     # Mount new static tree (css/ js/ under /static)
     app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")

@@ -10,6 +10,7 @@ from lorecraft.models.changeset import (
 from lorecraft.models.combat import CombatSession
 from lorecraft.models.interaction import PvpConsent, TradeOffer
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.models.player_auth import PlayerAuth
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import (
@@ -32,6 +33,7 @@ __all__ = [
     "Item",
     "NPC",
     "Player",
+    "PlayerAuth",
     "PlayerQuestProgress",
     "PlayerSession",
     "PlayerStats",

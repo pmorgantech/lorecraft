@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from sqlmodel import Session, col, select
 
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.models.player_auth import PlayerAuth
 from lorecraft.models.session import PlayerSession
 from lorecraft.repos.base import Repository
 
@@ -111,3 +112,20 @@ class PlayerRepo(Repository[Player, str]):
             .order_by(col(Player.username))
         )
         return self.session.exec(statement).all()
+
+    def auth_for_player(self, player_id: str) -> PlayerAuth | None:
+        statement = select(PlayerAuth).where(PlayerAuth.player_id == player_id)
+        return self.session.exec(statement).first()
+
+    def auth_by_subject(
+        self, provider: str, provider_subject: str
+    ) -> PlayerAuth | None:
+        statement = select(PlayerAuth).where(
+            PlayerAuth.provider == provider,
+            PlayerAuth.provider_subject == provider_subject,
+        )
+        return self.session.exec(statement).first()
+
+    def add_auth(self, player_auth: PlayerAuth) -> PlayerAuth:
+        self.session.add(player_auth)
+        return player_auth

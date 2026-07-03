@@ -38,6 +38,13 @@ class Settings:
     # Player session JWT (persisted to .env if not set — see ensure_persisted_secret)
     player_session_secret: str = ""
     player_session_ttl_seconds: int = 60 * 60 * 24 * 7  # 7 days
+    # Player API access/refresh tokens (POST /auth/login, /auth/refresh); signed
+    # with the same player_session_secret but a distinct token `type` so they
+    # can never be replayed as the browser's `lorecraft_session` cookie or vice versa.
+    player_access_token_ttl_seconds: int = 900  # 15 minutes
+    player_refresh_token_ttl_seconds: int = 28800  # 8 hours
+    # Single-use WebSocket ticket TTL (POST /auth/ws-ticket -> WS ?ticket=)
+    player_ws_ticket_ttl_seconds: float = 60.0
     # Dev/back-compat fallback: trust ?player_id=/&pid= and the legacy unsigned
     # cookie when no signed session cookie is present. Flip off once all
     # clients (browser + tests) use the signed session cookie exclusively.
@@ -85,6 +92,15 @@ def load_settings() -> Settings:
         player_session_secret=os.getenv("LORECRAFT_PLAYER_SESSION_SECRET", ""),
         player_session_ttl_seconds=int(
             os.getenv("LORECRAFT_PLAYER_SESSION_TTL_SECONDS", str(60 * 60 * 24 * 7))
+        ),
+        player_access_token_ttl_seconds=int(
+            os.getenv("LORECRAFT_PLAYER_ACCESS_TTL", "900")
+        ),
+        player_refresh_token_ttl_seconds=int(
+            os.getenv("LORECRAFT_PLAYER_REFRESH_TTL", "28800")
+        ),
+        player_ws_ticket_ttl_seconds=float(
+            os.getenv("LORECRAFT_PLAYER_WS_TICKET_TTL_SECONDS", "60.0")
         ),
         allow_query_player_id=_env_bool("LORECRAFT_ALLOW_QUERY_PLAYER_ID", True),
         log_level=os.getenv("LORECRAFT_LOG_LEVEL", "INFO"),
