@@ -124,6 +124,74 @@ def test_engine_records_duration_ms_on_successful_command_audit_event() -> None:
     assert duration_ms >= 0.0
 
 
+def test_engine_rolls_back_and_records_command_failed_on_handler_crash() -> None:
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("break")
+    def break_handler(noun, ctx):
+        ctx.say("You start to break the vase...")
+        ctx.player.inventory.append("shard")
+        raise RuntimeError("vase shattered unexpectedly")
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        ctx = build_persistent_context(game_session, audit_session)
+
+        parsed = CommandEngine(registry, RuleEngine()).handle_command("break", ctx)
+
+        events = audit_session.exec(select(AuditEvent)).all()
+
+    # Partial narration/state from before the crash must not reach the client.
+    assert parsed.verb == "break"
+    assert ctx.messages == ["Something went wrong processing that command."]
+    assert ctx.room_messages == []
+    assert ctx.updates == {}
+
+    assert len(events) == 1
+    assert events[0].event_type == "command_failed"
+    assert events[0].severity == "ERROR"
+    assert events[0].payload_json["reason_type"] == "handler_exception"
+    assert events[0].payload_json["error_type"] == "RuntimeError"
+
+    # The game DB session was rolled back — the player row committed by
+    # build_persistent_context() is visible, but the in-flight inventory
+    # mutation the crashed handler made was never persisted.
+    with Session(game_engine) as verify_session:
+        persisted_player = verify_session.get(Player, "player-1")
+        assert persisted_player is not None
+        assert persisted_player.inventory == []
+
+
+def test_engine_isolates_multiple_commands_from_one_crash() -> None:
+    """A crash in one chained command shouldn't stop the rest from running."""
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("boom")
+    def boom(noun, ctx):
+        raise RuntimeError("boom")
+
+    @registry.register("look")
+    def look(noun, ctx):
+        ctx.say("The tavern is quiet.")
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        ctx = build_persistent_context(game_session, audit_session)
+
+        CommandEngine(registry, RuleEngine()).handle_command("boom; look", ctx)
+
+    assert ctx.messages == [
+        "Something went wrong processing that command.",
+        "The tavern is quiet.",
+    ]
+
+
 def build_persistent_context(
     game_session: Session, audit_session: Session
 ) -> GameContext:
@@ -158,5 +226,7 @@ def build_persistent_context(
             actor_id="player-1", correlation_id="session-1"
         ),
         session_id="session-1",
+        commit_state=game_session.commit,
         commit_audit=audit_session.commit,
+        rollback_state=game_session.rollback,
     )

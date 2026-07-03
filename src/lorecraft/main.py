@@ -438,6 +438,7 @@ def _handle_websocket_command(
             session_id=session_id,
             commit_state=game_session.commit,
             commit_audit=audit_session.commit,
+            rollback_state=game_session.rollback,
         )
         with bind_transaction_context(
             transaction.transaction_id, transaction.correlation_id

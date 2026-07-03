@@ -41,6 +41,7 @@ class GameContext:
     session_id: str
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
+    rollback_state: Callable[[], None] | None = None
     quest_repo: QuestRepo | None = None
     dialogue_repo: DialogueRepo | None = None
     news_repo: NewsRepo | None = None
@@ -79,6 +80,10 @@ class GameContext:
     def commit_audit_events(self) -> None:
         if self.commit_audit is not None:
             self.commit_audit()
+
+    def rollback_state_changes(self) -> None:
+        if self.rollback_state is not None:
+            self.rollback_state()
 
     def get_visible_entities(self) -> list[tuple[str, str, list[str]]]:
         """Return room items and NPCs as (id, name, aliases) for parser resolution."""

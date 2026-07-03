@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 class GameEvent(StrEnum):
     COMMAND_EXECUTED = "command_executed"
     COMMAND_BLOCKED = "command_blocked"
+    COMMAND_FAILED = "command_failed"
     ITEM_TAKEN = "item_taken"
     ITEM_DROPPED = "item_dropped"
     ITEM_USED = "item_used"

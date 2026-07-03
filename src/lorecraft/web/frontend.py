@@ -391,6 +391,7 @@ async def handle_command(
             session_id=session_id,
             commit_state=game_db.commit,
             commit_audit=audit_db.commit,
+            rollback_state=game_db.rollback,
         )
 
         command_text = resolve_command_text(raw, player.id, app_state, player.flags)

@@ -100,13 +100,57 @@ class CommandEngine:
 
         ctx.parsed_command = parsed
         start = time.perf_counter()
-        command.handler(parsed.noun, ctx)
+        try:
+            command.handler(parsed.noun, ctx)
+        except Exception as exc:
+            duration_ms = (time.perf_counter() - start) * 1000
+            log.exception("command_handler_crashed verb=%s", parsed.verb)
+            self._rollback(ctx, parsed, exc, duration_ms)
+            return None
         duration_ms = (time.perf_counter() - start) * 1000
         ctx.commit_state_changes()
         self._record_success(ctx, parsed, duration_ms)
         ctx.flush_events()
         log.info("command_executed verb=%s duration_ms=%.2f", parsed.verb, duration_ms)
         return parsed
+
+    def _rollback(
+        self,
+        ctx: GameContext,
+        parsed: ParsedCommand,
+        exc: Exception,
+        duration_ms: float,
+    ) -> None:
+        """Undo an in-flight command after its handler raised.
+
+        Golden rule (architecture.md §26): never tell clients something
+        happened until the database says it happened. A handler that raises
+        may have left `ctx` with partial narration/updates and the game DB
+        session with uncommitted, half-applied state — neither has been
+        committed yet at this point, so discard both and roll the session
+        back before reporting a generic failure.
+        """
+        ctx.rollback_state_changes()
+        ctx.messages.clear()
+        ctx.room_messages.clear()
+        ctx.updates.clear()
+        ctx.pending_events.clear()
+        ctx.say("Something went wrong processing that command.")
+        payload = _command_audit_payload(
+            parsed,
+            reason_type="handler_exception",
+            reason=str(exc),
+            error_type=type(exc).__name__,
+        )
+        payload["duration_ms"] = round(duration_ms, 3)
+        AuditService.from_context(ctx).record(
+            ctx,
+            GameEvent.COMMAND_FAILED,
+            severity="ERROR",
+            summary=f"Command handler crashed: {parsed.verb}",
+            payload=payload,
+        )
+        ctx.commit_audit_events()
 
     def _record_blocked(
         self, ctx: GameContext, parsed: ParsedCommand, reason_type: str, reason: str
