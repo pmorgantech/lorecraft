@@ -41,16 +41,7 @@ class ComponentRegistry:
         self._components: dict[str, ComponentDef] = {}
 
     def register(self, component: ComponentDef) -> None:
-        """Register a component definition.
-
-        Args:
-            component: The ComponentDef to register.
-
-        Raises:
-            ValueError: If a component with the same name is already registered.
-        """
-        if component.name in self._components:
-            raise ValueError(f"Component '{component.name}' already registered")
+        """Register a component definition (overwrites any existing registration by name)."""
         self._components[component.name] = component
 
     def components_for(self, item: Item) -> list[ComponentDef]:
@@ -91,12 +82,9 @@ class ComponentRegistry:
         return self._components.get(name)
 
 
-_global_registry: ComponentRegistry | None = None
+_registry = ComponentRegistry()
 
 
 def get_registry() -> ComponentRegistry:
-    """Get the global component registry (lazy-initialized)."""
-    global _global_registry
-    if _global_registry is None:
-        _global_registry = ComponentRegistry()
-    return _global_registry
+    """Get the global component registry."""
+    return _registry

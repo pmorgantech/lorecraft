@@ -10,6 +10,7 @@ from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.world import Room
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
@@ -186,6 +187,7 @@ def _build_context(
         player_repo=PlayerRepo(game_session),
         room_repo=RoomRepo(game_session),
         item_repo=ItemRepo(game_session),
+        stack_repo=StackRepo(game_session),
         npc_repo=NpcRepo(game_session),
         manager=manager,
         bus=EventBus(),

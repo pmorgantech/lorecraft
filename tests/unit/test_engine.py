@@ -17,6 +17,7 @@ from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.repos.stack_repo import StackRepo
 
 
 def build_context() -> GameContext:
@@ -29,6 +30,7 @@ def build_context() -> GameContext:
         player_repo=None,
         room_repo=None,
         item_repo=None,
+        stack_repo=None,
         npc_repo=None,
         manager=None,
         bus=EventBus(),
@@ -218,6 +220,7 @@ def build_persistent_context(
         player_repo=PlayerRepo(game_session),
         room_repo=RoomRepo(game_session),
         item_repo=ItemRepo(game_session),
+        stack_repo=StackRepo(game_session),
         npc_repo=NpcRepo(game_session),
         manager=SimpleNamespace(),
         bus=EventBus(),

@@ -2,6 +2,10 @@
 
 Holders are entities that can own items: players, rooms, containers, shops, banks, etc.
 The holder registry defines which holder types exist and validates moves into them.
+
+Tier 1 registers the built-in holders (player, room, container) at module load,
+mirroring the game/command_conditions.py pattern. Tier 2 features register
+specialized holders (shop, escrow, bank_account, ...) at app lifespan.
 """
 
 from __future__ import annotations
@@ -9,7 +13,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from sqlalchemy.orm import Session
+from sqlmodel import Session
+
+from lorecraft.models.items import ItemInstance
+from lorecraft.models.player import Player
+from lorecraft.models.world import Room
 
 
 @dataclass(frozen=True)
@@ -46,18 +54,9 @@ class HolderRegistry:
         self._move_validators: dict[str, list[Callable]] = {}
 
     def register(self, holder: HolderTypeDef) -> None:
-        """Register a holder type.
-
-        Args:
-            holder: The HolderTypeDef to register.
-
-        Raises:
-            ValueError: If a holder with the same name is already registered.
-        """
-        if holder.name in self._holders:
-            raise ValueError(f"Holder type '{holder.name}' already registered")
+        """Register a holder type (overwrites any existing registration by name)."""
         self._holders[holder.name] = holder
-        self._move_validators[holder.name] = []
+        self._move_validators.setdefault(holder.name, [])
 
     def register_move_validator(
         self,
@@ -121,12 +120,27 @@ class HolderRegistry:
         return holder_type in self._holders
 
 
-_global_registry: HolderRegistry | None = None
+_registry = HolderRegistry()
+
+
+def _player_exists(session: Session, holder_id: str) -> bool:
+    return session.get(Player, holder_id) is not None
+
+
+def _room_exists(session: Session, holder_id: str) -> bool:
+    return session.get(Room, holder_id) is not None
+
+
+def _container_exists(session: Session, holder_id: str) -> bool:
+    """A container's owner_id is an ItemInstance.id (per engine_core.md §3.2)."""
+    return session.get(ItemInstance, holder_id) is not None
+
+
+_registry.register(HolderTypeDef("player", _player_exists))
+_registry.register(HolderTypeDef("room", _room_exists))
+_registry.register(HolderTypeDef("container", _container_exists))
 
 
 def get_registry() -> HolderRegistry:
-    """Get the global holder registry (lazy-initialized)."""
-    global _global_registry
-    if _global_registry is None:
-        _global_registry = HolderRegistry()
-    return _global_registry
+    """Get the global holder registry."""
+    return _registry

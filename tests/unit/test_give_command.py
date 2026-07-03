@@ -16,6 +16,7 @@ from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import NPC, Room
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
@@ -58,6 +59,7 @@ def _build_engine_and_ctx(
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
+        stack_repo=StackRepo(session),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),

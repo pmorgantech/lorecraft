@@ -11,6 +11,7 @@ from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.repos.stack_repo import StackRepo
 
 
 def test_context_collects_messages_updates_and_emits_events() -> None:
@@ -47,6 +48,7 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
             player_repo=player_repo,
             room_repo=room_repo,
             item_repo=ItemRepo(session),
+            stack_repo=StackRepo(session),
             npc_repo=NpcRepo(session),
             manager=manager,
             bus=bus,
