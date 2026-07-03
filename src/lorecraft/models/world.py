@@ -40,6 +40,7 @@ class Item(SQLModel, table=True):
     description: str
     takeable: bool = True
     tradeable: bool = True
+    bound: bool = False  # Sprint 16: soulbound items can't be dropped/sold/traded (enforced by Tier 2 rules)
     aliases: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     usable_with: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
