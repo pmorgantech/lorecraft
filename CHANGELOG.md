@@ -6,9 +6,11 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Summary
 
-**Sprints 8–10.5 Complete** — Module decomposition (web/parser/admin split into 9 focused modules), service consistency (ServiceContainer, register(bus) convention), extensibility seams (pluggable registries for dialogue side effects, dialogue/command conditions, feature-registration pattern documented), and tooling infrastructure (repo-tracked issues/news, world content CLI, analytics query API, content linting). All 388 tests passing throughout; basedpyright 0 errors on `src/`. Foundation gate now gating Sprint 11+ work; combat/trading/PvP gated behind foundation exit criteria.
+**Sprints 8–11 Complete** — Module decomposition (web/parser/admin split into 9 focused modules), service consistency (ServiceContainer, register(bus) convention), extensibility seams (pluggable registries for dialogue side effects, dialogue/command conditions, feature-registration pattern documented), tooling infrastructure (repo-tracked issues/news, world content CLI, analytics query API, content linting), and a browser E2E harness (Playwright against a live server). All 388 focused tests + 3 new E2E tests passing; basedpyright 0 errors on `src/`. Foundation gate now gating Sprint 12+ work; combat/trading/PvP gated behind foundation exit criteria.
 
 ### Added
+
+- **Sprint 11: Browser E2E Harness** — `tests/e2e/` drives the HTMX/Alpine UI through a real headless-Chromium browser against a real, live `uvicorn` server, catching regressions (HTMX swaps, OOB panel updates) that the ASGI-transport integration tests can't see. `conftest.py`'s `live_server` fixture boots `create_app()` on a background thread with a disposable per-test sqlite DB and the real `world_content/world.yaml`; `test_gameplay_flows.py` covers character creation, movement with room/inventory panel updates, and dialogue → quest-start, exercising the same Ashmoore golden path documented in `docs/roadmap.md`. New optional `e2e` dependency group (`playwright`) and a `pytest` marker keep the suite out of the default `pytest`/`make test` run (`-m "not e2e"`); `make test-e2e` installs the extra + Chromium binary and runs it explicitly.
 
 - **Sprint 10.5: Tooling Infrastructure** — `docs/tooling_infrastructure.md` design, implemented across five sub-sprints:
   - **10.5.1 Issues** — `docs/issues.yaml` (repo-tracked, git-blame-able) imported into the DB on first startup and re-exported on every admin mutation. `GET/POST/PUT /admin/issues` CRUD, TUI F6 screen, web panel Issues tab.

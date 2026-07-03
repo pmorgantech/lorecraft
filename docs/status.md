@@ -10,8 +10,10 @@ The architecture overview remains the design reference; this file is the working
 > seams, tooling). Sprints 5–10 complete (error handling, type safety, characterization
 > tests, module decomposition, service consistency/wiring, extensibility seams/patterns).
 > Sprint 10.5 (tooling infrastructure: issues/news/world-CLI/analytics/content-linting)
-> complete, followed by Sprint 11 (browser E2E harness). Combat/trading/PvP are gated
-> behind the foundation exit criteria — no feature expansion until the core is sound.
+> complete. Sprint 11 (browser E2E harness — Playwright against a live server,
+> `tests/e2e/`) complete. Next: Sprint 12 (simulation harness MVP). Combat/trading/PvP
+> are gated behind the foundation exit criteria — no feature expansion until the core is
+> sound.
 
 ## Phase-to-Sprint Mapping
 
@@ -209,7 +211,7 @@ Legend:
 - [x] HTMX `POST /command` executes via `CommandEngine`; dialogue overlay and quest tracker ported from vanilla client.
 - [ ] Full-screen map modal.
 - [ ] Responsive behavior improvements.
-- [ ] Browser end-to-end testing.
+- [x] Browser end-to-end testing — see Sprint 11 below (`tests/e2e/`, Playwright).
 
 ### Tooling & Admin Infrastructure (Sprint 10.5) ✅
 
@@ -220,6 +222,12 @@ Legend:
 - [x] World management CLI — `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}`; `export_world_document()` in `world/loader.py`
 - [x] Analytics API foundation — `lorecraft.analytics` query functions (top commands, NPC interactions, quest completions from the audit log; player-hours from `PlayerSession`) via `GET /admin/analytics/{commands,npcs,quests,player-hours}`. No dashboard yet (by design); latency/event-bus-depth metrics wait on Sprint 13 instrumentation.
 - [x] Content validation & linting — `lorecraft.tools.validators`: dangling dialogue node refs, room reachability, dead item refs, duplicate item names per room, oversized item stacks. Wired into `world_cli.py validate --start-room --strict`. Circular quest dependencies not checked — no quest-to-quest dependency field exists in the schema yet.
+
+### Browser E2E Harness (Sprint 11) ✅
+
+- [x] `tests/e2e/conftest.py` — `live_server` fixture boots the real `create_app()` FastAPI app under `uvicorn.Server` on a background thread with a disposable per-test sqlite DB (real `world_content/world.yaml` bootstrap, no test-only fixtures); `browser`/`page` fixtures wrap Playwright (session-scoped Chromium launch, per-test context).
+- [x] `tests/e2e/test_gameplay_flows.py` — drives the golden path (create character → move → take item → talk to Mira → dialogue choice starts a quest) through a real browser against `/lobby`, `/game`, `/command`, verifying HTMX OOB swaps of `#room-description`, `#inventory`, `#dialogue-overlay`, `#quest-tracker`.
+- [x] Optional `e2e` dependency group (`playwright`) + `pytest.ini_options` marker so `pytest`/`make test` skip the suite by default (`-m "not e2e"`); `make test-e2e` installs the extra, installs the Chromium binary, and runs it explicitly.
 
 ### Phase 8 — Combat
 

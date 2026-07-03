@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["basedpyright", "pytest", "ruff"]
 admin-tui = ["textual>=0.80.0"]
+e2e = ["playwright>=1.47.0"]
 
 [tool.setuptools.package-data]
 lorecraft = ["web/*", "web/admin/*"]
@@ -32,4 +33,7 @@ venv = ".venv"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-q"
+addopts = "-q -m \"not e2e\""
+markers = [
+  "e2e: browser end-to-end tests against a live server (require `pip install -e .[e2e]` + `playwright install chromium`); run with `make test-e2e`",
+]

@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–10.5 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure). **Next up: Sprint 11 (browser E2E harness).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–11 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness). **Next up: Sprint 12 (simulation harness MVP).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–10.5 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure). Sprint 11 (browser E2E harness) next.
+**Current progress:** Sprints 5–11 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness). Sprint 12 (simulation harness MVP) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -175,11 +175,13 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 **See:** [`tooling_infrastructure.md`](tooling_infrastructure.md) for full architecture and design details. Circular quest dependency checking was scoped out — `QuestStageData` has no quest-to-quest dependency field in the schema today.
 
-## Sprint 11 — Browser E2E harness
+## Sprint 11 — Browser E2E harness ✅
+
+**Goal:** Catch UI-specific regressions (HTMX swaps, OOB updates, Alpine state) that ASGI-transport integration tests can't see.
 
 | # | Task | Status |
 |---|------|--------|
-| 11.1 | Browser end-to-end test harness for HTMX UI | [ ] |
+| 11.1 | Browser end-to-end test harness for HTMX UI | [x] `tests/e2e/` — Playwright-driven tests against a real live uvicorn server (background thread, disposable per-test sqlite DB, real world YAML bootstrap). Optional `e2e` extra (`pip install -e ".[e2e]"` + `playwright install chromium`); excluded from the default `pytest`/`make test` run via `-m "not e2e"`; run explicitly with `make test-e2e`. Covers character creation, movement + room/inventory panel updates, and dialogue → quest-start via the Ashmoore dev world golden path. |
 
 ## Sprint 12 — Simulation harness MVP
 
@@ -334,4 +336,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 10.5 complete (tooling infrastructure: issues, news, world CLI, analytics, content linting). Next: Sprint 11 (browser E2E harness).*
+*Last updated: 2026-07-02 — Sprint 11 complete (browser E2E harness: Playwright against a live server, `tests/e2e/`). Next: Sprint 12 (simulation harness MVP).*
