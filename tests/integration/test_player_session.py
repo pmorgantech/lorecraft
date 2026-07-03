@@ -139,7 +139,10 @@ async def _test_create_character_happy_path() -> None:
 
     async with _lifespan(app):
         status, headers, _ = await _request(
-            app, "POST", "/lobby/create", form={"username": "Ashen_Wanderer"}
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "Ashen_Wanderer", "password": "hunter2"},
         )
         assert status == 303
         session_cookie = _cookie_value(headers, PLAYER_SESSION_COOKIE)
@@ -160,23 +163,70 @@ async def _test_create_character_happy_path() -> None:
         assert "Ashen_Wanderer" in game_html
 
 
-def test_create_character_rejects_duplicate_username() -> None:
-    anyio.run(_test_create_character_rejects_duplicate_username)
+def test_create_character_with_wrong_password_for_existing_username_is_rejected() -> (
+    None
+):
+    """/lobby/create shares login_or_register() with /lobby/enter: a repeat
+    username is treated as a login attempt, not a hard 'name taken' error —
+    it only fails if the password doesn't match."""
+    anyio.run(_test_create_character_with_wrong_password_for_existing_username)
 
 
-async def _test_create_character_rejects_duplicate_username() -> None:
+async def _test_create_character_with_wrong_password_for_existing_username() -> None:
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
     )
 
     async with _lifespan(app):
-        await _request(app, "POST", "/lobby/create", form={"username": "Dup"})
+        await _request(
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "Dup", "password": "correct-pw"},
+        )
         status, _, _ = await _request(
-            app, "POST", "/lobby/create", form={"username": "Dup"}
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "Dup", "password": "wrong-pw"},
         )
 
-    assert status == 409
+    assert status == 401
+
+
+def test_create_character_with_matching_password_logs_in_existing_player() -> None:
+    anyio.run(_test_create_character_with_matching_password_logs_in_existing_player)
+
+
+async def _test_create_character_with_matching_password_logs_in_existing_player() -> (
+    None
+):
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+
+    async with _lifespan(app):
+        first_status, first_headers, _ = await _request(
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "Repeat", "password": "same-pw"},
+        )
+        second_status, second_headers, _ = await _request(
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "Repeat", "password": "same-pw"},
+        )
+
+    assert first_status == 303
+    assert second_status == 303
+    first_cookie = _cookie_value(first_headers, PLAYER_SESSION_COOKIE)
+    second_cookie = _cookie_value(second_headers, PLAYER_SESSION_COOKIE)
+    assert first_cookie is not None
+    assert second_cookie is not None
 
 
 def test_create_character_rejects_invalid_username() -> None:
@@ -191,12 +241,15 @@ async def _test_create_character_rejects_invalid_username() -> None:
 
     async with _lifespan(app):
         status, _, _ = await _request(
-            app, "POST", "/lobby/create", form={"username": "ab"}
+            app, "POST", "/lobby/create", form={"username": "ab", "password": "pw"}
         )
         assert status == 400
 
         status, _, _ = await _request(
-            app, "POST", "/lobby/create", form={"username": "has a space"}
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "has a space", "password": "pw"},
         )
         assert status == 400
 
@@ -213,7 +266,10 @@ async def _test_enter_world_rejects_unknown_player() -> None:
 
     async with _lifespan(app):
         status, _, _ = await _request(
-            app, "POST", "/lobby/enter", form={"player_id": "does-not-exist"}
+            app,
+            "POST",
+            "/lobby/enter",
+            form={"username": "does_not_exist", "password": "whatever"},
         )
 
     assert status == 404
@@ -265,7 +321,10 @@ async def _test_allow_query_player_id_disabled_requires_signed_session() -> None
 
         # A properly created + logged-in character still works.
         create_status, headers, _ = await _request(
-            app, "POST", "/lobby/create", form={"username": "Signed_Only"}
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "Signed_Only", "password": "hunter2"},
         )
         assert create_status == 303
         session_cookie = _cookie_value(headers, PLAYER_SESSION_COOKIE)

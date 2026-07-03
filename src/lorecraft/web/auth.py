@@ -60,6 +60,10 @@ class StartRoomNotConfiguredError(RuntimeError):
     """The configured spawn room doesn't exist — a server config error."""
 
 
+class PlayerNotFoundError(ValueError):
+    """`allow_create=False` and no account exists for this username."""
+
+
 class LoginResult:
     __slots__ = ("player", "created")
 
@@ -75,8 +79,9 @@ def login_or_register(
     password: str,
     *,
     start_room: str,
+    allow_create: bool = True,
 ) -> LoginResult:
-    """Verify an existing local account or create one on first login.
+    """Verify an existing local account, or create one on first login.
 
     Three cases:
     1. A `PlayerAuth` row already exists for this username — verify the
@@ -86,7 +91,10 @@ def login_or_register(
        existed) — this login *claims* it: binds a new credential to the
        existing player rather than erroring, so pre-existing seed/dev
        players keep working once a password is set for them.
-    3. Neither exists — create a brand new `Player` + `PlayerAuth`.
+    3. Neither exists — create a brand new `Player` + `PlayerAuth`, unless
+       `allow_create=False` (the browser's "Log In" tab), in which case
+       raise `PlayerNotFoundError` instead of silently creating an account
+       for what may just be a typo'd username.
     """
     username = username.strip()
     if not USERNAME_RE.match(username):
@@ -119,6 +127,9 @@ def login_or_register(
         )
         player_repo.add_auth(auth)
         return LoginResult(player=existing_player, created=False)
+
+    if not allow_create:
+        raise PlayerNotFoundError("No account with that name. Try Create Character.")
 
     if room_repo.get(start_room) is None:
         raise StartRoomNotConfiguredError("Starting room is not configured.")

@@ -83,7 +83,7 @@ class SimulationServer:
         """Create a character via the real `/lobby/create` route; return its id."""
         response = httpx.post(
             f"{self.base_url}/lobby/create",
-            data={"username": username},
+            data={"username": username, "password": "simulation-test-password"},
             follow_redirects=False,
         )
         if response.status_code != 303:

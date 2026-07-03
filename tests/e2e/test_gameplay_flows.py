@@ -21,6 +21,7 @@ def _create_character(page: Any, base_url: str, username: str) -> None:
     page.goto(f"{base_url}/lobby")
     page.click("text=Create New Character")
     page.fill("#username", username)
+    page.fill("#create-password", "e2e-test-password")
     page.click("text=Create & Enter")
     page.wait_for_url(re.compile(r".*/game$"))
 

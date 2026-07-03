@@ -11,9 +11,7 @@ Server-driven UI:
 from __future__ import annotations
 
 import logging
-import re
 import time
-import uuid
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -34,6 +32,13 @@ from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
+from lorecraft.web.auth import (
+    InvalidCredentialsError,
+    InvalidUsernameError,
+    PlayerNotFoundError,
+    StartRoomNotConfiguredError,
+    login_or_register,
+)
 from lorecraft.web.rendering import (
     audit_to_feed,
     build_map_data,
@@ -60,8 +65,6 @@ from lorecraft.web.session import (
 )
 
 log = logging.getLogger(__name__)
-
-_USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,30}$")
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
@@ -165,51 +168,27 @@ async def get_current_player(request: Request) -> Player:
 
 
 # =============================================================================
-# LOBBY (minimal, works with current models)
+# LOBBY (password-protected login/create — see web/auth.py)
 # =============================================================================
 
 
 @router.get("/lobby", response_class=HTMLResponse)
 async def lobby(request: Request, player: Player | None = Depends(get_current_player)):
-    """Minimal lobby: pick an existing player (seeded or created) and enter the world."""
-    game_engine, _ = get_engines(request)
-    with DBSession(game_engine) as db:
-        repo = PlayerRepo(db)
-        players = list(repo.list_all(limit=20))
-
+    """Lobby: log in to an existing character or create a new one, both password-protected."""
     context = {
         "request": request,
         "player": player,
-        "players": players,
     }
     return templates.TemplateResponse(request, "lobby.html", context)
 
 
 @router.post("/lobby/enter", response_class=RedirectResponse)
-async def enter_world(request: Request, player_id: str = Form(...)):
-    """Verify the chosen player exists, then log in via a signed session cookie."""
-    game_engine, _ = get_engines(request)
-    with DBSession(game_engine) as db:
-        player = PlayerRepo(db).get(player_id)
-    if player is None:
-        raise HTTPException(status_code=404, detail="Unknown player")
-
-    app_state = get_app_state(request)
-    resp = RedirectResponse(url="/game", status_code=303)
-    set_player_session_cookie(resp, player.id, app_state)
-    return resp
-
-
-@router.post("/lobby/create", response_class=RedirectResponse)
-async def create_character(request: Request, username: str = Form(...)):
-    """Create a new player character and log in via a signed session cookie."""
-    username = username.strip()
-    if not _USERNAME_RE.match(username):
-        raise HTTPException(
-            status_code=400,
-            detail="Username must be 3-30 characters: letters, numbers, - or _ only.",
-        )
-
+async def enter_world(
+    request: Request, username: str = Form(...), password: str = Form(...)
+):
+    """Log in to an existing character. Unlike /lobby/create, does not
+    silently create an account for an unknown username (allow_create=False)
+    — a typo'd name should 404, not spawn an empty new character."""
     app_state = get_app_state(request)
     start_room = (
         app_state.settings.seed_player_start_room if app_state else "village_square"
@@ -217,27 +196,66 @@ async def create_character(request: Request, username: str = Form(...)):
     game_engine, _ = get_engines(request)
 
     with DBSession(game_engine) as db:
-        repo = PlayerRepo(db)
         room_repo = RoomRepo(db)
-        if repo.by_username(username) is not None:
-            raise HTTPException(status_code=409, detail="That name is already taken.")
-        if room_repo.get(start_room) is None:
-            raise HTTPException(
-                status_code=500, detail="Starting room is not configured."
+        try:
+            result = login_or_register(
+                db,
+                room_repo,
+                username,
+                password,
+                start_room=start_room,
+                allow_create=False,
             )
-        player = Player(
-            id=str(uuid.uuid4()),
-            username=username,
-            current_room_id=start_room,
-            respawn_room_id=start_room,
-            visited_rooms=[start_room],
-        )
-        db.add(player)
+        except InvalidUsernameError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except PlayerNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except InvalidCredentialsError as e:
+            raise HTTPException(status_code=401, detail=str(e)) from e
+        except StartRoomNotConfiguredError as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
         db.commit()
-        db.refresh(player)
+        player_id = result.player.id
 
     resp = RedirectResponse(url="/game", status_code=303)
-    set_player_session_cookie(resp, player.id, app_state)
+    set_player_session_cookie(resp, player_id, app_state)
+    return resp
+
+
+@router.post("/lobby/create", response_class=RedirectResponse)
+async def create_character(
+    request: Request, username: str = Form(...), password: str = Form(...)
+):
+    """Create a new player character (or claim a passwordless one) and log in.
+
+    Shares `login_or_register()` with `/lobby/enter` and `POST /auth/login` —
+    the only difference is which lobby tab a browser user came from. If the
+    username already has a password set, this behaves like a login (and will
+    401 on a wrong password) rather than a hard "name taken" error.
+    """
+    app_state = get_app_state(request)
+    start_room = (
+        app_state.settings.seed_player_start_room if app_state else "village_square"
+    )
+    game_engine, _ = get_engines(request)
+
+    with DBSession(game_engine) as db:
+        room_repo = RoomRepo(db)
+        try:
+            result = login_or_register(
+                db, room_repo, username, password, start_room=start_room
+            )
+        except InvalidUsernameError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except InvalidCredentialsError as e:
+            raise HTTPException(status_code=401, detail=str(e)) from e
+        except StartRoomNotConfiguredError as e:
+            raise HTTPException(status_code=500, detail=str(e)) from e
+        db.commit()
+        player_id = result.player.id
+
+    resp = RedirectResponse(url="/game", status_code=303)
+    set_player_session_cookie(resp, player_id, app_state)
     return resp
 
 

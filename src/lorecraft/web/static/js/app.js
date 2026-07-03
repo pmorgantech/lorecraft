@@ -18,37 +18,43 @@
   let commandHistory = [];
   let historyIndex = -1;
 
-  function getPlayerId() {
-    // Try query param (used by /game?player_id=xxx or ?pid=)
-    const params = new URLSearchParams(window.location.search);
-    let pid = params.get("player_id") || params.get("pid");
-    if (pid) return pid;
-    // Try cookie set by the new UI lobby/enter
-    const cookieMatch = document.cookie.match(/(?:^|; )player_id=([^;]*)/);
-    if (cookieMatch) return decodeURIComponent(cookieMatch[1]);
-    return null;
-  }
-
   // === WebSocket Management ===
-  function connectWebSocket() {
-    const pid = getPlayerId();
-    if (!pid) {
-      console.log(
-        "[Lorecraft] No player_id available, skipping WS connection (new UI uses HTTP commands + optional push)",
-      );
-      return;
-    }
-
+  // The signed `lorecraft_session` cookie (set by /lobby/enter or
+  // /lobby/create) authenticates a POST /auth/ws-ticket request, which mints
+  // a single-use, short-TTL ticket. Browsers can't attach custom headers to
+  // a WebSocket upgrade, hence the ticket exchange instead of connecting
+  // with the session directly.
+  async function connectWebSocket() {
     const wsPath = window.LORECRAFT_WS_PATH || "/ws";
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const base =
       window.LORECRAFT_WS_URL ||
       `${protocol}//${window.location.host}${wsPath}`;
-    const wsUrl = base.includes("player_id=")
-      ? base
-      : `${base}${base.includes("?") ? "&" : "?"}player_id=${encodeURIComponent(pid)}`;
 
-    console.log("[Lorecraft] Connecting to WS:", wsUrl);
+    let ticket;
+    try {
+      const resp = await fetch("/auth/ws-ticket", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (!resp.ok) {
+        console.log(
+          "[Lorecraft] No active session, skipping WS connection (ws-ticket request returned",
+          resp.status,
+          ")",
+        );
+        return;
+      }
+      const data = await resp.json();
+      ticket = data.ws_ticket;
+    } catch (e) {
+      console.error("[Lorecraft] Failed to fetch WS ticket:", e);
+      return;
+    }
+
+    const wsUrl = `${base}${base.includes("?") ? "&" : "?"}ticket=${encodeURIComponent(ticket)}`;
+
+    console.log("[Lorecraft] Connecting to WS");
 
     ws = new WebSocket(wsUrl);
 
