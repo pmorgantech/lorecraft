@@ -42,6 +42,6 @@ code design and quality.
 - After new code, run focused: unit tests, formatter, and basedpyright on modified or new files.
 - Keep `docs/status.md` updated with current implementation progress.
 - Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
-- Keep `docs/user_guide.md` and `docs/admin_guide.md` updated.
+- Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
 - Summarize changed files, risks, and verification.
