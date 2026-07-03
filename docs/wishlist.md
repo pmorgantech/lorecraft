@@ -177,7 +177,7 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
 - **Journal / auto-log** — the game records discovered places, met NPCs, learned lore, and
   active clues — a living quest/exploration log. Great UI panel candidate.
 
-### Trading & economy depth 💚 (core pillar — expands the roadmap Sprint 21 stub)
+### Trading & economy depth 💚 (core pillar — designed in `trade_economy.md`, roadmap Sprint 22)
 
 Beyond the basic currency→shops→P2P ladder in *Gameplay systems* below:
 
@@ -253,22 +253,20 @@ Combat stays on the roadmap (Sprints 18–20) but is **deliberately not the cent
 ## Gameplay systems
 
 ### Combat 💚 (already on the roadmap)
-Sprints 18–20. **Recommendation from planning: NPC combat first, PvP later** — simpler state
-machine, lets death/respawn mechanics settle before adding player-vs-player. First real
+Sprints 25–27 (moved down from the original 18–20 in the 2026-07-03 pillar re-sequence —
+combat is a supporting system, not the centerpiece). **NPC combat first, PvP later** — simpler
+state machine, lets death/respawn mechanics settle before adding player-vs-player. First real
 consumer of the feature-registration pattern.
 
-**Decide before shipping:** death penalty model — soft respawn (Aardwolf-style, non-punitive)
-vs. item/currency loss vs. permadeath. This shapes the whole risk/reward feel.
+**Death penalty: resolved** — see [`death_resurrection.md`](death_resurrection.md) (resurrect,
+lose some carried coins/loot; banked and equipped/bound items are safe).
 
-### Trading & currency 💚 (partly on the roadmap)
-Sprint 21. Needs scoping. Suggested order:
-1. **Currency model** — is it gold? Persists on `Player`? Items need a value field.
-2. **NPC shops** — static vendor NPCs (buy/sell) before player-to-player trading.
-3. **Player-to-player trade** — `offer`/`accept` handshake; validates multi-player transaction
-   safety (good simulation-harness target).
-4. *Defer:* auctions, dynamic pricing, marketplaces — until there's real trading volume.
+### Trading & currency 💚 (on the roadmap)
+Sprint 22. Designed in [`trade_economy.md`](trade_economy.md): currency (carried `coins` +
+`BankAccount`) → NPC shops → regional pricing → banks → player-to-player trade.
+*Deferred:* auctions, dynamic global market — until there's real trading volume.
 
-### PvP 🤔 (on the roadmap, Sprint 22)
+### PvP 🤔 (on the roadmap, Sprint 28)
 Consent-based (challenge/accept) reusing the combat system. **Design choice pending:** soft
 opt-in PvP (most modern MUDs, Aardwolf's "99% harmless") vs. anything more punishing. Lean
 soft unless Lorecraft wants a darker RP tone.
@@ -323,9 +321,87 @@ time comes:
   binding layer.
 - **Stay YAML-only** — safest; extend via backend registries as needed.
 
+### Engine / game-data separation 💚 (architectural — plan for it, don't do it yet)
+
+**Design intent (2026-07-03):** be able to cleanly split the **engine** (Lorecraft the
+Python/FastAPI codebase) from **game data** (world YAML, dialogue, quests, and — once it
+exists — any bolted-on scripting) so a given world's content can live in **its own repo**,
+separate from the engine repo. `architecture.md`'s original project structure already
+gestures at this (`world_content/` annotated "Separate git repo (symlinked or submodule)") but
+it's never been made real — today `world_content/` ships inside the engine repo and is loaded
+by path.
+
+Why this matters *now*, before it's built: it constrains decisions we're making anyway —
+
+- **Scripting layer** (see above) is the sharpest edge. If/when a scripting layer is added
+  (Python modules, Lua, or otherwise), that scripting is *game data* too, not engine code — it
+  must live in the content repo and load through the same clean boundary as YAML, or the split
+  becomes impossible to retrofit later. Whatever scripting decision gets made, **design its
+  loading path as if the content repo is already external.**
+- **One engine, many worlds** — a clean split is what lets Lorecraft run more than one setting
+  (a fantasy world, a sci-fi world, a teaching sandbox) off one engine codebase, each in its own
+  content repo, without forking the engine.
+- **Versioning** — engine version and content/world-schema version already exist separately
+  (`WorldMeta.schema_version`, `engine_version`) — the plumbing for "engine and content evolve
+  independently" is partly there.
+
+What "done" looks like (not scheduled — this is a plan-ahead note, not a sprint):
+
+- A defined **content contract**: what the engine expects a content repo to provide (YAML
+  schema, directory layout, any scripting entry points) — versioned and validated
+  (`lorecraft.tools.validators` already validates content; extend, don't replace).
+- `world_content/` (or its successor) becomes an actual separate repo, pulled in via submodule,
+  package, or a configured path — `LORECRAFT_WORLD_YAML_PATH` already externalizes *the path*,
+  which is most of the way there.
+- The Ashmoore dev world (used by tests) either moves to a `tests/fixtures`-style content
+  package or stays as an explicitly-labeled "reference/example content repo" — not the engine's
+  only world.
+
+**When to act:** once a scripting layer decision is made (or firmly deferred) and/or a second
+world/setting is actually wanted — don't build the split speculatively before either pressure
+exists. Revisit this note at that point.
+
 ### News & announcements ✅
 Already shipped (Sprint 10.5): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here
 only to note it's *done*, not wanted.
+
+---
+
+## Onboarding & first-time experience
+
+### Character creation walkthrough + intro tutorial 💚
+
+**Design intent (2026-07-03):** new players need a guided on-ramp — today `/lobby/create` is
+just a username/password form (`docs/status.md`'s Player Identity & Session Safety section);
+there's no in-game character-creation flow or introductory walkthrough once a player is dropped
+into the world.
+
+- **Character creation, in-world** — once traits/backgrounds/skills exist (see *Traits, skills
+  & character identity* above), creation becomes more than a name: choose a background/origin,
+  maybe answer a few flavor questions that set starting traits/skills/gear. Could be a scripted
+  dialogue-tree-like flow (reusing `npc/dialogue.py`'s walker) rather than a bespoke form.
+- **Brief walkthrough / intro** — a short, skippable guided sequence after creation: move,
+  look, take an item, talk to an NPC, maybe a first tiny puzzle or discovery — teaching the
+  core verbs through doing, not a wall of help text. `commands/meta.py`'s context-aware `help`
+  already exists as a fallback/reference.
+- **Likely scripted and game-specific** — the intro is *content*, not engine logic: which room
+  you start in, what the tutorial NPC says, what the first quest hook is are all per-world
+  choices. This should be authored the same way dialogue/quests are (YAML + the dialogue
+  walker + quest stages), not hardcoded into the engine — and it's a concrete example of the
+  **engine/game-data separation** above: the intro script belongs in the content repo, not in
+  `src/lorecraft/`.
+- **Skippable / repeatable** — experienced players (or alt characters) should be able to skip
+  or fast-forward; the tutorial shouldn't gate returning players.
+- **Natural home:** an "Ashmoore" (or per-world) starter quest chain using existing
+  dialogue-tree + quest-stage primitives, *plus* whatever character-creation flavor questions
+  traits/backgrounds end up needing. No new engine mechanism required — mostly content +
+  maybe a couple of onboarding-specific flags (`tutorial_complete`) and a `skip tutorial`
+  command.
+
+**When to act:** natural pairing with traits/backgrounds (Sprint 18) for the creation-flavor
+part, and useful any time after — doesn't block other feature work. Not yet scheduled on the
+roadmap; a good candidate once Sprint 18 (traits/skills) lands, since that's what gives
+character creation something to actually choose.
 
 ---
 
@@ -371,12 +447,14 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 | Skills: use-based vs. XP-based improvement? | Progression feel | Use-based (fits exploration) |
 | Attributes: minimal spread or none? | Character system | Minimal, non-combat-framed |
 | Death penalty: soft respawn vs. loss vs. permadeath? | Combat feel | **Resolved: resurrect + lose some carried coins/loot** ([`death_resurrection.md`](death_resurrection.md)) |
-| NPC combat before PvP? | Sprint 18–22 order | Yes |
-| Currency model shape (what is "money")? | Trading, tickets, shops | Undecided |
+| NPC combat before PvP? | Sprint 25–28 order | Yes |
+| Currency model shape (what is "money")? | Trading, tickets, shops | **Resolved: carried `coins` + safe `BankAccount`** ([`trade_economy.md`](trade_economy.md)) |
 | Regional pricing + transit as the trade network? | Trade/transit design | Yes — signature pairing |
 | Scripting layer: Python / Lua / YAML-only? | Builder extensibility | Hold; decide during combat |
 | Guilds/clans: in or out? | Social scope | Leaning out |
 | Vehicle = special Room or new entity? | Transit design | **Resolved: moving-room** ([`transit_systems.md`](transit_systems.md)) |
+| Engine/game-data split: when to act? | Repo structure, scripting design | Plan for it now; execute once scripting is decided or a 2nd world is wanted |
+| Tutorial/character-creation: engine feature or content? | Onboarding design | Content (scripted, per-world) — reuses dialogue/quest primitives, not new engine mechanism |
 
 ---
 
