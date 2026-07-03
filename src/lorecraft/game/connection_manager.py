@@ -44,6 +44,17 @@ class ConnectionManager:
                 continue
             await self.send_to_player(player_id, message)
 
+    async def broadcast_global(
+        self,
+        message: JsonObject,
+        exclude: str | None = None,
+    ) -> None:
+        """Broadcast a message to all connected players (ignoring rooms)."""
+        for player_id in list(self._connections.keys()):
+            if player_id == exclude:
+                continue
+            await self.send_to_player(player_id, message)
+
     def move_player(self, player_id: str, from_room: str | None, to_room: str) -> None:
         if from_room:
             self._room_players[from_room].discard(player_id)

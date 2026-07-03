@@ -215,7 +215,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 
 | # | Task | Status |
 |---|------|--------|
-| 15.1 | World clock / weather status bar push via WS | [ ] |
+| 15.1 | World clock / weather status bar push via WS | [x] `ConnectionManager.broadcast_global()` + a `TIME_ADVANCED` handler in `main.py` push `time_update` (hour/minute/day/season/weather) to every connected player, not just on connect/reconnect SSR. |
 | 15.2 | Multi-player live lists finished (`[~]` STATUS item) | [ ] |
 
 ---

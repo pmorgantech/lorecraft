@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
 import time
@@ -179,10 +180,34 @@ def create_app(
                 }
             )
 
+        def _schedule_clock_broadcast(event: Event, ctx: object) -> None:
+            """Schedule clock broadcast to players on TIME_ADVANCED."""
+
+            async def broadcast_task() -> None:
+                with Session(resolved_game_engine) as session:
+                    clock = RoomRepo(session).world_clock()
+                    if clock is not None:
+                        await manager.broadcast_global(
+                            {
+                                "type": "time_update",
+                                "hour": clock.current_hour,
+                                "minute": clock.current_minute,
+                                "day": clock.current_day,
+                                "season": clock.current_season,
+                                "weather": clock.weather,
+                            }
+                        )
+
+            try:
+                asyncio.create_task(broadcast_task())
+            except RuntimeError:
+                pass  # No running event loop (e.g., in tests)
+
         bus.on(GameEvent.PLAYER_MOVED, _push_player_moved)
         bus.on(GameEvent.PLAYER_DISCONNECTED, _push_player_disconnected)
         bus.on(GameEvent.PLAYER_RECONNECTED, _push_player_reconnected)
         bus.on(GameEvent.TIME_ADVANCED, _push_clock_tick)
+        bus.on(GameEvent.TIME_ADVANCED, _schedule_clock_broadcast)
 
         state = AppState(
             settings=resolved_settings,

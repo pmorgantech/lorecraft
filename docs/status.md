@@ -67,7 +67,7 @@ Legend:
 - [x] Command flow with immediate HTML response + OOB + WS push for other players.
 - [x] Audit log used as source for narrative feed.
 - [x] HTMX `POST /command` executes via `CommandEngine` (movement, inventory, dialogue, quest OOB updates).
-- [~] Multi-player live lists use `ConnectionManager.is_connected()` and `players_in_room()` when WS connected; world clock SSR + WS `time_update` handler added; full clock push from server events still evolving.
+- [~] Multi-player live lists use `ConnectionManager.is_connected()` and `players_in_room()` when WS connected; world clock SSR + WS `time_update` handler added; server now pushes `time_update` to all connected players on every `TIME_ADVANCED` tick (Sprint 15.1), not just on connect/reconnect.
 - [x] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
 - [x] `main.py` FastAPI app.
 - [x] `/ws` WebSocket endpoint.

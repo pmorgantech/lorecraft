@@ -134,3 +134,28 @@ async def _test_concurrent_take(server: SimulationServer) -> None:
 
 def _has_coin(inventory: list[str]) -> bool:
     return "copper_coin" in inventory
+
+
+def test_clock_updates_broadcast_to_players(
+    simulation_server: SimulationServer,
+) -> None:
+    """Clock time_update messages are broadcast to all connected players (Sprint 15.1)."""
+    asyncio.run(_test_clock_broadcast(simulation_server))
+
+
+async def _test_clock_broadcast(server: SimulationServer) -> None:
+    """Connected players should receive time_update broadcasts when the clock advances."""
+    alice = await _connect(server, "alice")
+    try:
+        # Wait for a time_update broadcast. The clock advances every tick_seconds
+        # (typically 1 second in tests), so we should see one within a few seconds.
+        time_update = await alice.wait_for_broadcast("time_update", timeout=10)
+        assert "hour" in time_update
+        assert "minute" in time_update
+        assert "day" in time_update
+        assert "season" in time_update
+        assert "weather" in time_update
+        assert isinstance(time_update["hour"], int)
+        assert 0 <= time_update["hour"] < 24
+    finally:
+        await alice.close()
