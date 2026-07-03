@@ -11,9 +11,10 @@ The architecture overview remains the design reference; this file is the working
 > tests, module decomposition, service consistency/wiring, extensibility seams/patterns).
 > Sprint 10.5 (tooling infrastructure: issues/news/world-CLI/analytics/content-linting)
 > complete. Sprint 11 (browser E2E harness — Playwright against a live server,
-> `tests/e2e/`) complete. Next: Sprint 12 (simulation harness MVP). Combat/trading/PvP
-> are gated behind the foundation exit criteria — no feature expansion until the core is
-> sound.
+> `tests/e2e/`) complete. Sprint 12 (simulation harness MVP — real WebSocket clients
+> against a live server, `tests/simulation/`) complete. Next: Sprint 13 (observability &
+> CI quality gates). Combat/trading/PvP are gated behind the foundation exit criteria —
+> no feature expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
 
@@ -231,6 +232,15 @@ Legend:
 - [x] `tests/e2e/test_gameplay_flows.py` — drives the golden path (create character → move → take item → talk to Mira → dialogue choice starts a quest) through a real browser against `/lobby`, `/game`, `/command`, verifying HTMX OOB swaps of `#room-description`, `#inventory`, `#dialogue-overlay`, `#quest-tracker`.
 - [x] Optional `e2e` dependency group (`playwright`) + `pytest.ini_options` marker so `pytest`/`make test` skip the suite by default (`-m "not e2e"`); `make test-e2e` installs the extra, installs the Chromium binary, and runs it explicitly.
 
+### Simulation Harness (Sprint 12) ✅
+
+- [x] `tests/simulation/virtual_player.py` — `VirtualPlayer` wraps a real `websockets` client connection to `/ws` (the actual wire protocol, not an ASGI-transport shortcut); `send_command()` sends one command and returns its `command_result` reply, skipping any interleaved broadcasts; `run_script()` sends a list of commands with optional random timing jitter; `wait_for_broadcast()` blocks for a pushed (non-reply) message of a given type.
+- [x] `tests/simulation/conftest.py` — `simulation_server`/`simulation_server_factory` fixtures boot the real `create_app()` app under `uvicorn.Server` on a background thread with a disposable per-test sqlite DB and the real `world_content/world.yaml` (same pattern as `tests/e2e/conftest.py`'s `live_server`); `SimulationServer` also exposes direct DB helpers (`create_player`, `player_inventory`, `audit_trail_for`) for scenario setup/assertions.
+- [x] `tests/simulation/test_multiplayer_scenarios.py` — two real concurrent connections: `player_joined` broadcasts to an already-connected player when a second player connects; concurrent `take` of a single-quantity item resolves to exactly one winner with no duplication or loss.
+- [x] `tests/simulation/test_audit_regression.py` — runs a fixed command script against two independent fresh servers and asserts the normalized audit trail (event type, summary, target, room, severity — excluding run-specific IDs/timestamps) is identical, per the "capture, diff after changes" pattern in `architecture.md` §25.
+- [x] New `simulation` pytest marker, excluded from `pytest`/`make test` by default (`-m "not simulation"`); `make test-simulation` runs it explicitly. No new install required — `websockets`/`httpx` were already transitive dependencies of `fastapi[standard]`, now declared explicitly in the `dev` extra.
+- Known gap surfaced (not fixed here, by design): the raw `/ws` command loop doesn't yet re-broadcast `room_messages` to other room occupants the way `POST /command` does. Tracked by Sprint 14 (unify the `/ws`/`/command` lifecycle).
+
 ### Phase 8 — Combat
 
 - [x] Combat models.
@@ -269,4 +279,4 @@ Legend:
 - [x] Database table bootstrap unit tests.
 - [x] Repository unit tests.
 - [x] Integration tests.
-- [ ] Simulation tests.
+- [x] Simulation tests — `tests/simulation/` (Sprint 12): real WebSocket clients (`VirtualPlayer`) against a real live server; multi-player broadcast fan-out, concurrent-access contention over shared world state, and audit-log regression diffing. Excluded from the default run (`-m "not simulation"`), invoked via `make test-simulation`.

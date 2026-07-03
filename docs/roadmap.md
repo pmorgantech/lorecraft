@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–11 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness). **Next up: Sprint 12 (simulation harness MVP).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–12 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP). **Next up: Sprint 13 (observability & CI quality gates).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–11 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness). Sprint 12 (simulation harness MVP) next.
+**Current progress:** Sprints 5–12 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP). Sprint 13 (observability & CI quality gates) next.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -183,11 +183,13 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 |---|------|--------|
 | 11.1 | Browser end-to-end test harness for HTMX UI | [x] `tests/e2e/` — Playwright-driven tests against a real live uvicorn server (background thread, disposable per-test sqlite DB, real world YAML bootstrap). Optional `e2e` extra (`pip install -e ".[e2e]"` + `playwright install chromium`); excluded from the default `pytest`/`make test` run via `-m "not e2e"`; run explicitly with `make test-e2e`. Covers character creation, movement + room/inventory panel updates, and dialogue → quest-start via the Ashmoore dev world golden path. |
 
-## Sprint 12 — Simulation harness MVP
+## Sprint 12 — Simulation harness MVP ✅
+
+**Goal:** Real-protocol, multi-player scripted scenarios per `architecture.md` §25 — a third test transport alongside ASGI-transport integration tests and the Sprint 11 browser E2E harness.
 
 | # | Task | Status |
 |---|------|--------|
-| 12.1 | Simulation harness MVP (`tests/simulation/` — currently only `.gitkeep`) | [ ] |
+| 12.1 | Simulation harness MVP (`tests/simulation/`) | [x] `virtual_player.py` — `VirtualPlayer` wraps a real `websockets` client against `/ws` (not an ASGI shortcut); `send_command()`/`run_script()` with optional timing jitter, `wait_for_broadcast()` for pushed (non-reply) messages. `conftest.py` — `simulation_server`/`simulation_server_factory` fixtures boot the real app under `uvicorn` on a background thread against a disposable per-test sqlite DB and the real `world_content/world.yaml` (same pattern as Sprint 11's `live_server`, no synthetic world content). `test_multiplayer_scenarios.py` — two real connections: `player_joined` broadcast fan-out on connect, and concurrent `take` of a single-quantity item (no duplication/loss). `test_audit_regression.py` — runs a fixed script against two independent fresh servers and diffs the normalized audit trail, per the "capture, diff after changes" pattern in `architecture.md` §25. New `simulation` pytest marker, excluded from `make test`/plain `pytest` like `e2e` (`make test-simulation`); no new install required (`websockets`/`httpx` were already transitive via `fastapi[standard]`, now declared explicitly in the `dev` extra). Noted but intentionally not fixed here: the raw `/ws` command loop doesn't yet re-broadcast `room_messages` to other occupants the way `POST /command` does — tracked by Sprint 14 (unify command lifecycle). |
 
 ## Sprint 13 — Observability & CI quality gates
 
@@ -298,7 +300,7 @@ All must be true before combat/trading work starts:
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | ~~Bug/todo letterbox~~ | Implemented in Sprint 10.5 as issues tracking system |
 | Inventory encumbrance / wear slots | After equipment + combat |
-| Playback scripts / many-player harness | Tied to simulation harness (Sprint 12.1) |
+| `lorecraft.tools.simulation` CLI (JSON scenario files, N-bot load runs, latency/throughput reports) | Enhancement on top of the Sprint 12.1 pytest-based harness; see `tooling_infrastructure.md` §5 |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
 | Player-facing bug reports | In-game `/report-bug` command (after core issues system stable) |
@@ -336,4 +338,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 11 complete (browser E2E harness: Playwright against a live server, `tests/e2e/`). Next: Sprint 12 (simulation harness MVP).*
+*Last updated: 2026-07-02 — Sprint 12 complete (simulation harness MVP: real WebSocket clients against a live server, `tests/simulation/`). Next: Sprint 13 (observability & CI quality gates).*

@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["basedpyright", "pytest", "ruff"]
+dev = ["basedpyright", "pytest", "ruff", "httpx", "websockets"]
 admin-tui = ["textual>=0.80.0"]
 e2e = ["playwright>=1.47.0"]
 
@@ -32,8 +32,12 @@ venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
-addopts = "-q -m \"not e2e\""
+# "." (repo root) makes `tests.simulation.conftest` importable from
+# tests/simulation/test_*.py regardless of invocation style (bare `pytest`
+# doesn't otherwise add the rootdir to sys.path the way `python -m pytest` does).
+pythonpath = ["src", "."]
+addopts = "-q -m \"not e2e and not simulation\""
 markers = [
   "e2e: browser end-to-end tests against a live server (require `pip install -e .[e2e]` + `playwright install chromium`); run with `make test-e2e`",
+  "simulation: multi-player simulation harness tests against a live server with real WebSocket clients; run with `make test-simulation`",
 ]
