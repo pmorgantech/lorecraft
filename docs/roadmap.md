@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–14 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle). **Next up: Sprint 15 (core UX completion).** Combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow only after the foundation gate.
+**Current:** Sprints 5–15 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. Sprints 16–17 (full-screen map, mobile layout) are next; combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow.
 
 ---
 
@@ -92,7 +92,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type groundwork first, then **characterization tests before the big refactors**, then structure, then tooling.
 
-**Current progress:** Sprints 5–14 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle). Sprint 15 (core UX completion) next.
+**Current progress:** Sprints 5–15 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). Foundation band done — see exit criteria below.
 
 ## Sprint 5 — Error handling & exception hierarchy ✅
 
@@ -209,14 +209,14 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 |---|------|--------|
 | 14.1 | Extract shared lifecycle; both entry points call it; add rollback-on-error semantics | [x] **Rollback-on-error** — `CommandEngine._execute_parsed` (`game/engine.py`) now catches exceptions from the command handler instead of letting them propagate uncaught. On a crash: `GameContext.rollback_state_changes()` (new `rollback_state` callable, wired at both entry points to the DB session's `.rollback`) undoes any half-applied state; `ctx.messages`/`room_messages`/`updates`/`pending_events` are cleared so no partial narration leaks out (architecture.md §26's golden rule: never tell clients something happened until the DB says it happened); a generic error message replaces it; a new `GameEvent.COMMAND_FAILED` audit event (severity ERROR) records the crash. **Broadcast unification** — new `game/broadcast.py`'s `broadcast_command_effects()` is the one place step 12 (room broadcast) now lives; both `main.py`'s `/ws` command loop (now `async`) and `web/frontend.py`'s `POST /command` call it after `CommandEngine.handle_command()` returns, closing the gap Sprint 12's simulation tests surfaced (the raw `/ws` path never re-broadcast `ctx.room_messages`/`state_change` to other room occupants the way `POST /command` did). Verified with a new simulation test exercising the previously-broken path over a real socket, plus the full existing suite (unit/integration/e2e/simulation) unchanged. **Construction unification (follow-up)** — `game/context.py`'s `build_game_context()` factory (added Sprint 6.3, meant to be "the" `GameContext` construction path) turned out to be unused by both real entry points. Extended it to accept `audit_session` (a separate `Session`, matching real usage — replacing the old same-session `create_audit_repo` bool) and `rollback_state`, and to pass `clock` straight through rather than synthesizing a fallback `WorldClock` (a fabricated clock would be silently wrong data, not a safe default). `main.py` and `web/frontend.py` now both call it instead of constructing `GameContext` inline. |
 
-## Sprint 15 — Core UX completion
+## Sprint 15 — Core UX completion ✅
 
 **Goal:** Finish the partially-shipped core UX so nothing is left half-done.
 
 | # | Task | Status |
 |---|------|--------|
 | 15.1 | World clock / weather status bar push via WS | [x] `ConnectionManager.broadcast_global()` + a `TIME_ADVANCED` handler in `main.py` push `time_update` (hour/minute/day/season/weather) to every connected player, not just on connect/reconnect SSR. |
-| 15.2 | Multi-player live lists finished (`[~]` STATUS item) | [ ] |
+| 15.2 | Multi-player live lists finished (`[~]` STATUS item) | [x] `game/broadcast.py`'s `broadcast_command_effects()` now sends a second `state_change` (`players-online` panel) to the room a player *left*, not just the room they entered — previously occupants of the old room only saw the departure narration text, not a live players-list refresh. |
 
 ---
 
@@ -231,7 +231,7 @@ All must be true before combat/trading work starts:
 - [x] One service wiring convention; no inline `bus.on()` in `main.py` (Sprint 9.2)
 - [x] Web + admin layers have integration coverage; CI enforces coverage, types, and lint (Sprint 7 + Sprint 13.3)
 - [x] Feature-registration pattern documented and demonstrated (10.4)
-- [ ] All `[~]` STATUS partials either finished or explicitly retired — Sprint 14 closed the `/ws`/`/command` broadcast-lifecycle gap; remaining: Sprint 15 (world clock/weather WS push, multi-player live lists)
+- [x] All `[~]` STATUS partials either finished or explicitly retired — Sprint 14 closed the `/ws`/`/command` broadcast-lifecycle gap; Sprint 15 closed world clock/weather WS push (15.1) and the multi-player live-lists refresh gap on room-leave (15.2)
 
 ---
 

@@ -36,8 +36,10 @@ async def broadcast_command_effects(
     `pre_room_id` is the actor's room before the command ran. If the command
     moved them, `ctx.room_messages` narration (e.g. "X leaves north.") goes
     to the room they left, since that's where it's narratively visible; the
-    `state_change` nudge always goes to the room they're in now, since that's
-    what other clients need to know to refresh.
+    `state_change` nudge goes to the room they're in now (so clients there
+    refresh room/inventory/players panels), and — if the room changed — a
+    second `state_change` goes to the room they left too, so remaining
+    occupants there also refresh their `players-online` panel.
     """
     actor_id = ctx.player.id
     after_room_id = ctx.player.current_room_id
@@ -73,3 +75,16 @@ async def broadcast_command_effects(
             )
         except Exception as exc:
             log.debug("state_change_broadcast_failed: %s", exc)
+
+    if room_changed and pre_room_id:
+        try:
+            await manager.broadcast_to_room(
+                pre_room_id,
+                {
+                    "type": "state_change",
+                    "affected_panels": _AFFECTED_PANELS,
+                    "actor_id": actor_id,
+                },
+            )
+        except Exception as exc:
+            log.debug("state_change_broadcast_left_room_failed: %s", exc)

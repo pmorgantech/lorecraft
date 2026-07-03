@@ -72,14 +72,18 @@ async def _test_command_room_broadcast(server: SimulationServer) -> None:
     bob = await _connect(server, "bob")
     try:
         # Moving rooms: the departure narration ("X leaves east.") broadcasts
-        # to the room left (where bob still is). There's no "arrives"
-        # narration, and the state_change nudge goes to the destination room
-        # instead — neither reaches bob for this particular command.
+        # to the room left (where bob still is), and — since Sprint 15.2 — a
+        # state_change nudge also reaches bob there so his players-online
+        # panel refreshes once alice is gone.
         await alice.send_command("go east")
 
         feed = await bob.wait_for_broadcast("feed_append", timeout=5)
         assert feed["message_type"] == "room_event"
         assert "leaves" in str(feed["content"]).lower()
+
+        state_change_left = await bob.wait_for_broadcast("state_change", timeout=5)
+        assert state_change_left["actor_id"] == alice.player_id
+        assert "players-online" in state_change_left["affected_panels"]
 
         # Moving back into bob's room: now the state_change nudge (always
         # sent to the destination room) reaches him.

@@ -5,20 +5,17 @@ The architecture overview remains the design reference; this file is the working
 
 **See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–23).**
 
-> **Current focus (2026-07-02):** Foundation-first. The `CODE_AUDIT.md` findings drive
+> **Current focus (2026-07-02):** Foundation-first. The `CODE_AUDIT.md` findings drove
 > Sprints 5–15 (errors, types, tests, decomposition, service consistency, extensibility
-> seams, tooling). Sprints 5–10 complete (error handling, type safety, characterization
-> tests, module decomposition, service consistency/wiring, extensibility seams/patterns).
-> Sprint 10.5 (tooling infrastructure: issues/news/world-CLI/analytics/content-linting)
-> complete. Sprint 11 (browser E2E harness — Playwright against a live server,
-> `tests/e2e/`) complete. Sprint 12 (simulation harness MVP — real WebSocket clients
-> against a live server, `tests/simulation/`) complete. Sprint 13 (observability & CI
-> quality gates — structured logging, command/event timing instrumentation,
-> `.github/workflows/ci.yml`) complete. Sprint 14 (unify command lifecycle —
-> rollback-on-error in `CommandEngine`, shared `/ws`/`POST /command` room-broadcast
-> step) complete. Next: Sprint 15 (core UX completion). Combat/trading/PvP are gated
-> behind the foundation exit criteria — no feature
-> expansion until the core is sound.
+> seams, tooling, UX completion) — all now complete: error handling, type safety,
+> characterization tests, module decomposition, service consistency/wiring,
+> extensibility seams/patterns, tooling infrastructure (issues/news/world-CLI/
+> analytics/content-linting), browser E2E harness (`tests/e2e/`), simulation harness
+> MVP (`tests/simulation/`), observability & CI quality gates, unified command
+> lifecycle (rollback-on-error, shared `/ws`/`POST /command` room-broadcast step), and
+> core UX completion (world clock/weather WS push to all players, multi-player live
+> lists refresh on room-leave). **Foundation gate is green.** Next: Sprints 16–17 (UI
+> polish), then combat/trading/PvP (Sprints 18–23).
 
 ## Phase-to-Sprint Mapping
 
@@ -28,7 +25,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [ ] |
-| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [~] Sprints 5–10.5 complete; 11–15 queued |
+| Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
 | Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
 | Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
 
@@ -67,7 +64,7 @@ Legend:
 - [x] Command flow with immediate HTML response + OOB + WS push for other players.
 - [x] Audit log used as source for narrative feed.
 - [x] HTMX `POST /command` executes via `CommandEngine` (movement, inventory, dialogue, quest OOB updates).
-- [~] Multi-player live lists use `ConnectionManager.is_connected()` and `players_in_room()` when WS connected; world clock SSR + WS `time_update` handler added; server now pushes `time_update` to all connected players on every `TIME_ADVANCED` tick (Sprint 15.1), not just on connect/reconnect.
+- [x] Multi-player live lists use `ConnectionManager.is_connected()` and `players_in_room()` when WS connected; world clock SSR + WS `time_update` handler pushes to all connected players on every `TIME_ADVANCED` tick (Sprint 15.1); `broadcast_command_effects()` now also sends a `players-online` `state_change` to the room a player left, not just the room entered (Sprint 15.2), so occupants of the old room see the departure reflected in the live list.
 - [x] `game/events.py` contains `GameEvent` and synchronous `EventBus`.
 - [x] `main.py` FastAPI app.
 - [x] `/ws` WebSocket endpoint.
