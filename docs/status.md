@@ -14,8 +14,10 @@ The architecture overview remains the design reference; this file is the working
 > `tests/e2e/`) complete. Sprint 12 (simulation harness MVP — real WebSocket clients
 > against a live server, `tests/simulation/`) complete. Sprint 13 (observability & CI
 > quality gates — structured logging, command/event timing instrumentation,
-> `.github/workflows/ci.yml`) complete. Next: Sprint 14 (unify command lifecycle).
-> Combat/trading/PvP are gated behind the foundation exit criteria — no feature
+> `.github/workflows/ci.yml`) complete. Sprint 14 (unify command lifecycle —
+> rollback-on-error in `CommandEngine`, shared `/ws`/`POST /command` room-broadcast
+> step) complete. Next: Sprint 15 (core UX completion). Combat/trading/PvP are gated
+> behind the foundation exit criteria — no feature
 > expansion until the core is sound.
 
 ## Phase-to-Sprint Mapping
@@ -91,7 +93,7 @@ Legend:
 - [~] `game/registry.py` evaluates a first pass of command conditions.
 - [x] `game/rules.py` contains `RuleEngine` with ordered rule checks.
 - [x] `game/engine.py` contains command dispatch with state commit, audit, and event-flush lifecycle steps.
-- [~] Full 13-step transaction/event/audit lifecycle in `handle_command()`.
+- [x] Full 13-step transaction/event/audit lifecycle in `handle_command()`, shared by both `/ws` and `POST /command` (Sprint 14: `game/broadcast.py`'s `broadcast_command_effects()` for step 12; rollback-on-error in `CommandEngine._execute_parsed` for handler crashes). `GameContext` *construction* itself is still duplicated inline at each entry point rather than going through the `build_game_context()` factory — see roadmap backlog.
 - [x] Blocked command audit events.
 - [x] `commands/meta.py` with `help` (context-aware: dialogue/combat/`disabled_commands`) and `quit`.
 - [x] `commands/movement.py` with `go`, cardinal directions, `unlock`/`lock` (persist `Exit.locked`).
@@ -238,10 +240,10 @@ Legend:
 
 - [x] `tests/simulation/virtual_player.py` — `VirtualPlayer` wraps a real `websockets` client connection to `/ws` (the actual wire protocol, not an ASGI-transport shortcut); `send_command()` sends one command and returns its `command_result` reply, skipping any interleaved broadcasts; `run_script()` sends a list of commands with optional random timing jitter; `wait_for_broadcast()` blocks for a pushed (non-reply) message of a given type.
 - [x] `tests/simulation/conftest.py` — `simulation_server`/`simulation_server_factory` fixtures boot the real `create_app()` app under `uvicorn.Server` on a background thread with a disposable per-test sqlite DB and the real `world_content/world.yaml` (same pattern as `tests/e2e/conftest.py`'s `live_server`); `SimulationServer` also exposes direct DB helpers (`create_player`, `player_inventory`, `audit_trail_for`) for scenario setup/assertions.
-- [x] `tests/simulation/test_multiplayer_scenarios.py` — two real concurrent connections: `player_joined` broadcasts to an already-connected player when a second player connects; concurrent `take` of a single-quantity item resolves to exactly one winner with no duplication or loss.
+- [x] `tests/simulation/test_multiplayer_scenarios.py` — two real concurrent connections: `player_joined` broadcasts to an already-connected player when a second player connects; concurrent `take` of a single-quantity item resolves to exactly one winner with no duplication or loss; a moving player's departure narration and a `state_change` nudge reach other room occupants over the raw `/ws` protocol (Sprint 14 fix, see below).
 - [x] `tests/simulation/test_audit_regression.py` — runs a fixed command script against two independent fresh servers and asserts the normalized audit trail (event type, summary, target, room, severity — excluding run-specific IDs/timestamps) is identical, per the "capture, diff after changes" pattern in `architecture.md` §25.
 - [x] New `simulation` pytest marker, excluded from `pytest`/`make test` by default (`-m "not simulation"`); `make test-simulation` runs it explicitly. No new install required — `websockets`/`httpx` were already transitive dependencies of `fastapi[standard]`, now declared explicitly in the `dev` extra.
-- Known gap surfaced (not fixed here, by design): the raw `/ws` command loop doesn't yet re-broadcast `room_messages` to other room occupants the way `POST /command` does. Tracked by Sprint 14 (unify the `/ws`/`/command` lifecycle).
+- Known gap surfaced by this sprint's tests (fixed in Sprint 14, see below): the raw `/ws` command loop didn't re-broadcast `room_messages` to other room occupants the way `POST /command` does.
 
 ### Observability & CI Quality Gates (Sprint 13) ✅
 
@@ -251,6 +253,13 @@ Legend:
 - [x] `analytics.command_latency_percentiles()` — p50/p95/p99 command latency (ms) computed from `duration_ms` on `COMMAND_EXECUTED` audit events; exposed via `GET /admin/analytics/latency`.
 - [x] `.github/workflows/ci.yml` — three required jobs on push/PR to `main`: `quality` (`make lint` → `ruff check` + `ruff format --check`; `make typecheck` → `basedpyright`; `make test-cov` → default suite + coverage gate), `simulation` (`make test-simulation`), `e2e` (Playwright install + `pytest tests/e2e -m e2e`). New `pytest-cov` dev dependency; `[tool.coverage.report] fail_under = 80` in `pyproject.toml` (baseline ~82%).
 - [x] Fixed a latent bug surfaced while dry-running the CI commands locally: `tests/simulation/*.py` imports `tests.simulation.conftest`, which only resolved under `python -m pytest` (prepends the repo root to `sys.path`) — bare `pytest` (what `make test-simulation` and CI actually invoke) failed with `ModuleNotFoundError`. Fixed by adding `"."` to `pythonpath` in `[tool.pytest.ini_options]`.
+
+### Unify Command Lifecycle (Sprint 14) ✅
+
+- [x] Rollback-on-error — `CommandEngine._execute_parsed` (`game/engine.py`) catches exceptions from the command handler call instead of letting them propagate uncaught. On a crash: `GameContext.rollback_state_changes()` (new `rollback_state` callable, wired at both entry points to the DB session's `.rollback`) undoes any half-applied game-DB state; `ctx.messages`/`room_messages`/`updates`/`pending_events` are cleared (architecture.md §26's golden rule: never tell clients something happened until the database says it happened); a generic error message replaces them; a new `GameEvent.COMMAND_FAILED` audit event (severity `ERROR`) records the crash on the (separate, still-committing) audit DB.
+- [x] Broadcast unification — new `game/broadcast.py`'s `broadcast_command_effects()` is the one place step 12 of the lifecycle (room broadcast) now lives. Both `main.py`'s `/ws` command loop (now `async`, awaited at its one call site) and `web/frontend.py`'s `POST /command` call it after `CommandEngine.handle_command()` returns, closing the gap Sprint 12's simulation tests surfaced: the raw `/ws` path previously never re-broadcast a command's `ctx.room_messages` narration or a `state_change` nudge to other WS-connected room occupants. `web/frontend.py`'s previous inline copy of this logic was deleted outright in favor of the shared function.
+- [x] Verified with a new simulation test (`test_command_room_messages_broadcast_to_other_ws_players`) exercising the previously-broken `/ws` broadcast path over a real socket, plus the full existing unit/integration/e2e/simulation suite (behavior preserved exactly for `POST /command`).
+- Discovered, not fixed here: `game/context.py`'s `build_game_context()` factory (Sprint 6.3, meant to be "the" `GameContext` construction path) is unused by both real entry points — see roadmap backlog.
 
 ### Phase 8 — Combat
 
