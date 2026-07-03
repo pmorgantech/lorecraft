@@ -109,9 +109,17 @@ def create_tables(
     game_engine = game_engine or create_game_engine(settings)
     audit_engine = audit_engine or create_audit_engine(settings)
 
-    _create_model_tables(game_engine, GAME_TABLE_MODELS)
-    _create_model_tables(audit_engine, AUDIT_TABLE_MODELS)
-    _ensure_sqlite_compat_columns(game_engine)
+    create_game_tables(game_engine)
+    create_audit_tables(audit_engine)
+
+
+def create_game_tables(engine: Engine) -> None:
+    _create_model_tables(engine, GAME_TABLE_MODELS)
+    _ensure_sqlite_compat_columns(engine)
+
+
+def create_audit_tables(engine: Engine) -> None:
+    _create_model_tables(engine, AUDIT_TABLE_MODELS)
 
 
 def _create_model_tables(engine: Engine, models: Sequence[type[SQLModel]]) -> None:

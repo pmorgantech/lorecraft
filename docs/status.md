@@ -49,6 +49,8 @@ Legend:
 - [x] `config.py` contains environment-driven settings (including `LORECRAFT_WORLD_YAML_PATH` and dev player seed vars).
 - [x] `models/` SQLModel table definitions.
 - [x] `create_tables()` startup database initialization.
+- [x] `start.sh --init-dbs-if-missing` initializes missing dev seed game/audit DBs
+  from `world_content/` (or `--world-dir`) and audit schema helpers.
 - [x] `repos/` data access wrappers.
 - [x] `game/context.py` contains `GameContext`.
 - [x] `game/transaction.py` contains `TransactionContext`.

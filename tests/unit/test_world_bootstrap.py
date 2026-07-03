@@ -19,6 +19,12 @@ def test_resolve_world_yaml_path_finds_repo_world() -> None:
     assert path.name == "world.yaml"
 
 
+def test_resolve_world_yaml_path_accepts_repo_world_directory() -> None:
+    path = resolve_world_yaml_path("world_content")
+    assert path.is_file()
+    assert path.name == "world.yaml"
+
+
 def test_ensure_world_bootstrapped_imports_yaml_and_seeds_player() -> None:
     engine = create_engine(
         "sqlite://",

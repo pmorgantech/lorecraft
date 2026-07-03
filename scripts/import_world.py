@@ -5,7 +5,7 @@ Usage:
     python scripts/import_world.py [--world PATH] [--db PATH] [--fresh]
 
 Options:
-    --world PATH    Path to the world YAML file (default: world_content/world.yaml)
+    --world PATH    Path to the world YAML file or directory (default: world_content)
     --db    PATH    Path to the SQLite database  (default: game.db)
     --fresh         Wipe existing rooms/exits/items/room_items before import.
                     Without this flag the script will abort if any rooms exist,
@@ -37,6 +37,13 @@ from lorecraft.config import Settings, load_settings  # noqa: E402
 from lorecraft.world.bootstrap import ensure_seed_player  # noqa: E402
 
 
+def _resolve_world_path(path: str) -> Path:
+    candidate = Path(path)
+    if candidate.is_dir():
+        return candidate / "world.yaml"
+    return candidate
+
+
 def _wipe_world(session: Session) -> None:
     """Delete world content (rooms, items, NPCs, dialogue, quests)."""
     for progress in session.exec(select(PlayerQuestProgress)).all():
@@ -65,7 +72,9 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
-        "--world", default="world_content/world.yaml", help="Path to world YAML"
+        "--world",
+        default="world_content",
+        help="Path to world YAML file or directory",
     )
     parser.add_argument(
         "--db", default=None, help="Path to SQLite game DB (overrides settings)"
@@ -75,7 +84,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    world_path = Path(args.world)
+    world_path = _resolve_world_path(args.world)
     if not world_path.exists():
         sys.exit(f"Error: world file not found: {world_path}")
 

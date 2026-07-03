@@ -21,9 +21,13 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 def resolve_world_yaml_path(path: str) -> Path:
     """Resolve a world YAML path relative to the repo root when not absolute."""
     candidate = Path(path)
+    if candidate.is_dir():
+        return candidate / "world.yaml"
     if candidate.is_file():
         return candidate
     repo_relative = _REPO_ROOT / path
+    if repo_relative.is_dir():
+        return repo_relative / "world.yaml"
     if repo_relative.is_file():
         return repo_relative
     return candidate

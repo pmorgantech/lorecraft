@@ -1,7 +1,12 @@
 from sqlalchemy import inspect
 from sqlmodel import create_engine
 
-from lorecraft.db import AUDIT_TABLE_MODELS, GAME_TABLE_MODELS, create_tables
+from lorecraft.db import (
+    AUDIT_TABLE_MODELS,
+    GAME_TABLE_MODELS,
+    create_audit_tables,
+    create_tables,
+)
 
 
 def test_create_tables_separates_game_and_audit_tables() -> None:
@@ -16,3 +21,13 @@ def test_create_tables_separates_game_and_audit_tables() -> None:
     assert game_tables == {model.__tablename__ for model in GAME_TABLE_MODELS}
     assert audit_tables == {model.__tablename__ for model in AUDIT_TABLE_MODELS}
     assert "auditevent" not in game_tables
+
+
+def test_create_audit_tables_initializes_only_audit_schema() -> None:
+    audit_engine = create_engine("sqlite://")
+
+    create_audit_tables(audit_engine)
+
+    audit_tables = set(inspect(audit_engine).get_table_names())
+    assert audit_tables == {model.__tablename__ for model in AUDIT_TABLE_MODELS}
+    assert not ({model.__tablename__ for model in GAME_TABLE_MODELS} & audit_tables)

@@ -10,6 +10,12 @@ All notable changes to Lorecraft will be documented in this file.
 
 ### Added
 
+- Launcher DB initialization: `./start.sh --init-dbs-if-missing` creates missing seed
+  game/audit DBs before launch; `--init-dbs-only` performs setup and exits. Game DB
+  import reads `world.yaml` from `--world-dir`/`--world`, defaulting to
+  `world_content/`. Added `scripts/create_audit_db.py` for standalone audit schema
+  creation.
+
 - **Sprint 11: Browser E2E Harness** — `tests/e2e/` drives the HTMX/Alpine UI through a real headless-Chromium browser against a real, live `uvicorn` server, catching regressions (HTMX swaps, OOB panel updates) that the ASGI-transport integration tests can't see. `conftest.py`'s `live_server` fixture boots `create_app()` on a background thread with a disposable per-test sqlite DB and the real `world_content/world.yaml`; `test_gameplay_flows.py` covers character creation, movement with room/inventory panel updates, and dialogue → quest-start, exercising the same Ashmoore golden path documented in `docs/roadmap.md`. New optional `e2e` dependency group (`playwright`) and a `pytest` marker keep the suite out of the default `pytest`/`make test` run (`-m "not e2e"`); `make test-e2e` installs the extra + Chromium binary and runs it explicitly.
 
 - **Sprint 10.5: Tooling Infrastructure** — `docs/tooling_infrastructure.md` design, implemented across five sub-sprints:
