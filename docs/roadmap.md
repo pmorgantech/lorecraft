@@ -25,7 +25,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** Sprints 5–15 complete (error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. Sprints 16–17 (full-screen map, mobile layout) are next; combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow.
+**Current:** Sprints 4–15 complete (player authentication, error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. Sprints 16–17 (full-screen map, mobile layout) are next; combat (Sprints 18–20) and trading/PvP (Sprints 21–23) follow.
 
 ---
 
@@ -69,7 +69,7 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 ---
 
-## Sprint 4 — Player authentication (production hardening)
+## Sprint 4 — Player authentication (production hardening) ✅
 
 **Goal:** Phase 7 per `architecture.md` §21 — full account system with password auth, JWT tokens, and signed WebSocket handshake. Foundation for all production deployments.
 
@@ -77,14 +77,16 @@ Sprints 1–3 closed out HTMX parity, command-depth gaps, and the scheduler foun
 
 | # | Task | Status |
 |---|------|--------|
-| 4.1 | `POST /auth/login` — account creation on first login, password hashing (bcrypt/argon2) | [ ] |
-| 4.2 | JWT access tokens (15min lifetime) + refresh token rotation (8hr lifetime) | [ ] |
-| 4.3 | `POST /auth/ws-ticket` — single-use, 60-second WebSocket ticket exchange | [ ] |
-| 4.4 | WebSocket handshake: validate ticket, map to player_id, attach to ConnectionManager | [ ] |
-| 4.5 | `/auth/refresh` endpoint for refresh token rotation | [ ] |
-| 4.6 | Retire legacy `?player_id=` query param fallback (was gated by `LORECRAFT_ALLOW_QUERY_PLAYER_ID`) | [ ] |
-| 4.7 | OAuth extensibility hooks (Google OIDC callback stubs for future LAN-party deployments) | [ ] |
-| 4.8 | Integration tests: login, token refresh, WS ticket validation, expired token rejection | [ ] |
+| 4.1 | `POST /auth/login` — account creation on first login, password hashing (bcrypt/argon2) | [x] Uses the existing PBKDF2-HMAC-SHA256 primitives in `admin/auth.py` (`hash_password`/`verify_password`) rather than adding bcrypt/argon2 as a new dependency — same security properties, one hashing convention for the whole codebase. New `PlayerAuth` table (provider-agnostic: `provider`/`provider_subject`, ready for OAuth later). `login_or_register()` in `web/auth.py` also *claims* pre-existing passwordless players (e.g. dev-seeded `player-1`) on first authenticated login rather than erroring. |
+| 4.2 | JWT access tokens (15min lifetime) + refresh token rotation (8hr lifetime) | [x] Reuses `admin/auth.py`'s `create_token`/`decode_token`, signed with `Settings.player_session_secret` (distinct token `type` from the browser's `lorecraft_session` cookie — can never be replayed as each other). Fixed a latent bug found along the way: tokens only had second-precision `iat`, so two issued in the same second were byte-identical (rotation was a no-op if called twice quickly) — added a `jti` claim, fixing both the new player refresh endpoint and the pre-existing admin one. |
+| 4.3 | `POST /auth/ws-ticket` — single-use, 60-second WebSocket ticket exchange | [x] Accepts either `Authorization: Bearer <access_token>` (API clients) or the signed `lorecraft_session` cookie (the browser, which can't easily attach custom headers to a same-origin fetch but sends cookies automatically). Ticket storage is an in-memory dict on `AppState` (`ws_tickets`), matching the existing `pending_disambig` pattern — fine for this engine's single-process deployment target. |
+| 4.4 | WebSocket handshake: validate ticket, map to player_id, attach to ConnectionManager | [x] `main.py`'s `_resolve_ws_player_id()`: a `?ticket=` param is authoritative — invalid/expired/reused rejects the connection outright (1008) rather than silently falling back to `?player_id=`, which would defeat the point of tickets. |
+| 4.5 | `/auth/refresh` endpoint for refresh token rotation | [x] Also verifies the player still exists (guards against refreshing into a deleted account), mirroring `admin/auth.py`'s `/admin/auth/refresh`. |
+| 4.6 | Retire legacy `?player_id=` query param fallback (was gated by `LORECRAFT_ALLOW_QUERY_PLAYER_ID`) | [x] `Settings.allow_query_player_id` now defaults to `False`. Not deleted outright — kept as an explicit opt-in for test fixtures that intentionally exercise the wire protocol directly (`tests/simulation/`'s `VirtualPlayer`, several state-resolution integration tests), since removing it would break the Sprint 11/12 harnesses for no real security benefit (trusted local test processes, not real clients). Surfaced and fixed a chicken-and-egg bug: `GET /lobby` depended on `get_current_player`, which now 401s with no session — meaning a brand-new visitor couldn't reach the page that lets them log in. New `get_current_player_optional()` fixes this for `/lobby` only; every other route correctly keeps requiring a session. |
+| 4.7 | OAuth extensibility hooks (Google OIDC callback stubs for future LAN-party deployments) | [x] `POST /auth/oauth/{provider}/callback` stub — `PlayerAuth.provider`/`provider_subject` already generalize to non-local providers with no schema change needed. Returns 501 rather than pretending to implement OAuth (needs a registered client id/secret/redirect URI this engine doesn't have configured); not wired into any client. |
+| 4.8 | Integration tests: login, token refresh, WS ticket validation, expired token rejection | [x] `tests/integration/test_player_authentication.py` (15 tests) + `tests/unit/test_player_login.py` (9 tests) + updated `tests/integration/test_player_session.py` for the new password-protected lobby. Covers account creation/verification/wrong-password, refresh rotation + expired/garbage/wrong-type rejection, ws-ticket issuance (bearer + cookie) + single-use + TTL expiry + expired-access-token rejection, and the OAuth stub. Full suite (unit/integration/e2e/simulation) green throughout — the e2e run caught the `/lobby` chicken-and-egg bug above before it could ship. |
+
+**Also done, beyond the numbered checklist:** the browser lobby (`/lobby/enter`, `/lobby/create`) is now password-protected — previously `/lobby`'s "Join a World" tab was a one-click player picker with *zero* authentication (anyone could enter as any existing character), which the numbered tasks above don't explicitly cover but would have left the real player-facing surface unprotected even with the API-level auth in place. `login_or_register()` gained `allow_create: bool` so `/lobby/enter` ("Log In") 404s on a genuinely unknown username instead of silently creating one, while `/lobby/create` keeps create-or-claim semantics. `app.js`'s `connectWebSocket()` now fetches a ws-ticket before connecting instead of using a raw `?player_id=`.
 
 ---
 
@@ -338,4 +340,4 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-02 — Sprint 14 complete (rollback-on-error semantics in `CommandEngine`; unified `/ws`/`POST /command` room-broadcast step via `game/broadcast.py`). Next: Sprint 15 (core UX completion).*
+*Last updated: 2026-07-03 — Sprint 4 complete (player authentication: password login, JWT access/refresh, single-use WS tickets, retired the `?player_id=` trust default, OAuth extensibility stub). Sprints 4–15 all complete; foundation gate green. Next: Sprint 16 (full-screen map).*

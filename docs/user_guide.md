@@ -24,13 +24,13 @@ Open the server's URL in a browser (e.g. `http://localhost:8000`) — it redirec
 `/lobby`.
 
 - **Create New Character** tab — pick a name (3–30 characters: letters, numbers, `-` or
-  `_`). This creates your character and drops you straight into the game.
-- **Join a World** tab — if characters already exist on the server, pick one from the
-  list and click **Enter**.
+  `_`) and a password. This creates your character and drops you straight into the game.
+- **Log In** tab — enter the name and password of a character that already exists on the
+  server.
 
-There's no password on `/lobby/enter` yet — anyone who knows a character name can enter
-as them. Don't use this for anything you care about keeping private; see the Admin/Builder
-guide's security notes if you're running a public server.
+Both tabs are password-protected: only someone who knows a character's password can enter
+as them. Logging in with the same name and password again later returns you to the same
+character; a wrong password is rejected.
 
 Your session is a signed cookie, so refreshing the page or closing the tab and coming
 back keeps you logged in as the same character.

@@ -329,6 +329,38 @@ async def _test_refresh_rejects_garbage_token() -> None:
     assert status == 401
 
 
+def test_refresh_rejects_expired_refresh_token() -> None:
+    anyio.run(_test_refresh_rejects_expired_refresh_token)
+
+
+async def _test_refresh_rejects_expired_refresh_token() -> None:
+    from lorecraft.web.auth import issue_refresh_token
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "expired_refresh", "password": "hunter2"},
+        )
+        expired_token = issue_refresh_token(
+            login_data["player_id"],
+            _SETTINGS.player_session_secret,
+            ttl_seconds=-1,
+        )
+        status, _ = await _http(
+            app,
+            "POST",
+            "/auth/refresh",
+            body={"refresh_token": expired_token},
+        )
+    assert status == 401
+
+
 # ---------------------------------------------------------------------------
 # POST /auth/ws-ticket + /ws?ticket= handshake
 # ---------------------------------------------------------------------------
@@ -422,6 +454,33 @@ async def _test_ws_ticket_is_single_use() -> None:
     assert close_messages[0]["code"] == 1008
 
 
+def test_ws_ticket_request_rejects_expired_access_token() -> None:
+    anyio.run(_test_ws_ticket_request_rejects_expired_access_token)
+
+
+async def _test_ws_ticket_request_rejects_expired_access_token() -> None:
+    from lorecraft.web.auth import issue_access_token
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "expired_access", "password": "hunter2"},
+        )
+        expired_token = issue_access_token(
+            login_data["player_id"],
+            _NO_LEGACY_SETTINGS.player_session_secret,
+            ttl_seconds=-1,
+        )
+        status, _ = await _http(app, "POST", "/auth/ws-ticket", token=expired_token)
+    assert status == 401
+
+
 def test_ws_rejects_missing_ticket_when_legacy_fallback_disabled() -> None:
     anyio.run(_test_ws_rejects_missing_ticket_when_legacy_fallback_disabled)
 
@@ -440,6 +499,32 @@ async def _test_ws_rejects_missing_ticket_when_legacy_fallback_disabled() -> Non
     close_messages = [m for m in messages if m["type"] == "websocket.close"]
     assert len(close_messages) == 1
     assert close_messages[0]["code"] == 1008
+
+
+def test_ws_ticket_expires_after_ttl() -> None:
+    anyio.run(_test_ws_ticket_expires_after_ttl)
+
+
+async def _test_ws_ticket_expires_after_ttl() -> None:
+    """A ticket past its TTL is rejected even if never explicitly consumed —
+    covers the expiry branch in consume_ws_ticket() distinct from the
+    single-use (already-consumed) case tested above."""
+    from lorecraft.state import AppState
+    from lorecraft.web.auth import consume_ws_ticket, issue_ws_ticket
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        state = app.state.lorecraft
+        assert isinstance(state, AppState)
+        ticket = issue_ws_ticket(state, "some-player-id")
+        # Force it into the past rather than sleeping past a real TTL.
+        player_id, _ = state.ws_tickets[ticket]
+        state.ws_tickets[ticket] = (player_id, 0.0)
+
+        assert consume_ws_ticket(state, ticket) is None
 
 
 def test_ws_ticket_via_session_cookie() -> None:

@@ -5,9 +5,12 @@ The architecture overview remains the design reference; this file is the working
 
 **See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–23).**
 
-> **Current focus (2026-07-02):** Foundation-first. The `CODE_AUDIT.md` findings drove
-> Sprints 5–15 (errors, types, tests, decomposition, service consistency, extensibility
-> seams, tooling, UX completion) — all now complete: error handling, type safety,
+> **Current focus (2026-07-03):** Foundation-first, now including production auth.
+> Sprint 4 (player authentication — password login, JWT access/refresh tokens,
+> single-use WebSocket tickets, `?player_id=` legacy fallback off by default, OAuth
+> extensibility stub) is complete. The `CODE_AUDIT.md` findings also drove Sprints
+> 5–15 (errors, types, tests, decomposition, service consistency, extensibility
+> seams, tooling, UX completion) — all complete: error handling, type safety,
 > characterization tests, module decomposition, service consistency/wiring,
 > extensibility seams/patterns, tooling infrastructure (issues/news/world-CLI/
 > analytics/content-linting), browser E2E harness (`tests/e2e/`), simulation harness
@@ -24,7 +27,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 1–3 (Foundation, dispatch, world/time) | Sprint 1 (HTMX parity) | [x] |
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
-| Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [ ] |
+| Phase 7 (Auth + frontend polish) | Sprints 4, 15–17 | [~] Sprint 4 (auth) complete; 15 complete; 16–17 (map, mobile) queued |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
 | Phase 8–8.5 (Combat) | Sprints 18–20 (gated) | [ ] |
 | Phase 9 (Player interaction) | Sprints 21–23 (gated) | [ ] |
@@ -71,15 +74,15 @@ Legend:
 - [x] Startup/shutdown lifecycle wiring.
 - [x] WebSocket connect/send/receive integration test.
 
-### Player Identity & Session Safety (Sprint A)
+### Player Identity & Session Safety (Sprint A, superseded/completed by Sprint 4)
 
 - [x] `web/player_auth.py` — signed JWT player session cookie (`lorecraft_session`, httponly, `samesite=lax`), reusing `admin/auth.py` token primitives with a separate secret and `token_type="player"` so it can never be replayed as an admin token.
 - [x] `Settings.player_session_secret` — auto-generated and persisted to `.env` on first real server startup via `config.ensure_persisted_secret()`; ephemeral per-process fallback for tests/router-standalone use (never writes to disk).
-- [x] `get_current_player()` prefers the signed cookie; legacy `?player_id=`/unsigned-cookie dev path retained behind `Settings.allow_query_player_id` (default on).
-- [x] `POST /lobby/create` — validated username (3-30 chars, `[A-Za-z0-9_-]`), uniqueness check, creates `Player` at `seed_player_start_room`, auto-login.
-- [x] `POST /lobby/enter` — verifies the player exists before minting a session; both lobby routes redirect to plain `/game` (no `player_id` in the URL).
-- [x] Lobby UI "Create New Character" tab wired to a real form.
-- [~] Not a full account system: no password/credential check on `/lobby/enter`, and `/ws?player_id=...` still trusts the raw query param independent of the signed cookie. See backlog in `docs/roadmap.md`.
+- [x] `get_current_player()` prefers the signed cookie; legacy `?player_id=`/unsigned-cookie dev path retained behind `Settings.allow_query_player_id` (default **off** since Sprint 4).
+- [x] `POST /lobby/create` — validated username (3-30 chars, `[A-Za-z0-9_-]`) **and password** (Sprint 4), creates-or-claims a `Player` at `seed_player_start_room`, auto-login.
+- [x] `POST /lobby/enter` — verifies username+password (Sprint 4; 404s on unknown username rather than silently creating one) before minting a session; both lobby routes redirect to plain `/game` (no `player_id` in the URL).
+- [x] Lobby UI "Log In" and "Create New Character" tabs both wired to real password-protected forms.
+- [x] **Sprint 4 (player authentication) closed the remaining gaps:** `POST /auth/login`/`/auth/refresh`/`/auth/ws-ticket` JSON API (15min access / 8hr refresh JWTs, single-use 60s WS tickets); `main.py`'s `/ws` endpoint validates a `?ticket=` handshake instead of trusting a raw `?player_id=`; `allow_query_player_id` now defaults off; `PlayerAuth` table + OAuth extensibility stub (`POST /auth/oauth/{provider}/callback`, 501). See `docs/roadmap.md` Sprint 4 and `docs/player_authentication.md`.
 
 ### Phase 2 — Command Dispatch
 
@@ -296,4 +299,5 @@ Legend:
 - [x] Database table bootstrap unit tests.
 - [x] Repository unit tests.
 - [x] Integration tests.
+- [x] Player authentication tests (Sprint 4) — `test_player_authentication.py` (15 tests: login create/verify/wrong-password, refresh rotation + expired/garbage/wrong-type rejection, ws-ticket issuance via bearer/cookie + single-use + TTL expiry + expired-access-token rejection, OAuth stub) + `test_player_login.py` (9 unit tests for `login_or_register()`/token issuance) + updated `test_player_session.py` for the password-protected lobby.
 - [x] Simulation tests — `tests/simulation/` (Sprint 12): real WebSocket clients (`VirtualPlayer`) against a real live server; multi-player broadcast fan-out, concurrent-access contention over shared world state, and audit-log regression diffing. Excluded from the default run (`-m "not simulation"`), invoked via `make test-simulation`.

@@ -89,13 +89,17 @@ defined in `src/lorecraft/config.py`.
 | `LORECRAFT_ISSUES_YAML_PATH` | `docs/issues.yaml` | Repo-tracked issue list, synced to DB |
 | `LORECRAFT_NEWS_YAML_PATH` | `docs/news.yaml` | Repo-tracked announcements, synced to DB |
 | `LORECRAFT_SEED_PLAYER_ID` / `_USERNAME` / `_START_ROOM` | `player-1` / `player-1` / `village_square` | Optional dev player auto-created on startup |
-| `LORECRAFT_PLAYER_SESSION_SECRET` | *(unset)* | Signs player session cookies; auto-generated and persisted to `.env` on first real server startup if unset |
+| `LORECRAFT_PLAYER_SESSION_SECRET` | *(unset)* | Signs player session cookies (and player access/refresh JWTs); auto-generated and persisted to `.env` on first real server startup if unset |
 | `LORECRAFT_PLAYER_SESSION_TTL_SECONDS` | `604800` (7 days) | Player session cookie lifetime |
-| `LORECRAFT_ALLOW_QUERY_PLAYER_ID` | `true` | Dev fallback: trusts `?player_id=` without a signed cookie. **Turn off for any public server.** |
+| `LORECRAFT_PLAYER_ACCESS_TTL` | `900` (15 min) | Player API access token lifetime, seconds (`POST /auth/login`/`/auth/refresh`) |
+| `LORECRAFT_PLAYER_REFRESH_TTL` | `28800` (8 hr) | Player API refresh token lifetime, seconds |
+| `LORECRAFT_PLAYER_WS_TICKET_TTL_SECONDS` | `60.0` | Single-use `POST /auth/ws-ticket` ticket lifetime before the `/ws` handshake must consume it |
+| `LORECRAFT_ALLOW_QUERY_PLAYER_ID` | `false` (Sprint 4) | Dev/test fallback: trusts `?player_id=` (HTTP) and `/ws?player_id=` (WebSocket) without a signed session or ws-ticket. Off by default since Sprint 4 shipped real password login + WS tickets — only turn on for local dev/test convenience, never on a public server. |
 
-**Before exposing a server publicly:** set `LORECRAFT_ADMIN_JWT_SECRET` to a real secret,
-change `LORECRAFT_ADMIN_SEED_PASSWORD` from the `admin` default, and set
-`LORECRAFT_ALLOW_QUERY_PLAYER_ID=false`.
+**Before exposing a server publicly:** set `LORECRAFT_ADMIN_JWT_SECRET` and
+`LORECRAFT_PLAYER_SESSION_SECRET` to real secrets, change `LORECRAFT_ADMIN_SEED_PASSWORD`
+from the `admin` default, and leave `LORECRAFT_ALLOW_QUERY_PLAYER_ID` at its `false`
+default (only ever set it `true` for local dev).
 
 ## Admin Access
 

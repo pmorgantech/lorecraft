@@ -6,6 +6,15 @@ The engine uses **local username + password** authentication for LAN-party deplo
 
 **Design constraint:** No email verification, no password reset, no login rate limiting in v1. All reasonable for trusted LAN context.
 
+**Implementation status (Sprint 4, complete):** this doc's code samples below are illustrative pseudocode from the original design; the real implementation (`src/lorecraft/web/auth.py`, `src/lorecraft/models/player_auth.py`) differs in a few deliberate ways:
+
+- **Password hashing** reuses the existing PBKDF2-HMAC-SHA256 primitives in `admin/auth.py` (`hash_password`/`verify_password`) rather than adding bcrypt/argon2 as a new dependency — one hashing convention for the whole codebase, not bcrypt for admins and argon2 for players.
+- **JWT issuance** reuses `admin/auth.py`'s `create_token`/`decode_token` rather than hand-rolling `jwt.encode`/`jwt.decode` calls, signed with `Settings.player_session_secret` (auto-generated/persisted, not a bare `SECRET_KEY` constant).
+- **WS ticket storage** is an in-memory dict on `AppState` (`ws_tickets: dict[str, tuple[player_id, expires_at]]`), not Redis — this engine has no Redis dependency and doesn't need one for a single-process deployment. `POST /auth/ws-ticket` accepts either a bearer access token *or* the browser's signed `lorecraft_session` cookie (browsers can't easily attach custom headers to a same-origin fetch without extra JS, but send cookies automatically).
+- **The browser lobby** (`/lobby/enter`, `/lobby/create`) shares the same `login_or_register()` function as `POST /auth/login`, rather than being a separate code path — one password-checking implementation for both the JSON API and the HTMX UI.
+- **`allow_query_player_id`** (the pre-Sprint-4 dev/test fallback) defaults to `False`, not deleted outright — kept as an explicit opt-in for test fixtures that intentionally exercise the wire protocol directly (see `docs/roadmap.md` Sprint 4.6).
+- **The OAuth callback** (`POST /auth/oauth/{provider}/callback`) is a genuine stub returning 501 — the example Google OAuth code below shows the intended shape once a real provider integration is built, but nothing below is wired up.
+
 ---
 
 ## Account Creation & Login Flow
