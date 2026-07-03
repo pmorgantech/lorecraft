@@ -30,6 +30,7 @@ from lorecraft.services.container import ServiceContainer
 from lorecraft.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
+from lorecraft.game.broadcast import broadcast_command_effects
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
@@ -323,7 +324,7 @@ def create_app(
                 await websocket.send_json(reconnect_payload)
             while True:
                 command = await websocket.receive_text()
-                response = _handle_websocket_command(
+                response = await _handle_websocket_command(
                     state, player_id, session_id, command
                 )
                 await websocket.send_json(response)
@@ -373,7 +374,7 @@ def create_app(
     return app
 
 
-def _handle_websocket_command(
+async def _handle_websocket_command(
     state: AppState, player_id: str, session_id: str, command: str
 ) -> JsonObject:
     # Resolve a bare number as a disambiguation choice.
@@ -400,6 +401,7 @@ def _handle_websocket_command(
                 "type": "error",
                 "message": "Player no longer exists.",
             }
+        pre_room_id = player.current_room_id
 
         # Frozen session check
         active_session = player_repo.player_session(session_id)
@@ -444,6 +446,7 @@ def _handle_websocket_command(
             transaction.transaction_id, transaction.correlation_id
         ):
             parsed = state.command_engine.handle_command(command, ctx)
+        await broadcast_command_effects(state.manager, ctx, pre_room_id=pre_room_id)
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
 

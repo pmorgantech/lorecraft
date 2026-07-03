@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
+from lorecraft.game.broadcast import broadcast_command_effects
 from lorecraft.game.context import GameContext
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
@@ -548,43 +549,7 @@ async def handle_command(
 
         mgr = get_real_manager(request)
         if mgr:
-            broadcast_room = (
-                pre_room_id
-                if room_changed and pre_room_id
-                else after_player.current_room_id
-            )
-            for room_msg in ctx.room_messages:
-                if broadcast_room:
-                    try:
-                        await mgr.broadcast_to_room(
-                            broadcast_room,
-                            {
-                                "type": "feed_append",
-                                "content": str(room_msg),
-                                "message_type": "room_event",
-                            },
-                            exclude=after_player.id,
-                        )
-                    except Exception as e:
-                        log.debug("room_feed_broadcast_failed: %s", str(e))
-            if after_player.current_room_id:
-                try:
-                    await mgr.broadcast_to_room(
-                        after_player.current_room_id,
-                        {
-                            "type": "state_change",
-                            "affected_panels": [
-                                "room-description",
-                                "inventory",
-                                "minimap",
-                                "players-online",
-                            ],
-                            "actor_id": after_player.id,
-                        },
-                        exclude=after_player.id,
-                    )
-                except Exception as e:
-                    log.debug("state_change_broadcast_failed: %s", str(e))
+            await broadcast_command_effects(mgr, ctx, pre_room_id=pre_room_id)
 
         final_resp = HTMLResponse(content=response_html)
         if disconnect_requested:

@@ -1,17 +1,10 @@
-"""Multi-player scripted scenarios over real WebSockets (Sprint 12).
+"""Multi-player scripted scenarios over real WebSockets (Sprints 12 & 14).
 
 These complement the single-connection ASGI-transport integration tests
 (`tests/integration/test_admin_websocket.py` et al.) with scenarios that only
 show up once *multiple real* players are connected concurrently: room
-broadcast fan-out on connect, and contention over a single shared item.
-
-Note: the raw `/ws` command loop (`main.py::_handle_websocket_command`)
-currently only returns `room_messages` to the *acting* player — unlike the
-HTMX `POST /command` path, it does not yet re-broadcast them to other
-WS-connected occupants of the room. That gap is tracked by roadmap Sprint 14
-(unify the `/ws` and `/command` lifecycles), so these scenarios stick to
-behavior the `/ws` protocol already guarantees today: the `player_joined`
-broadcast on connect, and each player's own direct `command_result` replies.
+broadcast fan-out on connect and on command execution, and contention over a
+single shared item.
 """
 
 from __future__ import annotations
@@ -61,6 +54,41 @@ async def _test_player_joined_broadcast(server: SimulationServer) -> None:
         finally:
             await alice.close()
     finally:
+        await bob.close()
+
+
+def test_command_room_messages_broadcast_to_other_ws_players(
+    simulation_server: SimulationServer,
+) -> None:
+    """Sprint 14 closed a gap Sprint 12 surfaced: the raw `/ws` command loop
+    now re-broadcasts a command's `ctx.room_messages` (and a `state_change`
+    nudge) to other WS-connected room occupants, the same way `POST /command`
+    already did — one shared `broadcast_command_effects()` step for both."""
+    asyncio.run(_test_command_room_broadcast(simulation_server))
+
+
+async def _test_command_room_broadcast(server: SimulationServer) -> None:
+    alice = await _connect(server, "alice")
+    bob = await _connect(server, "bob")
+    try:
+        # Moving rooms: the departure narration ("X leaves east.") broadcasts
+        # to the room left (where bob still is). There's no "arrives"
+        # narration, and the state_change nudge goes to the destination room
+        # instead — neither reaches bob for this particular command.
+        await alice.send_command("go east")
+
+        feed = await bob.wait_for_broadcast("feed_append", timeout=5)
+        assert feed["message_type"] == "room_event"
+        assert "leaves" in str(feed["content"]).lower()
+
+        # Moving back into bob's room: now the state_change nudge (always
+        # sent to the destination room) reaches him.
+        await alice.send_command("go west")
+        state_change = await bob.wait_for_broadcast("state_change", timeout=5)
+        assert state_change["actor_id"] == alice.player_id
+        assert "room-description" in state_change["affected_panels"]
+    finally:
+        await alice.close()
         await bob.close()
 
 
