@@ -21,6 +21,7 @@ from lorecraft.game.holders import (
     get_registry as get_holder_registry,
 )
 from lorecraft.models.items import ItemInstance, ItemStack
+from lorecraft.models.world import Item
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
 
@@ -64,20 +65,20 @@ class ItemLocationService:
             ValidationError: If quantity < 1.
         """
         if quantity < 1:
-            raise ValidationError("spawn_quantity_underflow", "quantity must be >= 1")
+            raise ValidationError(
+                "quantity must be >= 1", "validation_quantity_underflow"
+            )
 
-        # Verify item exists
         item = self.item_repo.get(item_id)
         if item is None:
-            raise NotFoundError("item_not_found", f"Item {item_id} does not exist")
+            raise NotFoundError(f"Item {item_id} does not exist", "not_found_item")
 
-        # Verify holder exists
         if not self.holder_registry.holder_exists(
             loc.owner_type, self.session, loc.owner_id
         ):
             raise NotFoundError(
-                "holder_not_found",
                 f"Holder {loc.owner_type}:{loc.owner_id} does not exist",
+                "not_found_holder",
             )
 
         stacks: list[ItemStack] = []
@@ -86,20 +87,7 @@ class ItemLocationService:
         if component_registry.requires_instance(item):
             # Create instanced stacks (one instance per stack, quantity=1)
             for _ in range(quantity):
-                instance = ItemInstance(
-                    id=str(uuid.uuid4()),
-                    item_id=item_id,
-                    state={},
-                )
-                # Initialize component state
-                for component_def in component_registry.components_for(item):
-                    instance.state[component_def.name] = component_def.initial_state(
-                        item
-                    )
-
-                self.session.add(instance)
-                self.session.flush()  # Populate instance.id
-
+                instance = self._new_instance(item)
                 stack = self.stack_repo.create_stack(
                     item_id=item_id,
                     owner_type=loc.owner_type,
@@ -110,16 +98,23 @@ class ItemLocationService:
                 )
                 stacks.append(stack)
         else:
-            # Create a single fungible stack
-            stack = self.stack_repo.create_stack(
-                item_id=item_id,
-                owner_type=loc.owner_type,
-                owner_id=loc.owner_id,
-                quantity=quantity,
-                slot=loc.slot,
-                instance_id=None,
-            )
-            stacks.append(stack)
+            # Create a single fungible stack, merging into an existing one if present
+            existing = self.stack_repo.find_fungible_stack(loc, item_id)
+            if existing is not None:
+                self.stack_repo.update_stack(
+                    existing, quantity=existing.quantity + quantity
+                )
+                stacks.append(existing)
+            else:
+                stack = self.stack_repo.create_stack(
+                    item_id=item_id,
+                    owner_type=loc.owner_type,
+                    owner_id=loc.owner_id,
+                    quantity=quantity,
+                    slot=loc.slot,
+                    instance_id=None,
+                )
+                stacks.append(stack)
 
         return stacks
 
@@ -137,24 +132,23 @@ class ItemLocationService:
             ConflictError: If quantity exceeds the stack's quantity (underflow).
         """
         if quantity < 1:
-            raise ValidationError("destroy_quantity_underflow", "quantity must be >= 1")
+            raise ValidationError(
+                "quantity must be >= 1", "validation_quantity_underflow"
+            )
 
         stack = self.stack_repo.find_stack(stack_id)
         if stack is None:
-            raise NotFoundError("stack_not_found", f"Stack {stack_id} does not exist")
+            raise NotFoundError(f"Stack {stack_id} does not exist", "not_found_stack")
 
         if quantity > stack.quantity:
             raise ConflictError(
-                "quantity_underflow",
                 f"Cannot remove {quantity} from stack with quantity {stack.quantity}",
+                "conflict_quantity_underflow",
             )
 
         if quantity == stack.quantity:
-            # Delete the entire stack
-            # If instanced, orphan the instance (the FK cascade or explicit cleanup handles it)
             self.stack_repo.delete_stack(stack)
         else:
-            # Reduce quantity
             self.stack_repo.update_stack(stack, quantity=stack.quantity - quantity)
 
     def materialize(self, stack_id: int) -> ItemStack:
@@ -177,39 +171,27 @@ class ItemLocationService:
         """
         stack = self.stack_repo.find_stack(stack_id)
         if stack is None:
-            raise NotFoundError("stack_not_found", f"Stack {stack_id} does not exist")
+            raise NotFoundError(f"Stack {stack_id} does not exist", "not_found_stack")
 
         if stack.instance_id is not None:
             raise ConflictError(
-                "already_instanced", "Cannot materialize an already-instanced stack"
+                "Cannot materialize an already-instanced stack",
+                "conflict_already_instanced",
             )
 
         if stack.quantity < 2:
             raise ConflictError(
-                "insufficient_quantity",
                 "Cannot materialize from a stack with quantity < 2",
+                "conflict_insufficient_quantity",
             )
 
-        # Create a new instance
         item = self.item_repo.get(stack.item_id)
         if item is None:
             raise NotFoundError(
-                "item_not_found", f"Item {stack.item_id} does not exist"
+                f"Item {stack.item_id} does not exist", "not_found_item"
             )
 
-        instance = ItemInstance(
-            id=str(uuid.uuid4()),
-            item_id=stack.item_id,
-            state={},
-        )
-        component_registry = get_component_registry()
-        for component_def in component_registry.components_for(item):
-            instance.state[component_def.name] = component_def.initial_state(item)
-
-        self.session.add(instance)
-        self.session.flush()  # Populate instance.id
-
-        # Create new instanced stack at the same location
+        instance = self._new_instance(item)
         new_stack = self.stack_repo.create_stack(
             item_id=stack.item_id,
             owner_type=stack.owner_type,
@@ -218,15 +200,11 @@ class ItemLocationService:
             slot=stack.slot,
             instance_id=instance.id,
         )
-
-        # Reduce source stack quantity
         self.stack_repo.update_stack(stack, quantity=stack.quantity - 1)
 
         return new_stack
 
-    def move(
-        self, session: Session, stack_id: int, dest: Location, quantity: int
-    ) -> ItemStack:
+    def move(self, stack_id: int, dest: Location, quantity: int) -> ItemStack:
         """THE move primitive — atomically move quantity from a stack to a destination.
 
         Validates: source exists with sufficient quantity, destination holder exists,
@@ -237,7 +215,6 @@ class ItemLocationService:
         Never commits; caller's transaction makes it atomic and rollback-safe.
 
         Args:
-            session: Database session (usually self.session, but parameterized for testing).
             stack_id: The source ItemStack.id.
             dest: The destination Location.
             quantity: How many to move (must be >= 1).
@@ -251,134 +228,120 @@ class ItemLocationService:
             ConflictError: If quantity exceeds source, stack underflow, container cycle, etc.
         """
         if quantity < 1:
-            raise ValidationError("move_quantity_underflow", "quantity must be >= 1")
-
-        # Find source stack
-        stack = self.stack_repo.find_stack(stack_id)
-        if stack is None:
-            raise NotFoundError("stack_not_found", f"Stack {stack_id} does not exist")
-
-        # Verify source has enough quantity
-        if quantity > stack.quantity:
-            raise ConflictError(
-                "quantity_underflow",
-                f"Cannot move {quantity} from stack with quantity {stack.quantity}",
+            raise ValidationError(
+                "quantity must be >= 1", "validation_quantity_underflow"
             )
 
-        # Get item
+        stack = self.stack_repo.find_stack(stack_id)
+        if stack is None:
+            raise NotFoundError(f"Stack {stack_id} does not exist", "not_found_stack")
+
+        if quantity > stack.quantity:
+            raise ConflictError(
+                f"Cannot move {quantity} from stack with quantity {stack.quantity}",
+                "conflict_quantity_underflow",
+            )
+
         item = self.item_repo.get(stack.item_id)
         if item is None:
             raise NotFoundError(
-                "item_not_found", f"Item {stack.item_id} does not exist"
+                f"Item {stack.item_id} does not exist", "not_found_item"
             )
 
-        # Verify destination holder exists
         if not self.holder_registry.holder_exists(
-            dest.owner_type, session, dest.owner_id
+            dest.owner_type, self.session, dest.owner_id
         ):
             raise NotFoundError(
-                "holder_not_found",
                 f"Holder {dest.owner_type}:{dest.owner_id} does not exist",
+                "not_found_holder",
             )
 
-        # Check for container cycle (if moving into a container)
         if dest.owner_type == "container":
-            self._check_container_cycle(session, stack.item_id, dest.owner_id)
+            self._check_container_cycle(stack.item_id, dest.owner_id)
 
-        # Run move validators for destination holder type
-        validators = self.holder_registry.get_validators(dest.owner_type)
-        for validator in validators:
-            validator(session, dest, item, quantity)
+        for validator in self.holder_registry.get_validators(dest.owner_type):
+            validator(self.session, dest, item, quantity)
 
-        # Handle the move
         dest_stack: ItemStack
 
         if stack.instance_id is not None:
-            # Instanced items never merge; just update the location
-            if quantity != 1:
+            if quantity != stack.quantity or quantity != 1:
                 raise ConflictError(
-                    "instanced_partial_move",
-                    "Cannot partially move an instanced item (quantity=1)",
+                    "Cannot partially move an instanced item (quantity must be 1)",
+                    "conflict_instanced_partial_move",
                 )
-            if quantity != stack.quantity:
-                raise ConflictError(
-                    "instanced_quantity_mismatch",
-                    "Instanced stack quantity must equal 1",
-                )
-            # Move the entire stack
             stack.owner_type = dest.owner_type
             stack.owner_id = dest.owner_id
             stack.slot = dest.slot
             self.session.add(stack)
             dest_stack = stack
         else:
-            # Fungible stack: try to merge into existing dest stack
             existing_dest = self.stack_repo.find_fungible_stack(dest, stack.item_id)
 
-            if existing_dest is not None:
-                # Merge: add quantity to existing, reduce source
+            if existing_dest is not None and existing_dest.id != stack.id:
                 existing_dest.quantity += quantity
                 self.session.add(existing_dest)
                 dest_stack = existing_dest
-            else:
-                # No existing fungible stack; move or split
                 if quantity == stack.quantity:
-                    # Move the entire stack
-                    stack.owner_type = dest.owner_type
-                    stack.owner_id = dest.owner_id
-                    stack.slot = dest.slot
-                    self.session.add(stack)
-                    dest_stack = stack
+                    self.stack_repo.delete_stack(stack)
                 else:
-                    # Split: create new stack at dest, reduce source
-                    dest_stack = self.stack_repo.create_stack(
-                        item_id=stack.item_id,
-                        owner_type=dest.owner_type,
-                        owner_id=dest.owner_id,
-                        quantity=quantity,
-                        slot=dest.slot,
-                        instance_id=None,
+                    self.stack_repo.update_stack(
+                        stack, quantity=stack.quantity - quantity
                     )
-
-            # Reduce source stack quantity (or delete if 0)
-            if quantity == stack.quantity:
-                self.stack_repo.delete_stack(stack)
+            elif quantity == stack.quantity:
+                # Move the entire stack (no merge target, or merging with itself)
+                stack.owner_type = dest.owner_type
+                stack.owner_id = dest.owner_id
+                stack.slot = dest.slot
+                self.session.add(stack)
+                dest_stack = stack
             else:
+                # Split: create new stack at dest, reduce source
+                dest_stack = self.stack_repo.create_stack(
+                    item_id=stack.item_id,
+                    owner_type=dest.owner_type,
+                    owner_id=dest.owner_id,
+                    quantity=quantity,
+                    slot=dest.slot,
+                    instance_id=None,
+                )
                 self.stack_repo.update_stack(stack, quantity=stack.quantity - quantity)
 
         return dest_stack
 
-    def _check_container_cycle(
-        self, session: Session, item_id: str, container_id: str
-    ) -> None:
+    def _new_instance(self, item: Item) -> ItemInstance:
+        """Create and flush a fresh ItemInstance with initialized component state."""
+        instance = ItemInstance(id=str(uuid.uuid4()), item_id=item.id, state={})
+        component_registry = get_component_registry()
+        for component_def in component_registry.components_for(item):
+            instance.state[component_def.name] = component_def.initial_state(item)
+        self.session.add(instance)
+        self.session.flush()
+        return instance
+
+    def _check_container_cycle(self, item_id: str, container_id: str) -> None:
         """Check if moving item_id into container_id would create a cycle.
 
         A container may not contain itself, directly or transitively. This walks the
         container hierarchy to detect cycles.
 
         Args:
-            session: Database session.
             item_id: The item being moved.
             container_id: The container (ItemInstance.id) being moved into.
 
         Raises:
             ConflictError: If a cycle is detected.
         """
-        # Find all stacks containing the container as an instance
-        # The container is an ItemInstance; find the ItemStack that references it
         statement = select(ItemStack).where(ItemStack.instance_id == container_id)
-        container_stack = session.exec(statement).first()
+        container_stack = self.session.exec(statement).first()
         if container_stack is None:
             return  # Container doesn't exist or isn't a stack; no cycle possible
 
-        # Get the item of the container itself
-        container_item_id = container_stack.item_id
-
-        # Ancestor-walk: if item_id == container_item_id, we'd create a cycle
-        if item_id == container_item_id:
+        if item_id == container_stack.item_id:
             raise ConflictError(
-                "container_cycle", "Cannot place a container inside itself"
+                "Cannot place a container inside itself", "conflict_container_cycle"
             )
 
-        # TODO: Walk transitive containment for deeper cycles (if item is itself a container,
-        # check if container is inside it). This is deferred pending full container semantics.
+        # NOTE: deeper transitive cycles (container A holds container B holds A)
+        # are deferred until Sprint 22's container component lands; only stateless
+        # stacks exist today, so no container can yet directly hold another.
