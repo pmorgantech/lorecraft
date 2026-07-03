@@ -110,7 +110,7 @@ class StackRepo:
                 ItemStack.owner_id == loc.owner_id,
                 ItemStack.slot == loc.slot,
                 ItemStack.item_id == item_id,
-                ItemStack.instance_id.is_(None),
+                ItemStack.instance_id.is_(None),  # type: ignore[attr-defined]
             )
         )
         return self.session.exec(statement).first()
