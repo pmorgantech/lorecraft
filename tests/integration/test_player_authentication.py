@@ -25,7 +25,7 @@ AsgiMessage = dict[str, Any]
 _SETTINGS = Settings(
     database_path=":memory:",
     audit_database_path=":memory:",
-    player_session_secret="test-player-secret-32-chars-long!",
+    player_session_secret="test-player-secret-32-chars-long!",  # gitleaks:allow
 )
 
 
@@ -108,6 +108,43 @@ async def _http(
         m.get("body", b"") for m in messages if m["type"] == "http.response.body"
     )
     return status, json.loads(body_bytes) if body_bytes else {}
+
+
+async def _run_websocket(
+    app: Any, *, query_string: bytes, incoming: list[AsgiMessage]
+) -> list[AsgiMessage]:
+    messages: list[AsgiMessage] = []
+    receive_tx, receive_rx = anyio.create_memory_object_stream[AsgiMessage](16)
+
+    async def receive() -> AsgiMessage:
+        return await receive_rx.receive()
+
+    async def send(message: AsgiMessage) -> None:
+        messages.append(message)
+
+    async with receive_tx, receive_rx:
+        for message in incoming:
+            await receive_tx.send(message)
+
+        with anyio.fail_after(5):
+            await app(
+                {
+                    "type": "websocket",
+                    "asgi": {"version": "3.0", "spec_version": "2.4"},
+                    "scheme": "ws",
+                    "path": "/ws",
+                    "raw_path": b"/ws",
+                    "query_string": query_string,
+                    "headers": [],
+                    "client": ("testclient", 50000),
+                    "server": ("testserver", 80),
+                    "subprotocols": [],
+                    "state": {},
+                },
+                receive,
+                send,
+            )
+    return messages
 
 
 # ---------------------------------------------------------------------------
@@ -290,3 +327,187 @@ async def _test_refresh_rejects_garbage_token() -> None:
             body={"refresh_token": "not-a-jwt"},
         )
     assert status == 401
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/ws-ticket + /ws?ticket= handshake
+# ---------------------------------------------------------------------------
+
+_NO_LEGACY_SETTINGS = Settings(
+    database_path=":memory:",
+    audit_database_path=":memory:",
+    player_session_secret="test-player-secret-32-chars-long!",  # gitleaks:allow
+    allow_query_player_id=False,
+)
+
+
+def test_ws_ticket_issued_with_bearer_token_connects_over_ws() -> None:
+    anyio.run(_test_ws_ticket_issued_with_bearer_token_connects_over_ws)
+
+
+async def _test_ws_ticket_issued_with_bearer_token_connects_over_ws() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "ticketholder", "password": "hunter2"},
+        )
+        status, ticket_data = await _http(
+            app, "POST", "/auth/ws-ticket", token=login_data["access_token"]
+        )
+        assert status == 200
+        ticket = ticket_data["ws_ticket"]
+
+        messages = await _run_websocket(
+            app,
+            query_string=f"ticket={ticket}".encode(),
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+    payloads = [
+        json.loads(m["text"]) for m in messages if m["type"] == "websocket.send"
+    ]
+    assert payloads[0]["type"] == "connected"
+    assert payloads[0]["player_id"] == login_data["player_id"]
+
+
+def test_ws_ticket_is_single_use() -> None:
+    anyio.run(_test_ws_ticket_is_single_use)
+
+
+async def _test_ws_ticket_is_single_use() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "onetimer", "password": "hunter2"},
+        )
+        _, ticket_data = await _http(
+            app, "POST", "/auth/ws-ticket", token=login_data["access_token"]
+        )
+        ticket = ticket_data["ws_ticket"]
+
+        first_connect = await _run_websocket(
+            app,
+            query_string=f"ticket={ticket}".encode(),
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+        second_connect = await _run_websocket(
+            app,
+            query_string=f"ticket={ticket}".encode(),
+            incoming=[{"type": "websocket.connect"}],
+        )
+    first_payloads = [
+        json.loads(m["text"]) for m in first_connect if m["type"] == "websocket.send"
+    ]
+    assert first_payloads[0]["type"] == "connected"
+
+    close_messages = [m for m in second_connect if m["type"] == "websocket.close"]
+    assert len(close_messages) == 1
+    assert close_messages[0]["code"] == 1008
+
+
+def test_ws_rejects_missing_ticket_when_legacy_fallback_disabled() -> None:
+    anyio.run(_test_ws_rejects_missing_ticket_when_legacy_fallback_disabled)
+
+
+async def _test_ws_rejects_missing_ticket_when_legacy_fallback_disabled() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        messages = await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[{"type": "websocket.connect"}],
+        )
+    close_messages = [m for m in messages if m["type"] == "websocket.close"]
+    assert len(close_messages) == 1
+    assert close_messages[0]["code"] == 1008
+
+
+def test_ws_ticket_via_session_cookie() -> None:
+    anyio.run(_test_ws_ticket_via_session_cookie)
+
+
+async def _test_ws_ticket_via_session_cookie() -> None:
+    """The browser lobby login path (no bearer token) can also mint a ticket
+    using its signed `lorecraft_session` cookie."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE, create_player_token
+
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "cookieuser", "password": "hunter2"},
+        )
+        player_id = login_data["player_id"]
+        cookie_token = create_player_token(
+            player_id,
+            _NO_LEGACY_SETTINGS.player_session_secret,  # gitleaks:allow
+            ttl_seconds=3600,
+        )
+
+        sent = False
+        messages: list[AsgiMessage] = []
+
+        async def receive() -> AsgiMessage:
+            nonlocal sent
+            if sent:
+                await anyio.sleep_forever()
+            sent = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(msg: AsgiMessage) -> None:
+            messages.append(msg)
+
+        with anyio.fail_after(5):
+            await app(
+                {
+                    "type": "http",
+                    "asgi": {"version": "3.0"},
+                    "method": "POST",
+                    "scheme": "http",
+                    "path": "/auth/ws-ticket",
+                    "raw_path": b"/auth/ws-ticket",
+                    "query_string": b"",
+                    "headers": [
+                        (
+                            b"cookie",
+                            f"{PLAYER_SESSION_COOKIE}={cookie_token}".encode(),
+                        )
+                    ],
+                    "client": ("testclient", 50000),
+                    "server": ("testserver", 80),
+                    "state": {},
+                },
+                receive,
+                send,
+            )
+    status = next(m["status"] for m in messages if m["type"] == "http.response.start")
+    body_bytes = b"".join(
+        m.get("body", b"") for m in messages if m["type"] == "http.response.body"
+    )
+    assert status == 200
+    assert "ws_ticket" in json.loads(body_bytes)

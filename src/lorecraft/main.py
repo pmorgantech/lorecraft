@@ -50,6 +50,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
+from lorecraft.web.auth import consume_ws_ticket
 from lorecraft.web.auth import router as player_auth_router
 from lorecraft.web.frontend import router as web_router
 from lorecraft.web.news_api import router as news_api_router
@@ -279,12 +280,12 @@ def create_app(
 
     @app.websocket(resolved_settings.websocket_path)
     async def websocket_endpoint(websocket: WebSocket) -> None:
-        player_id = websocket.query_params.get("player_id")
-        if not player_id:
-            await websocket.close(code=1008, reason="player_id is required")
-            return
-
         state = _get_state(websocket.app)
+
+        player_id = _resolve_ws_player_id(websocket, state)
+        if player_id is None:
+            await websocket.close(code=1008, reason="Invalid or expired ticket")
+            return
 
         with (
             Session(state.game_engine) as game_session,
@@ -497,6 +498,27 @@ def _get_state(app: FastAPI) -> AppState:
     if not isinstance(state, AppState):
         raise RuntimeError("Lorecraft app state is not initialized.")
     return state
+
+
+def _resolve_ws_player_id(websocket: WebSocket, state: AppState) -> str | None:
+    """Resolve the connecting player id from a `?ticket=` handshake ticket.
+
+    A `?ticket=` param, if present, is authoritative: an invalid/expired/
+    already-used ticket rejects the connection outright rather than falling
+    back to `?player_id=` (that fallback would defeat the point of tickets —
+    an attacker could just send a garbage ticket to bypass them). The legacy
+    `?player_id=` param is only consulted when no ticket param was sent at
+    all, and only when `Settings.allow_query_player_id` explicitly allows it
+    (default off; see Sprint 4.6 in docs/roadmap.md).
+    """
+    ticket = websocket.query_params.get("ticket")
+    if ticket:
+        return consume_ws_ticket(state, ticket)
+
+    if state.settings.allow_query_player_id:
+        return websocket.query_params.get("player_id")
+
+    return None
 
 
 def _read_web_asset(asset_name: str) -> str:

@@ -34,3 +34,7 @@ class AppState:
     scheduler: SchedulerService
     services: ServiceContainer
     pending_disambig: dict[str, JsonObject] = field(default_factory=dict)
+    # Single-use WebSocket connect tickets: ticket -> (player_id, expires_at
+    # epoch seconds). In-memory only, matching pending_disambig — fine for
+    # this engine's single-process deployment target. See web/auth.py.
+    ws_tickets: dict[str, tuple[str, float]] = field(default_factory=dict)

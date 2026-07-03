@@ -36,6 +36,8 @@ from lorecraft.models.player import Player
 from lorecraft.models.player_auth import PlayerAuth
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.state import AppState
+from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
 from lorecraft.web.session import get_app_state, get_engines, player_session_secret
 
 log = logging.getLogger(__name__)
@@ -161,6 +163,79 @@ def decode_player_access_token(token: str, secret: str) -> str | None:
     return payload.username
 
 
+router = APIRouter(prefix="/auth", tags=["player-auth"])
+
+
+# ---------------------------------------------------------------------------
+# WebSocket tickets — single-use, short-TTL, in-memory (AppState.ws_tickets)
+# ---------------------------------------------------------------------------
+
+
+def issue_ws_ticket(app_state: AppState, player_id: str) -> str:
+    """Mint a single-use ticket mapping to `player_id`, valid for a short TTL."""
+    _prune_expired_tickets(app_state)
+    ticket = uuid.uuid4().hex
+    expires_at = time.time() + app_state.settings.player_ws_ticket_ttl_seconds
+    app_state.ws_tickets[ticket] = (player_id, expires_at)
+    return ticket
+
+
+def consume_ws_ticket(app_state: AppState, ticket: str) -> str | None:
+    """Atomically look up and invalidate a ticket. Returns the player id, or
+    None if the ticket doesn't exist or has expired (stealing an already-used
+    or expired ticket is therefore useless)."""
+    entry = app_state.ws_tickets.pop(ticket, None)
+    if entry is None:
+        return None
+    player_id, expires_at = entry
+    if time.time() > expires_at:
+        return None
+    return player_id
+
+
+def _prune_expired_tickets(app_state: AppState) -> None:
+    now = time.time()
+    expired = [t for t, (_, exp) in app_state.ws_tickets.items() if exp < now]
+    for t in expired:
+        app_state.ws_tickets.pop(t, None)
+
+
+def _resolve_ws_ticket_requester(request: Request, app_state: AppState) -> str:
+    """Identify the player requesting a WS ticket.
+
+    Prefers `Authorization: Bearer <access_token>` (API/future non-browser
+    clients); falls back to the signed `lorecraft_session` cookie (the
+    browser lobby login path), since browsers can't easily attach custom
+    headers to same-origin fetches without extra JS plumbing but do send
+    cookies automatically.
+    """
+    secret = player_session_secret(app_state)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.removeprefix("Bearer ").strip()
+        player_id = decode_player_access_token(token, secret)
+        if player_id is not None:
+            return player_id
+        raise HTTPException(status_code=401, detail="Invalid or expired access token")
+
+    cookie_token = request.cookies.get(PLAYER_SESSION_COOKIE)
+    if cookie_token:
+        player_id = decode_player_id(cookie_token, secret)
+        if player_id is not None:
+            return player_id
+
+    raise HTTPException(status_code=401, detail="No active session")
+
+
+@router.post("/ws-ticket")
+async def get_ws_ticket(request: Request) -> dict[str, str]:
+    app_state = get_app_state(request)
+    if app_state is None:
+        raise HTTPException(status_code=500, detail="Server not ready")
+    player_id = _resolve_ws_ticket_requester(request, app_state)
+    return {"ws_ticket": issue_ws_ticket(app_state, player_id)}
+
+
 # ---------------------------------------------------------------------------
 # Router: POST /auth/login (JSON API)
 # ---------------------------------------------------------------------------
@@ -169,9 +244,6 @@ def decode_player_access_token(token: str, secret: str) -> str | None:
 class LoginBody(BaseModel):
     username: str
     password: str
-
-
-router = APIRouter(prefix="/auth", tags=["player-auth"])
 
 
 @router.post("/login")
