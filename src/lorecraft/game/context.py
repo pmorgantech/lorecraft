@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -114,20 +113,29 @@ def build_game_context(
     transaction: TransactionContext,
     session_id: str,
     clock: WorldClock | None = None,
-    create_audit_repo: bool = False,
+    audit_session: Session | None = None,
     commit_state: Callable[[], None] | None = None,
     commit_audit: Callable[[], None] | None = None,
+    rollback_state: Callable[[], None] | None = None,
 ) -> GameContext:
     """Factory for GameContext — wires all repos and services.
 
-    All entry points (websocket, scheduler, tests) should use this factory
-    to ensure consistent construction and full wiring of all fields.
+    Both real entry points (`main.py`'s `/ws` command loop, `web/frontend.py`'s
+    `POST /command`) use this factory, so construction can't drift between
+    them. `session` backs every game-state repo. Audit events use a separate
+    DB/engine in production, so pass `audit_session` (its own `Session`) to
+    also wire `audit`; omit it (as tests without an audit DB do) to leave
+    `ctx.audit` as `None`.
+
+    `clock` is passed straight through — callers pass `room_repo.world_clock()`,
+    which is legitimately `None` if the world has no seeded clock row. This
+    factory does not synthesize a fallback clock; a fabricated one would be
+    silently wrong data, not a safe default.
     """
-    now = time.time()
     return GameContext(
         player=player,
         room=room,
-        clock=clock or WorldClock(game_epoch=now, real_epoch=now),
+        clock=clock,
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
@@ -137,9 +145,10 @@ def build_game_context(
         news_repo=NewsRepo(session),
         manager=manager,
         bus=bus,
-        audit=AuditRepo(session) if create_audit_repo else None,
+        audit=AuditRepo(audit_session) if audit_session is not None else None,
         transaction=transaction,
         session_id=session_id,
         commit_state=commit_state,
         commit_audit=commit_audit,
+        rollback_state=rollback_state,
     )

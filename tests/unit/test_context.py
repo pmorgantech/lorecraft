@@ -111,8 +111,13 @@ def test_build_game_context_wires_all_repos() -> None:
         assert ctx.dialogue_repo is not None
 
 
-def test_build_game_context_default_clock() -> None:
-    """Factory creates default WorldClock if not provided."""
+def test_build_game_context_clock_defaults_to_none() -> None:
+    """Factory passes `clock` straight through — no synthesized fallback.
+
+    Real callers pass `room_repo.world_clock()`, which is `None` if the
+    world has no seeded clock row; fabricating a fake one here would be
+    silently wrong data, not a safe default.
+    """
     engine = create_engine("sqlite://")
     create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
 
@@ -137,8 +142,7 @@ def test_build_game_context_default_clock() -> None:
             session_id="session-1",
         )
 
-        assert ctx.clock is not None
-        assert isinstance(ctx.clock, WorldClock)
+        assert ctx.clock is None
 
 
 def test_build_game_context_custom_clock() -> None:
@@ -177,8 +181,42 @@ def test_build_game_context_custom_clock() -> None:
         assert ctx.clock.current_hour == 10
 
 
-def test_build_game_context_with_audit_repo() -> None:
-    """Factory creates AuditRepo when create_audit_repo is True."""
+def test_build_game_context_with_audit_session() -> None:
+    """Factory creates AuditRepo when an audit_session is given.
+
+    Production always uses a separate DB/engine for audit events, so this
+    takes its own `Session` rather than reusing the game-state one.
+    """
+    engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=audit_engine)
+
+    with Session(engine) as session, Session(audit_engine) as audit_session:
+        player = Player(
+            id="test-1",
+            username="test",
+            current_room_id="room-1",
+            respawn_room_id="room-1",
+        )
+        room = Room(id="room-1", name="Test Room", map_x=0, map_y=0)
+
+        ctx = build_game_context(
+            session,
+            player,
+            room,
+            bus=EventBus(),
+            manager=ConnectionManager(),
+            transaction=TransactionContext.create(
+                actor_id="test-1", correlation_id="test"
+            ),
+            session_id="session-1",
+            audit_session=audit_session,
+        )
+
+        assert ctx.audit is not None
+
+
+def test_build_game_context_without_audit_session_leaves_audit_none() -> None:
     engine = create_engine("sqlite://")
     create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
 
@@ -201,10 +239,45 @@ def test_build_game_context_with_audit_repo() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
-            create_audit_repo=True,
         )
 
-        assert ctx.audit is not None
+        assert ctx.audit is None
+
+
+def test_build_game_context_wires_commit_and_rollback_callables() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        player = Player(
+            id="test-1",
+            username="test",
+            current_room_id="room-1",
+            respawn_room_id="room-1",
+        )
+        room = Room(id="room-1", name="Test Room", map_x=0, map_y=0)
+        calls: list[str] = []
+
+        ctx = build_game_context(
+            session,
+            player,
+            room,
+            bus=EventBus(),
+            manager=ConnectionManager(),
+            transaction=TransactionContext.create(
+                actor_id="test-1", correlation_id="test"
+            ),
+            session_id="session-1",
+            commit_state=lambda: calls.append("commit_state"),
+            commit_audit=lambda: calls.append("commit_audit"),
+            rollback_state=lambda: calls.append("rollback_state"),
+        )
+
+        ctx.commit_state_changes()
+        ctx.commit_audit_events()
+        ctx.rollback_state_changes()
+
+        assert calls == ["commit_state", "commit_audit", "rollback_state"]
 
 
 def test_build_game_context_is_type_game_context() -> None:

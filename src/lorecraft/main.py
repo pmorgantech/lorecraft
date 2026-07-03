@@ -32,7 +32,7 @@ from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.broadcast import broadcast_command_effects
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
+from lorecraft.game.context import build_game_context
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.game.registry import CommandRegistry
@@ -43,13 +43,8 @@ from lorecraft.models.player import Player
 from lorecraft.models.world import Room
 from lorecraft.observability import bind_transaction_context, configure_logging
 from lorecraft.world.bootstrap import ensure_world_bootstrapped
-from lorecraft.repos.audit_repo import AuditRepo
-from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.news_repo import NewsRepo
-from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
@@ -422,22 +417,16 @@ async def _handle_websocket_command(
             actor_id=player.id,
             correlation_id=session_id,
         )
-        ctx = GameContext(
-            player=player,
-            room=room,
-            clock=room_repo.world_clock(),
-            player_repo=player_repo,
-            room_repo=room_repo,
-            item_repo=ItemRepo(game_session),
-            npc_repo=NpcRepo(game_session),
-            quest_repo=QuestRepo(game_session),
-            dialogue_repo=DialogueRepo(game_session),
-            news_repo=NewsRepo(game_session),
-            manager=state.manager,
+        ctx = build_game_context(
+            game_session,
+            player,
+            room,
             bus=state.bus,
-            audit=AuditRepo(audit_session),
+            manager=state.manager,
             transaction=transaction,
             session_id=session_id,
+            clock=room_repo.world_clock(),
+            audit_session=audit_session,
             commit_state=game_session.commit,
             commit_audit=audit_session.commit,
             rollback_state=game_session.rollback,

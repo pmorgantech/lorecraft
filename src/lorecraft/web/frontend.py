@@ -21,7 +21,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
 from lorecraft.game.broadcast import broadcast_command_effects
-from lorecraft.game.context import GameContext
+from lorecraft.game.context import build_game_context
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
@@ -29,7 +29,6 @@ from lorecraft.observability import bind_transaction_context
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
@@ -361,7 +360,6 @@ async def handle_command(
         if room is None:
             return HTMLResponse('<div class="msg system">You are nowhere.</div>')
 
-        audit_repo = AuditRepo(audit_db)
         app_state = get_app_state(request)
         grace_seconds = (
             app_state.settings.disconnect_grace_seconds if app_state else 60.0
@@ -374,22 +372,16 @@ async def handle_command(
         transaction = TransactionContext.create(
             actor_id=player.id, correlation_id=session_id
         )
-        ctx = GameContext(
-            player=player,
-            room=room,
-            clock=room_repo.world_clock(),
-            player_repo=player_repo,
-            room_repo=room_repo,
-            item_repo=item_repo,
-            npc_repo=NpcRepo(game_db),
-            quest_repo=QuestRepo(game_db),
-            dialogue_repo=DialogueRepo(game_db),
-            news_repo=NewsRepo(game_db),
-            manager=get_real_manager(request) or get_manager(),
+        ctx = build_game_context(
+            game_db,
+            player,
+            room,
             bus=get_bus(request),
-            audit=audit_repo,
+            manager=get_real_manager(request) or get_manager(),
             transaction=transaction,
             session_id=session_id,
+            clock=room_repo.world_clock(),
+            audit_session=audit_db,
             commit_state=game_db.commit,
             commit_audit=audit_db.commit,
             rollback_state=game_db.rollback,
