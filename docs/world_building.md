@@ -450,10 +450,12 @@ not just a vault.
 ### Transit lines
 
 A top-level `transit.lines` block defines a ferry/rail/balloon/caravan line — a physical
-vehicle (a `Room` players ride inside) that cycles between stations on its own schedule.
-**Data model only in this cut** (Sprint 29.1): the runtime state machine, `board`/
-`disembark` commands, and minimap animation are Sprint 29.2–29.3's job — defining a line
-today doesn't yet make it move.
+vehicle (a `Room` players ride inside) that cycles between stations on its own schedule,
+driven by the same `MobileRouteService` scheduler that runs any moving room (Sprint 21).
+Once defined, a line loads and starts automatically at server startup: `board [line]`
+(at a station, doors open) and `disembark`/`leave` (aboard, at a stop) move players in
+and out of the vehicle room; `schedule [line]`/`timetable` shows stop order and current
+status. Minimap animation of the live vehicle position is Sprint 29.3's job.
 
 ```yaml
 transit:

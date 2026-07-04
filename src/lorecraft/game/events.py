@@ -60,6 +60,10 @@ class GameEvent(StrEnum):
     ITEM_SOLD = "item_sold"
     MONEY_DEPOSITED = "money_deposited"
     MONEY_WITHDRAWN = "money_withdrawn"
+    TRANSIT_DEPARTED = "transit_departed"
+    TRANSIT_ARRIVED = "transit_arrived"
+    TRANSIT_BOARDED = "transit_boarded"
+    TRANSIT_DISEMBARKED = "transit_disembarked"
 
 
 WORK_EVENTS = {

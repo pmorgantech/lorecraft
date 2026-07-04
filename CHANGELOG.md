@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.11.1] - 2026-07-04
+
+### Added
+
+- **Sprint 29.2: Transit vehicle state machine & commands** — `services/transit.py`'s `TransitService` builds a Sprint 21 `RouteSpec`/`RouteHooks` per `TransitLine` at app lifespan (`load_lines()`) and starts it, entirely on the existing route runner — no new state machine or timing mechanism. `may_depart` grounds weather-sensitive lines when `WorldClock.weather` is in the line's `blocking_weather`; `on_depart`/`on_arrive` narrate to both the station room and the vehicle room. New `board [line]` (validates stop position + ticket, consumes it if configured, moves the player into the vehicle room), `disembark`/`leave` (moves the player back out at the current stop), and `schedule [line]`/`timetable` (stop order + live status) commands (`commands/transit.py`). `register_all_commands` gained an optional `transit=` keyword argument — `TransitService` needs the game engine and `ConnectionManager` at construction (like `MeterService`/`MobileRouteService`), so it can't live in the no-argument `ServiceContainer`; every existing call site is unaffected by the addition. 10 new unit tests (`test_transit.py`).
+
 ## [0.11.0] - 2026-07-04
 
 ### Added

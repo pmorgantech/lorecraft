@@ -66,6 +66,7 @@ from lorecraft.services.meters import MeterService
 from lorecraft.services.light_fuel import LightFuelService
 from lorecraft.services.restock import RestockService
 from lorecraft.services.mobile_route import MobileRouteService
+from lorecraft.services.transit import TransitService
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
@@ -176,6 +177,10 @@ def create_app(
         light_fuel_service.register(bus)
         restock_service = RestockService(resolved_game_engine)
         restock_service.register(bus)
+        transit_service = TransitService(
+            resolved_game_engine, mobile_route_service, manager
+        )
+        transit_service.load_lines()
         services = ServiceContainer.build()
         services.quest.register(bus)
         services.fatigue.register(bus)
@@ -266,7 +271,7 @@ def create_app(
             effects=effect_service,
             mobile_routes=mobile_route_service,
         )
-        register_all_commands(state.registry, state.services)
+        register_all_commands(state.registry, state.services, transit=transit_service)
         state.clock_runner.initialize()
         state.clock_runner.start()
         app.state.lorecraft = state

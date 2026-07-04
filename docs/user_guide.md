@@ -212,6 +212,21 @@ you're both happy, then either side can `accept` to make the swap. Nothing moves
 someone accepts, and the trade is checked one more time at that moment, so it can't go
 wrong if something changed since you offered (an item got dropped, coins got spent).
 
+## Travel
+
+```
+board            — board a transit vehicle docked at this station
+board ferry      — board a specific line, if more than one serves this station
+disembark        — leave the vehicle at its current stop (also: leave)
+schedule         — show a line's stops and where it is right now (also: timetable)
+```
+
+Some routes (a ferry, a rail line, a balloon) run on their own schedule between fixed
+stops, whether or not anyone's riding. `board` only works while the vehicle is docked at
+your station — miss it and you'll need to wait for the next stop, or catch it further
+down the line. Some lines need a ticket to board; check `schedule` to see the route and
+whether the vehicle is currently there.
+
 ## Talking to NPCs & Quests
 
 ```
@@ -303,6 +318,9 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `offer <item\|N coins> to <player>` | | Pledge something to a pending trade |
 | `accept` | | Finalize your pending trade |
 | `decline` | | Call off your pending trade |
+| `board [line]` | | Board a transit vehicle docked at this station |
+| `disembark` | `leave` | Leave a transit vehicle at its current stop |
+| `schedule [line]` | `timetable` | Show a transit line's stops and current status |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |

@@ -120,10 +120,15 @@ The architecture overview remains the design reference; this file is the working
 > validators (stop/ticket references resolve, vehicle room has no static exits,
 > contiguous stop sequences, express lines have enough boarding stops, known weather
 > states) — data model only; there's deliberately no `TransitVehicleState` table, since
-> runtime position reuses Sprint 21's `MobileRouteState` (wired in Sprint 29.2). Sprint
-> 29.2 (vehicle state machine + board/disembark commands), 29.3 (WS push + minimap
-> animation), and quests/puzzles (30) continue next; combat/PvP (Sprints 31–35) are
-> deferred per direction.
+> runtime position reuses Sprint 21's `MobileRouteState`. **Sprint 29.2 (vehicle state
+> machine + commands) is now complete**: `TransitService.load_lines()` builds a Sprint 21
+> `RouteSpec`/`RouteHooks` per line at app startup and starts it — no new state machine,
+> entirely the Tier 1 route runner; `may_depart` grounds weather-sensitive lines,
+> `on_depart`/`on_arrive` narrate to station and vehicle room. New `board`/`disembark`
+> (`leave`)/`schedule` (`timetable`) commands gate on live vehicle status, validate/
+> consume tickets, and move players between station and vehicle rooms. Sprint 29.3 (WS
+> push + minimap animation) and quests/puzzles (30) continue next; combat/PvP (Sprints
+> 31–35) are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 
