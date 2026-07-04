@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.1] - 2026-07-04
+
+### Fixed
+
+- **Database schema migration for Sprint 30.2 fields** — Added missing columns to existing databases: `item.mechanism_states`, `item.mechanism_side_effects`, `item.combination_side_effects`, and `playerquestprogress.stage_started_epoch`. The schema migration logic runs automatically on startup for SQLite databases.
+
 ## [0.14.0] - 2026-07-04
 
 ### Added

@@ -172,3 +172,42 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
             connection.execute(
                 text("ALTER TABLE item ADD COLUMN aliases JSON NOT NULL DEFAULT '[]'")
             )
+
+    if "mechanism_states" not in item_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE item "
+                    "ADD COLUMN mechanism_states JSON NOT NULL DEFAULT '[]'"
+                )
+            )
+    if "mechanism_side_effects" not in item_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE item "
+                    "ADD COLUMN mechanism_side_effects JSON NOT NULL DEFAULT '{}'"
+                )
+            )
+    if "combination_side_effects" not in item_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE item "
+                    "ADD COLUMN combination_side_effects JSON NOT NULL DEFAULT '{}'"
+                )
+            )
+
+    if "playerquestprogress" in inspect(engine).get_table_names():
+        quest_columns = {
+            column["name"]
+            for column in inspect(engine).get_columns("playerquestprogress")
+        }
+        if "stage_started_epoch" not in quest_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playerquestprogress "
+                        "ADD COLUMN stage_started_epoch REAL"
+                    )
+                )
