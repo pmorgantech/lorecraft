@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from lorecraft.npc.dialogue import DialogueService
+from lorecraft.services.character_info import CharacterInfoService
 from lorecraft.services.inventory import InventoryService
 from lorecraft.services.movement import MovementService
 from lorecraft.services.quest import QuestService
@@ -25,6 +26,7 @@ class ServiceContainer:
     save: SaveSlotService = field(default_factory=SaveSlotService)
     dialogue: DialogueService = field(default_factory=DialogueService)
     quest: QuestService = field(default_factory=QuestService)
+    character_info: CharacterInfoService = field(default_factory=CharacterInfoService)
 
     @classmethod
     def build(cls) -> ServiceContainer:

@@ -16,6 +16,7 @@ from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.player_auth import PlayerAuth
 from lorecraft.models.quest import PlayerQuestProgress, Quest
+from lorecraft.models.reputation import Reputation
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import (
     Exit,
@@ -48,6 +49,7 @@ __all__ = [
     "PlayerStats",
     "PvpConsent",
     "Quest",
+    "Reputation",
     "Room",
     "SaveSlot",
     "TradeOffer",

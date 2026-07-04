@@ -39,6 +39,7 @@ from lorecraft.models.world import (
 )
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.interaction import PvpConsent, TradeOffer
+from lorecraft.models.reputation import Reputation
 from lorecraft.models.scheduler import ScheduledJob
 
 
@@ -74,6 +75,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     ActiveEffect,
     CoinBalance,
     MobileRouteState,
+    Reputation,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

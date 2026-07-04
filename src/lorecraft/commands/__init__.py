@@ -1,5 +1,6 @@
 """Command registration helpers."""
 
+from lorecraft.commands.character import register_character_commands
 from lorecraft.commands.inventory import register_inventory_commands
 from lorecraft.commands.meta import register_meta_commands
 from lorecraft.commands.movement import register_movement_commands
@@ -25,3 +26,4 @@ def register_all_commands(
     register_inventory_commands(registry, services.inventory)
     register_social_commands(registry, services.dialogue)
     register_news_commands(registry)
+    register_character_commands(registry, services.character_info)

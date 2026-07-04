@@ -390,7 +390,7 @@ be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.
 | 23.2 | Encumbrance bands from weight + `carry_bonus`; equipment effects resolved at runtime (never stored) | [x] `game/equipment_source.py` + `game/encumbrance.py` |
 | 23.3 | Containers: `put in` / `take from`, nesting, worn-container capacity; light/darkness gate (`Room.light_level` + lit source) | [x] |
 
-## Sprint 24 — Traits & skills
+## Sprint 24 — Traits & skills ✅
 
 **Goal:** Character identity that gates exploration and social play. Use-based skills, a trait
 registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats` (attributes
@@ -398,9 +398,9 @@ registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats
 
 | # | Task | Status |
 |---|------|--------|
-| 24.1 | Trait registry (pluggable, like dialogue side-effects); traits from equipment/background/earned; boon+bane modifiers | [ ] |
-| 24.2 | Use-based skill improvement (perception, lockpicking, bartering, cartography, survival, persuasion); skill-check helper | [ ] |
-| 24.3 | Reputation/standing per NPC + faction; unlocks dialogue/prices/quests (extends flags + NPC memory) | [ ] |
+| 24.1 | Trait registry (pluggable, like dialogue side-effects); traits from equipment/background/earned; boon+bane modifiers | [x] `game/standard_traits.py`'s `InnateTraitSource` + 5 illustrative traits; `services/traits.py` grant/revoke |
+| 24.2 | Use-based skill improvement (perception, lockpicking, bartering, cartography, survival, persuasion); skill-check helper | [x] `game/skills.py` (identity) + `services/skills.py` (improvement); `skill_check()` itself shipped Sprint 17-18 |
+| 24.3 | Reputation/standing per NPC + faction; unlocks dialogue/prices/quests (extends flags + NPC memory) | [x] `models/reputation.py` + `game/reputation_conditions.py` |
 
 ## Sprint 25 — Exploration depth
 

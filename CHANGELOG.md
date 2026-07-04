@@ -2,6 +2,19 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.6.0] - 2026-07-04
+
+### Summary
+
+**Sprint 24 Complete — Traits & Skills.** Character identity that gates exploration and social play: an innate trait source (background/earned traits, distinct from equipment/active-effect traits), use-based skill improvement, and NPC/faction reputation gating dialogue and commands. 523 focused tests (18 new) passing; basedpyright 0 errors; ruff clean.
+
+### Added
+
+- **Sprint 24.1: Trait registry (innate/background/earned)** — `game/standard_traits.py` registers `InnateTraitSource` (reads `PlayerStats.traits`, populated by `services/traits.py`'s `TraitService.grant()`/`revoke()`) alongside 5 illustrative standard traits (2 boons: `keen_eyed`, `silver_tongued`, `sure_footed`; 2 banes: `clumsy`, `frail`) with real modifier effects — completing the three-source picture alongside Sprint 19's active-effect source and Sprint 23's equipment source. New `traits` command lists a player's currently active traits (from every source) with descriptions.
+- **Sprint 24.2: Use-based skill improvement** — `game/skills.py`'s `SkillRegistry` defines skill *identity* (perception, lockpicking, bartering, cartography, survival, persuasion) on top of Sprint 17-18's `skill_check()`, which already defined how a check resolves. `services/skills.py`'s `SkillService.record_use()` is the "learn by doing" mechanic: each use has a 10% chance to raise the skill's level (stored in the existing `PlayerStats.skills` dict) by 1, capped at 100. New `skills` command lists all standard skills and the player's current level in each. No command calls `record_use()` yet — Sprint 25's `search` (perception) is the first real consumer, same "ships the primitive, next feature wires it in" precedent as `skill_check()` itself.
+- **Sprint 24.3: Reputation/standing** — New `models/reputation.py`'s `Reputation` table (one row per player × target_type × target_id, "npc" or "faction"). `services/reputation.py`'s `ReputationService` clamps standing to [-100, 100]. `game/reputation_conditions.py` registers a `reputation_at_least:<type>:<id>:<min>` command condition and a `min_reputation` dialogue condition (`{"target_type", "target_id", "min"}`) on the existing Sprint 10 pluggable-condition registries — no core edits, gating dialogue/prices/quests behind standing exactly as the roadmap specifies. New `reputation`/`rep` command lists a player's standings.
+- New `services/character_info.py`'s `CharacterInfoService` backs the `traits`/`skills`/`reputation` commands (`commands/character.py`), wired into `ServiceContainer` alongside the other gameplay services.
+
 ## [0.5.0] - 2026-07-04
 
 ### Summary

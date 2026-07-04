@@ -56,9 +56,17 @@ The architecture overview remains the design reference; this file is the working
 > sources, not just `Room.light_level` (23.3). Caught and fixed two real bugs along the way:
 > `ItemLocationService`'s container-cycle check compared item *type* instead of instance
 > (any two same-type containers falsely couldn't nest), and equipped items were invisible to
-> open/close/light/extinguish (the lookup only searched loose stacks). Tier 2 feature work
-> (traits/skills, exploration, trading, transit, quests, combat) continues from Sprint 24;
-> combat moved down to Sprints 31–33.
+> open/close/light/extinguish (the lookup only searched loose stacks). **Sprint 24 (traits &
+> skills) is now complete**: `game/standard_traits.py`'s `InnateTraitSource` (background/earned
+> traits via `PlayerStats.traits`, granted/revoked by `services/traits.py`) completes the
+> three-source trait picture (innate + equipment + active-effect); `game/skills.py`'s
+> `SkillRegistry` defines skill identity (perception, lockpicking, bartering, cartography,
+> survival, persuasion) and `services/skills.py`'s use-based improvement rides on Sprint
+> 17–18's existing `skill_check()`; `models/reputation.py`'s `Reputation` table +
+> `game/reputation_conditions.py` gate commands/dialogue on NPC/faction standing. New
+> `traits`/`skills`/`reputation` player-facing commands. Tier 2 feature work (exploration,
+> trading, transit, quests, combat) continues from Sprint 25; combat moved down to
+> Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -71,7 +79,7 @@ The architecture overview remains the design reference; this file is the working
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
 | Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [x] |
 | Item state / inventory / equipment | Sprints 22–23 (gated) | [x] |
-| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
+| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [~] Sprint 24 (traits & skills) complete; 25–27 remain |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
 | Quests & puzzles depth | Sprint 30 (gated) | [ ] |
 | Phase 8–8.5 (Combat, supporting) | Sprints 31–33 (gated) | [ ] |

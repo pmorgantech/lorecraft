@@ -121,6 +121,19 @@ the prompt.
 Rooms need light to look around and to take/examine items — `light_level` in the room
 data controls this. If a room is dark, bring a light source.
 
+## Character: Traits, Skills, and Reputation
+
+```
+traits          — list your active traits (from equipment, effects, and background)
+skills          — list your skills and their current levels
+reputation      — list your standing with NPCs and factions (also: rep)
+```
+
+Traits are passive bonuses or penalties — some come from what you wear, some from timed
+effects, and some are permanent (background or earned through play). Skills improve the
+more you use them ("learn by doing") — there's no way to train them directly. Reputation
+with an NPC or faction can unlock better prices, new dialogue, or additional quests.
+
 ## Talking to NPCs & Quests
 
 ```
@@ -194,6 +207,9 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `equipment` | `eq` | List what you're wearing and wielding |
 | `light <item>` | | Light a light source |
 | `extinguish <item>` | | Put out a lit light source |
+| `traits` | | List your active traits |
+| `skills` | | List your skills and their levels |
+| `reputation` | `rep` | List your standing with NPCs and factions |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |
