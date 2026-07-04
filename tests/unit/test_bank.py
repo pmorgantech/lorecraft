@@ -8,7 +8,6 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.bank_holders  # noqa: F401 -- registration side effects
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -32,6 +31,11 @@ from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
+from lorecraft.game.bank_holders import register as _register_bank
+
+# The "bank_account" holder type used to register as an import side effect; it
+# now registers via the bank feature's register(). Call it once here.
+_register_bank()
 
 BRANCH_ROOM_ID = "branch"
 OTHER_ROOM_ID = "elsewhere"

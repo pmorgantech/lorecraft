@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.7] - 2026-07-04
+
+### Changed
+
+- **Tier split — economy + bank holder types migrated to feature manifests (step 5a, branch `tier_split`).** `game/economy_holders.py` (the "shop" holder) and `game/bank_holders.py` (the "bank_account" holder) now expose `register()` instead of self-registering at import; new `features/economy/` and `features/bank/` packages wrap them in manifests. Their side-effect imports are gone from `main.py`; `test_economy.py`/`test_bank.py` call `register()` explicitly. The reputation-specific feature test was generalized into `test_migrated_features.py`, parametrized over the growing set of migrated keys (`reputation`, `economy`, `bank`). Full suite 765 passed.
+
 ## [0.14.6] - 2026-07-04
 
 ### Changed

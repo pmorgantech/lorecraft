@@ -18,4 +18,7 @@ def _bank_account_exists(session: Session, holder_id: str) -> bool:
     return session.get(BankAccount, holder_id) is not None
 
 
-get_registry().register(HolderTypeDef("bank_account", _bank_account_exists))
+def register() -> None:
+    """Register the "bank_account" holder type. Called by the `bank` feature
+    manifest when enabled (no longer an import side effect). Idempotent."""
+    get_registry().register(HolderTypeDef("bank_account", _bank_account_exists))

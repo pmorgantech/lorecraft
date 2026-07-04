@@ -8,7 +8,6 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.economy_holders  # noqa: F401 -- registration side effects
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -36,6 +35,11 @@ from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
 from lorecraft.services.restock import RestockService
+from lorecraft.game.economy_holders import register as _register_economy
+
+# The "shop" holder type used to register as an import side effect; it now
+# registers via the economy feature's register(). Call it once here.
+_register_economy()
 
 ROOM_ID = "market"
 SHOP_ID = "shop:shopkeep"

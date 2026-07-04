@@ -18,4 +18,7 @@ def _shop_exists(session: Session, holder_id: str) -> bool:
     return session.get(Shop, holder_id) is not None
 
 
-get_registry().register(HolderTypeDef("shop", _shop_exists))
+def register() -> None:
+    """Register the "shop" holder type. Called by the `economy` feature manifest
+    when enabled (no longer a module-level import side effect). Idempotent."""
+    get_registry().register(HolderTypeDef("shop", _shop_exists))
