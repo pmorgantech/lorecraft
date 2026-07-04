@@ -72,6 +72,22 @@ class Item(SQLModel, table=True):
     category: str | None = (
         None  # trade category (food, supplies, trade_good, ...); gates Shop.buys_categories
     )
+    # Sprint 30.2: mechanism puzzles (levers, dials). Non-empty states = item
+    # gets the "mechanism" component; `activate`/`turn`/`pull` cycles through
+    # them in order. See game/standard_mechanisms.py.
+    mechanism_states: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # Side effects (any handler on npc/side_effects.py's registry) applied
+    # once when the mechanism transitions INTO the named state -- e.g.
+    # {"3": {"set_flags": ["vault_unlocked"]}} for a dial solved at "3".
+    mechanism_side_effects: JsonObject = Field(
+        default_factory=dict, sa_column=Column(JSON)
+    )
+    # Side effects applied on a successful `use <this> with <other>` (Sprint
+    # 30.2 item-combination puzzles), keyed by the other item's id. Checked
+    # in both directions -- see services/inventory.py's use_item().
+    combination_side_effects: JsonObject = Field(
+        default_factory=dict, sa_column=Column(JSON)
+    )
 
 
 class WorldMeta(SQLModel, table=True):

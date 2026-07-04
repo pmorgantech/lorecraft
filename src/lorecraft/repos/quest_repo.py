@@ -21,6 +21,18 @@ class QuestRepo(Repository[Quest, str]):
             ).all()
         )
 
+    def all_active_progress(self) -> list[PlayerQuestProgress]:
+        """Every player's active quest progress, for the scheduler-driven
+        timeout sweep (QuestTimerService) which has no single player_id to
+        scope to."""
+        return list(
+            self.session.exec(
+                select(PlayerQuestProgress).where(
+                    PlayerQuestProgress.status == "active"
+                )
+            ).all()
+        )
+
     def player_progress(
         self, player_id: str, quest_id: str
     ) -> PlayerQuestProgress | None:

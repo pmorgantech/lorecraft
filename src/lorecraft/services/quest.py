@@ -1,20 +1,41 @@
-"""Quest progression tracking."""
+"""Quest progression tracking.
+
+Sprint 30.1 adds stage `branches`: an ordered list of `{conditions,
+next_stage, side_effects}` dicts, evaluated (in order) once a stage's own
+base `conditions` pass. The first branch whose own conditions also pass wins
+-- its `side_effects` (any handler on the shared npc/side_effects.py
+registry: set_flags, give_item, adjust_reputation, remember, ...) are the
+"consequence" of that branch, and `next_stage` becomes the new current
+stage (or, if null, completes the quest). A stage with no `branches` keeps
+the original linear behavior (advance to the next stage in `stages` order)
+for full backward compatibility with quests authored before this sprint.
+"""
 
 from __future__ import annotations
 
 import time
 from typing import TYPE_CHECKING
 
+from lorecraft.game import quest_conditions
 from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.game.holders import Location
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
+    from lorecraft.models.quest import PlayerQuestProgress, Quest
 
 
 def _carries(ctx: "GameContext", item_id: str) -> bool:
     return ctx.stack_repo.quantity_of(Location("player", ctx.player.id), item_id) > 0
+
+
+def _current_epoch(ctx: "GameContext") -> float:
+    return ctx.clock.game_epoch if ctx.clock is not None else 0.0
+
+
+def _stage_by_id(quest: "Quest", stage_id: str) -> JsonObject | None:
+    return next((s for s in quest.stages if s["id"] == stage_id), None)
 
 
 class QuestService:
@@ -24,6 +45,7 @@ class QuestService:
         bus.on(GameEvent.ITEM_DROPPED, self.check_progression)
 
     def check_progression(self, event: Event, ctx: object) -> None:
+        del event
         from lorecraft.game.context import GameContext as _GC
 
         if not isinstance(ctx, _GC) or ctx.quest_repo is None:
@@ -32,86 +54,139 @@ class QuestService:
             quest = ctx.quest_repo.get(progress.quest_id)
             if quest is None:
                 continue
-            stage: JsonObject | None = next(
-                (s for s in quest.stages if s["id"] == progress.current_stage_id),
-                None,
-            )
+            stage = _stage_by_id(quest, progress.current_stage_id)
             if stage is None:
                 continue
             if not self._conditions_met(stage.get("conditions", []), ctx):  # type: ignore[arg-type]
                 continue
-            completion_flags = stage.get("completion_flags") or {}
-            for flag, value in (
-                completion_flags.items() if isinstance(completion_flags, dict) else []
-            ):  # type: ignore[union-attr]
-                ctx.player.flags = {**ctx.player.flags, str(flag): value}
-            idx = next(
-                (
-                    i
-                    for i, s in enumerate(quest.stages)
-                    if s["id"] == progress.current_stage_id
-                ),
-                -1,
-            )
-            if idx + 1 < len(quest.stages):
-                next_stage = quest.stages[idx + 1]
-                progress.current_stage_id = str(next_stage["id"])
-                ctx.quest_repo.session.add(progress)
-                ctx.say(
-                    f"Quest updated: {quest.title} — {next_stage.get('description', '')}"
-                )
-                ctx.push_update(
-                    "quest_update",
-                    {
-                        "quest_id": progress.quest_id,
-                        "title": quest.title,
-                        "stage_id": str(next_stage["id"]),
-                        "stage_description": str(next_stage.get("description", "")),
-                        "status": "active",
-                    },
-                )
-                ctx.queue_event(
-                    GameEvent.QUEST_UPDATED,
-                    quest_id=progress.quest_id,
-                    player_id=ctx.player.id,
-                )
+
+            branches = stage.get("branches") or []
+            if branches:
+                self._advance_via_branch(quest, stage, progress, branches, ctx)  # type: ignore[arg-type]
             else:
-                progress.status = "completed"
-                progress.completed_at = time.time()
-                ctx.quest_repo.session.add(progress)
-                self._award_rewards(stage.get("rewards") or {}, ctx)  # type: ignore[arg-type]
-                ctx.say(f"Quest completed: {quest.title}!")
-                ctx.push_update(
-                    "quest_update",
-                    {
-                        "quest_id": progress.quest_id,
-                        "title": quest.title,
-                        "status": "completed",
-                    },
-                )
-                ctx.queue_event(
-                    GameEvent.QUEST_COMPLETED,
-                    quest_id=progress.quest_id,
-                    player_id=ctx.player.id,
-                )
+                self._advance_linear(quest, stage, progress, ctx)
 
-    def _conditions_met(self, conditions: list[JsonObject], ctx: GameContext) -> bool:
-        for cond in conditions:
-            ctype = str(cond.get("type", ""))
-            if ctype == "flag_set" and not ctx.player.flags.get(str(cond["flag"])):
-                return False
-            if ctype == "flag_clear" and ctx.player.flags.get(str(cond["flag"])):
-                return False
-            if (
-                ctype == "room_visited"
-                and str(cond["room_id"]) not in ctx.player.visited_rooms
-            ):
-                return False
-            if ctype == "item_in_inventory" and not _carries(ctx, str(cond["item_id"])):
-                return False
-        return True
+    def _advance_via_branch(
+        self,
+        quest: "Quest",
+        stage: JsonObject,
+        progress: "PlayerQuestProgress",
+        branches: list[JsonObject],
+        ctx: "GameContext",
+    ) -> None:
+        branch = next(
+            (
+                b
+                for b in branches
+                if self._conditions_met(b.get("conditions", []), ctx)  # type: ignore[arg-type]
+            ),
+            None,
+        )
+        if branch is None:
+            return  # no branch's extra conditions satisfied yet -- stall here
 
-    def _award_rewards(self, rewards: JsonObject, ctx: GameContext) -> None:
+        self._apply_completion_flags(stage, ctx)
+        self._apply_side_effects(branch.get("side_effects", {}), ctx)  # type: ignore[arg-type]
+        next_stage_id = branch.get("next_stage")
+        if next_stage_id:
+            self._enter_stage(quest, progress, str(next_stage_id), ctx)
+        else:
+            self._complete_quest(quest, stage, progress, ctx)
+
+    def _advance_linear(
+        self,
+        quest: "Quest",
+        stage: JsonObject,
+        progress: "PlayerQuestProgress",
+        ctx: "GameContext",
+    ) -> None:
+        self._apply_completion_flags(stage, ctx)
+        idx = next(
+            (i for i, s in enumerate(quest.stages) if s["id"] == stage["id"]), -1
+        )
+        if not stage.get("terminal") and idx + 1 < len(quest.stages):
+            next_stage = quest.stages[idx + 1]
+            self._enter_stage(quest, progress, str(next_stage["id"]), ctx)
+        else:
+            self._complete_quest(quest, stage, progress, ctx)
+
+    def _enter_stage(
+        self,
+        quest: "Quest",
+        progress: "PlayerQuestProgress",
+        next_stage_id: str,
+        ctx: "GameContext",
+    ) -> None:
+        next_stage = _stage_by_id(quest, next_stage_id)
+        if next_stage is None:
+            # Authoring bug safety net (a branch/next_stage referencing an
+            # unknown stage id): treat as quest completion rather than
+            # silently stalling forever or raising mid-command.
+            self._complete_quest(quest, None, progress, ctx)
+            return
+        progress.current_stage_id = next_stage_id
+        progress.stage_started_epoch = _current_epoch(ctx)
+        ctx.session.add(progress)
+        ctx.say(f"Quest updated: {quest.title} — {next_stage.get('description', '')}")
+        ctx.push_update(
+            "quest_update",
+            {
+                "quest_id": progress.quest_id,
+                "title": quest.title,
+                "stage_id": next_stage_id,
+                "stage_description": str(next_stage.get("description", "")),
+                "status": "active",
+            },
+        )
+        ctx.queue_event(
+            GameEvent.QUEST_UPDATED,
+            quest_id=progress.quest_id,
+            player_id=ctx.player.id,
+        )
+
+    def _complete_quest(
+        self,
+        quest: "Quest",
+        stage: JsonObject | None,
+        progress: "PlayerQuestProgress",
+        ctx: "GameContext",
+    ) -> None:
+        progress.status = "completed"
+        progress.completed_at = time.time()
+        ctx.session.add(progress)
+        if stage is not None:
+            self._award_rewards(stage.get("rewards") or {}, ctx)  # type: ignore[arg-type]
+        ctx.say(f"Quest completed: {quest.title}!")
+        ctx.push_update(
+            "quest_update",
+            {
+                "quest_id": progress.quest_id,
+                "title": quest.title,
+                "status": "completed",
+            },
+        )
+        ctx.queue_event(
+            GameEvent.QUEST_COMPLETED,
+            quest_id=progress.quest_id,
+            player_id=ctx.player.id,
+        )
+
+    def _apply_completion_flags(self, stage: JsonObject, ctx: "GameContext") -> None:
+        completion_flags = stage.get("completion_flags") or {}
+        for flag, value in (
+            completion_flags.items() if isinstance(completion_flags, dict) else []
+        ):  # type: ignore[union-attr]
+            ctx.player.flags = {**ctx.player.flags, str(flag): value}
+
+    def _apply_side_effects(self, effects: JsonObject, ctx: "GameContext") -> None:
+        from lorecraft.npc.side_effects import get_registry
+
+        get_registry().apply(effects, ctx)
+
+    def _conditions_met(self, conditions: list[JsonObject], ctx: "GameContext") -> bool:
+        return quest_conditions.get_registry().evaluate_all(conditions, ctx)
+
+    def _award_rewards(self, rewards: JsonObject, ctx: "GameContext") -> None:
         for item_id in rewards.get("items") or []:  # type: ignore[union-attr]
             item = ctx.item_repo.get(str(item_id))
             if item and not _carries(ctx, str(item_id)):

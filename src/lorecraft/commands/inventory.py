@@ -91,6 +91,16 @@ def register_inventory_commands(
         service.close_item(noun, ctx)
 
     @registry.register(
+        "activate",
+        "turn",
+        "pull",
+        conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
+        help="turn/pull/activate <lever or dial> — cycle a mechanism's state",
+    )
+    def activate_command(noun: str | None, ctx: GameContext) -> None:
+        service.activate_mechanism(noun, ctx)
+
+    @registry.register(
         "wear",
         conditions=[CommandCondition.NOT_IN_COMBAT],
         help="wear <item> — equip a worn item (armor, clothing)",

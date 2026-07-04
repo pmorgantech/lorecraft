@@ -1,8 +1,9 @@
-"""Standard item components: durability, openable, lit, container.
+"""Standard item components: durability, openable, lit, container, mechanism.
 
 Tier 2 registration on top of Sprint 16's ComponentRegistry (engine_core.md
 §3.1). Registers itself at import time — imported for side effects (like
-game/traits.py) from main.py's lifespan. See docs/inventory_equipment.md §7.
+game/traits.py) from main.py's lifespan. See docs/inventory_equipment.md §7
+and docs/roadmap.md Sprint 30.2 for "mechanism" (levers/dials puzzles).
 """
 
 from __future__ import annotations
@@ -81,6 +82,24 @@ def _container_validate(state: JsonValue) -> list[str]:
     return []
 
 
+def _mechanism_applies(item: Item) -> bool:
+    return len(item.mechanism_states) > 0
+
+
+def _mechanism_initial(item: Item) -> JsonValue:
+    del item
+    return {"index": 0}
+
+
+def _mechanism_validate(state: JsonValue) -> list[str]:
+    if not isinstance(state, dict) or "index" not in state:
+        return ["mechanism state must be a dict with an 'index' key"]
+    index = state["index"]
+    if not isinstance(index, int) or isinstance(index, bool) or index < 0:
+        return ["mechanism 'index' must be a non-negative integer"]
+    return []
+
+
 get_registry().register(
     ComponentDef(
         name="durability",
@@ -111,5 +130,13 @@ get_registry().register(
         applies_to=_container_applies,
         initial_state=_container_initial,
         validate=_container_validate,
+    )
+)
+get_registry().register(
+    ComponentDef(
+        name="mechanism",
+        applies_to=_mechanism_applies,
+        initial_state=_mechanism_initial,
+        validate=_mechanism_validate,
     )
 )

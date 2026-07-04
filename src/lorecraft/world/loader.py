@@ -96,6 +96,11 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 effects=cast(list[JsonObject], item.effects),
                 value=item.value,
                 category=item.category,
+                mechanism_states=item.mechanism_states,
+                mechanism_side_effects=cast(JsonObject, item.mechanism_side_effects),
+                combination_side_effects=cast(
+                    JsonObject, item.combination_side_effects
+                ),
             )
         )
 
@@ -373,6 +378,13 @@ def export_world_document(session: Session) -> WorldDocument:
             effects=cast(list[dict[str, object]], item.effects),
             value=item.value,
             category=item.category,
+            mechanism_states=list(item.mechanism_states),
+            mechanism_side_effects=cast(
+                dict[str, dict[str, object]], item.mechanism_side_effects
+            ),
+            combination_side_effects=cast(
+                dict[str, dict[str, object]], item.combination_side_effects
+            ),
         )
         for item in session.exec(select(Item)).all()
     ]

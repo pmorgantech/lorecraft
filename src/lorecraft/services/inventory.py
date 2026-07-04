@@ -485,10 +485,26 @@ class InventoryService:
         if _items_combine(item, other):
             ctx.say(f"You use the {item.name} with the {other.name}. It works!")
             ctx.tell_room(f"{ctx.player.username} uses {item.name} with {other.name}.")
+            self._apply_combination_side_effects(item, other, ctx)
         else:
             ctx.say(f"Using the {item.name} with the {other.name} does nothing.")
 
         self._emit_item_used(ctx, item.id, other_item_id=other.id)
+
+    def _apply_combination_side_effects(
+        self, item: Item, other: Item, ctx: GameContext
+    ) -> None:
+        """Sprint 30.2: a successful `use X with Y` can be more than flavor
+        text -- checked in both authoring directions (checking `item`'s dict
+        first) since a combination only needs one side to declare the
+        consequence."""
+        effects = item.combination_side_effects.get(
+            other.id
+        ) or other.combination_side_effects.get(item.id)
+        if isinstance(effects, dict):
+            from lorecraft.npc.side_effects import get_registry
+
+            get_registry().apply(effects, ctx)
 
     def give_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
@@ -903,6 +919,71 @@ class InventoryService:
         set_component_state(ctx.session, instance, "openable", {"open": False})
         ctx.say(f"You close the {item.name}.")
         ctx.tell_room(f"{ctx.player.username} closes the {item.name}.")
+
+    def _resolve_mechanism(
+        self, query: str, ctx: GameContext, *, verb: str
+    ) -> tuple[Item, ItemInstance] | None:
+        matches = self._find_carried_or_visible_stacks(query, ctx)
+        resolved = self._resolve_single(
+            ctx,
+            verb=verb,
+            query=query,
+            matches=matches,
+            item_of=lambda m: m[1],
+            not_found_msg="You don't see that here.",
+        )
+        if resolved is None:
+            return None
+
+        stack, item = resolved
+        if stack.instance_id is None:
+            ctx.say(f"You can't {verb} that.")
+            return None
+
+        instance = ctx.session.get(ItemInstance, stack.instance_id)
+        if instance is None or get_component_state(instance, "mechanism") is None:
+            ctx.say(f"You can't {verb} that.")
+            return None
+
+        return item, instance
+
+    def activate_mechanism(self, name_or_id: str | None, ctx: GameContext) -> None:
+        """Sprint 30.2: cycle a lever/dial's `mechanism` component state,
+        applying `Item.mechanism_side_effects[new_state]` (any handler on
+        npc/side_effects.py's registry -- typically set_flags, which
+        existing Exit.condition_flags/dialogue/quest gates already consume,
+        so a lever "solving" is a one-way trigger, not a live "must be
+        currently in state X" check."""
+        if name_or_id is None:
+            ctx.say("Activate what?")
+            return
+
+        resolved = self._resolve_mechanism(name_or_id, ctx, verb="activate")
+        if resolved is None:
+            return
+        item, instance = resolved
+
+        states = item.mechanism_states
+        if not states:
+            ctx.say(f"You can't activate the {item.name}.")
+            return
+
+        state = get_component_state(instance, "mechanism")
+        current_index = state.get("index", 0) if isinstance(state, dict) else 0
+        if not isinstance(current_index, int) or not 0 <= current_index < len(states):
+            current_index = 0
+        new_index = (current_index + 1) % len(states)
+        new_state_name = states[new_index]
+
+        set_component_state(ctx.session, instance, "mechanism", {"index": new_index})
+        ctx.say(f"You turn the {item.name}. It clicks to '{new_state_name}'.")
+        ctx.tell_room(f"{ctx.player.username} activates the {item.name}.")
+
+        effects = item.mechanism_side_effects.get(new_state_name)
+        if isinstance(effects, dict):
+            from lorecraft.npc.side_effects import get_registry
+
+            get_registry().apply(effects, ctx)
 
     def _resolve_lit_source(
         self, query: str, ctx: GameContext, *, verb: str

@@ -100,6 +100,7 @@ unwield sword             — unequip a wielded item
 equipment                 — list what you're wearing and wielding (also: eq)
 light lantern             — light a light source
 extinguish lantern        — put out a lit light source
+turn dial                — cycle a lever or dial to its next position (also: pull, activate)
 ```
 
 Worn/wielded gear can grant passive bonuses (stat/skill boosts, extra carry capacity,
@@ -319,6 +320,7 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `equipment` | `eq` | List what you're wearing and wielding |
 | `light <item>` | | Light a light source |
 | `extinguish <item>` | | Put out a lit light source |
+| `turn <item>` | `pull`, `activate` | Cycle a lever or dial to its next state |
 | `traits` | | List your active traits |
 | `skills` | | List your skills and their levels |
 | `reputation` | `rep` | List your standing with NPCs and factions |

@@ -196,10 +196,57 @@ registers the standard set:
 | `openable` | container or `openable` flag in YAML | `{"open": false}` | `open`/`close` commands; container move-validator requires open |
 | `lit` | `item.light > 0` | `{"lit": false}` | `light`/`extinguish`; fuel = durability drain per world tick while lit |
 | `container` | `item.capacity is not None` | `{}` (contents are stacks, not state) | capacity/nesting validator |
-| `mechanism` | explicit YAML `mechanism:` block | the block's initial values | pluggable conditions/side effects (puzzles, [Sprint 30](roadmap.md#sprint-30--quests--puzzles-depth)) |
+| `mechanism` | `item.mechanism_states` non-empty | `{"index": 0}` | `turn`/`pull`/`activate` commands; see §7a |
 
 Each ships a `validate` for content lint. A stateless stackable (coin, salt sack) matches no
 component and stays a fungible quantity-N stack — no instance, no churn.
+
+---
+
+## 7a. Mechanism & item-combination puzzles ([Sprint 30.2](roadmap.md#sprint-30--quests--puzzles-depth-))
+
+**Superseded draft note:** the original plan above (an explicit YAML `mechanism:` block with
+arbitrary initial values) shipped simpler — `Item.mechanism_states` (an ordered list of state
+names, e.g. `["off", "on"]` for a lever or `["0", "1", "2", "3"]` for a dial) plus
+`Item.mechanism_side_effects` (a dict keyed by state name). The `turn`/`pull`/`activate`
+commands (aliases; `commands/inventory.py`) advance `state["mechanism"]["index"]` by one,
+wrapping at the end. When the new index's state name has an entry in
+`mechanism_side_effects`, it's applied once via the shared `npc/side_effects.py` registry —
+almost always `set_flags`, which every existing gate (`Exit.condition_flags`, dialogue
+`required_flags`, quest `flag_set` conditions) already reads. This makes solving a mechanism
+a **one-way trigger**, not a live "must currently be in state X" check — turning a dial away
+from its solved position does not un-set the flag. Combination-lock puzzles (several levers
+in the right order) need no new engine surface: each lever's `mechanism_side_effects` sets its
+own flag, and a room's `Exit.condition_flags` (AND-gated) or a quest stage's `conditions`
+requires all of them.
+
+```yaml
+items:
+  - id: brass_lever
+    name: Brass Lever
+    description: A stiff brass lever set into the wall.
+    takeable: false
+    mechanism_states: ["off", "on"]
+    mechanism_side_effects:
+      "on":
+        set_flags: ["north_lever_pulled"]
+```
+
+**Item-combination puzzles** reuse the pre-existing `use <item> with <item>` command and
+`Item.usable_with` gate, adding `Item.combination_side_effects` (a dict keyed by the *other*
+item's id, checked from either item so only one side needs to declare it) so a successful
+combination can be a real consequence, not just "It works!" flavor text:
+
+```yaml
+items:
+  - id: acid_vial
+    name: Acid Vial
+    description: A vial of corrosive acid.
+    usable_with: ["rusted_hinge"]
+    combination_side_effects:
+      rusted_hinge:
+        set_flags: ["hinge_dissolved"]
+```
 
 ---
 

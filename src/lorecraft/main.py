@@ -52,6 +52,7 @@ import lorecraft.game.equipment_validators  # noqa: F401 -- import for registrat
 import lorecraft.game.container_validators  # noqa: F401 -- import for registration side effects (container open/capacity/nesting move validator)
 import lorecraft.game.standard_traits  # noqa: F401 -- import for registration side effects (standard boon/bane traits + innate TraitSource)
 import lorecraft.game.reputation_conditions  # noqa: F401 -- import for registration side effects (reputation_at_least / min_reputation conditions)
+import lorecraft.npc.npc_memory_conditions  # noqa: F401 -- import for registration side effects (npc_remembers dialogue/quest condition + remember side effect)
 from lorecraft.game.item_rules import register_item_rules
 from lorecraft.models.admin import AdminUser
 from lorecraft.models.player import Player, PlayerStats
@@ -65,6 +66,7 @@ from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService
 from lorecraft.services.light_fuel import LightFuelService
 from lorecraft.services.restock import RestockService
+from lorecraft.services.quest_timer import QuestTimerService
 from lorecraft.services.mobile_route import MobileRouteService
 from lorecraft.services.transit import TransitService
 from lorecraft.services.save import SessionSafetyService
@@ -177,6 +179,8 @@ def create_app(
         light_fuel_service.register(bus)
         restock_service = RestockService(resolved_game_engine)
         restock_service.register(bus)
+        quest_timer_service = QuestTimerService(resolved_game_engine, manager)
+        quest_timer_service.register(bus)
         transit_service = TransitService(
             resolved_game_engine, mobile_route_service, manager
         )

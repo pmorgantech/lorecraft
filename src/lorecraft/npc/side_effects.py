@@ -97,6 +97,7 @@ def _handle_start_quest(data: JsonValue, ctx: "GameContext") -> None:  # type: i
             current_stage_id=str(first_stage["id"]),
             status="active",
             started_at=time.time(),
+            stage_started_epoch=ctx.clock.game_epoch if ctx.clock is not None else 0.0,
         )
     )
     ctx.say(f"Quest started: {quest.title}.")

@@ -28,6 +28,7 @@ from lorecraft.models.ledger import CoinBalance
 from lorecraft.models.meters import ActiveEffect, Meter
 from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.news import NewsItem
+from lorecraft.models.npc_memory import NpcMemory
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.player_auth import PlayerAuth
 from lorecraft.models.session import PlayerSession
@@ -86,6 +87,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     BankAccount,
     TransitLine,
     TransitStop,
+    NpcMemory,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

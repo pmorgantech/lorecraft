@@ -15,7 +15,7 @@ from lorecraft.game.holders import Location
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.models.world import Item, Room
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
@@ -138,3 +138,67 @@ def test_use_emits_item_used_event_with_both_ids() -> None:
     cmd_engine.handle_command("use cage key on cage lock", ctx)
 
     assert seen == [("cage_key", "cage_lock")]
+
+
+def test_use_combination_applies_side_effects() -> None:
+    """Sprint 30.2: a successful `use X with Y` can set_flags (or any other
+    npc/side_effects.py handler), not just print flavor text."""
+    cmd_engine, ctx = _build_engine_and_ctx(["cage_key"])
+    ctx.session.add(
+        Item(
+            id="acid_vial",
+            name="acid vial",
+            description="A vial of corrosive acid.",
+            usable_with=["rusted_hinge"],
+            combination_side_effects={
+                "rusted_hinge": {"set_flags": ["hinge_dissolved"]}
+            },
+        )
+    )
+    ctx.session.add(
+        Item(id="rusted_hinge", name="rusted hinge", description="A rusted hinge.")
+    )
+    ctx.session.commit()
+    ctx.item_location.spawn("acid_vial", Location("player", ctx.player.id))
+    ctx.item_location.spawn("rusted_hinge", Location("room", ctx.room.id))
+    ctx.session.commit()
+
+    cmd_engine.handle_command("use acid vial on rusted hinge", ctx)
+
+    assert any("It works!" in m for m in ctx.messages)
+    assert ctx.player.flags.get("hinge_dissolved") is True
+
+
+def test_use_combination_side_effect_checked_from_either_item() -> None:
+    """combination_side_effects declared on the *other* item (not the one
+    named first in `use X with Y`) still fires."""
+    cmd_engine, ctx = _build_engine_and_ctx([])
+    ctx.session.add(
+        Item(
+            id="gear", name="gear", description="A brass gear.", usable_with=["socket"]
+        )
+    )
+    ctx.session.add(
+        Item(
+            id="socket",
+            name="socket",
+            description="An empty socket.",
+            combination_side_effects={"gear": {"set_flags": ["gear_seated"]}},
+        )
+    )
+    ctx.session.commit()
+    ctx.item_location.spawn("gear", Location("player", ctx.player.id))
+    ctx.item_location.spawn("socket", Location("room", ctx.room.id))
+    ctx.session.commit()
+
+    cmd_engine.handle_command("use gear on socket", ctx)
+
+    assert ctx.player.flags.get("gear_seated") is True
+
+
+def test_use_non_matching_pair_does_not_apply_side_effects() -> None:
+    cmd_engine, ctx = _build_engine_and_ctx(["cage_key"])
+
+    cmd_engine.handle_command("use cage key on steel key", ctx)
+
+    assert ctx.player.flags == {}

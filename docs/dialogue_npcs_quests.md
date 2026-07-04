@@ -178,9 +178,43 @@ side_effects:
   give_item: "iron_sword"  # Give player an item (single item)
   start_quest: "fetch_rare_metal"  # Begin a quest
   end_dialogue: true  # Force end dialogue (optional)
+  remember: ["helped"]  # Sprint 30.1: NPC memory (see below)
+  adjust_reputation:  # Sprint 30.1: standing as a consequence, not just a gate
+    target_type: npc
+    target_id: blacksmith_thor
+    delta: 10
 ```
 
 **Note:** `give_item` is a single item ID. `start_quest` starts a quest if the player hasn't already.
+
+### NPC Memory (Sprint 30.1)
+
+Player flags (`set_flags`/`required_flags`) are global — one flag means the same thing to
+every NPC. NPC memory is scoped **per (player, NPC)**: the same key, e.g. `"helped"`, can be
+true for Thor and false for Mira, without inventing `helped_thor`/`helped_mira` flags.
+
+```yaml
+dialogue_trees:
+  - id: blacksmith_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: "Need something forged?"
+        choices:
+          - label: "I fixed your bellows earlier."
+            next_node: thanked
+            side_effects:
+              remember: ["helped"]  # scoped to "whichever NPC this conversation is with"
+          - label: "Remember when I helped you?"
+            next_node: recalled
+            npc_remembers: ["helped"]  # choice hidden until remembered
+```
+
+`remember` accepts a list of keys (sets each to `true`) or a `{key: value}` dict for explicit
+values. `npc_remembers` is a dialogue condition (like `required_flags`) — all listed keys must
+be remembered for the NPC currently being talked to. The same `npc_remembers` type is also a
+quest condition (see below), where the NPC must be named explicitly since there's no "current
+conversation" outside dialogue.
 
 ### Conditional Dialogue Example
 
@@ -263,24 +297,106 @@ Each stage has:
 |-------|------|-------------|
 | `id` | string | Unique stage identifier within the quest |
 | `description` | string | What the player needs to do |
-| `conditions` | array | Conditions that must be met to progress (not enforced yet) |
+| `conditions` | array | Conditions that must be met to progress |
 | `completion_flags` | object | Flags set when stage completes |
-| `rewards` | object | Rewards for completing this stage |
+| `rewards` | object | Rewards for completing this stage (`xp`, `items`) |
+| `branches` | array | Sprint 30.1: alternate outcomes — see below |
+| `terminal` | bool | Sprint 30.1: complete the quest once this stage's `conditions` pass, regardless of array position (needed for a branch-reached ending that isn't last in `stages`) |
+| `timeout_ticks` | number | Sprint 30.2: game-clock ticks after which, if the player hasn't progressed past this stage, `on_timeout` fires |
+| `on_timeout` | object | Sprint 30.2: `{next_stage, message, set_flags}` — see below |
+
+Without `branches`, a stage advances to `stages[idx+1]` when its `conditions` pass (or
+completes the quest if it's the last stage) — the original linear behavior, unchanged.
 
 ### Condition Types
 
-Conditions describe what must happen for a stage to progress:
+Conditions describe what must happen for a stage (or branch) to progress. Every condition
+type is a pluggable predicate on `game/quest_conditions.py`'s registry — new types register
+without touching the quest service.
 
 ```yaml
 conditions:
-  - type: "in_room"          # Player is in a specific room
+  - type: "room_visited"      # Player has ever visited a room
     room_id: "deep_forest"
 
-  - type: "has_item"         # Player has an item
+  - type: "item_in_inventory" # Player is carrying an item
     item_id: "rare_metal_ore"
 
-  - type: "flag_set"         # Player has a flag
+  - type: "flag_set"          # Player has a flag set
     flag: "found_treasure"
+
+  - type: "flag_clear"        # Player does NOT have a flag set
+    flag: "quest_abandoned"
+
+  - type: "npc_remembers"     # Sprint 30.1: NPC memory (see NPC Memory above)
+    npc_id: "blacksmith_thor"
+    flag: "helped"            # the memory key
+```
+
+### Branching Stages (Sprint 30.1)
+
+Once a stage's own `conditions` pass, `branches` are evaluated **in order**; the first branch
+whose *own* `conditions` also pass wins — its `side_effects` (any handler on the shared
+dialogue side-effects registry: `set_flags`, `give_item`, `adjust_reputation`, `remember`,
+...) are the consequence, and `next_stage` becomes the new current stage (`null` completes the
+quest). If no branch's conditions pass yet, the quest simply stalls at the current stage.
+
+```yaml
+stages:
+  - id: decide_how_to_help
+    description: "Decide how to help the merchant."
+    conditions:
+      - type: flag_set
+        flag: ready_to_help
+    branches:
+      - conditions:
+          - type: room_visited
+            room_id: docks
+        next_stage: safe_route
+        side_effects:
+          set_flags: ["took_safe_route"]
+          adjust_reputation: {target_type: npc, target_id: merchant, delta: 10}
+      - conditions:
+          - type: room_visited
+            room_id: smugglers_cave
+        next_stage: risky_route
+        side_effects:
+          set_flags: ["took_risky_route"]
+          adjust_reputation: {target_type: npc, target_id: merchant, delta: -5}
+
+  - id: safe_route
+    description: "You took the safe way."
+    conditions: []
+    terminal: true          # a branch target, not necessarily last in the array
+    rewards: {xp: 10}
+
+  - id: risky_route
+    description: "You took the dangerous shortcut."
+    conditions: []
+    terminal: true
+    rewards: {xp: 20}
+```
+
+### Timed Quest Events (Sprint 30.2)
+
+A stage's `timeout_ticks` (game-clock ticks, not wall time) starts counting from the moment
+the stage becomes current. If the player hasn't progressed past it before the deadline,
+`QuestTimerService` (a background sweep on every `TIME_ADVANCED` tick, independent of any
+player command) applies `on_timeout`:
+
+```yaml
+stages:
+  - id: wait_at_depot
+    description: "Get to the depot before the caravan leaves."
+    conditions:
+      - type: flag_set
+        flag: boarded
+    timeout_ticks: 200
+    on_timeout:
+      next_stage: missed_caravan   # or omit/null to fail the quest outright
+      message: "The caravan leaves without you."
+      set_flags:
+        missed_caravan: true
 ```
 
 ### Multi-Stage Quest Example
@@ -425,5 +541,12 @@ The world loader validates all references:
 - NPC `dialogue_tree_id` must match a `dialogue_trees[].id`
 - NPC `home_room_id` and schedule `target_room_id` must exist
 - Quest references in dialogue side effects must exist
+- Quest stage/branch `room_id`/`item_id`/`npc_id` conditions must reference real rooms/items/NPCs
+- Stage ids are unique within a quest; a branch's or `on_timeout`'s `next_stage` must reference
+  a real stage id in the same quest
+- `on_timeout` requires `timeout_ticks` to also be set on that stage
+- Item `mechanism_side_effects` keys must be one of that item's own `mechanism_states`, and
+  `mechanism_states` (if set) needs at least 2 entries
+- Item `combination_side_effects` keys must reference a real item id
 
 Run the loader to catch errors early.

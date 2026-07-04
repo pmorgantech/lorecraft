@@ -35,6 +35,7 @@ class GameEvent(StrEnum):
     SKILL_IMPROVED = "skill_improved"
     QUEST_UPDATED = "quest_updated"
     QUEST_COMPLETED = "quest_completed"
+    QUEST_FAILED = "quest_failed"
     TIME_ADVANCED = "time_advanced"
     HOUR_CHANGED = "hour_changed"
     DAY_CHANGED = "day_changed"

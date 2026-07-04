@@ -15,6 +15,17 @@ _NPC_KEY = "_dialogue_npc_id"
 _NODE_KEY = "_dialogue_node_id"
 
 
+def current_npc_id(ctx: GameContext) -> str | None:
+    """The NPC the player is currently talking to, or None outside dialogue.
+
+    Exposed for other npc/ modules (npc_memory_conditions.py) that need to
+    scope a side effect or condition to "whichever NPC this conversation is
+    with" without reaching into the private dialogue flag keys themselves.
+    """
+    npc_id = ctx.player.flags.get(_NPC_KEY)
+    return str(npc_id) if npc_id else None
+
+
 class DialogueService:
     def start(self, npc_id: str, ctx: GameContext) -> None:
         npc = ctx.npc_repo.get(npc_id)

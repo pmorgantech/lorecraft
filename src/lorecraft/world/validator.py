@@ -66,6 +66,9 @@ class ItemData(BaseModel):
     effects: list[dict[str, object]] = Field(default_factory=list)
     value: int = 0
     category: str | None = None
+    mechanism_states: list[str] = Field(default_factory=list)
+    mechanism_side_effects: dict[str, dict[str, object]] = Field(default_factory=dict)
+    combination_side_effects: dict[str, dict[str, object]] = Field(default_factory=dict)
 
 
 class RoomItemData(BaseModel):
@@ -156,9 +159,36 @@ class QuestConditionData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: str
-    flag: str | None = None
+    flag: str | None = None  # also doubles as the memory key for npc_remembers
     room_id: str | None = None
     item_id: str | None = None
+    npc_id: str | None = None  # required for type: npc_remembers
+
+
+class QuestBranchData(BaseModel):
+    """One outcome of a branching stage (Sprint 30.1): evaluated in list
+    order, first branch whose `conditions` all pass wins. `side_effects` are
+    that branch's consequence (any npc/side_effects.py handler -- set_flags,
+    give_item, adjust_reputation, remember, ...); `next_stage` is the stage
+    id to move to, or null to complete the quest."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    conditions: list[QuestConditionData] = Field(default_factory=list)
+    next_stage: str | None = None
+    side_effects: dict[str, object] = Field(default_factory=dict)
+
+
+class QuestTimeoutData(BaseModel):
+    """Sprint 30.2: what happens if a stage's `timeout_ticks` elapses before
+    the player progresses it (QuestTimerService). `next_stage: null` fails
+    the quest (status becomes "failed", not "completed")."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    next_stage: str | None = None
+    message: str = ""
+    set_flags: dict[str, bool] = Field(default_factory=dict)
 
 
 class QuestStageData(BaseModel):
@@ -169,6 +199,15 @@ class QuestStageData(BaseModel):
     conditions: list[QuestConditionData] = Field(default_factory=list)
     completion_flags: dict[str, object] = Field(default_factory=dict)
     rewards: dict[str, object] = Field(default_factory=dict)
+    branches: list[QuestBranchData] = Field(default_factory=list)
+    # A stage reached via a branch jump may sit at any array index, not
+    # necessarily last -- `terminal: true` completes the quest as soon as
+    # this stage's own `conditions` pass, instead of falling through to
+    # `stages[idx+1]` (the legacy, array-order-only completion rule, still
+    # the default for stages that were never a branch target).
+    terminal: bool = False
+    timeout_ticks: float | None = None
+    on_timeout: QuestTimeoutData | None = None
 
 
 class QuestData(BaseModel):
@@ -242,6 +281,38 @@ class WorldDocument(BaseModel):
     transit: TransitConfigData | None = None
 
 
+def _validate_quest_condition(
+    quest_id: str,
+    stage_id: str,
+    cond: QuestConditionData,
+    room_ids: set[str],
+    item_ids: set[str],
+    npc_ids: set[str],
+    errors: list[str],
+) -> None:
+    if cond.room_id is not None and cond.room_id not in room_ids:
+        errors.append(
+            f"quest {quest_id} stage {stage_id} condition references missing "
+            f"room {cond.room_id}"
+        )
+    if cond.item_id is not None and cond.item_id not in item_ids:
+        errors.append(
+            f"quest {quest_id} stage {stage_id} condition references missing "
+            f"item {cond.item_id}"
+        )
+    if cond.type == "npc_remembers":
+        if cond.npc_id is None or cond.npc_id not in npc_ids:
+            errors.append(
+                f"quest {quest_id} stage {stage_id} npc_remembers condition "
+                f"references missing npc {cond.npc_id!r}"
+            )
+        if cond.flag is None:
+            errors.append(
+                f"quest {quest_id} stage {stage_id} npc_remembers condition "
+                "needs a 'flag' (the memory key)"
+            )
+
+
 def validate_world_document(data: object) -> WorldDocument:
     try:
         document = WorldDocument.model_validate(data)
@@ -252,6 +323,7 @@ def validate_world_document(data: object) -> WorldDocument:
     room_ids = {room.id for room in document.rooms}
     item_ids = {item.id for item in document.items}
     dialogue_tree_ids = {dt.id for dt in document.dialogue_trees}
+    npc_ids = {npc.id for npc in document.npcs}
 
     for room in document.rooms:
         if room.fallback_room_id is not None and room.fallback_room_id not in room_ids:
@@ -303,6 +375,58 @@ def validate_world_document(data: object) -> WorldDocument:
                 if stock.item_id not in item_ids:
                     errors.append(
                         f"npc {npc.id} shop stock references missing item {stock.item_id}"
+                    )
+
+    for item in document.items:
+        if item.mechanism_states and len(item.mechanism_states) < 2:
+            errors.append(
+                f"item {item.id} mechanism_states must have at least 2 states"
+            )
+        for state_name in item.mechanism_side_effects:
+            if state_name not in item.mechanism_states:
+                errors.append(
+                    f"item {item.id} mechanism_side_effects references unknown "
+                    f"state {state_name!r} (not in mechanism_states)"
+                )
+        for other_item_id in item.combination_side_effects:
+            if other_item_id not in item_ids:
+                errors.append(
+                    f"item {item.id} combination_side_effects references missing "
+                    f"item {other_item_id}"
+                )
+
+    for quest in document.quests:
+        stage_ids = {stage.id for stage in quest.stages}
+        if len(stage_ids) != len(quest.stages):
+            errors.append(f"quest {quest.id} has duplicate stage ids")
+        for stage in quest.stages:
+            for cond in stage.conditions:
+                _validate_quest_condition(
+                    quest.id, stage.id, cond, room_ids, item_ids, npc_ids, errors
+                )
+            for branch in stage.branches:
+                if branch.next_stage is not None and branch.next_stage not in stage_ids:
+                    errors.append(
+                        f"quest {quest.id} stage {stage.id} branch references "
+                        f"unknown next_stage {branch.next_stage!r}"
+                    )
+                for cond in branch.conditions:
+                    _validate_quest_condition(
+                        quest.id, stage.id, cond, room_ids, item_ids, npc_ids, errors
+                    )
+            if stage.on_timeout is not None:
+                if stage.timeout_ticks is None:
+                    errors.append(
+                        f"quest {quest.id} stage {stage.id} has on_timeout but no "
+                        "timeout_ticks"
+                    )
+                if (
+                    stage.on_timeout.next_stage is not None
+                    and stage.on_timeout.next_stage not in stage_ids
+                ):
+                    errors.append(
+                        f"quest {quest.id} stage {stage.id} on_timeout references "
+                        f"unknown next_stage {stage.on_timeout.next_stage!r}"
                     )
 
     if document.economy is not None:

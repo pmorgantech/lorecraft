@@ -726,6 +726,27 @@ async def partial_inventory(
     )
 
 
+@router.get("/partials/quest-tracker", response_class=HTMLResponse)
+async def partial_quest_tracker(
+    request: Request, player: Player = Depends(get_current_player)
+):
+    """Sprint 30.2: lets a scheduler-driven quest event (QuestTimerService,
+    which has no in-flight HTTP request to OOB-swap a response into) target
+    this one player's quest-tracker panel via a `state_change` WS push,
+    the same generic `affected_panels` -> GET this route pattern every other
+    live-refreshed panel uses."""
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        player = PlayerRepo(db).get(player.id) or player
+        quest_repo = QuestRepo(db)
+        active_quests = active_quests_snapshot(player, quest_repo)
+    return templates.TemplateResponse(
+        request,
+        "partials/quest_tracker.html",
+        {"request": request, "active_quests": active_quests},
+    )
+
+
 @router.get("/partials/minimap", response_class=HTMLResponse)
 async def partial_minimap(
     request: Request, player: Player = Depends(get_current_player)
