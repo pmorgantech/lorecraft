@@ -15,6 +15,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
 
 
@@ -55,6 +56,7 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
             item_repo=ItemRepo(session),
             stack_repo=StackRepo(session),
             item_location=ItemLocationService(session),
+            ledger=LedgerService(),
             npc_repo=NpcRepo(session),
             manager=manager,
             bus=bus,

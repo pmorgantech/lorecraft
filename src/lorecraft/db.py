@@ -22,6 +22,7 @@ from lorecraft.models.combat import CombatSession
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.issue import Issue
 from lorecraft.models.items import ItemInstance, ItemStack
+from lorecraft.models.ledger import CoinBalance
 from lorecraft.models.meters import ActiveEffect, Meter
 from lorecraft.models.news import NewsItem
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
@@ -70,6 +71,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     NewsItem,
     Meter,
     ActiveEffect,
+    CoinBalance,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

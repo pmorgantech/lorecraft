@@ -16,6 +16,7 @@ from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.meter_repo import MeterRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.services.ledger import LedgerService
 from lorecraft.game.rng import GameRng
 from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService
@@ -226,6 +227,7 @@ def _build_context(
         item_repo=ItemRepo(game_session),
         stack_repo=StackRepo(game_session),
         item_location=ItemLocationService(game_session),
+        ledger=LedgerService(),
         rng=GameRng(),
         session=game_session,
         meters=MeterService(game_session.get_bind(), GameRng()),

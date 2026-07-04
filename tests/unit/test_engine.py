@@ -22,6 +22,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
 
 
@@ -38,6 +39,7 @@ def build_context() -> GameContext:
         item_repo=None,
         stack_repo=None,
         item_location=None,
+        ledger=None,
         meters=None,
         effects=None,
         npc_repo=None,
@@ -235,6 +237,7 @@ def build_persistent_context(
         item_repo=ItemRepo(game_session),
         stack_repo=StackRepo(game_session),
         item_location=ItemLocationService(game_session),
+        ledger=LedgerService(),
         meters=MeterService(game_session.get_bind(), GameRng()),
         effects=EffectService(game_session.get_bind(), GameRng()),
         npc_repo=NpcRepo(game_session),
