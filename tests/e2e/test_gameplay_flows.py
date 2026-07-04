@@ -38,6 +38,37 @@ def _send_command(page: Any, command: str) -> None:
     page.wait_for_function("document.getElementById('command-input').value === ''")
 
 
+def test_arrow_up_history_recall_then_enter_submits(
+    page: Any, live_server: str
+) -> None:
+    """Regression test (2026-07-04): recalling a command with ArrowUp sets the
+    input's raw DOM value directly, which never fired Alpine's x-model input
+    listener -- localCommand stayed stale, keeping the Send button's
+    :disabled="!localCommand.trim()" true even though the field visibly
+    showed recalled text, and a disabled submit control blocks the browser's
+    implicit submit-on-Enter. Pressing Enter after a history recall must
+    submit the command, not require clicking Send.
+
+    History is only recorded on the input's own "Enter" keydown (see
+    setupCommandHistory in app.js), not on a Send-button click, so the setup
+    command below must be submitted via Enter too, matching the real
+    "type, Enter, arrow up, Enter" flow that surfaced the bug."""
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    _create_character(page, live_server, username)
+
+    input_box = page.locator("#command-input")
+    input_box.fill("look")
+    input_box.press("Enter")
+    page.wait_for_function("document.getElementById('command-input').value === ''")
+
+    input_box.click()
+    input_box.press("ArrowUp")
+    assert input_box.input_value() == "look"
+
+    input_box.press("Enter")
+    page.wait_for_function("document.getElementById('command-input').value === ''")
+
+
 def test_new_character_starts_in_village_square(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     _create_character(page, live_server, username)

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.12.1] - 2026-07-04
+
+### Fixed
+
+- **WebUI: recalling a command with ↑ then pressing Enter didn't submit it** — `app.js`'s command-history handler set the input's raw DOM `.value` directly on ArrowUp/ArrowDown, which never fires a native "input" event, so Alpine's `x-model="localCommand"` binding on that field never saw the change. `localCommand` stayed stale (usually `""`), which kept the Send button's `:disabled="!localCommand.trim()"` true even though the field visibly showed the recalled text — and a disabled submit control blocks a browser's implicit submit-on-Enter for the form. New `setInputValue()` helper dispatches a real `input` event after every programmatic `.value` write, keeping Alpine's model in sync. New e2e regression test (`test_arrow_up_history_recall_then_enter_submits`) confirmed failing without the fix and passing with it. Also fixed a pre-existing e2e test file (`test_ui_refresh_on_item_actions.py`, added in the 0.11.3 work) that had never actually run — it used the async Playwright API against this project's sync fixtures and a made-up `ashmoore_player` fixture that doesn't exist, plus a wrong room-graph direction (`south` instead of `north`, `north`) to reach Locksmith's Gallery; rewritten to match the working conventions in `test_gameplay_flows.py`/`test_map_and_mobile_ui.py` and now passes for real.
+
 ## [0.12.0] - 2026-07-04
 
 ### Added

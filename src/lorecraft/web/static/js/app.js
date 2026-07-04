@@ -286,6 +286,19 @@
       if (saved) commandHistory = JSON.parse(saved).slice(-50); // keep last 50
     } catch (e) {}
 
+    // Setting .value directly (as the history recall below does) never
+    // fires a native "input" event, so Alpine's x-model="localCommand"
+    // binding on this field never sees the change -- localCommand stays
+    // stale (usually ""), which keeps the Send button's
+    // :disabled="!localCommand.trim()" true even though the field visibly
+    // shows recalled text, and a disabled submit control blocks Enter from
+    // submitting the form. Dispatch a real "input" event after every
+    // programmatic .value write so Alpine's model stays in sync.
+    function setInputValue(value) {
+      input.value = value;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
     input.addEventListener("keydown", function (e) {
       if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -296,17 +309,17 @@
         } else if (historyIndex > 0) {
           historyIndex--;
         }
-        input.value = commandHistory[historyIndex] || "";
+        setInputValue(commandHistory[historyIndex] || "");
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         if (historyIndex === -1) return;
 
         if (historyIndex < commandHistory.length - 1) {
           historyIndex++;
-          input.value = commandHistory[historyIndex];
+          setInputValue(commandHistory[historyIndex]);
         } else {
           historyIndex = -1;
-          input.value = "";
+          setInputValue("");
         }
       } else if (e.key === "Enter" && !e.shiftKey) {
         // Record in history (after form submit or here)
