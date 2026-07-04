@@ -94,6 +94,7 @@ rooms:
 | `version` | integer | | Schema version (default: 1) |
 | `flags` | object | | Custom flags for this room |
 | `terrain` | string | | `normal`/`road`/`forest`/`mountain`/`swamp`/`water` (default: `normal`) — see Terrain below |
+| `safe_rest` | boolean | | `sleep` here is always reliable (default: `false`) — see Safe Rest below |
 | `disabled_commands` | array | | Commands not allowed here |
 | `exits` | array | | Connections to other rooms |
 
@@ -177,6 +178,22 @@ disabled_commands:
 Standard terrain: `normal` (no effect), `road` (flavor only), `forest` (flavor only),
 `mountain`/`swamp`/`water` (each requires a minimum `survival` skill level). Unknown
 terrain names fail content validation.
+
+### Safe Rest
+
+`safe_rest: true` marks a room (an inn, a guarded camp) where `sleep` always succeeds —
+a full stamina restore, no interruption risk, regardless of weather:
+
+```yaml
+- id: wandering_crow_inn
+  name: "The Wandering Crow Inn"
+  safe_rest: true
+```
+
+Everywhere else, `sleep` is a survival skill check (harder in cold weather — `snow`,
+`blizzard`, `fog` — unless the player has enough resolved `warmth`, see the Effects
+section's `warmth_bonus`); on failure the sleep is interrupted for a shorter, partial
+rest. `rest` and `camp` are unaffected by `safe_rest` — they work anywhere.
 
 ---
 
@@ -335,6 +352,7 @@ runtime — equipment bonuses are resolved live, never stored on the player:
 | `skill_bonus` | `skill`, `amount` | Adds to a named skill |
 | `carry_bonus` | `amount` | Extends carry capacity (e.g. a worn backpack) |
 | `grant_trait` | `trait` | Grants a named trait while equipped |
+| `warmth_bonus` | `amount` | Adds resolved warmth while equipped — offsets cold-weather sleep risk (see Safe Rest above) |
 
 ```yaml
 - id: worn_backpack

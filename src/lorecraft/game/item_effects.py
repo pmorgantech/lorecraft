@@ -57,6 +57,17 @@ def compile_item_modifiers(item: Item) -> list[Modifier]:
                         source=source,
                     )
                 )
+        elif effect_type == "warmth_bonus":
+            amount = effect.get("amount")
+            if isinstance(amount, (int, float)):
+                modifiers.append(
+                    Modifier(
+                        key="warmth",
+                        kind="add",
+                        amount=float(amount),
+                        source=source,
+                    )
+                )
     return modifiers
 
 

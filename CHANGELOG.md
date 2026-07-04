@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.9.1] - 2026-07-04
+
+### Added
+
+- **Sprint 27.2: Sleep depth** — New `Room.safe_rest` field (YAML `safe_rest: true`, marked on the Wandering Crow Inn in `world_content/world.yaml`): `sleep` there always succeeds — full stamina restore, 8-hour clock-advance (`clock/world_clock.py`'s `apply_clock_fields`, plus a weather reroll via `apply_daily_weather` if the day rolls over), and a dream. Everywhere else, `sleep` is a `survival` `skill_check` gamble — harder in cold weather (`clock/weather.py`'s new `COLD_WEATHERS`: snow/blizzard/fog) unless the player has enough resolved warmth; failure interrupts the sleep into a shorter (3h), partial, dreamless rest. New `game/warmth.py` (`resolve_warmth()`, composing the Tier 1 modifier resolver) and a new `warmth_bonus` item effect descriptor (`game/item_effects.py`, `tools/validators.py`) give worn clothing a non-combat purpose — a cloak matters in a blizzard. Dreams reference a random discovered `lore:`-flagged fact (Sprint 25.3) when the player has one, otherwise a generic flavor line. 5 new unit tests (13 total in `test_fatigue.py`).
+
 ## [0.9.0] - 2026-07-04
 
 ### Summary

@@ -36,6 +36,7 @@ class RoomData(BaseModel):
     light_level: int = 1
     version: int = 1
     terrain: str = "normal"
+    safe_rest: bool = False
     exits: list[ExitData] = Field(default_factory=list)
 
 

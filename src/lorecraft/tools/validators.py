@@ -170,7 +170,13 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
         "off_hand",
     }
     valid_qualities = {"common", "fine", "superior", "rare", "legendary"}
-    valid_effect_types = {"stat_bonus", "skill_bonus", "carry_bonus", "grant_trait"}
+    valid_effect_types = {
+        "stat_bonus",
+        "skill_bonus",
+        "carry_bonus",
+        "grant_trait",
+        "warmth_bonus",
+    }
     stats = {"strength", "agility", "vitality", "intellect", "presence", "fortitude"}
 
     for item in document.items:
@@ -228,6 +234,11 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
                 if "skill" not in effect:
                     result.errors.append(
                         f"item {item.id!r} effect {i} (skill_bonus) missing 'skill' field"
+                    )
+            elif effect_type == "warmth_bonus":
+                if not isinstance(effect.get("amount"), (int, float)):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (warmth_bonus) missing numeric 'amount' field"
                     )
 
     return result

@@ -24,6 +24,7 @@ class Room(SQLModel, table=True):
     terrain: str = (
         "normal"  # affects travel gating; see game/terrain.py's TerrainRegistry
     )
+    safe_rest: bool = False  # inns/camps: `sleep` here is reliable, never interrupted
 
 
 class Exit(SQLModel, table=True):

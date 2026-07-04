@@ -430,7 +430,7 @@ on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → 
 | # | Task | Status |
 |---|------|--------|
 | 27.1 | Fatigue/stamina drained by travel/encumbrance/actions; low fatigue penalizes skill checks; `rest`/`sleep`/`camp` | [x] `game/fatigue_source.py`'s "fatigue" `MeterDef` (stamina, scales with fortitude) + `FatigueModifierSource` (flat `mult` penalty on every registered skill once stamina drops below 50%/20% thresholds); `services/fatigue.py`'s `FatigueService` drains on `PLAYER_MOVED` (more when burdened/overloaded per Sprint 23.2 encumbrance bands) and backs `rest`/`camp`/`sleep` (`commands/condition.py`) |
-| 27.2 | Sleep advances time + restores fatigue + dream/lore hook; safe vs. unsafe sleep; warmth/exposure via weather + worn clothing | [ ] |
+| 27.2 | Sleep advances time + restores fatigue + dream/lore hook; safe vs. unsafe sleep; warmth/exposure via weather + worn clothing | [x] New `Room.safe_rest` field: `sleep` there always succeeds (full restore, 8h clock-advance, dream); elsewhere it's a `survival` `skill_check` (harder in cold weather — `clock/weather.py`'s `COLD_WEATHERS` — offset by resolved `warmth`), failing into a shorter, partial, dreamless "interrupted" rest. `game/warmth.py` + a new `warmth_bonus` item effect (`game/item_effects.py`) give worn clothing a non-combat purpose. Dream flavor references a random `lore:`-flagged discovery (Sprint 25.3) when the player has one. |
 
 ## Sprint 28 — Trading & economy
 

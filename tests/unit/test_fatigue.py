@@ -1,5 +1,5 @@
-"""Tests for Sprint 27.1: fatigue drain, rest/sleep/camp, and the low-stamina
-skill-check penalty."""
+"""Tests for Sprint 27.1-27.2: fatigue drain, rest/sleep/camp, the low-stamina
+skill-check penalty, sleep's clock-advance/safe-vs-unsafe risk, and warmth."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
+import lorecraft.game.equipment_source  # noqa: F401 -- registration side effects
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -16,11 +17,13 @@ from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
 from lorecraft.game.fatigue_source import FATIGUE_METER_KEY, FatigueModifierSource
 from lorecraft.game.holders import Location
+from lorecraft.game.item_effects import compile_item_modifiers
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
-from lorecraft.models.world import Exit, Item, Room
+from lorecraft.game.warmth import resolve_warmth
+from lorecraft.models.world import Exit, Item, Room, WorldClock
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
@@ -39,7 +42,14 @@ DEST_ROOM_ID = "dest"
 
 def _seed(session: Session) -> None:
     session.add(
-        Room(id=START_ROOM_ID, name="Start Room", description="d", map_x=0, map_y=0)
+        Room(
+            id=START_ROOM_ID,
+            name="Start Room",
+            description="d",
+            map_x=0,
+            map_y=0,
+            safe_rest=True,
+        )
     )
     session.add(
         Room(id=DEST_ROOM_ID, name="Dest Room", description="d", map_x=1, map_y=0)
@@ -51,6 +61,23 @@ def _seed(session: Session) -> None:
         Exit(room_id=DEST_ROOM_ID, direction="west", target_room_id=START_ROOM_ID)
     )
     session.add(Item(id="anvil", name="anvil", description="Heavy.", weight=90.0))
+    session.add(
+        Item(
+            id="cloak",
+            name="warm cloak",
+            description="A heavy wool cloak.",
+            effects=[{"type": "warmth_bonus", "amount": 25}],
+        )
+    )
+    session.add(
+        WorldClock(
+            id=1,
+            game_epoch=8 * 3600.0,
+            real_epoch=0.0,
+            current_day=1,
+            weather="clear",
+        )
+    )
     session.commit()
 
 
@@ -80,7 +107,7 @@ def _build_engine_and_ctx() -> tuple[CommandEngine, GameContext, Session]:
     ctx = GameContext(
         player=player,
         room=room,
-        clock=None,
+        clock=session.get(WorldClock, 1),
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
@@ -165,16 +192,19 @@ class TestRestSleepCamp:
 
         assert _fatigue(ctx).current == meter.maximum - 5.0
 
-    def test_sleep_restores_to_full(
+    def test_sleep_in_safe_room_restores_to_full_and_advances_clock(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         cmd_engine, ctx, _session = built
         meter = _fatigue(ctx)
         ctx.meters.adjust(ctx.session, meter, -80.0)
+        assert ctx.clock is not None
+        assert ctx.room.safe_rest is True
 
         cmd_engine.handle_command("sleep", ctx)
 
         assert _fatigue(ctx).current == meter.maximum
+        assert ctx.clock.current_hour == 16  # 08:00 + 8h
 
     def test_already_well_rested(
         self, built: tuple[CommandEngine, GameContext, Session]
@@ -184,6 +214,84 @@ class TestRestSleepCamp:
         cmd_engine.handle_command("rest", ctx)
 
         assert ctx.messages == ["You are already well-rested."]
+
+
+class TestSleepSafetyAndDream:
+    def test_unsafe_sleep_may_succeed_or_be_interrupted(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, session = built
+        dest = session.get(Room, DEST_ROOM_ID)
+        assert dest is not None
+        ctx.room = dest
+        meter = _fatigue(ctx)
+        ctx.meters.adjust(ctx.session, meter, -80.0)
+
+        cmd_engine.handle_command("sleep", ctx)
+
+        assert any(
+            "full night's rest" in m or "fitful and interrupted" in m
+            for m in ctx.messages
+        )
+        if any("fitful" in m for m in ctx.messages):
+            assert _fatigue(ctx).current == meter.maximum - 80.0 + 20.0
+            assert ctx.clock is not None and ctx.clock.current_hour == 11  # +3h
+        else:
+            assert _fatigue(ctx).current == meter.maximum
+            assert ctx.clock is not None and ctx.clock.current_hour == 16  # +8h
+
+    def test_dream_after_safe_sleep_references_lore_flag(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+        ctx.player.flags = {**ctx.player.flags, "lore:ancient_ruins": True}
+
+        cmd_engine.handle_command("sleep", ctx)
+
+        assert any("ancient ruins" in m for m in ctx.messages)
+
+    def test_dream_after_safe_sleep_generic_without_lore(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+
+        cmd_engine.handle_command("sleep", ctx)
+
+        assert any("You dream of" in m for m in ctx.messages)
+
+
+class TestWarmth:
+    def test_resolve_warmth_from_equipped_cloak(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        assert resolve_warmth(session, ctx.player.id) == 0.0
+
+        ctx.item_location.spawn("cloak", Location("player", ctx.player.id))
+        stack = next(
+            s
+            for s in ctx.stack_repo.stacks_for_owner("player", ctx.player.id)
+            if s.item_id == "cloak"
+        )
+        stack.slot = "back"
+        session.add(stack)
+        session.commit()
+
+        assert resolve_warmth(session, ctx.player.id) == 25.0
+
+    def test_compile_item_modifiers_handles_warmth_bonus(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        cloak = ctx.item_repo.get("cloak")
+        assert cloak is not None
+
+        modifiers = compile_item_modifiers(cloak)
+
+        assert any(
+            m.key == "warmth" and m.kind == "add" and m.amount == 25.0
+            for m in modifiers
+        )
 
 
 class TestFatigueSkillPenalty:

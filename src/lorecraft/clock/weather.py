@@ -21,6 +21,10 @@ WEATHER_TABLE: dict[str, tuple[str, ...]] = {
     "winter": ("snow", "clear", "blizzard", "fog", "clear"),
 }
 
+# Weather that makes exposure a real concern without adequate warmth (Sprint
+# 27.2) -- gives worn clothing (warmth_bonus items) a non-combat purpose.
+COLD_WEATHERS = frozenset({"snow", "blizzard", "fog"})
+
 
 class WeatherChoice(Protocol):
     def __call__(self, seq: tuple[str, ...]) -> str: ...

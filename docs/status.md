@@ -84,9 +84,15 @@ The architecture overview remains the design reference; this file is the working
 > `QuestService.check_progression`'s quest-stage/flag mutations (triggered by
 > `PLAYER_MOVED`/`ITEM_TAKEN`/`ITEM_DROPPED`) were silently discarded once a request's
 > session closed — existing unit tests never caught it since they read the same
-> still-open session. Sprint 27.2 (sleep clock-advance, safe/unsafe risk, warmth/exposure)
-> and the rest of the feature band (trading, transit, quests/puzzles) continue next;
-> combat/PvP (Sprints 31–35) are deferred per direction.
+> still-open session. **Sprint 27.2 (sleep depth) is now complete**: a new `Room.safe_rest`
+> field makes `sleep` reliable in inns/camps (full restore, 8h clock-advance, dream);
+> everywhere else it's a `survival` skill check, harder in cold weather unless the
+> player has enough resolved `warmth` (`game/warmth.py` + a new `warmth_bonus` item
+> effect, giving worn clothing a non-combat purpose), failing into a shorter, partial,
+> dreamless "interrupted" rest. Dreams reference a random discovered `lore:` flag
+> (Sprint 25.3) when the player has one. Sprint 27 (character condition) is now
+> complete; the rest of the feature band (trading, transit, quests/puzzles) continues
+> next; combat/PvP (Sprints 31–35) are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

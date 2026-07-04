@@ -149,7 +149,13 @@ sleep           — sleep deeply and recover all your stamina
 Traveling drains your stamina — more so if you're carrying a lot of weight. Running low
 saps your skill checks (perception, lockpicking, and the rest), so it pays to top up
 before attempting something that matters. `rest` is quick and available almost anywhere;
-`camp` restores more but takes longer; `sleep` restores you fully.
+`camp` restores more but takes longer; `sleep` restores you fully and advances the clock.
+
+Sleeping in an inn or a marked camp is always reliable. Anywhere else it's a gamble — a
+survival check, harder in cold weather unless you're dressed for it (a warm cloak or
+similar helps). If it goes badly your rest is interrupted: shorter, and only a partial
+recovery. A good night's sleep sometimes comes with a dream — occasionally a hint tied to
+something you've already discovered.
 
 ## Character: Traits, Skills, and Reputation
 

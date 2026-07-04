@@ -68,6 +68,7 @@ rooms:
     map_y: 8
     area_id: town
     light_level: 1
+    safe_rest: true
     exits:
       - direction: east
         target_room_id: village_square
