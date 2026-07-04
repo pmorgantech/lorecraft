@@ -35,6 +35,14 @@ PREP_TO_ROLE = {
     "about": "topic",
 }
 
+# Verbs with no recipient/destination concept whose entire argument is a
+# single opaque message — never split on a preposition inside it. Unlike
+# whisper/tell (which legitimately split on "to <recipient>"), report has
+# nothing to split against, so "report the keys stay in the room pane" must
+# not fragment on "in" the way an object/destination phrase legitimately
+# would ("put the keys in the chest"). See parse_command's prep_info check.
+FREE_TEXT_VERBS = frozenset({"report"})
+
 PHRASAL_VERBS = {
     "pick up": "take",
     "look at": "examine",

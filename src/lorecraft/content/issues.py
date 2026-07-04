@@ -8,6 +8,8 @@ no issues yet, and re-exported to YAML whenever the admin UI mutates an issue.
 from __future__ import annotations
 
 import logging
+import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
@@ -22,6 +24,44 @@ from lorecraft.models.issue import Issue
 log = logging.getLogger(__name__)
 
 FORMAT_VERSION = "1.0"
+
+
+def create_issue(
+    session: Session,
+    *,
+    title: str,
+    description: str = "",
+    type: str = "bug",
+    status: str = "open",
+    priority: str = "normal",
+    component: str = "",
+    created_by: str = "",
+    assigned_to: str = "",
+    tags: list[str] | None = None,
+) -> Issue:
+    """Create and stage a new Issue row (caller commits).
+
+    Single construction path for both the admin `POST /admin/issues` endpoint
+    and the in-game `report` command, so the two can't drift on defaults or
+    id generation.
+    """
+    now = time.time()
+    issue = Issue(
+        id=f"issue-{uuid.uuid4().hex[:8]}",
+        type=type,
+        title=title,
+        description=description,
+        status=status,
+        priority=priority,
+        component=component,
+        created_by=created_by,
+        assigned_to=assigned_to,
+        created_at=now,
+        updated_at=now,
+        tags=list(tags or []),
+    )
+    session.add(issue)
+    return issue
 
 
 class IssuesValidationError(ValueError):

@@ -9,6 +9,7 @@ from lorecraft.commands.inventory import register_inventory_commands
 from lorecraft.commands.meta import register_meta_commands
 from lorecraft.commands.movement import register_movement_commands
 from lorecraft.commands.news import register_news_commands
+from lorecraft.commands.report import register_report_commands
 from lorecraft.commands.social import register_social_commands
 from lorecraft.commands.trade import register_trade_commands
 from lorecraft.commands.transit import register_transit_commands
@@ -40,6 +41,7 @@ def register_all_commands(
     register_inventory_commands(registry, services.inventory)
     register_social_commands(registry, services.dialogue)
     register_news_commands(registry)
+    register_report_commands(registry)
     register_character_commands(registry, services.character_info)
     register_exploration_commands(registry, services.exploration, services.journal)
     register_condition_commands(registry, services.fatigue)

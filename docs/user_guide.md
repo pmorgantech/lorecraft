@@ -13,8 +13,9 @@ to NPCs, and the full command list.
 6. [Chat & Social](#chat--social)
 7. [Saving, Quitting, and Reconnecting](#saving-quitting-and-reconnecting)
 8. [News](#news)
-9. [Full Command Reference](#full-command-reference)
-10. [Tips & Troubleshooting](#tips--troubleshooting)
+9. [Reporting Bugs](#reporting-bugs)
+10. [Full Command Reference](#full-command-reference)
+11. [Tips & Troubleshooting](#tips--troubleshooting)
 
 ---
 
@@ -271,6 +272,22 @@ news            — show current server announcements
 Announcements are also available outside the game as an RSS feed at `/api/news/feed`,
 if you want to follow them in a feed reader.
 
+## Reporting Bugs
+
+```
+report <description>   — report a bug or issue to the developers
+```
+
+Found something broken? `report` sends a short description straight to the developers'
+issue tracker — no need to leave the game or dig up a contact form. It works anywhere,
+even mid-conversation with an NPC. Try to be specific about what you did and what you
+expected to happen instead:
+
+```
+> report get all left the keys visible in the room panel even after taking them
+Thanks — logged as issue-a1b2c3d4. The team will take a look.
+```
+
 ## Full Command Reference
 
 This list is generated from the same `help` text the game shows you in-session — type
@@ -326,6 +343,7 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `bye` | `farewell`, `goodbye` | End the current conversation |
 | `say <message>` | | Speak aloud to the room |
 | `news` | | Show current announcements |
+| `report <description>` | | Report a bug or issue to the developers |
 | `save [slot]` | | Save your progress |
 | `load [slot]` | | Load a saved game |
 | `help` | `?` | Show the command list (context-aware) |

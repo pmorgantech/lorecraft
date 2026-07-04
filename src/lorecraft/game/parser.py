@@ -15,6 +15,7 @@ from lorecraft.game.grammar import (
     DEFERRED_DISAMBIGUATION_ROLE,
     DIRECTION_ALIASES,
     DIRECTIONS,
+    FREE_TEXT_VERBS,
     PHRASAL_ROLE_HINTS,
     PHRASAL_VERBS,
     direct_role_for_verb,
@@ -214,10 +215,19 @@ def parse_command(
     if verb == "look" and find_first_preposition(rest) is not None:
         verb = "examine"
 
-    prep_info = find_first_preposition(rest)
     roles: dict[str, JsonValue] = {}
 
-    if prep_info:
+    if verb in FREE_TEXT_VERBS:
+        # Unlike whisper/tell (which legitimately split on "to <recipient>"),
+        # report has no recipient concept -- its entire argument is one
+        # opaque message and must not fragment on ANY preposition inside it
+        # ("report the keys stay in the room pane" is not "put X in Y"), nor
+        # have articles/quantities/adjectives stripped, since those rules
+        # exist for matching item phrases, not preserving prose verbatim.
+        message = " ".join(rest) if rest else None
+        if message:
+            roles["message"] = message
+    elif (prep_info := find_first_preposition(rest)) is not None:
         index, prep = prep_info
         direct_tokens = rest[:index]
         indirect_tokens = rest[index + 1 :]

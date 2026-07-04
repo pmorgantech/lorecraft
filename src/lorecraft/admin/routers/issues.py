@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -11,9 +10,9 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from lorecraft.admin.auth import Moderator, Observer
+from lorecraft.content.issues import create_issue as build_issue
 from lorecraft.content.issues import export_issues_yaml
 from lorecraft.content.paths import resolve_repo_path
-from lorecraft.models.issue import Issue
 from lorecraft.repos.issue_repo import IssueRepo
 
 router = APIRouter(tags=["admin"])
@@ -93,24 +92,19 @@ async def create_issue(
     body: _CreateIssueBody, request: Request, token: Moderator
 ) -> dict[str, Any]:
     state = _state(request)
-    now = time.time()
     with Session(state.game_engine) as session:
-        repo = IssueRepo(session)
-        issue = Issue(
-            id=f"issue-{uuid.uuid4().hex[:8]}",
-            type=body.type,
+        issue = build_issue(
+            session,
             title=body.title,
+            type=body.type,
             description=body.description,
             status=body.status,
             priority=body.priority,
             component=body.component,
             created_by=token.username,
             assigned_to=body.assigned_to,
-            created_at=now,
-            updated_at=now,
-            tags=list(body.tags),
+            tags=body.tags,
         )
-        repo.add(issue)
         session.commit()
         session.refresh(issue)
         _sync_yaml(state, session)

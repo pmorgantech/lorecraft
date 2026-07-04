@@ -2,6 +2,7 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.content.issues import (
     IssuesValidationError,
+    create_issue,
     export_issues_yaml,
     load_issues_yaml,
     validate_issues_document,
@@ -103,3 +104,38 @@ def test_export_issues_yaml_round_trips(tmp_path) -> None:
         assert len(document.issues) == 1
         assert document.issues[0].id == "issue-001"
         assert document.issues[0].tags == ["a", "b"]
+
+
+def test_create_issue_stages_a_new_row_with_generated_id() -> None:
+    engine = _engine()
+    with Session(engine) as session:
+        issue = create_issue(
+            session,
+            title="Something broke",
+            description="Full details here.",
+            component="player-report",
+            created_by="alice",
+            tags=["player-report"],
+        )
+        session.commit()
+
+        assert issue.id.startswith("issue-")
+        persisted = session.get(Issue, issue.id)
+        assert persisted is not None
+        assert persisted.title == "Something broke"
+        assert persisted.description == "Full details here."
+        assert persisted.type == "bug"
+        assert persisted.status == "open"
+        assert persisted.priority == "normal"
+        assert persisted.component == "player-report"
+        assert persisted.created_by == "alice"
+        assert persisted.assigned_to == ""
+        assert persisted.tags == ["player-report"]
+
+
+def test_create_issue_generates_unique_ids() -> None:
+    engine = _engine()
+    with Session(engine) as session:
+        first = create_issue(session, title="First")
+        second = create_issue(session, title="Second")
+        assert first.id != second.id

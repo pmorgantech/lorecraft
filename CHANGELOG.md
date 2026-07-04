@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.12.0] - 2026-07-04
+
+### Added
+
+- **`report` command: player-facing bug/feedback reports wired to the issue tracker** — New `report <description>` command (`commands/report.py`, GLOBAL scope, always available including mid-dialogue) creates a real `Issue` row via a new shared `content/issues.py`'s `create_issue()` helper — the same construction path the admin `POST /admin/issues` endpoint now calls too (refactored to remove the duplicated construction logic), so reports show up immediately in the existing admin issues list/TUI panel. Tagged `component="player-report"`/`tags=["player-report"]` for easy filtering; `created_by` is the reporting player's username. Long reports are truncated at 1000 characters (noted in the confirmation message); the title is a shortened summary of the description.
+- Fixed a real, previously-unnoticed parser bug found while building this: any free-text argument containing a preposition word ("in", "on", "at", "with", "from", ...) or certain adjective-like words got silently mangled — split at the preposition and/or stripped of articles ("the", "a", "some", "one") anywhere in the text, not just leading ones — because free-text commands were being routed through the same phrase-parsing rules built for matching item names (`take the red apple`). New `FREE_TEXT_VERBS` set (`game/grammar.py`) exempts `report` from all of that: its entire argument is joined verbatim into a `message` role. Scoped narrowly to `report` only — `say`/`whisper`/`shout`/`yell`/`scream`/`tell` keep their existing (tested, intentional) `to <recipient>` preposition-splitting behavior unchanged.
+
 ## [0.11.4] - 2026-07-04
 
 ### Fixed

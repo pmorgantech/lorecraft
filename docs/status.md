@@ -138,7 +138,19 @@ The architecture overview remains the design reference; this file is the working
 > entries behind. Separately, the WebUI's "CURRENT LOCATION" items list wasn't refreshing
 > after in-place actions like `get all` (only refreshed on room change), and the actor was
 > seeing both their own action message and the room's narration of it — both fixed in
-> `web/frontend.py`.
+> `web/frontend.py`. **Follow-up (v0.11.4):** `world/versioning.py`'s room-deactivation path
+> displaces occupants to a fallback room in the DB but was the one place that never told
+> `ConnectionManager` — fixed by threading an optional `manager` through
+> `promote()`/`_apply_item()`/`_apply_room()`. **`report` command (2026-07-04, v0.12.0):**
+> new player-facing `report <description>` command (`commands/report.py`) wired directly to
+> the existing repo-tracked issue tracker via a shared `content/issues.py`'s `create_issue()`
+> — the same path the admin `POST /admin/issues` endpoint now calls too, so reports show up
+> immediately in the admin Issues tab. Building it surfaced a real, previously-unnoticed
+> parser bug: free-text arguments containing a preposition ("in", "on", "at", ...) or certain
+> adjective-like words got silently split/stripped, since free-text commands were routed
+> through the same phrase rules built for item-name matching. Fixed narrowly for `report`
+> via a new `FREE_TEXT_VERBS` set (`game/grammar.py`) — `say`/`whisper`/`tell`/etc. keep
+> their existing, intentional `to <recipient>` splitting behavior unchanged.
 
 ## Phase-to-Sprint Mapping
 

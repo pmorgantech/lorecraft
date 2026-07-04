@@ -238,7 +238,11 @@ Both are YAML-first (git-blame-able, reviewable in PRs) and synced into the DB o
 startup and on every admin mutation:
 
 - **Issues** (`docs/issues.yaml`) — bug/task tracker. Manage via the Issues tab, `F6`,
-  or `GET/POST/PUT /admin/issues`.
+  or `GET/POST/PUT /admin/issues`. Players can also file one directly from in-game with
+  `report <description>` (tagged `component="player-report"` for easy filtering) — it lands
+  in the DB immediately (visible right away in the Issues tab/API), but the git-tracked YAML
+  mirror only picks it up the next time an admin mutates *any* issue (same as any other
+  DB-only write), not the instant it's filed.
 - **News** (`docs/news.yaml`) — in-game announcements. Manage via the News tab, `F7`,
   or `GET/POST/PUT/DELETE /admin/news`. Also exposed unauthenticated at `/api/news`
   (JSON) and `/api/news/feed` (RSS 2.0), and in-game via the `news` command.
