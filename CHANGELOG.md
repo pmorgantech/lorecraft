@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.12.2] - 2026-07-04
+
+### Fixed
+
+- **WebUI: multi-line messages (e.g. `help`) rendered as one giant wrapped line** — `help`'s output (and any other multi-line message, like `journal`) is a single string joined with `\n` between lines, but the feed template's message `<span>` had no whitespace styling, so the browser collapsed every newline into a single space — all the command entries ran together in one unreadable paragraph. Added Tailwind's `whitespace-pre-line` utility (preserves line breaks, still wraps and collapses ordinary runs of spaces) to the message span in both `feed_item.html` and `feed_items.html`.
+
 ## [0.12.1] - 2026-07-04
 
 ### Fixed

@@ -69,6 +69,24 @@ def test_arrow_up_history_recall_then_enter_submits(
     page.wait_for_function("document.getElementById('command-input').value === ''")
 
 
+def test_help_output_preserves_line_breaks(page: Any, live_server: str) -> None:
+    """Regression test (2026-07-04): `help`'s multi-line output (joined with
+    "\\n") rendered as one giant wrapped paragraph, because the feed message
+    span had no whitespace styling and browsers collapse literal newlines by
+    default. The message span must preserve them (whitespace-pre-line)."""
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    _create_character(page, live_server, username)
+
+    _send_command(page, "help")
+
+    message_span = page.locator("#feed .msg", has_text="Available commands").locator(
+        "span.whitespace-pre-line"
+    )
+    message_span.wait_for()
+    white_space = message_span.evaluate("el => getComputedStyle(el).whiteSpace")
+    assert white_space == "pre-line"
+
+
 def test_new_character_starts_in_village_square(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     _create_character(page, live_server, username)

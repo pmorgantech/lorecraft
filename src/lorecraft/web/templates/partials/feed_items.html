@@ -21,7 +21,7 @@
             <span class="text-zinc-500">:</span>
         {% endif %}
 
-        <span class="text-zinc-200">{{ msg.text | safe }}</span>
+        <span class="text-zinc-200 whitespace-pre-line">{{ msg.text | safe }}</span>
 
         {% if msg.meta %}
             <span class="text-[10px] text-zinc-600 ml-1">({{ msg.meta }})</span>
