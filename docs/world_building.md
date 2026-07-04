@@ -269,8 +269,78 @@ items:
 | `description` | string | ✓ | Description shown when examining |
 | `takeable` | boolean | | Can player pick this up (default: true) |
 | `tradeable` | boolean | | Can player trade/drop this (default: true) |
+| `bound` | boolean | | Soulbound: can't be dropped/given/sold (default: false) |
 | `usable_with` | array | | IDs of items this can combine with |
 | `loot_table` | object | | Items dropped when destroyed/used |
+| `slot` | string | | Equip slot (`head`, `main_hand`, `finger`, etc. — see Equipment below) |
+| `wearable` | boolean | | Worn (armor/clothing) vs. wielded (weapon/tool/light) (default: false) |
+| `weight` | float | | Drives encumbrance (default: 0.0) |
+| `quality` | string | | `common`/`fine`/`superior`/`rare`/`legendary` (default: `common`) |
+| `max_durability` | integer | | Tracked per-instance; omit for indestructible items |
+| `light` | integer | | Light emitted while equipped and lit (default: 0) |
+| `capacity` | float | | Makes the item a container holding up to this much weight |
+| `effects` | array | | Effect descriptors — see Effects below |
+
+### Equipment Slots
+
+`slot` places an item in one of the equip slots: `head`, `face`, `neck`, `shoulders`,
+`torso`, `back`, `hands`, `finger_l`, `finger_r`, `waist`, `legs`, `feet` (worn — set
+`wearable: true`), or `main_hand`/`off_hand` (wielded — leave `wearable: false`). Rings
+use the generic `slot: finger`; the `wear` command places them in whichever of
+`finger_l`/`finger_r` is free.
+
+```yaml
+items:
+  - id: miners_helm
+    name: "miner's helm"
+    slot: head
+    wearable: true
+    weight: 2.0
+    quality: fine
+    effects:
+      - { type: skill_bonus, skill: perception, amount: 5 }
+
+  - id: brass_lantern
+    name: "brass lantern"
+    slot: off_hand
+    wearable: false
+    weight: 1.0
+    light: 3
+    max_durability: 500      # fuel: drains 1 per world-clock tick while lit
+```
+
+### Effects
+
+Each `effects` entry is a descriptor compiled into a Tier 1 modifier or trait grant at
+runtime — equipment bonuses are resolved live, never stored on the player:
+
+| Type | Fields | Effect |
+|------|--------|--------|
+| `stat_bonus` | `stat`, `amount` | Adds to a stat (`strength`, `agility`, `vitality`, `intellect`, `presence`, `fortitude`) |
+| `skill_bonus` | `skill`, `amount` | Adds to a named skill |
+| `carry_bonus` | `amount` | Extends carry capacity (e.g. a worn backpack) |
+| `grant_trait` | `trait` | Grants a named trait while equipped |
+
+```yaml
+- id: worn_backpack
+  slot: back
+  wearable: true
+  capacity: 40
+  effects:
+    - { type: carry_bonus, amount: 40 }
+```
+
+### Containers
+
+Setting `capacity` makes an item a container: it must be `open`ed before anything can be
+`put`/`take`n, has a maximum nesting depth of 3, and its own weight limit.
+
+```yaml
+- id: wooden_chest
+  name: "wooden chest"
+  takeable: false
+  capacity: 50
+```
 
 ### Takeable vs Tradeable
 

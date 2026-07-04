@@ -19,6 +19,7 @@ from lorecraft.db import create_audit_engine, create_game_engine
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
+from lorecraft.game.item_rules import register_item_rules
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
@@ -125,6 +126,7 @@ def get_command_engine(request: Request | None = None) -> CommandEngine:
     if _command_registry is None:
         _command_registry = CommandRegistry()
         _rule_engine = RuleEngine()
+        register_item_rules(_rule_engine)
         from lorecraft.commands import register_all_commands
 
         register_all_commands(_command_registry)

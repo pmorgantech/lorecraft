@@ -257,7 +257,7 @@ class ItemLocationService:
             )
 
         if dest.owner_type == "container":
-            self._check_container_cycle(stack.item_id, dest.owner_id)
+            self._check_container_cycle(stack.instance_id, dest.owner_id)
 
         for validator in self.holder_registry.get_validators(dest.owner_type):
             validator(self.session, dest, item, quantity)
@@ -319,29 +319,42 @@ class ItemLocationService:
         self.session.flush()
         return instance
 
-    def _check_container_cycle(self, item_id: str, container_id: str) -> None:
-        """Check if moving item_id into container_id would create a cycle.
+    def _check_container_cycle(
+        self, moved_instance_id: str | None, container_id: str
+    ) -> None:
+        """Check if moving an item into container_id would create a cycle.
 
-        A container may not contain itself, directly or transitively. This walks the
-        container hierarchy to detect cycles.
+        A container may not contain itself, directly or transitively: this
+        walks container_id's own ancestry (the chain of containers it is
+        itself sitting inside) looking for moved_instance_id. A non-instanced
+        item (moved_instance_id is None) can never itself be a container, so
+        it can never be its own ancestor — no cycle possible.
 
         Args:
-            item_id: The item being moved.
+            moved_instance_id: The ItemInstance.id of the item being moved,
+                if it's instanced (only instanced items can be containers).
             container_id: The container (ItemInstance.id) being moved into.
 
         Raises:
             ConflictError: If a cycle is detected.
         """
-        statement = select(ItemStack).where(ItemStack.instance_id == container_id)
-        container_stack = self.session.exec(statement).first()
-        if container_stack is None:
-            return  # Container doesn't exist or isn't a stack; no cycle possible
+        if moved_instance_id is None:
+            return
 
-        if item_id == container_stack.item_id:
-            raise ConflictError(
-                "Cannot place a container inside itself", "conflict_container_cycle"
-            )
+        current_id: str | None = container_id
+        seen: set[str] = set()
+        while current_id is not None:
+            if current_id == moved_instance_id:
+                raise ConflictError(
+                    "Cannot place a container inside itself",
+                    "conflict_container_cycle",
+                )
+            if current_id in seen:
+                return  # already-cyclic elsewhere; not this move's problem
+            seen.add(current_id)
 
-        # NOTE: deeper transitive cycles (container A holds container B holds A)
-        # are deferred until Sprint 22's container component lands; only stateless
-        # stacks exist today, so no container can yet directly hold another.
+            statement = select(ItemStack).where(ItemStack.instance_id == current_id)
+            container_stack = self.session.exec(statement).first()
+            if container_stack is None or container_stack.owner_type != "container":
+                return
+            current_id = container_stack.owner_id

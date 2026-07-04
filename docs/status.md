@@ -45,9 +45,20 @@ The architecture overview remains the design reference; this file is the working
 > fields (`slot`, `wearable`, `weight`, `quality`, `max_durability`, `light`, `capacity`,
 > `effects`), content validators added for all fields, YAML loader updated (22.1); the standard
 > `durability`/`openable`/`lit`/`container` components are registered on Sprint 16's
-> `ComponentRegistry`, plus `open`/`close` commands (22.2). Tier 2 feature work (equipment
-> commands, encumbrance, light/darkness, containers, traits/skills, exploration, trading,
-> transit, quests, combat) continues from Sprint 23; combat moved down to Sprints 31–33.
+> `ComponentRegistry`, plus `open`/`close` commands (22.2). **Sprint 23 (inventory & equipment)
+> is now complete**: equipped-ness is a location (`slot` on a player-owned `ItemStack`), not a
+> column; `wear`/`remove`/`wield`/`unwield`/`equipment` commands, an equip-slot move validator,
+> and `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` events (23.1); equipment-derived modifiers/traits
+> (`game/equipment_source.py`) feeding the Tier 1 resolver/trait registry live, plus
+> `game/encumbrance.py`'s carry-capacity bands (23.2); `put`/`take from` containers, a
+> container move validator (open/capacity/nesting), `light`/`extinguish` commands, a
+> lit-source fuel-drain scheduler sweep, and a light-gate that now also checks equipped lit
+> sources, not just `Room.light_level` (23.3). Caught and fixed two real bugs along the way:
+> `ItemLocationService`'s container-cycle check compared item *type* instead of instance
+> (any two same-type containers falsely couldn't nest), and equipped items were invisible to
+> open/close/light/extinguish (the lookup only searched loose stacks). Tier 2 feature work
+> (traits/skills, exploration, trading, transit, quests, combat) continues from Sprint 24;
+> combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -59,7 +70,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
 | Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [x] |
-| Item state / inventory / equipment | Sprints 22–23 (gated) | [~] Sprint 22 (item definition fields) complete; 23 (equipment & encumbrance) in progress |
+| Item state / inventory / equipment | Sprints 22–23 (gated) | [x] |
 | Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
 | Quests & puzzles depth | Sprint 30 (gated) | [ ] |

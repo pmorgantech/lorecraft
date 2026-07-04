@@ -376,19 +376,19 @@ be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.
 
 | # | Task | Status |
 |---|------|--------|
-| 22.1 | Layer A item fields (`slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects`, `bound`) on `Item`; YAML loader + validators | [ ] |
-| 22.2 | Register durability/`is_open`/`lit`/container as **standard components** on the [Sprint 16](#sprint-16--item-locationownership--instance-state) `ItemInstance`/component model; `open` + state verbs (stateless stackables stay as ID stacks) | [ ] |
+| 22.1 | Layer A item fields (`slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects`, `bound`) on `Item`; YAML loader + validators | [x] |
+| 22.2 | Register durability/`is_open`/`lit`/container as **standard components** on the [Sprint 16](#sprint-16--item-locationownership--instance-state) `ItemInstance`/component model; `open` + state verbs (stateless stackables stay as ID stacks) | [x] |
 
-## Sprint 23 — Inventory & equipment
+## Sprint 23 — Inventory & equipment ✅
 
 **Goal:** Wear/wield slots, encumbrance, containers. Equipment grants **non-combat** effects
 (light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](inventory_equipment.md) §3–6, §9.**
 
 | # | Task | Status |
 |---|------|--------|
-| 23.1 | `Player.equipment` slot map; `wear`/`remove`/`wield`/`equipment` commands via `InventoryService`; `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` events | [ ] |
-| 23.2 | Encumbrance bands from weight + `carry_bonus`; `EquipmentEffects.resolve()` (runtime-derived, never stored) | [ ] |
-| 23.3 | Containers: `put in` / `take from`, nesting, worn-container capacity; light/darkness gate (`Room.light_level` + lit source) | [ ] |
+| 23.1 | `wear`/`remove`/`wield`/`unwield`/`equipment` commands via `InventoryService`; `ITEM_EQUIPPED`/`ITEM_UNEQUIPPED` events | [x] Equipped-ness is a location (slot on the player's own `ItemStack`), not a `Player.equipment` column — supersedes that earlier draft, per `inventory_equipment.md`'s binding "decided" storage spec |
+| 23.2 | Encumbrance bands from weight + `carry_bonus`; equipment effects resolved at runtime (never stored) | [x] `game/equipment_source.py` + `game/encumbrance.py` |
+| 23.3 | Containers: `put in` / `take from`, nesting, worn-container capacity; light/darkness gate (`Room.light_level` + lit source) | [x] |
 
 ## Sprint 24 — Traits & skills
 

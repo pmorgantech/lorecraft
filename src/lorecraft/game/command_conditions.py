@@ -69,9 +69,30 @@ _registry = CommandConditionRegistry()
 
 def _light_check(parameter: str, ctx: "GameContext") -> ConditionResult:
     del parameter
-    if ctx.room.light_level <= 0:
-        return ConditionResult(False, "It's too dark to do that.")
-    return ConditionResult(True)
+    if ctx.room.light_level > 0:
+        return ConditionResult(True)
+    if _has_lit_equipped_source(ctx):
+        return ConditionResult(True)
+    return ConditionResult(False, "It's too dark to do that. You need a light.")
+
+
+def _has_lit_equipped_source(ctx: "GameContext") -> bool:
+    from lorecraft.models.items import ItemInstance
+    from lorecraft.services.item_components import get_component_state
+
+    for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+        if stack.slot is None or stack.instance_id is None:
+            continue
+        item = ctx.item_repo.get(stack.item_id)
+        if item is None or item.light <= 0:
+            continue
+        instance = ctx.session.get(ItemInstance, stack.instance_id)
+        if instance is None:
+            continue
+        lit_state = get_component_state(instance, "lit")
+        if isinstance(lit_state, dict) and lit_state.get("lit"):
+            return True
+    return False
 
 
 def _not_in_combat_check(parameter: str, ctx: "GameContext") -> ConditionResult:

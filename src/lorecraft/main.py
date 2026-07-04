@@ -44,6 +44,10 @@ from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 import lorecraft.game.traits  # noqa: F401 -- import for registration side effects (traits.py registers itself as a ModifierSource and TraitSource at module load)
 import lorecraft.game.standard_components  # noqa: F401 -- import for registration side effects (durability/openable/lit/container components)
+import lorecraft.game.equipment_source  # noqa: F401 -- import for registration side effects (equipment ModifierSource/TraitSource)
+import lorecraft.game.equipment_validators  # noqa: F401 -- import for registration side effects (player equip-slot move validator)
+import lorecraft.game.container_validators  # noqa: F401 -- import for registration side effects (container open/capacity/nesting move validator)
+from lorecraft.game.item_rules import register_item_rules
 from lorecraft.models.admin import AdminUser
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.models.world import NPC, Room
@@ -54,6 +58,7 @@ from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService
+from lorecraft.services.light_fuel import LightFuelService
 from lorecraft.services.mobile_route import MobileRouteService
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
@@ -142,6 +147,7 @@ def create_app(
         bus = EventBus()
         registry = CommandRegistry()
         rules = RuleEngine()
+        register_item_rules(rules)
         admin_broadcaster = AdminBroadcaster()
         app_rng = GameRng(resolved_settings.rng_seed)
         clock_runner = WorldClockRunner(
@@ -160,6 +166,8 @@ def create_app(
         effect_service.register(bus)
         mobile_route_service = MobileRouteService(resolved_game_engine, scheduler)
         mobile_route_service.register(bus)
+        light_fuel_service = LightFuelService(resolved_game_engine)
+        light_fuel_service.register(bus)
         services = ServiceContainer.build()
         services.quest.register(bus)
 

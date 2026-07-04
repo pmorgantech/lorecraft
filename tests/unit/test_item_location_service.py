@@ -270,6 +270,43 @@ class TestMove:
         with pytest.raises(ConflictError):
             service.move(stack.id, Location("container", stack.instance_id), 1)
 
+    def test_move_same_item_type_nesting_is_not_a_false_cycle(
+        self, session: Session, instanced_component: None
+    ) -> None:
+        """Two different instances of the same item ("sword") nesting one
+        inside the other is not a cycle — only instance identity matters,
+        not item type (regression: _check_container_cycle used to compare
+        item_id, flagging any same-type nesting as a false-positive cycle)."""
+        service = ItemLocationService(session)
+        outer = service.spawn("sword", Location("room", "room-1"), 1)[0]
+        inner = service.spawn("sword", Location("room", "room-1"), 1)[0]
+        assert inner.id is not None
+        assert outer.instance_id is not None
+
+        dest = service.move(inner.id, Location("container", outer.instance_id), 1)
+
+        assert dest.owner_type == "container"
+        assert dest.owner_id == outer.instance_id
+
+    def test_move_transitive_container_cycle_is_rejected(
+        self, session: Session, instanced_component: None
+    ) -> None:
+        """A into B into A (transitively) is rejected, not just direct self-nesting."""
+        service = ItemLocationService(session)
+        stack_a = service.spawn("sword", Location("room", "room-1"), 1)[0]
+        stack_b = service.spawn("sword", Location("room", "room-1"), 1)[0]
+        assert stack_a.id is not None
+        assert stack_b.id is not None
+        assert stack_a.instance_id is not None
+        assert stack_b.instance_id is not None
+
+        # B moves inside A.
+        service.move(stack_b.id, Location("container", stack_a.instance_id), 1)
+
+        # Now A can't move inside B — that would make A contain B contain A.
+        with pytest.raises(ConflictError):
+            service.move(stack_a.id, Location("container", stack_b.instance_id), 1)
+
     def test_move_runs_registered_holder_validators(self, session: Session) -> None:
         holder_registry = get_holder_registry()
         calls: list[tuple[str, int]] = []

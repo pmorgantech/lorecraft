@@ -7,14 +7,22 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeVar
 
+from lorecraft.errors import ConflictError, ValidationError
 from lorecraft.game.command_patterns import (
     ROLE_DESTINATION,
     ROLE_INSTRUMENT,
     ROLE_RECIPIENT,
+    ROLE_SOURCE,
     ROLE_TARGET,
     role_str,
 )
 from lorecraft.game.context import GameContext
+from lorecraft.game.encumbrance import (
+    encumbrance_band,
+    resolve_carry_capacity,
+    total_carried_weight,
+)
+from lorecraft.game.equipment_slots import FINGER_SLOTS, slot_label
 from lorecraft.game.events import GameEvent
 from lorecraft.game.holders import Location
 from lorecraft.models.items import ItemInstance, ItemStack
@@ -137,11 +145,24 @@ class InventoryService:
     def _do_take(
         self, ctx: GameContext, stack: ItemStack, item: Item, count: int
     ) -> None:
+        if self._would_overload(ctx, item, count):
+            ctx.say("You can't carry any more weight.")
+            return
         self._move_room_to_player(ctx, stack, count)
         label = format_inventory_entry(item.name, count)
         ctx.say(f"You take {label}.")
         ctx.tell_room(f"{ctx.player.username} takes {label}.")
         self._emit_item_taken(ctx, item.id, count=count)
+
+    def _would_overload(self, ctx: GameContext, item: Item, count: int) -> bool:
+        if item.weight <= 0:
+            return False
+        stats = ctx.player_repo.stats(ctx.player.id)
+        strength = stats.strength if stats is not None else 10
+        capacity = resolve_carry_capacity(ctx.session, ctx.player.id, strength)
+        current = total_carried_weight(ctx.session, ctx.player.id)
+        projected = current + item.weight * count
+        return encumbrance_band(projected, capacity) == "overloaded"
 
     def _do_drop(
         self, ctx: GameContext, stack: ItemStack, item: Item, count: int
@@ -251,6 +272,8 @@ class InventoryService:
                 continue
             count = stack.quantity
             if count <= 0:
+                continue
+            if self._would_overload(ctx, item, count):
                 continue
             self._move_room_to_player(ctx, stack, count)
             taken_labels.append(format_inventory_entry(item.name, count))
@@ -511,6 +534,279 @@ class InventoryService:
             npc_id=npc.id,
         )
 
+    def _equipped_stacks(self, ctx: GameContext) -> list[tuple[ItemStack, Item]]:
+        result: list[tuple[ItemStack, Item]] = []
+        for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+            if stack.slot is None:
+                continue
+            item = ctx.item_repo.get(stack.item_id)
+            if item is not None:
+                result.append((stack, item))
+        return result
+
+    def _query_matches_item(self, query: str, item: Item) -> bool:
+        q = query.strip().casefold()
+        if q == item.name.casefold() or q == item.id.casefold():
+            return True
+        q_words = set(q.split())
+        name_words = set(item.name.casefold().split())
+        return bool(q_words) and q_words.issubset(name_words)
+
+    def wear_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Wear what?")
+            return
+        self._equip(name_or_id, ctx, verb="wear", wearable=True)
+
+    def wield_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Wield what?")
+            return
+        self._equip(name_or_id, ctx, verb="wield", wearable=False)
+
+    def _equip(
+        self, name_or_id: str, ctx: GameContext, *, verb: str, wearable: bool
+    ) -> None:
+        matches = ctx.item_repo.search_player_items(ctx.player.id, name_or_id)
+        item = self._resolve_single(
+            ctx,
+            verb=verb,
+            query=name_or_id,
+            matches=matches,
+            item_of=lambda m: m,
+            not_found_msg="You don't have that.",
+        )
+        if item is None:
+            return
+
+        if item.wearable != wearable:
+            ctx.say(f"You can't {verb} the {item.name}.")
+            return
+
+        if item.slot is None:
+            ctx.say(f"The {item.name} has no equip slot.")
+            return
+
+        stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, name_or_id)
+        loose_stacks = [s for s, _ in stacks if s.slot is None]
+        if not loose_stacks:
+            ctx.say(f"You aren't carrying a loose {item.name}.")
+            return
+        stack = loose_stacks[0]
+
+        target_slot = self._resolve_target_slot(ctx, item)
+        if target_slot is None:
+            return
+
+        assert stack.id is not None
+        try:
+            ctx.item_location.move(
+                stack.id, Location("player", ctx.player.id, slot=target_slot), 1
+            )
+        except (ValidationError, ConflictError) as exc:
+            ctx.say(exc.message)
+            return
+
+        ctx.say(f"You {verb} the {item.name}.")
+        ctx.tell_room(f"{ctx.player.username} {verb}s the {item.name}.")
+        ctx.queue_event(
+            GameEvent.ITEM_EQUIPPED,
+            player_id=ctx.player.id,
+            item_id=item.id,
+            slot=target_slot,
+        )
+        self._push_equipment_update(ctx)
+
+    def _resolve_target_slot(self, ctx: GameContext, item: Item) -> str | None:
+        if item.slot != "finger":
+            assert item.slot is not None
+            return item.slot
+        for slot in FINGER_SLOTS:
+            if not ctx.stack_repo.stacks_at(
+                Location("player", ctx.player.id, slot=slot)
+            ):
+                return slot
+        ctx.say("Both your finger slots are full.")
+        return None
+
+    def remove_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Remove what?")
+            return
+        self._unequip(name_or_id, ctx, verb="remove")
+
+    def unwield_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Unwield what?")
+            return
+        self._unequip(name_or_id, ctx, verb="unwield")
+
+    def _unequip(self, name_or_id: str, ctx: GameContext, *, verb: str) -> None:
+        equipped = self._equipped_stacks(ctx)
+        matching = [
+            (stack, item)
+            for stack, item in equipped
+            if self._query_matches_item(name_or_id, item)
+        ]
+        if not matching:
+            ctx.say("You aren't wearing or wielding that.")
+            return
+        if len(matching) > 1:
+            _prompt_disambiguation(
+                ctx, verb, name_or_id, [item for _, item in matching]
+            )
+            return
+
+        stack, item = matching[0]
+        assert stack.id is not None
+        ctx.item_location.move(stack.id, Location("player", ctx.player.id), 1)
+        ctx.say(f"You {verb} the {item.name}.")
+        ctx.tell_room(f"{ctx.player.username} {verb}s the {item.name}.")
+        ctx.queue_event(
+            GameEvent.ITEM_UNEQUIPPED,
+            player_id=ctx.player.id,
+            item_id=item.id,
+            slot=stack.slot,
+        )
+        self._push_equipment_update(ctx)
+
+    def list_equipment(self, ctx: GameContext) -> None:
+        equipped = self._equipped_stacks(ctx)
+        if not equipped:
+            ctx.say("You aren't wearing or wielding anything.")
+            ctx.push_update("equipment", [])
+            return
+
+        ctx.say("You are equipped with:")
+        for stack, item in sorted(equipped, key=lambda pair: pair[0].slot or ""):
+            ctx.say(f"  {slot_label(stack.slot)}: {item.name}")
+        self._push_equipment_update(ctx)
+
+    def _push_equipment_update(self, ctx: GameContext) -> None:
+        equipped = self._equipped_stacks(ctx)
+        ctx.push_update(
+            "equipment",
+            [
+                {"slot": stack.slot, "item_id": item.id, "name": item.name}
+                for stack, item in equipped
+            ],
+        )
+
+    def put_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Put what?")
+            return
+
+        parsed = ctx.parsed_command
+        container_phrase = role_str(parsed, ROLE_DESTINATION) if parsed else None
+        if not container_phrase:
+            ctx.say("Put it where?")
+            return
+
+        container_match = self._resolve_container(container_phrase, ctx, verb="put")
+        if container_match is None:
+            return
+        _container_item, container_instance = container_match
+
+        matches = ctx.item_repo.search_player_items(ctx.player.id, name_or_id)
+        item = self._resolve_single(
+            ctx,
+            verb="put",
+            query=name_or_id,
+            matches=matches,
+            item_of=lambda m: m,
+            not_found_msg="You don't have that.",
+        )
+        if item is None:
+            return
+
+        stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, name_or_id)
+        loose_stacks = [s for s, _ in stacks if s.slot is None]
+        if not loose_stacks:
+            ctx.say("You aren't carrying that loose.")
+            return
+        stack = loose_stacks[0]
+
+        assert stack.id is not None
+        try:
+            ctx.item_location.move(
+                stack.id, Location("container", container_instance.id), 1
+            )
+        except (ValidationError, ConflictError) as exc:
+            ctx.say(exc.message)
+            return
+
+        ctx.say(f"You put the {item.name} in the {_container_item.name}.")
+        ctx.tell_room(
+            f"{ctx.player.username} puts {item.name} in {_container_item.name}."
+        )
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
+
+    def take_from_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Take what?")
+            return
+
+        parsed = ctx.parsed_command
+        container_phrase = role_str(parsed, ROLE_SOURCE) if parsed else None
+        if not container_phrase:
+            self.take_item(name_or_id, ctx)
+            return
+
+        container_match = self._resolve_container(container_phrase, ctx, verb="take")
+        if container_match is None:
+            return
+        container_item, container_instance = container_match
+
+        openable_state = get_component_state(container_instance, "openable")
+        if isinstance(openable_state, dict) and not openable_state.get("open"):
+            ctx.say(f"The {container_item.name} is closed.")
+            return
+
+        contents = ctx.stack_repo.stacks_at(
+            Location("container", container_instance.id)
+        )
+        matching_stacks: list[tuple[ItemStack, Item]] = []
+        for content_stack in contents:
+            content_item = ctx.item_repo.get(content_stack.item_id)
+            if content_item is not None and self._query_matches_item(
+                name_or_id, content_item
+            ):
+                matching_stacks.append((content_stack, content_item))
+
+        if not matching_stacks:
+            ctx.say(f"There is no {name_or_id} in the {container_item.name}.")
+            return
+        if len(matching_stacks) > 1:
+            _prompt_disambiguation(
+                ctx, "take", name_or_id, [item for _, item in matching_stacks]
+            )
+            return
+
+        stack, item = matching_stacks[0]
+        if self._would_overload(ctx, item, 1):
+            ctx.say("You can't carry any more weight.")
+            return
+
+        assert stack.id is not None
+        ctx.item_location.move(stack.id, Location("player", ctx.player.id), 1)
+        ctx.say(f"You take the {item.name} from the {container_item.name}.")
+        ctx.tell_room(
+            f"{ctx.player.username} takes {item.name} from {container_item.name}."
+        )
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
+
+    def _resolve_container(
+        self, query: str, ctx: GameContext, *, verb: str
+    ) -> tuple[Item, ItemInstance] | None:
+        return self._resolve_openable(query, ctx, verb=verb)
+
     def _find_carried_or_visible(self, query: str, ctx: GameContext) -> list[Item]:
         inv_matches = ctx.item_repo.search_player_items(ctx.player.id, query)
         room_matches = [
@@ -527,9 +823,15 @@ class InventoryService:
     def _find_carried_or_visible_stacks(
         self, query: str, ctx: GameContext
     ) -> list[tuple[ItemStack, Item]]:
-        carried = ctx.item_repo.player_stacks_matching(ctx.player.id, query)
+        # player_stacks_matching only sees loose (slot=None) stacks — open/close/
+        # light/extinguish need to find equipped items too (a wielded lantern).
+        carried: list[tuple[ItemStack, Item]] = []
+        for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+            item = ctx.item_repo.get(stack.item_id)
+            if item is not None and self._query_matches_item(query, item):
+                carried.append((stack, item))
         room = ctx.item_repo.search_in_room(ctx.room.id, query)
-        return list(carried) + list(room)
+        return carried + list(room)
 
     def _resolve_openable(
         self, query: str, ctx: GameContext, *, verb: str
@@ -595,6 +897,71 @@ class InventoryService:
         set_component_state(ctx.session, instance, "openable", {"open": False})
         ctx.say(f"You close the {item.name}.")
         ctx.tell_room(f"{ctx.player.username} closes the {item.name}.")
+
+    def _resolve_lit_source(
+        self, query: str, ctx: GameContext, *, verb: str
+    ) -> tuple[Item, ItemInstance] | None:
+        matches = self._find_carried_or_visible_stacks(query, ctx)
+        resolved = self._resolve_single(
+            ctx,
+            verb=verb,
+            query=query,
+            matches=matches,
+            item_of=lambda m: m[1],
+            not_found_msg="You don't have that.",
+        )
+        if resolved is None:
+            return None
+
+        stack, item = resolved
+        if stack.instance_id is None:
+            ctx.say(f"You can't {verb} that.")
+            return None
+
+        instance = ctx.session.get(ItemInstance, stack.instance_id)
+        if instance is None or get_component_state(instance, "lit") is None:
+            ctx.say(f"You can't {verb} that.")
+            return None
+
+        return item, instance
+
+    def light_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Light what?")
+            return
+
+        resolved = self._resolve_lit_source(name_or_id, ctx, verb="light")
+        if resolved is None:
+            return
+        item, instance = resolved
+
+        state = get_component_state(instance, "lit")
+        if isinstance(state, dict) and state.get("lit"):
+            ctx.say(f"The {item.name} is already lit.")
+            return
+
+        set_component_state(ctx.session, instance, "lit", {"lit": True})
+        ctx.say(f"You light the {item.name}.")
+        ctx.tell_room(f"{ctx.player.username} lights the {item.name}.")
+
+    def extinguish_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Extinguish what?")
+            return
+
+        resolved = self._resolve_lit_source(name_or_id, ctx, verb="extinguish")
+        if resolved is None:
+            return
+        item, instance = resolved
+
+        state = get_component_state(instance, "lit")
+        if isinstance(state, dict) and not state.get("lit"):
+            ctx.say(f"The {item.name} isn't lit.")
+            return
+
+        set_component_state(ctx.session, instance, "lit", {"lit": False})
+        ctx.say(f"You extinguish the {item.name}.")
+        ctx.tell_room(f"{ctx.player.username} extinguishes the {item.name}.")
 
     def _emit_item_used(
         self, ctx: GameContext, item_id: str, *, other_item_id: str | None = None

@@ -161,6 +161,7 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
         "hands",
         "finger_l",
         "finger_r",
+        "finger",  # generic: wear command picks whichever of finger_l/finger_r is free
         "waist",
         "legs",
         "feet",

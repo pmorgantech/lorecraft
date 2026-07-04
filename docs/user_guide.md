@@ -85,7 +85,26 @@ inventory                — list what you're carrying
 use torch                — use a carried item
 use key on chest          — use one item on another
 give bread to Mira        — hand a carried item to an NPC
+open chest                — open a container
+close chest               — close a container
+put coin in chest         — place a carried item into an open container
+take coin from chest      — take an item out of a container
+wear helm                 — equip a worn item (armor, clothing)
+remove helm               — unequip a worn item
+wield sword               — equip a wielded item (weapon, tool, light)
+unwield sword             — unequip a wielded item
+equipment                 — list what you're wearing and wielding (also: eq)
+light lantern             — light a light source
+extinguish lantern        — put out a lit light source
 ```
+
+Worn/wielded gear can grant passive bonuses (stat/skill boosts, extra carry capacity,
+traits) while equipped — check an item's description or `examine` it to see what it does.
+Carrying too much weight makes you **burdened** (travel costs more) or, past a hard
+threshold, **overloaded** (you can't pick up anything else until you drop or stow something).
+A room with no ambient light needs an equipped, lit light source (like a lit lantern) or
+you can't see to look around, take items, or read descriptions — a lit source slowly burns
+through its fuel (durability) over time, so keep spares.
 
 **Disambiguation:** if your item name matches more than one thing, Lorecraft prompts you
 with a numbered list:
@@ -164,6 +183,17 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `inventory` | | List what you're carrying |
 | `use <item> [on/with <other>]` | | Use an item, optionally combined with another |
 | `give <item> to <name>` | | Hand a carried item to an NPC |
+| `open <container>` | | Open a container |
+| `close <container>` | | Close a container |
+| `put <item> in <container>` | | Place a carried item into an open container |
+| `take <item> from <container>` | | Take an item out of a container |
+| `wear <item>` | | Equip a worn item (armor, clothing) |
+| `remove <item>` | | Unequip a worn item |
+| `wield <item>` | | Equip a wielded item (weapon, tool, light) |
+| `unwield <item>` | | Unequip a wielded item |
+| `equipment` | `eq` | List what you're wearing and wielding |
+| `light <item>` | | Light a light source |
+| `extinguish <item>` | | Put out a lit light source |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |
