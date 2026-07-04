@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.12.3] - 2026-07-04
+
+### Changed
+
+- **docs:** replaced the now-stale wishlist entry for a player-facing report command (shipped in 0.12.0) with a new one describing the requested upgrade — a guided, multi-turn issue-report wizard (`report issue` / `report player <name>`, follow-up prompts for title/description, a new "reported against" player link) instead of today's single free-text command. Deliberately deferred; no code change.
+
 ## [0.12.2] - 2026-07-04
 
 ### Fixed

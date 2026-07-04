@@ -611,13 +611,31 @@ Lighter-weight than guilds: temporary parties for shared travel or content. Coul
 with the transit theme (board the ferry together). Worth considering _if_ co-op content
 appears, without committing to the full guild apparatus.
 
-### Player-facing `/report` command 🤔
+### Issue-report wizard (upgrade the shipped `report` command) 🤔
 
-Allow in-game bug reports and feedback. The admin system already has an `docs/issues.yaml`
-backend (Sprint 10.5) with CRUD routes, but there's no player-facing command yet to submit
-reports. A simple `/report <description>` command could append to `docs/issues.yaml` or create
-a DB issue, creating a feedback loop without requiring admin access. Useful for playtesting;
-scope pending.
+`report <description>` shipped 2026-07-04 (v0.12.0) as a single-shot free-text command —
+it creates an `Issue` row immediately with everything in one string (title is just a
+truncated copy of the description). Good enough to unblock playtesting feedback, but too
+sparse for anything beyond a one-line bug note. Wanted: a guided, multi-turn flow instead
+of a single command:
+
+- `report` alone (no args) prompts with usage: `Usage: report <player|issue>` — the first
+  choice is *what kind* of report this is.
+- **`report issue`** (or similar) then asks follow-up questions in sequence: a short title,
+  then a fuller description ("what were you doing, what happened, what did you expect").
+- **`report player <name>`** asks what's being reported about that player, and records the
+  *target* player alongside the *filer* — today's `Issue` model has no "reported against"
+  concept at all, only `created_by`.
+- Metadata to capture beyond what exists today: filing timestamp (already have
+  `created_at`), title, description, filing player (`created_by`, already have), and a new
+  `target_player_id`/similar field for player-reports.
+
+This needs actual design work (new multi-turn command state — probably reusing the
+dialogue-state pattern in `npc/dialogue.py` rather than inventing a second one — a new
+`Issue` field or a companion table for the reported-player link, and a decision on whether
+`report player` moderation reports need different handling/visibility than `report issue`
+bug reports). Scoped out of the initial `report` command on purpose; revisit once there's
+real signal on how sparse the current one-liners actually are in practice.
 
 ---
 
