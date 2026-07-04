@@ -2,7 +2,8 @@ import pytest
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
-from lorecraft.models.world import Exit, Item, Room, RoomItem
+from lorecraft.models.items import ItemStack
+from lorecraft.models.world import Exit, Item, Room
 from lorecraft.world.loader import load_world_yaml
 from lorecraft.world.validator import WorldValidationError, validate_world_document
 
@@ -47,7 +48,9 @@ room_items:
         rooms = session.exec(select(Room)).all()
         exits = session.exec(select(Exit)).all()
         items = session.exec(select(Item)).all()
-        room_items = session.exec(select(RoomItem)).all()
+        room_stacks = session.exec(
+            select(ItemStack).where(ItemStack.owner_type == "room")
+        ).all()
 
     assert [room.id for room in document.rooms] == ["tavern", "square"]
     assert {room.id for room in rooms} == {"square", "tavern"}
@@ -55,7 +58,7 @@ room_items:
         (exit_.room_id, exit_.direction, exit_.target_room_id) for exit_ in exits
     ] == [("tavern", "east", "square")]
     assert [item.id for item in items] == ["old_sword"]
-    assert [(room_item.room_id, room_item.item_id) for room_item in room_items] == [
+    assert [(stack.owner_id, stack.item_id) for stack in room_stacks] == [
         ("tavern", "old_sword")
     ]
 

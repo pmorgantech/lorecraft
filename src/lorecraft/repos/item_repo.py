@@ -1,18 +1,22 @@
-"""Item data access."""
+"""Item data access: definition lookup and the word-matching engine.
+
+Location-aware queries (what's in a room, what a player carries) are backed
+by ItemStack (models/items.py) via StackRepo, replacing the old RoomItem
+table and Player.inventory list (Sprint 16, engine_core.md §3.2).
+"""
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Iterable, Sequence
 from typing import TypeVar
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from lorecraft.errors import ConflictError
-from lorecraft.models.world import Item, RoomItem
+from lorecraft.game.holders import Location
+from lorecraft.models.items import ItemStack
+from lorecraft.models.world import Item
 from lorecraft.repos.base import Repository
-
-log = logging.getLogger(__name__)
+from lorecraft.repos.stack_repo import StackRepo
 
 _C = TypeVar("_C")
 
@@ -20,110 +24,96 @@ _C = TypeVar("_C")
 class ItemRepo(Repository[Item, str]):
     def __init__(self, session: Session) -> None:
         super().__init__(session, Item)
+        self._stacks = StackRepo(session)
 
-    def room_items(self, room_id: str) -> Sequence[RoomItem]:
-        statement = select(RoomItem).where(RoomItem.room_id == room_id)
-        return self.session.exec(statement).all()
+    def items_in_room(self, room_id: str) -> list[tuple[ItemStack, Item]]:
+        """All stacks loose in a room, paired with their Item definition."""
+        stacks = self._stacks.stacks_at(Location("room", room_id))
+        return self._pair_with_items(stacks)
 
-    def items_in_room(self, room_id: str) -> Sequence[tuple[RoomItem, Item]]:
-        items: list[tuple[RoomItem, Item]] = []
-        for room_item in self.room_items(room_id):
-            item = self.get(room_item.item_id)
-            if item is not None:
-                items.append((room_item, item))
-        return items
-
-    def search_in_room(self, room_id: str, query: str) -> list[tuple[RoomItem, Item]]:
-        """Return all room items that match query. Exact matches are returned first;
+    def search_in_room(self, room_id: str, query: str) -> list[tuple[ItemStack, Item]]:
+        """Return all room stacks that match query. Exact matches are returned first;
         if none, falls back to word-subset fuzzy matches."""
         return _best_matches(query, self.items_in_room(room_id))
 
-    def search_player_items(self, item_ids: Sequence[str], query: str) -> list[Item]:
-        """Return all player inventory items matching query, deduplicated by item id.
+    def stacks_carried_by(self, player_id: str) -> list[tuple[ItemStack, Item]]:
+        """Every stack a player carries loose (slot=None), paired with its Item."""
+        stacks = self._stacks.stacks_at(Location("player", player_id))
+        return self._pair_with_items(stacks)
+
+    def search_player_items(self, player_id: str, query: str) -> list[Item]:
+        """Return all carried items matching query, deduplicated by item id.
         Exact matches are returned first; if none, falls back to word-subset fuzzy matches."""
-        matches = _best_matches(query, self._unique_carried_items(item_ids))
+        candidates = self._unique_carried_items(player_id)
+        matches = _best_matches(query, candidates)
         return [item for _, item in matches]
 
-    def inventory_slots_matching(
-        self, item_ids: Sequence[str], query: str
-    ) -> list[tuple[int, Item]]:
-        """Return inventory indices and items for every carried slot matching query."""
-        candidates = (
-            (index, item)
-            for index, item_id in enumerate(item_ids)
-            if (item := self.get(item_id)) is not None
-        )
-        return _any_matches(query, candidates)
+    def player_stacks_matching(
+        self, player_id: str, query: str
+    ) -> list[tuple[ItemStack, Item]]:
+        """Every carried stack matching query (exact or fuzzy), one entry per stack.
 
-    def _unique_carried_items(
-        self, item_ids: Sequence[str]
-    ) -> Iterable[tuple[str, Item]]:
-        """Carried items deduplicated by item id, preserving first-seen order."""
-        seen: set[str] = set()
-        for item_id in item_ids:
-            if item_id in seen:
-                continue
-            item = self.get(item_id)
-            if item is None:
-                continue
-            seen.add(item_id)
-            yield item_id, item
+        Distinct from search_player_items: this returns the ItemStack rows
+        themselves (not deduplicated), so callers can move/reduce quantity on
+        a specific stack.
+        """
+        return _any_matches(query, self.stacks_carried_by(player_id))
+
+    def expanded_player_instances(
+        self, player_id: str, query: str
+    ) -> list[tuple[ItemStack, Item]]:
+        """Expand carried stacks into one entry per unit for indexed take/drop.
+
+        A fungible stack with quantity 3 expands into three entries, all
+        pointing at the same stack row (any unit is interchangeable); an
+        instanced stack (quantity always 1) expands into a single entry.
+        """
+        instances: list[tuple[ItemStack, Item]] = []
+        for stack, item in self.player_stacks_matching(player_id, query):
+            instances.extend((stack, item) for _ in range(stack.quantity))
+        return instances
 
     def expanded_room_instances(
         self, room_id: str, query: str
-    ) -> list[tuple[RoomItem, Item]]:
-        """Expand room stacks into one entry per carried instance for indexed take."""
-        instances: list[tuple[RoomItem, Item]] = []
-        for room_item, item in self.search_in_room(room_id, query):
-            instances.extend((room_item, item) for _ in range(room_item.quantity))
+    ) -> list[tuple[ItemStack, Item]]:
+        """Expand room stacks into one entry per unit for indexed take."""
+        instances: list[tuple[ItemStack, Item]] = []
+        for stack, item in self.search_in_room(room_id, query):
+            instances.extend((stack, item) for _ in range(stack.quantity))
         return instances
 
     def find_in_room(
         self, room_id: str, name_or_id: str
-    ) -> tuple[RoomItem, Item] | None:
+    ) -> tuple[ItemStack, Item] | None:
         results = self.search_in_room(room_id, name_or_id)
         return results[0] if results else None
 
-    def find_player_item(self, item_ids: Sequence[str], name_or_id: str) -> Item | None:
-        results = self.search_player_items(item_ids, name_or_id)
+    def find_player_item(self, player_id: str, name_or_id: str) -> Item | None:
+        results = self.search_player_items(player_id, name_or_id)
         return results[0] if results else None
 
-    def add_to_room(self, room_item: RoomItem) -> RoomItem:
-        self.session.add(room_item)
-        return room_item
+    def _unique_carried_items(self, player_id: str) -> Iterable[tuple[ItemStack, Item]]:
+        """Carried stacks deduplicated by item id, preserving first-seen order.
 
-    def remove_from_room(self, room_item: RoomItem, quantity: int = 1) -> None:
-        if quantity > room_item.quantity:
-            log.error(
-                "item_quantity_underflow: item_id=%s room_id=%s requested=%d available=%d",
-                room_item.item_id,
-                room_item.room_id,
-                quantity,
-                room_item.quantity,
-            )
-            raise ConflictError(
-                f"Attempted to remove {quantity} but only {room_item.quantity} available",
-                "conflict_quantity_underflow",
-            )
-        room_item.quantity -= quantity
-        if room_item.quantity <= 0:
-            self.session.delete(room_item)
+        Used by search_player_items, which reports distinct *items* (not stacks)
+        for disambiguation prompts and use/give item resolution.
+        """
+        seen: set[str] = set()
+        for stack, item in self.stacks_carried_by(player_id):
+            if stack.item_id in seen:
+                continue
+            seen.add(stack.item_id)
+            yield stack, item
 
-    def increment_room_item(
-        self, room_id: str, item_id: str, quantity: int = 1
-    ) -> RoomItem:
-        statement = select(RoomItem).where(
-            RoomItem.room_id == room_id,
-            RoomItem.item_id == item_id,
-        )
-        room_item = self.session.exec(statement).first()
-        if room_item is None:
-            room_item = RoomItem(room_id=room_id, item_id=item_id, quantity=quantity)
-            self.session.add(room_item)
-            return room_item
-
-        room_item.quantity += quantity
-        return room_item
+    def _pair_with_items(
+        self, stacks: Sequence[ItemStack]
+    ) -> list[tuple[ItemStack, Item]]:
+        paired: list[tuple[ItemStack, Item]] = []
+        for stack in stacks:
+            item = self.get(stack.item_id)
+            if item is not None:
+                paired.append((stack, item))
+        return paired
 
 
 def _normalize_item_name(value: str) -> str:

@@ -6,10 +6,15 @@ import time
 from typing import TYPE_CHECKING
 
 from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
+
+
+def _carries(ctx: "GameContext", item_id: str) -> bool:
+    return ctx.stack_repo.quantity_of(Location("player", ctx.player.id), item_id) > 0
 
 
 class QuestService:
@@ -102,18 +107,15 @@ class QuestService:
                 and str(cond["room_id"]) not in ctx.player.visited_rooms
             ):
                 return False
-            if (
-                ctype == "item_in_inventory"
-                and str(cond["item_id"]) not in ctx.player.inventory
-            ):
+            if ctype == "item_in_inventory" and not _carries(ctx, str(cond["item_id"])):
                 return False
         return True
 
     def _award_rewards(self, rewards: JsonObject, ctx: GameContext) -> None:
         for item_id in rewards.get("items") or []:  # type: ignore[union-attr]
             item = ctx.item_repo.get(str(item_id))
-            if item and str(item_id) not in ctx.player.inventory:
-                ctx.player.inventory = [*ctx.player.inventory, str(item_id)]
+            if item and not _carries(ctx, str(item_id)):
+                ctx.item_location.spawn(str(item_id), Location("player", ctx.player.id))
                 ctx.say(f"You receive {item.name}.")
         xp = rewards.get("xp")
         if xp:

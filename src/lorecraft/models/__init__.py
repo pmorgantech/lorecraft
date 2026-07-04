@@ -19,7 +19,6 @@ from lorecraft.models.world import (
     Item,
     NPC,
     Room,
-    RoomItem,
     WorldClock,
     WorldMeta,
 )
@@ -43,7 +42,6 @@ __all__ = [
     "PvpConsent",
     "Quest",
     "Room",
-    "RoomItem",
     "SaveSlot",
     "TradeOffer",
     "WorldClock",

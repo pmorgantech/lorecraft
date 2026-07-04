@@ -70,6 +70,14 @@ router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
 
 
+def _carried_snapshot(item_repo: ItemRepo, player_id: str) -> list[tuple[str, int]]:
+    """Comparable (item_id, quantity) snapshot of a player's carried stacks."""
+    return [
+        (stack.item_id, stack.quantity)
+        for stack, _item in item_repo.stacks_carried_by(player_id)
+    ]
+
+
 async def get_current_player(request: Request) -> Player:
     """Resolve the current player.
 
@@ -382,12 +390,12 @@ async def handle_command(
         DBSession(audit_engine) as audit_db,
     ):
         pre_room_id = player.current_room_id
-        pre_inv = list(player.inventory)
 
         player_repo = PlayerRepo(game_db)
         room_repo = RoomRepo(game_db)
         item_repo = ItemRepo(game_db)
         player = player_repo.get(player.id) or player
+        pre_inv = _carried_snapshot(item_repo, player.id)
 
         room = room_repo.get(player.current_room_id)
         if room is None:
@@ -446,7 +454,7 @@ async def handle_command(
         has_dialogue = dialogue_snapshot is not None
         dialogue_changed = "dialogue" in ctx.updates or had_dialogue or has_dialogue
         after_room = room_repo.get(after_player.current_room_id) or ctx.room
-        after_inv = list(after_player.inventory)
+        after_inv = _carried_snapshot(item_repo, after_player.id)
 
         room_changed = after_player.current_room_id != pre_room_id
         inv_changed = after_inv != pre_inv or "inventory" in ctx.updates

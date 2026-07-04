@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from sqlalchemy import Column, JSON
 from sqlmodel import Field, SQLModel
 
@@ -12,7 +14,6 @@ class Player(SQLModel, table=True):
     id: str = Field(primary_key=True)
     username: str = Field(index=True, unique=True)
     current_room_id: str
-    inventory: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     respawn_room_id: str
@@ -44,7 +45,13 @@ class SaveSlot(SQLModel, table=True):
     slot_name: str
     saved_at: float
     room_id: str
-    inventory: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # v2 (Sprint 16): list of {item_id, quantity, instance_id} dicts, one per carried
+    # stack. v1 saves store a flat list[str] of item ids (one entry per unit) —
+    # SaveSlotService.load() converts on read; old saves must not break. Typed as
+    # list[Any] (not list[JsonValue]) — pydantic's forward-ref resolution recurses
+    # infinitely on a bare list[JsonValue] field (JsonValue is self-referential);
+    # dict[str, JsonValue] (JsonObject) is fine, only the direct list form isn't.
+    inventory: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     stats_snapshot: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

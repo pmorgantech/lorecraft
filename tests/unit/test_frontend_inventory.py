@@ -1,9 +1,11 @@
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
+from lorecraft.game.holders import Location
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.services.item_location import ItemLocationService
 from lorecraft.web.session import inventory_snapshot
 
 
@@ -31,9 +33,12 @@ def test_inventory_snapshot_groups_duplicate_items() -> None:
             username="petem",
             current_room_id="tavern",
             respawn_room_id="tavern",
-            inventory=["apple", "bread", "apple", "apple"],
         )
         session.add(player)
+        session.commit()
+        item_location = ItemLocationService(session)
+        item_location.spawn("apple", Location("player", player.id), 3)
+        item_location.spawn("bread", Location("player", player.id), 1)
         session.commit()
 
         snapshot = inventory_snapshot(player, ItemRepo(session))

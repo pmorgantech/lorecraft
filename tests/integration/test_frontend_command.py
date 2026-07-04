@@ -14,6 +14,7 @@ from sqlmodel import Session, create_engine, select
 from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.player import Player
+from lorecraft.repos.stack_repo import StackRepo
 
 AsgiMessage = dict[str, Any]
 
@@ -165,10 +166,15 @@ async def _test_post_command_takes_item() -> None:
 
         with Session(game_engine) as session:
             player = session.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            carried = [
+                stack.item_id
+                for stack in StackRepo(session).stacks_for_owner("player", player.id)
+            ]
 
     assert status == 200
     assert player is not None
-    assert "copper_coin" in player.inventory
+    assert "copper_coin" in carried
     assert "coin" in html.lower() or "Copper" in html
 
 

@@ -6,18 +6,20 @@ from lorecraft.db import create_tables
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
+from lorecraft.game.holders import Location
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine, RuleResult
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.models.world import Item, Room
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 
 
 def build_context() -> GameContext:
@@ -31,6 +33,7 @@ def build_context() -> GameContext:
         room_repo=None,
         item_repo=None,
         stack_repo=None,
+        item_location=None,
         npc_repo=None,
         manager=None,
         bus=EventBus(),
@@ -136,10 +139,12 @@ def test_engine_rolls_back_and_records_command_failed_on_handler_crash() -> None
     @registry.register("break")
     def break_handler(noun, ctx):
         ctx.say("You start to break the vase...")
-        ctx.player.inventory.append("shard")
+        ctx.item_location.spawn("shard", Location("player", ctx.player.id))
         raise RuntimeError("vase shattered unexpectedly")
 
     with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        game_session.add(Item(id="shard", name="Shard", description="A shard."))
+        game_session.commit()
         ctx = build_persistent_context(game_session, audit_session)
 
         parsed = CommandEngine(registry, RuleEngine()).handle_command("break", ctx)
@@ -159,12 +164,12 @@ def test_engine_rolls_back_and_records_command_failed_on_handler_crash() -> None
     assert events[0].payload_json["error_type"] == "RuntimeError"
 
     # The game DB session was rolled back — the player row committed by
-    # build_persistent_context() is visible, but the in-flight inventory
-    # mutation the crashed handler made was never persisted.
+    # build_persistent_context() is visible, but the in-flight stack spawn
+    # the crashed handler made was never persisted.
     with Session(game_engine) as verify_session:
         persisted_player = verify_session.get(Player, "player-1")
         assert persisted_player is not None
-        assert persisted_player.inventory == []
+        assert StackRepo(verify_session).stacks_for_owner("player", "player-1") == []
 
 
 def test_engine_isolates_multiple_commands_from_one_crash() -> None:
@@ -221,6 +226,7 @@ def build_persistent_context(
         room_repo=RoomRepo(game_session),
         item_repo=ItemRepo(game_session),
         stack_repo=StackRepo(game_session),
+        item_location=ItemLocationService(game_session),
         npc_repo=NpcRepo(game_session),
         manager=SimpleNamespace(),
         bus=EventBus(),

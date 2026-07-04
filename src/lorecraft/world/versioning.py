@@ -8,14 +8,18 @@ import uuid
 from sqlmodel import Session, select
 
 from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.models.changeset import (
     Changeset,
     ChangesetItem,
     ConflictScanResult,
     WorldMigration,
 )
+from lorecraft.models.items import ItemStack
 from lorecraft.models.player import Player
 from lorecraft.models.world import Exit, Item, Room, WorldMeta
+from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 
 
 class VersioningService:
@@ -140,9 +144,10 @@ class VersioningService:
                 )
 
         # 3. Players holding items being deleted
+        stack_repo = StackRepo(self._session)
         for item_id in deleting_item_ids:
             for player in all_players:
-                if item_id in player.inventory:
+                if stack_repo.quantity_of(Location("player", player.id), item_id) > 0:
                     results.append(
                         ConflictScanResult(
                             changeset_id=changeset_id,
@@ -284,14 +289,16 @@ class VersioningService:
                     setattr(entity, field_name, value)
             self._session.add(entity)
         elif op == "delete" and entity is not None:
-            # Remove from all player inventories
-            players = self._session.exec(select(Player)).all()
-            for player in players:
-                if item.entity_id in player.inventory:
-                    player.inventory = [
-                        i for i in player.inventory if i != item.entity_id
-                    ]
-                    self._session.add(player)
+            # Remove every stack of this item (any holder — player, room, container)
+            # first: ItemStack.item_id FKs to item.id, so orphans would break the
+            # delete outright.
+            item_location = ItemLocationService(self._session)
+            stacks = self._session.exec(
+                select(ItemStack).where(ItemStack.item_id == item.entity_id)
+            ).all()
+            for stack in stacks:
+                assert stack.id is not None
+                item_location.destroy(stack.id, stack.quantity)
             self._session.delete(entity)
 
     def _apply_exit(self, item: ChangesetItem, op: str) -> None:

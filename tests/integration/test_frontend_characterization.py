@@ -29,11 +29,13 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.db import create_tables
+from lorecraft.game.holders import Location
 from lorecraft.main import create_app
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import Item
+from lorecraft.services.item_location import ItemLocationService
 
 AsgiMessage = dict[str, Any]
 
@@ -275,10 +277,12 @@ async def _test_game_screen_state_includes_inventory() -> None:
         with Session(game_engine) as db:
             db.add(Item(id="test-coin", name="Test Coin", description="A test coin"))
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
-            if player:
-                player.inventory = ["test-coin"]
-                db.add(player)
             db.commit()
+            if player:
+                ItemLocationService(db).spawn(
+                    "test-coin", Location("player", player.id)
+                )
+                db.commit()
 
         status, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
 
@@ -949,10 +953,12 @@ async def _test_inventory_partial_with_many_items() -> None:
             for i in range(20):
                 db.add(Item(id=f"item-{i}", name=f"Item {i}", description=f"Item {i}"))
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
-            if player:
-                player.inventory = [f"item-{i}" for i in range(20)]
-                db.add(player)
             db.commit()
+            if player:
+                item_location = ItemLocationService(db)
+                for i in range(20):
+                    item_location.spawn(f"item-{i}", Location("player", player.id))
+                db.commit()
 
         status, html = await _http_get(
             app, "/partials/inventory", cookies={"player_id": "player-1"}

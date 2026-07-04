@@ -30,6 +30,7 @@ from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
+from lorecraft.repos.stack_repo import StackRepo
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _STARTUP_TIMEOUT_SECONDS = 10.0
@@ -107,11 +108,15 @@ class SimulationServer:
             return list(events)
 
     def player_inventory(self, player_id: str) -> list[str]:
+        """Flat, quantity-expanded list of carried item ids (stack creation order)."""
         engine = create_engine(f"sqlite:///{self.game_db_path}")
         with Session(engine) as session:
             player = session.get(Player, player_id)
             assert player is not None
-            return list(player.inventory)
+            ids: list[str] = []
+            for stack in StackRepo(session).stacks_for_owner("player", player_id):
+                ids.extend([stack.item_id] * stack.quantity)
+            return ids
 
 
 @pytest.fixture

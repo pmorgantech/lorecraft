@@ -4,13 +4,15 @@ from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import EventBus, GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
-from lorecraft.models.world import Room
+from lorecraft.models.world import Item, Room
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
@@ -32,7 +34,9 @@ def test_save_slot_service_preserves_and_loads_player_owned_state() -> None:
         game_session.commit()
 
         player.current_room_id = "square"
-        player.inventory = []
+        for stack in StackRepo(game_session).stacks_for_owner("player", player.id):
+            assert stack.id is not None
+            ItemLocationService(game_session).destroy(stack.id, stack.quantity)
         player.visited_rooms = ["square"]
         player.flags = {"door_open": False}
         game_session.commit()
@@ -44,14 +48,20 @@ def test_save_slot_service_preserves_and_loads_player_owned_state() -> None:
         persisted = game_session.get(Player, "player-1")
         stats = game_session.get(PlayerStats, "player-1")
         save_slot = game_session.exec(select(SaveSlot)).first()
+        persisted_carried = [
+            stack.item_id
+            for stack in StackRepo(game_session).stacks_for_owner("player", "player-1")
+        ]
 
     assert save_slot is not None
     assert save_slot.room_id == "tavern"
-    assert save_slot.inventory == ["old_sword"]
+    assert save_slot.inventory == [
+        {"item_id": "old_sword", "quantity": 1, "instance_id": None}
+    ]
     assert save_slot.visited_rooms == ["tavern"]
     assert persisted is not None
     assert persisted.current_room_id == "tavern"
-    assert persisted.inventory == ["old_sword"]
+    assert persisted_carried == ["old_sword"]
     assert persisted.visited_rooms == ["tavern"]
     assert persisted.flags == {"door_open": True}
     assert stats is not None
@@ -157,17 +167,22 @@ def _seed_save_world(session: Session) -> Player:
             map_y=0,
         )
     )
+    session.add(
+        Item(id="old_sword", name="Old Sword", description="Nicked but serviceable.")
+    )
     player = Player(
         id="player-1",
         username="petem",
         current_room_id="tavern",
-        inventory=["old_sword"],
         visited_rooms=["tavern"],
         flags={"door_open": True},
         respawn_room_id="tavern",
     )
     session.add(player)
     session.add(PlayerStats(player_id="player-1", current_hp=75))
+    session.commit()
+    ItemLocationService(session).spawn("old_sword", Location("player", player.id))
+    session.commit()
     return player
 
 
@@ -188,6 +203,7 @@ def _build_context(
         room_repo=RoomRepo(game_session),
         item_repo=ItemRepo(game_session),
         stack_repo=StackRepo(game_session),
+        item_location=ItemLocationService(game_session),
         npc_repo=NpcRepo(game_session),
         manager=manager,
         bus=EventBus(),

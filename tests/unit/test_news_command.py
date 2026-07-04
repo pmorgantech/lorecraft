@@ -20,6 +20,7 @@ from lorecraft.models.player import Player
 from lorecraft.models.world import Room
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
@@ -50,6 +51,7 @@ def _build_engine_and_ctx() -> tuple[CommandEngine, GameContext, Session]:
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
+        item_location=ItemLocationService(session),
         npc_repo=NpcRepo(session),
         news_repo=NewsRepo(session),
         manager=ConnectionManager(),

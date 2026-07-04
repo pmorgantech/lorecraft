@@ -11,6 +11,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from lorecraft.game.holders import Location
+
 if TYPE_CHECKING:
     from lorecraft.game.context import GameContext
 
@@ -99,7 +101,9 @@ def _flag_not_set_check(parameter: str, ctx: "GameContext") -> ConditionResult:
 
 
 def _item_in_inventory_check(parameter: str, ctx: "GameContext") -> ConditionResult:
-    if parameter and parameter not in ctx.player.inventory:
+    if parameter and (
+        ctx.stack_repo.quantity_of(Location("player", ctx.player.id), parameter) <= 0
+    ):
         return ConditionResult(False, "You don't have the required item.")
     return ConditionResult(True)
 

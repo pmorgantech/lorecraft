@@ -10,7 +10,9 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from lorecraft.models.world import Exit, Item, Room, RoomItem
+from lorecraft.game.holders import Location
+from lorecraft.models.world import Exit, Item, Room
+from lorecraft.services.item_location import ItemLocationService
 
 DISAMBIG_ROOM_ID = "key_gallery"
 
@@ -115,15 +117,11 @@ def seed_disambig_gallery(
         )
         session.add(room)
 
+    item_location = ItemLocationService(session)
+    loc = Location("room", room_id)
     for spec in SIMILAR_ITEM_SPECS:
-        existing = session.exec(
-            select(RoomItem).where(
-                RoomItem.room_id == room_id,
-                RoomItem.item_id == spec.id,
-            )
-        ).first()
-        if existing is None:
-            session.add(RoomItem(room_id=room_id, item_id=spec.id, quantity=1))
+        if item_location.stack_repo.find_fungible_stack(loc, spec.id) is None:
+            item_location.spawn(spec.id, loc, 1)
 
     if link is not None:
         parent = session.get(Room, link.parent_room_id)

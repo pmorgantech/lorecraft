@@ -208,19 +208,14 @@ def ensure_player_session(player: Player, db: DBSession) -> str:
 
 def inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, Any]]:
     """Build a snapshot of the player's inventory for display."""
-    from lorecraft.services.inventory import grouped_inventory_ids
-
     items: list[dict[str, Any]] = []
-    for item_id, quantity in grouped_inventory_ids(player.inventory or []):
-        item = item_repo.get(item_id)
-        if not item:
-            continue
+    for stack, item in item_repo.stacks_carried_by(player.id):
         items.append(
             {
                 "id": item.id,
                 "name": item.name,
                 "description_short": (item.description or "")[:60],
-                "quantity": quantity,
+                "quantity": stack.quantity,
                 "usable": False,
                 "droppable": True,
             }

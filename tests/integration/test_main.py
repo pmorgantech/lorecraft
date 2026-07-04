@@ -13,6 +13,7 @@ from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import Room
+from lorecraft.repos.stack_repo import StackRepo
 
 AsgiMessage = dict[str, Any]
 AsgiReceive = Callable[[], Awaitable[AsgiMessage]]
@@ -298,6 +299,11 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
 
     with Session(game_engine) as session:
         player = session.get(Player, "player-1")
+        assert player is not None
+        carried = [
+            stack.item_id
+            for stack in StackRepo(session).stacks_for_owner("player", player.id)
+        ]
 
     assert payloads[1]["messages"] == ["You take Worn Copper Coin."]
     assert payloads[1]["updates"]["inventory"] == [
@@ -308,8 +314,7 @@ async def _test_websocket_inventory_pickup_persists_item() -> None:
             "quantity": 1,
         }
     ]
-    assert player is not None
-    assert player.inventory == ["copper_coin"]
+    assert carried == ["copper_coin"]
 
 
 def test_websocket_save_and_load_preserve_player_state() -> None:
@@ -357,6 +362,11 @@ async def _test_websocket_save_and_load_preserve_player_state() -> None:
 
     with Session(game_engine) as session:
         player = session.get(Player, "player-1")
+        assert player is not None
+        carried = [
+            stack.item_id
+            for stack in StackRepo(session).stacks_for_owner("player", player.id)
+        ]
 
     assert payloads[2]["messages"] == ["Saved to slot1."]
     assert payloads[4]["messages"] == ["Loaded slot1."]
@@ -364,7 +374,7 @@ async def _test_websocket_save_and_load_preserve_player_state() -> None:
     assert payloads[4]["updates"]["inventory"][0]["id"] == "copper_coin"
     assert player is not None
     assert player.current_room_id == "village_square"
-    assert player.inventory == ["copper_coin"]
+    assert carried == ["copper_coin"]
     assert player.visited_rooms == ["village_square"]
 
 

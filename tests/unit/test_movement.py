@@ -4,11 +4,13 @@ from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import EventBus, GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Room
+from lorecraft.models.world import Exit, Item, Room
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
@@ -93,8 +95,12 @@ def test_unlock_persists_and_allows_future_keyless_movement() -> None:
                 key_item_id="brass_key",
             )
         )
+        session.add(Item(id="brass_key", name="Brass Key", description="A key."))
         player = _seed_player(session)
-        player.inventory = ["brass_key"]
+        session.commit()
+        item_location = ItemLocationService(session)
+        loc = Location("player", player.id)
+        stack = item_location.spawn("brass_key", loc)[0]
         session.commit()
         ctx = _build_context(session, player, ConnectionManager(), EventBus())
 
@@ -104,7 +110,9 @@ def test_unlock_persists_and_allows_future_keyless_movement() -> None:
         assert ctx.messages == ["You unlock the way north. It is now unlocked."]
 
         ctx.messages.clear()
-        player.inventory = []
+        assert stack.id is not None
+        item_location.destroy(stack.id, 1)
+        session.commit()
         MovementService().move("north", ctx)
 
     assert ctx.messages == ["You go north."]
@@ -125,8 +133,10 @@ def test_lock_sets_exit_locked_when_key_carried() -> None:
                 key_item_id="brass_key",
             )
         )
+        session.add(Item(id="brass_key", name="Brass Key", description="A key."))
         player = _seed_player(session)
-        player.inventory = ["brass_key"]
+        session.commit()
+        ItemLocationService(session).spawn("brass_key", Location("player", player.id))
         session.commit()
         ctx = _build_context(session, player, ConnectionManager(), EventBus())
 
@@ -215,6 +225,7 @@ def _build_context(
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
+        item_location=ItemLocationService(session),
         npc_repo=NpcRepo(session),
         manager=manager,
         bus=bus,

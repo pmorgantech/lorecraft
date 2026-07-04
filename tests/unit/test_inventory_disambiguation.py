@@ -2,25 +2,27 @@
 
 from __future__ import annotations
 
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
+from lorecraft.game.holders import Location
 from lorecraft.game.parser import parse_command
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
-from lorecraft.models.world import Room, RoomItem
+from lorecraft.models.world import Room
 from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.inventory import InventoryService
+from lorecraft.services.item_location import ItemLocationService
 from tests.fixtures.disambig_fixtures import (
     DISAMBIG_ROOM_ID,
     SIMILAR_ITEM_SPECS,
@@ -36,7 +38,6 @@ def _seed_gallery_player(session: Session) -> Player:
         username="tester",
         current_room_id=DISAMBIG_ROOM_ID,
         respawn_room_id=DISAMBIG_ROOM_ID,
-        inventory=[],
     )
     session.add(player)
     return player
@@ -53,6 +54,7 @@ def _build_context(session: Session, player: Player) -> GameContext:
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
+        item_location=ItemLocationService(session),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
@@ -164,12 +166,11 @@ class TestInventoryAmbiguityPrompts:
 
             InventoryService().take_item("steel key", ctx)
             session.commit()
-            persisted = session.get(Player, player.id)
-            remaining = session.exec(select(RoomItem)).all()
+            carried = StackRepo(session).stacks_for_owner("player", player.id)
+            remaining = StackRepo(session).stacks_at(Location("room", DISAMBIG_ROOM_ID))
 
         assert ctx.messages == ["You take Steel Key."]
-        assert persisted is not None
-        assert persisted.inventory == ["steel_key"]
+        assert [stack.item_id for stack in carried] == ["steel_key"]
         assert len(remaining) == len(SIMILAR_ITEM_SPECS) - 1
 
 

@@ -11,12 +11,14 @@ from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus, GameEvent
 from lorecraft.game.registry import CommandRegistry
+from lorecraft.game.holders import Location
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
@@ -33,9 +35,12 @@ def _build_engine_and_ctx(inventory: list[str]) -> tuple[CommandEngine, GameCont
         username="tester",
         current_room_id=DISAMBIG_ROOM_ID,
         respawn_room_id=DISAMBIG_ROOM_ID,
-        inventory=inventory,
     )
     session.add(player)
+    session.commit()
+    item_location = ItemLocationService(session)
+    for item_id in inventory:
+        item_location.spawn(item_id, Location("player", player.id))
     session.commit()
     room = session.get(Room, DISAMBIG_ROOM_ID)
     assert room is not None
@@ -47,6 +52,7 @@ def _build_engine_and_ctx(inventory: list[str]) -> tuple[CommandEngine, GameCont
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
+        item_location=item_location,
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),

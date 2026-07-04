@@ -600,19 +600,14 @@ def _room_snapshot(
 
 
 def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[JsonValue]:
-    from lorecraft.services.inventory import grouped_inventory_ids
-
     items: list[JsonValue] = []
-    for item_id, quantity in grouped_inventory_ids(player.inventory):
-        item = item_repo.get(item_id)
-        if item is None:
-            continue
+    for stack, item in item_repo.stacks_carried_by(player.id):
         items.append(
             {
                 "id": item.id,
                 "name": item.name,
                 "description": item.description,
-                "quantity": quantity,
+                "quantity": stack.quantity,
             }
         )
     return items

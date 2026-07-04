@@ -46,13 +46,6 @@ class Item(SQLModel, table=True):
     loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
 
 
-class RoomItem(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    room_id: str
-    item_id: str
-    quantity: int = 1
-
-
 class WorldMeta(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     schema_version: int = 1

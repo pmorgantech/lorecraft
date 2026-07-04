@@ -29,9 +29,11 @@ from sqlmodel import Session, create_engine, select  # noqa: E402
 
 from lorecraft.db import create_tables  # noqa: E402
 from lorecraft.models.dialogue import DialogueTree  # noqa: E402
+from lorecraft.models.items import ItemStack  # noqa: E402
 from lorecraft.models.player import Player  # noqa: E402
 from lorecraft.models.quest import PlayerQuestProgress, Quest  # noqa: E402
-from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem, WorldMeta  # noqa: E402
+from lorecraft.models.world import Exit, Item, NPC, Room, WorldMeta  # noqa: E402
+from lorecraft.repos.stack_repo import StackRepo  # noqa: E402
 from lorecraft.world.loader import load_world_yaml  # noqa: E402
 from lorecraft.config import Settings, load_settings  # noqa: E402
 from lorecraft.world.bootstrap import ensure_seed_player  # noqa: E402
@@ -54,8 +56,10 @@ def _wipe_world(session: Session) -> None:
         session.delete(tree)
     for quest in session.exec(select(Quest)).all():
         session.delete(quest)
-    for ri in session.exec(select(RoomItem)).all():
-        session.delete(ri)
+    for stack in session.exec(
+        select(ItemStack).where(ItemStack.owner_type == "room")
+    ).all():
+        session.delete(stack)
     for ex in session.exec(select(Exit)).all():
         session.delete(ex)
     session.flush()
@@ -151,7 +155,8 @@ def main() -> None:
                 player.current_room_id = seed_settings.seed_player_start_room
                 player.respawn_room_id = seed_settings.seed_player_start_room
                 player.visited_rooms = [seed_settings.seed_player_start_room]
-                player.inventory = []
+                for stack in StackRepo(session).stacks_for_owner("player", player.id):
+                    session.delete(stack)
                 player.flags = {}
                 print(
                     f"  Reset test player '{dev_id}' to "

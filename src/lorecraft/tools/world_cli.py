@@ -23,8 +23,9 @@ from sqlmodel import Session, create_engine, delete
 
 from lorecraft.db import create_tables, database_url
 from lorecraft.models.dialogue import DialogueTree
+from lorecraft.models.items import ItemStack
 from lorecraft.models.quest import Quest
-from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem
+from lorecraft.models.world import Exit, Item, NPC, Room
 from lorecraft.tools.validators import run_all_checks
 from lorecraft.world.loader import export_world_document, load_world_yaml
 from lorecraft.world.validator import (
@@ -33,7 +34,7 @@ from lorecraft.world.validator import (
     validate_world_document,
 )
 
-_WORLD_CONTENT_MODELS = (Exit, RoomItem, NPC, DialogueTree, Quest, Item, Room)
+_WORLD_CONTENT_MODELS = (Exit, NPC, DialogueTree, Quest, Item, Room)
 
 
 def _open_engine(db_path: str) -> Engine:
@@ -46,10 +47,13 @@ def _open_engine(db_path: str) -> Engine:
 def _wipe_world_tables(session: Session) -> None:
     """Delete all world-content rows (rooms/items/npcs/dialogue/quests/exits).
 
-    Leaves players, admin users, and other non-world tables untouched.
+    Leaves players, admin users, and other non-world tables untouched. Room-owned
+    item stacks are world content too (unlike player-owned stacks in the same
+    ItemStack table), so they're deleted by owner_type rather than by model.
     """
     for model in _WORLD_CONTENT_MODELS:
         session.exec(delete(model))  # type: ignore[call-overload]
+    session.exec(delete(ItemStack).where(ItemStack.owner_type == "room"))  # type: ignore[call-overload]
 
 
 def cmd_import(args: argparse.Namespace) -> int:

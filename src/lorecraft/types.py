@@ -33,9 +33,6 @@ class PlayerState(Protocol):
     @property
     def flags(self) -> dict[str, JsonValue]: ...
 
-    @property
-    def inventory(self) -> list[str]: ...
-
 
 class CommandContext(Protocol):
     player: PlayerState
@@ -87,6 +84,19 @@ class WsNarrative(TypedDict):
 
     type: str  # "narrative"
     html: str
+
+
+class InventoryEntry(TypedDict):
+    """One carried item-stack, as pushed in the "inventory" update key (Sprint 16).
+
+    Replaces the old flat list[str] of item ids; a stack now carries its own
+    quantity and (if instanced) identity, instead of being repeated N times.
+    """
+
+    item_id: str
+    name: str
+    quantity: int
+    instance_id: str | None
 
 
 class ApiStatusResponse(TypedDict, total=False):

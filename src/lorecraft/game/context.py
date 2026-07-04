@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sqlmodel import Session
 
@@ -24,6 +25,13 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.types import JsonObject, JsonValue
 
+# lorecraft.services imports lorecraft.game.context (services/audit.py et al.), so a
+# module-level import of lorecraft.services.item_location here would be circular via
+# services/__init__.py. TYPE_CHECKING-only import for the annotation (deferred by
+# `from __future__ import annotations`); build_game_context() imports it for real.
+if TYPE_CHECKING:
+    from lorecraft.services.item_location import ItemLocationService
+
 
 @dataclass
 class GameContext:
@@ -34,6 +42,7 @@ class GameContext:
     room_repo: RoomRepo
     item_repo: ItemRepo
     stack_repo: StackRepo
+    item_location: ItemLocationService
     npc_repo: NpcRepo
     manager: ConnectionManager
     bus: EventBus
@@ -89,7 +98,7 @@ class GameContext:
     def get_visible_entities(self) -> list[tuple[str, str, list[str]]]:
         """Return room items and NPCs as (id, name, aliases) for parser resolution."""
         entities: list[tuple[str, str, list[str]]] = []
-        for _room_item, item in self.item_repo.items_in_room(self.room.id):
+        for _stack, item in self.item_repo.items_in_room(self.room.id):
             entities.append((item.id, item.name, list(item.aliases)))
         for npc in self.npc_repo.in_room(self.room.id):
             entities.append((npc.id, npc.name, [npc.name.lower()]))
@@ -98,9 +107,13 @@ class GameContext:
     def get_inventory(self) -> list[tuple[str, str, list[str]]]:
         """Return carried items as (id, name, aliases) for parser resolution."""
         inventory: list[tuple[str, str, list[str]]] = []
-        for item_id in self.player.inventory:
-            item = self.item_repo.get(item_id)
+        seen: set[str] = set()
+        for stack in self.stack_repo.stacks_for_owner("player", self.player.id):
+            if stack.item_id in seen:
+                continue
+            item = self.item_repo.get(stack.item_id)
             if item is not None:
+                seen.add(stack.item_id)
                 inventory.append((item.id, item.name, list(item.aliases)))
         return inventory
 
@@ -134,14 +147,21 @@ def build_game_context(
     factory does not synthesize a fallback clock; a fabricated one would be
     silently wrong data, not a safe default.
     """
+    from lorecraft.services.item_location import ItemLocationService
+
+    stack_repo = StackRepo(session)
+    item_repo = ItemRepo(session)
     return GameContext(
         player=player,
         room=room,
         clock=clock,
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
-        item_repo=ItemRepo(session),
-        stack_repo=StackRepo(session),
+        item_repo=item_repo,
+        stack_repo=stack_repo,
+        item_location=ItemLocationService(
+            session, stack_repo=stack_repo, item_repo=item_repo
+        ),
         npc_repo=NpcRepo(session),
         quest_repo=QuestRepo(session),
         dialogue_repo=DialogueRepo(session),

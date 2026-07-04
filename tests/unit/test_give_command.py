@@ -10,16 +10,18 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus, GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import NPC, Room
 from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.item_location import ItemLocationService
 from tests.fixtures.disambig_fixtures import DISAMBIG_ROOM_ID, seed_disambig_gallery
 
 
@@ -46,9 +48,12 @@ def _build_engine_and_ctx(
         username="tester",
         current_room_id=DISAMBIG_ROOM_ID,
         respawn_room_id=DISAMBIG_ROOM_ID,
-        inventory=inventory,
     )
     session.add(player)
+    session.commit()
+    item_location = ItemLocationService(session)
+    for item_id in inventory:
+        item_location.spawn(item_id, Location("player", player.id))
     session.commit()
     room = session.get(Room, DISAMBIG_ROOM_ID)
     assert room is not None
@@ -60,6 +65,7 @@ def _build_engine_and_ctx(
         room_repo=RoomRepo(session),
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
+        item_location=item_location,
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
@@ -74,13 +80,20 @@ def _build_engine_and_ctx(
     return CommandEngine(registry, RuleEngine()), ctx
 
 
+def _carried_item_ids(ctx: GameContext) -> list[str]:
+    ids: list[str] = []
+    for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+        ids.extend([stack.item_id] * stack.quantity)
+    return ids
+
+
 def test_give_item_to_npc_removes_it_from_inventory() -> None:
     cmd_engine, ctx = _build_engine_and_ctx(["red_rose"])
 
     cmd_engine.handle_command("give red rose to mira", ctx)
 
     assert ctx.messages == ["You give the Red Rose to Mira."]
-    assert ctx.player.inventory == []
+    assert _carried_item_ids(ctx) == []
 
 
 def test_give_without_recipient_prompts() -> None:
@@ -89,7 +102,7 @@ def test_give_without_recipient_prompts() -> None:
     cmd_engine.handle_command("give red rose", ctx)
 
     assert ctx.messages == ["Give it to whom?"]
-    assert ctx.player.inventory == ["red_rose"]
+    assert _carried_item_ids(ctx) == ["red_rose"]
 
 
 def test_give_unknown_recipient_says_not_here() -> None:
@@ -98,7 +111,7 @@ def test_give_unknown_recipient_says_not_here() -> None:
     cmd_engine.handle_command("give red rose to mira", ctx)
 
     assert ctx.messages == ["There is no mira here."]
-    assert ctx.player.inventory == ["red_rose"]
+    assert _carried_item_ids(ctx) == ["red_rose"]
 
 
 def test_give_item_not_carried_says_you_dont_have_it() -> None:

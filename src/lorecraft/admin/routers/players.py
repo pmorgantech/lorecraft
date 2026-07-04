@@ -11,6 +11,7 @@ from sqlmodel import Session, col, select
 from lorecraft.admin.auth import Moderator, Observer
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
+from lorecraft.repos.stack_repo import StackRepo
 
 router = APIRouter(tags=["admin"])
 
@@ -25,13 +26,17 @@ async def list_players(request: Request, _: Observer) -> list[dict[str, Any]]:
     online_ids = set(state.manager._connections.keys())
     with Session(state.game_engine) as session:
         players = session.exec(select(Player)).all()
+        stack_repo = StackRepo(session)
         return [
             {
                 "id": p.id,
                 "username": p.username,
                 "current_room_id": p.current_room_id,
                 "online": p.id in online_ids,
-                "inventory_count": len(p.inventory),
+                "inventory_count": sum(
+                    stack.quantity
+                    for stack in stack_repo.stacks_for_owner("player", p.id)
+                ),
                 "flags": p.flags,
             }
             for p in players
@@ -55,11 +60,19 @@ async def player_state(player_id: str, request: Request, _: Observer) -> dict[st
                 .limit(10)
             ).all()
         )
+        stack_repo = StackRepo(session)
         return {
             "id": player.id,
             "username": player.username,
             "current_room_id": player.current_room_id,
-            "inventory": player.inventory,
+            "inventory": [
+                {
+                    "item_id": stack.item_id,
+                    "quantity": stack.quantity,
+                    "instance_id": stack.instance_id,
+                }
+                for stack in stack_repo.stacks_for_owner("player", player.id)
+            ],
             "visited_rooms": player.visited_rooms,
             "flags": player.flags,
             "pvp_consent": player.pvp_consent,

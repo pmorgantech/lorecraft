@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.game.transaction import TransactionSource
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
@@ -17,7 +18,7 @@ from lorecraft.models.session import PlayerSession
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.types import JsonObject
+from lorecraft.types import JsonObject, JsonValue
 
 VALID_SAVE_SLOTS = {"auto", "slot1", "slot2", "slot3"}
 
@@ -53,7 +54,7 @@ class SaveSlotService:
 
         save_slot.saved_at = time.time()
         save_slot.room_id = ctx.player.current_room_id
-        save_slot.inventory = list(ctx.player.inventory)
+        save_slot.inventory = _inventory_snapshot(ctx)
         save_slot.visited_rooms = list(ctx.player.visited_rooms)
         save_slot.flags = dict(ctx.player.flags)
         save_slot.stats_snapshot = _stats_snapshot(ctx.player_repo.stats(ctx.player.id))
@@ -80,7 +81,7 @@ class SaveSlotService:
 
         previous_room_id = ctx.room.id
         ctx.player.current_room_id = target_room.id
-        ctx.player.inventory = list(save_slot.inventory)
+        _restore_inventory(ctx, save_slot.inventory)
         ctx.player.visited_rooms = list(save_slot.visited_rooms)
         if target_room.id not in ctx.player.visited_rooms:
             ctx.player.visited_rooms = [*ctx.player.visited_rooms, target_room.id]
@@ -248,6 +249,42 @@ def normalize_save_slot(slot_name: str | None) -> str | None:
     if slot in VALID_SAVE_SLOTS:
         return slot
     return None
+
+
+def _inventory_snapshot(ctx: GameContext) -> list[JsonValue]:
+    """Carried stacks as a save-slot snapshot (v2 shape: one dict per stack)."""
+    return [
+        {
+            "item_id": stack.item_id,
+            "quantity": stack.quantity,
+            "instance_id": stack.instance_id,
+        }
+        for stack, _item in ctx.item_repo.stacks_carried_by(ctx.player.id)
+    ]
+
+
+def _restore_inventory(ctx: GameContext, snapshot: list[JsonValue]) -> None:
+    """Replace the player's carried stacks with a save-slot snapshot.
+
+    Accepts both the v2 shape (list of {item_id, quantity, instance_id} dicts)
+    and the pre-Sprint-16 v1 shape (a flat list[str] of item ids, one entry
+    per carried unit) — old saves must not break. v1 entries spawn one unit
+    at a time, which merges into a single fungible stack via spawn()'s
+    existing-stack lookup.
+    """
+    loc = Location("player", ctx.player.id)
+    for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+        assert stack.id is not None
+        ctx.item_location.destroy(stack.id, stack.quantity)
+
+    for entry in snapshot:
+        if isinstance(entry, str):
+            ctx.item_location.spawn(entry, loc, 1)
+        elif isinstance(entry, dict):
+            item_id = entry.get("item_id")
+            quantity = entry.get("quantity", 1)
+            if isinstance(item_id, str) and isinstance(quantity, int) and quantity > 0:
+                ctx.item_location.spawn(item_id, loc, quantity)
 
 
 def _stats_snapshot(stats: PlayerStats | None) -> JsonObject:

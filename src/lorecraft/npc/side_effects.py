@@ -12,6 +12,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from lorecraft.game.events import GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.models.quest import PlayerQuestProgress
 from lorecraft.types import JsonObject, JsonValue
 
@@ -65,12 +66,18 @@ def _handle_clear_flags(data: JsonValue, ctx: "GameContext") -> None:  # type: i
 
 
 def _handle_give_item(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
+    from lorecraft.services.inventory import inventory_update_entries
+
     item_id = str(data)
     item = ctx.item_repo.get(item_id)
-    if item and item_id not in ctx.player.inventory:
-        ctx.player.inventory = [*ctx.player.inventory, item_id]
+    loc = Location("player", ctx.player.id)
+    if item and ctx.stack_repo.quantity_of(loc, item_id) <= 0:
+        ctx.item_location.spawn(item_id, loc)
         ctx.say(f"You receive {item.name}.")
-        ctx.push_update("inventory", list(ctx.player.inventory))
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
 
 
 def _handle_start_quest(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]

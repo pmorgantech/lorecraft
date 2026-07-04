@@ -16,7 +16,9 @@ from lorecraft.game.command_patterns import (
 )
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
-from lorecraft.models.world import Item, RoomItem
+from lorecraft.game.holders import Location
+from lorecraft.models.items import ItemStack
+from lorecraft.models.world import Item
 from lorecraft.types import JsonValue
 
 _M = TypeVar("_M")
@@ -41,26 +43,20 @@ def format_inventory_entry(name: str, quantity: int) -> str:
     return name
 
 
-def format_inventory_summary(
-    item_ids: Sequence[str],
-    get_item: Callable[[str], Item | None],
-) -> str:
+def format_inventory_summary(stacks: Sequence[tuple[ItemStack, Item]]) -> str:
     """Comma-separated inventory list with grouped quantities."""
-    labels: list[str] = []
-    for item_id, quantity in grouped_inventory_ids(item_ids):
-        item = get_item(item_id)
-        if item is not None:
-            labels.append(format_inventory_entry(item.name, quantity))
+    labels = [
+        format_inventory_entry(item.name, stack.quantity) for stack, item in stacks
+    ]
     return ", ".join(labels)
 
 
 def format_room_items_summary(
-    room_items: Sequence[tuple[RoomItem, Item]],
+    room_items: Sequence[tuple[ItemStack, Item]],
 ) -> str:
     """Comma-separated room item list with grouped quantities."""
     labels = [
-        format_inventory_entry(item.name, room_item.quantity)
-        for room_item, item in room_items
+        format_inventory_entry(item.name, stack.quantity) for stack, item in room_items
     ]
     return ", ".join(sorted(labels))
 
@@ -138,18 +134,18 @@ class InventoryService:
         return matches[0]
 
     def _do_take(
-        self, ctx: GameContext, room_item: RoomItem, item: Item, count: int
+        self, ctx: GameContext, stack: ItemStack, item: Item, count: int
     ) -> None:
-        self._remove_from_room_and_carry(ctx, room_item, item, count)
+        self._move_room_to_player(ctx, stack, count)
         label = format_inventory_entry(item.name, count)
         ctx.say(f"You take {label}.")
         ctx.tell_room(f"{ctx.player.username} takes {label}.")
         self._emit_item_taken(ctx, item.id, count=count)
 
     def _do_drop(
-        self, ctx: GameContext, indices: list[int], item: Item, count: int
+        self, ctx: GameContext, stack: ItemStack, item: Item, count: int
     ) -> None:
-        self._remove_from_inventory_slots(ctx, indices, item, count)
+        self._move_player_to_room(ctx, stack, count)
         label = format_inventory_entry(item.name, count)
         ctx.say(f"You drop {label}.")
         ctx.tell_room(f"{ctx.player.username} drops {label}.")
@@ -169,7 +165,7 @@ class InventoryService:
         else:
             ctx.say("There are no obvious exits.")
 
-        room_items = list(ctx.item_repo.items_in_room(ctx.room.id))
+        room_items = ctx.item_repo.items_in_room(ctx.room.id)
         if room_items:
             summary = format_room_items_summary(room_items)
             ctx.say(f"You see: {summary}.")
@@ -177,14 +173,15 @@ class InventoryService:
         ctx.push_update("room_id", ctx.room.id)
 
     def inventory(self, ctx: GameContext) -> None:
-        if not ctx.player.inventory:
+        stacks = ctx.item_repo.stacks_carried_by(ctx.player.id)
+        if not stacks:
             ctx.say("You are carrying nothing.")
             ctx.push_update("inventory", [])
             return
 
-        summary = format_inventory_summary(ctx.player.inventory, ctx.item_repo.get)
+        summary = format_inventory_summary(stacks)
         ctx.say(f"You are carrying: {summary}.")
-        ctx.push_update("inventory", list(ctx.player.inventory))
+        ctx.push_update("inventory", inventory_update_entries(stacks))
 
     def examine(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
@@ -242,19 +239,19 @@ class InventoryService:
         self._drop_one(target.query, ctx)
 
     def _take_everything_in_room(self, ctx: GameContext) -> None:
-        room_items = list(ctx.item_repo.items_in_room(ctx.room.id))
+        room_items = ctx.item_repo.items_in_room(ctx.room.id)
         if not room_items:
             ctx.say("There is nothing here to take.")
             return
 
         taken_labels: list[str] = []
-        for room_item, item in room_items:
+        for stack, item in room_items:
             if not item.takeable:
                 continue
-            count = room_item.quantity
+            count = stack.quantity
             if count <= 0:
                 continue
-            self._remove_from_room_and_carry(ctx, room_item, item, count)
+            self._move_room_to_player(ctx, stack, count)
             taken_labels.append(format_inventory_entry(item.name, count))
             self._emit_item_taken(ctx, item.id, count=count)
 
@@ -279,12 +276,12 @@ class InventoryService:
         if match is None:
             return
 
-        room_item, item = match
+        stack, item = match
         if not item.takeable:
             ctx.say("You can't take that.")
             return
 
-        self._do_take(ctx, room_item, item, 1)
+        self._do_take(ctx, stack, item, 1)
 
     def _take_quantity(
         self, target: ItemTarget, ctx: GameContext, *, take_all: bool
@@ -301,18 +298,18 @@ class InventoryService:
         if match is None:
             return
 
-        room_item, item = match
+        stack, item = match
         if not item.takeable:
             ctx.say("You can't take that.")
             return
 
-        available = room_item.quantity
+        available = stack.quantity
         count = available if take_all else min(target.quantity, available)
         if count <= 0:
             ctx.say("You don't see that here.")
             return
 
-        self._do_take(ctx, room_item, item, count)
+        self._do_take(ctx, stack, item, count)
 
     def _take_indexed(self, target: ItemTarget, ctx: GameContext) -> None:
         expanded = ctx.item_repo.expanded_room_instances(ctx.room.id, target.query)
@@ -324,15 +321,15 @@ class InventoryService:
             ctx.say("You don't see that here.")
             return
 
-        room_item, item = expanded[target.index - 1]
+        stack, item = expanded[target.index - 1]
         if not item.takeable:
             ctx.say("You can't take that.")
             return
 
-        self._do_take(ctx, room_item, item, 1)
+        self._do_take(ctx, stack, item, 1)
 
     def _drop_one(self, query: str, ctx: GameContext) -> None:
-        matches = ctx.item_repo.search_player_items(ctx.player.inventory, query)
+        matches = ctx.item_repo.search_player_items(ctx.player.id, query)
         match = self._resolve_single(
             ctx,
             verb="drop",
@@ -344,24 +341,22 @@ class InventoryService:
         if match is None:
             return
 
-        slots = ctx.item_repo.inventory_slots_matching(ctx.player.inventory, query)
-        if not slots:
+        stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, query)
+        if not stacks:
             ctx.say("You don't have that.")
             return
 
-        self._do_drop(ctx, [slots[0][0]], match, 1)
+        self._do_drop(ctx, stacks[0][0], match, 1)
 
     def _drop_quantity(
         self, target: ItemTarget, ctx: GameContext, *, drop_all: bool
     ) -> None:
-        slots = ctx.item_repo.inventory_slots_matching(
-            ctx.player.inventory, target.query
-        )
-        if not slots:
+        stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, target.query)
+        if not stacks:
             ctx.say("You don't have that.")
             return
 
-        unique_items = _unique_items([slot_item for _, slot_item in slots])
+        unique_items = _unique_items([item for _, item in stacks])
         match = self._resolve_single(
             ctx,
             verb="drop",
@@ -373,55 +368,53 @@ class InventoryService:
         if match is None:
             return
 
-        count = len(slots) if drop_all else min(target.quantity, len(slots))
-        indices = [index for index, _ in slots[:count]]
-        self._do_drop(ctx, indices, match, count)
+        available = sum(stack.quantity for stack, _ in stacks)
+        count = available if drop_all else min(target.quantity, available)
+        remaining = count
+        for stack, _ in stacks:
+            if remaining <= 0:
+                break
+            take_from_stack = min(remaining, stack.quantity)
+            self._move_player_to_room(ctx, stack, take_from_stack)
+            remaining -= take_from_stack
+
+        label = format_inventory_entry(match.name, count)
+        ctx.say(f"You drop {label}.")
+        ctx.tell_room(f"{ctx.player.username} drops {label}.")
+        self._emit_item_dropped(ctx, match.id, count=count)
 
     def _drop_indexed(self, target: ItemTarget, ctx: GameContext) -> None:
-        slots = ctx.item_repo.inventory_slots_matching(
-            ctx.player.inventory, target.query
+        expanded = ctx.item_repo.expanded_player_instances(ctx.player.id, target.query)
+        if (
+            not expanded
+            or target.index is None
+            or not (1 <= target.index <= len(expanded))
+        ):
+            ctx.say("You don't have that.")
+            return
+
+        stack, item = expanded[target.index - 1]
+        self._do_drop(ctx, stack, item, 1)
+
+    def _move_room_to_player(
+        self, ctx: GameContext, stack: ItemStack, count: int
+    ) -> None:
+        assert stack.id is not None
+        ctx.item_location.move(stack.id, Location("player", ctx.player.id), count)
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
         )
-        if not slots:
-            ctx.say("You don't have that.")
-            return
 
-        if target.index is None or target.index < 1 or target.index > len(slots):
-            ctx.say("You don't have that.")
-            return
-
-        inv_index, item = slots[target.index - 1]
-        self._remove_from_inventory_slots(ctx, [inv_index], item, 1)
-        ctx.say(f"You drop {item.name}.")
-        ctx.tell_room(f"{ctx.player.username} drops {item.name}.")
-        self._emit_item_dropped(ctx, item.id, count=1)
-
-    def _remove_from_room_and_carry(
-        self,
-        ctx: GameContext,
-        room_item: RoomItem,
-        item: Item,
-        count: int,
+    def _move_player_to_room(
+        self, ctx: GameContext, stack: ItemStack, count: int
     ) -> None:
-        ctx.item_repo.remove_from_room(room_item, count)
-        ctx.player.inventory = [
-            *ctx.player.inventory,
-            *([item.id] * count),
-        ]
-        ctx.push_update("inventory", list(ctx.player.inventory))
-
-    def _remove_from_inventory_slots(
-        self,
-        ctx: GameContext,
-        indices: list[int],
-        item: Item,
-        count: int,
-    ) -> None:
-        inventory = list(ctx.player.inventory)
-        for index in sorted(indices, reverse=True):
-            inventory.pop(index)
-        ctx.player.inventory = inventory
-        ctx.item_repo.increment_room_item(ctx.room.id, item.id, quantity=count)
-        ctx.push_update("inventory", list(ctx.player.inventory))
+        assert stack.id is not None
+        ctx.item_location.move(stack.id, Location("room", ctx.room.id), count)
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
 
     def use_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
@@ -483,7 +476,7 @@ class InventoryService:
             ctx.say(f"There is no {recipient_phrase} here.")
             return
 
-        matches = ctx.item_repo.search_player_items(ctx.player.inventory, name_or_id)
+        matches = ctx.item_repo.search_player_items(ctx.player.id, name_or_id)
         item = self._resolve_single(
             ctx,
             verb="give",
@@ -495,12 +488,18 @@ class InventoryService:
         if item is None:
             return
 
-        slots = ctx.item_repo.inventory_slots_matching(ctx.player.inventory, name_or_id)
-        if not slots:
+        stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, name_or_id)
+        if not stacks:
             ctx.say("You don't have that.")
             return
 
-        self._remove_from_inventory_only(ctx, [slots[0][0]])
+        stack = stacks[0][0]
+        assert stack.id is not None
+        ctx.item_location.destroy(stack.id, 1)
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
         ctx.say(f"You give the {item.name} to {npc.name}.")
         ctx.tell_room(f"{ctx.player.username} gives {item.name} to {npc.name}.")
         ctx.queue_event(
@@ -511,15 +510,8 @@ class InventoryService:
             npc_id=npc.id,
         )
 
-    def _remove_from_inventory_only(self, ctx: GameContext, indices: list[int]) -> None:
-        inventory = list(ctx.player.inventory)
-        for index in sorted(indices, reverse=True):
-            inventory.pop(index)
-        ctx.player.inventory = inventory
-        ctx.push_update("inventory", list(ctx.player.inventory))
-
     def _find_carried_or_visible(self, query: str, ctx: GameContext) -> list[Item]:
-        inv_matches = ctx.item_repo.search_player_items(ctx.player.inventory, query)
+        inv_matches = ctx.item_repo.search_player_items(ctx.player.id, query)
         room_matches = [
             item for _, item in ctx.item_repo.search_in_room(ctx.room.id, query)
         ]
@@ -562,17 +554,30 @@ class InventoryService:
             )
 
 
+def inventory_update_entries(stacks: Sequence[tuple[ItemStack, Item]]) -> JsonValue:
+    """Build the inventory WS/HTMX push payload: one entry (an InventoryEntry
+    shape, see types.py) per carried stack."""
+    return [
+        {
+            "item_id": item.id,
+            "name": item.name,
+            "quantity": stack.quantity,
+            "instance_id": stack.instance_id,
+        }
+        for stack, item in stacks
+    ]
+
+
 def room_items_visible_labels(
     room_id: str,
-    get_room_items: Callable[[str], Sequence[tuple[RoomItem, Item]]],
+    get_room_items: Callable[[str], Sequence[tuple[ItemStack, Item]]],
 ) -> list[str]:
     """Grouped item labels for room UI panels."""
     room_items = list(get_room_items(room_id))
     if not room_items:
         return []
     return sorted(
-        format_inventory_entry(item.name, room_item.quantity)
-        for room_item, item in room_items
+        format_inventory_entry(item.name, stack.quantity) for stack, item in room_items
     )
 
 

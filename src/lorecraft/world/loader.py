@@ -8,9 +8,12 @@ from typing import cast
 from sqlmodel import Session, select
 import yaml
 
+from lorecraft.game.holders import Location
 from lorecraft.models.dialogue import DialogueTree
+from lorecraft.models.items import ItemStack
 from lorecraft.models.quest import Quest
-from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem
+from lorecraft.models.world import Exit, Item, NPC, Room
+from lorecraft.services.item_location import ItemLocationService
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import (
     DialogueChoiceData,
@@ -114,13 +117,12 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 )
             )
 
+    item_location = ItemLocationService(session)
     for room_item in document.room_items:
-        session.add(
-            RoomItem(
-                room_id=room_item.room_id,
-                item_id=room_item.item_id,
-                quantity=room_item.quantity,
-            )
+        item_location.spawn(
+            room_item.item_id,
+            Location("room", room_item.room_id),
+            room_item.quantity,
         )
 
     for npc in document.npcs:
@@ -193,11 +195,13 @@ def export_world_document(session: Session) -> WorldDocument:
 
     room_item_data = [
         RoomItemData(
-            room_id=room_item.room_id,
-            item_id=room_item.item_id,
-            quantity=room_item.quantity,
+            room_id=str(stack.owner_id),
+            item_id=stack.item_id,
+            quantity=stack.quantity,
         )
-        for room_item in session.exec(select(RoomItem)).all()
+        for stack in session.exec(
+            select(ItemStack).where(ItemStack.owner_type == "room")
+        ).all()
     ]
 
     npc_data = [

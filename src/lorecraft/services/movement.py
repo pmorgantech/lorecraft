@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
+from lorecraft.game.holders import Location
 from lorecraft.game.parser import DIRECTION_ALIASES
+
+
+def _carries(ctx: GameContext, item_id: str) -> bool:
+    return ctx.stack_repo.quantity_of(Location("player", ctx.player.id), item_id) > 0
 
 
 class MovementService:
@@ -29,7 +34,7 @@ class MovementService:
         if exit_.key_item_id is None:
             ctx.say("That doesn't need a key.")
             return
-        if exit_.key_item_id not in ctx.player.inventory:
+        if not _carries(ctx, exit_.key_item_id):
             ctx.say("You don't have the right key.")
             return
         if exit_.locked == locked:
@@ -48,7 +53,7 @@ class MovementService:
             ctx.say("You can't go that way.")
             return
         if exit_.locked and (
-            exit_.key_item_id is None or exit_.key_item_id not in ctx.player.inventory
+            exit_.key_item_id is None or not _carries(ctx, exit_.key_item_id)
         ):
             ctx.say("The way is locked.")
             return

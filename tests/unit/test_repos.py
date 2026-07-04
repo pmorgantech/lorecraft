@@ -1,11 +1,13 @@
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables, database_url, sqlite_url
+from lorecraft.game.holders import Location
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession
-from lorecraft.models.world import Exit, Item, NPC, Room, RoomItem
+from lorecraft.models.world import Exit, Item, NPC, Room
 from lorecraft.repos import AuditRepo, ItemRepo, NpcRepo, PlayerRepo, RoomRepo
+from lorecraft.services.item_location import ItemLocationService
 
 
 def test_database_url_preserves_sqlalchemy_urls() -> None:
@@ -70,7 +72,8 @@ def test_repos_round_trip_core_game_models() -> None:
             )
         )
         items.add(Item(id="gem", name="Gem", description="A bright gem."))
-        items.add_to_room(RoomItem(room_id="tavern", item_id="gem"))
+        session.commit()
+        ItemLocationService(session).spawn("gem", Location("room", "tavern"))
         npcs.add(
             NPC(
                 id="keeper",
@@ -89,9 +92,7 @@ def test_repos_round_trip_core_game_models() -> None:
         assert [slot.slot_name for slot in players.save_slots("player-1")] == ["auto"]
         assert rooms.active("tavern").name == "Tavern"
         assert rooms.exit("tavern", "east").target_room_id == "square"
-        assert [room_item.item_id for room_item in items.room_items("tavern")] == [
-            "gem"
-        ]
+        assert [stack.item_id for stack, _ in items.items_in_room("tavern")] == ["gem"]
         assert [npc.id for npc in npcs.in_room("tavern")] == ["keeper"]
 
 
@@ -101,6 +102,12 @@ def test_item_repo_matches_plural_queries_against_plural_item_names() -> None:
 
     with Session(engine) as session:
         items = ItemRepo(session)
+        rooms = RoomRepo(session)
+        rooms.add(
+            Room(
+                id="market", name="Market", description="Busy stalls.", map_x=0, map_y=0
+            )
+        )
         items.add(
             Item(
                 id="dried_herbs",
@@ -117,12 +124,10 @@ def test_item_repo_matches_plural_queries_against_plural_item_names() -> None:
                 takeable=True,
             )
         )
-        items.add_to_room(
-            RoomItem(room_id="market", item_id="dried_herbs", quantity=3),
-        )
-        items.add_to_room(
-            RoomItem(room_id="market", item_id="copper_coin", quantity=2),
-        )
+        session.commit()
+        item_location = ItemLocationService(session)
+        item_location.spawn("dried_herbs", Location("room", "market"), 3)
+        item_location.spawn("copper_coin", Location("room", "market"), 2)
         session.commit()
 
         herb_matches = items.search_in_room("market", "herbs")
