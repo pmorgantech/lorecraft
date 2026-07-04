@@ -15,6 +15,7 @@ from lorecraft.services.journal import JournalService
 from lorecraft.services.movement import MovementService
 from lorecraft.services.quest import QuestService
 from lorecraft.services.save import SaveSlotService
+from lorecraft.services.trade import TradeService
 
 
 @dataclass
@@ -37,6 +38,7 @@ class ServiceContainer:
     fatigue: FatigueService = field(default_factory=FatigueService)
     economy: EconomyService = field(default_factory=EconomyService)
     bank: BankService = field(default_factory=BankService)
+    trade: TradeService = field(default_factory=TradeService)
 
     @classmethod
     def build(cls) -> ServiceContainer:

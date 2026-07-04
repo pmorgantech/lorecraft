@@ -109,8 +109,14 @@ The architecture overview remains the design reference; this file is the working
 > (identity only — the balance is `CoinBalance("bank_account", account.id)`, a new ledger
 > holder type) back `deposit`/`withdraw` (gated on standing in a branch's room) and
 > `balance` (works anywhere). One logical account, many branches — deposit at one, withdraw
-> at another. Player-to-player trade (28.4) continues next, then transit (29) and
-> quests/puzzles (30); combat/PvP (Sprints 31–35) are deferred per direction.
+> at another. **Sprint 28.4 (player-to-player trade) is now complete**, finishing two
+> pre-existing half-done seams rather than adding parallel ones: the unused
+> `TradeOffer` table (extended with coins + `[stack_id, quantity]` pledge lists per
+> side) and the unused `GameEvent.TRADE_COMPLETED`. `offer <item|N coins> to <player>`
+> records a pledge and moves nothing; `accept` composes one `execute_exchange` call
+> with every pledge as a leg, whose own validation is the escrow revalidation. Trading
+> (Sprint 28) is now fully complete. Transit (29) and quests/puzzles (30) continue
+> next; combat/PvP (Sprints 31–35) are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

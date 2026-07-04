@@ -157,11 +157,13 @@ OBJECT_VERBS = frozenset(
     {
         "take",
         "give",
+        "offer",
         "put",
         "wear",
         "remove",
         "drop",
         "buy",
+        "sell",
         "use",
         "say",
         "whisper",

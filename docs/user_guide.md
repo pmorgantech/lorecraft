@@ -198,6 +198,20 @@ Banked coins are safe — they're a separate account from what you're carrying, 
 survive things that carried coins don't. Deposit at one branch, withdraw at another;
 it's the same account everywhere.
 
+## Trading with Other Players
+
+```
+offer sword to Bob       — pledge a carried item to a trade with Bob
+offer 40 coins to Bob    — pledge coins instead
+accept                   — finalize the pending trade
+decline                  — call it off
+```
+
+Either of you can keep adding pledges with `offer` — items, coins, or both — until
+you're both happy, then either side can `accept` to make the swap. Nothing moves until
+someone accepts, and the trade is checked one more time at that moment, so it can't go
+wrong if something changed since you offered (an item got dropped, coins got spent).
+
 ## Talking to NPCs & Quests
 
 ```
@@ -286,6 +300,9 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `deposit <amount>` | | Deposit carried coins at a bank branch |
 | `withdraw <amount>` | | Withdraw banked coins at a bank branch |
 | `balance` | | Show coins carried and banked |
+| `offer <item\|N coins> to <player>` | | Pledge something to a pending trade |
+| `accept` | | Finalize your pending trade |
+| `decline` | | Call off your pending trade |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |

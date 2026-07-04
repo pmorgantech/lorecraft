@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.10.3] - 2026-07-04
+
+### Summary
+
+**Sprint 28.4 — Player-to-player trade.** Completes Sprint 28 (Trading & economy):
+a safe `offer`/`accept`/`decline` handshake atop the Sprint 20 ledger's atomic
+exchange. 676 focused tests passing; basedpyright 0 errors; ruff clean.
+
+### Added
+
+- **Sprint 28.4: Player-to-player trade** — Finished two pre-existing half-done seams instead of adding parallel ones: the `TradeOffer` table (present since early on, never wired to any code) gained coin fields and `[stack_id, quantity]` pledge lists per side; the unused `GameEvent.TRADE_COMPLETED` now actually fires. `offer <item|N coins> to <player>` (`services/trade.py`) records a pledge onto an open trade between the two players (creating one if needed) and moves nothing; either side can keep pledging more. `accept` composes exactly one `LedgerService.execute_exchange` call with every pledge (both directions, coins and stacks) as legs — that call's own leg validation *is* the escrow revalidation the design called for: if a pledged stack or coin balance is gone since it was offered, the whole exchange raises and nothing moves. Room-presence and `tradeable`/`bound` are re-checked at accept time too, not just at offer time, and offers expire after 5 minutes. New `offer`/`accept`/`decline` commands (`commands/trade.py`). Added `"offer"` to the parser's `OBJECT_VERBS` (`game/grammar.py`) so `offer X to Y` splits into object/recipient roles the same way `give X to Y` already does. 7 new unit tests (`test_trade.py`).
+
 ## [0.10.2] - 2026-07-04
 
 ### Added

@@ -54,6 +54,7 @@ VERB_PATTERNS: dict[str, CommandPattern] = {
     "remove": CommandPattern.OBJECT_MANIPULATION,
     "buy": CommandPattern.OBJECT_MANIPULATION,
     "give": CommandPattern.TRANSFER,
+    "offer": CommandPattern.TRANSFER,
     "put": CommandPattern.CONTAINER,
     "examine": CommandPattern.CONTAINER,
     "open": CommandPattern.CONTAINER,
