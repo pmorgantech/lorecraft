@@ -11,6 +11,7 @@ from lorecraft.models.world import Exit, Item, Room
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.game.rng import GameRng
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
@@ -226,6 +227,7 @@ def _build_context(
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
         item_location=ItemLocationService(session),
+        rng=GameRng(),
         npc_repo=NpcRepo(session),
         manager=manager,
         bus=bus,

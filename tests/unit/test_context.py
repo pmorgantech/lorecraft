@@ -4,6 +4,7 @@ from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext, build_game_context
 from lorecraft.game.events import EventBus, GameEvent
+from lorecraft.game.rng import GameRng
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
@@ -59,6 +60,7 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
                 actor_id="player-1", correlation_id="session-1"
             ),
             session_id="session-1",
+            rng=GameRng(),
         )
 
         ctx.say("You move north.")
@@ -99,6 +101,7 @@ def test_build_game_context_wires_all_repos() -> None:
             manager=manager,
             transaction=transaction,
             session_id="session-1",
+            rng=GameRng(),
         )
 
         assert ctx.player == player
@@ -144,6 +147,7 @@ def test_build_game_context_clock_defaults_to_none() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
+            rng=GameRng(),
         )
 
         assert ctx.clock is None
@@ -178,6 +182,7 @@ def test_build_game_context_custom_clock() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
+            rng=GameRng(),
             clock=custom_clock,
         )
 
@@ -214,6 +219,7 @@ def test_build_game_context_with_audit_session() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
+            rng=GameRng(),
             audit_session=audit_session,
         )
 
@@ -243,6 +249,7 @@ def test_build_game_context_without_audit_session_leaves_audit_none() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
+            rng=GameRng(),
         )
 
         assert ctx.audit is None
@@ -272,6 +279,7 @@ def test_build_game_context_wires_commit_and_rollback_callables() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
+            rng=GameRng(),
             commit_state=lambda: calls.append("commit_state"),
             commit_audit=lambda: calls.append("commit_audit"),
             rollback_state=lambda: calls.append("rollback_state"),
@@ -308,6 +316,7 @@ def test_build_game_context_is_type_game_context() -> None:
                 actor_id="test-1", correlation_id="test"
             ),
             session_id="session-1",
+            rng=GameRng(),
         )
 
         assert isinstance(ctx, GameContext)

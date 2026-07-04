@@ -15,6 +15,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.game.rng import GameRng
 from lorecraft.models.scheduler import ScheduledJob
 from lorecraft.repos.scheduler_repo import SchedulerRepo
 from lorecraft.types import JsonObject
@@ -24,11 +25,13 @@ from lorecraft.types import JsonObject
 class SchedulerEventContext:
     game_engine: Engine
     bus: EventBus
+    rng: GameRng
 
 
 class SchedulerService:
-    def __init__(self, game_engine: Engine) -> None:
+    def __init__(self, game_engine: Engine, rng: GameRng) -> None:
         self._game_engine = game_engine
+        self._rng = rng
         self._bus: EventBus | None = None
 
     def register(self, bus: EventBus) -> None:
@@ -80,7 +83,9 @@ class SchedulerService:
         if not due_snapshot or self._bus is None:
             return
 
-        event_ctx = SchedulerEventContext(game_engine=self._game_engine, bus=self._bus)
+        event_ctx = SchedulerEventContext(
+            game_engine=self._game_engine, bus=self._bus, rng=self._rng
+        )
         for job_id, job_type, payload in due_snapshot:
             self._bus.emit(
                 Event(

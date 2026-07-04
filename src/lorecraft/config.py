@@ -54,6 +54,10 @@ class Settings:
     allow_query_player_id: bool = False
     # Root logger level for lorecraft.observability.configure_logging()
     log_level: str = "INFO"
+    # Seed for the app-wide GameRng (game/rng.py) — None means OS entropy.
+    # Set to a fixed int for deterministic single-actor scripts (see
+    # tests/simulation/test_audit_regression.py's determinism contract).
+    rng_seed: int | None = None
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -61,6 +65,13 @@ def _env_bool(name: str, default: bool) -> bool:
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_optional_int(name: str) -> int | None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return None
+    return int(raw)
 
 
 def load_settings() -> Settings:
@@ -107,6 +118,7 @@ def load_settings() -> Settings:
         ),
         allow_query_player_id=_env_bool("LORECRAFT_ALLOW_QUERY_PLAYER_ID", True),
         log_level=os.getenv("LORECRAFT_LOG_LEVEL", "INFO"),
+        rng_seed=_env_optional_int("LORECRAFT_RNG_SEED"),
     )
 
 

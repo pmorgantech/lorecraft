@@ -19,6 +19,7 @@ from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.game.rng import GameRng
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
@@ -78,6 +79,7 @@ def _ctx(session: Session, player: Player) -> GameContext:
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
         item_location=ItemLocationService(session),
+        rng=GameRng(),
         npc_repo=NpcRepo(session),
         quest_repo=QuestRepo(session),
         dialogue_repo=DialogueRepo(session),

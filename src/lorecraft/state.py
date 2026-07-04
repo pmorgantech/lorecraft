@@ -13,6 +13,7 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
 from lorecraft.game.registry import CommandRegistry
+from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.scheduler import SchedulerService
@@ -33,6 +34,7 @@ class AppState:
     admin_broadcaster: AdminBroadcaster
     scheduler: SchedulerService
     services: ServiceContainer
+    rng: GameRng
     pending_disambig: dict[str, JsonObject] = field(default_factory=dict)
     # Single-use WebSocket connect tickets: ticket -> (player_id, expires_at
     # epoch seconds). In-memory only, matching pending_disambig — fine for

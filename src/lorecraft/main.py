@@ -37,6 +37,7 @@ from lorecraft.game.context import build_game_context
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.game.registry import CommandRegistry
+from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.admin import AdminUser
@@ -107,6 +108,7 @@ def create_app(
         player_refresh_token_ttl_seconds=settings.player_refresh_token_ttl_seconds,
         player_ws_ticket_ttl_seconds=settings.player_ws_ticket_ttl_seconds,
         allow_query_player_id=settings.allow_query_player_id,
+        rng_seed=settings.rng_seed,
     )
 
     @asynccontextmanager
@@ -134,14 +136,15 @@ def create_app(
         registry = CommandRegistry()
         rules = RuleEngine()
         admin_broadcaster = AdminBroadcaster()
+        app_rng = GameRng(resolved_settings.rng_seed)
         clock_runner = WorldClockRunner(
             game_engine=resolved_game_engine,
             bus=bus,
             time_ratio=resolved_settings.world_time_ratio,
         )
-        register_weather_handlers(bus, resolved_game_engine)
+        register_weather_handlers(bus, resolved_game_engine, rng=app_rng)
         NpcScheduler(resolved_game_engine).register(bus)
-        scheduler = SchedulerService(resolved_game_engine)
+        scheduler = SchedulerService(resolved_game_engine, app_rng)
         scheduler.register(bus)
         services = ServiceContainer.build()
         services.quest.register(bus)
@@ -227,6 +230,7 @@ def create_app(
             admin_broadcaster=admin_broadcaster,
             scheduler=scheduler,
             services=services,
+            rng=app_rng,
         )
         register_all_commands(state.registry, state.services)
         state.clock_runner.initialize()
@@ -458,6 +462,7 @@ async def _handle_websocket_command(
             manager=state.manager,
             transaction=transaction,
             session_id=session_id,
+            rng=state.rng,
             clock=room_repo.world_clock(),
             audit_session=audit_session,
             commit_state=game_session.commit,

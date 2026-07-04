@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import random
 from typing import Protocol
 
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.game.rng import GameRng
 from lorecraft.models.world import WorldClock
 from lorecraft.repos.room_repo import RoomRepo
 
@@ -23,7 +23,7 @@ WEATHER_TABLE: dict[str, tuple[str, ...]] = {
 
 
 class WeatherChoice(Protocol):
-    def __call__(self, options: tuple[str, ...]) -> str: ...
+    def __call__(self, seq: tuple[str, ...]) -> str: ...
 
 
 def season_for_day(day: int) -> str:
@@ -31,12 +31,11 @@ def season_for_day(day: int) -> str:
     return SEASONS[season_index]
 
 
-def roll_weather(clock: WorldClock, choice: WeatherChoice | None = None) -> str:
-    choose = choice or random.choice
-    return choose(WEATHER_TABLE[clock.current_season])
+def roll_weather(clock: WorldClock, choice: WeatherChoice) -> str:
+    return choice(WEATHER_TABLE[clock.current_season])
 
 
-def apply_daily_weather(clock: WorldClock, choice: WeatherChoice | None = None) -> bool:
+def apply_daily_weather(clock: WorldClock, choice: WeatherChoice) -> bool:
     next_weather = roll_weather(clock, choice)
     if next_weather == clock.weather:
         return False
@@ -48,8 +47,10 @@ def register_weather_handlers(
     bus: EventBus,
     game_engine: Engine,
     *,
-    choice: WeatherChoice | None = None,
+    rng: GameRng,
 ) -> None:
+    choice: WeatherChoice = rng.choice
+
     def on_day_changed(event: Event, ctx: object) -> None:
         del event
         with Session(game_engine) as session:

@@ -22,6 +22,7 @@ from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.game.rng import GameRng
 from tests.fixtures.disambig_fixtures import DISAMBIG_ROOM_ID, seed_disambig_gallery
 
 
@@ -66,6 +67,7 @@ def _build_engine_and_ctx(
         item_repo=ItemRepo(session),
         stack_repo=StackRepo(session),
         item_location=item_location,
+        rng=GameRng(),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),

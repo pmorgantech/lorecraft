@@ -22,6 +22,18 @@ e2e = ["playwright>=1.47.0"]
 [tool.setuptools.package-data]
 lorecraft = ["web/*", "web/admin/*"]
 
+[tool.ruff.lint]
+extend-select = ["TID251"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"random".msg = "use GameRng (ctx.rng) — module-level random breaks audit-regression determinism (see docs/engine_core.md §3.6)"
+
+[tool.ruff.lint.per-file-ignores]
+# The random ban is a src/lorecraft game-determinism invariant (engine_core.md §3.6);
+# test harness helpers (e.g. simulated network jitter) aren't game logic and don't
+# feed the audit-regression diff.
+"tests/**" = ["TID251"]
+
 [tool.basedpyright]
 include = ["src"]
 exclude = ["src/lorecraft/admin/tui"]

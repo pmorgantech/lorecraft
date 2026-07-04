@@ -20,6 +20,7 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
 from lorecraft.game.registry import CommandRegistry
+from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
@@ -45,6 +46,7 @@ _command_registry: CommandRegistry | None = None
 _rule_engine: RuleEngine | None = None
 _fallback_bus: EventBus | None = None
 _fallback_player_secret: str | None = None
+_fallback_rng: GameRng | None = None
 
 
 @dataclass
@@ -153,6 +155,22 @@ def get_bus(request: Request) -> EventBus:
     if _fallback_bus is None:
         _fallback_bus = EventBus()
     return _fallback_bus
+
+
+def get_rng(request: Request) -> GameRng:
+    """Get the app-wide GameRng, preferring app.state; falls back to an
+    unseeded (OS-entropy) instance — only reachable when app.state.lorecraft
+    isn't wired up (e.g. a router tested in isolation)."""
+    try:
+        state = getattr(request.app.state, "lorecraft", None)
+        if state and hasattr(state, "rng"):
+            return state.rng
+    except (AttributeError, TypeError):
+        log.debug("app_state_rng_access_failed")
+    global _fallback_rng
+    if _fallback_rng is None:
+        _fallback_rng = GameRng()
+    return _fallback_rng
 
 
 def player_session_secret(app_state: AppState | None) -> str:

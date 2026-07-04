@@ -7,6 +7,7 @@ from sqlmodel import Session, create_engine
 from lorecraft.db import create_tables
 from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.models.scheduler import ScheduledJob
+from lorecraft.game.rng import GameRng
 from lorecraft.services.scheduler import SchedulerService
 
 
@@ -18,7 +19,7 @@ def _engine():
 
 def test_schedule_persists_pending_job() -> None:
     engine = _engine()
-    service = SchedulerService(engine)
+    service = SchedulerService(engine, GameRng())
 
     job_id = service.schedule(
         "npc_move", at_game_epoch=100.0, payload={"npc_id": "mira"}
@@ -35,7 +36,7 @@ def test_schedule_persists_pending_job() -> None:
 
 def test_time_advanced_dispatches_due_jobs_only() -> None:
     engine = _engine()
-    service = SchedulerService(engine)
+    service = SchedulerService(engine, GameRng())
     bus = EventBus()
     service.register(bus)
 
@@ -65,7 +66,7 @@ def test_time_advanced_dispatches_due_jobs_only() -> None:
 
 def test_time_advanced_does_not_redispatch_completed_jobs() -> None:
     engine = _engine()
-    service = SchedulerService(engine)
+    service = SchedulerService(engine, GameRng())
     bus = EventBus()
     service.register(bus)
 
@@ -84,7 +85,7 @@ def test_time_advanced_does_not_redispatch_completed_jobs() -> None:
 
 def test_cancel_prevents_dispatch() -> None:
     engine = _engine()
-    service = SchedulerService(engine)
+    service = SchedulerService(engine, GameRng())
     bus = EventBus()
     service.register(bus)
 
@@ -106,7 +107,7 @@ def test_cancel_prevents_dispatch() -> None:
 
 def test_time_advanced_with_no_due_jobs_emits_nothing() -> None:
     engine = _engine()
-    service = SchedulerService(engine)
+    service = SchedulerService(engine, GameRng())
     bus = EventBus()
     service.register(bus)
 

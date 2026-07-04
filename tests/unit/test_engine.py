@@ -8,6 +8,7 @@ from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import EventBus
 from lorecraft.game.holders import Location
 from lorecraft.game.registry import CommandRegistry
+from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine, RuleResult
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.audit import AuditEvent
@@ -42,6 +43,7 @@ def build_context() -> GameContext:
             actor_id="player-1", correlation_id="session-1"
         ),
         session_id="session-1",
+        rng=GameRng(),
     )
 
 
@@ -235,6 +237,7 @@ def build_persistent_context(
             actor_id="player-1", correlation_id="session-1"
         ),
         session_id="session-1",
+        rng=GameRng(),
         commit_state=game_session.commit,
         commit_audit=audit_session.commit,
         rollback_state=game_session.rollback,

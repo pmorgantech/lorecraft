@@ -11,6 +11,7 @@ from sqlmodel import Session
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.game.parser import ParsedCommand
+from lorecraft.game.rng import GameRng
 from lorecraft.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
@@ -49,6 +50,7 @@ class GameContext:
     audit: AuditRepo | None
     transaction: TransactionContext
     session_id: str
+    rng: GameRng
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
     rollback_state: Callable[[], None] | None = None
@@ -127,6 +129,7 @@ def build_game_context(
     manager: ConnectionManager,
     transaction: TransactionContext,
     session_id: str,
+    rng: GameRng,
     clock: WorldClock | None = None,
     audit_session: Session | None = None,
     commit_state: Callable[[], None] | None = None,
@@ -171,6 +174,7 @@ def build_game_context(
         audit=AuditRepo(audit_session) if audit_session is not None else None,
         transaction=transaction,
         session_id=session_id,
+        rng=rng,
         commit_state=commit_state,
         commit_audit=commit_audit,
         rollback_state=rollback_state,
