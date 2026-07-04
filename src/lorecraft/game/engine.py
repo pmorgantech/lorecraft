@@ -108,9 +108,15 @@ class CommandEngine:
             self._rollback(ctx, parsed, exc, duration_ms)
             return None
         duration_ms = (time.perf_counter() - start) * 1000
+        # flush_events() runs handlers (e.g. QuestService.check_progression) that
+        # mutate ctx.session further — it must run before the one commit, or those
+        # mutations are silently discarded when the request's session closes
+        # (EventBus.emit() isolates handler exceptions into HandlerResult.error
+        # rather than raising, so this can't turn a failed handler into a rollback
+        # of the command's own already-applied changes).
+        ctx.flush_events()
         ctx.commit_state_changes()
         self._record_success(ctx, parsed, duration_ms)
-        ctx.flush_events()
         log.info("command_executed verb=%s duration_ms=%.2f", parsed.verb, duration_ms)
         return parsed
 

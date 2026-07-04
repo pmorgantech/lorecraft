@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.8.2] - 2026-07-04
+
+### Fixed
+
+- **Post-command event handler mutations were silently discarded** — `CommandEngine._execute_parsed` (`game/engine.py`) called `ctx.commit_state_changes()` *before* `ctx.flush_events()`, so any state mutated by a queued-event handler (notably `QuestService.check_progression`, which advances quest stages and sets completion flags on `PLAYER_MOVED`/`ITEM_TAKEN`/`ITEM_DROPPED`) was applied to the in-memory session but never committed — lost as soon as that request's session closed. Existing unit tests never caught this because they assert against the same still-open session. Found while designing Sprint 27's fatigue drain-on-move (which needed the same event-driven pattern to actually persist). Fixed by flushing events before the single commit; `EventBus.emit()` already isolates handler exceptions into `HandlerResult.error` rather than raising, so this can't turn a failed handler into an unwanted rollback of the command's own effects. New regression test (`test_websocket_movement_persists_quest_progression` in `tests/integration/test_main.py`) seeds a room-visited-gated quest stage and asserts the stage advance and completion flag survive a fresh session read after a real `go east` over the websocket; confirmed it fails without the fix and passes with it.
+
 ## [0.8.1] - 2026-07-04
 
 ### Fixed

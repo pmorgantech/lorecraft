@@ -257,6 +257,92 @@ async def _test_websocket_movement_persists_room_change() -> None:
     assert "command_executed" in [event.event_type for event in audit_events]
 
 
+def test_websocket_movement_persists_quest_progression() -> None:
+    """Regression test: QuestService.check_progression runs as a PLAYER_MOVED
+    handler flushed via ctx.flush_events() (game/engine.py), which used to run
+    *after* the command's ctx.commit_state_changes() — so its mutations
+    (progress.current_stage_id, player.flags) were silently discarded once
+    the request's session closed. flush_events() now runs before the commit."""
+    anyio.run(_test_websocket_movement_persists_quest_progression)
+
+
+async def _test_websocket_movement_persists_quest_progression() -> None:
+    import time as time_module
+
+    from lorecraft.models.quest import PlayerQuestProgress, Quest
+
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+    async with _lifespan(app):
+        with Session(game_engine) as session:
+            session.add(
+                Quest(
+                    id="q1",
+                    title="Reach the Market",
+                    description="d",
+                    stages=[
+                        {
+                            "id": "s0",
+                            "description": "Reach the market",
+                            "conditions": [
+                                {"type": "room_visited", "room_id": "market_stalls"}
+                            ],
+                            "completion_flags": {"visited_market": True},
+                        },
+                        {"id": "s1", "description": "Final stage", "conditions": []},
+                    ],
+                )
+            )
+            session.add(
+                PlayerQuestProgress(
+                    player_id="player-1",
+                    quest_id="q1",
+                    current_stage_id="s0",
+                    status="active",
+                    started_at=time_module.time(),
+                )
+            )
+            session.commit()
+
+        await _run_websocket(
+            app,
+            query_string=b"player_id=player-1",
+            incoming=[
+                {"type": "websocket.connect"},
+                {"type": "websocket.receive", "text": "go east"},
+                {"type": "websocket.disconnect", "code": 1000},
+            ],
+        )
+
+    with Session(game_engine) as session:
+        player = session.get(Player, "player-1")
+        progress = session.exec(
+            select(PlayerQuestProgress).where(
+                PlayerQuestProgress.player_id == "player-1"
+            )
+        ).first()
+
+    assert player is not None and player.flags.get("visited_market") is True
+    assert progress is not None and progress.current_stage_id == "s1"
+
+
 def test_websocket_inventory_pickup_persists_item() -> None:
     anyio.run(_test_websocket_inventory_pickup_persists_item)
 
