@@ -44,8 +44,13 @@ def register_all_commands(
     register_report_commands(registry)
     register_character_commands(registry, services.character_info)
     register_exploration_commands(registry, services.exploration, services.journal)
-    register_condition_commands(registry, services.fatigue)
-    register_economy_commands(registry, services.economy)
-    register_bank_commands(registry, services.bank)
+    # Feature-gated: only register these verbs when their service exists (i.e.
+    # the owning Tier 2 feature is enabled — see ServiceContainer.build).
+    if services.fatigue is not None:
+        register_condition_commands(registry, services.fatigue)
+    if services.economy is not None:
+        register_economy_commands(registry, services.economy)
+    if services.bank is not None:
+        register_bank_commands(registry, services.bank)
     register_trade_commands(registry, services.trade)
     register_transit_commands(registry, transit)

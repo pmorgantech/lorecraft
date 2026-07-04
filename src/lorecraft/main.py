@@ -181,9 +181,24 @@ def create_app(
             resolved_game_engine, mobile_route_service, manager
         )
         transit_service.load_lines()
-        services = ServiceContainer.build()
+
+        # Resolve the enabled Tier 2 feature set up front so services can be
+        # built conditionally (docs/tier_split_refactor.md). Discovery imports
+        # feature packages so their manifests self-register; the enabled set
+        # (explicit arg > LORECRAFT_FEATURES > all discovered) is validated and
+        # dependency-ordered. Default is "all on", so behaviour is unchanged.
+        available_features = discover_features()
+        enabled_feature_keys = resolve_enabled_features(
+            enabled_features, available_features.keys()
+        )
+        loaded_features = load_features(enabled_feature_keys, available_features)
+        if loaded_features:
+            log.info("Enabled features: %s", ", ".join(loaded_features))
+
+        services = ServiceContainer.build(enabled=set(loaded_features))
         services.quest.register(bus)
-        services.fatigue.register(bus)
+        if services.fatigue is not None:
+            services.fatigue.register(bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
@@ -273,20 +288,10 @@ def create_app(
         )
         register_all_commands(state.registry, state.services, transit=transit_service)
 
-        # Config-driven Tier 2 feature wiring (docs/tier_split_refactor.md).
-        # Discovery imports feature packages so their manifests self-register;
-        # the enabled set (explicit arg > LORECRAFT_FEATURES > all discovered)
-        # is validated + dependency-ordered, then each feature's register_fn
-        # wires it onto `state`. Until features are migrated to manifests this
-        # is a no-op — the legacy side-effect imports above still do the real
-        # wiring — so behaviour is unchanged.
-        available_features = discover_features()
-        enabled_feature_keys = resolve_enabled_features(
-            enabled_features, available_features.keys()
-        )
-        loaded_features = load_features(enabled_feature_keys, available_features)
-        if loaded_features:
-            log.info("Enabled features: %s", ", ".join(loaded_features))
+        # Wire each enabled feature onto `state` (its register_fn registers the
+        # feature's conditions/side effects/modifiers/etc. on the shared
+        # registries). The enabled set was resolved above; command registration
+        # for feature-gated services is handled inside register_all_commands.
         wire_features(state, loaded_features)
 
         state.clock_runner.initialize()

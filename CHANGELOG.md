@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.10] - 2026-07-04
+
+### Changed
+
+- **Tier split — conditional service construction (step 6, branch `tier_split`).** `ServiceContainer.build()` now takes an `enabled` feature set: the migrated feature-services `economy`, `bank`, and `fatigue` are instantiated only when their feature is enabled (`None` otherwise), and `register_all_commands` skips a gated feature's verbs when its service is absent. `create_app` resolves the enabled set before building services and threads it through. Default is "all on", so a normal boot and every test (which call `ServiceContainer.build()` with no args) are unchanged — full suite 794 passed. The remaining always-on services stay unconditional until their features are migrated; the container becomes fully feature-driven in step 8. 5 new tests (`test_service_container.py`).
+
 ## [0.14.9] - 2026-07-04
 
 ### Changed
