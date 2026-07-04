@@ -17,8 +17,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 |---|------|-------|--------|
 | 0 | Branch, doc rename, progress tracker, changelog | setup | ✅ |
 | 1 | `features/manifest.py` — `FeatureManifest`, `FEATURE_REGISTRY`, `register_feature` + unit tests | 2 | ✅ |
-| 2 | `features/loader.py` — `discover_features` + `load_features` (dependency validation) + unit tests | 2 | 🚧 |
-| 3 | Feature-config resolution (env var / YAML) wired into `create_app`, defaulting to "all on" (behavior-preserving) | 3 | ⬜ |
+| 2 | `features/loader.py` — `discover_features` + `load_features` (dependency validation) + unit tests | 2 | ✅ |
+| 3 | Feature-config resolution (env var / YAML) wired into `create_app`, defaulting to "all on" (behavior-preserving) | 3 | 🚧 |
 | 4 | Wrap **one** existing self-registering feature (e.g. `reputation`) in a manifest as a vertical slice, loaded via the new path | 2/3 | ⬜ |
 | 5 | Migrate remaining Tier 2 self-registrations to manifests; delete side-effect imports from `main.py` | 3 | ⬜ |
 | 6 | `ServiceContainer` builds conditionally from enabled features | 3 | ⬜ |

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.4] - 2026-07-04
+
+### Added
+
+- **Tier split — feature loader (step 2, branch `tier_split`).** New `lorecraft.features.loader`: `discover_features()` imports every feature subpackage so its manifest self-registers (auto-discovery, replacing a hand-maintained import list), and `load_features(enabled, registry)` validates the enabled set and returns it in dependency order — raising on an unknown feature key, a dependency that isn't enabled, or a dependency cycle. Still additive; nothing calls it yet. 8 unit tests (`test_feature_loader.py`) cover ordering, transitive deps, unknown/missing-dependency/cycle errors, and idempotent discovery.
+
 ## [0.14.3] - 2026-07-04
 
 ### Added
