@@ -464,6 +464,8 @@ async def handle_command(
 
         room_changed = after_player.current_room_id != pre_room_id
         inv_changed = after_inv != pre_inv or "inventory" in ctx.updates
+        # Refresh room pane if items were taken/dropped/used (room_messages) or if the player moved
+        room_state_changed = bool(ctx.room_messages) or room_changed
 
         room_panel = room_panel_context(
             after_room,
@@ -490,16 +492,6 @@ async def handle_command(
                     "type": "narrative",
                 }
             )
-        for m in ctx.room_messages:
-            feed_msgs.append(
-                {
-                    "id": f"room-{session_id}-{len(feed_msgs)}",
-                    "timestamp": ts,
-                    "actor": None,
-                    "text": m,
-                    "type": "narrative",
-                }
-            )
 
         disconnect_requested = bool(getattr(ctx, "updates", {}).get("disconnect"))
 
@@ -507,7 +499,7 @@ async def handle_command(
 
         result = CommandResult(
             new_feed_messages=feed_msgs,
-            room_changed=room_changed,
+            room_changed=room_state_changed,
             new_room=after_room,
             inventory_changed=inv_changed,
             new_inventory=new_inv,
@@ -526,7 +518,7 @@ async def handle_command(
 
         response_html = feed_html
 
-        if result.room_changed and result.new_room:
+        if room_state_changed and result.new_room:
             room_html = templates.get_template("partials/room_description.html").render(
                 current_room=result.new_room,
                 current_player=after_player,
