@@ -73,3 +73,19 @@ def register_inventory_commands(
     )
     def give_command(noun: str | None, ctx: GameContext) -> None:
         service.give_item(noun, ctx)
+
+    @registry.register(
+        "open",
+        conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
+        help="open <container> — open a container",
+    )
+    def open_command(noun: str | None, ctx: GameContext) -> None:
+        service.open_item(noun, ctx)
+
+    @registry.register(
+        "close",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="close <container> — close a container",
+    )
+    def close_command(noun: str | None, ctx: GameContext) -> None:
+        service.close_item(noun, ctx)

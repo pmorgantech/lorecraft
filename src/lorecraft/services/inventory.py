@@ -17,8 +17,9 @@ from lorecraft.game.command_patterns import (
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
 from lorecraft.game.holders import Location
-from lorecraft.models.items import ItemStack
+from lorecraft.models.items import ItemInstance, ItemStack
 from lorecraft.models.world import Item
+from lorecraft.services.item_components import get_component_state, set_component_state
 from lorecraft.types import JsonValue
 
 _M = TypeVar("_M")
@@ -522,6 +523,78 @@ class InventoryService:
                 seen.add(candidate.id)
                 combined.append(candidate)
         return combined
+
+    def _find_carried_or_visible_stacks(
+        self, query: str, ctx: GameContext
+    ) -> list[tuple[ItemStack, Item]]:
+        carried = ctx.item_repo.player_stacks_matching(ctx.player.id, query)
+        room = ctx.item_repo.search_in_room(ctx.room.id, query)
+        return list(carried) + list(room)
+
+    def _resolve_openable(
+        self, query: str, ctx: GameContext, *, verb: str
+    ) -> tuple[Item, ItemInstance] | None:
+        matches = self._find_carried_or_visible_stacks(query, ctx)
+        resolved = self._resolve_single(
+            ctx,
+            verb=verb,
+            query=query,
+            matches=matches,
+            item_of=lambda m: m[1],
+            not_found_msg="You don't see that here.",
+        )
+        if resolved is None:
+            return None
+
+        stack, item = resolved
+        if stack.instance_id is None:
+            ctx.say(f"You can't {verb} that.")
+            return None
+
+        instance = ctx.session.get(ItemInstance, stack.instance_id)
+        if instance is None or get_component_state(instance, "openable") is None:
+            ctx.say(f"You can't {verb} that.")
+            return None
+
+        return item, instance
+
+    def open_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Open what?")
+            return
+
+        resolved = self._resolve_openable(name_or_id, ctx, verb="open")
+        if resolved is None:
+            return
+        item, instance = resolved
+
+        state = get_component_state(instance, "openable")
+        if isinstance(state, dict) and state.get("open"):
+            ctx.say(f"The {item.name} is already open.")
+            return
+
+        set_component_state(ctx.session, instance, "openable", {"open": True})
+        ctx.say(f"You open the {item.name}.")
+        ctx.tell_room(f"{ctx.player.username} opens the {item.name}.")
+
+    def close_item(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Close what?")
+            return
+
+        resolved = self._resolve_openable(name_or_id, ctx, verb="close")
+        if resolved is None:
+            return
+        item, instance = resolved
+
+        state = get_component_state(instance, "openable")
+        if isinstance(state, dict) and not state.get("open"):
+            ctx.say(f"The {item.name} is already closed.")
+            return
+
+        set_component_state(ctx.session, instance, "openable", {"open": False})
+        ctx.say(f"You close the {item.name}.")
+        ctx.tell_room(f"{ctx.player.username} closes the {item.name}.")
 
     def _emit_item_used(
         self, ctx: GameContext, item_id: str, *, other_item_id: str | None = None

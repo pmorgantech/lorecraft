@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.4.1] - 2026-07-04
+
+### Added
+
+- **Sprint 22.2: Standard Item Components** — Completes Sprint 22 (the first commit only shipped 22.1). Registers the four standard components from `docs/inventory_equipment.md` §7 on Sprint 16's `ComponentRegistry`: `durability` (applies when `max_durability` is set; state `{"current": N}`), `openable` (applies to containers; state `{"open": bool}`), `lit` (applies when `light > 0`; state `{"lit": bool}`), `container` (applies when `capacity` is set; state `{}`, contents are stacks not state). `game/standard_components.py` self-registers at import time (mirrors `game/traits.py`'s pattern); imported for side effects from `main.py`'s module scope. New `services/item_components.py` (`get_component_state`/`set_component_state`) centralizes instance-state mutation — JSON columns need a fresh dict object per write for SQLAlchemy to notice the change, so every setter reassigns `instance.state` rather than mutating in place. `open`/`close` commands added to `InventoryService`/`commands/inventory.py`, resolving carried-or-visible stacks with a registered `openable` component state. 6 new tests (component initial state on spawn, open/close round trip, already-open/already-closed messaging, non-openable item rejection). 354 focused tests passing; basedpyright 0 errors; ruff clean.
+
 ## [0.4.0] - 2026-07-04
 
 ### Summary

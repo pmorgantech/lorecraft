@@ -41,12 +41,13 @@ The architecture overview remains the design reference; this file is the working
 > on any holder + one atomic multi-leg `execute_exchange()` for coins and items together) and
 > `services/mobile_route.py`'s `MobileRouteService` (the generic scheduled route runner —
 > ping-pong/circular waypoint cycling, position interpolation — that transit will ride on).
-> **Sprint 22 (item definition fields — Layer A) is now complete**: `Item` model gains 8 fields
-> (`slot`, `wearable`, `weight`, `quality`, `max_durability`, `light`, `capacity`, `effects`),
-> content validators added for all fields, YAML loader updated; no new commands yet, just the
-> data model foundation for Tier 2. Tier 2 feature work (equipment commands, encumbrance,
-> light/darkness, containers, traits/skills, exploration, trading, transit, quests, combat)
-> continues from Sprint 23; combat moved down to Sprints 31–33.
+> **Sprint 22 (item components & definition fields) is now complete**: `Item` model gains 8
+> fields (`slot`, `wearable`, `weight`, `quality`, `max_durability`, `light`, `capacity`,
+> `effects`), content validators added for all fields, YAML loader updated (22.1); the standard
+> `durability`/`openable`/`lit`/`container` components are registered on Sprint 16's
+> `ComponentRegistry`, plus `open`/`close` commands (22.2). Tier 2 feature work (equipment
+> commands, encumbrance, light/darkness, containers, traits/skills, exploration, trading,
+> transit, quests, combat) continues from Sprint 23; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 

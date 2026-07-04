@@ -43,6 +43,7 @@ from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 import lorecraft.game.traits  # noqa: F401 -- import for registration side effects (traits.py registers itself as a ModifierSource and TraitSource at module load)
+import lorecraft.game.standard_components  # noqa: F401 -- import for registration side effects (durability/openable/lit/container components)
 from lorecraft.models.admin import AdminUser
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.models.world import NPC, Room
