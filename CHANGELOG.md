@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.2] - 2026-07-04
+
+### Docs
+
+- **Tier split refactor — planning + tracking (branch `tier_split`).** Added `docs/tier_split_refactor.md`: the plan to physically separate the engine (Tier 1), optional features (Tier 2), and web hosts into `engine/`, `features/`, and `webui/{player,admin}/`, replace brittle side-effect imports with a config-driven feature manifest/loader, and add a documented `presentation.py` seam for feature-contributed web UI (§1c — authoritative builder/admin guidance on how feature panels/partials/JS load into the player web host). Document carries its own progress tracker and stays off `roadmap.md`. Renamed from the initial all-caps filename to `tier_split_refactor.md`.
+
 ## [0.14.1] - 2026-07-04
 
 ### Fixed

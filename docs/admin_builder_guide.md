@@ -291,5 +291,6 @@ GET /admin/analytics/player-hours   — playtime from PlayerSession records
 | [player_authentication.md](player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
 | [disconnect_handling.md](disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
 | [architecture.md](architecture.md) | Full system architecture reference |
+| [tier_split_refactor.md](tier_split_refactor.md) | Engine/feature/web-host layout + **how to add feature UI** (§1c) — in progress |
 | [roadmap.md](roadmap.md) | Sprint-by-sprint build order and current status |
 | [user_guide.md](user_guide.md) | Player-facing command reference |
