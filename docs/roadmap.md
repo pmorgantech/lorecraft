@@ -310,23 +310,23 @@ invariant tests caught two real bugs (both `_on_time_advanced` sweeps read ORM a
 `session.commit()`'s default `expire_on_commit` invalidated them — fixed by capturing plain values
 before the session closes). See `CHANGELOG.md` for the full list.
 
-## Sprint 20 — Ledger & atomic transfer
+## Sprint 20 — Ledger & atomic transfer ✅
 
 **Goal:** A coin balance on any holder + one atomic multi-party transfer for coins *and* items.
 **See [`engine_core.md`](engine_core.md) §3.7, §4c/§4g.**
 
 | # | Task | Status |
 |---|------|--------|
-| 20.1 | `CoinBalance` on any registered holder (player/bank/corpse/shop); atomic multi-leg `execute_exchange(legs)` — validate all, then apply all (escrow = accept-time revalidation), reusing the [Sprint 14](#sprint-14--unify-command-lifecycle-) rollback; integrity gates via `RuleEngine` (fail-closed), not conditions | [ ] |
+| 20.1 | `CoinBalance` on any registered holder (player/bank/corpse/shop); atomic multi-leg `execute_exchange(legs)` — validate all, then apply all (escrow = accept-time revalidation), reusing the [Sprint 14](#sprint-14--unify-command-lifecycle-) rollback; integrity gates via `RuleEngine` (fail-closed), not conditions | [x] `models/ledger.py`'s `CoinBalance` + `services/ledger.py`'s `LedgerService` (stateless-per-call, no engine/rng held). `execute_exchange(legs)` validates every leg first, then applies all mutations — no partial exchange ever lands. `GameContext` gained a required `ledger` field. 14 new tests, all green first run. |
 
-## Sprint 21 — Scheduled moving entity ("moving room")
+## Sprint 21 — Scheduled moving entity ("moving room") ✅
 
 **Goal:** The moving-room carrier transit rides on; also serves wandering NPCs/patrols later.
 **See [`engine_core.md`](engine_core.md) §3.8.**
 
 | # | Task | Status |
 |---|------|--------|
-| 21.1 | Scheduled moving-room carrier + position-interpolation state machine (`at_stop → in_transit → arrive`, reverse/loop) + position push; line semantics (express/local, tickets, weather) stay Tier 2 ([Sprint 29](#sprint-29--transit--travel-systems)) | [ ] |
+| 21.1 | Scheduled moving-room carrier + position-interpolation state machine (`at_stop → in_transit → arrive`, reverse/loop) + position push; line semantics (express/local, tickets, weather) stay Tier 2 ([Sprint 29](#sprint-29--transit--travel-systems)) | [x] `models/mobile.py`'s `MobileRouteState` (only the runtime state is persisted) + `services/mobile_route.py`'s `Waypoint`/`RouteSpec`/`RouteHooks`/`MobileRouteService` (engine-holding schedulable, exactly the `SchedulerService` shape — reuses it for all timing via `job_type="mobile_route"`). Ping-pong reversal and circular looping both covered; a route whose spec disappears on restart halts instead of crashing. 15 new tests, all green first run. |
 
 ---
 
@@ -560,7 +560,9 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — **[Sprint 19](#sprint-19--meters--timed-effects-) complete**: `models/meters.py`'s `Meter`/`ActiveEffect` + `game/meters.py`/`game/effects.py`/`game/traits.py` registries + `services/meters.py`/`services/effects.py` are the meter, timed-effect, and trait primitives — the "hp" `MeterDef` migration deletes `PlayerStats.current_hp`/`NPC.current_hp` outright as the proof, and Tier 1 registers its promised active-effect/trait `ModifierSource`s + `TraitSource` with Sprint 18's resolver. `GameContext` gained required `session`/`meters`/`effects` fields. 25 new tests caught two real bugs (both scheduler sweeps read expired ORM attributes after `session.commit()`). Full suite (509 unit/integration + 3 e2e + 5 simulation) green. Next: [Sprint 20](#sprint-20--ledger--atomic-transfer) (ledger + atomic transfer) — depends on Sprint 16 (moves stacks).
+*Last updated: 2026-07-04 — **[Sprints 20](#sprint-20--ledger--atomic-transfer-) and [21](#sprint-21--scheduled-moving-entity-moving-room-) complete**, closing out the Tier 1 engine-core band. `models/ledger.py`'s `CoinBalance` + `services/ledger.py`'s `LedgerService` add coin balances on any registered holder and one atomic multi-leg `execute_exchange()` for coins and items together (validate-all-then-apply-all, no partial exchange). `models/mobile.py`'s `MobileRouteState` + `services/mobile_route.py`'s `MobileRouteService` add the generic scheduled route runner (ping-pong or circular waypoint cycling, position interpolation, pluggable `RouteHooks`) that transit will ride on — reuses `SchedulerService` for all timing, no second timing mechanism. 29 new tests, all green first run; full suite (538 unit/integration + 3 e2e + 5 simulation) green. Version bumped to 0.3.0. Tier 2 feature band now open, starting at [Sprint 22](#sprint-22--standard-item-components--definition-fields).
+
+Earlier — **[Sprint 19](#sprint-19--meters--timed-effects-) complete**: `models/meters.py`'s `Meter`/`ActiveEffect` + `game/meters.py`/`game/effects.py`/`game/traits.py` registries + `services/meters.py`/`services/effects.py` are the meter, timed-effect, and trait primitives — the "hp" `MeterDef` migration deletes `PlayerStats.current_hp`/`NPC.current_hp` outright as the proof, and Tier 1 registers its promised active-effect/trait `ModifierSource`s + `TraitSource` with Sprint 18's resolver. `GameContext` gained required `session`/`meters`/`effects` fields. 25 new tests caught two real bugs (both scheduler sweeps read expired ORM attributes after `session.commit()`). Full suite (509 unit/integration + 3 e2e + 5 simulation) green.
 
 Earlier same day — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-check-) and [18](#sprint-18--modifier-resolution-) complete**: `game/rng.py`'s `GameRng` is now the one sanctioned randomness source (ruff `TID251` bans bare `random` in `src/`), threaded through `GameContext`/`build_game_context()`/`SchedulerEventContext`/`clock/weather.py`; `game/modifiers.py`'s `resolve()` is the one stacked-bonus resolver (fixed add→mult→clamp bucket order); `game/checks.py`'s `skill_check()` composes both into the one roll-under-d100 helper every future skill/combat/barter check will share. 18 landed ahead of its listed position (it has no dependencies) specifically to unblock 17.2, which needs the `Modifier` type. 21 new unit tests; full suite green.
 

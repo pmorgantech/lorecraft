@@ -36,7 +36,11 @@ The architecture overview remains the design reference; this file is the working
 > is the one stacked-bonus resolver; `game/checks.py`'s `skill_check()` composes both.
 > **Sprint 19 is also complete**: `Meter`/`ActiveEffect` primitives (`models/meters.py`) plus
 > `MeterService`/`EffectService`/trait registry; the "hp" `MeterDef` migration deletes
-> `PlayerStats.current_hp`/`NPC.current_hp` outright. Next: Sprint 20 (ledger + atomic transfer).
+> `PlayerStats.current_hp`/`NPC.current_hp` outright. **Sprints 20 and 21 are also complete**,
+> closing out the Tier 1 engine-core band: `services/ledger.py`'s `LedgerService` (coin balances
+> on any holder + one atomic multi-leg `execute_exchange()` for coins and items together) and
+> `services/mobile_route.py`'s `MobileRouteService` (the generic scheduled route runner —
+> ping-pong/circular waypoint cycling, position interpolation — that transit will ride on).
 > Tier 2 feature work (item components, equipment, traits/skills, exploration…) now starts at
 > Sprint 22; combat moved down to Sprints 31–33.
 
@@ -328,6 +332,26 @@ Legend:
 - [x] HP migration (the proof-of-primitive): `PlayerStats.current_hp` and `NPC.current_hp` deleted outright — `max_hp` stays as the definitional base fed to the "hp" `MeterDef`'s `base_maximum`, registered as bootstrap in `main.py`'s lifespan. Full blast radius: `world/loader.py` (NPC seeding no longer sets `current_hp` — lazy creation handles it), `admin/routers/world.py` (NPC listing does a read-only `MeterRepo` lookup, falling back to `max_hp` for an as-yet-uncreated meter rather than triggering a write from a GET), `services/save.py` (`stats_snapshot` drops `current_hp`, gains a `"meters": {"hp": ...}` dict; loading converts both the new shape and the old v1 flat `"current_hp"` key).
 - [x] `GameContext` gains required `session`/`meters`/`effects` fields; `build_game_context()` gains required `meters`/`effects` keywords (both entry points + every test fixture updated, matching the Sprint 16/17 "factory is the single construction path" precedent). `AppState` gains `meters`/`effects`; new `web/session.py` `get_meters()`/`get_effects()` accessors mirror `get_rng()`'s app-state-with-fallback shape. New `GameEvent` members: `METER_DEPLETED`, `METER_RECOVERED`, `EFFECT_APPLIED`, `EFFECT_EXPIRED`, `EFFECT_REMOVED`.
 - [x] 25 new invariant tests; caught two real bugs (both `_on_time_advanced` sweeps read ORM attributes on `Meter`/`ActiveEffect` rows *after* `session.commit()`'s default `expire_on_commit` invalidated them and the session closed — fixed by capturing plain `(str, str, str)` tuples before the session block exits). Full suite (509 unit/integration + 3 e2e + 5 simulation) green.
+
+### Ledger & Atomic Transfer (Sprint 20) ✅
+
+**See:** [`engine_core.md`](engine_core.md) §3.7 for the binding spec.
+
+- [x] `CoinBalance` (`models/ledger.py`) — one row per `(holder_type, holder_id)`, on any holder registered with Sprint 16's `HolderRegistry` (player/bank/corpse/shop). No `Player.coins` column.
+- [x] `services/ledger.py`'s `LedgerService` — stateless per-call (every method takes the caller's `Session` explicitly, no engine/rng held; there's no scheduler sweep for this primitive). `balance_of()`/`credit()` (the only way coins enter play) plus `execute_exchange(legs)`: validates every leg first (coin sufficiency, destination holder existence, stack presence/quantity at the declared location), then applies every leg's mutations — nothing partial ever lands. Reuses Sprint 16's `ItemLocationService.move()` for the stack legs.
+- [x] `GameContext` gains a required `ledger` field; `build_game_context()` constructs a fresh `LedgerService()` (no engine/rng dependency, so no new required kwarg — a smaller blast radius than Sprint 19's `meters`/`effects`).
+- [x] 14 new tests, including a two-way P2P-trade-shaped exchange (coin conservation across both directions) and an atomicity test (a failing second leg leaves the first leg's mutation un-applied). All green first run — no bugs caught, unlike Sprints 16/19.
+
+### Scheduled Mobile Entity ("moving room") (Sprint 21) ✅
+
+**See:** [`engine_core.md`](engine_core.md) §3.8 for the binding spec.
+
+- [x] `models/mobile.py`'s `MobileRouteState` — the only persisted piece (`route_id` PK, `status`, `current_index`/`next_index`, `direction`, `depart_epoch`/`arrive_epoch`). Route *specs* (`Waypoint`/`RouteSpec` in `services/mobile_route.py`) are pure in-memory dataclasses supplied by the owning feature at lifespan — Tier 1 never persists them.
+- [x] `services/mobile_route.py`'s `MobileRouteService` — engine-holding schedulable, exactly the `SchedulerService` shape; `register(bus)` listens for `SCHEDULED_JOB_DUE` with `job_type="mobile_route"`. `add_route()`/`start()`/`halt()`/`resume()` plus pure `progress()`/`position()` for minimap interpolation. All timing reuses the existing `SchedulerService` (`job_type="mobile_route"`, actions `depart`/`arrive`/`tick`) — no second timing mechanism.
+- [x] State machine: `at_stop` --(dwell elapses, `RouteHooks.may_depart` → `None`)--> `in_transit` --(arrive job)--> `at_stop` at the next waypoint, with index/direction advancing via reverse-at-ends (`reverses=True`, the default) or loop-wraparound (`reverses=False, loop=True`). A `may_depart` halt reason parks the route (`status="halted"`) and reschedules a re-check after `dwell_ticks`; `resume()` forces an immediate re-check. `on_tick` fires `tick_pushes` times per segment with interpolated progress — throttled by design, never per world-tick; Tier 1 pushes nothing to clients itself.
+- [x] A route whose spec/hooks disappear on restart (owning feature didn't re-`add_route()` before a pending job fires) halts instead of crashing.
+- [x] `AppState` gains a `mobile_routes: MobileRouteService` field; wired into `main.py`'s lifespan alongside the scheduler/meter/effect services.
+- [x] 15 new tests covering the full ping-pong round trip, circular looping, halt/resume, tick-push interpolation, and the spec-disappeared-on-restart path. All green first run.
 
 ### Phase 8 — Combat
 

@@ -53,6 +53,7 @@ from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService
+from lorecraft.services.mobile_route import MobileRouteService
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
@@ -156,6 +157,8 @@ def create_app(
         meter_service.register(bus)
         effect_service = EffectService(resolved_game_engine, app_rng)
         effect_service.register(bus)
+        mobile_route_service = MobileRouteService(resolved_game_engine, scheduler)
+        mobile_route_service.register(bus)
         services = ServiceContainer.build()
         services.quest.register(bus)
 
@@ -243,6 +246,7 @@ def create_app(
             rng=app_rng,
             meters=meter_service,
             effects=effect_service,
+            mobile_routes=mobile_route_service,
         )
         register_all_commands(state.registry, state.services)
         state.clock_runner.initialize()
