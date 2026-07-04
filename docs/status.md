@@ -30,9 +30,12 @@ The architecture overview remains the design reference; this file is the working
 > is now complete**: `ItemStack`/`ItemInstance` model + `ItemLocationService`
 > (spawn/destroy/materialize/move) replaces `Player.inventory`/`RoomItem` outright across the
 > full blast radius (inventory/movement/quest/dialogue/save/world-import/admin/web layers); 23
-> new invariant tests; full suite green unchanged. Next: Sprint 17 (seedable RNG + skill-check).
-> Tier 2 feature work (item components, equipment, traits/skills, exploration…) now starts at
-> Sprint 22; combat moved down to Sprints 31–33.
+> new invariant tests; full suite green unchanged. **Sprints 17 and 18 are also complete**:
+> `game/rng.py`'s `GameRng` (the one sanctioned randomness source, ruff-banned elsewhere in
+> `src/`) is threaded through `GameContext`/scheduler/weather; `game/modifiers.py`'s `resolve()`
+> is the one stacked-bonus resolver; `game/checks.py`'s `skill_check()` composes both. Next:
+> Sprint 19 (meters + timed effects). Tier 2 feature work (item components, equipment,
+> traits/skills, exploration…) now starts at Sprint 22; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -43,7 +46,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
-| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [~] Sprint 16 (item location/ownership) complete; 17–21 remain |
+| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [~] Sprints 16–18 (item location/ownership, RNG+skill-check, modifiers) complete; 19–21 remain |
 | Item state / inventory / equipment | Sprints 22–23 (gated) | [ ] |
 | Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
@@ -300,6 +303,17 @@ Legend:
 - [x] 23 new invariant unit tests (`tests/unit/test_item_location_service.py`); full existing suite (431 unit/integration + 3 e2e + 5 simulation) green unchanged, including the audit-regression diff and the concurrent-take-no-duplication guarantee — no audit-event schema/ordering drift from this migration.
 - [x] Bugs caught and fixed during implementation: typed-error constructor argument order backwards in `ItemLocationService`; `StackRepo.delete_stack()` missing a flush (a stack destroyed to zero was still visible to a same-transaction lookup); a pydantic recursion bug where a bare `list[JsonValue]` SQLModel field type infinite-loops in forward-ref resolution (`SaveSlot.inventory` is typed `list[Any]` instead).
 - [ ] Not done: `scripts/migrate_schema_v2.py` one-shot migration for *existing* production DBs, and the `WorldMeta.schema_version` 1→2 bump — scoped out since no production deployment exists yet; the dev flow (`scripts/import_world.py --fresh`) regenerates disposable DBs from YAML instead.
+
+### Determinism: Seedable RNG, Modifier Resolution & Skill-Check (Sprints 17–18) ✅
+
+**See:** [`engine_core.md`](engine_core.md) §3.5–3.6 for the binding spec.
+
+- [x] `GameRng` (`game/rng.py`) — the one sanctioned randomness source in `src/lorecraft`; deterministic when seeded (`randint`/`uniform`/`choice`/`chance`). New ruff `TID251` banned-api rule forbids bare `import random` in `src/` (test-harness timing jitter in `tests/simulation/` is exempted via per-file-ignores — it's not game logic).
+- [x] One app-wide `GameRng` instance, constructed in `main.py`'s lifespan from new `Settings.rng_seed` (env `LORECRAFT_RNG_SEED`, default `None` = OS entropy), stored on `AppState`. `GameContext.rng` and `build_game_context(rng=...)` are both required; `SchedulerEventContext.rng` threads it into scheduler-driven work. `clock/weather.py` (previously the only `random` user) now requires an injected `rng` instead of defaulting to `random.choice`.
+- [x] `game/modifiers.py` — `Modifier`/`resolve()`: fixed bucket order (add → mult → clamp_max/clamp_min), commutative within each bucket, never stored/cached. `ModifierSource`/`ModifierRegistry`/`resolve_for()` for collection; Tier 1 registers no sources (active-effect/trait sources land with Sprint 19, equipment/terrain with Sprint 23+).
+- [x] `game/checks.py`'s `skill_check(rng, *, base, difficulty, modifiers, key)` — roll-under-d100, target clamped to `[5, 95]` (no impossible checks, no sure things); one resolution path for perception/lockpicking/bartering/combat-to-hit. Skill *identity* stays Tier 2 (Sprint 24).
+- [x] 21 new unit tests (9 `GameRng`, 12 `modifiers` including the spec's worked example, 9 `skill_check`); full suite green throughout, including the audit-regression diff and concurrent-take guarantee.
+- Note: Sprint 18 (modifiers) was implemented before Sprint 17.2 (`skill_check`) despite the roadmap's numbering, because `skill_check()`'s signature needs the `Modifier` type — the roadmap's own dependency table already says 18 has no dependencies and could land in either order.
 
 ### Phase 8 — Combat
 

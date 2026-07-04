@@ -274,24 +274,24 @@ a pydantic recursion bug in `list[JsonValue]` SQLModel fields). Schema migration
 scoped out for now — no production deployment exists yet; the dev flow
 (`scripts/import_world.py --fresh`) regenerates disposable DBs from YAML instead.
 
-## Sprint 17 — Determinism: seedable RNG & skill-check
+## Sprint 17 — Determinism: seedable RNG & skill-check ✅
 
 **Goal:** All random resolution reproducible so the [Sprint 12](#sprint-12--simulation-harness-mvp-) audit-regression harness can cover
 combat/skills/trade. **See [`engine_core.md`](engine_core.md) §3.6, §4b.**
 
 | # | Task | Status |
 |---|------|--------|
-| 17.1 | Seedable `ctx.rng` service threaded through `GameContext` (per-run seed); lint-ban module-level `random` in feature code | [ ] |
-| 17.2 | `skill_check(rng, base, difficulty, modifiers) → CheckResult` helper (roll-under d100, 5/95 bounds — one check path for perception/lockpicking/barter/combat) | [ ] |
+| 17.1 | Seedable `ctx.rng` service threaded through `GameContext` (per-run seed); lint-ban module-level `random` in feature code | [x] `game/rng.py`'s `GameRng`; one app-wide instance on `AppState` from `Settings.rng_seed`; required `GameContext.rng`/`build_game_context(rng=...)`; `SchedulerEventContext.rng`; `clock/weather.py` converted off `random.choice`. Ruff `TID251` banned-api rule on `random`, scoped to `src/` (test-harness timing jitter exempted). |
+| 17.2 | `skill_check(rng, base, difficulty, modifiers) → CheckResult` helper (roll-under d100, 5/95 bounds — one check path for perception/lockpicking/barter/combat) | [x] `game/checks.py`; resolves `effective` via Sprint 18's modifier resolver, clamps target to `[5, 95]`. Landed after Sprint 18 since it needs the `Modifier` type. |
 
-## Sprint 18 — Modifier resolution
+## Sprint 18 — Modifier resolution ✅
 
 **Goal:** One runtime resolver for bonuses from many sources, with a defined stacking order and
 caps. Generalizes the doc's `EquipmentEffects.resolve()`. **See [`engine_core.md`](engine_core.md) §3.5, §4d.**
 
 | # | Task | Status |
 |---|------|--------|
-| 18.1 | Modifier resolver: buckets **flat add → multiplier → clamp/cap**; collects from equipment `effects`, traits, active effects, region; never stored (recompute on change / lazily) | [ ] |
+| 18.1 | Modifier resolver: buckets **flat add → multiplier → clamp/cap**; collects from equipment `effects`, traits, active effects, region; never stored (recompute on change / lazily) | [x] `game/modifiers.py`: `Modifier`/`resolve()` (pure, bucket-ordered) + `ModifierSource`/`ModifierRegistry`/`resolve_for()` (collection). Tier 1 registers no sources — landed ahead of its listed order (18 has no dependencies, per the doc's own build-order table) specifically to unblock Sprint 17.2's `skill_check()`. |
 
 ## Sprint 19 — Meters & timed effects
 
@@ -553,6 +553,8 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift). Next: [Sprint 17](#sprint-17--determinism-seedable-rng--skill-check) (seedable RNG + skill-check) — independent of 16, can land any time.
+*Last updated: 2026-07-03 — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-check-) and [18](#sprint-18--modifier-resolution-) complete**: `game/rng.py`'s `GameRng` is now the one sanctioned randomness source (ruff `TID251` bans bare `random` in `src/`), threaded through `GameContext`/`build_game_context()`/`SchedulerEventContext`/`clock/weather.py`; `game/modifiers.py`'s `resolve()` is the one stacked-bonus resolver (fixed add→mult→clamp bucket order); `game/checks.py`'s `skill_check()` composes both into the one roll-under-d100 helper every future skill/combat/barter check will share. 18 landed ahead of its listed position (it has no dependencies) specifically to unblock 17.2, which needs the `Modifier` type. 21 new unit tests; full suite green. Next: [Sprint 19](#sprint-19--meters--timed-effects) (meters + timed effects) — depends on 18 (effects emit modifiers).
+
+Earlier same day — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift).
 
 Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](inventory_equipment.md), [`trade_economy.md`](trade_economy.md), [`transit_systems.md`](transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*
