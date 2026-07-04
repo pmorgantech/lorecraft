@@ -7,6 +7,7 @@ import uuid
 
 from sqlmodel import Session, select
 
+from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.game.holders import Location
 from lorecraft.models.changeset import (
@@ -175,7 +176,12 @@ class VersioningService:
     # Promotion
     # ------------------------------------------------------------------
 
-    def promote(self, changeset_id: str, bus: EventBus | None = None) -> None:
+    def promote(
+        self,
+        changeset_id: str,
+        bus: EventBus | None = None,
+        manager: ConnectionManager | None = None,
+    ) -> None:
         cs = self._session.get(Changeset, changeset_id)
         if cs is None:
             raise ValueError(f"Changeset {changeset_id!r} not found")
@@ -188,7 +194,7 @@ class VersioningService:
 
         # Apply each change
         for item in items:
-            self._apply_item(item)
+            self._apply_item(item, manager=manager)
 
         # Bump WorldMeta schema_version
         meta = self._session.exec(select(WorldMeta)).first()
@@ -223,18 +229,22 @@ class VersioningService:
                 None,
             )
 
-    def _apply_item(self, item: ChangesetItem) -> None:
+    def _apply_item(
+        self, item: ChangesetItem, manager: ConnectionManager | None = None
+    ) -> None:
         op = item.operation
         etype = item.entity_type
 
         if etype == "room":
-            self._apply_room(item, op)
+            self._apply_room(item, op, manager=manager)
         elif etype == "item":
             self._apply_item_entity(item, op)
         elif etype == "exit":
             self._apply_exit(item, op)
 
-    def _apply_room(self, item: ChangesetItem, op: str) -> None:
+    def _apply_room(
+        self, item: ChangesetItem, op: str, manager: ConnectionManager | None = None
+    ) -> None:
         room = self._session.get(Room, item.entity_id)
         if op == "create":
             if room is None:
@@ -270,6 +280,14 @@ class VersioningService:
                 for player in players:
                     player.current_room_id = room.fallback_room_id
                     self._session.add(player)
+                    # Keep ConnectionManager's room-tracking in sync with the DB
+                    # move — otherwise a connected player's broadcast targeting
+                    # stays pointed at the now-inactive room until their next
+                    # `move()` call happens to self-heal it.
+                    if manager is not None:
+                        manager.move_player(
+                            player.id, item.entity_id, room.fallback_room_id
+                        )
             # Remove held items for players (handled in _apply_item_entity for delete op)
 
     def _apply_item_entity(self, item: ChangesetItem, op: str) -> None:

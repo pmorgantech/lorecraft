@@ -8,6 +8,7 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.db import create_tables
+from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.models.changeset import ChangesetItem, ConflictScanResult
 from lorecraft.models.player import Player
 from lorecraft.models.world import Exit, Room, WorldMeta
@@ -279,3 +280,53 @@ def test_promote_deactivate_displaces_player_to_fallback() -> None:
     assert player.current_room_id == "room_a"  # displaced to fallback
     assert room is not None
     assert not room.is_active
+
+
+def test_promote_deactivate_updates_connection_manager_tracking() -> None:
+    """A displaced player's ConnectionManager room-tracking must move in step
+    with the DB, or `broadcast_to_room` keeps targeting the now-inactive room
+    for them until their next `move()` call happens to self-heal it."""
+    with _make_session() as session:
+        _seed_world(session)
+        p = session.get(Player, "p1")
+        assert p is not None
+        p.current_room_id = "room_b"
+        session.commit()
+
+        manager = ConnectionManager()
+        manager.move_player("p1", None, "room_b")
+        assert manager.players_in_room("room_b") == ["p1"]
+
+        svc = VersioningService(session)
+        cs = svc.create_changeset("Deactivate B", "admin")
+        svc.add_item(
+            cs.id,
+            ChangesetItem(
+                changeset_id=cs.id,
+                entity_type="room",
+                entity_id="room_b",
+                operation="deactivate",
+                before_state={},
+                after_state={},
+            ),
+        )
+        session.commit()
+        svc.scan_conflicts(cs.id)
+        session.commit()
+
+        conflict = session.exec(
+            select(ConflictScanResult).where(ConflictScanResult.changeset_id == cs.id)
+        ).first()
+        if conflict and conflict.severity == "ERROR":
+            conflict.acknowledged = True
+            session.commit()
+            cs_obj = svc.get_changeset(cs.id)
+            if cs_obj:
+                cs_obj.status = "ready"
+                session.commit()
+
+        svc.promote(cs.id, manager=manager)
+        session.commit()
+
+    assert manager.players_in_room("room_b") == []
+    assert manager.players_in_room("room_a") == ["p1"]

@@ -360,7 +360,9 @@ async def promote_changeset(
     state = _state(request)
     with Session(state.game_engine) as session:
         try:
-            VersioningService(session).promote(changeset_id, bus=state.bus)
+            VersioningService(session).promote(
+                changeset_id, bus=state.bus, manager=state.manager
+            )
             session.commit()
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc))

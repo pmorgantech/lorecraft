@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.11.4] - 2026-07-04
+
+### Fixed
+
+- **World versioning: displaced players desynced `ConnectionManager` room-tracking** — Promoting a changeset that deactivates a room moves any occupants to its `fallback_room_id` in the DB, but never told `ConnectionManager` — the noted follow-up from the 0.11.3 player-visibility fix. `VersioningService.promote()`/`_apply_item()`/`_apply_room()` now take an optional `manager: ConnectionManager`, and the room-deactivation path calls `manager.move_player()` for each displaced player, matching every other room-change path (`services/movement.py`, `services/transit.py`, `admin/routers/players.py`). `admin/routers/world.py`'s `promote_changeset` endpoint passes `state.manager`. Without this fix, a connected player displaced by a changeset promotion would miss real-time broadcasts in their new room until their next `move()` call happened to self-heal the stale tracking. New integration test (`test_promote_deactivate_updates_connection_manager_tracking`).
+
 ## [0.11.3] - 2026-07-04
 
 ### Fixed
