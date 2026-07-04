@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.3.1] - 2026-07-04
+
+### Changed
+
+- `AGENTS.md`: codified strict semver discipline going forward — bump the version and update `CHANGELOG.md` in the same commit as every change from here on (minor bump per completed sprint, patch bump per fix/docs-only change), rather than batching version bumps only when explicitly requested.
+
 ## [0.3.0] - 2026-07-04
 
 ### Summary

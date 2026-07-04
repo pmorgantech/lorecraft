@@ -44,4 +44,8 @@ code design and quality.
 - Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
 - Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
+- Follow semver and bump the version with every commit, in the same commit as the change:
+  each completed sprint is a minor bump (0.x.0); a bug fix or docs-only change is a patch
+  bump (0.x.y). Update `CHANGELOG.md` in lockstep (move `[Unreleased]` content under the new
+  dated version heading, per the existing changelog format).
 - Summarize changed files, risks, and verification.
