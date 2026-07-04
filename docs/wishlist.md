@@ -611,6 +611,14 @@ Lighter-weight than guilds: temporary parties for shared travel or content. Coul
 with the transit theme (board the ferry together). Worth considering _if_ co-op content
 appears, without committing to the full guild apparatus.
 
+### Player-facing `/report` command 🤔
+
+Allow in-game bug reports and feedback. The admin system already has an `docs/issues.yaml`
+backend (Sprint 10.5) with CRUD routes, but there's no player-facing command yet to submit
+reports. A simple `/report <description>` command could append to `docs/issues.yaml` or create
+a DB issue, creating a feedback loop without requiring admin access. Useful for playtesting;
+scope pending.
+
 ---
 
 ## Architectural patterns worth keeping (not gaps — validation)
