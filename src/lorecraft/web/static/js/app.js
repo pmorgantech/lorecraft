@@ -214,6 +214,10 @@
         }
         break;
 
+      case "transit_update":
+        updateTransitMarker(data);
+        break;
+
       default:
         console.log("[Lorecraft] Unhandled WS message type:", data.type, data);
         // Fallback: if server sends raw HTML snippet
@@ -246,6 +250,77 @@
     const hour = time.hour ?? 0;
     const minute = time.minute ?? 0;
     el.textContent = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  }
+
+  function updateTransitMarker(data) {
+    // Handle transit_update WS message: upsert a vehicle marker on the minimap
+    // Format: { type: 'transit_update', line_id, mode, from, to, progress, eta_ticks }
+    if (!data.line_id || data.progress === undefined) return;
+
+    const minimap = document.getElementById("minimap");
+    if (!minimap) return;
+
+    // Compute interpolated position: lerp(from, to, progress)
+    const x = data.from.x + (data.to.x - data.from.x) * data.progress;
+    const y = data.from.y + (data.to.y - data.from.y) * data.progress;
+
+    // Remove existing marker for this line if present
+    const existing = minimap.querySelector(
+      `[data-transit-line="${data.line_id}"]`,
+    );
+    if (existing) existing.remove();
+
+    // If progress >= 1, arrival is imminent/done; don't re-render (final message will clear)
+    if (data.progress >= 1.0) return;
+
+    // Create a new marker with mode-specific icon
+    // Mode icons: ferry ⛴, rail 🚂, balloon 🎈, caravan 🐎, coach 🚌, etc.
+    const modeIcons = {
+      ferry: "⛴",
+      rail: "🚂",
+      balloon: "🎈",
+      caravan: "🐎",
+      coach: "🚌",
+      default: "🚚",
+    };
+    const icon = modeIcons[data.mode] || modeIcons.default;
+
+    // Scale minimap coords to SVG viewport (30–190 range for 160px viewport)
+    // This matches the logic in mapToScaledCoordinates
+    const minX = Math.min(
+      ...Object.values(state.rooms).map((r) => r.map_x ?? 0),
+    );
+    const maxX = Math.max(
+      ...Object.values(state.rooms).map((r) => r.map_x ?? 0),
+    );
+    const minY = Math.min(
+      ...Object.values(state.rooms).map((r) => r.map_y ?? 0),
+    );
+    const maxY = Math.max(
+      ...Object.values(state.rooms).map((r) => r.map_y ?? 0),
+    );
+
+    const width = Math.max(maxX - minX, 1);
+    const height = Math.max(maxY - minY, 1);
+
+    const svgX = 30 + ((x - minX) / width) * 160;
+    const svgY = 30 + ((y - minY) / height) * 160;
+
+    // Create a text element to display the vehicle icon
+    const marker = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "text",
+    );
+    marker.setAttribute("x", String(svgX));
+    marker.setAttribute("y", String(svgY));
+    marker.setAttribute("text-anchor", "middle");
+    marker.setAttribute("dominant-baseline", "middle");
+    marker.setAttribute("font-size", "20");
+    marker.setAttribute("data-transit-line", data.line_id);
+    marker.setAttribute("class", "transit-marker");
+    marker.textContent = icon;
+
+    minimap.appendChild(marker);
   }
 
   function appendToFeed(htmlOrText) {

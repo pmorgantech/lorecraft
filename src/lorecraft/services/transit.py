@@ -1,12 +1,11 @@
 """Transit line runtime: RouteSpec/RouteHooks wiring + board/disembark/schedule
-commands (Sprint 29.2, docs/transit_systems.md §5, §11).
+commands (Sprint 29.2–29.3, docs/transit_systems.md §5, §9, §11).
 
 The Tier 1 MobileRouteService (Sprint 21) owns the state machine, scheduler
 timing, and position interpolation -- this module only supplies line
 semantics: doors (boarding gated on live vehicle state), ticket
-validation/consumption, weather grounding, and narration. Minimap animation
-(on_tick -> a `transit_update` WS push) is Sprint 29.3's job; `on_tick` here
-is a no-op hook slot.
+validation/consumption, weather grounding, narration, and minimap animation
+(on_tick -> `transit_update` WS push for lines with animate_minimap).
 """
 
 from __future__ import annotations
@@ -95,7 +94,7 @@ class TransitService:
             waypoints=tuple(waypoints),
             reverses=line.reverses,
             loop=line.loop,
-            tick_pushes=0,
+            tick_pushes=5 if line.animate_minimap else 0,
         )
 
     def _build_hooks(self, line: TransitLine) -> RouteHooks:
@@ -126,8 +125,48 @@ class TransitService:
             self._narrate(arrived_stop, f"The {line.name} arrives.")
             self._narrate(line.vehicle_room_id, f"The {line.name} pulls in.")
 
+        def on_tick(spec: RouteSpec, state: MobileRouteState, progress: float) -> None:
+            if not line.animate_minimap:
+                return
+            if line.vehicle_room_id is None:
+                return
+            if state.status != "in_transit":
+                return
+            if state.depart_epoch is None or state.arrive_epoch is None:
+                return
+            from_stop = spec.waypoints[state.current_index]
+            to_stop = spec.waypoints[state.next_index]
+            span = state.arrive_epoch - state.depart_epoch
+            if span <= 0:
+                eta_ticks = 0.0
+            else:
+                current_epoch = state.depart_epoch + progress * span
+                eta_ticks = max(0.0, state.arrive_epoch - current_epoch)
+            msg = {
+                "type": "transit_update",
+                "line_id": line.id,
+                "mode": line.mode,
+                "from": {"x": from_stop.x, "y": from_stop.y},
+                "to": {"x": to_stop.x, "y": to_stop.y},
+                "progress": progress,
+                "eta_ticks": eta_ticks,
+            }
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                return  # no running event loop (e.g. in tests)
+            asyncio.create_task(
+                self._manager.broadcast_to_room(
+                    line.vehicle_room_id,
+                    msg,
+                )
+            )
+
         return RouteHooks(
-            may_depart=may_depart, on_depart=on_depart, on_arrive=on_arrive
+            may_depart=may_depart,
+            on_depart=on_depart,
+            on_arrive=on_arrive,
+            on_tick=on_tick,
         )
 
     def _narrate(self, room_id: str | None, text: str) -> None:

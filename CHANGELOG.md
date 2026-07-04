@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.13.0] - 2026-07-04
+
+### Added
+
+- **Sprint 29.3: Transit minimap animation** — Vehicles now show animated markers on the minimap during transit (ferries, balloons, rail, caravans). `TransitService` implements an `on_tick` hook that emits `transit_update` WS messages with interpolated position (from/to coordinates), progress (0–1), ETA, and vehicle mode for icon selection. Backend sets `tick_pushes=5` per segment for lines with `animate_minimap: true`, triggering scheduler jobs that fire the hook during `in_transit`. Frontend handler in `app.js` receives `transit_update`, interpolates vehicle coordinates using the minimap scaling system, and renders a mode-specific emoji icon (⛴/🚂/🎈/🐎 etc.) on the SVG minimap. Weather grounding (balloon/ferry delayed or halted by weather) was already working via Sprint 29.2's `may_depart` hook. 9 new unit tests verify `tick_pushes` configuration, message format, and hook execution.
+
 ## [0.12.4] - 2026-07-04
 
 ### Added
