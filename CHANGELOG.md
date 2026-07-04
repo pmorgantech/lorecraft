@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.3] - 2026-07-04
+
+### Added
+
+- **Tier split — feature manifest (step 1, branch `tier_split`).** New `lorecraft.features` package with `manifest.py`: a frozen `FeatureManifest` descriptor (`key`, `name`, `dependencies`, optional `register_fn` wiring hook, optional `presentation` dotted-path for web UI) plus a `FEATURE_REGISTRY` catalogue and `register_feature`/`get_feature` helpers. This is the additive backbone that will replace `main.py`'s brittle side-effect feature imports with config-driven loading. Purely additive — no existing behaviour changes, no code moved yet. 7 unit tests (`test_feature_manifest.py`).
+
 ## [0.14.2] - 2026-07-04
 
 ### Docs
