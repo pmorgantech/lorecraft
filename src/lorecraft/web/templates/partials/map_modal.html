@@ -1,0 +1,76 @@
+{#
+  Full-screen map modal content (Sprint 26.1): pan/zoom SVG map, larger room
+  cap than the sidebar minimap, cartography-gated "known but unvisited" rooms
+  (dimmer, unnamed). Swapped into #map-modal-content by the expand button in
+  minimap.html.
+#}
+<div
+    class="w-full h-full relative select-none cursor-grab active:cursor-grabbing overflow-hidden"
+    x-data="{
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        dragging: false,
+        startX: 0,
+        startY: 0,
+        startPanX: 0,
+        startPanY: 0,
+        onDown(e) {
+            this.dragging = true;
+            this.startX = e.clientX ?? (e.touches && e.touches[0].clientX) ?? 0;
+            this.startY = e.clientY ?? (e.touches && e.touches[0].clientY) ?? 0;
+            this.startPanX = this.panX;
+            this.startPanY = this.panY;
+        },
+        onMove(e) {
+            if (!this.dragging) return;
+            const x = e.clientX ?? (e.touches && e.touches[0].clientX) ?? 0;
+            const y = e.clientY ?? (e.touches && e.touches[0].clientY) ?? 0;
+            this.panX = this.startPanX + (x - this.startX);
+            this.panY = this.startPanY + (y - this.startY);
+        },
+        onUp() { this.dragging = false; },
+        zoomIn() { this.zoom = Math.min(3, this.zoom * 1.25); },
+        zoomOut() { this.zoom = Math.max(0.4, this.zoom / 1.25); },
+        reset() { this.zoom = 1; this.panX = 0; this.panY = 0; },
+        onWheel(e) {
+            e.preventDefault();
+            if (e.deltaY < 0) { this.zoomIn(); } else { this.zoomOut(); }
+        }
+    }"
+    @mousedown="onDown($event)"
+    @mousemove.window="onMove($event)"
+    @mouseup.window="onUp()"
+    @touchstart="onDown($event)"
+    @touchmove.window="onMove($event)"
+    @touchend.window="onUp()"
+    @wheel="onWheel($event)"
+>
+    {% if nearby_rooms %}
+    <svg width="100%" height="100%" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet" class="block bg-feed-bg">
+        <g :style="`transform: translate(${panX}px, ${panY}px) scale(${zoom}); transform-origin: center;`">
+            {% for ln in map_lines %}
+            <line x1="{{ ln.x1 * 9 }}" y1="{{ ln.y1 * 9 }}" x2="{{ ln.x2 * 9 }}" y2="{{ ln.y2 * 9 }}" stroke="#3f3f46" stroke-width="1.5"/>
+            {% endfor %}
+            {% for r in nearby_rooms %}
+                {% set fill = '#10b981' if r.current else ('#52525b' if r.visited else '#3f3f46') %}
+                <circle cx="{{ r.px * 9 }}" cy="{{ r.py * 9 }}" r="6" fill="{{ fill }}" opacity="{{ '1' if r.visited or r.current else '0.5' }}" />
+                {% if not r.current %}
+                <circle cx="{{ r.px * 9 }}" cy="{{ r.py * 9 }}" r="7" fill="none" stroke="#10b981" stroke-width="1" opacity="0.3" />
+                {% endif %}
+                <text x="{{ r.px * 9 + 10 }}" y="{{ r.py * 9 + 4 }}" font-size="11" fill="{{ '#e4e4e7' if r.visited or r.current else '#71717a' }}" font-family="monospace">{{ r.name }}</text>
+            {% endfor %}
+        </g>
+    </svg>
+    <div class="absolute bottom-2 right-2 flex flex-col gap-1">
+        <button @click="zoomIn()" class="w-7 h-7 bg-panel/95 border border-border rounded text-sm hover:bg-panel-light">+</button>
+        <button @click="zoomOut()" class="w-7 h-7 bg-panel/95 border border-border rounded text-sm hover:bg-panel-light">−</button>
+        <button @click="reset()" class="w-7 h-7 bg-panel/95 border border-border rounded text-xs hover:bg-panel-light" title="Reset view">⟲</button>
+    </div>
+    <div class="absolute top-2 left-2 text-[10px] text-text-muted bg-panel/80 px-2 py-1 rounded">
+        Drag to pan • Scroll to zoom
+    </div>
+    {% else %}
+    <div class="w-full h-full flex items-center justify-center text-text-muted text-sm">No map data available.</div>
+    {% endif %}
+</div>

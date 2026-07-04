@@ -41,7 +41,7 @@ back keeps you logged in as the same character.
 |-------|----------------|
 | **Current Location** (top-left) | Room name, description, visible NPCs, and visible items. Click **⟳** to refresh it manually. |
 | **Inventory** (left, below room) | What you're carrying. Hover an item for **use**/**drop** quick-action buttons. |
-| **Mini-map** (bottom-left) | Rooms you've visited, with fog of war over unexplored areas. |
+| **Mini-map** (bottom-left) | Rooms you've visited, with fog of war over unexplored areas. Click **⛶** to open a full-screen map you can drag to pan and scroll (or use the +/−/⟲ buttons) to zoom — improving your cartography skill also reveals nearby rooms you haven't visited yet, dimmed until you get there. |
 | **The Chronicle** (center) | The live narrative feed — your actions, other players' actions, and room events, in order. |
 | **Here Now** (top-right) | Players currently in your room / online. |
 | **Quests** (bottom-right) | Your active quests and current stage description. |
@@ -49,6 +49,9 @@ back keeps you logged in as the same character.
 
 When an NPC conversation is active, a dialogue overlay appears above the command bar with
 the NPC's line and numbered reply buttons — see [Talking to NPCs](#talking-to-npcs--quests).
+
+On a narrow (phone-width) screen, the three panel columns collapse into one at a time —
+use the **Room** / **Feed** / **Players** tabs at the bottom to switch between them.
 
 ## Movement
 

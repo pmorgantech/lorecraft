@@ -413,14 +413,14 @@ journal, cartography. Builds on existing minimap fog and `Exit.hidden`/`conditio
 | 25.2 | Terrain types on rooms/exits affecting travel time, fatigue cost, and required skill/gear; environmental `examine` layering | [x] `Room.terrain` + `game/terrain.py`; required-skill gate + `look` description suffix. Travel-time/fatigue-cost hooks deferred to Sprint 27 (fatigue doesn't exist yet) |
 | 25.3 | Journal / auto-log panel (discovered places, met NPCs, learned lore, active clues); player cartography reveal | [x] `journal` command. Cartography map-reveal payoff deferred to Sprint 26 (owns the map UI it reveals onto) |
 
-## Sprint 26 — Map & mobile UI
+## Sprint 26 — Map & mobile UI ✅
 
 **Goal:** UI polish that serves exploration (was Sprints 16–17 of the previous plan).
 
 | # | Task | Status |
 |---|------|--------|
-| 26.1 | Full-screen map modal (pan/zoom), integrated with cartography reveal | [ ] |
-| 26.2 | Responsive mobile tab layout | [ ] |
+| 26.1 | Full-screen map modal (pan/zoom), integrated with cartography reveal | [x] `partials/map_modal.html`; drag-to-pan/scroll-to-zoom via Alpine; cartography-gated reveal of known-but-unvisited rooms in `build_map_data()` |
+| 26.2 | Responsive mobile tab layout | [x] Bottom tab bar (Room/Feed/Players) below `lg`; verified in a real headless-Chromium browser |
 
 ## Sprint 27 — Character condition (fatigue / sleep)
 

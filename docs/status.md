@@ -70,9 +70,14 @@ The architecture overview remains the design reference; this file is the working
 > `journal` command surfaces visited places, met NPCs, `lore:`-flagged learnings, and active
 > quests. Fixed two real pre-existing bugs found along the way: hidden exits were always
 > unreachable (contradicting the documented behavior) and `Exit.condition_flags` was never
-> enforced despite being round-tripped through YAML. Tier 2 feature work (map/mobile UI,
-> character condition, trading, transit, quests, combat) continues from Sprint 26; combat
-> moved down to Sprints 31–33.
+> enforced despite being round-tripped through YAML. **Sprint 26 (map & mobile UI) is now
+> complete**: a full-screen, pan/zoomable map modal (`partials/map_modal.html`) integrated
+> with the cartography reveal Sprint 25.3 deferred (rooms one non-hidden exit from anywhere
+> visited are plotted, dimmed, once cartography skill crosses a threshold); a responsive
+> mobile tab layout (Room/Feed/Players) below the `lg` breakpoint. Verified in a real
+> headless-Chromium browser (desktop, modal, all three mobile tabs) plus 3 new e2e tests.
+> Tier 2 feature work (character condition, trading, transit, quests, combat) continues
+> from Sprint 27; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -81,11 +86,11 @@ The architecture overview remains the design reference; this file is the working
 | Phase 1–3 (Foundation, dispatch, world/time) | Sprint 1 (HTMX parity) | [x] |
 | Phase 3.5–4.5 (NPCs, quests, dialogue UI) | Sprint 1–2 | [x] |
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
-| Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
+| Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [x] Sprint 4 (auth) + Sprint 26 (map/mobile UI) both complete |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
 | Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [x] |
 | Item state / inventory / equipment | Sprints 22–23 (gated) | [x] |
-| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [~] Sprints 24–25 (traits/skills, exploration) complete; 26–27 remain |
+| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [~] Sprints 24–26 (traits/skills, exploration, map/mobile UI) complete; 27 remains |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
 | Quests & puzzles depth | Sprint 30 (gated) | [ ] |
 | Phase 8–8.5 (Combat, supporting) | Sprints 31–33 (gated) | [ ] |

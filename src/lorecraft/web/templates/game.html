@@ -6,13 +6,17 @@
 <div class="flex flex-col h-[calc(100vh-3.5rem)]" x-data="{
     commandHistory: [],
     historyIndex: -1,
-    showHelp: false
+    showHelp: false,
+    mapModalOpen: false,
+    mobileTab: 'feed'
 }">
     <!-- Main game area -->
     <div class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
         <!-- LEFT SIDEBAR: Room + Inventory + Minimap -->
-        <div class="flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
+        <div
+            :class="mobileTab === 'room' ? 'flex' : 'hidden'"
+            class="lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
 
             <!-- Room Description Panel -->
             <div class="flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
@@ -48,7 +52,9 @@
         </div>
 
         <!-- CENTER: Main Feed / Narrative Log -->
-        <div class="flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
+        <div
+            :class="mobileTab === 'feed' ? 'flex' : 'hidden'"
+            class="lg:!flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
             <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                 <span>The Chronicle • Live</span>
                 <div class="flex items-center gap-2 text-[10px]">
@@ -79,7 +85,9 @@
         </div>
 
         <!-- RIGHT SIDEBAR: Players + Combat / Events -->
-        <div class="flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
+        <div
+            :class="mobileTab === 'players' ? 'flex' : 'hidden'"
+            class="lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
 
             <!-- Players in Room / Online -->
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden">
@@ -99,6 +107,43 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Mobile tab bar: switches which column is visible below the lg breakpoint -->
+    <div class="lg:hidden flex border-t border-zinc-800 bg-zinc-900 text-xs">
+        <button
+            @click="mobileTab = 'room'"
+            :class="mobileTab === 'room' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
+            class="flex-1 py-2 border-t-2 transition-colors">Room</button>
+        <button
+            @click="mobileTab = 'feed'"
+            :class="mobileTab === 'feed' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
+            class="flex-1 py-2 border-t-2 transition-colors">Feed</button>
+        <button
+            @click="mobileTab = 'players'"
+            :class="mobileTab === 'players' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
+            class="flex-1 py-2 border-t-2 transition-colors">Players</button>
+    </div>
+
+    <!-- Full-screen map modal (Sprint 26.1) -->
+    <div
+        x-show="mapModalOpen"
+        x-cloak
+        x-transition:enter="transition ease-out duration-150"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+        @click.self="mapModalOpen = false"
+        @keydown.escape.window="mapModalOpen = false">
+        <div @click.stop class="bg-panel border border-border rounded-xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+            <div class="px-4 py-2 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                <span>World Map</span>
+                <button @click="mapModalOpen = false" class="text-text-muted hover:text-white">✕</button>
+            </div>
+            <div id="map-modal-content" class="flex-1 overflow-hidden relative">
+                <!-- loaded via hx-get from the minimap panel's expand button -->
+            </div>
+        </div>
     </div>
 
     {% include "partials/dialogue.html" %}

@@ -6,12 +6,21 @@
 <div id="minimap" class="bg-panel border border-border rounded-lg overflow-hidden flex flex-col w-full h-full">
     <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
         <span>Map</span>
-        <button
-            hx-get="/partials/minimap"
-            hx-target="#minimap"
-            hx-swap="outerHTML"
-            class="text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
-            title="Refresh">⟳</button>
+        <div class="flex items-center gap-2">
+            <button
+                @click="mapModalOpen = true"
+                hx-get="/partials/map-full"
+                hx-target="#map-modal-content"
+                hx-swap="innerHTML"
+                class="text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
+                title="Full-screen map">⛶</button>
+            <button
+                hx-get="/partials/minimap"
+                hx-target="#minimap"
+                hx-swap="outerHTML"
+                class="text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
+                title="Refresh">⟳</button>
+        </div>
     </div>
 
     <div class="p-1 flex-1 bg-feed-bg overflow-hidden">

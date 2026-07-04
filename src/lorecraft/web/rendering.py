@@ -20,19 +20,43 @@ from lorecraft.repos.room_repo import RoomRepo
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
 
 
+CARTOGRAPHY_REVEAL_THRESHOLD = 20
+
+
 def build_map_data(
-    room_repo: RoomRepo, player: Player, current_room: Room | None
+    room_repo: RoomRepo,
+    player: Player,
+    current_room: Room | None,
+    *,
+    full: bool = False,
+    cartography_level: int = 0,
 ) -> dict:
-    """Build data for the graphical mini-map of nearby discovered rooms + connections."""
+    """Build data for the graphical mini-map of nearby discovered rooms + connections.
+
+    `full=True` (the full-screen map modal, Sprint 26.1) lifts the 7-room cap
+    to 60 and, once the player's cartography skill reaches
+    CARTOGRAPHY_REVEAL_THRESHOLD, also plots rooms one non-hidden exit away
+    from anywhere visited — "known but unvisited" (dimmer, name withheld).
+    Hidden exits stay off the map entirely; that's `search`'s reveal, not
+    cartography's (Sprint 25.1).
+    """
     if not current_room:
         return {"nearby_rooms": [], "map_lines": []}
     visited = set(getattr(player, "visited_rooms", []) or [])
     if current_room.id:
         visited.add(current_room.id)
+
+    known_ids = set(visited)
+    if full and cartography_level >= CARTOGRAPHY_REVEAL_THRESHOLD:
+        for rid in list(visited):
+            for ex in room_repo.exits(rid):
+                if not ex.hidden:
+                    known_ids.add(ex.target_room_id)
+
     cx = getattr(current_room, "map_x", 0) or 0
     cy = getattr(current_room, "map_y", 0) or 0
     cands = []
-    for rid in visited:
+    for rid in known_ids:
         r = room_repo.get(rid)
         if (
             r
@@ -40,17 +64,19 @@ def build_map_data(
             and getattr(r, "map_y", None) is not None
         ):
             d = abs((r.map_x or 0) - cx) + abs((r.map_y or 0) - cy)
-            cands.append((d, r))
+            cands.append((d, r, rid in visited))
     cands.sort(key=lambda item: item[0])
+    limit = 60 if full else 7
     nearby = []
-    for _, r in cands[:7]:
+    for _, r, is_visited in cands[:limit]:
         nearby.append(
             {
                 "id": r.id,
-                "name": r.name,
+                "name": r.name if is_visited else "Unexplored",
                 "x": r.map_x or 0,
                 "y": r.map_y or 0,
                 "current": r.id == current_room.id,
+                "visited": is_visited,
             }
         )
     # Connections among shown rooms
@@ -58,6 +84,8 @@ def build_map_data(
     conns = []
     for rid in nids:
         for ex in room_repo.exits(rid):
+            if ex.hidden:
+                continue
             tid = ex.target_room_id
             if tid in nids:
                 pair = tuple(sorted([rid, tid]))

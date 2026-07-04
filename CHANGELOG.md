@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.8.0] - 2026-07-04
+
+### Summary
+
+**Sprint 26 Complete — Map & Mobile UI.** UI polish serving exploration: a full-screen, pan/zoomable map modal integrated with cartography's reveal payoff, and a responsive mobile tab layout. Verified in a real headless-Chromium browser (screenshots of desktop, the modal, and all three mobile tabs) in addition to 3 new e2e tests and 4 new unit tests. 539 focused tests + 6 e2e + 5 simulation tests passing; basedpyright 0 errors; ruff clean.
+
+### Added
+
+- **Sprint 26.1: Full-screen map modal** — An expand button (⛶) on the sidebar minimap opens a modal (`partials/map_modal.html`) with a larger SVG map (up to 60 rooms vs. the sidebar's 7), drag-to-pan and scroll/button-to-zoom (vanilla Alpine.js state, no new JS dependency). `build_map_data()` (`web/rendering.py`) gained `full`/`cartography_level` parameters: once a player's `cartography` skill (Sprint 24.2) reaches `CARTOGRAPHY_REVEAL_THRESHOLD` (20), rooms one non-hidden exit away from anywhere visited are plotted too — dimmer, labeled "Unexplored" — the cartography payoff Sprint 25.3 deferred here. Hidden exits are never revealed by cartography (that stays `search`'s job, Sprint 25.1).
+- **Sprint 26.2: Responsive mobile tab layout** — Below the `lg` breakpoint, the three-column desktop layout (Room/Inventory/Map, Feed, Players/Quests) collapses to one column at a time, switched via a bottom tab bar (`Room`/`Feed`/`Players`); `lg:!flex` keeps the desktop three-column view untouched above that breakpoint (Tailwind's important-modifier overriding the mobile-only `hidden` class Alpine toggles).
+- Added `[x-cloak] { display: none !important; }` to `custom.css` (avoids a flash of the map modal before Alpine initializes).
+
 ## [0.7.0] - 2026-07-04
 
 ### Summary

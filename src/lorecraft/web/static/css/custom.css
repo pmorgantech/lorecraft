@@ -29,6 +29,12 @@
     border-color: #059669;
 }
 
+/* Hide Alpine-controlled elements before Alpine initializes (avoids a flash
+   of unstyled/visible content for the map modal, etc.) */
+[x-cloak] {
+    display: none !important;
+}
+
 /* Message styling refinements */
 #feed .msg {
     transition: background-color 0.2s ease;

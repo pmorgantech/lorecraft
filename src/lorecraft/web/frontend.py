@@ -764,6 +764,43 @@ async def partial_minimap(
     )
 
 
+@router.get("/partials/map-full", response_class=HTMLResponse)
+async def partial_map_full(
+    request: Request, player: Player = Depends(get_current_player)
+):
+    """Full-screen map modal content (Sprint 26.1): more rooms than the
+    sidebar minimap, plus a cartography-gated reveal of known-but-unvisited
+    rooms one non-hidden exit away from anywhere the player has been."""
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        player = PlayerRepo(db).get(player.id) or player
+        room_repo = RoomRepo(db)
+        room = room_repo.get(player.current_room_id) if player.current_room_id else None
+        cartography_level = _cartography_level(db, player.id)
+        map_data = build_map_data(
+            room_repo, player, room, full=True, cartography_level=cartography_level
+        )
+    return templates.TemplateResponse(
+        request,
+        "partials/map_modal.html",
+        {
+            "request": request,
+            "current_room": room,
+            "current_player": player,
+            **map_data,
+        },
+    )
+
+
+def _cartography_level(db: DBSession, player_id: str) -> int:
+    from lorecraft.game.modifiers import resolve_for
+    from lorecraft.services.skills import SkillService
+
+    skills = SkillService()
+    base = skills.get_level(db, player_id, "cartography")
+    return round(resolve_for(db, "player", player_id, "skill.cartography", base=base))
+
+
 @router.get("/partials/players-online", response_class=HTMLResponse)
 async def partial_players(
     request: Request, player: Player = Depends(get_current_player)
