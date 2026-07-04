@@ -12,7 +12,12 @@ primitives available. Discovery/loading is an explicit call on the loader.
 
 from __future__ import annotations
 
-from lorecraft.features.loader import discover_features, load_features
+from lorecraft.features.loader import (
+    discover_features,
+    load_features,
+    resolve_enabled_features,
+    wire_features,
+)
 from lorecraft.features.manifest import (
     FEATURE_REGISTRY,
     FeatureManifest,
@@ -29,4 +34,6 @@ __all__ = [
     "get_feature",
     "load_features",
     "register_feature",
+    "resolve_enabled_features",
+    "wire_features",
 ]

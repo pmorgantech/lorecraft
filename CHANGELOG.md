@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.5] - 2026-07-04
+
+### Added
+
+- **Tier split — feature wiring in `create_app` (step 3, branch `tier_split`).** `create_app` now discovers feature packages, resolves the enabled set, dependency-orders it, and calls each feature's `register_fn` at startup. Enablement precedence: explicit `enabled_features=` arg > `LORECRAFT_FEATURES` env var (comma-separated) > all discovered features. Two new loader helpers: `resolve_enabled_features` and `wire_features`. Because no feature has been migrated to a manifest yet, the registry is empty and this is a runtime no-op — the existing side-effect imports still do all wiring — so behaviour is unchanged (full suite: 761 passed). 7 unit tests (`test_feature_config.py`).
+
 ## [0.14.4] - 2026-07-04
 
 ### Added

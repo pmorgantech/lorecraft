@@ -7,7 +7,7 @@ import logging
 import secrets
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -24,6 +24,12 @@ from lorecraft.admin.websocket import admin_ws_endpoint
 from lorecraft.clock.weather import register_weather_handlers
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
+from lorecraft.features import (
+    discover_features,
+    load_features,
+    resolve_enabled_features,
+    wire_features,
+)
 from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.npc.scheduler import NpcScheduler
@@ -92,6 +98,7 @@ def create_app(
     settings: Settings | None = None,
     game_engine: Engine | None = None,
     audit_engine: Engine | None = None,
+    enabled_features: Sequence[str] | None = None,
 ) -> FastAPI:
     settings = settings or load_settings()
     configure_logging(settings.log_level)
@@ -276,6 +283,23 @@ def create_app(
             mobile_routes=mobile_route_service,
         )
         register_all_commands(state.registry, state.services, transit=transit_service)
+
+        # Config-driven Tier 2 feature wiring (docs/tier_split_refactor.md).
+        # Discovery imports feature packages so their manifests self-register;
+        # the enabled set (explicit arg > LORECRAFT_FEATURES > all discovered)
+        # is validated + dependency-ordered, then each feature's register_fn
+        # wires it onto `state`. Until features are migrated to manifests this
+        # is a no-op — the legacy side-effect imports above still do the real
+        # wiring — so behaviour is unchanged.
+        available_features = discover_features()
+        enabled_feature_keys = resolve_enabled_features(
+            enabled_features, available_features.keys()
+        )
+        loaded_features = load_features(enabled_feature_keys, available_features)
+        if loaded_features:
+            log.info("Enabled features: %s", ", ".join(loaded_features))
+        wire_features(state, loaded_features)
+
         state.clock_runner.initialize()
         state.clock_runner.start()
         app.state.lorecraft = state

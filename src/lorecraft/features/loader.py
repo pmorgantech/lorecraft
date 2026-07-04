@@ -18,11 +18,23 @@ these yet — that wiring is a later step.
 from __future__ import annotations
 
 import importlib
+import logging
+import os
 import pkgutil
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING
 
 import lorecraft.features
 from lorecraft.features.manifest import FEATURE_REGISTRY, FeatureManifest
+
+if TYPE_CHECKING:
+    from lorecraft.state import AppState
+
+log = logging.getLogger(__name__)
+
+# Env var holding a comma-separated list of enabled feature keys. Unset means
+# "all discovered features" (behaviour-preserving default).
+FEATURES_ENV_VAR = "LORECRAFT_FEATURES"
 
 
 def discover_features() -> dict[str, FeatureManifest]:
@@ -98,3 +110,39 @@ def load_features(
         visit(key, ())
 
     return ordered
+
+
+def resolve_enabled_features(
+    explicit: Sequence[str] | None,
+    available: Iterable[str],
+) -> list[str]:
+    """Decide which feature keys are enabled.
+
+    Precedence, highest first:
+
+    1. ``explicit`` — an argument passed by the caller (e.g. a test or an
+       alternate entrypoint). ``None`` means "not specified", which falls
+       through; an empty list means "explicitly none".
+    2. The ``LORECRAFT_FEATURES`` env var — a comma-separated list of keys.
+    3. Default: every ``available`` (discovered) feature — this preserves
+       today's behaviour where every shipped feature is active.
+    """
+    if explicit is not None:
+        return list(explicit)
+    raw = os.getenv(FEATURES_ENV_VAR)
+    if raw is not None and raw.strip():
+        return [key.strip() for key in raw.split(",") if key.strip()]
+    return list(available)
+
+
+def wire_features(state: AppState, features: Mapping[str, FeatureManifest]) -> None:
+    """Call each loaded feature's ``register_fn`` to wire it onto ``state``.
+
+    ``features`` must already be in dependency order (as returned by
+    :func:`load_features`), so a feature is wired only after everything it
+    depends on. Features without a ``register_fn`` (passive definition-only
+    features) are skipped.
+    """
+    for manifest in features.values():
+        if manifest.register_fn is not None:
+            manifest.register_fn(state)
