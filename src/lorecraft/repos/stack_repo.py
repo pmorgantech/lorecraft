@@ -167,21 +167,24 @@ class StackRepo:
     def delete_stack(self, stack: ItemStack) -> None:
         """Delete a stack.
 
-        Does not commit; caller owns transaction.
+        Flushes (not commits) so the deletion is visible to subsequent queries
+        within the same transaction — Session.get()/identity-map lookups don't
+        otherwise see a pending, unflushed delete.
 
         Args:
             stack: The ItemStack row to delete.
         """
         self.session.delete(stack)
+        self.session.flush()
 
     def delete_stack_by_id(self, stack_id: int) -> None:
         """Delete a stack by ID.
 
-        Does not commit; caller owns transaction.
+        Flushes (not commits); see delete_stack().
 
         Args:
             stack_id: The ItemStack.id to delete.
         """
         stack = self.find_stack(stack_id)
         if stack is not None:
-            self.session.delete(stack)
+            self.delete_stack(stack)
