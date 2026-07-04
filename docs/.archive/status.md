@@ -1,9 +1,16 @@
-# Implementation Status
+# Implementation Status (Archived 2026-07-04)
+
+> **Archived:** This document is retired and no longer maintained. `docs/roadmap.md`
+> is now the single source of truth for "what's done" and "what's next" — its
+> per-sprint task tables and "Current position" section supersede everything below.
+> This file is kept for historical reference only; its Phase-based tracking had
+> drifted out of sync with the roadmap by the time it was retired (e.g. it still
+> showed Sprint 28/29 trading & transit work as `[ ]` after both had shipped).
 
 This checklist tracks implementation progress against `docs/architecture.md` phases.
 The architecture overview remains the design reference; this file is the working status tracker.
 
-**See [`roadmap.md`](roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–35).**
+**See [`../roadmap.md`](../roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–35).**
 
 > **Current focus (2026-07-03):** Foundation-first, now including production auth.
 > Sprint 4 (player authentication — password login, JWT access/refresh tokens,

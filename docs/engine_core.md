@@ -141,7 +141,7 @@ gates players on `world_schema_version` — reuse that seam, don't invent a para
 **Definition of done, per sprint.** Unit tests for every invariant listed; integration tests
 through `POST /command` **and** `/ws` where a command path changes; a simulation test where
 multi-player atomicity is claimed; `make lint` + `make typecheck` (basedpyright `standard`)
-clean; `CHANGELOG.md` + `docs/status.md` updated; the consuming feature docs' assumptions
+clean; `CHANGELOG.md` + `docs/roadmap.md` updated; the consuming feature docs' assumptions
 unchanged (or updated in the same PR).
 
 ---

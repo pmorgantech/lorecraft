@@ -40,7 +40,7 @@ code design and quality.
 - Type hint all new features; omit hints only when they would be noisy, brittle, or not easily expressible.
 - Write unit tests for all new features.
 - After new code, run focused verification on modified or new files (see **Testing**).
-- Keep `docs/status.md` updated with current implementation progress.
+- Keep `docs/roadmap.md` updated with current implementation progress (it is the single source of truth for what's done and what's next — mark sprint/task checkboxes and update its "Current position" section rather than a separate status doc).
 - Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
 - Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.

@@ -1,6 +1,8 @@
 # Lorecraft — Roadmap
 
-Working roadmap derived from `docs/architecture.md`, `docs/status.md`, `CODE_AUDIT.md`, and recent 0.2.0 development (HTMX migration + parser v1).
+**This is the single source of truth for implementation progress** — what's done and what's next. (`docs/status.md` was retired 2026-07-04 and archived to `docs/.archive/status.md`; its Phase-based tracking had drifted out of sync with this roadmap.)
+
+Working roadmap derived from `docs/architecture.md`, `CODE_AUDIT.md`, and recent 0.2.0 development (HTMX migration + parser v1).
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 

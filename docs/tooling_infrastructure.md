@@ -453,7 +453,6 @@ docs/
 ├── news.yaml                       # NEW: announcements (repo-tracked)
 ├── tooling_infrastructure.md       # NEW: this doc
 ├── roadmap.md                      # (update: insert Sprint 10.5)
-├── status.md                       # (update: add tooling phase)
 └── (existing: architecture.md, etc)
 
 tests/

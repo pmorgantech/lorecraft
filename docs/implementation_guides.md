@@ -50,8 +50,7 @@ These documents are not feature-specific but provide foundational patterns, APIs
 | [`feature-registration.md`](feature-registration.md) | How to build and register Tier 2 features; shows the pluggable architecture pattern all new features should follow |
 | [`architecture_tiers.md`](architecture_tiers.md) | Explains the Tier 1/2/3 split, current filesystem layout, and how to disable or extend Tier 2 features |
 | [`tier_modules.md`](tier_modules.md) | File-by-file classification of each module as Tier 1, Tier 2, or mixed; quick reference for understanding the codebase |
-| [`roadmap.md`](roadmap.md) | Sprint-by-sprint breakdown of all work; master sequencing and dependency reference |
-| [`status.md`](status.md) | Current implementation progress tracker; detailed checklist per sprint |
+| [`roadmap.md`](roadmap.md) | **Single source of truth** for what's done and what's next — sprint-by-sprint task tables, dependency reference, and current status |
 
 ---
 
@@ -105,7 +104,7 @@ docs/features/
 - Document completed implementation patterns
 - Serve as reference for how similar features should be built
 - Can be archived or moved to a read-only section when no longer actively developed
-- Remain linked from [`status.md`](status.md) and [`roadmap.md`](roadmap.md) for context
+- Remain linked from [`roadmap.md`](roadmap.md) for context
 
 ### Current Status
 
@@ -172,20 +171,18 @@ If you're building a custom game or disabling Tier 2 features, start with:
 - **[`architecture.md`](architecture.md)** — Master design reference; the "blueprint"
 - **[`engine_core.md`](engine_core.md)** — Tier 1 binding specifications; what never changes
 - **Feature guides** (here) — "Contractor's handbook"; vertical slices with code examples and edge cases
-- **[`roadmap.md`](roadmap.md)** — Sprint sequencing; what to build and in what order
-- **[`status.md`](status.md)** — Real-time progress tracker; what's actually done
+- **[`roadmap.md`](roadmap.md)** — **Single source of truth**: sprint sequencing, what to build in what order, and what's actually done
 
 Think of it this way:
 - Read **architecture.md** to understand *why* the design is structured this way
 - Read **engine_core.md** to understand the immutable Tier 1 contracts
 - Read **feature guides** to understand *how* to implement a specific feature
-- Check **roadmap.md** and **status.md** to know what to work on next
+- Check **roadmap.md** to know what's done and what to work on next
 
 ### Living Documents vs. Historical Reference
 
 **Living documents** (actively maintained):
-- `roadmap.md` (sequencing changes as priorities evolve)
-- `status.md` (updated as sprints complete)
+- `roadmap.md` (sequencing changes as priorities evolve; updated as sprints complete — the single source of truth for progress)
 - `architecture.md` (updated when design patterns change)
 - `architecture_tiers.md` (clarifies Tier split in evolving codebase)
 - `user_guide.md`, `admin_builder_guide.md`, `world_building.md` (growing as features ship)
@@ -204,7 +201,7 @@ When adding a new major subsystem:
 1. **Design phase:** Update [`roadmap.md`](roadmap.md) to sequence the work and [`engine_core.md`](engine_core.md) or [`feature-registration.md`](feature-registration.md) if it affects Tier 1
 2. **Implementation:** Create a focused implementation guide following the pattern above (store in `docs/features/in_design/` once the directory structure is finalized)
 3. **After completion:** Move the guide to `docs/features/implemented/` and update this index
-4. **Update cross-references:** Ensure [`roadmap.md`](roadmap.md), [`status.md`](status.md), and this index all point to the guide
+4. **Update cross-references:** Ensure [`roadmap.md`](roadmap.md) and this index both point to the guide
 
 ---
 

@@ -558,9 +558,9 @@ only to note it's _done_, not wanted.
 ### Character creation walkthrough + intro tutorial 💚
 
 **Design intent (2026-07-03):** new players need a guided on-ramp — today `/lobby/create` is
-just a username/password form (`docs/status.md`'s Player Identity & Session Safety section);
-there's no in-game character-creation flow or introductory walkthrough once a player is dropped
-into the world.
+just a username/password form (see `web/auth.py` and `player_authentication.md`); there's no
+in-game character-creation flow or introductory walkthrough once a player is dropped into the
+world.
 
 - **Character creation, in-world** — once traits/backgrounds/skills exist (see _Traits, skills
   & character identity_ above), creation becomes more than a name: choose a background/origin,

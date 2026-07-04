@@ -2,9 +2,8 @@
 
 > **Purpose:** This document is a complete, authoritative implementation reference synthesized from all design sessions. It is intended as the primary handoff artifact for Claude Code / Codex to begin building the engine. Read it fully before writing any code.
 >
-> **Implementation status:**
-> - **Current progress:** See [`roadmap.md`](roadmap.md) (Sprints 1–3 complete; Sprints 4–16 planned)
-> - **Detailed checklist:** See [`status.md`](status.md) (tracks Phases 1–9 completion)
+> **Implementation status:** See [`roadmap.md`](roadmap.md) — the single source of truth for
+> what's done and what's next, with per-sprint task tables and current status.
 
 ---
 

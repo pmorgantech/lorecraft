@@ -2,7 +2,7 @@
 
 A Python-based text adventure engine designed for persistent, multiplayer worlds with a real-time clock, sophisticated world mechanics, and extensible feature system.
 
-**Status:** Foundation complete (Sprints 1–15), Tier 1 primitives in progress (Sprints 16–21). See [`docs/roadmap.md`](docs/roadmap.md) and [`docs/status.md`](docs/status.md) for detailed progress.
+**Status:** Foundation and Tier 1 engine primitives complete (Sprints 1–21); Tier 2 feature band in progress (Sprints 22–35). See [`docs/roadmap.md`](docs/roadmap.md) — the single source of truth for what's done and what's next.
 
 ---
 
@@ -101,8 +101,7 @@ docs/
 ├── architecture_tiers.md    # Tier 1/2/3 split, extensibility
 ├── engine_core.md           # Tier 1 primitives specification
 ├── feature-registration.md  # How to build Tier 2 features
-├── roadmap.md               # Sprint breakdown and feature sequence
-├── status.md                # Current completion status
+├── roadmap.md               # Sprint breakdown, feature sequence, and current status
 └── [many more...]
 ```
 
@@ -205,10 +204,11 @@ See [`LICENSE`](LICENSE).
 ## Status & Roadmap
 
 - **Foundation band (Sprints 5–15):** ✅ Complete. Service infrastructure, player auth, type safety, event bus, scheduler, audit logging, world versioning.
-- **Tier 1 primitives (Sprints 16–21):** 🔄 In progress. Item model, item location, modifiers, meters, effects, RNG, skill checks, ledger, mobile routes.
-- **Tier 2 features (Sprints 22–35):** 📅 Planned. Equipment, traits, skills, exploration, trading, combat, PvP, transit.
+- **Tier 1 primitives (Sprints 16–21):** ✅ Complete. Item model, item location, modifiers, meters, effects, RNG, skill checks, ledger, mobile routes.
+- **Tier 2 features (Sprints 22–29):** ✅ Complete. Equipment, traits, skills, exploration, condition (fatigue/sleep), trading, transit.
+- **Remaining (Sprints 30–35):** 📅 Planned. Quests/puzzles depth, combat, PvP.
 
-See [`docs/roadmap.md`](docs/roadmap.md) for detailed sprint breakdowns and [`docs/status.md`](docs/status.md) for current progress.
+See [`docs/roadmap.md`](docs/roadmap.md) — the single source of truth for detailed sprint breakdowns and current progress.
 
 ---
 
