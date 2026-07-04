@@ -39,7 +39,7 @@ code design and quality.
 - Prefer existing project patterns.
 - Type hint all new features; omit hints only when they would be noisy, brittle, or not easily expressible.
 - Write unit tests for all new features.
-- After new code, run focused: unit tests, formatter, and basedpyright on modified or new files.
+- After new code, run focused verification on modified or new files (see **Testing**).
 - Keep `docs/status.md` updated with current implementation progress.
 - Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
 - Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
@@ -49,3 +49,30 @@ code design and quality.
   bump (0.x.y). Update `CHANGELOG.md` in lockstep (move `[Unreleased]` content under the new
   dated version heading, per the existing changelog format).
 - Summarize changed files, risks, and verification.
+
+## Testing
+
+Prefer the Makefile targets so agents pick up the repo's parallel pytest setup and invoke
+tools through the active venv (`python -m ...`):
+
+| Target | Command | Notes |
+|--------|---------|-------|
+| Default suite | `make test` | Parallel (`-n auto --dist=loadfile`); excludes e2e and simulation markers |
+| Coverage gate | `make test-cov` | Same parallelism + `--cov=src/lorecraft`; matches CI `quality` job |
+| Lint | `make lint` | `ruff check` + `ruff format --check` |
+| Types | `make typecheck` | `basedpyright` |
+| E2E | `make test-e2e` | Serial; browser tests only |
+| Simulation | `make test-simulation` | Serial; live-server harness only |
+
+When you must invoke pytest directly (e.g. a single file or `-k` filter), use the same
+parallelism and module invocation — do **not** run bare `pytest`:
+
+```bash
+python -m pytest -n auto --dist=loadfile path/to/test_file.py
+python -m pytest -n auto --dist=loadfile --cov=src/lorecraft --cov-report=term-missing path/to/test_file.py
+```
+
+- `--dist=loadfile` keeps all cases in a file on one worker (required for file-scoped fixtures).
+- Override worker count: `PYTEST_WORKERS=4 make test` (default `auto`).
+- Requires the dev extra (`pytest-xdist`, `pytest-cov` for coverage runs): `pip install -e ".[dev]"`.
+- Do not add `-n` to `make test-e2e` or `make test-simulation`; those targets stay serial.

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.11.2] - 2026-07-04
+
+### Changed
+
+- **Testing: parallel focused pytest runs** — Added `pytest-xdist` to the dev tooling and updated `make test` / `make test-cov` to run the default focused suite with `-n auto --dist=loadfile`, so local and CI coverage-gated test runs use available CPU cores while keeping each test file's cases on the same worker. The browser e2e and live simulation harness targets remain explicit serial runs. Make targets now invoke Python tools through `python -m ...` by default, so local shells use the selected venv instead of a stale PATH executable.
+
 ## [0.11.1] - 2026-07-04
 
 ### Added
