@@ -26,10 +26,13 @@ The architecture overview remains the design reference; this file is the working
 > design. All six design docs went through a same-day deep-dive revision and are
 > **implementation-ready** — `engine_core.md` §3 holds the binding Tier 1 specs (schemas, APIs,
 > invariants, migration blast-radius tables); the feature docs are aligned to them with
-> superseded drafts called out inline. Next: Sprint 16 (item location/ownership + component
-> state), then Sprint 17 (seedable RNG + skill-check) — the two Tier 1 primitives most expensive
-> to retrofit. Tier 2 feature work (item components, equipment, traits/skills, exploration…)
-> now starts at Sprint 22; combat moved down to Sprints 31–33.
+> superseded drafts called out inline. **Sprint 16 (item location/ownership + component state)
+> is now complete**: `ItemStack`/`ItemInstance` model + `ItemLocationService`
+> (spawn/destroy/materialize/move) replaces `Player.inventory`/`RoomItem` outright across the
+> full blast radius (inventory/movement/quest/dialogue/save/world-import/admin/web layers); 23
+> new invariant tests; full suite green unchanged. Next: Sprint 17 (seedable RNG + skill-check).
+> Tier 2 feature work (item components, equipment, traits/skills, exploration…) now starts at
+> Sprint 22; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -40,7 +43,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
-| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [ ] |
+| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [~] Sprint 16 (item location/ownership) complete; 17–21 remain |
 | Item state / inventory / equipment | Sprints 22–23 (gated) | [ ] |
 | Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
@@ -283,6 +286,20 @@ Legend:
 - [x] Broadcast unification — new `game/broadcast.py`'s `broadcast_command_effects()` is the one place step 12 of the lifecycle (room broadcast) now lives. Both `main.py`'s `/ws` command loop (now `async`, awaited at its one call site) and `web/frontend.py`'s `POST /command` call it after `CommandEngine.handle_command()` returns, closing the gap Sprint 12's simulation tests surfaced: the raw `/ws` path previously never re-broadcast a command's `ctx.room_messages` narration or a `state_change` nudge to other WS-connected room occupants. `web/frontend.py`'s previous inline copy of this logic was deleted outright in favor of the shared function.
 - [x] Verified with a new simulation test (`test_command_room_messages_broadcast_to_other_ws_players`) exercising the previously-broken `/ws` broadcast path over a real socket, plus the full existing unit/integration/e2e/simulation suite (behavior preserved exactly for `POST /command`).
 - [x] `GameContext` construction unification — `build_game_context()` (Sprint 6.3, previously unused by both real entry points) now accepts `audit_session` (a separate `Session`, matching real production usage — replacing the old same-session `create_audit_repo` bool) and `rollback_state`, and passes `clock` straight through instead of synthesizing a fallback `WorldClock`. `main.py` and `web/frontend.py` both call it instead of constructing `GameContext` inline; both now build zero repos by hand for `ctx`.
+
+### Item Location/Ownership & Instance State (Sprint 16) ✅
+
+**See:** [`engine_core.md`](engine_core.md) §3.1–3.2 for the binding spec.
+
+- [x] `ItemStack` model (`models/items.py`) — `(item_id, owner_type, owner_id, slot?, quantity, instance_id?)`; **replaces** `Player.inventory: list[str]` and the `RoomItem` table outright (both deleted, not deprecated).
+- [x] `ItemInstance` model — identity + per-component `state: JsonObject`; a `ComponentRegistry` (`game/components.py`) lets Tier 2/world authors register components (durability, openable, lit, container — Sprint 22) with zero core edits. Tier 1 registers none.
+- [x] `HolderRegistry` (`game/holders.py`) — built-in holder types `player`/`room`/`container`; `register_move_validator()` hook for mechanical-capacity checks (slot occupancy, container fullness), none registered yet.
+- [x] `ItemLocationService` (`services/item_location.py`) — `spawn()`/`destroy()`/`materialize()`/`move()`. `move()` is the one atomic primitive: validates source quantity, destination holder existence, registered validators, and container-cycle freedom, then splits/merges as needed, all-or-nothing within the caller's transaction.
+- [x] Full 17-file blast-radius migration onto the primitive: `services/inventory.py`, `repos/item_repo.py`, `game/context.py`, `game/command_conditions.py`, `services/movement.py`, `services/quest.py`, `npc/side_effects.py`, `services/save.py` (v1-save-compatible on load), `world/loader.py`, `world/versioning.py`, `tools/world_cli.py`, `scripts/import_world.py`, `admin/routers/players.py`, `main.py`, `web/session.py`, `web/frontend.py`.
+- [x] `Item.bound: bool` field added (data only; enforcement is Tier 2 policy).
+- [x] 23 new invariant unit tests (`tests/unit/test_item_location_service.py`); full existing suite (431 unit/integration + 3 e2e + 5 simulation) green unchanged, including the audit-regression diff and the concurrent-take-no-duplication guarantee — no audit-event schema/ordering drift from this migration.
+- [x] Bugs caught and fixed during implementation: typed-error constructor argument order backwards in `ItemLocationService`; `StackRepo.delete_stack()` missing a flush (a stack destroyed to zero was still visible to a same-transaction lookup); a pydantic recursion bug where a bare `list[JsonValue]` SQLModel field type infinite-loops in forward-ref resolution (`SaveSlot.inventory` is typed `list[Any]` instead).
+- [ ] Not done: `scripts/migrate_schema_v2.py` one-shot migration for *existing* production DBs, and the `WorldMeta.schema_version` 1→2 bump — scoped out since no production deployment exists yet; the dev flow (`scripts/import_world.py --fresh`) regenerates disposable DBs from YAML instead.
 
 ### Phase 8 — Combat
 

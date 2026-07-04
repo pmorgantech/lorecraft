@@ -248,7 +248,7 @@ retrofit (unified item location/ownership, and a seedable `ctx.rng` the audit-re
 depends on) go first. These primitives are **content-agnostic**: no named skills, slots, factions,
 or damage formulas live here.
 
-## Sprint 16 — Item location/ownership & instance state
+## Sprint 16 — Item location/ownership & instance state ✅
 
 **Goal:** One way to say where an item lives and to move it atomically; per-instance state via
 registered components. Highest-leverage primitives — they underpin equipment, containers, shop
@@ -256,8 +256,23 @@ stock, corpses, and trade escrow. **See [`engine_core.md`](engine_core.md) §3.1
 
 | # | Task | Status |
 |---|------|--------|
-| 16.1 | `ItemStack` + `(owner_type, owner_id, slot?)` location + holder registry; one atomic `ItemLocationService.move()` (rollback-safe); **replace** `Player.inventory`/`RoomItem` outright (column/table deleted — full blast-radius table in [`engine_core.md`](engine_core.md) §3.2) | [ ] |
-| 16.2 | `ItemInstance` carrier + pluggable component registry (durability/openable/lit/container register like dialogue side-effects); `bound`/soulbound flag | [ ] |
+| 16.1 | `ItemStack` + `(owner_type, owner_id, slot?)` location + holder registry; one atomic `ItemLocationService.move()` (rollback-safe); **replace** `Player.inventory`/`RoomItem` outright (column/table deleted — full blast-radius table in [`engine_core.md`](engine_core.md) §3.2) | [x] |
+| 16.2 | `ItemInstance` carrier + pluggable component registry (durability/openable/lit/container register like dialogue side-effects); `bound`/soulbound flag | [x] `ComponentRegistry` (`game/components.py`) ships with zero registered components (Tier 1 registers none, per spec); `Item.bound` field added (enforcement deferred to Tier 2). |
+
+**Delivered beyond the two checklist items:** full blast-radius migration (17 files) onto the new
+primitive — `services/inventory.py`, `repos/item_repo.py`, `game/context.py`,
+`game/command_conditions.py`, `services/movement.py`, `services/quest.py`,
+`npc/side_effects.py`, `services/save.py` (v1-save-compatible load), `world/loader.py`,
+`world/versioning.py`, `tools/world_cli.py`, `scripts/import_world.py`,
+`admin/routers/players.py`, `main.py`, `web/session.py`, `web/frontend.py`. 23 new invariant
+unit tests (`tests/unit/test_item_location_service.py`); full existing suite (431 unit/
+integration + 3 e2e + 5 simulation, including the audit-regression diff and the
+concurrent-take-no-duplication guarantee) green unchanged. See `CHANGELOG.md` for the full
+list of bugs caught along the way (typed-error argument order, a missing `StackRepo` flush,
+a pydantic recursion bug in `list[JsonValue]` SQLModel fields). Schema migration for
+*existing* production DBs (`scripts/migrate_schema_v2.py`, `WorldMeta.schema_version` 1→2) is
+scoped out for now — no production deployment exists yet; the dev flow
+(`scripts/import_world.py --fresh`) regenerates disposable DBs from YAML instead.
 
 ## Sprint 17 — Determinism: seedable RNG & skill-check
 
@@ -538,4 +553,6 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](inventory_equipment.md), [`trade_economy.md`](trade_economy.md), [`transit_systems.md`](transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green. Next: build [Sprint 16](#sprint-16--item-locationownership--instance-state) (item location/ownership + component state) and [Sprint 17](#sprint-17--determinism-seedable-rng--skill-check) (seedable RNG + skill-check) first — the two most expensive to retrofit.*
+*Last updated: 2026-07-03 — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift). Next: [Sprint 17](#sprint-17--determinism-seedable-rng--skill-check) (seedable RNG + skill-check) — independent of 16, can land any time.
+
+Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](inventory_equipment.md), [`trade_economy.md`](trade_economy.md), [`transit_systems.md`](transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*
