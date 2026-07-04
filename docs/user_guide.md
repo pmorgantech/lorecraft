@@ -267,6 +267,7 @@ players nearby see you flicker rather than vanish.
 
 ```
 news            — show current server announcements
+/news           — same thing
 ```
 
 Announcements are also available outside the game as an RSS feed at `/api/news/feed`,
@@ -275,7 +276,8 @@ if you want to follow them in a feed reader.
 ## Reporting Bugs
 
 ```
-report <description>   — report a bug or issue to the developers
+report <description>    — report a bug or issue to the developers
+/report <description>   — same thing
 ```
 
 Found something broken? `report` sends a short description straight to the developers'
@@ -342,8 +344,8 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |
 | `say <message>` | | Speak aloud to the room |
-| `news` | | Show current announcements |
-| `report <description>` | | Report a bug or issue to the developers |
+| `news` | `/news` | Show current announcements |
+| `report <description>` | `/report <description>` | Report a bug or issue to the developers |
 | `save [slot]` | | Save your progress |
 | `load [slot]` | | Load a saved game |
 | `help` | `?` | Show the command list (context-aware) |

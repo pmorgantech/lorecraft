@@ -132,3 +132,19 @@ def test_report_title_is_shortened_for_long_descriptions() -> None:
     assert len(issue.title) <= 80
     assert issue.title.endswith("...")
     assert issue.description == long_text
+
+
+def test_slash_report_alias_behaves_identically() -> None:
+    cmd_engine, ctx, session = _build_engine_and_ctx()
+
+    cmd_engine.handle_command(
+        "/report the keys stay in the room pane after get all", ctx
+    )
+
+    issue = session.exec(select(Issue)).first()
+    assert issue is not None
+    assert issue.created_by == "grumpiest_fellow"
+    # The free-text fix must apply to the /report alias too -- the message
+    # must not fragment on the preposition "in" the way it would for a
+    # normal object/destination phrase.
+    assert "keys stay in the room pane" in issue.description

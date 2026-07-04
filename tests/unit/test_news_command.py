@@ -84,6 +84,14 @@ def test_news_command_with_no_announcements() -> None:
     assert ctx.messages == ["No news right now."]
 
 
+def test_slash_news_alias_behaves_identically() -> None:
+    cmd_engine, ctx, _session = _build_engine_and_ctx()
+
+    cmd_engine.handle_command("/news", ctx)
+
+    assert ctx.messages == ["No news right now."]
+
+
 def test_news_command_lists_active_announcement() -> None:
     cmd_engine, ctx, session = _build_engine_and_ctx()
     now = time.time()

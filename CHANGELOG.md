@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.12.4] - 2026-07-04
+
+### Added
+
+- **`/news` and `/report` slash aliases** — registered as literal extra verb strings on the existing `news`/`report` commands (same mechanism as `bye`/`farewell`/`goodbye`), so out-of-character/system commands are reachable with the conventional `/` prefix players expect. No parser architecture change: `/news`/`/report` are just additional keys in the command registry pointing at the same handlers. `/report` was also added to `game/grammar.py`'s `FREE_TEXT_VERBS` so it gets the same verbatim free-text handling as `report` (no preposition-splitting). A generic, prefix-character-aware parser (`/` for system commands, `@`/`!` for others) was considered and deliberately deferred — the existing `CommandScope.GLOBAL` already encodes "always available regardless of context" in code, and the broader idea is already tracked in `roadmap.md`'s backlog ("Offline/IRL commands `/system`, `@someone`").
+
 ## [0.12.3] - 2026-07-04
 
 ### Changed

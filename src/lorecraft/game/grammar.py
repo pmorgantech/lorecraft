@@ -41,7 +41,7 @@ PREP_TO_ROLE = {
 # nothing to split against, so "report the keys stay in the room pane" must
 # not fragment on "in" the way an object/destination phrase legitimately
 # would ("put the keys in the chest"). See parse_command's prep_info check.
-FREE_TEXT_VERBS = frozenset({"report"})
+FREE_TEXT_VERBS = frozenset({"report", "/report"})
 
 PHRASAL_VERBS = {
     "pick up": "take",

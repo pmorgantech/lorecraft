@@ -26,8 +26,9 @@ def _build_title(text: str) -> str:
 def register_report_commands(registry: CommandRegistry) -> None:
     @registry.register(
         "report",
+        "/report",
         scope=CommandScope.GLOBAL,
-        help="report <description> — report a bug or issue to the developers",
+        help="report <description> (also /report) — report a bug or issue to the developers",
     )
     def report_command(noun: str | None, ctx: GameContext) -> None:
         text = (noun or "").strip()

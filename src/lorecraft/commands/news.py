@@ -25,8 +25,9 @@ def _format_news_lines(ctx: GameContext) -> list[str]:
 def register_news_commands(registry: CommandRegistry) -> None:
     @registry.register(
         "news",
+        "/news",
         scope=CommandScope.GLOBAL,
-        help="news — show current announcements",
+        help="news (also /news) — show current announcements",
     )
     def news_command(noun: str | None, ctx: GameContext) -> None:
         del noun
