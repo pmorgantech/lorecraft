@@ -56,6 +56,7 @@ class SaveSlotService:
         save_slot.room_id = ctx.player.current_room_id
         save_slot.inventory = _inventory_snapshot(ctx)
         save_slot.visited_rooms = list(ctx.player.visited_rooms)
+        save_slot.met_npcs = list(ctx.player.met_npcs)
         save_slot.flags = dict(ctx.player.flags)
         save_slot.stats_snapshot = _stats_snapshot(
             ctx, ctx.player_repo.stats(ctx.player.id)
@@ -87,6 +88,7 @@ class SaveSlotService:
         ctx.player.visited_rooms = list(save_slot.visited_rooms)
         if target_room.id not in ctx.player.visited_rooms:
             ctx.player.visited_rooms = [*ctx.player.visited_rooms, target_room.id]
+        ctx.player.met_npcs = list(save_slot.met_npcs)
         ctx.player.flags = dict(save_slot.flags)
         _apply_stats_snapshot(ctx, save_slot.stats_snapshot)
 

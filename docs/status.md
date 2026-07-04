@@ -64,9 +64,15 @@ The architecture overview remains the design reference; this file is the working
 > survival, persuasion) and `services/skills.py`'s use-based improvement rides on Sprint
 > 17–18's existing `skill_check()`; `models/reputation.py`'s `Reputation` table +
 > `game/reputation_conditions.py` gate commands/dialogue on NPC/faction standing. New
-> `traits`/`skills`/`reputation` player-facing commands. Tier 2 feature work (exploration,
-> trading, transit, quests, combat) continues from Sprint 25; combat moved down to
-> Sprints 31–33.
+> `traits`/`skills`/`reputation` player-facing commands. **Sprint 25 (exploration depth) is
+> now complete**: `search` command reveals per-player hidden-exit discoveries gated on a
+> perception `skill_check()`; `Room.terrain` (data-driven registry) gates/flavors movement;
+> `journal` command surfaces visited places, met NPCs, `lore:`-flagged learnings, and active
+> quests. Fixed two real pre-existing bugs found along the way: hidden exits were always
+> unreachable (contradicting the documented behavior) and `Exit.condition_flags` was never
+> enforced despite being round-tripped through YAML. Tier 2 feature work (map/mobile UI,
+> character condition, trading, transit, quests, combat) continues from Sprint 26; combat
+> moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -79,7 +85,7 @@ The architecture overview remains the design reference; this file is the working
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
 | Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [x] |
 | Item state / inventory / equipment | Sprints 22–23 (gated) | [x] |
-| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [~] Sprint 24 (traits & skills) complete; 25–27 remain |
+| Traits/skills, exploration, condition | Sprints 24–27 (gated) | [~] Sprints 24–25 (traits/skills, exploration) complete; 26–27 remain |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
 | Quests & puzzles depth | Sprint 30 (gated) | [ ] |
 | Phase 8–8.5 (Combat, supporting) | Sprints 31–33 (gated) | [ ] |

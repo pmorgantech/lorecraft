@@ -2,6 +2,24 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.7.0] - 2026-07-04
+
+### Summary
+
+**Sprint 25 Complete — Exploration Depth.** Discovery as a first-class reward: `search` reveals hidden exits gated on perception, terrain types gate/flavor movement, and a `journal` command surfaces what a player has discovered. Fixed two real pre-existing bugs in movement (hidden exits always blocked; `condition_flags` never enforced) found while building this. 535 focused tests (12 new) + 5 simulation tests passing; basedpyright 0 errors; ruff clean.
+
+### Added
+
+- **Sprint 25.1: Search + hidden-exit discovery** — New `search` command (`services/exploration.py`) runs a perception `skill_check()` (Sprint 17-18's existing resolution helper, base skill from Sprint 24's `SkillService`, modifiers from every registered source — equipment/traits/effects); on success, reveals any of the room's hidden exits the player hasn't found yet. Discovery is per-player (`game/exploration.py`'s `is_exit_discovered`/`mark_exit_discovered`, stored in the existing `Player.flags` dict — already save/load-snapshotted, no new persistence path needed) — `look` now lists a hidden exit once *that player* has discovered it, not room-globally. Finding something awards a flat XP tick (`PlayerStats.xp`) and rolls a `perception` use (Sprint 24.2's use-based improvement) regardless of outcome.
+- **Sprint 25.2: Terrain** — New `Room.terrain: str` field (`game/terrain.py`'s `TerrainRegistry`, data-driven default set: normal/road/forest/mountain/swamp/water) with an optional `required_skill`/`required_skill_min` gate enforced in `MovementService.move()` and a `description_suffix` layered onto `look`. Content validator (`check_room_terrain`) flags unknown terrain names.
+- **Sprint 25.3: Journal** — New `journal` command (`services/journal.py`) surfaces places visited (`Player.visited_rooms`, already tracked), people met (new `Player.met_npcs`, set on first `talk`), lore learned (any player flag an author prefixes `lore:` via existing dialogue `set_flags` side effects — no new authoring mechanism), and active quest titles (`QuestRepo.active_progress`). Cartography's map-reveal payoff is Sprint 26's job (the full-screen map modal task explicitly owns "integrated with cartography reveal") — this sprint only ships the skill identity and the journal's read-only view.
+- New `traits`/`skills`/`reputation`-style visibility precedent extended: `journal` and `search` give players concrete, testable payoff for the trait/skill/reputation plumbing Sprint 24 shipped.
+
+### Fixed
+
+- **`MovementService.move()` always blocked hidden exits, contradicting the documented behavior** (`world_building.md`: "Exits can be hidden from descriptions but still usable... the player must try the command directly") — a hidden exit could never be traversed even by guessing the exact direction. Fixed: hidden only affects whether `look` lists the exit, never whether `go <direction>` works.
+- **`Exit.condition_flags` was stored and round-tripped through YAML import/export but never enforced anywhere** — an exit authored with `condition_flags: ["blessed_by_priest"]` was, in practice, unconditional. Fixed: `move()` now blocks the exit unless every listed flag is set on the player.
+
 ## [0.6.0] - 2026-07-04
 
 ### Summary

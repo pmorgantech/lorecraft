@@ -21,6 +21,8 @@ class DialogueService:
         if npc is None:
             ctx.say("That person isn't here.")
             return
+        if npc_id not in ctx.player.met_npcs:
+            ctx.player.met_npcs = [*ctx.player.met_npcs, npc_id]
         if not npc.dialogue_tree_id or ctx.dialogue_repo is None:
             ctx.say(f"{npc.name} has nothing to say.")
             return

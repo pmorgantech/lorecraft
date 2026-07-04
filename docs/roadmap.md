@@ -402,16 +402,16 @@ registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats
 | 24.2 | Use-based skill improvement (perception, lockpicking, bartering, cartography, survival, persuasion); skill-check helper | [x] `game/skills.py` (identity) + `services/skills.py` (improvement); `skill_check()` itself shipped Sprint 17-18 |
 | 24.3 | Reputation/standing per NPC + faction; unlocks dialogue/prices/quests (extends flags + NPC memory) | [x] `models/reputation.py` + `game/reputation_conditions.py` |
 
-## Sprint 25 — Exploration depth
+## Sprint 25 — Exploration depth ✅
 
 **Goal:** Make discovery a first-class reward (the top pillar). Search-gated secrets, terrain,
 journal, cartography. Builds on existing minimap fog and `Exit.hidden`/`condition_flags`.
 
 | # | Task | Status |
 |---|------|--------|
-| 25.1 | `search` command + hidden-exit/secret-room reveal gated on perception skill + traits + light; discovery rewards (knowledge flags, progression tick) | [ ] |
-| 25.2 | Terrain types on rooms/exits affecting travel time, fatigue cost, and required skill/gear; environmental `examine` layering | [ ] |
-| 25.3 | Journal / auto-log panel (discovered places, met NPCs, learned lore, active clues); player cartography reveal | [ ] |
+| 25.1 | `search` command + hidden-exit/secret-room reveal gated on perception skill + traits + light; discovery rewards (knowledge flags, progression tick) | [x] Also fixed: hidden exits were unconditionally blocked and `condition_flags` was never enforced — both pre-existing bugs |
+| 25.2 | Terrain types on rooms/exits affecting travel time, fatigue cost, and required skill/gear; environmental `examine` layering | [x] `Room.terrain` + `game/terrain.py`; required-skill gate + `look` description suffix. Travel-time/fatigue-cost hooks deferred to Sprint 27 (fatigue doesn't exist yet) |
+| 25.3 | Journal / auto-log panel (discovered places, met NPCs, learned lore, active clues); player cartography reveal | [x] `journal` command. Cartography map-reveal payoff deferred to Sprint 26 (owns the map UI it reveals onto) |
 
 ## Sprint 26 — Map & mobile UI
 

@@ -121,6 +121,20 @@ the prompt.
 Rooms need light to look around and to take/examine items — `light_level` in the room
 data controls this. If a room is dark, bring a light source.
 
+## Exploration
+
+```
+search          — look for hidden exits and secrets in the room
+journal         — review places visited, people met, lore learned, and active quests
+```
+
+Not every exit shows up in a room's description — `search` rolls your perception skill
+(better with practice, traits, and equipment) to find hidden passages. Once you've found
+one, it stays visible to you from then on. Some exits also need a specific flag (a key
+event, an NPC's trust, a quest step) before they'll let you through, whether or not you've
+found them. Rooms can also have terrain (forest, mountain, swamp, water...) that requires
+a minimum survival skill to enter safely.
+
 ## Character: Traits, Skills, and Reputation
 
 ```
@@ -210,6 +224,8 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `traits` | | List your active traits |
 | `skills` | | List your skills and their levels |
 | `reputation` | `rep` | List your standing with NPCs and factions |
+| `search` | | Look for hidden exits and secrets in the room |
+| `journal` | | Review places visited, people met, lore learned, and active quests |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |

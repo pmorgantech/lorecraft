@@ -93,6 +93,7 @@ rooms:
 | `fallback_room_id` | string | | Room to return to if disconnected |
 | `version` | integer | | Schema version (default: 1) |
 | `flags` | object | | Custom flags for this room |
+| `terrain` | string | | `normal`/`road`/`forest`/`mountain`/`swamp`/`water` (default: `normal`) — see Terrain below |
 | `disabled_commands` | array | | Commands not allowed here |
 | `exits` | array | | Connections to other rooms |
 
@@ -162,6 +163,20 @@ disabled_commands:
   - "attack"
   - "cast_spell"
 ```
+
+### Terrain
+
+`terrain` optionally gates entry on a skill and layers an extra sentence onto `look`:
+
+```yaml
+- id: mountain_pass
+  name: "Mountain Pass"
+  terrain: mountain   # requires survival >= 20 (see game/terrain.py's registry)
+```
+
+Standard terrain: `normal` (no effect), `road` (flavor only), `forest` (flavor only),
+`mountain`/`swamp`/`water` (each requires a minimum `survival` skill level). Unknown
+terrain names fail content validation.
 
 ---
 

@@ -21,6 +21,9 @@ class Room(SQLModel, table=True):
     disabled_commands: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     light_level: int = 1
     version: int = 1
+    terrain: str = (
+        "normal"  # affects travel gating; see game/terrain.py's TerrainRegistry
+    )
 
 
 class Exit(SQLModel, table=True):

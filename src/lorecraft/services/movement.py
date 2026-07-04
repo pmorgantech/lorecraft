@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from lorecraft.game import terrain as terrain_module
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
 from lorecraft.game.holders import Location
+from lorecraft.game.modifiers import resolve_for
 from lorecraft.game.parser import DIRECTION_ALIASES
+from lorecraft.services.skills import SkillService
+
+_skills = SkillService()
 
 
 def _carries(ctx: GameContext, item_id: str) -> bool:
@@ -49,8 +54,17 @@ class MovementService:
 
     def move(self, direction: str, ctx: GameContext) -> None:
         exit_ = ctx.room_repo.exit(ctx.room.id, direction)
-        if exit_ is None or exit_.hidden:
+        # Hidden exits are still directly usable — they're just excluded from
+        # the room description's exit list (see InventoryService.look()) and
+        # `search` (Sprint 25.1) reveals them there. Docs: world_building.md
+        # "Hidden Exits" — "the player must try the command directly".
+        if exit_ is None:
             ctx.say("You can't go that way.")
+            return
+        if exit_.condition_flags and not all(
+            ctx.player.flags.get(flag) for flag in exit_.condition_flags
+        ):
+            ctx.say("Something prevents you from going that way.")
             return
         if exit_.locked and (
             exit_.key_item_id is None or not _carries(ctx, exit_.key_item_id)
@@ -62,6 +76,29 @@ class MovementService:
         if target_room is None:
             ctx.say("You can't go that way.")
             return
+
+        terrain_def = terrain_module.get_registry().get(target_room.terrain)
+        if terrain_def is not None and terrain_def.required_skill is not None:
+            base = _skills.get_level(
+                ctx.session, ctx.player.id, terrain_def.required_skill
+            )
+            effective = resolve_for(
+                ctx.session,
+                "player",
+                ctx.player.id,
+                f"skill.{terrain_def.required_skill}",
+                base=base,
+            )
+            if effective < terrain_def.required_skill_min:
+                ctx.say(
+                    f"You aren't skilled enough to venture into the "
+                    f"{target_room.terrain} safely."
+                )
+                return
+            if ctx.player_repo.stats(ctx.player.id) is not None:
+                _skills.record_use(
+                    ctx.session, ctx.rng, ctx.player.id, terrain_def.required_skill
+                )
 
         previous_room_id = ctx.room.id
         ctx.player.current_room_id = target_room.id

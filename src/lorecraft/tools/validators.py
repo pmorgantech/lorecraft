@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 
+from lorecraft.game.terrain import get_registry as get_terrain_registry
 from lorecraft.world.validator import WorldDocument
 
 
@@ -232,6 +233,18 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
     return result
 
 
+def check_room_terrain(document: WorldDocument) -> LintResult:
+    """Every room's `terrain` must be a registered TerrainDef name."""
+    result = LintResult()
+    registry = get_terrain_registry()
+    for room in document.rooms:
+        if registry.get(room.terrain) is None:
+            result.errors.append(
+                f"room {room.id!r} has unknown terrain {room.terrain!r}"
+            )
+    return result
+
+
 def run_all_checks(
     document: WorldDocument, *, start_room_id: str | None = None
 ) -> LintResult:
@@ -241,6 +254,7 @@ def run_all_checks(
     result.merge(check_duplicate_item_names_per_room(document))
     result.merge(check_item_quantity_warnings(document))
     result.merge(check_item_definition_fields(document))
+    result.merge(check_room_terrain(document))
     if start_room_id is not None:
         result.merge(check_room_reachability(document, start_room_id))
     return result

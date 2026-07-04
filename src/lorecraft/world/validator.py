@@ -35,6 +35,7 @@ class RoomData(BaseModel):
     disabled_commands: list[str] = Field(default_factory=list)
     light_level: int = 1
     version: int = 1
+    terrain: str = "normal"
     exits: list[ExitData] = Field(default_factory=list)
 
 

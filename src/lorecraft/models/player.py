@@ -15,6 +15,7 @@ class Player(SQLModel, table=True):
     username: str = Field(index=True, unique=True)
     current_room_id: str
     visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    met_npcs: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     respawn_room_id: str
     pvp_consent: bool = False
@@ -57,6 +58,7 @@ class SaveSlot(SQLModel, table=True):
     # dict[str, JsonValue] (JsonObject) is fine, only the direct list form isn't.
     inventory: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    met_npcs: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     stats_snapshot: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     quest_progress: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

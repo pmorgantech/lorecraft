@@ -24,7 +24,9 @@ from lorecraft.game.encumbrance import (
 )
 from lorecraft.game.equipment_slots import FINGER_SLOTS, slot_label
 from lorecraft.game.events import GameEvent
+from lorecraft.game.exploration import is_exit_discovered
 from lorecraft.game.holders import Location
+from lorecraft.game import terrain as terrain_module
 from lorecraft.models.items import ItemInstance, ItemStack
 from lorecraft.models.world import Item
 from lorecraft.services.item_components import get_component_state, set_component_state
@@ -177,10 +179,14 @@ class InventoryService:
         ctx.say(ctx.room.name)
         ctx.say(ctx.room.description)
 
+        terrain_def = terrain_module.get_registry().get(ctx.room.terrain)
+        if terrain_def is not None and terrain_def.description_suffix:
+            ctx.say(terrain_def.description_suffix)
+
         visible_exits = [
             exit_.direction
             for exit_ in ctx.room_repo.exits(ctx.room.id)
-            if not exit_.hidden
+            if not exit_.hidden or is_exit_discovered(ctx, ctx.room.id, exit_.direction)
         ]
         if visible_exits:
             ctx.say(f"Exits: {', '.join(sorted(visible_exits))}.")

@@ -56,6 +56,7 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 disabled_commands=room.disabled_commands,
                 light_level=room.light_level,
                 version=room.version,
+                terrain=room.terrain,
             )
         )
 
@@ -172,6 +173,7 @@ def export_world_document(session: Session) -> WorldDocument:
             disabled_commands=list(room.disabled_commands),
             light_level=room.light_level,
             version=room.version,
+            terrain=room.terrain,
             exits=[
                 ExitData(
                     direction=exit_.direction,
