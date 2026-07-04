@@ -20,7 +20,9 @@ from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.services.meters import MeterService
 
 
 def build_context() -> GameContext:
@@ -30,11 +32,14 @@ def build_context() -> GameContext:
         ),
         room=SimpleNamespace(id="tavern", disabled_commands=[], light_level=1),
         clock=SimpleNamespace(game_epoch=0),
+        session=None,
         player_repo=None,
         room_repo=None,
         item_repo=None,
         stack_repo=None,
         item_location=None,
+        meters=None,
+        effects=None,
         npc_repo=None,
         manager=None,
         bus=EventBus(),
@@ -224,11 +229,14 @@ def build_persistent_context(
         player=player,
         room=room,
         clock=None,
+        session=game_session,
         player_repo=PlayerRepo(game_session),
         room_repo=RoomRepo(game_session),
         item_repo=ItemRepo(game_session),
         stack_repo=StackRepo(game_session),
         item_location=ItemLocationService(game_session),
+        meters=MeterService(game_session.get_bind(), GameRng()),
+        effects=EffectService(game_session.get_bind(), GameRng()),
         npc_repo=NpcRepo(game_session),
         manager=SimpleNamespace(),
         bus=EventBus(),

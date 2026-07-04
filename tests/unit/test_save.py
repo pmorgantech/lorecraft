@@ -6,18 +6,33 @@ from lorecraft.game.context import GameContext
 from lorecraft.game.events import EventBus, GameEvent
 from lorecraft.game.holders import Location
 from lorecraft.game.transaction import TransactionContext
+from lorecraft.game.meters import MeterDef
+from lorecraft.game.meters import get_registry as get_meter_registry
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.world import Item, Room
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.repos.meter_repo import MeterRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.game.rng import GameRng
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.save import SaveSlotService, SessionSafetyService
+
+
+def _hp_base_maximum(entity_type: str, entity_id: str, session: Session) -> float:
+    if entity_type == "player":
+        stats = session.get(PlayerStats, entity_id)
+        return float(stats.max_hp) if stats is not None else 100.0
+    return 50.0
+
+
+get_meter_registry().register(MeterDef(key="hp", base_maximum=_hp_base_maximum))
 
 
 def test_save_slot_service_preserves_and_loads_player_owned_state() -> None:
@@ -53,6 +68,7 @@ def test_save_slot_service_preserves_and_loads_player_owned_state() -> None:
             stack.item_id
             for stack in StackRepo(game_session).stacks_for_owner("player", "player-1")
         ]
+        hp_meter = MeterRepo(game_session).find("player", "player-1", "hp")
 
     assert save_slot is not None
     assert save_slot.room_id == "tavern"
@@ -66,7 +82,8 @@ def test_save_slot_service_preserves_and_loads_player_owned_state() -> None:
     assert persisted.visited_rooms == ["tavern"]
     assert persisted.flags == {"door_open": True}
     assert stats is not None
-    assert stats.current_hp == 75
+    assert hp_meter is not None
+    assert hp_meter.current == 75
     assert ctx.messages == ["Saved to slot1.", "Loaded slot1."]
     assert ctx.updates["room_id"] == "tavern"
     assert manager.players_in_room("tavern") == ["player-1"]
@@ -180,9 +197,13 @@ def _seed_save_world(session: Session) -> Player:
         respawn_room_id="tavern",
     )
     session.add(player)
-    session.add(PlayerStats(player_id="player-1", current_hp=75))
+    session.add(PlayerStats(player_id="player-1"))
     session.commit()
     ItemLocationService(session).spawn("old_sword", Location("player", player.id))
+    hp_meter = MeterService(session.get_bind(), GameRng()).get(
+        session, "player", "player-1", "hp"
+    )
+    MeterService(session.get_bind(), GameRng()).set_current(session, hp_meter, 75.0)
     session.commit()
     return player
 
@@ -206,6 +227,9 @@ def _build_context(
         stack_repo=StackRepo(game_session),
         item_location=ItemLocationService(game_session),
         rng=GameRng(),
+        session=game_session,
+        meters=MeterService(game_session.get_bind(), GameRng()),
+        effects=EffectService(game_session.get_bind(), GameRng()),
         npc_repo=NpcRepo(game_session),
         manager=manager,
         bus=EventBus(),

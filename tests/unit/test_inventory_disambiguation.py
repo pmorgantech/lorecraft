@@ -24,6 +24,8 @@ from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.inventory import InventoryService
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.game.rng import GameRng
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 from tests.fixtures.disambig_fixtures import (
     DISAMBIG_ROOM_ID,
     SIMILAR_ITEM_SPECS,
@@ -57,6 +59,9 @@ def _build_context(session: Session, player: Player) -> GameContext:
         stack_repo=StackRepo(session),
         item_location=ItemLocationService(session),
         rng=GameRng(),
+        session=session,
+        meters=MeterService(session.get_bind(), GameRng()),
+        effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),

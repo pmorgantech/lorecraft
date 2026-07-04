@@ -73,8 +73,9 @@ class NPC(SQLModel, table=True):
     home_room_id: str
     dialogue_tree_id: str
     behavior: str = "defensive"
+    # Definitional base (Sprint 19); runtime hp is Meter("npc", id, "hp") — current_hp
+    # is deleted, not deprecated.
     max_hp: int = 50
-    current_hp: int = 50
     loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     respawn_seconds: int | None = 300
     schedule: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))

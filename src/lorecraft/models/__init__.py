@@ -10,6 +10,7 @@ from lorecraft.models.changeset import (
 from lorecraft.models.combat import CombatSession
 from lorecraft.models.interaction import PvpConsent, TradeOffer
 from lorecraft.models.items import ItemInstance, ItemStack
+from lorecraft.models.meters import ActiveEffect, Meter
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.player_auth import PlayerAuth
 from lorecraft.models.quest import PlayerQuestProgress, Quest
@@ -24,6 +25,7 @@ from lorecraft.models.world import (
 )
 
 __all__ = [
+    "ActiveEffect",
     "AuditEvent",
     "Changeset",
     "ChangesetItem",
@@ -33,6 +35,7 @@ __all__ = [
     "Item",
     "ItemInstance",
     "ItemStack",
+    "Meter",
     "NPC",
     "Player",
     "PlayerAuth",

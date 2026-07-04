@@ -49,6 +49,11 @@ class GameEvent(StrEnum):
     NPC_MOVE_DUE = "npc_move_due"
     SCHEDULED_JOB_DUE = "scheduled_job_due"
     GRACE_PERIOD_EXPIRED = "grace_period_expired"
+    METER_DEPLETED = "meter_depleted"
+    METER_RECOVERED = "meter_recovered"
+    EFFECT_APPLIED = "effect_applied"
+    EFFECT_EXPIRED = "effect_expired"
+    EFFECT_REMOVED = "effect_removed"
 
 
 WORK_EVENTS = {

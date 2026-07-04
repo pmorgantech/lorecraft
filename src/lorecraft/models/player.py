@@ -31,12 +31,16 @@ class PlayerStats(SQLModel, table=True):
     intellect: int = 10
     presence: int = 10
     fortitude: int = 10
+    # Definitional base (Sprint 19, engine_core.md §3.3): fed to the "hp" MeterDef's
+    # base_maximum. Runtime hp is Meter(entity, "hp") — current_hp is deleted, not
+    # deprecated (PlayerStats.current_hp used to hold it).
     max_hp: int = 100
-    current_hp: int = 100
     level: int = 1
     xp: int = 0
     xp_to_next: int = 100
     skills: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    # Innate traits (Sprint 19 adds the column; Tier 2 populates it — empty by default).
+    traits: list[str] = Field(default_factory=list, sa_column=Column(JSON))
 
 
 class SaveSlot(SQLModel, table=True):

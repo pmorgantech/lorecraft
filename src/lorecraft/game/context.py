@@ -31,7 +31,9 @@ from lorecraft.types import JsonObject, JsonValue
 # services/__init__.py. TYPE_CHECKING-only import for the annotation (deferred by
 # `from __future__ import annotations`); build_game_context() imports it for real.
 if TYPE_CHECKING:
+    from lorecraft.services.effects import EffectService
     from lorecraft.services.item_location import ItemLocationService
+    from lorecraft.services.meters import MeterService
 
 
 @dataclass
@@ -39,11 +41,14 @@ class GameContext:
     player: Player
     room: Room
     clock: WorldClock | None
+    session: Session
     player_repo: PlayerRepo
     room_repo: RoomRepo
     item_repo: ItemRepo
     stack_repo: StackRepo
     item_location: ItemLocationService
+    meters: MeterService
+    effects: EffectService
     npc_repo: NpcRepo
     manager: ConnectionManager
     bus: EventBus
@@ -130,6 +135,8 @@ def build_game_context(
     transaction: TransactionContext,
     session_id: str,
     rng: GameRng,
+    meters: MeterService,
+    effects: EffectService,
     clock: WorldClock | None = None,
     audit_session: Session | None = None,
     commit_state: Callable[[], None] | None = None,
@@ -158,6 +165,7 @@ def build_game_context(
         player=player,
         room=room,
         clock=clock,
+        session=session,
         player_repo=PlayerRepo(session),
         room_repo=RoomRepo(session),
         item_repo=item_repo,
@@ -165,6 +173,8 @@ def build_game_context(
         item_location=ItemLocationService(
             session, stack_repo=stack_repo, item_repo=item_repo
         ),
+        meters=meters,
+        effects=effects,
         npc_repo=NpcRepo(session),
         quest_repo=QuestRepo(session),
         dialogue_repo=DialogueRepo(session),

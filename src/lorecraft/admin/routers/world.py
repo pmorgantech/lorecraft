@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 from lorecraft.admin.auth import Observer, WorldBuilder
 from lorecraft.models.changeset import ConflictScanResult
 from lorecraft.models.world import Item, NPC, Room
+from lorecraft.repos.meter_repo import MeterRepo
 from lorecraft.world.versioning import VersioningService
 
 router = APIRouter(tags=["admin"])
@@ -171,17 +172,26 @@ async def list_npcs(request: Request, _: Observer) -> list[dict[str, Any]]:
     state = _state(request)
     with Session(state.game_engine) as session:
         npcs = session.exec(select(NPC)).all()
-    return [
-        {
-            "id": n.id,
-            "name": n.name,
-            "current_room_id": n.current_room_id,
-            "behavior": n.behavior,
-            "current_hp": n.current_hp,
-            "max_hp": n.max_hp,
-        }
-        for n in npcs
-    ]
+        meter_repo = MeterRepo(session)
+        return [
+            {
+                "id": n.id,
+                "name": n.name,
+                "current_room_id": n.current_room_id,
+                "behavior": n.behavior,
+                "current_hp": _npc_current_hp(meter_repo, n),
+                "max_hp": n.max_hp,
+            }
+            for n in npcs
+        ]
+
+
+def _npc_current_hp(meter_repo: MeterRepo, npc: NPC) -> int:
+    """Read-only hp lookup — doesn't trigger lazy Meter creation (a GET
+    shouldn't have that write side effect); an as-yet-uncreated meter is
+    full, matching the "hp" MeterDef's start_full=True."""
+    meter = meter_repo.find("npc", npc.id, "hp")
+    return int(meter.current) if meter is not None else npc.max_hp
 
 
 class _SpawnBody(BaseModel):

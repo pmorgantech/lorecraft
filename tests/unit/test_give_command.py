@@ -23,6 +23,8 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.game.rng import GameRng
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 from tests.fixtures.disambig_fixtures import DISAMBIG_ROOM_ID, seed_disambig_gallery
 
 
@@ -68,6 +70,9 @@ def _build_engine_and_ctx(
         stack_repo=StackRepo(session),
         item_location=item_location,
         rng=GameRng(),
+        session=session,
+        meters=MeterService(session.get_bind(), GameRng()),
+        effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),

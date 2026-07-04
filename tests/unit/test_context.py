@@ -13,7 +13,9 @@ from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.services.meters import MeterService
 
 
 def test_context_collects_messages_updates_and_emits_events() -> None:
@@ -47,6 +49,7 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
             player=player,
             room=room,
             clock=None,
+            session=session,
             player_repo=player_repo,
             room_repo=room_repo,
             item_repo=ItemRepo(session),
@@ -61,6 +64,8 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
         )
 
         ctx.say("You move north.")
@@ -102,6 +107,8 @@ def test_build_game_context_wires_all_repos() -> None:
             transaction=transaction,
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
         )
 
         assert ctx.player == player
@@ -148,6 +155,8 @@ def test_build_game_context_clock_defaults_to_none() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
         )
 
         assert ctx.clock is None
@@ -183,6 +192,8 @@ def test_build_game_context_custom_clock() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
             clock=custom_clock,
         )
 
@@ -220,6 +231,8 @@ def test_build_game_context_with_audit_session() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
             audit_session=audit_session,
         )
 
@@ -250,6 +263,8 @@ def test_build_game_context_without_audit_session_leaves_audit_none() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
         )
 
         assert ctx.audit is None
@@ -280,6 +295,8 @@ def test_build_game_context_wires_commit_and_rollback_callables() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
             commit_state=lambda: calls.append("commit_state"),
             commit_audit=lambda: calls.append("commit_audit"),
             rollback_state=lambda: calls.append("rollback_state"),
@@ -317,6 +334,8 @@ def test_build_game_context_is_type_game_context() -> None:
             ),
             session_id="session-1",
             rng=GameRng(),
+            meters=MeterService(engine, GameRng()),
+            effects=EffectService(engine, GameRng()),
         )
 
         assert isinstance(ctx, GameContext)

@@ -55,7 +55,7 @@ def test_repos_round_trip_core_game_models() -> None:
                 respawn_room_id="tavern",
             )
         )
-        players.save_stats(PlayerStats(player_id="player-1", current_hp=75))
+        players.save_stats(PlayerStats(player_id="player-1", max_hp=75))
         session.add(
             PlayerSession(
                 id="session-1",
@@ -87,7 +87,7 @@ def test_repos_round_trip_core_game_models() -> None:
         session.commit()
 
         assert players.by_username("petem").id == "player-1"
-        assert players.stats("player-1").current_hp == 75
+        assert players.stats("player-1").max_hp == 75
         assert players.active_session("player-1").id == "session-1"
         assert [slot.slot_name for slot in players.save_slots("player-1")] == ["auto"]
         assert rooms.active("tavern").name == "Tavern"

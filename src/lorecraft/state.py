@@ -16,6 +16,8 @@ from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.services.container import ServiceContainer
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 from lorecraft.services.scheduler import SchedulerService
 from lorecraft.types import JsonObject
 
@@ -35,6 +37,8 @@ class AppState:
     scheduler: SchedulerService
     services: ServiceContainer
     rng: GameRng
+    meters: MeterService
+    effects: EffectService
     pending_disambig: dict[str, JsonObject] = field(default_factory=dict)
     # Single-use WebSocket connect tickets: ticket -> (player_id, expires_at
     # epoch seconds). In-memory only, matching pending_disambig — fine for

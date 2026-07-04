@@ -36,18 +36,23 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import build_game_context
 from lorecraft.game.engine import CommandEngine
 from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.game.meters import MeterDef
+from lorecraft.game.meters import get_registry as get_meter_registry
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
+import lorecraft.game.traits  # noqa: F401 -- import for registration side effects (traits.py registers itself as a ModifierSource and TraitSource at module load)
 from lorecraft.models.admin import AdminUser
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.models.player import Player, PlayerStats
+from lorecraft.models.world import NPC, Room
 from lorecraft.observability import bind_transaction_context, configure_logging
 from lorecraft.world.bootstrap import ensure_world_bootstrapped
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
@@ -146,6 +151,11 @@ def create_app(
         NpcScheduler(resolved_game_engine).register(bus)
         scheduler = SchedulerService(resolved_game_engine, app_rng)
         scheduler.register(bus)
+        get_meter_registry().register(MeterDef(key="hp", base_maximum=_hp_base_maximum))
+        meter_service = MeterService(resolved_game_engine, app_rng)
+        meter_service.register(bus)
+        effect_service = EffectService(resolved_game_engine, app_rng)
+        effect_service.register(bus)
         services = ServiceContainer.build()
         services.quest.register(bus)
 
@@ -231,6 +241,8 @@ def create_app(
             scheduler=scheduler,
             services=services,
             rng=app_rng,
+            meters=meter_service,
+            effects=effect_service,
         )
         register_all_commands(state.registry, state.services)
         state.clock_runner.initialize()
@@ -463,6 +475,8 @@ async def _handle_websocket_command(
             transaction=transaction,
             session_id=session_id,
             rng=state.rng,
+            meters=state.meters,
+            effects=state.effects,
             clock=room_repo.world_clock(),
             audit_session=audit_session,
             commit_state=game_session.commit,
@@ -654,6 +668,18 @@ def _ensure_admin_seed(game_engine: Engine, settings: Settings) -> None:
                 settings.admin_seed_username,
                 settings.admin_seed_role,
             )
+
+
+def _hp_base_maximum(entity_type: str, entity_id: str, session: Session) -> float:
+    """base_maximum for the "hp" MeterDef — the proof-of-primitive registration
+    (engine_core.md §3.3): reads the definitional PlayerStats.max_hp / NPC.max_hp."""
+    if entity_type == "player":
+        stats = session.get(PlayerStats, entity_id)
+        return float(stats.max_hp) if stats is not None else 100.0
+    if entity_type == "npc":
+        npc = session.get(NPC, entity_id)
+        return float(npc.max_hp) if npc is not None else 50.0
+    return 1.0
 
 
 app = create_app()

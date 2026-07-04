@@ -24,6 +24,8 @@ from lorecraft.services.inventory import (
 )
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.game.rng import GameRng
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 
 
 def test_format_inventory_entry_shows_quantity_prefix() -> None:
@@ -571,6 +573,9 @@ def _build_context(session: Session, player: Player, bus: EventBus) -> GameConte
         stack_repo=StackRepo(session),
         item_location=ItemLocationService(session),
         rng=GameRng(),
+        session=session,
+        meters=MeterService(session.get_bind(), GameRng()),
+        effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=bus,

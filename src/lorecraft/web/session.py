@@ -29,6 +29,8 @@ from lorecraft.repos.npc_repo import NpcRepo
 from lorecraft.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
 from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.services.effects import EffectService
+from lorecraft.services.meters import MeterService
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject
@@ -47,6 +49,8 @@ _rule_engine: RuleEngine | None = None
 _fallback_bus: EventBus | None = None
 _fallback_player_secret: str | None = None
 _fallback_rng: GameRng | None = None
+_fallback_meters: MeterService | None = None
+_fallback_effects: EffectService | None = None
 
 
 @dataclass
@@ -171,6 +175,40 @@ def get_rng(request: Request) -> GameRng:
     if _fallback_rng is None:
         _fallback_rng = GameRng()
     return _fallback_rng
+
+
+def get_meters(request: Request) -> MeterService:
+    """Get the app-wide MeterService, preferring app.state; falls back to a
+    lazily-constructed instance bound to the fallback engine (router tested
+    in isolation)."""
+    try:
+        state = getattr(request.app.state, "lorecraft", None)
+        if state and hasattr(state, "meters"):
+            return state.meters
+    except (AttributeError, TypeError):
+        log.debug("app_state_meters_access_failed")
+    global _fallback_meters
+    if _fallback_meters is None:
+        game_engine, _audit_engine_ = get_engines(request)
+        _fallback_meters = MeterService(game_engine, get_rng(request))
+    return _fallback_meters
+
+
+def get_effects(request: Request) -> EffectService:
+    """Get the app-wide EffectService, preferring app.state; falls back to a
+    lazily-constructed instance bound to the fallback engine (router tested
+    in isolation)."""
+    try:
+        state = getattr(request.app.state, "lorecraft", None)
+        if state and hasattr(state, "effects"):
+            return state.effects
+    except (AttributeError, TypeError):
+        log.debug("app_state_effects_access_failed")
+    global _fallback_effects
+    if _fallback_effects is None:
+        game_engine, _audit_engine_ = get_engines(request)
+        _fallback_effects = EffectService(game_engine, get_rng(request))
+    return _fallback_effects
 
 
 def player_session_secret(app_state: AppState | None) -> str:

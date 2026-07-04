@@ -57,7 +57,9 @@ class SaveSlotService:
         save_slot.inventory = _inventory_snapshot(ctx)
         save_slot.visited_rooms = list(ctx.player.visited_rooms)
         save_slot.flags = dict(ctx.player.flags)
-        save_slot.stats_snapshot = _stats_snapshot(ctx.player_repo.stats(ctx.player.id))
+        save_slot.stats_snapshot = _stats_snapshot(
+            ctx, ctx.player_repo.stats(ctx.player.id)
+        )
         save_slot.quest_progress = {}
 
         ctx.say(f"Saved to {slot}.")
@@ -86,7 +88,7 @@ class SaveSlotService:
         if target_room.id not in ctx.player.visited_rooms:
             ctx.player.visited_rooms = [*ctx.player.visited_rooms, target_room.id]
         ctx.player.flags = dict(save_slot.flags)
-        _apply_stats_snapshot(ctx.player_repo, ctx.player.id, save_slot.stats_snapshot)
+        _apply_stats_snapshot(ctx, save_slot.stats_snapshot)
 
         ctx.manager.move_player(ctx.player.id, previous_room_id, target_room.id)
         ctx.room = target_room
@@ -287,9 +289,10 @@ def _restore_inventory(ctx: GameContext, snapshot: list[JsonValue]) -> None:
                 ctx.item_location.spawn(item_id, loc, quantity)
 
 
-def _stats_snapshot(stats: PlayerStats | None) -> JsonObject:
+def _stats_snapshot(ctx: GameContext, stats: PlayerStats | None) -> JsonObject:
     if stats is None:
         return {}
+    hp_meter = ctx.meters.get(ctx.session, "player", ctx.player.id, "hp")
     return {
         "strength": stats.strength,
         "agility": stats.agility,
@@ -298,23 +301,24 @@ def _stats_snapshot(stats: PlayerStats | None) -> JsonObject:
         "presence": stats.presence,
         "fortitude": stats.fortitude,
         "max_hp": stats.max_hp,
-        "current_hp": stats.current_hp,
         "level": stats.level,
         "xp": stats.xp,
         "xp_to_next": stats.xp_to_next,
         "skills": dict(stats.skills),
+        # v2 (Sprint 19): runtime hp lives in Meter("player", id, "hp"), not
+        # PlayerStats.current_hp (deleted). See _apply_stats_snapshot for the
+        # v1 (flat "current_hp" int) conversion-on-read.
+        "meters": {"hp": hp_meter.current},
     }
 
 
-def _apply_stats_snapshot(
-    player_repo: PlayerRepo, player_id: str, snapshot: JsonObject
-) -> None:
+def _apply_stats_snapshot(ctx: GameContext, snapshot: JsonObject) -> None:
     if not snapshot:
         return
-    stats = player_repo.stats(player_id)
+    stats = ctx.player_repo.stats(ctx.player.id)
     if stats is None:
-        stats = PlayerStats(player_id=player_id)
-        player_repo.save_stats(stats)
+        stats = PlayerStats(player_id=ctx.player.id)
+        ctx.player_repo.save_stats(stats)
 
     for field in (
         "strength",
@@ -324,7 +328,6 @@ def _apply_stats_snapshot(
         "presence",
         "fortitude",
         "max_hp",
-        "current_hp",
         "level",
         "xp",
         "xp_to_next",
@@ -335,3 +338,13 @@ def _apply_stats_snapshot(
     skills = snapshot.get("skills")
     if isinstance(skills, dict):
         stats.skills = dict(skills)
+
+    hp_value: object = None
+    meters_snapshot = snapshot.get("meters")
+    if isinstance(meters_snapshot, dict):
+        hp_value = meters_snapshot.get("hp")
+    elif "current_hp" in snapshot:
+        hp_value = snapshot.get("current_hp")  # v1 shape compat
+    if isinstance(hp_value, (int, float)):
+        hp_meter = ctx.meters.get(ctx.session, "player", ctx.player.id, "hp")
+        ctx.meters.set_current(ctx.session, hp_meter, float(hp_value))

@@ -136,7 +136,6 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 dialogue_tree_id=npc.dialogue_tree_id,
                 behavior=npc.behavior,
                 max_hp=npc.max_hp,
-                current_hp=npc.max_hp,
                 schedule=[e.model_dump() for e in npc.schedule],
                 loot_table=cast(JsonObject, npc.loot_table),
             )
