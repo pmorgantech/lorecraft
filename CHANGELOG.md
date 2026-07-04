@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.8] - 2026-07-04
+
+### Changed
+
+- **Tier split — NPC memory migrated to a feature manifest (step 5b, branch `tier_split`).** `npc/npc_memory_conditions.py` now exposes `register()` instead of registering its `npc_remembers` dialogue/quest conditions and `remember` side effect at import; new `features/npc_memory/` package wraps it in a manifest. Side-effect import removed from `main.py`; `test_npc_memory.py` calls `register()` explicitly. `npc_memory` added to the parametrized migrated-features test. Full suite 774 passed.
+
 ## [0.14.7] - 2026-07-04
 
 ### Changed

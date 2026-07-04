@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, create_engine
 
-import lorecraft.npc.npc_memory_conditions  # noqa: F401 -- registration side effects
+from lorecraft.npc.npc_memory_conditions import register as _register_npc_memory
 from lorecraft.db import create_tables
 from lorecraft.game import quest_conditions
 from lorecraft.game.connection_manager import ConnectionManager
@@ -30,6 +30,10 @@ from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.game.rng import GameRng
 from lorecraft.services.meters import MeterService
+
+# NPC-memory conditions/side effect used to register as an import side effect;
+# they now register via the npc_memory feature's register(). Call it once here.
+_register_npc_memory()
 
 _THOR_TREE = {
     "root_node": "greeting",

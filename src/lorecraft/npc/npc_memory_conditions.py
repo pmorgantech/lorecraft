@@ -65,6 +65,12 @@ def _quest_npc_remembers(cond: JsonObject, ctx: "GameContext") -> bool:
     return NpcMemoryRepo(ctx.session).remembers(ctx.player.id, npc_id, key)
 
 
-dialogue_conditions.get_registry().register("npc_remembers", _npc_remembers_satisfied)
-side_effects.get_registry().register("remember", _handle_remember)
-quest_conditions.get_registry().register("npc_remembers", _quest_npc_remembers)
+def register() -> None:
+    """Register the NPC-memory dialogue condition/side effect + quest condition
+    on the shared Tier 1 registries. Called by the `npc_memory` feature manifest
+    when enabled (no longer a module-level import side effect). Idempotent."""
+    dialogue_conditions.get_registry().register(
+        "npc_remembers", _npc_remembers_satisfied
+    )
+    side_effects.get_registry().register("remember", _handle_remember)
+    quest_conditions.get_registry().register("npc_remembers", _quest_npc_remembers)

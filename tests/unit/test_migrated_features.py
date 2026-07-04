@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from lorecraft.state import AppState
 
 # Feature keys expected to be live on the manifest path.
-MIGRATED_KEYS = ["reputation", "economy", "bank"]
+MIGRATED_KEYS = ["reputation", "economy", "bank", "npc_memory"]
 
 
 @pytest.mark.parametrize("key", MIGRATED_KEYS)
