@@ -2,7 +2,7 @@ import pytest
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
-from lorecraft.models.economy import Shop, ShopStock
+from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.items import ItemStack
 from lorecraft.models.world import Exit, Item, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
@@ -127,6 +127,49 @@ npcs:
         assert [s.item_id for s in document.npcs[0].shop.stock] == ["salt_sack"]
 
 
+def test_world_loader_imports_regional_pricing(tmp_path) -> None:
+    source = tmp_path / "world.yaml"
+    source.write_text(
+        """
+rooms:
+  - id: coastal_market
+    name: Coastal Market
+    description: Salt air and gulls.
+    map_x: 0
+    map_y: 0
+    area_id: coast
+items:
+  - id: salt_sack
+    name: Sack of Salt
+    description: Coarse and grey.
+    value: 20
+    tradeable: true
+economy:
+  regions:
+    - area_id: coast
+      region_mult: 0.8
+      bias: { salt_sack: 0.5 }
+""",
+        encoding="utf-8",
+    )
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        load_world_yaml(source, session)
+        session.commit()
+
+        region = session.get(RegionPricing, "coast")
+        assert region is not None
+        assert region.region_mult == 0.8
+        assert region.bias == {"salt_sack": 0.5}
+
+        document = export_world_document(session)
+        assert document.economy is not None
+        assert document.economy.regions[0].area_id == "coast"
+        assert document.economy.regions[0].bias == {"salt_sack": 0.5}
+
+
 def test_world_validator_rejects_missing_exit_target() -> None:
     with pytest.raises(WorldValidationError, match="missing room square"):
         validate_world_document(
@@ -141,5 +184,24 @@ def test_world_validator_rejects_missing_exit_target() -> None:
                         "exits": [{"direction": "east", "target_room_id": "square"}],
                     }
                 ]
+            }
+        )
+
+
+def test_world_validator_rejects_region_with_missing_area_id() -> None:
+    with pytest.raises(WorldValidationError, match="missing area_id"):
+        validate_world_document(
+            {
+                "rooms": [
+                    {
+                        "id": "tavern",
+                        "name": "Tavern",
+                        "description": "A warm room.",
+                        "map_x": 0,
+                        "map_y": 0,
+                        "area_id": "town",
+                    }
+                ],
+                "economy": {"regions": [{"area_id": "highlands"}]},
             }
         )

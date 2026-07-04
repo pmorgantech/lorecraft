@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.economy import Shop, ShopStock
+from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 
 
 class EconomyRepo:
@@ -29,3 +29,17 @@ class EconomyRepo:
 
     def save(self, stock: ShopStock) -> None:
         self.session.add(stock)
+
+    def region_for_area(self, area_id: str | None) -> RegionPricing | None:
+        if area_id is None:
+            return None
+        return self.session.get(RegionPricing, area_id)
+
+    def all_restockable_stock(self) -> list[ShopStock]:
+        """Every ShopStock row with a restock schedule -- services/restock.py's sweep."""
+        statement = (
+            select(ShopStock)
+            .where(ShopStock.restock_every_ticks > 0)
+            .order_by(ShopStock.id)  # type: ignore[arg-type]
+        )
+        return list(self.session.exec(statement).all())

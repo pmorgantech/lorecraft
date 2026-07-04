@@ -380,12 +380,13 @@ npcs:
       name: "Saltmarsh General Store"
       buys_categories: [trade_good, food]  # what the shop will buy FROM players
       sell_ratio: 0.5                       # fraction of buy price paid when buying from players
+      region_mult: 1.0                      # per-shop adjustment ON TOP of its area's region_mult
       starting_coins: 300                   # the shop's cash on hand; it can run dry
       stock:
         - item_id: salt_sack
-          quantity: 40        # finite; -1 = unlimited (never runs out, no restock needed)
-          restock_to: 40       # Sprint 28.2: target quantity on restock
-          restock_every_ticks: 720
+          quantity: 40         # finite; -1 = unlimited (never runs out, no restock needed)
+          restock_to: 40        # target quantity a restock jumps to
+          restock_every_ticks: 720  # world-clock ticks between restocks; 0 = never restocks
         - item_id: ferry_token
           quantity: -1
 ```
@@ -395,7 +396,34 @@ Commands: `list`/`shop` (show stock and prices), `buy <item> [qty]`, `sell <item
 `appraise <item>` (any carried or nearby item, shop or not — shows an estimated value).
 `bartering` skill and reputation with the vendor both shave a capped discount off buy
 prices. A shop's cash is real and finite — sell too much in one place and it runs dry
-until it restocks (Sprint 28.2); sold items are consumed, not held as physical stock.
+until it restocks; sold items are consumed, not held as physical stock. Stock with a
+`restock_every_ticks` runs dry-then-refills on its own schedule (a background sweep,
+independent of anyone visiting); `quantity: -1` opts an item out of restocking entirely
+since it never runs out.
+
+### Regional pricing
+
+An optional top-level `economy.regions` block gives each room's `area_id` a price
+multiplier and per-item bias, so the same good costs different amounts in different
+places — the core of the buy-low/sell-high loop:
+
+```yaml
+economy:
+  regions:
+    - area_id: coast
+      region_mult: 1.0
+      bias: { salt_sack: 0.6, furs: 1.4 }   # cheap salt, dear furs, on the coast
+    - area_id: highlands
+      region_mult: 1.1
+      bias: { salt_sack: 1.5, furs: 0.7 }   # the reverse inland
+```
+
+Effective price = `value × quality_mult × area's region_mult × shop's region_mult ×
+item's bias × demand_mult × discounts`. Demand rises as a shop's stock depletes and
+falls as it's flooded (bounded, so prices never run away) — dumping goods on one town
+tanks the local price, rewarding players who spread sales across the network. A room
+whose area has no `economy.regions` entry (or a world with no `economy:` block at all)
+just uses a neutral 1.0 multiplier.
 
 ### Containers
 

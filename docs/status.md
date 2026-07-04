@@ -99,9 +99,14 @@ The architecture overview remains the design reference; this file is the working
 > coin/item movement is one `LedgerService.execute_exchange` call, with sold items
 > `destroy()`ed rather than held as physical shop stock. `list`/`shop`, `buy`, `sell`,
 > `appraise` commands; Mira the innkeeper runs a working shop in the starter world.
-> Regional pricing/restocking (28.2), banks (28.3), and player-to-player trade (28.4)
-> continue next, then transit (29) and quests/puzzles (30); combat/PvP (Sprints 31–35)
-> are deferred per direction.
+> **Sprint 28.2 (regional pricing & restocking) is now complete**: a new `RegionPricing`
+> table (world YAML `economy.regions`) contributes an area-wide `region_mult` + per-item
+> `bias` on top of a shop's own `region_mult`; a demand multiplier reads current stock
+> against `restock_to` (depleted costs more, flooded costs less, bounded); a new
+> scheduler-driven `RestockService` (same shape as `LightFuelService`) restocks each
+> `ShopStock` row on its own `restock_every_ticks` schedule, independent of anyone
+> visiting. Banks (28.3) and player-to-player trade (28.4) continue next, then transit
+> (29) and quests/puzzles (30); combat/PvP (Sprints 31–35) are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

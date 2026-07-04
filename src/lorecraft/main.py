@@ -63,6 +63,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService
 from lorecraft.services.light_fuel import LightFuelService
+from lorecraft.services.restock import RestockService
 from lorecraft.services.mobile_route import MobileRouteService
 from lorecraft.services.save import SessionSafetyService
 from lorecraft.state import AppState
@@ -172,6 +173,8 @@ def create_app(
         mobile_route_service.register(bus)
         light_fuel_service = LightFuelService(resolved_game_engine)
         light_fuel_service.register(bus)
+        restock_service = RestockService(resolved_game_engine)
+        restock_service.register(bus)
         services = ServiceContainer.build()
         services.quest.register(bus)
         services.fatigue.register(bus)

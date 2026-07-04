@@ -10,7 +10,7 @@ import yaml
 
 from lorecraft.game.holders import Location
 from lorecraft.models.dialogue import DialogueTree
-from lorecraft.models.economy import Shop, ShopStock
+from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.items import ItemStack
 from lorecraft.models.quest import Quest
 from lorecraft.models.world import Exit, Item, NPC, Room
@@ -22,12 +22,14 @@ from lorecraft.world.validator import (
     DialogueChoiceData,
     DialogueNodeData,
     DialogueTreeData,
+    EconomyConfigData,
     ExitData,
     ItemData,
     NpcData,
     NpcScheduleEntryData,
     QuestData,
     QuestStageData,
+    RegionPricingData,
     RoomData,
     RoomItemData,
     ShopData,
@@ -160,6 +162,20 @@ def import_world(document: WorldDocument, session: Session) -> None:
         )
         if npc.shop is not None:
             _import_shop(session, npc.id, npc.shop)
+
+    if document.economy is not None:
+        _import_economy(session, document.economy)
+
+
+def _import_economy(session: Session, economy: EconomyConfigData) -> None:
+    for region in economy.regions:
+        session.merge(
+            RegionPricing(
+                area_id=region.area_id,
+                region_mult=region.region_mult,
+                bias=cast(JsonObject, region.bias),
+            )
+        )
 
 
 def _import_shop(session: Session, npc_id: str, shop: ShopData) -> None:
@@ -348,6 +364,22 @@ def export_world_document(session: Session) -> WorldDocument:
         for quest in session.exec(select(Quest)).all()
     ]
 
+    regions = session.exec(select(RegionPricing)).all()
+    economy = (
+        EconomyConfigData(
+            regions=[
+                RegionPricingData(
+                    area_id=region.area_id,
+                    region_mult=region.region_mult,
+                    bias=cast(dict[str, float], region.bias),
+                )
+                for region in regions
+            ]
+        )
+        if regions
+        else None
+    )
+
     return WorldDocument(
         rooms=room_data,
         items=item_data,
@@ -355,4 +387,5 @@ def export_world_document(session: Session) -> WorldDocument:
         npcs=npc_data,
         dialogue_trees=dialogue_tree_data,
         quests=quest_data,
+        economy=economy,
     )

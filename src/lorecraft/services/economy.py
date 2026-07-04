@@ -1,14 +1,21 @@
-"""Vendor shop economy: pricing, buy/sell/list/appraise (Sprint 28.1).
+"""Vendor shop economy: pricing, buy/sell/list/appraise (Sprint 28.1-28.2).
 
 See docs/trade_economy.md. Prices are derived at runtime, never stored,
 matching the engine's derived-stat convention (engine_core.md §3.5). Every
 coin/item movement goes through LedgerService.execute_exchange -- this
 service never mutates a CoinBalance or ItemStack directly.
 
-Regional pricing/demand (trade_economy.md §5-6) are Sprint 28.2's job --
-`region_mult` is read from the Shop row but demand_mult is always 1.0 here.
+Regional pricing (§5): a room's area has an optional `RegionPricing` (world
+YAML `economy.regions`) contributing an area-wide `region_mult` and a
+per-item `bias` multiplier; `Shop.region_mult` is a further per-shop
+adjustment on top (not a full override). Demand (§6): `_demand_mult` reads
+current stock against `restock_to` -- depleted stock costs more, flooded
+stock costs less, bounded to [DEMAND_MULT_MIN, DEMAND_MULT_MAX]. Restocking
+itself is services/restock.py's scheduler-driven sweep.
+
 `appraise` is not skill-gated in this cut (the doc's own §13 leaves this an
-open question); it shows the item's derived value outright.
+open question); it shows the item's derived base value outright, without
+region/demand/discount adjustments (a rough, shop-independent estimate).
 """
 
 from __future__ import annotations
@@ -18,7 +25,7 @@ from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
 from lorecraft.game.grammar import score_match
 from lorecraft.game.holders import Location
-from lorecraft.models.economy import Shop
+from lorecraft.models.economy import Shop, ShopStock
 from lorecraft.models.world import Item, NPC
 from lorecraft.repos.economy_repo import EconomyRepo
 from lorecraft.services.inventory import parse_item_target
@@ -39,6 +46,9 @@ BARTER_DISCOUNT_PER_LEVEL = 0.0025
 REP_DISCOUNT_CAP = 0.25
 REP_DISCOUNT_PER_STANDING = 0.0025
 MATCH_THRESHOLD = 0.5
+
+DEMAND_MULT_MIN = 0.5
+DEMAND_MULT_MAX = 1.5
 
 
 class EconomyService:
@@ -83,12 +93,52 @@ class EconomyService:
         )
         return min(REP_DISCOUNT_CAP, max(0, standing) * REP_DISCOUNT_PER_STANDING)
 
-    def buy_price(self, ctx: GameContext, shop: Shop, npc_id: str, item: Item) -> int:
+    def _region_mult_and_bias(
+        self, ctx: GameContext, item_id: str
+    ) -> tuple[float, float]:
+        region = EconomyRepo(ctx.session).region_for_area(ctx.room.area_id)
+        if region is None:
+            return 1.0, 1.0
+        bias = region.bias.get(item_id, 1.0)
+        bias_mult = bias if isinstance(bias, (int, float)) else 1.0
+        return region.region_mult, float(bias_mult)
+
+    def _demand_mult(self, stock: ShopStock | None) -> float:
+        """Depleted stock costs more, flooded stock costs less (§6); a shop
+        with no restock target (restock_to <= 0) or unlimited stock (-1)
+        tracks no scarcity."""
+        if stock is None or stock.quantity < 0 or stock.restock_to <= 0:
+            return 1.0
+        ratio = stock.quantity / stock.restock_to
+        return max(DEMAND_MULT_MIN, min(DEMAND_MULT_MAX, 2.0 - ratio))
+
+    def buy_price(
+        self,
+        ctx: GameContext,
+        shop: Shop,
+        npc_id: str,
+        item: Item,
+        *,
+        stock: ShopStock | None = None,
+    ) -> int:
         quality_mult = QUALITY_MULTIPLIERS.get(item.quality, 1.0)
+        region_mult, bias_mult = self._region_mult_and_bias(ctx, item.id)
+        demand_mult = self._demand_mult(stock)
         discount = (1 - self._barter_discount(ctx)) * (
             1 - self._rep_discount(ctx, npc_id)
         )
-        return max(0, round(item.value * quality_mult * shop.region_mult * discount))
+        return max(
+            0,
+            round(
+                item.value
+                * quality_mult
+                * region_mult
+                * shop.region_mult
+                * bias_mult
+                * demand_mult
+                * discount
+            ),
+        )
 
     def sell_price(self, shop: Shop, buy_price_value: int) -> int:
         return max(0, round(buy_price_value * shop.sell_ratio))
@@ -114,7 +164,7 @@ class EconomyService:
             item = ctx.item_repo.get(stock.item_id)
             if item is None:
                 continue
-            price = self.buy_price(ctx, shop, npc.id, item)
+            price = self.buy_price(ctx, shop, npc.id, item, stock=stock)
             qty_label = "unlimited" if stock.quantity < 0 else str(stock.quantity)
             lines.append(f"  {item.name} -- {price} coins ({qty_label} in stock)")
         ctx.say("\n".join(lines))
@@ -150,7 +200,7 @@ class EconomyService:
             ctx.say(f"{shop.name} doesn't have {quantity} of that.")
             return
 
-        price_each = self.buy_price(ctx, shop, npc.id, item)
+        price_each = self.buy_price(ctx, shop, npc.id, item, stock=stock)
         total_price = price_each * quantity
         if self.ledger.balance_of(ctx.session, "player", ctx.player.id) < total_price:
             ctx.say(f"You can't afford that ({total_price} coins).")
@@ -221,7 +271,10 @@ class EconomyService:
             if s.item_id == item.id
         )
         quantity = min(target.quantity, stack.quantity)
-        price_each = self.sell_price(shop, self.buy_price(ctx, shop, npc.id, item))
+        existing_stock = EconomyRepo(ctx.session).find_stock(shop.id, item.id)
+        price_each = self.sell_price(
+            shop, self.buy_price(ctx, shop, npc.id, item, stock=existing_stock)
+        )
         total_price = price_each * quantity
 
         if self.ledger.balance_of(ctx.session, "shop", shop.id) < total_price:
@@ -244,8 +297,6 @@ class EconomyService:
         )
         ctx.item_location.destroy(stack.id, quantity)
 
-        repo = EconomyRepo(ctx.session)
-        existing_stock = repo.find_stock(shop.id, item.id)
         if existing_stock is not None and existing_stock.quantity >= 0:
             existing_stock.quantity += quantity
             ctx.session.add(existing_stock)

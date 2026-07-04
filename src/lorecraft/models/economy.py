@@ -11,6 +11,8 @@ from __future__ import annotations
 from sqlalchemy import Column, JSON
 from sqlmodel import Field, SQLModel
 
+from lorecraft.types import JsonObject
+
 
 class Shop(SQLModel, table=True):
     id: str = Field(primary_key=True)
@@ -18,6 +20,9 @@ class Shop(SQLModel, table=True):
     name: str
     buys_categories: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     sell_ratio: float = 0.5
+    # A per-shop adjustment ON TOP of its area's RegionPricing.region_mult
+    # (Sprint 28.2) -- effective region_mult = area default * this. Defaults
+    # to 1.0 (no shop-specific adjustment).
     region_mult: float = 1.0
 
 
@@ -28,3 +33,15 @@ class ShopStock(SQLModel, table=True):
     quantity: int = 0  # -1 = unlimited
     restock_to: int = 0
     restock_every_ticks: int = 0
+    # Runtime-only counter (not authored) driving services/restock.py's sweep.
+    ticks_since_restock: int = 0
+
+
+class RegionPricing(SQLModel, table=True):
+    """Per-area price multiplier + per-good bias (Sprint 28.2, trade_economy.md §5)."""
+
+    area_id: str = Field(primary_key=True)
+    region_mult: float = 1.0
+    bias: JsonObject = Field(
+        default_factory=dict, sa_column=Column(JSON)
+    )  # item_id -> mult

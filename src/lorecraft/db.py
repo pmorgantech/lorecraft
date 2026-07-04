@@ -20,7 +20,7 @@ from lorecraft.models.changeset import (
 )
 from lorecraft.models.combat import CombatSession
 from lorecraft.models.dialogue import DialogueTree
-from lorecraft.models.economy import Shop, ShopStock
+from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.issue import Issue
 from lorecraft.models.items import ItemInstance, ItemStack
 from lorecraft.models.ledger import CoinBalance
@@ -79,6 +79,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     Reputation,
     Shop,
     ShopStock,
+    RegionPricing,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.10.1] - 2026-07-04
+
+### Added
+
+- **Sprint 28.2: Regional pricing & restocking** — New `RegionPricing` table (world YAML top-level `economy.regions`) contributes an area-wide `region_mult` and a per-item `bias` multiplier on top of a shop's own `region_mult` — the same good costs different amounts in different places, and specific goods can be cheap/dear per area regardless of the area default. `EconomyService._demand_mult()` reads a `ShopStock` row's current quantity against its `restock_to` target: depleted stock costs more, flooded stock (e.g. from players selling heavily into one shop) costs less, bounded to `[0.5, 1.5]` so prices never run away. New `services/restock.py`'s `RestockService` (scheduler-driven, same engine-holding shape as `LightFuelService`) counts `TIME_ADVANCED` ticks per stock row and jumps `quantity` to `restock_to` once `restock_every_ticks` elapses, independent of anyone visiting the shop. `world_content/world.yaml` now prices goods higher in the `wilderness`/`cave` areas than in `town`. 12 new unit tests (`test_economy.py`) + a world-loader region import/export round-trip test + a validator-rejection test.
+
 ## [0.10.0] - 2026-07-04
 
 ### Summary

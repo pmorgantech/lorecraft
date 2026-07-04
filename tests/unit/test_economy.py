@@ -14,13 +14,13 @@ from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
 from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
+from lorecraft.game.events import Event, EventBus, GameEvent
 from lorecraft.game.holders import Location
 from lorecraft.game.registry import CommandRegistry
 from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
-from lorecraft.models.economy import Shop, ShopStock
+from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.repos.economy_repo import EconomyRepo
 from lorecraft.models.world import Item, NPC, Room
 from lorecraft.models.player import Player, PlayerStats
@@ -35,6 +35,7 @@ from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
+from lorecraft.services.restock import RestockService
 
 ROOM_ID = "market"
 SHOP_ID = "shop:shopkeep"
@@ -42,7 +43,16 @@ NPC_ID = "shopkeep"
 
 
 def _seed(session: Session) -> None:
-    session.add(Room(id=ROOM_ID, name="Market", description="d", map_x=0, map_y=0))
+    session.add(
+        Room(
+            id=ROOM_ID,
+            name="Market",
+            description="d",
+            map_x=0,
+            map_y=0,
+            area_id="market_district",
+        )
+    )
     session.add(
         NPC(
             id=NPC_ID,
@@ -361,3 +371,154 @@ class TestAppraise:
         cmd_engine.handle_command("appraise unicorn", ctx)
 
         assert any("don't see" in m for m in ctx.messages)
+
+
+class TestRegionalPricing:
+    def test_region_mult_scales_price(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        session.add(RegionPricing(area_id="market_district", region_mult=1.5))
+        session.commit()
+
+        service = EconomyService()
+        shop = session.get(Shop, SHOP_ID)
+        salt = session.get(Item, "salt_sack")
+        assert shop is not None and salt is not None
+
+        assert service.buy_price(ctx, shop, NPC_ID, salt) == 30  # 20 * 1.5
+
+    def test_per_item_bias_scales_price(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        session.add(
+            RegionPricing(
+                area_id="market_district", region_mult=1.0, bias={"salt_sack": 0.5}
+            )
+        )
+        session.commit()
+
+        service = EconomyService()
+        shop = session.get(Shop, SHOP_ID)
+        salt = session.get(Item, "salt_sack")
+        gem = session.get(Item, "gem")
+        assert shop is not None and salt is not None and gem is not None
+
+        assert service.buy_price(ctx, shop, NPC_ID, salt) == 10  # 20 * 0.5 bias
+        assert service.buy_price(ctx, shop, NPC_ID, gem) == 250  # unbiased, unchanged
+
+    def test_no_region_pricing_row_defaults_neutral(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        service = EconomyService()
+        shop = session.get(Shop, SHOP_ID)
+        salt = session.get(Item, "salt_sack")
+        assert shop is not None and salt is not None
+
+        assert service.buy_price(ctx, shop, NPC_ID, salt) == 20
+
+
+class TestDemandPricing:
+    def test_depleted_stock_costs_more(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        stock = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock is not None
+        stock.restock_to = 10
+        stock.quantity = 0  # fully depleted
+        session.add(stock)
+        session.commit()
+
+        service = EconomyService()
+        shop = session.get(Shop, SHOP_ID)
+        salt = session.get(Item, "salt_sack")
+        assert shop is not None and salt is not None
+
+        # ratio 0 -> demand_mult = min(2.0, 1.5 cap) = 1.5
+        assert service.buy_price(ctx, shop, NPC_ID, salt, stock=stock) == 30
+
+    def test_flooded_stock_costs_less(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        stock = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock is not None
+        stock.restock_to = 10
+        stock.quantity = 20  # double the target -> flooded
+        session.add(stock)
+        session.commit()
+
+        service = EconomyService()
+        shop = session.get(Shop, SHOP_ID)
+        salt = session.get(Item, "salt_sack")
+        assert shop is not None and salt is not None
+
+        # ratio 2.0 -> demand_mult = max(2.0 - 2.0, 0.5 floor) = 0.5
+        assert service.buy_price(ctx, shop, NPC_ID, salt, stock=stock) == 10
+
+    def test_unlimited_stock_has_no_demand_adjustment(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        stock = EconomyRepo(session).find_stock(SHOP_ID, "gem")
+        assert stock is not None and stock.quantity == -1
+
+        service = EconomyService()
+        shop = session.get(Shop, SHOP_ID)
+        gem = session.get(Item, "gem")
+        assert shop is not None and gem is not None
+
+        assert service.buy_price(ctx, shop, NPC_ID, gem, stock=stock) == 250
+
+
+class TestRestock:
+    def test_restock_triggers_after_configured_ticks(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        stock = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock is not None
+        stock.quantity = 0
+        stock.restock_to = 5
+        stock.restock_every_ticks = 3
+        session.add(stock)
+        session.commit()
+
+        service = RestockService(session.get_bind())
+        bus = EventBus()
+        service.register(bus)
+        event = Event(GameEvent.TIME_ADVANCED, {"current_epoch": 0.0})
+
+        bus.emit(event, ctx=None)
+        bus.emit(event, ctx=None)
+        # RestockService opens its own session per sweep; the long-lived
+        # fixture session must expire its cached row to see those commits
+        # (same pattern as test_meters.py's regen-sweep tests).
+        session.expire_all()
+        stock_mid = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock_mid is not None and stock_mid.quantity == 0  # not yet due
+
+        bus.emit(event, ctx=None)
+        session.expire_all()
+        stock_after = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock_after is not None and stock_after.quantity == 5
+        assert stock_after.ticks_since_restock == 0
+
+    def test_stock_without_restock_schedule_is_untouched(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        stock = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock is not None
+        assert stock.restock_every_ticks == 0
+
+        service = RestockService(session.get_bind())
+        bus = EventBus()
+        service.register(bus)
+        bus.emit(Event(GameEvent.TIME_ADVANCED, {"current_epoch": 0.0}), ctx=None)
+
+        stock_after = EconomyRepo(session).find_stock(SHOP_ID, "salt_sack")
+        assert stock_after is not None and stock_after.quantity == 2  # unchanged

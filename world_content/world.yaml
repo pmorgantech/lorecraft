@@ -949,6 +949,15 @@ npcs:
         - item_id: dried_herbs
           quantity: -1
 
+economy:
+  regions:
+    - area_id: town
+      region_mult: 1.0
+    - area_id: wilderness
+      region_mult: 1.15
+    - area_id: cave
+      region_mult: 1.25
+
 quests:
   - id: investigate_lights
     title: Lights in the Square
