@@ -82,7 +82,10 @@ class EffectService:
         del ctx
         current_epoch = float(event.payload.get("current_epoch", 0.0))  # type: ignore[arg-type]
 
-        expired: list[ActiveEffect] = []
+        # Capture plain values, not the ORM ActiveEffect rows: session.commit()
+        # expires every attribute by default, and a deleted+expired row can't
+        # be refreshed from a closed session.
+        expired: list[tuple[str, str, str]] = []
         with Session(self._game_engine) as session:
             statement = select(ActiveEffect).where(
                 ActiveEffect.expires_at_epoch.is_not(None),  # type: ignore[union-attr]
@@ -90,7 +93,9 @@ class EffectService:
             )
             due = list(session.exec(statement).all())
             for effect in due:
-                expired.append(effect)
+                expired.append(
+                    (effect.entity_type, effect.entity_id, effect.effect_key)
+                )
                 session.delete(effect)
             session.commit()
 
@@ -99,14 +104,14 @@ class EffectService:
         event_ctx = SchedulerEventContext(
             game_engine=self._game_engine, bus=self._bus, rng=self._rng
         )
-        for effect in expired:
+        for entity_type, entity_id, effect_key in expired:
             self._bus.emit(
                 Event(
                     GameEvent.EFFECT_EXPIRED,
                     {
-                        "entity_type": effect.entity_type,
-                        "entity_id": effect.entity_id,
-                        "effect_key": effect.effect_key,
+                        "entity_type": entity_type,
+                        "entity_id": entity_id,
+                        "effect_key": effect_key,
                     },
                 ),
                 event_ctx,

@@ -107,7 +107,10 @@ class MeterService:
         del event, ctx  # regen is per-tick, not epoch-scaled
 
         registry = meters_module.get_registry()
-        crossings: list[tuple[Meter, bool, bool]] = []
+        # Capture plain values, not the ORM Meter rows: session.commit() expires
+        # every attribute by default, and accessing them after the `with` block
+        # closes the session raises (can't refresh from a closed session).
+        crossings: list[tuple[str, str, str, bool, bool]] = []
 
         with Session(self._game_engine) as session:
             repo = MeterRepo(session)
@@ -126,7 +129,9 @@ class MeterService:
                     repo.save(meter)
                     crossings.append(
                         (
-                            meter,
+                            meter.entity_type,
+                            meter.entity_id,
+                            meter.key,
                             previous <= 0 and new_current > 0,
                             previous > 0 and new_current <= 0,
                         )
@@ -138,15 +143,15 @@ class MeterService:
         event_ctx = SchedulerEventContext(
             game_engine=self._game_engine, bus=self._bus, rng=self._rng
         )
-        for meter, recovered, depleted in crossings:
+        for entity_type, entity_id, key, recovered, depleted in crossings:
             if recovered:
                 self._bus.emit(
                     Event(
                         GameEvent.METER_RECOVERED,
                         {
-                            "entity_type": meter.entity_type,
-                            "entity_id": meter.entity_id,
-                            "key": meter.key,
+                            "entity_type": entity_type,
+                            "entity_id": entity_id,
+                            "key": key,
                         },
                     ),
                     event_ctx,
@@ -156,9 +161,9 @@ class MeterService:
                     Event(
                         GameEvent.METER_DEPLETED,
                         {
-                            "entity_type": meter.entity_type,
-                            "entity_id": meter.entity_id,
-                            "key": meter.key,
+                            "entity_type": entity_type,
+                            "entity_id": entity_id,
+                            "key": key,
                         },
                     ),
                     event_ctx,
