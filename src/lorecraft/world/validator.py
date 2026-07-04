@@ -99,6 +99,12 @@ class ShopData(BaseModel):
     stock: list[ShopStockData] = Field(default_factory=list)
 
 
+class BankBranchData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+
+
 class NpcData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -113,6 +119,7 @@ class NpcData(BaseModel):
     schedule: list[NpcScheduleEntryData] = Field(default_factory=list)
     loot_table: dict[str, object] = Field(default_factory=dict)
     shop: ShopData | None = None
+    bank: BankBranchData | None = None
 
 
 class DialogueChoiceData(BaseModel):

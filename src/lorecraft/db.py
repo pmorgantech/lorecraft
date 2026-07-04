@@ -12,6 +12,7 @@ from sqlmodel import SQLModel, create_engine
 from lorecraft.config import Settings, load_settings
 from lorecraft.models.admin import AdminUser
 from lorecraft.models.audit import AuditEvent
+from lorecraft.models.bank import Bank, BankAccount
 from lorecraft.models.changeset import (
     Changeset,
     ChangesetItem,
@@ -80,6 +81,8 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     Shop,
     ShopStock,
     RegionPricing,
+    Bank,
+    BankAccount,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

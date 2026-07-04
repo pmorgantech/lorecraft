@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.10.2] - 2026-07-04
+
+### Added
+
+- **Sprint 28.3: Banks** — New `Bank` model (an NPC marker, like `Shop`) and `BankAccount` (identity/ownership only — the balance lives on the ledger as `CoinBalance("bank_account", account.id)`, a new holder type registered in `game/bank_holders.py`). `services/bank.py`'s `BankService` backs three new commands (`commands/bank.py`): `deposit <amount>`/`withdraw <amount>` (each one `LedgerService.execute_exchange` leg, gated on standing in a bank branch's room) and `balance` (shows carried + banked, works anywhere — you always know your own money). `BankRepo.get_or_create_account()` lazily creates the single per-player account on first use; **one logical account, many branches** — deposit in one room's branch, withdraw in another's, since banking code only ever keys off the account id, never the room. Mira's inn now also runs a strongbox (`world_content/world.yaml`). Banked money is immune to death/robbery by construction: that code only ever touches the `("player", id)` holder, never `("bank_account", ...)`. 8 new unit tests (`test_bank.py`) + a world-loader round-trip test.
+
 ## [0.10.1] - 2026-07-04
 
 ### Added

@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 import yaml
 
 from lorecraft.game.holders import Location
+from lorecraft.models.bank import Bank
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.items import ItemStack
@@ -19,6 +20,7 @@ from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import (
+    BankBranchData,
     DialogueChoiceData,
     DialogueNodeData,
     DialogueTreeData,
@@ -162,9 +164,21 @@ def import_world(document: WorldDocument, session: Session) -> None:
         )
         if npc.shop is not None:
             _import_shop(session, npc.id, npc.shop)
+        if npc.bank is not None:
+            _import_bank(session, npc.id, npc.bank)
 
     if document.economy is not None:
         _import_economy(session, document.economy)
+
+
+def _import_bank(session: Session, npc_id: str, bank: BankBranchData) -> None:
+    session.merge(
+        Bank(
+            id=f"bank:{npc_id}",
+            npc_id=npc_id,
+            name=bank.name,
+        )
+    )
 
 
 def _import_economy(session: Session, economy: EconomyConfigData) -> None:
@@ -238,6 +252,13 @@ def _export_shop(session: Session, npc_id: str) -> ShopData | None:
             for entry in stock
         ],
     )
+
+
+def _export_bank(session: Session, npc_id: str) -> BankBranchData | None:
+    bank = session.exec(select(Bank).where(Bank.npc_id == npc_id)).first()
+    if bank is None:
+        return None
+    return BankBranchData(name=bank.name)
 
 
 def export_world_document(session: Session) -> WorldDocument:
@@ -329,6 +350,7 @@ def export_world_document(session: Session) -> WorldDocument:
             ],
             loot_table=cast(dict[str, object], npc.loot_table),
             shop=_export_shop(session, npc.id),
+            bank=_export_bank(session, npc.id),
         )
         for npc in session.exec(select(NPC)).all()
     ]

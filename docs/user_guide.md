@@ -182,7 +182,21 @@ appraise gem    — estimate what an item is worth in coins
 Some NPCs run a shop — `list` in their room to see what's for sale. Shops only buy
 certain kinds of goods, won't take anything soulbound, and have real (finite) cash — sell
 too much in one place and they'll run dry. The `bartering` skill and your standing with
-the vendor both shave a little off the price over time.
+the vendor both shave a little off the price over time. Prices also vary by place —
+the same goods can cost more or less depending on where you are, so it pays to know the
+routes.
+
+## Banking
+
+```
+deposit 50      — deposit carried coins at a bank branch
+withdraw 20     — withdraw banked coins at a bank branch
+balance         — show coins carried and banked (works anywhere)
+```
+
+Banked coins are safe — they're a separate account from what you're carrying, so they
+survive things that carried coins don't. Deposit at one branch, withdraw at another;
+it's the same account everywhere.
 
 ## Talking to NPCs & Quests
 
@@ -269,6 +283,9 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `buy <item> [qty]` | | Purchase an item from a room's shop |
 | `sell <item> [qty]` | | Sell a carried item to a room's shop |
 | `appraise <item>` | | Estimate an item's coin value |
+| `deposit <amount>` | | Deposit carried coins at a bank branch |
+| `withdraw <amount>` | | Withdraw banked coins at a bank branch |
+| `balance` | | Show coins carried and banked |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |

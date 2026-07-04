@@ -105,8 +105,12 @@ The architecture overview remains the design reference; this file is the working
 > against `restock_to` (depleted costs more, flooded costs less, bounded); a new
 > scheduler-driven `RestockService` (same shape as `LightFuelService`) restocks each
 > `ShopStock` row on its own `restock_every_ticks` schedule, independent of anyone
-> visiting. Banks (28.3) and player-to-player trade (28.4) continue next, then transit
-> (29) and quests/puzzles (30); combat/PvP (Sprints 31–35) are deferred per direction.
+> visiting. **Sprint 28.3 (banks) is now complete**: a new `Bank` NPC marker + `BankAccount`
+> (identity only — the balance is `CoinBalance("bank_account", account.id)`, a new ledger
+> holder type) back `deposit`/`withdraw` (gated on standing in a branch's room) and
+> `balance` (works anywhere). One logical account, many branches — deposit at one, withdraw
+> at another. Player-to-player trade (28.4) continues next, then transit (29) and
+> quests/puzzles (30); combat/PvP (Sprints 31–35) are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

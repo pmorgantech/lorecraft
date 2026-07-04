@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from lorecraft.npc.dialogue import DialogueService
+from lorecraft.services.bank import BankService
 from lorecraft.services.character_info import CharacterInfoService
 from lorecraft.services.economy import EconomyService
 from lorecraft.services.exploration import ExplorationService
@@ -35,6 +36,7 @@ class ServiceContainer:
     journal: JournalService = field(default_factory=JournalService)
     fatigue: FatigueService = field(default_factory=FatigueService)
     economy: EconomyService = field(default_factory=EconomyService)
+    bank: BankService = field(default_factory=BankService)
 
     @classmethod
     def build(cls) -> ServiceContainer:

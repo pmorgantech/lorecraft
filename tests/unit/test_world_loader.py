@@ -2,6 +2,7 @@ import pytest
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
+from lorecraft.models.bank import Bank
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.items import ItemStack
 from lorecraft.models.world import Exit, Item, Room
@@ -125,6 +126,41 @@ npcs:
         assert document.npcs[0].shop is not None
         assert document.npcs[0].shop.starting_coins == 300
         assert [s.item_id for s in document.npcs[0].shop.stock] == ["salt_sack"]
+
+
+def test_world_loader_imports_npc_bank_branch(tmp_path) -> None:
+    source = tmp_path / "world.yaml"
+    source.write_text(
+        """
+rooms:
+  - id: tavern
+    name: Tavern
+    description: A warm room.
+    map_x: 0
+    map_y: 0
+npcs:
+  - id: teller
+    name: Teller
+    description: Counts coins.
+    home_room_id: tavern
+    bank:
+      name: "Saltmarsh Bank"
+""",
+        encoding="utf-8",
+    )
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        load_world_yaml(source, session)
+        session.commit()
+
+        bank = session.exec(select(Bank).where(Bank.npc_id == "teller")).first()
+        assert bank is not None and bank.name == "Saltmarsh Bank"
+
+        document = export_world_document(session)
+        assert document.npcs[0].bank is not None
+        assert document.npcs[0].bank.name == "Saltmarsh Bank"
 
 
 def test_world_loader_imports_regional_pricing(tmp_path) -> None:

@@ -948,6 +948,8 @@ npcs:
           quantity: 15
         - item_id: dried_herbs
           quantity: -1
+    bank:
+      name: The Wandering Crow's Strongbox
 
 economy:
   regions:

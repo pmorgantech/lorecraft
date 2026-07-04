@@ -1,5 +1,6 @@
 """Command registration helpers."""
 
+from lorecraft.commands.bank import register_bank_commands
 from lorecraft.commands.character import register_character_commands
 from lorecraft.commands.condition import register_condition_commands
 from lorecraft.commands.economy import register_economy_commands
@@ -33,3 +34,4 @@ def register_all_commands(
     register_exploration_commands(registry, services.exploration, services.journal)
     register_condition_commands(registry, services.fatigue)
     register_economy_commands(registry, services.economy)
+    register_bank_commands(registry, services.bank)

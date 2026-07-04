@@ -425,6 +425,28 @@ tanks the local price, rewarding players who spread sales across the network. A 
 whose area has no `economy.regions` entry (or a world with no `economy:` block at all)
 just uses a neutral 1.0 multiplier.
 
+### Banks
+
+An NPC becomes a bank branch by adding a `bank` block — just a name, no stock or
+pricing:
+
+```yaml
+npcs:
+  - id: teller_maren
+    name: Maren
+    description: A careful bookkeeper.
+    home_room_id: saltmarsh_bank
+    bank:
+      name: "Saltmarsh Bank"
+```
+
+Commands: `deposit <amount>` and `withdraw <amount>` only work in a branch's room;
+`balance` (carried + banked) works anywhere. Banked money is a separate ledger holder
+from carried money — safe from death and robbery, since that code only ever touches
+what a player is carrying. **One logical account, many branches**: deposit at one
+branch, withdraw at another — the whole point of banks as travel/trade infrastructure,
+not just a vault.
+
 ### Containers
 
 Setting `capacity` makes an item a container: it must be `open`ed before anything can be

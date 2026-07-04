@@ -58,6 +58,8 @@ class GameEvent(StrEnum):
     ITEM_UNEQUIPPED = "item_unequipped"
     ITEM_PURCHASED = "item_purchased"
     ITEM_SOLD = "item_sold"
+    MONEY_DEPOSITED = "money_deposited"
+    MONEY_WITHDRAWN = "money_withdrawn"
 
 
 WORK_EVENTS = {
