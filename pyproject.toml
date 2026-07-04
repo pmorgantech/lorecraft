@@ -1,6 +1,6 @@
 [project]
 name = "lorecraft"
-version = "0.8.0"
+version = "0.8.1"
 description = "Persistent multiplayer text adventure engine."
 requires-python = ">=3.12"
 dependencies = [
@@ -17,7 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["basedpyright", "pytest", "pytest-cov", "ruff", "httpx", "websockets"]
 admin-tui = ["textual>=0.80.0"]
-e2e = ["playwright>=1.47.0"]
+e2e = ["playwright>=1.47.0", "pytest"]
 
 [tool.setuptools.package-data]
 lorecraft = ["web/*", "web/admin/*"]
@@ -39,8 +39,6 @@ include = ["src"]
 exclude = ["src/lorecraft/admin/tui"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
-venvPath = "."
-venv = ".venv"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

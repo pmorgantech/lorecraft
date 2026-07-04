@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.8.1] - 2026-07-04
+
+### Fixed
+
+- **CI: basedpyright venv configuration** — Removed hardcoded `.venv` path that caused CI to fail with "venv .venv subdirectory not found"; basedpyright now auto-detects the Python interpreter, working in both local dev and CI environments.
+- **CI: e2e test dependency** — Added `pytest` to the `e2e` optional dependency group so browser tests can run without manually installing dev extras.
+
 ## [0.8.0] - 2026-07-04
 
 ### Summary
