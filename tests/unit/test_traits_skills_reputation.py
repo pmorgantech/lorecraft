@@ -8,8 +8,8 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.reputation_conditions  # noqa: F401 -- registration side effects
 import lorecraft.game.standard_traits  # noqa: F401 -- registration side effects
+from lorecraft.game.reputation_conditions import register as _register_reputation
 import lorecraft.game.traits as traits_module
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
@@ -36,6 +36,11 @@ from lorecraft.services.meters import MeterService
 from lorecraft.services.reputation import ReputationService
 from lorecraft.services.skills import SkillService
 from lorecraft.services.traits import TraitService
+
+# Reputation conditions used to register as an import side effect; they now
+# register via the reputation feature's register(). Call it once for this
+# module's tests (idempotent — safe if another module also registered).
+_register_reputation()
 
 ROOM_ID = "room-1"
 

@@ -57,7 +57,6 @@ import lorecraft.game.equipment_source  # noqa: F401 -- import for registration 
 import lorecraft.game.equipment_validators  # noqa: F401 -- import for registration side effects (player equip-slot move validator)
 import lorecraft.game.container_validators  # noqa: F401 -- import for registration side effects (container open/capacity/nesting move validator)
 import lorecraft.game.standard_traits  # noqa: F401 -- import for registration side effects (standard boon/bane traits + innate TraitSource)
-import lorecraft.game.reputation_conditions  # noqa: F401 -- import for registration side effects (reputation_at_least / min_reputation conditions)
 import lorecraft.npc.npc_memory_conditions  # noqa: F401 -- import for registration side effects (npc_remembers dialogue/quest condition + remember side effect)
 from lorecraft.game.item_rules import register_item_rules
 from lorecraft.models.admin import AdminUser

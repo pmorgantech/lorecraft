@@ -22,10 +22,15 @@ if TYPE_CHECKING:
 
 @pytest.fixture(autouse=True)
 def _clean_registry():
-    """Each test starts and ends with an empty global feature registry."""
+    """Give each test an empty global feature registry, then restore whatever
+    was there. Restore matters because real feature packages (e.g. reputation)
+    self-register on import; a bare clear would wipe them for sibling tests
+    sharing this worker process."""
+    saved = dict(FEATURE_REGISTRY)
     clear_registry()
     yield
     clear_registry()
+    FEATURE_REGISTRY.update(saved)
 
 
 def test_register_and_get_roundtrip() -> None:

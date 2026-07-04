@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.6] - 2026-07-04
+
+### Changed
+
+- **Tier split — reputation migrated to a feature manifest (step 4, branch `tier_split`).** First real feature moved onto the config-driven path: `lorecraft.game.reputation_conditions` now exposes a `register()` function instead of registering its conditions/side effect as an import side effect, and a new `lorecraft/features/reputation/` package wraps it in a `FeatureManifest`. The `import lorecraft.game.reputation_conditions  # noqa` line is gone from `main.py`; reputation is now discovered, enabled by default (or via `LORECRAFT_FEATURES`), and genuinely disableable. Two tests that relied on the old import side effect now call `register()` explicitly. Full suite 765 passed. 4 new tests (`test_reputation_feature.py`) cover discovery, default-on, disable, and wiring.
+
 ## [0.14.5] - 2026-07-04
 
 ### Added

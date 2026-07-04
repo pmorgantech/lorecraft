@@ -5,7 +5,6 @@ from __future__ import annotations
 
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.reputation_conditions  # noqa: F401 -- registration side effects (adjust_reputation)
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.game.context import GameContext
@@ -27,8 +26,13 @@ from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.game.rng import GameRng
 from lorecraft.services.meters import MeterService
+from lorecraft.game.reputation_conditions import register as _register_reputation
 from lorecraft.services.quest import QuestService
 from lorecraft.services.reputation import ReputationService
+
+# The `adjust_reputation` side effect used to register as an import side effect;
+# it now registers via the reputation feature's register(). Call it once here.
+_register_reputation()
 
 
 def _engine():

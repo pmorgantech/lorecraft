@@ -71,6 +71,19 @@ def _handle_adjust_reputation(data: JsonValue, ctx: "GameContext") -> None:
     _reputation.adjust(ctx.session, ctx.player.id, target_type, target_id, int(delta))
 
 
-command_conditions.get_registry().register("reputation_at_least", _reputation_at_least)
-dialogue_conditions.get_registry().register("min_reputation", _min_reputation_satisfied)
-side_effects.get_registry().register("adjust_reputation", _handle_adjust_reputation)
+def register() -> None:
+    """Register the reputation conditions + `adjust_reputation` side effect on
+    the shared Tier 1 registries.
+
+    Called by the `reputation` feature's manifest (`lorecraft/features/
+    reputation`) when the feature is enabled — no longer a module-level import
+    side effect, so disabling the feature actually leaves these unregistered.
+    Idempotent: re-registering the same names simply overwrites.
+    """
+    command_conditions.get_registry().register(
+        "reputation_at_least", _reputation_at_least
+    )
+    dialogue_conditions.get_registry().register(
+        "min_reputation", _min_reputation_satisfied
+    )
+    side_effects.get_registry().register("adjust_reputation", _handle_adjust_reputation)
