@@ -26,6 +26,9 @@ class ConnectionManager:
 
     async def disconnect(self, player_id: str) -> None:
         self._connections.pop(player_id, None)
+        room_id = self._player_rooms.pop(player_id, None)
+        if room_id is not None:
+            self._room_players[room_id].discard(player_id)
 
     async def send_to_player(self, player_id: str, message: JsonObject) -> None:
         ws = self._connections.get(player_id)

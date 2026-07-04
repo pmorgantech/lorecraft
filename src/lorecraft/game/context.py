@@ -66,6 +66,7 @@ class GameContext:
     news_repo: NewsRepo | None = None
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
+    arrival_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
     parsed_command: ParsedCommand | None = None
@@ -74,7 +75,17 @@ class GameContext:
         self.messages.append(text)
 
     def tell_room(self, text: str) -> None:
+        """Narrate to the room the actor is leaving (or the current room, if
+        the command doesn't move them) — see `tell_arrival` for the opposite
+        case of narrating to the room the actor is entering."""
         self.room_messages.append(text)
+
+    def tell_arrival(self, text: str) -> None:
+        """Narrate to the room the actor is entering (e.g. "X arrives from
+        the east."). Only meaningful for commands that move the player —
+        `broadcast_command_effects` always targets this at the post-command
+        room, regardless of whether the room changed."""
+        self.arrival_messages.append(text)
 
     def push_update(self, key: str, value: JsonValue) -> None:
         self.updates[key] = value

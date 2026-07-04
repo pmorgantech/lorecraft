@@ -35,11 +35,14 @@ async def broadcast_command_effects(
 
     `pre_room_id` is the actor's room before the command ran. If the command
     moved them, `ctx.room_messages` narration (e.g. "X leaves north.") goes
-    to the room they left, since that's where it's narratively visible; the
-    `state_change` nudge goes to the room they're in now (so clients there
-    refresh room/inventory/players panels), and — if the room changed — a
-    second `state_change` goes to the room they left too, so remaining
-    occupants there also refresh their `players-online` panel.
+    to the room they left, since that's where it's narratively visible;
+    `ctx.arrival_messages` narration (e.g. "X arrives from the south.") goes
+    to the room they're now in, so occupants there see the arrival in their
+    feed, not just a silent panel refresh. The `state_change` nudge goes to
+    the room they're in now (so clients there refresh room/inventory/players
+    panels), and — if the room changed — a second `state_change` goes to the
+    room they left too, so remaining occupants there also refresh their
+    `players-online` panel.
     """
     actor_id = ctx.player.id
     after_room_id = ctx.player.current_room_id
@@ -61,6 +64,22 @@ async def broadcast_command_effects(
             )
         except Exception as exc:
             log.debug("room_feed_broadcast_failed: %s", exc)
+
+    for arrival_msg in ctx.arrival_messages:
+        if not after_room_id:
+            continue
+        try:
+            await manager.broadcast_to_room(
+                after_room_id,
+                {
+                    "type": "feed_append",
+                    "content": str(arrival_msg),
+                    "message_type": "room_event",
+                },
+                exclude=actor_id,
+            )
+        except Exception as exc:
+            log.debug("arrival_feed_broadcast_failed: %s", exc)
 
     if after_room_id:
         try:

@@ -128,7 +128,17 @@ The architecture overview remains the design reference; this file is the working
 > (`leave`)/`schedule` (`timetable`) commands gate on live vehicle status, validate/
 > consume tickets, and move players between station and vehicle rooms. Sprint 29.3 (WS
 > push + minimap animation) and quests/puzzles (30) continue next; combat/PvP (Sprints
-> 31–35) are deferred per direction.
+> 31–35) are deferred per direction. **Player-visibility bug fixes (2026-07-04, v0.11.3):**
+> movement previously narrated a departure to the room a player left but nothing at all
+> to the room they arrived in — "THE CHRONICLE" showed "X leaves east." but never an
+> arrival. `GameContext` gained a second narration channel (`tell_arrival()`, distinct
+> from `tell_room()`) so `broadcast_command_effects()` can target the destination room
+> with its own message ("X arrives from the west."); wired into movement and transit
+> board/disembark. Also fixed `ConnectionManager.disconnect()` leaving stale room-tracking
+> entries behind. Separately, the WebUI's "CURRENT LOCATION" items list wasn't refreshing
+> after in-place actions like `get all` (only refreshed on room change), and the actor was
+> seeing both their own action message and the room's narration of it — both fixed in
+> `web/frontend.py`.
 
 ## Phase-to-Sprint Mapping
 

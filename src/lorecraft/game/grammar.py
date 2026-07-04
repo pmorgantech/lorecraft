@@ -80,6 +80,22 @@ DIRECTIONS = frozenset(
     }
 )
 
+# The direction an arriving player is said to have come FROM — i.e. the
+# reverse of the exit direction they took. Used for arrival narration
+# ("X arrives from the {opposite}.") in the destination room.
+OPPOSITE_DIRECTIONS = {
+    "north": "south",
+    "south": "north",
+    "east": "west",
+    "west": "east",
+    "up": "below",
+    "down": "above",
+    "northeast": "southwest",
+    "northwest": "southeast",
+    "southeast": "northwest",
+    "southwest": "northeast",
+}
+
 VERB_ALIASES = {
     "n": "move",
     "north": "move",

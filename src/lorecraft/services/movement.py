@@ -5,6 +5,7 @@ from __future__ import annotations
 from lorecraft.game import terrain as terrain_module
 from lorecraft.game.context import GameContext
 from lorecraft.game.events import GameEvent
+from lorecraft.game.grammar import OPPOSITE_DIRECTIONS
 from lorecraft.game.holders import Location
 from lorecraft.game.modifiers import resolve_for
 from lorecraft.game.parser import DIRECTION_ALIASES
@@ -109,6 +110,13 @@ class MovementService:
 
         ctx.say(f"You go {direction}.")
         ctx.tell_room(f"{ctx.player.username} leaves {direction}.")
+        arrival_from = OPPOSITE_DIRECTIONS.get(direction)
+        arrival_text = (
+            f"{ctx.player.username} arrives from the {arrival_from}."
+            if arrival_from
+            else f"{ctx.player.username} arrives."
+        )
+        ctx.tell_arrival(arrival_text)
         ctx.push_update("room_id", target_room.id)
         ctx.queue_event(
             GameEvent.PLAYER_MOVED,

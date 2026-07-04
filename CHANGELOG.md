@@ -2,6 +2,14 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.11.3] - 2026-07-04
+
+### Fixed
+
+- **Player visibility: missing arrival narration & stale connection tracking** — Movement (`services/movement.py`) only ever narrated a *departure* ("X leaves east.") to the room a player left; the room they arrived in got a silent panel-refresh nudge but no feed message at all, so "THE CHRONICLE" never showed arrivals. `GameContext` gains a second narration channel — `tell_arrival()`/`arrival_messages`, distinct from `tell_room()`/`room_messages` — and `broadcast_command_effects()` (`game/broadcast.py`) now sends it to the destination room ("X arrives from the west."), excluding the mover. Wired into `movement.py`'s `move()` (via a new `OPPOSITE_DIRECTIONS` map in `game/grammar.py`) and `transit.py`'s `board()`/`disembark()`. Also fixed `ConnectionManager.disconnect()` (`game/connection_manager.py`), which cleared the WS connection but never removed the player from its room-tracking dicts (`_player_rooms`/`_room_players`) — a stale-state leak that could misdirect `broadcast_to_room` targeting after a player disconnects. Updated the Sprint 12/14 multiplayer simulation test to assert the new arrival broadcast; 1 new/updated unit test assertion in `test_movement.py`.
+- **WebUI: room-items panel not refreshing after in-place item actions** — "CURRENT LOCATION"'s "You notice: ..." list only re-rendered when the player changed rooms (`room_changed`), so `get all`/`drop`/`use` left stale items showing in the pane even though `look` and the inventory panel were correct. `web/frontend.py`'s `POST /command` now also refreshes it whenever `ctx.room_messages` is non-empty (i.e. something narratable happened in the room), not just on movement.
+- **WebUI: actor saw both their own action message and the room's narration of it** — After e.g. `get all`, the feed showed both "You take X" (actor feedback) and "player_name takes X" (room narration meant for other players) to the same actor. Removed the loop in `POST /command` that appended `ctx.room_messages` to the actor's own feed response; `broadcast_command_effects()` already delivers that narration to *other* room occupants with the actor excluded. New e2e regression test (`tests/e2e/test_ui_refresh_on_item_actions.py`).
+
 ## [0.11.2] - 2026-07-04
 
 ### Changed

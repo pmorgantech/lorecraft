@@ -197,6 +197,7 @@ class TransitService:
         ctx.room = vehicle_room
         ctx.say(f"You board the {line.name}.")
         ctx.tell_room(f"{ctx.player.username} boards the {line.name}.")
+        ctx.tell_arrival(f"{ctx.player.username} boards from the platform.")
         ctx.push_update("room_id", vehicle_room.id)
         ctx.queue_event(
             GameEvent.TRANSIT_BOARDED,
@@ -233,6 +234,7 @@ class TransitService:
         ctx.room = station
         ctx.say(f"You disembark from the {line.name}.")
         ctx.tell_room(f"{ctx.player.username} disembarks from the {line.name}.")
+        ctx.tell_arrival(f"{ctx.player.username} disembarks from the {line.name}.")
         ctx.push_update("room_id", station.id)
         ctx.queue_event(
             GameEvent.TRANSIT_DISEMBARKED,

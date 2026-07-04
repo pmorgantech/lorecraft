@@ -63,7 +63,11 @@ def test_command_room_messages_broadcast_to_other_ws_players(
     """Sprint 14 closed a gap Sprint 12 surfaced: the raw `/ws` command loop
     now re-broadcasts a command's `ctx.room_messages` (and a `state_change`
     nudge) to other WS-connected room occupants, the same way `POST /command`
-    already did — one shared `broadcast_command_effects()` step for both."""
+    already did — one shared `broadcast_command_effects()` step for both.
+    Bug fix (2026-07-04): movement also broadcasts an arrival narration
+    (`ctx.arrival_messages`) to the destination room, not just a departure
+    narration to the room left — previously arrivals were completely silent
+    (only a panel-refresh nudge, no feed message)."""
     asyncio.run(_test_command_room_broadcast(simulation_server))
 
 
@@ -85,9 +89,14 @@ async def _test_command_room_broadcast(server: SimulationServer) -> None:
         assert state_change_left["actor_id"] == alice.player_id
         assert "players-online" in state_change_left["affected_panels"]
 
-        # Moving back into bob's room: now the state_change nudge (always
-        # sent to the destination room) reaches him.
+        # Moving back into bob's room: an arrival narration ("X arrives from
+        # the east.") now reaches him, followed by the state_change nudge
+        # (always sent to the destination room).
         await alice.send_command("go west")
+        feed_arrival = await bob.wait_for_broadcast("feed_append", timeout=5)
+        assert feed_arrival["message_type"] == "room_event"
+        assert "arrives" in str(feed_arrival["content"]).lower()
+
         state_change = await bob.wait_for_broadcast("state_change", timeout=5)
         assert state_change["actor_id"] == alice.player_id
         assert "room-description" in state_change["affected_panels"]

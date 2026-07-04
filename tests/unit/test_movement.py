@@ -46,6 +46,7 @@ def test_movement_service_moves_player_and_queues_event() -> None:
 
     assert ctx.messages == ["You go east."]
     assert ctx.room_messages == ["petem leaves east."]
+    assert ctx.arrival_messages == ["petem arrives from the west."]
     assert ctx.updates == {"room_id": "square"}
     assert manager.players_in_room("square") == ["player-1"]
     assert persisted.current_room_id == "square"
