@@ -56,6 +56,8 @@ class GameEvent(StrEnum):
     EFFECT_REMOVED = "effect_removed"
     ITEM_EQUIPPED = "item_equipped"
     ITEM_UNEQUIPPED = "item_unequipped"
+    ITEM_PURCHASED = "item_purchased"
+    ITEM_SOLD = "item_sold"
 
 
 WORK_EVENTS = {

@@ -66,6 +66,12 @@ class Item(SQLModel, table=True):
     effects: list[JsonObject] = Field(
         default_factory=list, sa_column=Column(JSON)
     )  # effect descriptors (registry-driven)
+    value: int = (
+        0  # base coin value; shop prices derive from value * quality (Sprint 28)
+    )
+    category: str | None = (
+        None  # trade category (food, supplies, trade_good, ...); gates Shop.buys_categories
+    )
 
 
 class WorldMeta(SQLModel, table=True):

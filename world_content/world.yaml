@@ -420,6 +420,8 @@ items:
       the shape of a crow mid-flight. It smells of ale and the years.
     takeable: true
     tradeable: true
+    value: 8
+    category: trade_good
 
   - id: tallow_candle
     name: Tallow Candle
@@ -429,6 +431,8 @@ items:
       would expect.
     takeable: true
     tradeable: true
+    value: 4
+    category: trade_good
 
   - id: old_blanket
     name: Moth-Eaten Wool Blanket
@@ -494,6 +498,8 @@ items:
       pick them themselves.
     takeable: true
     tradeable: true
+    value: 12
+    category: trade_good
 
   - id: copper_coin
     name: Worn Copper Coin
@@ -930,6 +936,18 @@ npcs:
     current_room_id: wandering_crow_inn
     dialogue_tree_id: innkeeper_dialogue
     behavior: defensive
+    shop:
+      name: The Wandering Crow's Counter
+      buys_categories: [trade_good]
+      sell_ratio: 0.5
+      starting_coins: 300
+      stock:
+        - item_id: carved_mug
+          quantity: 8
+        - item_id: tallow_candle
+          quantity: 15
+        - item_id: dried_herbs
+          quantity: -1
 
 quests:
   - id: investigate_lights

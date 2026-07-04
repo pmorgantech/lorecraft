@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.10.0] - 2026-07-04
+
+### Summary
+
+**Sprint 28.1 — Currency & vendor shops.** NPCs can now run a shop: `list`/`buy`/`sell`/
+`appraise` against runtime-derived prices, backed by the Sprint 20 ledger's atomic
+exchange. 650 focused tests passing; basedpyright 0 errors; ruff clean.
+
+### Added
+
+- **Sprint 28.1: Currency & vendor shops** — New `Shop`/`ShopStock` tables (`models/economy.py`) attached to an NPC via a world YAML `shop:` block; a shop's cash is `CoinBalance("shop", shop.id)` (new `"shop"` ledger/item holder type, `game/economy_holders.py`), seeded once at world import via `LedgerService.credit` (idempotent — re-importing the same world file does not double-credit). New `Item.value`/`Item.category` fields. `services/economy.py`'s `EconomyService` derives `buy_price = value × quality_mult × region_mult × (1 - barter_discount) × (1 - rep_discount)` and `sell_price = buy_price × sell_ratio` at runtime, never stored — `bartering` skill and vendor reputation each shave a capped discount off the price. Every coin/item movement is one `LedgerService.execute_exchange` call (Sprint 20); sold items are `destroy()`ed rather than held as physical shop stock, since `ShopStock.quantity` is listing state only, materialized as a real `ItemStack` only on purchase. New commands (`commands/economy.py`): `list`/`shop` (stock + prices), `buy <item> [qty]`, `sell <item> [qty]` (gated on `tradeable`, not `bound`, and the shop's `buys_categories`), `appraise <item>` (not skill-gated in this cut — shows the derived value outright). Mira the innkeeper runs a working shop (`world_content/world.yaml`) selling mugs/candles/dried herbs. 15 new unit tests (`test_economy.py`) + a world-loader import/export/reimport round-trip test.
+
 ## [0.9.1] - 2026-07-04
 
 ### Added

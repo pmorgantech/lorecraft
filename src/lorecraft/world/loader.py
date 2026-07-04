@@ -10,10 +10,13 @@ import yaml
 
 from lorecraft.game.holders import Location
 from lorecraft.models.dialogue import DialogueTree
+from lorecraft.models.economy import Shop, ShopStock
 from lorecraft.models.items import ItemStack
 from lorecraft.models.quest import Quest
 from lorecraft.models.world import Exit, Item, NPC, Room
+from lorecraft.repos.ledger_repo import LedgerRepo
 from lorecraft.services.item_location import ItemLocationService
+from lorecraft.services.ledger import LedgerService
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import (
     DialogueChoiceData,
@@ -27,6 +30,8 @@ from lorecraft.world.validator import (
     QuestStageData,
     RoomData,
     RoomItemData,
+    ShopData,
+    ShopStockData,
     WorldDocument,
     validate_world_document,
 )
@@ -81,6 +86,8 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 light=item.light,
                 capacity=item.capacity,
                 effects=cast(list[JsonObject], item.effects),
+                value=item.value,
+                category=item.category,
             )
         )
 
@@ -151,6 +158,70 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 loot_table=cast(JsonObject, npc.loot_table),
             )
         )
+        if npc.shop is not None:
+            _import_shop(session, npc.id, npc.shop)
+
+
+def _import_shop(session: Session, npc_id: str, shop: ShopData) -> None:
+    shop_id = f"shop:{npc_id}"
+    is_new_shop = LedgerRepo(session).find("shop", shop_id) is None
+    session.merge(
+        Shop(
+            id=shop_id,
+            npc_id=npc_id,
+            name=shop.name,
+            buys_categories=shop.buys_categories,
+            sell_ratio=shop.sell_ratio,
+            region_mult=shop.region_mult,
+        )
+    )
+    session.flush()
+    if is_new_shop:
+        LedgerService().credit(session, "shop", shop_id, shop.starting_coins)
+    for entry in shop.stock:
+        existing = session.exec(
+            select(ShopStock).where(
+                ShopStock.shop_id == shop_id, ShopStock.item_id == entry.item_id
+            )
+        ).first()
+        if existing is not None:
+            existing.quantity = entry.quantity
+            existing.restock_to = entry.restock_to
+            existing.restock_every_ticks = entry.restock_every_ticks
+            session.add(existing)
+        else:
+            session.add(
+                ShopStock(
+                    shop_id=shop_id,
+                    item_id=entry.item_id,
+                    quantity=entry.quantity,
+                    restock_to=entry.restock_to,
+                    restock_every_ticks=entry.restock_every_ticks,
+                )
+            )
+
+
+def _export_shop(session: Session, npc_id: str) -> ShopData | None:
+    shop = session.exec(select(Shop).where(Shop.npc_id == npc_id)).first()
+    if shop is None:
+        return None
+    stock = session.exec(select(ShopStock).where(ShopStock.shop_id == shop.id)).all()
+    return ShopData(
+        name=shop.name,
+        buys_categories=list(shop.buys_categories),
+        sell_ratio=shop.sell_ratio,
+        region_mult=shop.region_mult,
+        starting_coins=LedgerService().balance_of(session, "shop", shop.id),
+        stock=[
+            ShopStockData(
+                item_id=entry.item_id,
+                quantity=entry.quantity,
+                restock_to=entry.restock_to,
+                restock_every_ticks=entry.restock_every_ticks,
+            )
+            for entry in stock
+        ],
+    )
 
 
 def export_world_document(session: Session) -> WorldDocument:
@@ -210,6 +281,8 @@ def export_world_document(session: Session) -> WorldDocument:
             light=item.light,
             capacity=item.capacity,
             effects=cast(list[dict[str, object]], item.effects),
+            value=item.value,
+            category=item.category,
         )
         for item in session.exec(select(Item)).all()
     ]
@@ -239,6 +312,7 @@ def export_world_document(session: Session) -> WorldDocument:
                 NpcScheduleEntryData.model_validate(entry) for entry in npc.schedule
             ],
             loot_table=cast(dict[str, object], npc.loot_table),
+            shop=_export_shop(session, npc.id),
         )
         for npc in session.exec(select(NPC)).all()
     ]

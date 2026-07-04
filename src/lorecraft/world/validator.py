@@ -60,6 +60,8 @@ class ItemData(BaseModel):
     light: int = 0
     capacity: float | None = None
     effects: list[dict[str, object]] = Field(default_factory=list)
+    value: int = 0
+    category: str | None = None
 
 
 class RoomItemData(BaseModel):
@@ -77,6 +79,26 @@ class NpcScheduleEntryData(BaseModel):
     target_room_id: str
 
 
+class ShopStockData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: str
+    quantity: int = 0  # -1 = unlimited
+    restock_to: int = 0
+    restock_every_ticks: int = 0
+
+
+class ShopData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    buys_categories: list[str] = Field(default_factory=list)
+    sell_ratio: float = 0.5
+    region_mult: float = 1.0
+    starting_coins: int = 500
+    stock: list[ShopStockData] = Field(default_factory=list)
+
+
 class NpcData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -90,6 +112,7 @@ class NpcData(BaseModel):
     max_hp: int = 50
     schedule: list[NpcScheduleEntryData] = Field(default_factory=list)
     loot_table: dict[str, object] = Field(default_factory=dict)
+    shop: ShopData | None = None
 
 
 class DialogueChoiceData(BaseModel):
@@ -213,6 +236,12 @@ def validate_world_document(data: object) -> WorldDocument:
                 errors.append(
                     f"npc {npc.id} schedule references missing room {entry.target_room_id}"
                 )
+        if npc.shop is not None:
+            for stock in npc.shop.stock:
+                if stock.item_id not in item_ids:
+                    errors.append(
+                        f"npc {npc.id} shop stock references missing item {stock.item_id}"
+                    )
 
     if errors:
         raise WorldValidationError("; ".join(errors))

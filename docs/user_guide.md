@@ -170,6 +170,20 @@ effects, and some are permanent (background or earned through play). Skills impr
 more you use them ("learn by doing") — there's no way to train them directly. Reputation
 with an NPC or faction can unlock better prices, new dialogue, or additional quests.
 
+## Trading
+
+```
+list            — show a room's shop stock and prices (also: shop)
+buy sack        — purchase 1 (or: buy 3 sack — purchase 3)
+sell mug        — sell a carried item to the shop here
+appraise gem    — estimate what an item is worth in coins
+```
+
+Some NPCs run a shop — `list` in their room to see what's for sale. Shops only buy
+certain kinds of goods, won't take anything soulbound, and have real (finite) cash — sell
+too much in one place and they'll run dry. The `bartering` skill and your standing with
+the vendor both shave a little off the price over time.
+
 ## Talking to NPCs & Quests
 
 ```
@@ -251,6 +265,10 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `rest` | | Catch your breath and recover a little stamina |
 | `camp` | | Make camp and recover a good deal of stamina |
 | `sleep` | | Sleep deeply and recover all your stamina |
+| `list` | `shop` | Show a room's shop stock and prices |
+| `buy <item> [qty]` | | Purchase an item from a room's shop |
+| `sell <item> [qty]` | | Sell a carried item to a room's shop |
+| `appraise <item>` | | Estimate an item's coin value |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |

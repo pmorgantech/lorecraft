@@ -312,6 +312,8 @@ items:
 | `light` | integer | | Light emitted while equipped and lit (default: 0) |
 | `capacity` | float | | Makes the item a container holding up to this much weight |
 | `effects` | array | | Effect descriptors — see Effects below |
+| `value` | integer | | Base coin value; shop prices derive from `value × quality` (default: 0 — see Shops below) |
+| `category` | string | | Trade category (e.g. `trade_good`, `food`); gates whether a shop's `buys_categories` will buy it |
 
 ### Equipment Slots
 
@@ -362,6 +364,38 @@ runtime — equipment bonuses are resolved live, never stored on the player:
   effects:
     - { type: carry_bonus, amount: 40 }
 ```
+
+### Shops
+
+An NPC becomes a vendor by adding a `shop` block. Prices are derived at runtime from each
+item's `value × quality` (never stored) and shown to players via `list`/`shop`:
+
+```yaml
+npcs:
+  - id: shopkeep_bram
+    name: Bram
+    description: A weathered trader.
+    home_room_id: general_store
+    shop:
+      name: "Saltmarsh General Store"
+      buys_categories: [trade_good, food]  # what the shop will buy FROM players
+      sell_ratio: 0.5                       # fraction of buy price paid when buying from players
+      starting_coins: 300                   # the shop's cash on hand; it can run dry
+      stock:
+        - item_id: salt_sack
+          quantity: 40        # finite; -1 = unlimited (never runs out, no restock needed)
+          restock_to: 40       # Sprint 28.2: target quantity on restock
+          restock_every_ticks: 720
+        - item_id: ferry_token
+          quantity: -1
+```
+
+Commands: `list`/`shop` (show stock and prices), `buy <item> [qty]`, `sell <item> [qty]`
+(only if `tradeable`, not `bound`, and `category` is in the shop's `buys_categories`),
+`appraise <item>` (any carried or nearby item, shop or not — shows an estimated value).
+`bartering` skill and reputation with the vendor both shave a capped discount off buy
+prices. A shop's cash is real and finite — sell too much in one place and it runs dry
+until it restocks (Sprint 28.2); sold items are consumed, not held as physical stock.
 
 ### Containers
 

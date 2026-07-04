@@ -1,0 +1,283 @@
+"""Vendor shop economy: pricing, buy/sell/list/appraise (Sprint 28.1).
+
+See docs/trade_economy.md. Prices are derived at runtime, never stored,
+matching the engine's derived-stat convention (engine_core.md §3.5). Every
+coin/item movement goes through LedgerService.execute_exchange -- this
+service never mutates a CoinBalance or ItemStack directly.
+
+Regional pricing/demand (trade_economy.md §5-6) are Sprint 28.2's job --
+`region_mult` is read from the Shop row but demand_mult is always 1.0 here.
+`appraise` is not skill-gated in this cut (the doc's own §13 leaves this an
+open question); it shows the item's derived value outright.
+"""
+
+from __future__ import annotations
+
+from lorecraft.errors import ConflictError
+from lorecraft.game.context import GameContext
+from lorecraft.game.events import GameEvent
+from lorecraft.game.grammar import score_match
+from lorecraft.game.holders import Location
+from lorecraft.models.economy import Shop
+from lorecraft.models.world import Item, NPC
+from lorecraft.repos.economy_repo import EconomyRepo
+from lorecraft.services.inventory import parse_item_target
+from lorecraft.services.ledger import ExchangeLeg, LedgerService
+from lorecraft.services.reputation import ReputationService
+from lorecraft.services.skills import SkillService
+
+QUALITY_MULTIPLIERS = {
+    "common": 1.0,
+    "fine": 1.3,
+    "superior": 1.7,
+    "rare": 2.5,
+    "legendary": 4.0,
+}
+
+BARTER_DISCOUNT_CAP = 0.25
+BARTER_DISCOUNT_PER_LEVEL = 0.0025
+REP_DISCOUNT_CAP = 0.25
+REP_DISCOUNT_PER_STANDING = 0.0025
+MATCH_THRESHOLD = 0.5
+
+
+class EconomyService:
+    def __init__(
+        self,
+        ledger: LedgerService | None = None,
+        skills: SkillService | None = None,
+        reputation: ReputationService | None = None,
+    ) -> None:
+        self.ledger = ledger or LedgerService()
+        self.skills = skills or SkillService()
+        self.reputation = reputation or ReputationService()
+
+    # -- shop/item lookup --------------------------------------------
+
+    def _shop_here(self, ctx: GameContext) -> tuple[Shop, NPC] | None:
+        repo = EconomyRepo(ctx.session)
+        for npc in ctx.npc_repo.in_room(ctx.room.id):
+            shop = repo.shop_for_npc(npc.id)
+            if shop is not None:
+                return shop, npc
+        return None
+
+    def _best_match(self, query: str, candidates: list[Item]) -> Item | None:
+        scored = [
+            (score_match(query, item.name, item.aliases), item) for item in candidates
+        ]
+        scored = [pair for pair in scored if pair[0] >= MATCH_THRESHOLD]
+        if not scored:
+            return None
+        return max(scored, key=lambda pair: pair[0])[1]
+
+    # -- pricing --------------------------------------------------
+
+    def _barter_discount(self, ctx: GameContext) -> float:
+        level = self.skills.get_level(ctx.session, ctx.player.id, "bartering")
+        return min(BARTER_DISCOUNT_CAP, level * BARTER_DISCOUNT_PER_LEVEL)
+
+    def _rep_discount(self, ctx: GameContext, npc_id: str) -> float:
+        standing = self.reputation.standing_of(
+            ctx.session, ctx.player.id, "npc", npc_id
+        )
+        return min(REP_DISCOUNT_CAP, max(0, standing) * REP_DISCOUNT_PER_STANDING)
+
+    def buy_price(self, ctx: GameContext, shop: Shop, npc_id: str, item: Item) -> int:
+        quality_mult = QUALITY_MULTIPLIERS.get(item.quality, 1.0)
+        discount = (1 - self._barter_discount(ctx)) * (
+            1 - self._rep_discount(ctx, npc_id)
+        )
+        return max(0, round(item.value * quality_mult * shop.region_mult * discount))
+
+    def sell_price(self, shop: Shop, buy_price_value: int) -> int:
+        return max(0, round(buy_price_value * shop.sell_ratio))
+
+    # -- commands --------------------------------------------------
+
+    def list_shop(self, ctx: GameContext) -> None:
+        found = self._shop_here(ctx)
+        if found is None:
+            ctx.say("There's no shop here.")
+            return
+        shop, npc = found
+        stock_rows = [
+            stock
+            for stock in EconomyRepo(ctx.session).stock_for_shop(shop.id)
+            if stock.quantity != 0
+        ]
+        if not stock_rows:
+            ctx.say(f"{shop.name} has nothing for sale right now.")
+            return
+        lines = [f"{shop.name}:"]
+        for stock in stock_rows:
+            item = ctx.item_repo.get(stock.item_id)
+            if item is None:
+                continue
+            price = self.buy_price(ctx, shop, npc.id, item)
+            qty_label = "unlimited" if stock.quantity < 0 else str(stock.quantity)
+            lines.append(f"  {item.name} -- {price} coins ({qty_label} in stock)")
+        ctx.say("\n".join(lines))
+
+    def buy(self, noun: str | None, ctx: GameContext) -> None:
+        if not noun:
+            ctx.say("Buy what?")
+            return
+        found = self._shop_here(ctx)
+        if found is None:
+            ctx.say("There's no shop here.")
+            return
+        shop, npc = found
+        target = parse_item_target(noun)
+
+        repo = EconomyRepo(ctx.session)
+        candidates: dict[str, Item] = {}
+        for stock in repo.stock_for_shop(shop.id):
+            if stock.quantity == 0:
+                continue
+            item = ctx.item_repo.get(stock.item_id)
+            if item is not None:
+                candidates[item.id] = item
+        item = self._best_match(target.query, list(candidates.values()))
+        if item is None:
+            ctx.say(f"{shop.name} doesn't have that.")
+            return
+        stock = repo.find_stock(shop.id, item.id)
+        assert stock is not None
+
+        quantity = target.quantity
+        if stock.quantity >= 0 and stock.quantity < quantity:
+            ctx.say(f"{shop.name} doesn't have {quantity} of that.")
+            return
+
+        price_each = self.buy_price(ctx, shop, npc.id, item)
+        total_price = price_each * quantity
+        if self.ledger.balance_of(ctx.session, "player", ctx.player.id) < total_price:
+            ctx.say(f"You can't afford that ({total_price} coins).")
+            return
+
+        try:
+            self.ledger.execute_exchange(
+                ctx.session,
+                [
+                    ExchangeLeg(
+                        give_from=Location("player", ctx.player.id),
+                        give_to=Location("shop", shop.id),
+                        coins=total_price,
+                    )
+                ],
+            )
+        except ConflictError:
+            ctx.say(f"You can't afford that ({total_price} coins).")
+            return
+
+        ctx.item_location.spawn(item.id, Location("player", ctx.player.id), quantity)
+        if stock.quantity >= 0:
+            stock.quantity -= quantity
+            ctx.session.add(stock)
+
+        label = item.name if quantity == 1 else f"{quantity} {item.name}"
+        ctx.say(f"You buy {label} for {total_price} coins.")
+        ctx.queue_event(
+            GameEvent.ITEM_PURCHASED,
+            player_id=ctx.player.id,
+            shop_id=shop.id,
+            item_id=item.id,
+            quantity=quantity,
+            price=total_price,
+        )
+
+    def sell(self, noun: str | None, ctx: GameContext) -> None:
+        if not noun:
+            ctx.say("Sell what?")
+            return
+        found = self._shop_here(ctx)
+        if found is None:
+            ctx.say("There's no shop here.")
+            return
+        shop, npc = found
+        target = parse_item_target(noun)
+
+        owned: dict[str, Item] = {}
+        for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+            item = ctx.item_repo.get(stack.item_id)
+            if item is not None:
+                owned[item.id] = item
+        item = self._best_match(target.query, list(owned.values()))
+        if item is None:
+            ctx.say("You don't have that.")
+            return
+
+        if not item.tradeable or item.bound:
+            ctx.say(f"{shop.name} won't buy that.")
+            return
+        if not shop.buys_categories or item.category not in shop.buys_categories:
+            ctx.say(f"{shop.name} isn't interested in that.")
+            return
+
+        stack = next(
+            s
+            for s in ctx.stack_repo.stacks_for_owner("player", ctx.player.id)
+            if s.item_id == item.id
+        )
+        quantity = min(target.quantity, stack.quantity)
+        price_each = self.sell_price(shop, self.buy_price(ctx, shop, npc.id, item))
+        total_price = price_each * quantity
+
+        if self.ledger.balance_of(ctx.session, "shop", shop.id) < total_price:
+            ctx.say(f"{shop.name} can't afford to buy that right now.")
+            return
+
+        assert stack.id is not None
+        # Sold items are destroyed, not held by the shop as real stock (trade_economy.md
+        # §4): ShopStock.quantity is an abstract counter, materialized as an ItemStack only
+        # when bought. Only the coin leg goes through execute_exchange.
+        self.ledger.execute_exchange(
+            ctx.session,
+            [
+                ExchangeLeg(
+                    give_from=Location("shop", shop.id),
+                    give_to=Location("player", ctx.player.id),
+                    coins=total_price,
+                ),
+            ],
+        )
+        ctx.item_location.destroy(stack.id, quantity)
+
+        repo = EconomyRepo(ctx.session)
+        existing_stock = repo.find_stock(shop.id, item.id)
+        if existing_stock is not None and existing_stock.quantity >= 0:
+            existing_stock.quantity += quantity
+            ctx.session.add(existing_stock)
+
+        label = item.name if quantity == 1 else f"{quantity} {item.name}"
+        ctx.say(f"You sell {label} for {total_price} coins.")
+        ctx.queue_event(
+            GameEvent.ITEM_SOLD,
+            player_id=ctx.player.id,
+            shop_id=shop.id,
+            item_id=item.id,
+            quantity=quantity,
+            price=total_price,
+        )
+
+    def appraise(self, noun: str | None, ctx: GameContext) -> None:
+        if not noun:
+            ctx.say("Appraise what?")
+            return
+        candidates: dict[str, Item] = {}
+        for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
+            item = ctx.item_repo.get(stack.item_id)
+            if item is not None:
+                candidates[item.id] = item
+        for _stack, item in ctx.item_repo.items_in_room(ctx.room.id):
+            candidates[item.id] = item
+        item = self._best_match(noun, list(candidates.values()))
+        if item is None:
+            ctx.say("You don't see that.")
+            return
+        quality_mult = QUALITY_MULTIPLIERS.get(item.quality, 1.0)
+        estimated = round(item.value * quality_mult)
+        ctx.say(
+            f"{item.name} ({item.quality}) looks to be worth around {estimated} coins."
+        )

@@ -91,8 +91,17 @@ The architecture overview remains the design reference; this file is the working
 > effect, giving worn clothing a non-combat purpose), failing into a shorter, partial,
 > dreamless "interrupted" rest. Dreams reference a random discovered `lore:` flag
 > (Sprint 25.3) when the player has one. Sprint 27 (character condition) is now
-> complete; the rest of the feature band (trading, transit, quests/puzzles) continues
-> next; combat/PvP (Sprints 31–35) are deferred per direction.
+> complete. **Sprint 28.1 (currency & vendor shops) is now complete**: `Shop`/`ShopStock`
+> tables attach to an NPC via a world YAML `shop:` block; a shop's cash is a ledger
+> holder (`CoinBalance("shop", shop.id)`, new "shop" holder type), seeded once at
+> import. `EconomyService` derives buy/sell prices at runtime from `value × quality ×
+> region_mult`, discounted (capped) by `bartering` skill and vendor reputation; every
+> coin/item movement is one `LedgerService.execute_exchange` call, with sold items
+> `destroy()`ed rather than held as physical shop stock. `list`/`shop`, `buy`, `sell`,
+> `appraise` commands; Mira the innkeeper runs a working shop in the starter world.
+> Regional pricing/restocking (28.2), banks (28.3), and player-to-player trade (28.4)
+> continue next, then transit (29) and quests/puzzles (30); combat/PvP (Sprints 31–35)
+> are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

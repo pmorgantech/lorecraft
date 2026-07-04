@@ -256,6 +256,30 @@ def check_room_terrain(document: WorldDocument) -> LintResult:
     return result
 
 
+def check_shop_pricing(document: WorldDocument) -> LintResult:
+    """Every shop-stocked item needs a `value` to derive a price from, and
+    must be `tradeable` (an untradeable item can never actually change
+    hands via buy/sell, whatever a shop's stock list claims)."""
+    result = LintResult()
+    items_by_id = {item.id: item for item in document.items}
+    for npc in document.npcs:
+        if npc.shop is None:
+            continue
+        for stock in npc.shop.stock:
+            item = items_by_id.get(stock.item_id)
+            if item is None:
+                continue  # already flagged by validate_world_document
+            if item.value <= 0:
+                result.errors.append(
+                    f"npc {npc.id!r} shop stocks item {item.id!r} with no `value` set"
+                )
+            if not item.tradeable:
+                result.errors.append(
+                    f"npc {npc.id!r} shop stocks item {item.id!r} which is not tradeable"
+                )
+    return result
+
+
 def run_all_checks(
     document: WorldDocument, *, start_room_id: str | None = None
 ) -> LintResult:
@@ -266,6 +290,7 @@ def run_all_checks(
     result.merge(check_item_quantity_warnings(document))
     result.merge(check_item_definition_fields(document))
     result.merge(check_room_terrain(document))
+    result.merge(check_shop_pricing(document))
     if start_room_id is not None:
         result.merge(check_room_reachability(document, start_room_id))
     return result

@@ -440,7 +440,7 @@ network. **See [`trade_economy.md`](trade_economy.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 28.1 | Currency model (carried `coins`); item `value` × `quality` pricing; NPC vendor shops (`buy`/`sell`/`list`), bartering skill + reputation flex price | [ ] |
+| 28.1 | Currency model (carried `coins`); item `value` × `quality` pricing; NPC vendor shops (`buy`/`sell`/`list`), bartering skill + reputation flex price | [x] New `Shop`/`ShopStock` tables (`models/economy.py`) attached to an NPC via world YAML `shop:` block; a shop's cash is `CoinBalance("shop", shop.id)` (new "shop" holder type, `game/economy_holders.py`), seeded once at import (idempotent re-import guard) via `LedgerService.credit`. `services/economy.py`'s `EconomyService` derives `buy_price = value × quality_mult × region_mult × (1 - barter_discount) × (1 - rep_discount)` and `sell_price = buy_price × sell_ratio` at runtime (never stored); every coin/item movement is one `LedgerService.execute_exchange` call (sold items are `destroy()`ed, not held as physical shop stock — `ShopStock.quantity` is listing state only). `list`/`shop`, `buy`, `sell`, `appraise` commands (`commands/economy.py`). Mira the innkeeper is a working shop in `world_content/world.yaml`. 15 new unit tests + a world-loader round-trip test. |
 | 28.2 | Regional price differences + per-good bias + finite stock restocking on the world clock (buy-low/sell-high loop) | [ ] |
 | 28.3 | Banks: `BankAccount`, `deposit`/`withdraw`/`balance` at branches, one account/many branches (safe from death & robbery) | [ ] |
 | 28.4 | Player-to-player `offer`/`accept` trade handshake (atomic escrow swap; multi-player transaction safety) | [ ] |
