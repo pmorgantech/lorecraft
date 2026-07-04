@@ -73,4 +73,16 @@ def _validate_container_move(
         )
 
 
-get_holder_registry().register_move_validator("container", _validate_container_move)
+_registered = False
+
+
+def register() -> None:
+    """Register the container move validator (open/capacity/nesting) on the
+    holder registry. Called by the `containers` feature manifest when enabled
+    (no longer a module-level import side effect). Idempotent (move validators
+    are appended per holder type, so a guard prevents double-registration)."""
+    global _registered
+    if _registered:
+        return
+    _registered = True
+    get_holder_registry().register_move_validator("container", _validate_container_move)

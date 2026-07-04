@@ -100,43 +100,48 @@ def _mechanism_validate(state: JsonValue) -> list[str]:
     return []
 
 
-get_registry().register(
-    ComponentDef(
-        name="durability",
-        applies_to=_durability_applies,
-        initial_state=_durability_initial,
-        validate=_durability_validate,
+def register() -> None:
+    """Register the standard item component defs (durability, openable, lit,
+    container, mechanism) on the shared component registry. Called by the
+    `item_components` feature manifest when enabled (no longer a module-level
+    import side effect). Idempotent."""
+    get_registry().register(
+        ComponentDef(
+            name="durability",
+            applies_to=_durability_applies,
+            initial_state=_durability_initial,
+            validate=_durability_validate,
+        )
     )
-)
-get_registry().register(
-    ComponentDef(
-        name="openable",
-        applies_to=_openable_applies,
-        initial_state=_openable_initial,
-        validate=_openable_validate,
+    get_registry().register(
+        ComponentDef(
+            name="openable",
+            applies_to=_openable_applies,
+            initial_state=_openable_initial,
+            validate=_openable_validate,
+        )
     )
-)
-get_registry().register(
-    ComponentDef(
-        name="lit",
-        applies_to=_lit_applies,
-        initial_state=_lit_initial,
-        validate=_lit_validate,
+    get_registry().register(
+        ComponentDef(
+            name="lit",
+            applies_to=_lit_applies,
+            initial_state=_lit_initial,
+            validate=_lit_validate,
+        )
     )
-)
-get_registry().register(
-    ComponentDef(
-        name="container",
-        applies_to=_container_applies,
-        initial_state=_container_initial,
-        validate=_container_validate,
+    get_registry().register(
+        ComponentDef(
+            name="container",
+            applies_to=_container_applies,
+            initial_state=_container_initial,
+            validate=_container_validate,
+        )
     )
-)
-get_registry().register(
-    ComponentDef(
-        name="mechanism",
-        applies_to=_mechanism_applies,
-        initial_state=_mechanism_initial,
-        validate=_mechanism_validate,
+    get_registry().register(
+        ComponentDef(
+            name="mechanism",
+            applies_to=_mechanism_applies,
+            initial_state=_mechanism_initial,
+            validate=_mechanism_validate,
+        )
     )
-)

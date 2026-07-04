@@ -13,6 +13,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 
 **Sequencing decision (2026-07-04):** we build the **additive foundation first** (feature manifest + loader, then the config-driven feature list), *before* the risky directory moves. Rationale: the manifest system is new code that breaks nothing and everything else composes on top of it, so it can land green and reviewable while the codebase still runs on the current layout. The `engine/`/`features/`/`webui/` moves (originally "Phase 1") then happen against a working manifest backbone. Each step below is its own commit; the suite stays green at every commit.
 
+**Migration note — `register()` must be idempotent (2026-07-04):** converting a module's import-time registration into a `register()` function means it can now be called more than once per process (each test file that needs it, plus app startup, sharing a pytest-xdist worker). Registries that store by **name/key** (holders, components, command/dialogue/quest conditions, side effects, meters) are naturally idempotent — re-registering overwrites. But registries that **append** (modifier sources, trait sources, holder move-validators) will double-register and silently double their effect (e.g. an equipment stat bonus applied twice). For those, guard `register()` with a module-level `_registered` flag. When migrating a feature, check whether its target registry appends or replaces.
+
 | # | Step | Phase | Status |
 |---|------|-------|--------|
 | 0 | Branch, doc rename, progress tracker, changelog | setup | ✅ |
@@ -20,8 +22,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 2 | `features/loader.py` — `discover_features` + `load_features` (dependency validation) + unit tests | 2 | ✅ |
 | 3 | Feature-config resolution (`LORECRAFT_FEATURES` env / `create_app` arg) + `discover`/`load`/`wire` in `create_app`, defaulting to "all on" (behavior-preserving) | 3 | ✅ |
 | 4 | Wrap **one** existing self-registering feature (`reputation`) in a manifest as a vertical slice, loaded via the new path | 2/3 | ✅ |
-| 5 | Migrate remaining Tier 2 self-registrations to manifests; delete side-effect imports from `main.py` | 3 | 🚧 |
-| 6 | `ServiceContainer` builds conditionally from enabled features | 3 | ⬜ |
+| 5 | Migrate remaining Tier 2 self-registrations to manifests; delete side-effect imports from `main.py` | 3 | ✅ |
+| 6 | `ServiceContainer` builds conditionally from enabled features | 3 | 🚧 |
 | 7 | Create `engine/` package; move Tier 1 modules; update imports (batched) | 1 | ⬜ |
 | 8 | Move Tier 2 modules into `features/<x>/` packages | 2 | ⬜ |
 | 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |

@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.14.9] - 2026-07-04
+
+### Changed
+
+- **Tier split — traits/equipment/fatigue/components/containers migrated to feature manifests (step 5c, branch `tier_split`).** The last seven self-registering modules (`traits`, `standard_traits`, `fatigue_source`, `standard_components`, `equipment_source`, `equipment_validators`, `container_validators`) now expose `register()` instead of registering at import, wrapped by new feature packages: `traits` (traits + standard_traits), `equipment` (depends on `traits`), `fatigue`, `item_components`, and `containers` (depends on `item_components`). **`main.py` now has zero feature side-effect imports** — all Tier 2 registration flows through the manifest/discover/wire path. Six test files updated to call `register()` explicitly.
+- **Idempotency guards for append-based registrations.** Because a `register()` can now run more than once per process (multiple test files + app startup sharing a worker), registrations that *append* to a list — modifier sources, trait sources, holder move-validators — gained a module-level `_registered` guard to prevent double-application (a bug that doubled equipment stat bonuses before the fix). Name/key registries (holders, components, conditions, side effects) are naturally idempotent and need no guard. Documented as a migration note in `tier_split_refactor.md`. Full suite 789 passed.
+
 ## [0.14.8] - 2026-07-04
 
 ### Changed

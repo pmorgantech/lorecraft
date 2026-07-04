@@ -14,12 +14,38 @@ from lorecraft.features.loader import (
     load_features,
     resolve_enabled_features,
 )
+from lorecraft.features.manifest import FeatureManifest
 
 if TYPE_CHECKING:
     from lorecraft.state import AppState
 
 # Feature keys expected to be live on the manifest path.
-MIGRATED_KEYS = ["reputation", "economy", "bank", "npc_memory"]
+MIGRATED_KEYS = [
+    "reputation",
+    "economy",
+    "bank",
+    "npc_memory",
+    "traits",
+    "equipment",
+    "fatigue",
+    "item_components",
+    "containers",
+]
+
+
+def _enabled_without(discovered: dict[str, FeatureManifest], key: str) -> list[str]:
+    """Enabled set with `key` and everything that transitively depends on it
+    removed — so the result is a valid (dependency-complete) enabled set that
+    genuinely excludes `key`."""
+    excluded = {key}
+    changed = True
+    while changed:
+        changed = False
+        for k, manifest in discovered.items():
+            if k not in excluded and any(d in excluded for d in manifest.dependencies):
+                excluded.add(k)
+                changed = True
+    return [k for k in discovered if k not in excluded]
 
 
 @pytest.mark.parametrize("key", MIGRATED_KEYS)
@@ -41,10 +67,9 @@ def test_all_migrated_enabled_by_default() -> None:
 @pytest.mark.parametrize("key", MIGRATED_KEYS)
 def test_feature_can_be_disabled(key: str) -> None:
     discovered = discover_features()
-    # Enable everything except `key`; it must not be loaded. (These features are
-    # independent — no enabled feature depends on the one being disabled.)
-    enabled = [k for k in discovered if k != key]
-    loaded = load_features(enabled, discovered)
+    # Enable everything except `key` (and its dependents, to keep the set valid);
+    # `key` must not be loaded.
+    loaded = load_features(_enabled_without(discovered, key), discovered)
     assert key not in loaded
 
 

@@ -110,5 +110,20 @@ class TraitModifierSource:
         return modifiers
 
 
-_registry.register_source(ActiveEffectTraitSource())
-modifiers_module.get_registry().register(TraitModifierSource())
+_registered = False
+
+
+def register() -> None:
+    """Register the trait system's modifier/condition sources (active-effect
+    trait source + trait modifier source). Called by the `traits` feature
+    manifest when enabled (no longer a module-level import side effect).
+    Idempotent (these sources are appended to a list, so a guard prevents
+    double-registration). Note the trait *registry* itself (get_registry) is a
+    Tier 1 primitive and always available; only these sources are feature-gated.
+    """
+    global _registered
+    if _registered:
+        return
+    _registered = True
+    _registry.register_source(ActiveEffectTraitSource())
+    modifiers_module.get_registry().register(TraitModifierSource())

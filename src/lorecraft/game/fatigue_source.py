@@ -68,7 +68,19 @@ class FatigueModifierSource:
         ]
 
 
-meters_module.get_registry().register(
-    MeterDef(key=FATIGUE_METER_KEY, base_maximum=fatigue_base_maximum)
-)
-modifiers_module.get_registry().register(FatigueModifierSource())
+_registered = False
+
+
+def register() -> None:
+    """Register the "fatigue" meter + its skill-check penalty modifier source.
+    Called by the `fatigue` feature manifest when enabled (no longer a
+    module-level import side effect). Idempotent (the modifier source is
+    appended to a list, so a guard prevents double-registration)."""
+    global _registered
+    if _registered:
+        return
+    _registered = True
+    meters_module.get_registry().register(
+        MeterDef(key=FATIGUE_METER_KEY, base_maximum=fatigue_base_maximum)
+    )
+    modifiers_module.get_registry().register(FatigueModifierSource())

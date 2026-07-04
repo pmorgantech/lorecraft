@@ -8,9 +8,6 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.container_validators  # noqa: F401 -- registration side effects
-import lorecraft.game.equipment_validators  # noqa: F401 -- registration side effects
-import lorecraft.game.standard_components  # noqa: F401 -- registration side effects
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -37,6 +34,17 @@ from lorecraft.services.light_fuel import LightFuelService
 from lorecraft.services.meters import MeterService
 from lorecraft.world.loader import import_world
 from lorecraft.world.validator import ItemData, RoomData, WorldDocument
+from lorecraft.game.standard_components import register as _register_item_components
+from lorecraft.game.container_validators import register as _register_containers
+from lorecraft.game.equipment_validators import (
+    register as _register_equipment_validators,
+)
+
+# Standard components + container/equipment move validators used to register as
+# import side effects; they now register via their feature register()s.
+_register_item_components()
+_register_containers()
+_register_equipment_validators()
 
 ROOM_ID = "room-1"
 DARK_ROOM_ID = "dark-room"

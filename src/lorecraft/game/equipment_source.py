@@ -62,5 +62,17 @@ class EquipmentTraitSource:
         return names
 
 
-modifiers_module.get_registry().register(EquipmentModifierSource())
-traits_module.get_registry().register_source(EquipmentTraitSource())
+_registered = False
+
+
+def register() -> None:
+    """Register the equipment modifier source + equipment trait source. Called
+    by the `equipment` feature manifest when enabled (no longer a module-level
+    import side effect). Idempotent (both sources are appended to lists, so a
+    guard prevents double-registration)."""
+    global _registered
+    if _registered:
+        return
+    _registered = True
+    modifiers_module.get_registry().register(EquipmentModifierSource())
+    traits_module.get_registry().register_source(EquipmentTraitSource())

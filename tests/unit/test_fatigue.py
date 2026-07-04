@@ -8,7 +8,6 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.equipment_source  # noqa: F401 -- registration side effects
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -35,6 +34,14 @@ from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
+from lorecraft.game.equipment_source import register as _register_equipment_source
+from lorecraft.game.fatigue_source import register as _register_fatigue
+
+# The "fatigue" meter + equipment sources used to register as import side
+# effects (the fatigue meter via this module's `from fatigue_source import ...`).
+# They now register via the fatigue/equipment feature register()s.
+_register_fatigue()
+_register_equipment_source()
 
 START_ROOM_ID = "start"
 DEST_ROOM_ID = "dest"

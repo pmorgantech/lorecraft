@@ -60,4 +60,16 @@ def _validate_player_equip(
         )
 
 
-get_holder_registry().register_move_validator("player", _validate_player_equip)
+_registered = False
+
+
+def register() -> None:
+    """Register the player equip-slot move validator on the holder registry.
+    Called by the `equipment` feature manifest when enabled (no longer a
+    module-level import side effect). Idempotent (move validators are appended
+    per holder type, so a guard prevents double-registration)."""
+    global _registered
+    if _registered:
+        return
+    _registered = True
+    get_holder_registry().register_move_validator("player", _validate_player_equip)

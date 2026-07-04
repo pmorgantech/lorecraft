@@ -8,7 +8,6 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-import lorecraft.game.standard_components  # noqa: F401 -- registration side effects
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -32,6 +31,11 @@ from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.services.meters import MeterService
+from lorecraft.game.standard_components import register as _register_item_components
+
+# Standard item components (openable, etc.) used to register as an import side
+# effect; they now register via the item_components feature's register().
+_register_item_components()
 
 ROOM_ID = "room-1"
 

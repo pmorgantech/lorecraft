@@ -63,9 +63,6 @@ STANDARD_TRAITS = [
     ),
 ]
 
-for _trait_def in STANDARD_TRAITS:
-    traits_module.get_registry().register(_trait_def)
-
 
 class InnateTraitSource:
     """TraitSource contributing PlayerStats.traits — background/earned traits
@@ -82,4 +79,19 @@ class InnateTraitSource:
         return set(stats.traits)
 
 
-traits_module.get_registry().register_source(InnateTraitSource())
+_registered = False
+
+
+def register() -> None:
+    """Register the standard boon/bane trait defs + the innate trait source on
+    the trait registry. Called by the `traits` feature manifest when enabled
+    (no longer a module-level import side effect). Idempotent (the innate source
+    is appended to a list, so a guard prevents double-registration)."""
+    global _registered
+    if _registered:
+        return
+    _registered = True
+    registry = traits_module.get_registry()
+    for trait_def in STANDARD_TRAITS:
+        registry.register(trait_def)
+    registry.register_source(InnateTraitSource())
