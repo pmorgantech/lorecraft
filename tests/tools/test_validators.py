@@ -6,6 +6,7 @@ from lorecraft.tools.validators import (
     check_dead_item_references,
     check_dialogue_node_references,
     check_duplicate_item_names_per_room,
+    check_item_definition_fields,
     check_item_quantity_warnings,
     check_room_reachability,
     run_all_checks,
@@ -205,5 +206,153 @@ def test_run_all_checks_ignores_quests_without_dependency_field() -> None:
     )
 
     result = run_all_checks(document)
+
+    assert result.ok
+
+
+def test_check_item_definition_fields_flags_unknown_slot() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(id="item-1", name="Item", description="An item.", slot="unknown")
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("unknown" in e and "slot" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_wearable_without_slot() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="armor", name="Armor", description="Armor.", wearable=True, slot=None
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("wearable" in e and "slot" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_unknown_quality() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(id="item-1", name="Item", description="An item.", quality="broken")
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("quality" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_untakeable_container() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="chest",
+                name="Chest",
+                description="A chest.",
+                takeable=False,
+                capacity=50.0,
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("container" in e and "takeable" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_negative_weight() -> None:
+    document = WorldDocument(
+        items=[ItemData(id="item-1", name="Item", description="An item.", weight=-5.0)]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("negative weight" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_negative_durability() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="sword", name="Sword", description="A sword.", max_durability=-1
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("durability" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_unknown_effect_type() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="item-1",
+                name="Item",
+                description="An item.",
+                effects=[{"type": "explode"}],
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("explode" in e and "unknown type" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_flags_bad_stat_in_effect() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="item-1",
+                name="Item",
+                description="An item.",
+                effects=[{"type": "stat_bonus", "stat": "luck", "amount": 2}],
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("luck" in e for e in result.errors)
+
+
+def test_check_item_definition_fields_passes_for_valid_equipment() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="helm",
+                name="Iron Helm",
+                description="A sturdy helm.",
+                slot="head",
+                wearable=True,
+                weight=2.0,
+                quality="fine",
+                light=0,
+                capacity=None,
+                effects=[
+                    {"type": "stat_bonus", "stat": "vitality", "amount": 1},
+                    {"type": "skill_bonus", "skill": "defense", "amount": 5},
+                ],
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
 
     assert result.ok

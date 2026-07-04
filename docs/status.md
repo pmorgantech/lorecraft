@@ -41,8 +41,12 @@ The architecture overview remains the design reference; this file is the working
 > on any holder + one atomic multi-leg `execute_exchange()` for coins and items together) and
 > `services/mobile_route.py`'s `MobileRouteService` (the generic scheduled route runner —
 > ping-pong/circular waypoint cycling, position interpolation — that transit will ride on).
-> Tier 2 feature work (item components, equipment, traits/skills, exploration…) now starts at
-> Sprint 22; combat moved down to Sprints 31–33.
+> **Sprint 22 (item definition fields — Layer A) is now complete**: `Item` model gains 8 fields
+> (`slot`, `wearable`, `weight`, `quality`, `max_durability`, `light`, `capacity`, `effects`),
+> content validators added for all fields, YAML loader updated; no new commands yet, just the
+> data model foundation for Tier 2. Tier 2 feature work (equipment commands, encumbrance,
+> light/darkness, containers, traits/skills, exploration, trading, transit, quests, combat)
+> continues from Sprint 23; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -53,8 +57,8 @@ The architecture overview remains the design reference; this file is the working
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
-| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [~] Sprints 16–19 (item location/ownership, RNG+skill-check, modifiers, meters/effects/traits) complete; 20–21 remain |
-| Item state / inventory / equipment | Sprints 22–23 (gated) | [ ] |
+| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [x] |
+| Item state / inventory / equipment | Sprints 22–23 (gated) | [~] Sprint 22 (item definition fields) complete; 23 (equipment & encumbrance) in progress |
 | Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
 | Quests & puzzles depth | Sprint 30 (gated) | [ ] |

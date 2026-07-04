@@ -147,6 +147,90 @@ def check_item_quantity_warnings(
     return result
 
 
+def check_item_definition_fields(document: WorldDocument) -> LintResult:
+    """Validate item definition fields (slots, effects, capacity, etc.)."""
+    result = LintResult()
+
+    valid_slots = {
+        "head",
+        "face",
+        "neck",
+        "shoulders",
+        "torso",
+        "back",
+        "hands",
+        "finger_l",
+        "finger_r",
+        "waist",
+        "legs",
+        "feet",
+        "main_hand",
+        "off_hand",
+    }
+    valid_qualities = {"common", "fine", "superior", "rare", "legendary"}
+    valid_effect_types = {"stat_bonus", "skill_bonus", "carry_bonus", "grant_trait"}
+    stats = {"strength", "agility", "vitality", "intellect", "presence", "fortitude"}
+
+    for item in document.items:
+        if item.slot is not None and item.slot not in valid_slots:
+            result.errors.append(
+                f"item {item.id!r} has unknown slot {item.slot!r}; "
+                f"valid slots: {sorted(valid_slots)}"
+            )
+
+        if item.wearable and item.slot is None:
+            result.errors.append(
+                f"item {item.id!r} is wearable but has no slot defined"
+            )
+
+        if item.quality not in valid_qualities:
+            result.errors.append(
+                f"item {item.id!r} has unknown quality {item.quality!r}; "
+                f"valid: {sorted(valid_qualities)}"
+            )
+
+        if item.capacity is not None and not item.takeable:
+            result.errors.append(
+                f"item {item.id!r} is a container (capacity set) but not takeable"
+            )
+
+        if item.weight < 0:
+            result.errors.append(f"item {item.id!r} has negative weight {item.weight}")
+
+        if item.light < 0:
+            result.errors.append(
+                f"item {item.id!r} has negative light value {item.light}"
+            )
+
+        if item.max_durability is not None and item.max_durability <= 0:
+            result.errors.append(
+                f"item {item.id!r} has invalid max_durability {item.max_durability} "
+                "(must be positive or None)"
+            )
+
+        for i, effect in enumerate(item.effects):
+            effect_type = effect.get("type")
+            if effect_type not in valid_effect_types:
+                result.errors.append(
+                    f"item {item.id!r} effect {i} has unknown type {effect_type!r}; "
+                    f"valid: {sorted(valid_effect_types)}"
+                )
+
+            if effect_type == "stat_bonus":
+                stat = effect.get("stat")
+                if stat not in stats:
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} references unknown stat {stat!r}"
+                    )
+            elif effect_type == "skill_bonus":
+                if "skill" not in effect:
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (skill_bonus) missing 'skill' field"
+                    )
+
+    return result
+
+
 def run_all_checks(
     document: WorldDocument, *, start_room_id: str | None = None
 ) -> LintResult:
@@ -155,6 +239,7 @@ def run_all_checks(
     result.merge(check_dead_item_references(document))
     result.merge(check_duplicate_item_names_per_room(document))
     result.merge(check_item_quantity_warnings(document))
+    result.merge(check_item_definition_fields(document))
     if start_room_id is not None:
         result.merge(check_room_reachability(document, start_room_id))
     return result

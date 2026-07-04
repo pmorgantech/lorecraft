@@ -44,6 +44,24 @@ class Item(SQLModel, table=True):
     aliases: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     usable_with: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    slot: str | None = (
+        None  # equipment slot key (head, hands, main_hand, etc.); None = not equippable
+    )
+    wearable: bool = False  # worn (armor/clothing) vs. wielded (weapon/tool/light)
+    weight: float = 0.0  # item weight; drives encumbrance
+    quality: str = (
+        "common"  # common|fine|superior|rare|legendary — affects value & trade
+    )
+    max_durability: int | None = (
+        None  # None = indestructible; else tracked per-instance via component
+    )
+    light: int = 0  # light radius/level this item emits when equipped & lit
+    capacity: float | None = (
+        None  # if set, item is a container holding up to capacity weight
+    )
+    effects: list[JsonObject] = Field(
+        default_factory=list, sa_column=Column(JSON)
+    )  # effect descriptors (registry-driven)
 
 
 class WorldMeta(SQLModel, table=True):

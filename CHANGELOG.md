@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.4.0] - 2026-07-04
+
+### Summary
+
+**Sprint 22 Complete — Standard Item Definition Fields (Tier 2 Layer A, first feature-band sprint).** Item definition expanded with equipment, encumbrance, light, durability, and effect-descriptor fields. `models/world.py`'s `Item` model gains 8 new optional/nullable fields: `slot` (equipment slot key), `wearable` (worn vs. wielded), `weight` (drives encumbrance), `quality` (common/fine/superior/rare/legendary, affects trade), `max_durability` (None = indestructible, else tracked per-instance), `light` (light level when equipped & lit), `capacity` (makes item a container), `effects` (effect descriptor list, registry-driven). `world/validator.py`'s `ItemData` updated to match, with corresponding loader updates in `world/loader.py` (import/export). New `check_item_definition_fields()` validator in `tools/validators.py` enforces: known slot names, wearable items must have slots, known qualities, containers must be takeable, non-negative weight/light/durability, known effect descriptor types, known stat names in effect descriptors. 9 new validator unit tests, all passing. Tier 1 foundation consumed: Tier 2 now starts on this layer. 348 focused tests + 3 e2e + 5 simulation tests passing; basedpyright 0 errors on `src/`; ruff clean. See `docs/inventory_equipment.md` §3–10 for the binding design. Next: Sprint 23 (equipment & encumbrance).
+
+### Added
+
+- **Sprint 22: Standard Item Definition Fields** — Tier 2 Layer A: item definition expansion for equipment/encumbrance/light mechanics. `Item` model gains 8 fields: `slot`, `wearable`, `weight`, `quality`, `max_durability`, `light`, `capacity`, `effects`. Content validators added for all fields (unknown slots, quality, effect types; wearable without slot; non-takeable containers; negative numeric values; unknown stats in effect descriptors). YAML loader updated to round-trip all fields on import/export. No new commands or services yet — just data modeling and validation. Sprints 23–35 build features on top of this foundation.
+
 ## [0.3.1] - 2026-07-04
 
 ### Changed

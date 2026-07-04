@@ -67,9 +67,18 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 description=item.description,
                 takeable=item.takeable,
                 tradeable=item.tradeable,
+                bound=item.bound,
                 aliases=item.aliases,
                 usable_with=item.usable_with,
                 loot_table=cast(JsonObject, item.loot_table),
+                slot=item.slot,
+                wearable=item.wearable,
+                weight=item.weight,
+                quality=item.quality,
+                max_durability=item.max_durability,
+                light=item.light,
+                capacity=item.capacity,
+                effects=cast(list[JsonObject], item.effects),
             )
         )
 
@@ -185,9 +194,18 @@ def export_world_document(session: Session) -> WorldDocument:
             description=item.description,
             takeable=item.takeable,
             tradeable=item.tradeable,
+            bound=item.bound,
             aliases=list(item.aliases),
             usable_with=list(item.usable_with),
             loot_table=cast(dict[str, object], item.loot_table),
+            slot=item.slot,
+            wearable=item.wearable,
+            weight=item.weight,
+            quality=item.quality,
+            max_durability=item.max_durability,
+            light=item.light,
+            capacity=item.capacity,
+            effects=cast(list[dict[str, object]], item.effects),
         )
         for item in session.exec(select(Item)).all()
     ]

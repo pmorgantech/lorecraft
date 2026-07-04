@@ -46,9 +46,18 @@ class ItemData(BaseModel):
     description: str
     takeable: bool = True
     tradeable: bool = True
+    bound: bool = False
     aliases: list[str] = Field(default_factory=list)
     usable_with: list[str] = Field(default_factory=list)
     loot_table: dict[str, object] = Field(default_factory=dict)
+    slot: str | None = None
+    wearable: bool = False
+    weight: float = 0.0
+    quality: str = "common"
+    max_durability: int | None = None
+    light: int = 0
+    capacity: float | None = None
+    effects: list[dict[str, object]] = Field(default_factory=list)
 
 
 class RoomItemData(BaseModel):
