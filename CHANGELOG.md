@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.9.0] - 2026-07-04
+
+### Summary
+
+**Sprint 27.1 — Fatigue.** Light survival texture: traveling drains stamina (more when
+encumbered), and running low saps skill checks. `rest`/`camp`/`sleep` commands restore it.
+
+### Added
+
+- **Sprint 27.1: Fatigue** — `game/fatigue_source.py` registers a "fatigue" `MeterDef` (remaining stamina, base scales with `PlayerStats.fortitude`) and a `FatigueModifierSource` applying a flat `mult` penalty to every registered skill (`game/skills.py`) once stamina drops below 50% (weary) or 20% (exhausted) of maximum — the "low fatigue penalizes skill checks" promise in `docs/wishlist.md`. `services/fatigue.py`'s `FatigueService` drains stamina on every `PLAYER_MOVED` event, scaled by the Sprint 23.2 encumbrance band (unburdened/burdened/overloaded), and backs three new commands (`commands/condition.py`): `rest` (quick, small restore), `camp` (slower, larger restore), and `sleep` (restores to full — clock-advance, safe/unsafe risk, and dream flavor are Sprint 27.2's job). Built on top of the [0.8.2](#082---2026-07-04) event-flush fix below (fatigue drain relies on the same post-command `PLAYER_MOVED` event handler pattern as quest progression). 8 new unit tests.
+
 ## [0.8.2] - 2026-07-04
 
 ### Fixed

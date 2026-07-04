@@ -76,8 +76,17 @@ The architecture overview remains the design reference; this file is the working
 > visited are plotted, dimmed, once cartography skill crosses a threshold); a responsive
 > mobile tab layout (Room/Feed/Players) below the `lg` breakpoint. Verified in a real
 > headless-Chromium browser (desktop, modal, all three mobile tabs) plus 3 new e2e tests.
-> Tier 2 feature work (character condition, trading, transit, quests, combat) continues
-> from Sprint 27; combat moved down to Sprints 31–33.
+> **Sprint 27.1 (fatigue) is now complete**: a "fatigue" `MeterDef` (remaining stamina,
+> scales with fortitude) drains on travel (more when encumbered) and saps skill checks once
+> low, via a `FatigueModifierSource` on the Tier 1 modifier resolver; `rest`/`camp`/`sleep`
+> commands restore it. Also fixed a real pre-existing bug found while building it:
+> `CommandEngine` committed game state *before* flushing post-command events, so
+> `QuestService.check_progression`'s quest-stage/flag mutations (triggered by
+> `PLAYER_MOVED`/`ITEM_TAKEN`/`ITEM_DROPPED`) were silently discarded once a request's
+> session closed — existing unit tests never caught it since they read the same
+> still-open session. Sprint 27.2 (sleep clock-advance, safe/unsafe risk, warmth/exposure)
+> and the rest of the feature band (trading, transit, quests/puzzles) continue next;
+> combat/PvP (Sprints 31–35) are deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

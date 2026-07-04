@@ -43,6 +43,7 @@ from lorecraft.game.rng import GameRng
 from lorecraft.game.rules import RuleEngine
 from lorecraft.game.transaction import TransactionContext
 import lorecraft.game.traits  # noqa: F401 -- import for registration side effects (traits.py registers itself as a ModifierSource and TraitSource at module load)
+import lorecraft.game.fatigue_source  # noqa: F401 -- import for registration side effects ("fatigue" MeterDef + skill-check penalty ModifierSource)
 import lorecraft.game.standard_components  # noqa: F401 -- import for registration side effects (durability/openable/lit/container components)
 import lorecraft.game.equipment_source  # noqa: F401 -- import for registration side effects (equipment ModifierSource/TraitSource)
 import lorecraft.game.equipment_validators  # noqa: F401 -- import for registration side effects (player equip-slot move validator)
@@ -172,6 +173,7 @@ def create_app(
         light_fuel_service.register(bus)
         services = ServiceContainer.build()
         services.quest.register(bus)
+        services.fatigue.register(bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:

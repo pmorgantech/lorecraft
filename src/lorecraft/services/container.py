@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from lorecraft.npc.dialogue import DialogueService
 from lorecraft.services.character_info import CharacterInfoService
 from lorecraft.services.exploration import ExplorationService
+from lorecraft.services.fatigue import FatigueService
 from lorecraft.services.inventory import InventoryService
 from lorecraft.services.journal import JournalService
 from lorecraft.services.movement import MovementService
@@ -31,6 +32,7 @@ class ServiceContainer:
     character_info: CharacterInfoService = field(default_factory=CharacterInfoService)
     exploration: ExplorationService = field(default_factory=ExplorationService)
     journal: JournalService = field(default_factory=JournalService)
+    fatigue: FatigueService = field(default_factory=FatigueService)
 
     @classmethod
     def build(cls) -> ServiceContainer:

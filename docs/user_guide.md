@@ -138,6 +138,19 @@ event, an NPC's trust, a quest step) before they'll let you through, whether or 
 found them. Rooms can also have terrain (forest, mountain, swamp, water...) that requires
 a minimum survival skill to enter safely.
 
+## Stamina: Rest, Sleep, and Camp
+
+```
+rest            — catch your breath and recover a little stamina
+camp            — make camp and recover a good deal of stamina
+sleep           — sleep deeply and recover all your stamina
+```
+
+Traveling drains your stamina — more so if you're carrying a lot of weight. Running low
+saps your skill checks (perception, lockpicking, and the rest), so it pays to top up
+before attempting something that matters. `rest` is quick and available almost anywhere;
+`camp` restores more but takes longer; `sleep` restores you fully.
+
 ## Character: Traits, Skills, and Reputation
 
 ```
@@ -229,6 +242,9 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `reputation` | `rep` | List your standing with NPCs and factions |
 | `search` | | Look for hidden exits and secrets in the room |
 | `journal` | | Review places visited, people met, lore learned, and active quests |
+| `rest` | | Catch your breath and recover a little stamina |
+| `camp` | | Make camp and recover a good deal of stamina |
+| `sleep` | | Sleep deeply and recover all your stamina |
 | `talk <name>` | `speak` | Start a conversation with an NPC |
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |
