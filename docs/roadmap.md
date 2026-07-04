@@ -454,7 +454,7 @@ stops (local), and animate on the minimap. Built on scheduler + world clock + we
 
 | # | Task | Status |
 |---|------|--------|
-| 29.1 | Data model (`TransitLine`/`TransitStop`/`TransitVehicleState`) + YAML `transit:` section + validators; data-driven modes/speeds/stopping patterns | [ ] |
+| 29.1 | Data model (`TransitLine`/`TransitStop`/`TransitVehicleState`) + YAML `transit:` section + validators; data-driven modes/speeds/stopping patterns | [x] `TransitLine`/`TransitStop` tables (`models/transit.py`) — no `TransitVehicleState` table (superseded per `transit_systems.md` §4: runtime position is the Sprint 21 `MobileRouteState`, keyed `route_id=f"transit:{line_id}"`, wired in Sprint 29.2). World YAML `transit.lines` + validators: stop `room_id`/`ticket_item_id` resolve, `vehicle_room_id` exists with no static exits, sequences contiguous from 0, express lines have ≥2 boarding stops, `blocking_weather` values are real weather states. 12 new unit tests (import/export/reimport round-trip + 5 validator-rejection tests). |
 | 29.2 | Scheduler-driven vehicle state machine (at_stop→in_transit→arrive, reverse/loop); moving-room `board`/`disembark`/`schedule`; ticket-item gating | [ ] |
 | 29.3 | `transit_update` WS message + minimap marker animation (interpolated between stop coords); weather grounding/delay (balloon/ferry) | [ ] |
 

@@ -5,6 +5,7 @@ from lorecraft.db import create_tables
 from lorecraft.models.bank import Bank
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.items import ItemStack
+from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.models.world import Exit, Item, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
 from lorecraft.world.loader import export_world_document, load_world_yaml
@@ -239,5 +240,243 @@ def test_world_validator_rejects_region_with_missing_area_id() -> None:
                     }
                 ],
                 "economy": {"regions": [{"area_id": "highlands"}]},
+            }
+        )
+
+
+def _transit_world_yaml(*, stops: str) -> str:
+    return f"""
+rooms:
+  - id: pier
+    name: Pier
+    description: A weathered pier.
+    map_x: 0
+    map_y: 0
+  - id: rock
+    name: Gull Rock
+    description: A rocky islet.
+    map_x: 2
+    map_y: 1
+  - id: ferry_deck
+    name: Ferry Deck
+    description: The deck of the ferry.
+    map_x: 0
+    map_y: 0
+items:
+  - id: ferry_token
+    name: Ferry Token
+    description: A brass token.
+npcs: []
+transit:
+  lines:
+    - id: coastal_ferry
+      name: Coastal Ferry
+      mode: ferry
+      service_type: local
+      vehicle_room_id: ferry_deck
+      ticket_item_id: ferry_token
+      weather_sensitive: true
+      blocking_weather: [fog]
+      stops:
+{stops}
+"""
+
+
+_VALID_STOPS = """\
+        - { room_id: pier, sequence: 0, dwell_ticks: 5, travel_ticks: 20 }
+        - { room_id: rock, sequence: 1, dwell_ticks: 8, travel_ticks: 0 }
+"""
+
+
+def test_world_loader_imports_transit_line(tmp_path) -> None:
+    source = tmp_path / "world.yaml"
+    source.write_text(_transit_world_yaml(stops=_VALID_STOPS), encoding="utf-8")
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        load_world_yaml(source, session)
+        session.commit()
+
+        line = session.get(TransitLine, "coastal_ferry")
+        assert line is not None
+        assert line.mode == "ferry"
+        assert line.blocking_weather == ["fog"]
+        stops = session.exec(
+            select(TransitStop)
+            .where(TransitStop.line_id == "coastal_ferry")
+            .order_by(TransitStop.sequence)  # type: ignore[arg-type]
+        ).all()
+        assert [s.room_id for s in stops] == ["pier", "rock"]
+
+        document = export_world_document(session)
+        assert document.transit is not None
+        assert document.transit.lines[0].id == "coastal_ferry"
+        assert [s.room_id for s in document.transit.lines[0].stops] == ["pier", "rock"]
+
+
+def test_world_loader_reimport_removes_stale_stops(tmp_path) -> None:
+    source = tmp_path / "world.yaml"
+    source.write_text(_transit_world_yaml(stops=_VALID_STOPS), encoding="utf-8")
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        load_world_yaml(source, session)
+        session.commit()
+
+    shrunk = tmp_path / "world2.yaml"
+    shrunk.write_text(
+        _transit_world_yaml(
+            stops="        - { room_id: pier, sequence: 0, dwell_ticks: 5, travel_ticks: 0 }\n"
+        ),
+        encoding="utf-8",
+    )
+    with Session(engine) as session:
+        load_world_yaml(shrunk, session)
+        session.commit()
+        stops = session.exec(
+            select(TransitStop).where(TransitStop.line_id == "coastal_ferry")
+        ).all()
+        assert [s.room_id for s in stops] == ["pier"]
+
+
+def test_world_validator_rejects_vehicle_room_with_exits() -> None:
+    with pytest.raises(WorldValidationError, match="no static exits"):
+        validate_world_document(
+            {
+                "rooms": [
+                    {
+                        "id": "pier",
+                        "name": "Pier",
+                        "description": "d",
+                        "map_x": 0,
+                        "map_y": 0,
+                    },
+                    {
+                        "id": "ferry_deck",
+                        "name": "Ferry Deck",
+                        "description": "d",
+                        "map_x": 0,
+                        "map_y": 0,
+                        "exits": [{"direction": "east", "target_room_id": "pier"}],
+                    },
+                ],
+                "transit": {
+                    "lines": [
+                        {
+                            "id": "line1",
+                            "name": "Line",
+                            "mode": "ferry",
+                            "vehicle_room_id": "ferry_deck",
+                            "stops": [
+                                {"room_id": "pier", "sequence": 0},
+                            ],
+                        }
+                    ]
+                },
+            }
+        )
+
+
+def test_world_validator_rejects_noncontiguous_sequences() -> None:
+    with pytest.raises(WorldValidationError, match="contiguous"):
+        validate_world_document(
+            {
+                "rooms": [
+                    {
+                        "id": "pier",
+                        "name": "Pier",
+                        "description": "d",
+                        "map_x": 0,
+                        "map_y": 0,
+                    },
+                    {
+                        "id": "rock",
+                        "name": "Rock",
+                        "description": "d",
+                        "map_x": 1,
+                        "map_y": 0,
+                    },
+                ],
+                "transit": {
+                    "lines": [
+                        {
+                            "id": "line1",
+                            "name": "Line",
+                            "mode": "ferry",
+                            "stops": [
+                                {"room_id": "pier", "sequence": 0},
+                                {"room_id": "rock", "sequence": 2},
+                            ],
+                        }
+                    ]
+                },
+            }
+        )
+
+
+def test_world_validator_rejects_express_line_with_too_few_boarding_stops() -> None:
+    with pytest.raises(WorldValidationError, match="express but has fewer"):
+        validate_world_document(
+            {
+                "rooms": [
+                    {
+                        "id": "pier",
+                        "name": "Pier",
+                        "description": "d",
+                        "map_x": 0,
+                        "map_y": 0,
+                    },
+                    {
+                        "id": "rock",
+                        "name": "Rock",
+                        "description": "d",
+                        "map_x": 1,
+                        "map_y": 0,
+                    },
+                ],
+                "transit": {
+                    "lines": [
+                        {
+                            "id": "line1",
+                            "name": "Line",
+                            "mode": "ferry",
+                            "service_type": "express",
+                            "stops": [
+                                {"room_id": "pier", "sequence": 0, "boarding": True},
+                                {"room_id": "rock", "sequence": 1, "boarding": False},
+                            ],
+                        }
+                    ]
+                },
+            }
+        )
+
+
+def test_world_validator_rejects_unknown_blocking_weather() -> None:
+    with pytest.raises(WorldValidationError, match="unknown state"):
+        validate_world_document(
+            {
+                "rooms": [
+                    {
+                        "id": "pier",
+                        "name": "Pier",
+                        "description": "d",
+                        "map_x": 0,
+                        "map_y": 0,
+                    },
+                ],
+                "transit": {
+                    "lines": [
+                        {
+                            "id": "line1",
+                            "name": "Line",
+                            "mode": "ferry",
+                            "blocking_weather": ["meteor_shower"],
+                            "stops": [{"room_id": "pier", "sequence": 0}],
+                        }
+                    ]
+                },
             }
         )

@@ -447,6 +447,39 @@ what a player is carrying. **One logical account, many branches**: deposit at on
 branch, withdraw at another — the whole point of banks as travel/trade infrastructure,
 not just a vault.
 
+### Transit lines
+
+A top-level `transit.lines` block defines a ferry/rail/balloon/caravan line — a physical
+vehicle (a `Room` players ride inside) that cycles between stations on its own schedule.
+**Data model only in this cut** (Sprint 29.1): the runtime state machine, `board`/
+`disembark` commands, and minimap animation are Sprint 29.2–29.3's job — defining a line
+today doesn't yet make it move.
+
+```yaml
+transit:
+  lines:
+    - id: coastal_ferry
+      name: Coastal Ferry
+      mode: ferry               # "ferry"/"rail"/"balloon"/"caravan"/... (open-ended)
+      service_type: local        # "local" (boards every stop) or "express"
+      vehicle_room_id: ferry_deck  # a Room with NO exits -- board/disembark only
+      ticket_item_id: ferry_token  # required to board; omit for a free line
+      ticket_consumed: true       # false = reusable pass
+      reverses: true              # A->B->C then C->B->A; loop: true jumps C->A instead
+      animate_minimap: true
+      weather_sensitive: true
+      blocking_weather: [fog]     # must be states clock/weather.py's WEATHER_TABLE produces
+      stops:
+        - { room_id: saltmarsh_pier, sequence: 0, dwell_ticks: 5, travel_ticks: 20 }
+        - { room_id: gull_rock,      sequence: 1, dwell_ticks: 5, travel_ticks: 25 }
+        - { room_id: harbor_end,     sequence: 2, dwell_ticks: 8, travel_ticks: 0 }
+```
+
+`sequence` must be contiguous from 0; an `express` line needs at least 2 stops with
+`boarding: true` (the default — set `boarding: false` on a stop an express line passes
+through without opening its doors, purely as an animation waypoint). `travel_ticks` on
+the last stop is unused (there's no next leg) but still required by the schema.
+
 ### Containers
 
 Setting `capacity` makes an item a container: it must be `open`ed before anything can be

@@ -14,6 +14,7 @@ from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.items import ItemStack
 from lorecraft.models.quest import Quest
+from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.models.world import Exit, Item, NPC, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
 from lorecraft.services.item_location import ItemLocationService
@@ -36,6 +37,9 @@ from lorecraft.world.validator import (
     RoomItemData,
     ShopData,
     ShopStockData,
+    TransitConfigData,
+    TransitLineData,
+    TransitStopData,
     WorldDocument,
     validate_world_document,
 )
@@ -169,6 +173,55 @@ def import_world(document: WorldDocument, session: Session) -> None:
 
     if document.economy is not None:
         _import_economy(session, document.economy)
+    if document.transit is not None:
+        _import_transit(session, document.transit)
+
+
+def _import_transit(session: Session, transit: TransitConfigData) -> None:
+    for line in transit.lines:
+        session.merge(
+            TransitLine(
+                id=line.id,
+                name=line.name,
+                mode=line.mode,
+                service_type=line.service_type,
+                vehicle_room_id=line.vehicle_room_id,
+                ticket_item_id=line.ticket_item_id,
+                ticket_consumed=line.ticket_consumed,
+                reverses=line.reverses,
+                loop=line.loop,
+                animate_minimap=line.animate_minimap,
+                weather_sensitive=line.weather_sensitive,
+                blocking_weather=list(line.blocking_weather),
+            )
+        )
+        session.flush()
+        existing_stops = session.exec(
+            select(TransitStop).where(TransitStop.line_id == line.id)
+        ).all()
+        by_sequence = {stop.sequence: stop for stop in existing_stops}
+        for stop in line.stops:
+            existing = by_sequence.pop(stop.sequence, None)
+            if existing is not None:
+                existing.room_id = stop.room_id
+                existing.dwell_ticks = stop.dwell_ticks
+                existing.travel_ticks = stop.travel_ticks
+                existing.boarding = stop.boarding
+                session.add(existing)
+            else:
+                session.add(
+                    TransitStop(
+                        line_id=line.id,
+                        room_id=stop.room_id,
+                        sequence=stop.sequence,
+                        dwell_ticks=stop.dwell_ticks,
+                        travel_ticks=stop.travel_ticks,
+                        boarding=stop.boarding,
+                    )
+                )
+        # Any previously-imported stop not present in this reimport is stale.
+        for stale_stop in by_sequence.values():
+            session.delete(stale_stop)
 
 
 def _import_bank(session: Session, npc_id: str, bank: BankBranchData) -> None:
@@ -402,6 +455,45 @@ def export_world_document(session: Session) -> WorldDocument:
         else None
     )
 
+    lines = session.exec(select(TransitLine)).all()
+    transit = (
+        TransitConfigData(
+            lines=[
+                TransitLineData(
+                    id=line.id,
+                    name=line.name,
+                    mode=line.mode,
+                    service_type=line.service_type,
+                    vehicle_room_id=line.vehicle_room_id,
+                    ticket_item_id=line.ticket_item_id,
+                    ticket_consumed=line.ticket_consumed,
+                    reverses=line.reverses,
+                    loop=line.loop,
+                    animate_minimap=line.animate_minimap,
+                    weather_sensitive=line.weather_sensitive,
+                    blocking_weather=list(line.blocking_weather),
+                    stops=[
+                        TransitStopData(
+                            room_id=stop.room_id,
+                            sequence=stop.sequence,
+                            dwell_ticks=stop.dwell_ticks,
+                            travel_ticks=stop.travel_ticks,
+                            boarding=stop.boarding,
+                        )
+                        for stop in session.exec(
+                            select(TransitStop)
+                            .where(TransitStop.line_id == line.id)
+                            .order_by(TransitStop.sequence)  # type: ignore[arg-type]
+                        ).all()
+                    ],
+                )
+                for line in lines
+            ]
+        )
+        if lines
+        else None
+    )
+
     return WorldDocument(
         rooms=room_data,
         items=item_data,
@@ -410,4 +502,5 @@ def export_world_document(session: Session) -> WorldDocument:
         dialogue_trees=dialogue_tree_data,
         quests=quest_data,
         economy=economy,
+        transit=transit,
     )

@@ -43,6 +43,7 @@ from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.interaction import PvpConsent, TradeOffer
 from lorecraft.models.reputation import Reputation
 from lorecraft.models.scheduler import ScheduledJob
+from lorecraft.models.transit import TransitLine, TransitStop
 
 
 GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
@@ -83,6 +84,8 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     RegionPricing,
     Bank,
     BankAccount,
+    TransitLine,
+    TransitStop,
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)

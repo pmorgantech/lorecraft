@@ -115,8 +115,15 @@ The architecture overview remains the design reference; this file is the working
 > side) and the unused `GameEvent.TRADE_COMPLETED`. `offer <item|N coins> to <player>`
 > records a pledge and moves nothing; `accept` composes one `execute_exchange` call
 > with every pledge as a leg, whose own validation is the escrow revalidation. Trading
-> (Sprint 28) is now fully complete. Transit (29) and quests/puzzles (30) continue
-> next; combat/PvP (Sprints 31–35) are deferred per direction.
+> (Sprint 28) is now fully complete. **Sprint 29.1 (transit data model) is now
+> complete**: new `TransitLine`/`TransitStop` tables + world YAML `transit.lines` +
+> validators (stop/ticket references resolve, vehicle room has no static exits,
+> contiguous stop sequences, express lines have enough boarding stops, known weather
+> states) — data model only; there's deliberately no `TransitVehicleState` table, since
+> runtime position reuses Sprint 21's `MobileRouteState` (wired in Sprint 29.2). Sprint
+> 29.2 (vehicle state machine + board/disembark commands), 29.3 (WS push + minimap
+> animation), and quests/puzzles (30) continue next; combat/PvP (Sprints 31–35) are
+> deferred per direction.
 
 ## Phase-to-Sprint Mapping
 

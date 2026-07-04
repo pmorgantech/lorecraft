@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from lorecraft.clock.weather import WEATHER_TABLE
+
+KNOWN_WEATHER = frozenset(w for states in WEATHER_TABLE.values() for w in states)
+
 
 class WorldValidationError(ValueError):
     """Raised when authored world data is structurally invalid."""
@@ -191,6 +195,40 @@ class EconomyConfigData(BaseModel):
     regions: list[RegionPricingData] = Field(default_factory=list)
 
 
+class TransitStopData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    room_id: str
+    sequence: int
+    dwell_ticks: int = 5
+    travel_ticks: int = 20
+    boarding: bool = True
+
+
+class TransitLineData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    name: str
+    mode: str
+    service_type: str = "local"
+    vehicle_room_id: str | None = None
+    ticket_item_id: str | None = None
+    ticket_consumed: bool = True
+    reverses: bool = True
+    loop: bool = False
+    animate_minimap: bool = True
+    weather_sensitive: bool = False
+    blocking_weather: list[str] = Field(default_factory=list)
+    stops: list[TransitStopData] = Field(default_factory=list)
+
+
+class TransitConfigData(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    lines: list[TransitLineData] = Field(default_factory=list)
+
+
 class WorldDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -201,6 +239,7 @@ class WorldDocument(BaseModel):
     dialogue_trees: list[DialogueTreeData] = Field(default_factory=list)
     quests: list[QuestData] = Field(default_factory=list)
     economy: EconomyConfigData | None = None
+    transit: TransitConfigData | None = None
 
 
 def validate_world_document(data: object) -> WorldDocument:
@@ -277,6 +316,48 @@ def validate_world_document(data: object) -> WorldDocument:
                 if biased_item_id not in item_ids:
                     errors.append(
                         f"economy region {region.area_id} bias references missing item {biased_item_id}"
+                    )
+
+    if document.transit is not None:
+        rooms_by_id = {room.id: room for room in document.rooms}
+        for line in document.transit.lines:
+            if line.vehicle_room_id is not None:
+                vehicle_room = rooms_by_id.get(line.vehicle_room_id)
+                if vehicle_room is None:
+                    errors.append(
+                        f"transit line {line.id!r} references missing vehicle_room_id {line.vehicle_room_id!r}"
+                    )
+                elif vehicle_room.exits:
+                    errors.append(
+                        f"transit line {line.id!r} vehicle_room {line.vehicle_room_id!r} "
+                        "must have no static exits (board/disembark only)"
+                    )
+            if line.ticket_item_id is not None and line.ticket_item_id not in item_ids:
+                errors.append(
+                    f"transit line {line.id!r} references missing ticket_item_id {line.ticket_item_id!r}"
+                )
+            for weather in line.blocking_weather:
+                if weather not in KNOWN_WEATHER:
+                    errors.append(
+                        f"transit line {line.id!r} blocking_weather has unknown state {weather!r}"
+                    )
+
+            sequences = sorted(stop.sequence for stop in line.stops)
+            if sequences != list(range(len(sequences))):
+                errors.append(
+                    f"transit line {line.id!r} stop sequences must be contiguous from 0 "
+                    f"(got {sequences})"
+                )
+            for stop in line.stops:
+                if stop.room_id not in room_ids:
+                    errors.append(
+                        f"transit line {line.id!r} stop references missing room {stop.room_id!r}"
+                    )
+            if line.service_type == "express":
+                boarding_stops = sum(1 for stop in line.stops if stop.boarding)
+                if boarding_stops < 2:
+                    errors.append(
+                        f"transit line {line.id!r} is express but has fewer than 2 boarding stops"
                     )
 
     if errors:

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.11.0] - 2026-07-04
+
+### Added
+
+- **Sprint 29.1: Transit data model** — New `TransitLine`/`TransitStop` tables (`models/transit.py`) for ferry/rail/balloon/caravan lines — line *configuration* only, per `docs/transit_systems.md` §4: there is deliberately no `TransitVehicleState` table, since runtime vehicle position reuses Sprint 21's `MobileRouteState` (`route_id=f"transit:{line_id}"`), wired up in Sprint 29.2. World YAML gains a top-level `transit.lines` section (mode, service type, vehicle room, ticket item, reverse/loop, weather sensitivity, ordered stops) plus content validators: every stop's `room_id` and a line's `ticket_item_id` must resolve, `vehicle_room_id` must exist and have no static exits (board/disembark only), stop sequences must be contiguous from 0, an `express` line needs at least 2 boarding stops, and `blocking_weather` values must be states `clock/weather.py`'s `WEATHER_TABLE` actually produces. 12 new unit tests (import/export/reimport round-trip in `test_world_loader.py` + 5 validator-rejection tests).
+
 ## [0.10.3] - 2026-07-04
 
 ### Summary
