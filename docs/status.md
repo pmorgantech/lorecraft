@@ -33,9 +33,12 @@ The architecture overview remains the design reference; this file is the working
 > new invariant tests; full suite green unchanged. **Sprints 17 and 18 are also complete**:
 > `game/rng.py`'s `GameRng` (the one sanctioned randomness source, ruff-banned elsewhere in
 > `src/`) is threaded through `GameContext`/scheduler/weather; `game/modifiers.py`'s `resolve()`
-> is the one stacked-bonus resolver; `game/checks.py`'s `skill_check()` composes both. Next:
-> Sprint 19 (meters + timed effects). Tier 2 feature work (item components, equipment,
-> traits/skills, exploration…) now starts at Sprint 22; combat moved down to Sprints 31–33.
+> is the one stacked-bonus resolver; `game/checks.py`'s `skill_check()` composes both.
+> **Sprint 19 is also complete**: `Meter`/`ActiveEffect` primitives (`models/meters.py`) plus
+> `MeterService`/`EffectService`/trait registry; the "hp" `MeterDef` migration deletes
+> `PlayerStats.current_hp`/`NPC.current_hp` outright. Next: Sprint 20 (ledger + atomic transfer).
+> Tier 2 feature work (item components, equipment, traits/skills, exploration…) now starts at
+> Sprint 22; combat moved down to Sprints 31–33.
 
 ## Phase-to-Sprint Mapping
 
@@ -46,7 +49,7 @@ The architecture overview remains the design reference; this file is the working
 | Phase 5–6 (Persistence, admin tools) | Sprint 1–2 | [x] |
 | Phase 7 (Auth + frontend polish) | Sprints 4, 26 | [~] Sprint 4 (auth) complete; map/mobile UI now Sprint 26 |
 | Engineering foundation (`CODE_AUDIT.md`) | Sprints 5–15 | [x] |
-| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [~] Sprints 16–18 (item location/ownership, RNG+skill-check, modifiers) complete; 19–21 remain |
+| Engine core: Tier 1 primitives (`engine_core.md`) | Sprints 16–21 (gated) | [~] Sprints 16–19 (item location/ownership, RNG+skill-check, modifiers, meters/effects/traits) complete; 20–21 remain |
 | Item state / inventory / equipment | Sprints 22–23 (gated) | [ ] |
 | Traits/skills, exploration, condition | Sprints 24–27 (gated) | [ ] |
 | Phase 9 (Trading + transit) | Sprints 28–29 (gated) | [ ] |
@@ -314,6 +317,17 @@ Legend:
 - [x] `game/checks.py`'s `skill_check(rng, *, base, difficulty, modifiers, key)` — roll-under-d100, target clamped to `[5, 95]` (no impossible checks, no sure things); one resolution path for perception/lockpicking/bartering/combat-to-hit. Skill *identity* stays Tier 2 (Sprint 24).
 - [x] 21 new unit tests (9 `GameRng`, 12 `modifiers` including the spec's worked example, 9 `skill_check`); full suite green throughout, including the audit-regression diff and concurrent-take guarantee.
 - Note: Sprint 18 (modifiers) was implemented before Sprint 17.2 (`skill_check`) despite the roadmap's numbering, because `skill_check()`'s signature needs the `Modifier` type — the roadmap's own dependency table already says 18 has no dependencies and could land in either order.
+
+### Meters, Timed Effects & Traits (Sprint 19) ✅
+
+**See:** [`engine_core.md`](engine_core.md) §3.3–3.4 for the binding spec.
+
+- [x] `Meter` (`models/meters.py`) — named bounded resource, one row per `(entity_type, entity_id, key)`, instead of one column per resource. `game/meters.py`'s `MeterDef`/`MeterRegistry` (key, `base_maximum`, `regen_per_tick`, `start_full`); `services/meters.py`'s `MeterService` — `get()` creates lazily, `adjust()`/`set_current()`/`recompute_maximum()` are stateless per-call (caller's `Session`); `_on_time_advanced()` is a scheduler-driven regen sweep with its own session, emitting `METER_DEPLETED`/`METER_RECOVERED` directly since no `ctx` exists in that path.
+- [x] `ActiveEffect` (`models/meters.py`) — clock-driven buff/debuff, distinct from equipment (lasts while equipped) and traits (semi-permanent). `game/effects.py`'s `EffectDef`/`EffectRegistry`; `services/effects.py`'s `EffectService` — `apply()`/`remove()`/`active_for()` stateless per-call; `_on_time_advanced()` sweeps expired rows, emits `EFFECT_EXPIRED`.
+- [x] `game/traits.py`'s `TraitDef`/`TraitSource`/`TraitRegistry` — named boon/bane modifier-bundles. Tier 1 ships exactly one `TraitSource` (`ActiveEffectTraitSource`, sourcing from effects' `grants_traits`) and registers both an `ActiveEffectModifierSource` and a `TraitModifierSource` with Sprint 18's `ModifierRegistry` — the "Tier 1 registers the active-effect and trait sources" §3.5 promise, fulfilled. `PlayerStats.traits: list[str]` column added (empty by default; Tier 2 populates it).
+- [x] HP migration (the proof-of-primitive): `PlayerStats.current_hp` and `NPC.current_hp` deleted outright — `max_hp` stays as the definitional base fed to the "hp" `MeterDef`'s `base_maximum`, registered as bootstrap in `main.py`'s lifespan. Full blast radius: `world/loader.py` (NPC seeding no longer sets `current_hp` — lazy creation handles it), `admin/routers/world.py` (NPC listing does a read-only `MeterRepo` lookup, falling back to `max_hp` for an as-yet-uncreated meter rather than triggering a write from a GET), `services/save.py` (`stats_snapshot` drops `current_hp`, gains a `"meters": {"hp": ...}` dict; loading converts both the new shape and the old v1 flat `"current_hp"` key).
+- [x] `GameContext` gains required `session`/`meters`/`effects` fields; `build_game_context()` gains required `meters`/`effects` keywords (both entry points + every test fixture updated, matching the Sprint 16/17 "factory is the single construction path" precedent). `AppState` gains `meters`/`effects`; new `web/session.py` `get_meters()`/`get_effects()` accessors mirror `get_rng()`'s app-state-with-fallback shape. New `GameEvent` members: `METER_DEPLETED`, `METER_RECOVERED`, `EFFECT_APPLIED`, `EFFECT_EXPIRED`, `EFFECT_REMOVED`.
+- [x] 25 new invariant tests; caught two real bugs (both `_on_time_advanced` sweeps read ORM attributes on `Meter`/`ActiveEffect` rows *after* `session.commit()`'s default `expire_on_commit` invalidated them and the session closed — fixed by capturing plain `(str, str, str)` tuples before the session block exits). Full suite (509 unit/integration + 3 e2e + 5 simulation) green.
 
 ### Phase 8 — Combat
 

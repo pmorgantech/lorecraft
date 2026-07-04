@@ -293,15 +293,22 @@ caps. Generalizes the doc's `EquipmentEffects.resolve()`. **See [`engine_core.md
 |---|------|--------|
 | 18.1 | Modifier resolver: buckets **flat add → multiplier → clamp/cap**; collects from equipment `effects`, traits, active effects, region; never stored (recompute on change / lazily) | [x] `game/modifiers.py`: `Modifier`/`resolve()` (pure, bucket-ordered) + `ModifierSource`/`ModifierRegistry`/`resolve_for()` (collection). Tier 1 registers no sources — landed ahead of its listed order (18 has no dependencies, per the doc's own build-order table) specifically to unblock Sprint 17.2's `skill_check()`. |
 
-## Sprint 19 — Meters & timed effects
+## Sprint 19 — Meters & timed effects ✅
 
 **Goal:** Named bounded clock-tickable resources, and expiring buffs/debuffs — one primitive each,
 not one column per resource. **See [`engine_core.md`](engine_core.md) §3.3–3.4.**
 
 | # | Task | Status |
 |---|------|--------|
-| 19.1 | `Meter` primitive (bounded, optional regen, scheduler tick, `METER_DEPLETED`); migrate `current_hp` (player + NPC) onto it as the proof — `max_hp` stays as the definitional base | [ ] |
-| 19.2 | `ActiveEffect` (clock-driven expiry, swept by scheduler) + trait registry (named boon/bane modifier-bundles) feeding the resolver | [ ] |
+| 19.1 | `Meter` primitive (bounded, optional regen, scheduler tick, `METER_DEPLETED`); migrate `current_hp` (player + NPC) onto it as the proof — `max_hp` stays as the definitional base | [x] `models/meters.py`'s `Meter` + `game/meters.py`'s `MeterDef`/registry + `services/meters.py`'s `MeterService`. "hp" `MeterDef` registered as bootstrap in `main.py`'s lifespan; `PlayerStats.current_hp`/`NPC.current_hp` deleted outright (not deprecated). |
+| 19.2 | `ActiveEffect` (clock-driven expiry, swept by scheduler) + trait registry (named boon/bane modifier-bundles) feeding the resolver | [x] `models/meters.py`'s `ActiveEffect` + `game/effects.py`'s `EffectDef`/registry + `services/effects.py`'s `EffectService`; `game/traits.py`'s `TraitDef`/`TraitSource`/registry. Tier 1 registers one `TraitSource` (active effects' `grants_traits`) and two `ModifierSource`s (active-effect, trait) with Sprint 18's resolver — the §3.5 promise fulfilled. |
+
+**Delivered beyond the two checklist items:** full HP-migration blast radius (`world/loader.py`,
+`admin/routers/world.py`, `services/save.py` — v1/v2 save-snapshot compat); `GameContext` gained
+required `session`/`meters`/`effects` fields (`build_game_context()` factory pattern held); 25 new
+invariant tests caught two real bugs (both `_on_time_advanced` sweeps read ORM attributes after
+`session.commit()`'s default `expire_on_commit` invalidated them — fixed by capturing plain values
+before the session closes). See `CHANGELOG.md` for the full list.
 
 ## Sprint 20 — Ledger & atomic transfer
 
@@ -553,7 +560,9 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-03 — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-check-) and [18](#sprint-18--modifier-resolution-) complete**: `game/rng.py`'s `GameRng` is now the one sanctioned randomness source (ruff `TID251` bans bare `random` in `src/`), threaded through `GameContext`/`build_game_context()`/`SchedulerEventContext`/`clock/weather.py`; `game/modifiers.py`'s `resolve()` is the one stacked-bonus resolver (fixed add→mult→clamp bucket order); `game/checks.py`'s `skill_check()` composes both into the one roll-under-d100 helper every future skill/combat/barter check will share. 18 landed ahead of its listed position (it has no dependencies) specifically to unblock 17.2, which needs the `Modifier` type. 21 new unit tests; full suite green. Next: [Sprint 19](#sprint-19--meters--timed-effects) (meters + timed effects) — depends on 18 (effects emit modifiers).
+*Last updated: 2026-07-03 — **[Sprint 19](#sprint-19--meters--timed-effects-) complete**: `models/meters.py`'s `Meter`/`ActiveEffect` + `game/meters.py`/`game/effects.py`/`game/traits.py` registries + `services/meters.py`/`services/effects.py` are the meter, timed-effect, and trait primitives — the "hp" `MeterDef` migration deletes `PlayerStats.current_hp`/`NPC.current_hp` outright as the proof, and Tier 1 registers its promised active-effect/trait `ModifierSource`s + `TraitSource` with Sprint 18's resolver. `GameContext` gained required `session`/`meters`/`effects` fields. 25 new tests caught two real bugs (both scheduler sweeps read expired ORM attributes after `session.commit()`). Full suite (509 unit/integration + 3 e2e + 5 simulation) green. Next: [Sprint 20](#sprint-20--ledger--atomic-transfer) (ledger + atomic transfer) — depends on Sprint 16 (moves stacks).
+
+Earlier same day — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-check-) and [18](#sprint-18--modifier-resolution-) complete**: `game/rng.py`'s `GameRng` is now the one sanctioned randomness source (ruff `TID251` bans bare `random` in `src/`), threaded through `GameContext`/`build_game_context()`/`SchedulerEventContext`/`clock/weather.py`; `game/modifiers.py`'s `resolve()` is the one stacked-bonus resolver (fixed add→mult→clamp bucket order); `game/checks.py`'s `skill_check()` composes both into the one roll-under-d100 helper every future skill/combat/barter check will share. 18 landed ahead of its listed position (it has no dependencies) specifically to unblock 17.2, which needs the `Modifier` type. 21 new unit tests; full suite green.
 
 Earlier same day — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift).
 
