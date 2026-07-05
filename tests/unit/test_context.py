@@ -123,8 +123,6 @@ def test_build_game_context_wires_all_repos() -> None:
         assert ctx.room_repo is not None
         assert ctx.item_repo is not None
         assert ctx.npc_repo is not None
-        assert ctx.quest_repo is not None
-        assert ctx.dialogue_repo is not None
 
 
 def test_build_game_context_clock_defaults_to_none() -> None:

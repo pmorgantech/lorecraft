@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.features.quests.models import PlayerQuestProgress
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.types import JsonObject, JsonValue
 
 if TYPE_CHECKING:
@@ -81,16 +82,15 @@ def _handle_give_item(data: JsonValue, ctx: "GameContext") -> None:  # type: ign
 
 
 def _handle_start_quest(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
-    if ctx.quest_repo is None:
-        return
+    quest_repo = QuestRepo(ctx.session)
     quest_id = str(data)
-    quest = ctx.quest_repo.get(quest_id)
+    quest = quest_repo.get(quest_id)
     if quest is None or not quest.stages:
         return
-    if ctx.quest_repo.player_progress(ctx.player.id, quest_id) is not None:
+    if quest_repo.player_progress(ctx.player.id, quest_id) is not None:
         return
     first_stage = quest.stages[0]
-    ctx.quest_repo.add_progress(
+    quest_repo.add_progress(
         PlayerQuestProgress(
             player_id=ctx.player.id,
             quest_id=quest_id,

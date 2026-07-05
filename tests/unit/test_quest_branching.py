@@ -14,7 +14,6 @@ from lorecraft.engine.models.player import Player
 from lorecraft.features.quests.models import Quest
 from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.features.npc.dialogue import _start_quest
-from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -76,8 +75,6 @@ def _ctx(session: Session, player: Player) -> GameContext:
         meters=MeterService(session.get_bind(), GameRng()),
         effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
-        quest_repo=QuestRepo(session),
-        dialogue_repo=DialogueRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
         audit=None,
@@ -163,7 +160,7 @@ class TestQuestBranching:
             QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
             session.commit()
 
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
 
         assert progress is not None
         assert progress.current_stage_id == "start"
@@ -181,7 +178,7 @@ class TestQuestBranching:
             QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
             session.commit()
 
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
             standing = ReputationService().standing_of(session, "p1", "npc", "merchant")
             flags = dict(player.flags)
 
@@ -203,7 +200,7 @@ class TestQuestBranching:
             QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
             session.commit()
 
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
             standing = ReputationService().standing_of(session, "p1", "npc", "merchant")
             flags = dict(player.flags)
 
@@ -227,7 +224,7 @@ class TestQuestBranching:
             QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
             session.commit()
 
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
 
         assert progress is not None
         assert progress.current_stage_id == "paid_route"  # docks branch listed first
@@ -249,7 +246,7 @@ class TestQuestBranching:
             QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
             session.commit()
 
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
 
         assert progress is not None
         assert progress.status == "completed"
@@ -269,7 +266,7 @@ class TestQuestBranching:
 
             _start_quest("rescue", ctx)
             session.commit()
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
             assert progress is not None
             assert progress.stage_started_epoch == 100.0
 
@@ -280,7 +277,7 @@ class TestQuestBranching:
 
             QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
             session.commit()
-            progress = ctx.quest_repo.player_progress("p1", "rescue")
+            progress = QuestRepo(session).player_progress("p1", "rescue")
 
         assert progress is not None
         assert progress.stage_started_epoch == 150.0

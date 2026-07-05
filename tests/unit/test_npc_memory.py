@@ -17,12 +17,10 @@ from lorecraft.features.npc.models import DialogueTree
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import NPC, Room
 from lorecraft.features.npc.dialogue import DialogueService, current_npc_id
-from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.effects import EffectService
@@ -145,8 +143,6 @@ def _ctx(session: Session, player: Player) -> GameContext:
         meters=MeterService(session.get_bind(), GameRng()),
         effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
-        quest_repo=QuestRepo(session),
-        dialogue_repo=DialogueRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
         audit=None,

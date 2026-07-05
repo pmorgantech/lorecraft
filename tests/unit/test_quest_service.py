@@ -15,7 +15,6 @@ from lorecraft.engine.models.player import Player
 from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 from lorecraft.engine.models.world import Room
 from lorecraft.features.npc.dialogue import _start_quest
-from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
@@ -88,8 +87,6 @@ def _ctx(session: Session, player: Player) -> GameContext:
         meters=MeterService(session.get_bind(), GameRng()),
         effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
-        quest_repo=QuestRepo(session),
-        dialogue_repo=DialogueRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
         audit=None,
@@ -108,7 +105,7 @@ def test_start_quest_creates_progress() -> None:
         _start_quest("q1", ctx)
         session.commit()
 
-        progress = ctx.quest_repo.player_progress("p1", "q1")
+        progress = QuestRepo(session).player_progress("p1", "q1")
 
     assert progress is not None
     assert progress.status == "active"
@@ -146,7 +143,7 @@ def test_check_progression_no_advance_when_condition_unmet() -> None:
         QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
         session.commit()
 
-        progress = ctx.quest_repo.player_progress("p1", "q1")
+        progress = QuestRepo(session).player_progress("p1", "q1")
 
     assert progress is not None
     assert progress.status == "active"
@@ -166,7 +163,7 @@ def test_check_progression_completes_when_room_visited() -> None:
         QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
         session.commit()
 
-        progress = ctx.quest_repo.player_progress("p1", "q1")
+        progress = QuestRepo(session).player_progress("p1", "q1")
         player_flags = dict(player.flags)
 
     assert progress is not None

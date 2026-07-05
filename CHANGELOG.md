@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.26.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — `GameContext` purged of Tier 2 repos; engine is now import-clean of `features/` (branch `tier_split`).** The Tier 1 `GameContext` carried `quest_repo: QuestRepo | None` and `dialogue_repo: DialogueRepo | None`, forcing `engine/game/context.py` to import `features.quests.repo` and `features.npc.repo` — the last engine→features leak. Those two fields are removed; the features that need them now build `QuestRepo(ctx.session)` / `DialogueRepo(ctx.session)` locally (quests service, exploration journal, npc side effects, npc dialogue). `build_game_context()` no longer constructs them. Result: **nothing under `src/lorecraft/engine/` imports `lorecraft.features` anymore** — the Tier 1/Tier 2 boundary holds in the one direction that matters. Full suite 794 passed, lint + typecheck clean. (`context.py` still references `game.connection_manager` and `repos.news_repo`, which are web-plumbing/content, not features — addressed by the web/content steps.)
+
 ## [0.25.0] - 2026-07-05
 
 ### Changed

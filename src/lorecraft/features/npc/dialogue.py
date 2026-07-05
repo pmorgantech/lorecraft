@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
-    from lorecraft.features.npc.repo import DialogueRepo
     from lorecraft.engine.repos.npc_repo import NpcRepo
 
 _NPC_KEY = "_dialogue_npc_id"
@@ -34,10 +34,10 @@ class DialogueService:
             return
         if npc_id not in ctx.player.met_npcs:
             ctx.player.met_npcs = [*ctx.player.met_npcs, npc_id]
-        if not npc.dialogue_tree_id or ctx.dialogue_repo is None:
+        if not npc.dialogue_tree_id:
             ctx.say(f"{npc.name} has nothing to say.")
             return
-        tree_record = ctx.dialogue_repo.get(npc.dialogue_tree_id)
+        tree_record = DialogueRepo(ctx.session).get(npc.dialogue_tree_id)
         if tree_record is None:
             ctx.say(f"{npc.name} has nothing to say.")
             return
@@ -53,10 +53,10 @@ class DialogueService:
             ctx.say("You are not in a conversation.")
             return
         npc = ctx.npc_repo.get(str(npc_id))
-        if npc is None or ctx.dialogue_repo is None:
+        if npc is None:
             self._end(ctx)
             return
-        tree_record = ctx.dialogue_repo.get(npc.dialogue_tree_id)
+        tree_record = DialogueRepo(ctx.session).get(npc.dialogue_tree_id)
         if tree_record is None:
             self._end(ctx)
             return

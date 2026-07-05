@@ -28,7 +28,6 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 
 _TREE_DATA = {
@@ -106,8 +105,6 @@ def _ctx(session: Session, player: Player) -> GameContext:
         meters=MeterService(session.get_bind(), GameRng()),
         effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
-        quest_repo=QuestRepo(session),
-        dialogue_repo=DialogueRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
         audit=None,

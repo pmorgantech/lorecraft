@@ -16,12 +16,10 @@ from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.engine.repos.audit_repo import AuditRepo
-from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.types import JsonObject, JsonValue
@@ -61,8 +59,6 @@ class GameContext:
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
     rollback_state: Callable[[], None] | None = None
-    quest_repo: QuestRepo | None = None
-    dialogue_repo: DialogueRepo | None = None
     news_repo: NewsRepo | None = None
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
@@ -191,8 +187,6 @@ def build_game_context(
         meters=meters,
         effects=effects,
         npc_repo=NpcRepo(session),
-        quest_repo=QuestRepo(session),
-        dialogue_repo=DialogueRepo(session),
         news_repo=NewsRepo(session),
         manager=manager,
         bus=bus,

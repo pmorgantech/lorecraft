@@ -17,6 +17,7 @@ import time
 from typing import TYPE_CHECKING
 
 from lorecraft.features.quests import conditions as quest_conditions
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.types import JsonObject
@@ -48,10 +49,11 @@ class QuestService:
         del event
         from lorecraft.engine.game.context import GameContext as _GC
 
-        if not isinstance(ctx, _GC) or ctx.quest_repo is None:
+        if not isinstance(ctx, _GC):
             return
-        for progress in ctx.quest_repo.active_progress(ctx.player.id):
-            quest = ctx.quest_repo.get(progress.quest_id)
+        quest_repo = QuestRepo(ctx.session)
+        for progress in quest_repo.active_progress(ctx.player.id):
+            quest = quest_repo.get(progress.quest_id)
             if quest is None:
                 continue
             stage = _stage_by_id(quest, progress.current_stage_id)
