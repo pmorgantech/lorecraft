@@ -31,7 +31,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`tier_split_refactor.md`](tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
 
-**Next up: [Sprints 31–33](#post-tier-split-band-sprints-3133--next-up)** — finish the tier split's optional feature-UI seam + feature toggling (31), player onboarding & account-preferences/accessibility UX (32), and reporting/tooling polish (33). **Combat and PvP are deferred to last** as [Sprints 40–44](#deferred-to-last-combat--pvp-sprints-4044). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Next up: [Sprints 31–34](#post-tier-split-band-sprints-3133--next-up)** — finish the tier split's optional feature-UI seam + feature toggling (31, 31.1–31.2 done), player onboarding & account-preferences/accessibility UX (32), reporting/tooling polish (33), and player-reported command polish (34: `help <command>`, `score`). **Combat and PvP are deferred to last** as [Sprints 61–65](#deferred-to-last-combat--pvp-sprints-6164). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -517,6 +517,16 @@ Username + password validation already shipped (v0.31.0); this builds on it.
 | 33.1 | Guided, multi-turn `/report` flow (category → title → detail) replacing the current one-line note; keep the existing Sprint 10.5 issues pipeline underneath | [ ] |
 | 33.2 | (stretch) Prioritized wishlist quick-wins pulled as scoped — e.g. clickable-link and page-length preferences (feed into the Sprint 32.2 blob), lore/journal surfacing | [ ] |
 
+## Sprint 34 — Player-reported command polish
+
+**Goal:** Close the two open player reports in `docs/issues.yaml` — small, self-contained
+command wins that improve day-to-day play. Both came in via the in-game `/report` pipeline.
+
+| # | Task | Status |
+|---|------|--------|
+| 34.1 | `help <command>` shows detailed help for one command (usage, aliases, scope) instead of always dumping the full list; bare `help` unchanged ([`issue-7502f412`](issues.yaml)) | [ ] |
+| 34.2 | `score` command — a player progress report (level/xp, quest completion, coins/net worth, reputation, discoveries) reading existing stats/quest/economy state; no new persistent schema ([`issue-257c6643`](issues.yaml)) | [ ] |
+
 ---
 
 ## Deferred to last: combat & PvP (Sprints 61–64)
@@ -593,7 +603,7 @@ first-class alternatives; non-lethal outcomes supported.
 
 ## Build-order reference
 
-See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish (31–33, next up)** → combat (61–63) → PvP + multiplayer tests (64–65).
+See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish + player-reported command polish (31–34, next up)** → combat (61–63) → PvP + multiplayer tests (64–65).
 
 **Note (2026-07-03):** the feature band was re-sequenced from the original combat-first order to a pillar-driven order (Exploration > Trading > Questing > Puzzles; combat supporting). `architecture.md` §28's phase list predates this and is kept for historical reference — this roadmap is authoritative for sequencing.
 
