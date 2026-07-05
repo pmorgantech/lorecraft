@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import logging
+import time
+
+import pytest
 
 from lorecraft.observability import (
     _TransactionLogFilter,
     bind_transaction_context,
     configure_logging,
+    time_operation,
 )
 
 
@@ -56,6 +60,46 @@ def test_nested_contexts_restore_outer_value_on_exit() -> None:
         record = _make_record()
         _TransactionLogFilter().filter(record)
         assert record.transaction_id == "outer"  # type: ignore[attr-defined]
+
+
+def _perf_records(caplog: pytest.LogCaptureFixture) -> list[logging.LogRecord]:
+    return [r for r in caplog.records if "perf_operation" in r.getMessage()]
+
+
+def test_time_operation_logs_debug_for_fast_block(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="lorecraft.observability"):
+        with time_operation("fast_op", warn_ms=1000.0):
+            pass
+    records = _perf_records(caplog)
+    assert len(records) == 1
+    assert records[0].levelno == logging.DEBUG
+    assert "name=fast_op" in records[0].getMessage()
+
+
+def test_time_operation_warns_when_over_threshold(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="lorecraft.observability"):
+        with time_operation("slow_op", warn_ms=0.5):
+            time.sleep(0.002)  # >0.5 ms, so the WARNING branch fires deterministically
+    records = _perf_records(caplog)
+    assert len(records) == 1
+    assert records[0].levelno == logging.WARNING
+    assert "name=slow_op" in records[0].getMessage()
+
+
+def test_time_operation_reraises_and_still_logs_on_exception(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="lorecraft.observability"):
+        with pytest.raises(ValueError):
+            with time_operation("boom", warn_ms=1000.0):
+                raise ValueError("boom")
+    records = _perf_records(caplog)
+    assert len(records) == 1
+    assert "name=boom" in records[0].getMessage()
 
 
 def test_configure_logging_is_idempotent() -> None:

@@ -18,6 +18,7 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
+from lorecraft.observability import time_operation
 from lorecraft.types import JsonObject
 
 
@@ -67,35 +68,36 @@ class SchedulerService:
 
     def _on_time_advanced(self, event: Event, ctx: object) -> None:
         del ctx
-        current_epoch = float(event.payload.get("current_epoch", 0.0))  # type: ignore[arg-type]
+        with time_operation("scheduler_tick"):
+            current_epoch = float(event.payload.get("current_epoch", 0.0))  # type: ignore[arg-type]
 
-        with Session(self._game_engine) as session:
-            repo = SchedulerRepo(session)
-            due_jobs = list(repo.due(current_epoch))
-            due_snapshot = [
-                (job.id, job.job_type, dict(job.payload)) for job in due_jobs
-            ]
-            for job in due_jobs:
-                job.status = "dispatched"
-                repo.add(job)
-            session.commit()
+            with Session(self._game_engine) as session:
+                repo = SchedulerRepo(session)
+                due_jobs = list(repo.due(current_epoch))
+                due_snapshot = [
+                    (job.id, job.job_type, dict(job.payload)) for job in due_jobs
+                ]
+                for job in due_jobs:
+                    job.status = "dispatched"
+                    repo.add(job)
+                session.commit()
 
-        if not due_snapshot or self._bus is None:
-            return
+            if not due_snapshot or self._bus is None:
+                return
 
-        event_ctx = SchedulerEventContext(
-            game_engine=self._game_engine, bus=self._bus, rng=self._rng
-        )
-        for job_id, job_type, payload in due_snapshot:
-            self._bus.emit(
-                Event(
-                    GameEvent.SCHEDULED_JOB_DUE,
-                    {
-                        "job_id": job_id,
-                        "job_type": job_type,
-                        "payload": payload,
-                        "current_epoch": current_epoch,
-                    },
-                ),
-                event_ctx,
+            event_ctx = SchedulerEventContext(
+                game_engine=self._game_engine, bus=self._bus, rng=self._rng
             )
+            for job_id, job_type, payload in due_snapshot:
+                self._bus.emit(
+                    Event(
+                        GameEvent.SCHEDULED_JOB_DUE,
+                        {
+                            "job_id": job_id,
+                            "job_type": job_type,
+                            "payload": payload,
+                            "current_epoch": current_epoch,
+                        },
+                    ),
+                    event_ctx,
+                )

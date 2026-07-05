@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.36.10)
+## Where things stand (2026-07-05, v0.37.1)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -52,7 +52,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | # | Task | Status |
 |---|------|--------|
 | 35.1 | Baseline micro-benchmark harness `scripts/perf_baseline.py` — drives real parse / condition / dispatch / commit paths against the Ashmoore world in a disposable DB; reports p50/p95/p99 per operation (checked in, reproducible before/after) | [x] Landed with first baseline. Reveals parser entity-resolution is **O(visible entities)**: `examine` parse is 0.7 ms baseline → **4.8 ms @25 items → 17 ms @100 items** (p99 ~36 ms), while condition eval is ~0.002 ms and a no-op commit ~0.015 ms. |
-| 35.2 | Structured perf logging in `observability.py`: `time_operation(name)` ctx-manager; instrument `command_parse`, `condition_evaluate`, `db_commit`, `scheduler_tick`, `broadcast_send` (warn >50 ms) | [ ] |
+| 35.2 | Structured perf logging in `observability.py`: `time_operation(name)` ctx-manager; instrument `command_parse`, `condition_evaluate`, `db_commit`, `scheduler_tick`, `broadcast_send` (warn >50 ms) | [x] `time_operation(name, *, warn_ms=50.0)` added to `observability.py` — DEBUG normally, WARNING over budget, never swallows exceptions; txn/corr IDs auto-attached by the root filter. Instrumented all five sites (`command_parse`/`condition_evaluate`/`db_commit` in `engine.py`, `scheduler_tick` in `scheduler.py`, `broadcast_send` on both `ConnectionManager` broadcasts). Call sites stay stable for 35.3 to layer persistence into the ctx-manager. |
 | 35.3 | Analytics API `/admin/analytics/performance` — p50/p95/p99 by operation from audit `duration_ms` payloads (extends existing latency query) | [ ] |
 
 ## Sprint 36 — Parser entity-resolution scaling *(prioritized by the 35.1 baseline)* — ✅ complete
@@ -89,7 +89,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 **Sprint 36 is complete** — parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size). The evidenced bottleneck the 35.1 baseline surfaced is fixed, and 36.3's memoization gate came back negative, so there's no further parser work to do here.
 
-Next highest-value move is **in-app telemetry (35.2/35.3)** — the baseline harness gives before/after for micro-paths, but live p50/p95/p99 by operation (from audit `duration_ms`) is what tells us where real player traffic spends time, and it's the prerequisite for the Sprint 38 concurrency decision gate. After that, **Sprint 37** (scheduler batching, pool tuning, and the multi-player load test) is the remaining measured-optimization work.
+**35.2 is done** — `time_operation(name)` now wraps the five hot operations and emits structured perf logs (WARNING over the 50 ms budget). Next is **35.3**: surface those measurements as p50/p95/p99 by operation via `/admin/analytics/performance`, extending the existing `command_latency_percentiles` query. That needs the per-operation durations to reach the audit log — the 35.2 call sites are already placed so the persistence can be layered into `time_operation` without touching them. After 35.3, **Sprint 37** (scheduler batching, pool tuning, and the multi-player load test) is the remaining measured-optimization work, feeding the Sprint 38 concurrency gate.
 
 **Suggested order:** ~~36.1 → 36.2 → 36.3~~ ✅ → **35.2/35.3 (in-app telemetry, next)** → 37 (batching/pool/load test) → 38 (concurrency gate, only if the load test shows a wall).
 

@@ -12,6 +12,7 @@ from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.services.audit import AuditService
+from lorecraft.observability import time_operation
 from lorecraft.types import JsonObject, JsonValue
 
 log = logging.getLogger(__name__)
@@ -41,7 +42,8 @@ class CommandEngine:
     rules: RuleEngine
 
     def handle_command(self, raw: str, ctx: GameContext) -> ParsedCommand:
-        result = parse_command(raw, context=ctx)
+        with time_operation("command_parse"):
+            result = parse_command(raw, context=ctx)
         if result.error_message:
             ctx.say(result.error_message)
             if result.suggestions:
@@ -83,7 +85,8 @@ class CommandEngine:
             self._record_blocked(ctx, parsed, "unknown_command", "Unknown command.")
             return None
 
-        condition = self.registry.evaluate_conditions(command, ctx)
+        with time_operation("condition_evaluate"):
+            condition = self.registry.evaluate_conditions(command, ctx)
         if not condition.allowed:
             reason = condition.reason or "You can't do that."
             ctx.say(reason)
@@ -115,7 +118,8 @@ class CommandEngine:
         # rather than raising, so this can't turn a failed handler into a rollback
         # of the command's own already-applied changes).
         ctx.flush_events()
-        ctx.commit_state_changes()
+        with time_operation("db_commit"):
+            ctx.commit_state_changes()
         self._record_success(ctx, parsed, duration_ms)
         log.info("command_executed verb=%s duration_ms=%.2f", parsed.verb, duration_ms)
         return parsed

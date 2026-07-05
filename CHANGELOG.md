@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.37.1] - 2026-07-05
+
+### Added
+
+- **Sprint 35.2 — structured per-operation perf logging (`time_operation`).** Added `time_operation(name, *, warn_ms=50.0)` to `observability.py`: a context manager that times a block and emits one structured `perf_operation name=… duration_ms=…` log line — DEBUG normally, escalating to **WARNING when the block exceeds the 50 ms "slow" budget** the perf baseline flagged. It never swallows exceptions (the elapsed time is still logged when the block raises), and the transaction/correlation IDs bound per command are attached automatically by the existing root log filter, so every timing is traceable to the command that produced it. Instrumented all five hot operations from the roadmap: `command_parse`, `condition_evaluate`, and `db_commit` (in `CommandEngine`), `scheduler_tick` (in `SchedulerService._on_time_advanced`), and `broadcast_send` (both `ConnectionManager.broadcast_to_room`/`broadcast_global`). Logging-only — no behavior change. Call sites are placed so Sprint 35.3 can layer per-operation persistence into `time_operation` without moving them. (Engine-tier modules import `lorecraft.observability`, a stdlib-only leaf module, consistent with the existing `lorecraft.errors` dependency; the tier-boundary test stays green.)
+
 ## [0.37.0] - 2026-07-05
 
 ### Added
