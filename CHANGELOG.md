@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.27.0] - 2026-07-05
+
+### Added
+
+- **Tier split — import-direction boundary enforcement (step 12, part 1, branch `tier_split`).** New `tests/unit/test_tier_boundaries.py` parses every module's imports with `ast` (catching lazy in-function imports, not just top-level) and fails with the exact `file -> module` pairs if the tier boundary is crossed: `engine/` may not import `features/` or a web host (`lorecraft.web`/`lorecraft.webui`), and `features/` may not import a web host. Both tests pass — the boundary the refactor built is now a regression guard that runs in `make test` (and therefore CI). The remaining part of step 12 (feature enable/disable integration tests) is still open.
+
 ## [0.26.0] - 2026-07-05
 
 ### Changed

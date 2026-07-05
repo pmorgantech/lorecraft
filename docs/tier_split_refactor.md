@@ -41,7 +41,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |
 | 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |
-| 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | ⬜ |
+| 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | 🚧 |
+| 12a | ↳ import-direction boundary test (`test_tier_boundaries.py`) — engine⇏features/web, features⇏web (0.27.0) | 5 | ✅ |
+| 12b | ↳ feature enable/disable integration tests | 5 | ⬜ |
 | 13 | Graduate §1c into `admin_builder_guide.md`; update `architecture_tiers.md`, `tier_modules.md`, `AGENTS.md` | 5 | ⬜ |
 
 ---
