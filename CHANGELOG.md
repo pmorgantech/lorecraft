@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.1] - 2026-07-05
+
+### Added
+
+- **Admin console: Help topics tab.** A new **Help** tab manages the help articles players read via `help topics` / `help <id>` / `help <name>`. Create topics (numeric id auto-assigned, or set explicitly), edit them inline (row-expand to a body textarea + title/category/keywords), delete them, and filter by name/title. Backed by `GET/POST/PUT/DELETE /admin/help` (read = Observer, mutations = Moderator); duplicate names/ids are rejected (409), non-slug names rejected (400), and every mutation re-exports `docs/help_topics.yaml` — same YAML-mirror pattern as News/Issues. Verified end-to-end in a headless browser (seed load, create/search/delete, YAML sync). 1 admin-API integration test; full suite 886 passing.
+
 ## [0.36.0] - 2026-07-05
 
 ### Added

@@ -121,7 +121,7 @@ password}`, returning access + refresh tokens).
 
 ## Admin Web Panel Tour
 
-Eight tabs, each backed by REST endpoints under `/admin/*`:
+Nine tabs, each backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
@@ -132,6 +132,7 @@ Eight tabs, each backed by REST endpoints under `/admin/*`:
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
 | **Issues** | Repo-tracked issue tracker CRUD; table shows opened-by + created/updated dates (🕑 button toggles absolute dates ↔ relative ages), and each row expands (click) to full description, tags, links, assignee, and timestamps | `GET/POST/PUT /admin/issues` |
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
+| **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
 | **Accounts** | Create/revoke admin accounts, assign roles (superadmin only) | `GET/POST /admin/accounts`, `DELETE /admin/accounts/{username}` |
 
 Player moderation actions (teleport, flag edit, freeze/unfreeze, message) live under the
