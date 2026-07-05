@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.5)
+## Where things stand (2026-07-05, v0.38.6)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -91,12 +91,17 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 **Sprints 35 and 36 are complete.** Parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size), and the telemetry stack is in place: the `perf_baseline.py` harness (35.1), per-operation `time_operation` logging (35.2), and the live `/admin/analytics/performance` p50/p95/p99-by-operation endpoint (35.3), sourced from the `perf` breakdown now stamped on every `COMMAND_EXECUTED` audit event.
 
-**Sprint 37 is mostly done** (measure-first order): pool knobs (37.2) and the multi-player load test (37.3) shipped. The load test gives the first real evidence — **10 lockstep players → p50 ≈ 254 ms, p99 ≈ 475 ms**, i.e. command latency ≈ queue-position × per-command cost on the single-threaded loop. Two data-driven decisions remain:
+**Sprint 37 is mostly done** (measure-first order): pool knobs (37.2) and the multi-player load test (37.3) shipped, and the two missing benchmarks (scheduler-tick in `perf_baseline.py`, jittered load) were added (v0.38.6) — which produced a **decisive, band-reshaping finding**.
 
-- **37.1 (scheduler-commit batching)** — still gated: the load-test script is command-driven, not scheduler-heavy, so it hasn't yet shown per-job scheduler-commit cost. Decide whether to run a scheduler-heavy load variant (many due `mobile_route` jobs/tick) to get that evidence, or leave 37.1 deferred until a scheduler workload actually appears.
-- **38.1 (concurrency gate)** — the p99 ≈ 475 ms figure under a *synthetic lockstep herd* is the first input; before acting on it, get a realistic (jittered arrival) number and decide against a target. The gate stays closed unless a realistic workload shows a hard wall.
+**Evidence (2026-07-05, v0.38.6):** the dominant cost across every path is **fsync-per-commit on the single SQLite writer** (~12–15 ms/commit in this environment, default `DELETE` journal). The scheduler tick scales ~28 ms/job (**50 due jobs ≈ 1068 ms**); commands cost ~2 commits each (10 players jittered → p50 100 ms; lockstep → 254 ms). A throwaway `PRAGMA journal_mode=WAL; synchronous=NORMAL` cut the scheduler tick **~20–29×** (50 jobs **1068 → 47 ms**). Two consequences:
 
-**Suggested order:** ~~35.1 → 35.2 → 35.3~~ ✅ · ~~36.1 → 36.2 → 36.3~~ ✅ · ~~37.2 → 37.3~~ ✅ → **decide 37.1 (scheduler-heavy evidence?) → 38.1 (concurrency gate, realistic-load number first)**.
+- **A new, higher-value fix surfaced: SQLite WAL mode + `synchronous=NORMAL`** — one small, broad change that speeds *every* commit (commands, scheduler, audit), unlike the scheduler-only 37.1. Carries a durability trade-off (WAL+NORMAL can lose the last transaction on OS crash/power loss, not on app crash) worth an explicit decision. **← recommended next perf move.**
+- **38.1 (concurrency/threading) is the wrong fix** and should be **deferred to `wishlist.md`**: the wall is fsync serialization on one writer, not CPU — threads don't parallelize SQLite writes. Reduce commit cost (WAL) first; only reconsider concurrency if a *post-WAL* load test still shows a wall.
+- **37.1 (scheduler-commit batching)** stays justified but **drops in priority**: once WAL lands, 50 jobs/tick ≈ 47 ms is tolerable, so batching becomes a marginal follow-up rather than urgent. Candidate for `wishlist.md` unless a scheduler-heavy workload appears.
+
+**Disposition pending user call (2026-07-05):** adopt WAL as a new perf task, then move 38.1 (and likely 37.1) to `wishlist.md` and proceed to Sprint 39.
+
+**Suggested order:** ~~35.1 → 35.2 → 35.3~~ ✅ · ~~36.1 → 36.2 → 36.3~~ ✅ · ~~37.2 → 37.3~~ ✅ · benchmarks ✅ → **WAL mode (recommended) → defer 37.1/38.1 to wishlist → Sprint 39**.
 
 ---
 

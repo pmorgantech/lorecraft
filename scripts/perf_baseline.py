@@ -39,7 +39,7 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
-from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.meters import MeterDef, get_registry as get_meter_registry
 from lorecraft.engine.game.parser import parse_command
@@ -48,7 +48,7 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
-from lorecraft.engine.models.world import Item, Room
+from lorecraft.engine.models.world import Item, Room, WorldClock
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -58,6 +58,13 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
+from lorecraft.engine.services.mobile_route import (
+    MobileRouteService,
+    RouteHooks,
+    RouteSpec,
+    Waypoint,
+)
+from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.features.item_components.components import (
     register as register_item_components,
 )
@@ -159,6 +166,58 @@ def build_harness(
     return CommandEngine(registry, RuleEngine()), ctx, session, registry
 
 
+def _measure_scheduler_tick(
+    db_dir: Path, job_counts: tuple[int, ...], iterations: int
+) -> dict[str, dict[str, float]]:
+    """Cost of one scheduler tick that dispatches N due `mobile_route` jobs.
+
+    Each due job is handled by `MobileRouteService` with its own `Session` +
+    commit (the current design). This quantifies the per-tick cost Sprint 37.1
+    batching would target. File-backed SQLite, so commit fsync is realistic.
+
+    All N routes share dwell/travel, so they stay in lockstep and every integer
+    tick dispatches exactly N due jobs (depart/arrive alternating). Dispatched
+    ScheduledJob rows accumulate across ticks — kept to a modest `iterations` so
+    the `due()` scan growth doesn't dominate the signal we care about (how tick
+    cost scales with job count).
+    """
+    results: dict[str, dict[str, float]] = {}
+    waypoints = (
+        Waypoint(position_id="a", x=0, y=0, dwell_ticks=1.0, travel_ticks=1.0),
+        Waypoint(position_id="b", x=1, y=0, dwell_ticks=1.0, travel_ticks=1.0),
+    )
+    for n in job_counts:
+        engine = create_engine(f"sqlite:///{db_dir / f'sched-{n}.db'}")
+        create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+        with Session(engine) as setup_session:
+            setup_session.add(WorldClock(game_epoch=0.0, real_epoch=0.0))
+            setup_session.commit()
+
+        bus = EventBus()
+        scheduler = SchedulerService(engine, GameRng())
+        scheduler.register(bus)
+        service = MobileRouteService(engine, scheduler)
+        service.register(bus)
+        for i in range(n):
+            service.add_route(
+                RouteSpec(route_id=f"route_{i}", waypoints=waypoints), RouteHooks()
+            )
+            service.start(f"route_{i}")  # schedules a depart-check job at epoch 1
+
+        epoch = 1.0
+        for _ in range(3):  # warm up: compile queries, fill caches
+            bus.emit(Event(GameEvent.TIME_ADVANCED, {"current_epoch": epoch}), None)
+            epoch += 1.0
+        samples: list[float] = []
+        for _ in range(iterations):
+            start = time.perf_counter()
+            bus.emit(Event(GameEvent.TIME_ADVANCED, {"current_epoch": epoch}), None)
+            samples.append((time.perf_counter() - start) * 1000)
+            epoch += 1.0
+        results[f"scheduler_tick@{n}jobs"] = _percentiles(samples)
+    return results
+
+
 def _load_inventory(ctx: GameContext, session: Session, count: int) -> None:
     """Spawn `count` distinct fungible items into the player's inventory so the
     parser's visible-entity/inventory resolution has a realistic load to scan."""
@@ -242,6 +301,14 @@ def run(iterations: int, as_json: bool) -> None:
                 samples.append((time.perf_counter() - t) * 1000)
             results[f"parse:examine@{extra}items"] = _percentiles(samples)
 
+        # 6) scheduler tick dispatching N due mobile_route jobs — the per-tick,
+        #    per-job-commit cost Sprint 37.1 batching would target. Much heavier
+        #    than the micro-ops above (real per-job commits), so a small fixed
+        #    sample count rather than `iterations`.
+        results.update(
+            _measure_scheduler_tick(Path(tmp), job_counts=(1, 10, 50), iterations=10)
+        )
+
         session.close()
 
     if as_json:
@@ -255,8 +322,9 @@ def run(iterations: int, as_json: bool) -> None:
     print("=" * 92)
     print(
         "Notes: audit writes not exercised (audit=None); db_commit is game-state only, "
-        "file-backed SQLite.\nscheduler_tick / broadcast_send are server-loop paths — "
-        "measured by a load test, not this micro-harness."
+        "file-backed SQLite.\nscheduler_tick@Njobs measures the current per-job-commit "
+        "cost (Sprint 37.1 batching target); broadcast_send is a server-loop path — "
+        "measured by the multi-player load test (tests/simulation/test_load.py)."
     )
 
 

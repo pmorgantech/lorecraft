@@ -2,6 +2,15 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.6] - 2026-07-05
+
+### Added
+
+- **Scheduler-tick + jittered-load benchmarks (evidence for the Sprint 37.1 / 38.1 decisions).** Two additions to gather the missing measurements before committing to either the scheduler-batching (37.1) or concurrency (38.1) work:
+  - `scripts/perf_baseline.py` now measures `scheduler_tick@{1,10,50}jobs` — the cost of one scheduler tick that dispatches N due `mobile_route` jobs, each handled with its own session + commit (the current design).
+  - `tests/simulation/test_load.py` gained a `LORECRAFT_LOAD_TEST_JITTER_MS` knob so the load test can spread command arrivals (realistic think-time) instead of only the lockstep worst case.
+- **Finding — fsync-per-commit is the dominant cost, and SQLite WAL mode fixes it broadly.** The scheduler tick scales ~linearly at **~28 ms/job** (1 job ≈ 40 ms, 10 ≈ 209 ms, 50 ≈ **1068 ms**) under the default `DELETE` journal; a throwaway `PRAGMA journal_mode=WAL; synchronous=NORMAL` comparison cut those **~20–29×** (50 jobs **1068 → 47 ms**). The load test shows the same root cause on the command path (10 players, 200 ms jitter → p50 100 ms; lockstep → p50 254 ms), since every command commits ~twice. **Implication:** the bottleneck is commit fsync on the single SQLite writer, not CPU — so (a) WAL/pragma tuning is a far higher-value, broader fix than scheduler-specific batching, and (b) adding threads (38.1) would not help a single fsync-bound writer. The 37.1/38.1 disposition follows this evidence (see `docs/roadmap.md` Sprint 37/38).
+
 ## [0.38.5] - 2026-07-05
 
 ### Added

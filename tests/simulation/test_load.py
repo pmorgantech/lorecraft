@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import time
 import uuid
 from pathlib import Path
@@ -60,17 +61,23 @@ def test_concurrent_players_command_latency(
     simulation_server: SimulationServer,
 ) -> None:
     player_count = int(os.getenv("LORECRAFT_LOAD_TEST_PLAYERS", str(_DEFAULT_PLAYERS)))
+    # Per-command arrival jitter: 0 (default) fires everyone in lockstep — the
+    # worst-case thundering herd. A non-zero value spreads command arrivals over
+    # 0..jitter ms, approximating realistic think-time between commands, which is
+    # the number that should feed the Sprint 38 concurrency-gate decision.
+    jitter_ms = int(os.getenv("LORECRAFT_LOAD_TEST_JITTER_MS", "0"))
     # Character creation is setup, not part of the measured load — do it
     # synchronously up front so the async phase is purely connect + drive.
     credentials = [
         (simulation_server.create_player(name), name)
         for name in (f"load_{i}_{uuid.uuid4().hex[:6]}" for i in range(player_count))
     ]
-    report = asyncio.run(_run_load(simulation_server, credentials))
+    report = asyncio.run(_run_load(simulation_server, credentials, jitter_ms))
 
     print(
         f"\nLoad test — {report['players']} concurrent players × "
-        f"{report['commands_per_player']} commands ({report['total_commands']} total)\n"
+        f"{report['commands_per_player']} commands ({report['total_commands']} total), "
+        f"jitter={jitter_ms} ms\n"
         f"  p50={report['p50_ms']} ms  p95={report['p95_ms']} ms  "
         f"p99={report['p99_ms']} ms  max={report['max_ms']} ms"
     )
@@ -85,7 +92,7 @@ def test_concurrent_players_command_latency(
 
 
 async def _run_load(
-    server: SimulationServer, credentials: list[tuple[str, str]]
+    server: SimulationServer, credentials: list[tuple[str, str]], jitter_ms: int
 ) -> dict[str, float | int]:
     # Connect sequentially (setup, not measured): concurrent connects to the
     # same starting room race each socket's `connected` handshake against the
@@ -95,7 +102,9 @@ async def _run_load(
     for player_id, username in credentials:
         players.append(await VirtualPlayer.connect(server.ws_url, player_id, username))
     try:
-        per_player = await asyncio.gather(*(_drive(player) for player in players))
+        per_player = await asyncio.gather(
+            *(_drive(player, jitter_ms) for player in players)
+        )
     finally:
         await asyncio.gather(
             *(player.close() for player in players), return_exceptions=True
@@ -108,6 +117,7 @@ async def _run_load(
         "players": len(credentials),
         "commands_per_player": len(_SCRIPT),
         "total_commands": len(latencies_ms),
+        "jitter_ms": jitter_ms,
         "p50_ms": _percentile(latencies_ms, 0.50),
         "p95_ms": _percentile(latencies_ms, 0.95),
         "p99_ms": _percentile(latencies_ms, 0.99),
@@ -115,10 +125,16 @@ async def _run_load(
     }
 
 
-async def _drive(player: VirtualPlayer) -> list[float]:
-    """Run the script once, returning per-command round-trip latency in ms."""
+async def _drive(player: VirtualPlayer, jitter_ms: int) -> list[float]:
+    """Run the script once, returning per-command round-trip latency in ms.
+
+    With `jitter_ms > 0`, sleep a random 0..jitter before each command so the
+    players don't fire in lockstep — approximating real think-time.
+    """
     latencies: list[float] = []
     for command in _SCRIPT:
+        if jitter_ms:
+            await asyncio.sleep(random.uniform(0, jitter_ms) / 1000.0)
         start = time.perf_counter()
         await player.send_command(command)
         latencies.append((time.perf_counter() - start) * 1000.0)
