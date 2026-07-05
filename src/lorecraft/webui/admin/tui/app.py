@@ -1,4 +1,4 @@
-"""Lorecraft admin TUI — Textual application with F1-F5 screen routing."""
+"""Lorecraft admin TUI — Textual application with F1-F8 screen routing."""
 
 from __future__ import annotations
 
@@ -517,6 +517,42 @@ class NewsScreen(Screen[None]):
             )
 
 
+class HelpScreen(Screen[None]):
+    TITLE = "Help Topics (F8)"
+    BINDINGS = [Binding("r", "refresh", "Refresh")]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield DataTable(id="help-table")
+        yield Static("r=refresh  (create/edit via the web panel)", id="help-hint")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one(DataTable)
+        table.add_columns("ID", "Name", "Title", "Category", "Keywords")
+        self.action_refresh()
+
+    def action_refresh(self) -> None:
+        self.run_worker(self._load_help, exclusive=True, thread=True)
+
+    def _load_help(self) -> None:
+        api: _Api = self.app.api  # type: ignore[attr-defined]
+        topics = api.get("/admin/help")
+        table = self.query_one(DataTable)
+        table.clear()
+        if not isinstance(topics, list):
+            return
+        for topic in topics:
+            table.add_row(
+                str(topic.get("id", "")),
+                topic.get("name", ""),
+                topic.get("title", "")[:40],
+                topic.get("category", ""),
+                ", ".join(topic.get("keywords", []))[:40],
+                key=str(topic.get("id", "")),
+            )
+
+
 class ClockScreen(Screen[None]):
     TITLE = "Clock (F5)"
     BINDINGS = [
@@ -634,6 +670,7 @@ class LoreCraftAdminApp(App[None]):
         Binding("f5", "switch_screen('clock')", "Clock", priority=True),
         Binding("f6", "switch_screen('issues')", "Issues", priority=True),
         Binding("f7", "switch_screen('news')", "News", priority=True),
+        Binding("f8", "switch_screen('help')", "Help", priority=True),
         Binding("q", "quit", "Quit"),
     ]
 
@@ -645,6 +682,7 @@ class LoreCraftAdminApp(App[None]):
         "clock": ClockScreen,
         "issues": IssuesScreen,
         "news": NewsScreen,
+        "help": HelpScreen,
     }
 
     def __init__(self) -> None:
