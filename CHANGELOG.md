@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.31.2] - 2026-07-05
+
+### Changed
+
+- **Roadmap — post-tier-split next-steps written in; combat/PvP deferred to last.** Corrected the status of the already-complete feature sprints (**22, 27, 28, 29** were done but missing their `✅` header mark — added). Wrote the gaps surfaced during the tier split + wishlist review into `roadmap.md` as a new **"next up" band (Sprints 31–33)**: (31) finish the tier split — `WebHost`/`presentation.py` feature-UI seam, manifest-gated feature services + enable/disable tests, and the remaining structure-doc rewrites; (32) player onboarding & account UX — in-game character creation/intro flow, per-account preferences layer, accessibility mode; (33) reporting/tooling polish — guided multi-turn `/report`, prioritized wishlist quick-wins. **Combat (31–35 previously) was renumbered to 40–44** so numeric order matches execution order, and is explicitly deferred to last. Updated "Current position" and the build-order reference accordingly. Docs-only.
+
 ## [0.31.1] - 2026-07-05
 
 ### Changed

@@ -27,7 +27,11 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 [Sprints 1–3](#sprint-1--htmx-parity-playtesting-unblock-) closed out HTMX parity, command-depth gaps, and the scheduler foundation. A full code audit (`CODE_AUDIT.md`, 2026-07-01, revalidated against source) identified the engineering debt to clear next.
 
-**Current:** [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete (player authentication, error handling, type safety, characterization tests, module decomposition, service consistency/wiring, extensibility seams, tooling infrastructure, browser E2E harness, simulation harness MVP, observability & CI quality gates, unified command lifecycle, core UX completion). **Foundation gate is green** — see exit criteria below. The post-foundation work was **re-sequenced 2026-07-03**: first around Lorecraft's design pillars (Exploration > Trading > Questing > Puzzles; combat is a supporting system, not the centerpiece), then split into an **engine-first Tier 1 band** ([`engine_core.md`](engine_core.md)) ahead of the Tier 2 feature modules: **Tier 1 engine primitives (16–21)** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests/puzzles (30) → combat/PvP (31–35). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Current:** Foundation ([Sprints 4–15](#sprint-4--player-authentication-production-hardening-)) and the **entire pillar-driven feature band ([Sprints 16–30](#sprint-16--item-locationownership--instance-state))** are complete — Tier 1 engine primitives (16–21), item components & equipment (22–23), traits/skills & exploration + UI (24–26), condition/trade/transit (27–29), quests & puzzles (30). **Foundation gate is green.**
+
+Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`tier_split_refactor.md`](tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
+
+**Next up: [Sprints 31–33](#post-tier-split-band-sprints-3133--next-up)** — finish the tier split's optional feature-UI seam + feature toggling (31), player onboarding & account-preferences/accessibility UX (32), and reporting/tooling polish (33). **Combat and PvP are deferred to last** as [Sprints 40–44](#deferred-to-last-combat--pvp-sprints-4044). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -360,14 +364,14 @@ exploration, which it serves.
 > **Design docs:** [`engine_core.md`](engine_core.md) (Tier boundary + Tier 1 primitives — read first),
 > [`inventory_equipment.md`](inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
-> [`death_resurrection.md`](death_resurrection.md) ([Sprint 31](#sprint-31--combat-core-services-supporting-system) death penalty),
+> [`death_resurrection.md`](death_resurrection.md) ([Sprint 40](#sprint-40--combat-core-services-supporting-system) death penalty),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
 > [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
 > registries), [`transit_systems.md`](transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
 > [`trade_economy.md`](trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
 > design docs.
 
-## Sprint 22 — Standard item components & definition fields
+## Sprint 22 — Standard item components & definition fields ✅
 
 **Goal:** *Tier 2 realization* of item content on the [Sprint 16](#sprint-16--item-locationownership--instance-state) engine model — the deferred
 Sprint 2.5 `open`/container/state prerequisite. The per-instance carrier, item-location model, and
@@ -424,7 +428,7 @@ journal, cartography. Builds on existing minimap fog and `Exit.hidden`/`conditio
 | 26.1 | Full-screen map modal (pan/zoom), integrated with cartography reveal | [x] `partials/map_modal.html`; drag-to-pan/scroll-to-zoom via Alpine; cartography-gated reveal of known-but-unvisited rooms in `build_map_data()` |
 | 26.2 | Responsive mobile tab layout | [x] Bottom tab bar (Room/Feed/Players) below `lg`; verified in a real headless-Chromium browser |
 
-## Sprint 27 — Character condition (fatigue / sleep)
+## Sprint 27 — Character condition (fatigue / sleep) ✅
 
 **Goal:** Light survival texture that rewards planning; per-world toggle, not punishing. Runs
 on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → Character condition.**
@@ -434,7 +438,7 @@ on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → 
 | 27.1 | Fatigue/stamina drained by travel/encumbrance/actions; low fatigue penalizes skill checks; `rest`/`sleep`/`camp` | [x] `game/fatigue_source.py`'s "fatigue" `MeterDef` (stamina, scales with fortitude) + `FatigueModifierSource` (flat `mult` penalty on every registered skill once stamina drops below 50%/20% thresholds); `services/fatigue.py`'s `FatigueService` drains on `PLAYER_MOVED` (more when burdened/overloaded per Sprint 23.2 encumbrance bands) and backs `rest`/`camp`/`sleep` (`commands/condition.py`) |
 | 27.2 | Sleep advances time + restores fatigue + dream/lore hook; safe vs. unsafe sleep; warmth/exposure via weather + worn clothing | [x] New `Room.safe_rest` field: `sleep` there always succeeds (full restore, 8h clock-advance, dream); elsewhere it's a `survival` `skill_check` (harder in cold weather — `clock/weather.py`'s `COLD_WEATHERS` — offset by resolved `warmth`), failing into a shorter, partial, dreamless "interrupted" rest. `game/warmth.py` + a new `warmth_bonus` item effect (`game/item_effects.py`) give worn clothing a non-combat purpose. Dream flavor references a random `lore:`-flagged discovery (Sprint 25.3) when the player has one. |
 
-## Sprint 28 — Trading & economy
+## Sprint 28 — Trading & economy ✅
 
 **Goal:** A living economy where *where* you buy/sell matters (pillar #2). Currency → NPC shops
 → regional pricing → banks. **Signature pairing:** the transit network ([Sprint 29](#sprint-29--transit--travel-systems)) is the trade
@@ -447,7 +451,7 @@ network. **See [`trade_economy.md`](trade_economy.md).**
 | 28.3 | Banks: `BankAccount`, `deposit`/`withdraw`/`balance` at branches, one account/many branches (safe from death & robbery) | [x] New `Bank` (an NPC marker, like `Shop`) + `BankAccount` (identity only — balance is `CoinBalance("bank_account", account.id)`, new holder type). `deposit`/`withdraw` require standing in a branch's room (an `execute_exchange` leg each way); `balance` (carried + banked) works anywhere. One account, many branches — `services/bank.py`'s `BankRepo.get_or_create_account()` lazily creates the single account on first use. Mira's inn also runs a strongbox in `world_content/world.yaml`. 8 new unit tests + a world-loader round-trip test. |
 | 28.4 | Player-to-player `offer`/`accept` trade handshake (atomic escrow swap; multi-player transaction safety) | [x] Finished the pre-existing `TradeOffer` placeholder table (never wired to any code — extended with coin fields + `[stack_id, quantity]` pledge lists per side) rather than adding a parallel one. `offer <item\|N coins> to <player>` records a pledge (creates or reuses one open `TradeOffer` between the pair) and moves nothing; `accept` composes exactly one `LedgerService.execute_exchange` with every pledge as a leg — that call's own validation *is* the escrow revalidation (a pledge that's gone since offered raises and nothing moves). Room-presence, `tradeable`/`bound`, and TTL are all re-checked at accept time, not just offer time. Also finished the pre-existing unused `GameEvent.TRADE_COMPLETED`. New `offer`/`accept`/`decline` commands (`commands/trade.py`); added `"offer"` to the parser's `OBJECT_VERBS` (grammar.py) so `offer X to Y` splits roles the same way `give X to Y` does. 7 new unit tests. |
 
-## Sprint 29 — Transit & travel systems
+## Sprint 29 — Transit & travel systems ✅
 
 **Goal:** The signature Materia-Magica-inspired feature — multiple travel modes between areas
 (ferry, rail, balloon, caravan) that are slow or fast, run end-to-end (express) or make multiple
@@ -470,7 +474,59 @@ Extends the stage/flag quest system with branch conditions and mechanism puzzles
 | 30.1 | Branch conditions + consequence side-effects on quests (world-state/standing changes); NPC memory of past interactions | [x] Stage `branches` (conditions + `next_stage` + `side_effects`) evaluated once a stage's own `conditions` pass; first branch whose extra conditions pass wins, applying its `side_effects` via the existing `npc/side_effects.py` registry and advancing to `next_stage` (`null` completes the quest). Legacy linear stages (no `branches`) unchanged — full backward compat. New `terminal: true` stage flag completes regardless of array position (a branch target isn't necessarily last in `stages`). Quest conditions moved off a hardcoded if/elif chain onto a new pluggable `game/quest_conditions.py` registry (mirrors `npc/dialogue_conditions.py`). New `NpcMemory` table/repo (`models/npc_memory.py`) + `remember` dialogue side effect + `npc_remembers` dialogue/quest condition: a memory key is scoped per-(player, NPC), so the same key ("helped") means something different for each NPC without pre-naming a flag per pair. `game/reputation_conditions.py` gained `adjust_reputation` (the consequence counterpart to its existing `min_reputation` gate). 16 new unit tests. |
 | 30.2 | Mechanism & item-combination puzzles on `ItemInstance.state` (levers, dials, sequences) via pluggable conditions/side-effects; timed clock-driven quest events | [x] New `"mechanism"` standard component (`game/standard_components.py`): `Item.mechanism_states` (ordered list) + `mechanism_side_effects` (keyed by state name, fired once on transition-into via the shared side-effects registry — typically `set_flags`, which `Exit.condition_flags`/dialogue/quest gates already consume, so solving is a one-way trigger). New `turn`/`pull`/`activate` commands cycle state. `Item.combination_side_effects` (checked both directions) makes a successful `use X with Y` apply a real consequence, not just flavor text. New `services/quest_timer.py`'s `QuestTimerService` (engine-holding schedulable, `RestockService`'s shape) sweeps active quest progress on `TIME_ADVANCED`: `timeout_ticks`/`on_timeout` (fallback `next_stage`/`message`/`set_flags`) branches or fails a quest if the player doesn't act in time — data-driven, no per-quest code. New `PlayerQuestProgress.stage_started_epoch` (game-epoch) backs the math; a new `/partials/quest-tracker` route + per-player `state_change` push live-refreshes the one affected player's tracker (quest state is private, not room-broadcast). 26 new unit tests total (mechanism, timer, item-combination, world-schema round-trip/validation). |
 
-## Sprint 31 — Combat core services (supporting system)
+## Post-tier-split band (Sprints 31–33) — next up
+
+> **Sequencing note (2026-07-05).** The Tier 1/Tier 2/web split shipped in v0.15.0–0.31.1
+> (engine/ is import-pure; 24 feature packages under `features/`; `webui/player` + `webui/admin`;
+> the boundary is enforced by `tests/unit/test_tier_boundaries.py`). These three sprints capture
+> the remaining tier-split follow-ons plus the highest-value UX/wishlist gaps surfaced along the
+> way. **Combat (40–42) and PvP (43–44) are deferred to last** and were renumbered out of the
+> 31–35 slots they used to occupy. See [`tier_split_refactor.md`](tier_split_refactor.md) and
+> [`wishlist.md`](wishlist.md).
+
+## Sprint 31 — Finish the tier split: feature-UI seam, toggling & doc refresh
+
+**Goal:** Close out the deliberately-deferred, additive pieces of the tier split and make
+feature toggling real. Everything here is non-breaking (the app ships and passes today).
+
+| # | Task | Status |
+|---|------|--------|
+| 31.1 | `WebHost` abstraction (tier split step 10c): multi-directory Jinja `ChoiceLoader` + a panel/slot registry, so a feature can contribute templates/panels instead of the single hard-coded template dir | [ ] |
+| 31.2 | Optional `presentation.py` feature-UI seam (tier split §1c / step 11); prove it by re-homing the existing transit minimap (Sprint 29.3) onto the seam — loads only when the feature *and* the web host are enabled | [ ] |
+| 31.3 | Make Tier 2 feature **services** manifest-gated (today only `economy`/`bank`/`fatigue` are; the rest are built unconditionally in `main.py`/`ServiceContainer`), then add feature enable/disable integration tests (tier split step 12b) | [ ] |
+| 31.4 | Rewrite the tier-split-stale structure docs beyond the current banners — `architecture.md` §4 tree, `tier_modules.md` tables, `architecture_tiers.md` body → engine/features/webui; graduate §1c "adding feature UI" into `admin_builder_guide.md` (step 13b) | [ ] |
+
+## Sprint 32 — Player onboarding & account UX
+
+**Goal:** Make first contact a real arrival and give players an account-level home for
+preferences. From [`wishlist.md`](wishlist.md) (Player Creation / Preferences / Accessibility).
+Username + password validation already shipped (v0.31.0); this builds on it.
+
+| # | Task | Status |
+|---|------|--------|
+| 32.1 | In-game character-creation / intro walkthrough — authored like dialogue/quests (YAML + the dialogue & side-effect registries), **skippable and repeatable**, runs once after first spawn (no in-engine special-casing) | [ ] |
+| 32.2 | Per-account **preferences layer** — one settings blob on the account (display density, feed verbosity, panel visibility, timestamp format, reduced-motion for transit/map animation) that the render layer reads in exactly one place | [ ] |
+| 32.3 | **Accessibility mode** — semantic HTML/ARIA, high-contrast / screen-reader-friendly, colourblind-safe palette, real font scaling (a genuine browser-client differentiator; cheap now, costly to retrofit) | [ ] |
+
+## Sprint 33 — Reporting & content-tooling polish
+
+**Goal:** Small, self-contained, combat-independent wins surfaced during the split + wishlist.
+
+| # | Task | Status |
+|---|------|--------|
+| 33.1 | Guided, multi-turn `/report` flow (category → title → detail) replacing the current one-line note; keep the existing Sprint 10.5 issues pipeline underneath | [ ] |
+| 33.2 | (stretch) Prioritized wishlist quick-wins pulled as scoped — e.g. clickable-link and page-length preferences (feed into the Sprint 32.2 blob), lore/journal surfacing | [ ] |
+
+---
+
+## Deferred to last: combat & PvP (Sprints 40–44)
+
+> Combat is a **supporting system, not the centerpiece** (pillar order: Exploration > Trading >
+> Questing > Puzzles). These were Sprints 31–35; renumbered to 40–44 so the roadmap's numeric
+> order matches execution order (do 31–33 first). See [`combat_system.md`](combat_system.md) and
+> [`death_resurrection.md`](death_resurrection.md).
+
+## Sprint 40 — Combat core services (supporting system)
 
 **Goal:** Server-side combat resolution, no commands/UI yet. First consumer of the
 feature-registration pattern (10.4), reading equipment-derived stats. **Deliberately below
@@ -479,39 +535,43 @@ and [`death_resurrection.md`](death_resurrection.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 31.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
-| 31.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
-| 31.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
+| 40.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
+| 40.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
+| 40.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
 
-## Sprint 32 — Combat commands + UI (avoidance-first)
+## Sprint 41 — Combat commands + UI (avoidance-first)
 
 **Goal:** Combat as one resolution among several — stealth/persuasion/bribery/flee are
 first-class alternatives; non-lethal outcomes supported.
 
 | # | Task | Status |
 |---|------|--------|
-| 32.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 32.2 | Combat UI in HTMX feed + status panel | [ ] |
+| 41.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
+| 41.2 | Combat UI in HTMX feed + status panel | [ ] |
 
-## Sprint 33 — Combat testing
+## Sprint 42 — Combat testing
 
 | # | Task | Status |
 |---|------|--------|
-| 33.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
+| 42.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
 
-## Sprint 34 — PvP consent
+## Sprint 43 — PvP consent
 
 **Goal:** Consent-based, opt-in PvP reusing the combat system. Soft by default.
 
 | # | Task | Status |
 |---|------|--------|
-| 34.1 | PvP consent + challenge/accept | [ ] |
+| 43.1 | PvP consent + challenge/accept | [ ] |
 
-## Sprint 35 — Multiplayer trade / PvP / transit tests
+## Sprint 44 — Multiplayer trade / PvP / transit tests
+
+> Note: the trade and transit subsystems are already complete (Sprints 28–29); the trade/transit
+> simulation-test portions here are independent of combat/PvP and could be pulled forward if
+> multiplayer trade/transit regressions need coverage sooner.
 
 | # | Task | Status |
 |---|------|--------|
-| 35.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
+| 44.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
 
 ---
 
@@ -533,7 +593,7 @@ first-class alternatives; non-lethal outcomes supported.
 
 ## Build-order reference
 
-See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → combat (31–33) → PvP + multiplayer tests (34–35).
+See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish (31–33, next up)** → combat (40–42) → PvP + multiplayer tests (43–44).
 
 **Note (2026-07-03):** the feature band was re-sequenced from the original combat-first order to a pillar-driven order (Exploration > Trading > Questing > Puzzles; combat supporting). `architecture.md` §28's phase list predates this and is kept for historical reference — this roadmap is authoritative for sequencing.
 
