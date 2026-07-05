@@ -1,6 +1,6 @@
 # Tier 1/Tier 2 Separation Refactor Plan
 
-**Status:** In progress (branch `tier_split`)
+**Status:** ✅ Complete (Sprint 31, v0.32.0) — all steps 0–13 shipped
 **Scope:** Restructure code layout, feature loading, and service wiring to enforce Tier 1/Tier 2 boundary
 **Estimated effort:** Large refactor (3–5 sprints)
 **Tracking:** This document is the single source of truth for this work — it stays **off** `roadmap.md`. Progress is tracked in the checklist directly below.
@@ -48,9 +48,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 12a | ↳ import-direction boundary test (`test_tier_boundaries.py`) — engine⇏features/web, features⇏web (0.27.0) | 5 | ✅ |
 | 12b | ↳ feature enable/disable integration tests — all Tier 2 services manifest-gated + `test_feature_toggling.py` (Sprint 31.3) | 5 | ✅ |
 | E  | Engine import-purity: `GameContext` purged of Tier 2 repos; nothing in `engine/` imports `features/` (0.26.0) | 1 | ✅ |
-| 13 | Graduate §1c into `admin_builder_guide.md`; update `architecture_tiers.md`, `tier_modules.md`, `AGENTS.md` | 5 | 🚧 |
-| 13a | ↳ `architecture_tiers.md` / `tier_modules.md` / `AGENTS.md` updated to the shipped layout (0.27.0) | 5 | ✅ |
-| 13b | ↳ graduate §1c "adding feature UI" into `admin_builder_guide.md` (blocked on step 11) | 5 | ⬜ |
+| 13 | Graduate §1c into `admin_builder_guide.md`; update `architecture_tiers.md`, `tier_modules.md`, `AGENTS.md` | 5 | ✅ |
+| 13a | ↳ `architecture_tiers.md` / `tier_modules.md` / `AGENTS.md` updated to the shipped layout (0.27.0; deep rewrite Sprint 31.4) | 5 | ✅ |
+| 13b | ↳ graduate §1c "adding feature UI" into `admin_builder_guide.md` (Sprint 31.4) | 5 | ✅ |
 
 ---
 
@@ -65,15 +65,14 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 
 The import-direction boundary is enforced by a test that runs in `make test`/CI. Full suite (796 tests) green; lint + typecheck clean at every commit (0.15.0 → 0.30.0).
 
-**Remaining — additive / follow-on, none blocking the boundary:**
+**✅ The tier split is now fully complete** — every tracked step (0–13) has shipped. Nothing remains open.
 
-- **Step 13b — graduate §1c** ("adding feature UI") into `admin_builder_guide.md`. Now unblocked (step 11 shipped); pending in Sprint 31.4.
-
-**Shipped since (Sprint 31, v0.31.4+):**
+**Shipped in Sprint 31 (v0.31.4–0.32.0):**
 
 - **Step 10c — `WebHost` abstraction** (`webui/player/host.py`): multi-dir Jinja `ChoiceLoader` + `Panel` panel/slot registry, plus static-mount and script hooks. 9 unit tests.
 - **Step 11 — the `presentation.py` feature-UI seam** (§1c): `FeatureManifest.presentation` (optional dotted path), loaded by `webui/player.load_feature_presentations()` at host composition only (never headless). Proven by `features/transit/presentation.py` registering the minimap panel. The tier-boundary test now allows web imports specifically in `presentation.py` files (they are loaded *by* the host).
 - **Step 12b — feature enable/disable integration tests** (Sprint 31.3): every Tier 2 service is now manifest-gated (`ServiceContainer` + the `main.py` feature-owned schedulables); only Tier 1 `save` is unconditional. `tests/integration/test_feature_toggling.py` proves disabling a feature drops its service + verbs while the app still boots.
+- **Step 13 — structure-doc rewrite** (Sprint 31.4): `architecture.md` §4 tree, `tier_modules.md` tables, and `architecture_tiers.md` body rewritten to the shipped engine/features/webui layout (beyond the earlier banners); §1c "adding feature UI" graduated into `admin_builder_guide.md` as the "Extending the UI: Feature Panels" chapter.
 
 ---
 

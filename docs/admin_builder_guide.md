@@ -18,8 +18,9 @@ for each subsystem rather than duplicating them.
 10. [Moderating Players](#moderating-players)
 11. [Issues & News](#issues--news)
 12. [Analytics](#analytics)
-13. [Troubleshooting](#troubleshooting)
-14. [Related Docs](#related-docs)
+13. [Extending the UI: Feature Panels](#extending-the-ui-feature-panels)
+14. [Troubleshooting](#troubleshooting)
+15. [Related Docs](#related-docs)
 
 ---
 
@@ -95,6 +96,7 @@ defined in `src/lorecraft/config.py`.
 | `LORECRAFT_PLAYER_REFRESH_TTL` | `28800` (8 hr) | Player API refresh token lifetime, seconds |
 | `LORECRAFT_PLAYER_WS_TICKET_TTL_SECONDS` | `60.0` | Single-use `POST /auth/ws-ticket` ticket lifetime before the `/ws` handshake must consume it |
 | `LORECRAFT_ALLOW_QUERY_PLAYER_ID` | `false` (Sprint 4) | Dev/test fallback: trusts `?player_id=` (HTTP) and `/ws?player_id=` (WebSocket) without a signed session or ws-ticket. Off by default since Sprint 4 shipped real password login + WS tickets — only turn on for local dev/test convenience, never on a public server. |
+| `LORECRAFT_FEATURES` | *(unset → all on)* | Comma-separated Tier 2 feature keys to enable (e.g. `movement,inventory,npc,quests`). Unset means every discovered feature is on (the shipped default). A whitelist — to *disable* one feature, list all the others. Declared dependencies (`equipment`→`traits`, `containers`→`item_components`) must be included or startup fails. See [Extending the UI](#extending-the-ui-feature-panels) and `docs/architecture_tiers.md` §5. |
 
 **Before exposing a server publicly:** set `LORECRAFT_ADMIN_JWT_SECRET` and
 `LORECRAFT_PLAYER_SESSION_SECRET` to real secrets, change `LORECRAFT_ADMIN_SEED_PASSWORD`
@@ -261,6 +263,81 @@ GET /admin/analytics/quests         — quest completion counts
 GET /admin/analytics/player-hours   — playtime from PlayerSession records
 ```
 
+## Extending the UI: Feature Panels
+
+A Tier 2 **feature** can contribute its own UI to the player web client — a schedule
+board, an inventory panel, the transit minimap — without touching the engine or the base
+web templates. This is the `presentation.py` seam (shipped in Sprint 31). It loads **only**
+when both that feature and the web host are running, so a headless run (tests, simulation,
+world CLI) never touches UI code.
+
+### The update loop it builds on
+
+A "panel" in the player UI is a convention with three parts:
+
+1. A DOM element with a stable id, e.g. `<div id="transit-minimap">`, sitting in a named
+   **slot** in the page shell (`left-rail`, `right-rail`, `hud`, `feed`).
+2. A route `GET /partials/<id>` that renders the panel's template.
+3. The engine *naming* that panel when it changes: a command/event handler adds the panel
+   id to `ctx.updates`, and the web layer pushes `{"type": "state_change",
+   "affected_panels": ["transit-minimap", ...]}`. The browser re-fetches
+   `/partials/<id>` and swaps the returned HTML. The client never needs to know what the
+   panel *means* — that indirection is the whole extension seam.
+
+### What a feature ships
+
+Add a `presentation.py` to the feature package and point the manifest at it:
+
+```python
+# features/<feature>/__init__.py
+manifest = FeatureManifest(
+    key="transit",
+    name="Transit",
+    presentation="lorecraft.features.transit.presentation",  # optional dotted path
+)
+```
+
+```python
+# features/<feature>/presentation.py
+from lorecraft.webui.player.host import WebHost, Panel
+
+def build_minimap_context(player, db) -> dict:
+    ...                              # (player, session) -> template context
+
+def register(web: WebHost) -> None:
+    web.add_template_dir(Path(__file__).parent / "templates")  # add to Jinja search path
+    web.add_panel(Panel(
+        id="transit-minimap",        # unique; prefix with the feature key
+        slot="right-rail",           # a named shell slot
+        partial="partials/transit_minimap.html",
+        context=build_minimap_context,
+    ))
+    web.add_static("/features/transit", Path(__file__).parent / "static")  # optional
+    web.add_script("/features/transit/minimap.js", module=True)            # optional (interactive only)
+```
+
+The web host (`webui/player/__init__.py`) loads every enabled feature's `presentation.py`
+during startup and calls its `register(web)`. A broken `presentation.py` degrades to
+"no panel" with a logged error — it never crashes the page.
+
+### Contracts to know
+
+- **Panel ids are global and stable** — they are the URL (`/partials/<id>`), the DOM id,
+  and the `affected_panels` token. Prefix with the feature key (`transit-minimap`, not
+  `minimap`) to stay unique across features.
+- **Slots are a fixed contract** (`left-rail`, `right-rail`, `hud`, `feed`); an unknown
+  slot name drops the panel with a warning. Two panels in the same slot stack in feature
+  load order.
+- **Most panels need zero JavaScript** — a server-rendered partial that re-fetches on
+  `state_change` is enough. Only genuinely interactive panels (e.g. an animated minimap)
+  ship a JS module, and that module reads the DOM / a host-provided `lorecraft:ws`
+  event — it never opens its own socket or imports engine code.
+- **The engine drives visibility** — a feature refreshes its panel by adding the panel id
+  to `ctx.updates`/`affected_panels` from its own handlers, exactly like core panels.
+
+See `docs/tier_split_refactor.md` §1c for the full design and `features/transit/` for a
+working example.
+
 ## Troubleshooting
 
 - **"Using an ephemeral random secret" warning at startup** — `LORECRAFT_ADMIN_JWT_SECRET`
@@ -291,6 +368,7 @@ GET /admin/analytics/player-hours   — playtime from PlayerSession records
 | [player_authentication.md](player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
 | [disconnect_handling.md](disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
 | [architecture.md](architecture.md) | Full system architecture reference |
-| [tier_split_refactor.md](tier_split_refactor.md) | Engine/feature/web-host layout + **how to add feature UI** (§1c) — in progress |
+| [tier_split_refactor.md](tier_split_refactor.md) | Engine/feature/web-host layout + the `presentation.py` feature-UI design (§1c) |
+| [architecture_tiers.md](architecture_tiers.md) | Tier 1/2/3 model, feature manifests, enabling/disabling features |
 | [roadmap.md](roadmap.md) | Sprint-by-sprint build order and current status |
 | [user_guide.md](user_guide.md) | Player-facing command reference |

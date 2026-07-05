@@ -31,7 +31,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`tier_split_refactor.md`](tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
 
-**Next up: [Sprints 31–34](#post-tier-split-band-sprints-3133--next-up)** — finish the tier split's optional feature-UI seam + feature toggling (31, 31.1–31.2 done), player onboarding & account-preferences/accessibility UX (32), reporting/tooling polish (33), and player-reported command polish (34: `help <command>`, `score`). **Combat and PvP are deferred to last** as [Sprints 61–65](#deferred-to-last-combat--pvp-sprints-6164). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Next up: [Sprints 32–34](#post-tier-split-band-sprints-3133--next-up)** — Sprint 31 (finish the tier split: WebHost + `presentation.py` seam + full feature toggling + doc refresh) is **complete** (v0.31.4–0.32.0); the tier split is now fully done. Remaining near-term: player onboarding & account-preferences/accessibility UX (32), reporting/tooling polish (33), and player-reported command polish (34: `help <command>`, `score`). **Combat and PvP are deferred to last** as [Sprints 61–65](#deferred-to-last-combat--pvp-sprints-6164). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -484,17 +484,19 @@ Extends the stage/flag quest system with branch conditions and mechanism puzzles
 > 31–35 slots they used to occupy. See [`tier_split_refactor.md`](tier_split_refactor.md) and
 > [`wishlist.md`](wishlist.md).
 
-## Sprint 31 — Finish the tier split: feature-UI seam, toggling & doc refresh
+## Sprint 31 — Finish the tier split: feature-UI seam, toggling & doc refresh ✅
 
 **Goal:** Close out the deliberately-deferred, additive pieces of the tier split and make
 feature toggling real. Everything here is non-breaking (the app ships and passes today).
+**Complete (v0.31.4–0.32.0)** — the tier split is now fully done (all steps 0–13, see
+[`tier_split_refactor.md`](tier_split_refactor.md)).
 
 | # | Task | Status |
 |---|------|--------|
 | 31.1 | `WebHost` abstraction (tier split step 10c): multi-directory Jinja `ChoiceLoader` + a panel/slot registry, so a feature can contribute templates/panels instead of the single hard-coded template dir | [x] `WebHost` + `Panel` classes; `add_template_dir`/`add_panel`/`add_static`/`add_script` + `build_jinja_environment()`. 9 unit tests. |
 | 31.2 | Optional `presentation.py` feature-UI seam (tier split §1c / step 11); prove it by re-homing the existing transit minimap (Sprint 29.3) onto the seam — loads only when the feature *and* the web host are enabled | [x] Feature manifests gain optional `presentation` field (dotted path to module with `register(web_host)`). `webui/player.__init__` loads presentations via `create_web_host()` + `load_feature_presentations()`. Wired into main.py lifespan. Transit feature has `presentation.py` registering minimap panel as proof. Tier boundary test updated to allow web imports in presentation.py. |
 | 31.3 | Make Tier 2 feature **services** manifest-gated (today only `economy`/`bank`/`fatigue` are; the rest are built unconditionally in `main.py`/`ServiceContainer`), then add feature enable/disable integration tests (tier split step 12b) | [x] All Tier 2 services now gated (`movement`/`inventory`/`dialogue`/`quest`/`character_info`/`exploration`/`journal`/`trade` + main.py's `light_fuel`/`restock`/`quest_timer`/`transit`); only Tier 1 `save` is unconditional. `register_all_commands` + `main.py` guard every feature. 4 new `test_feature_toggling.py` integration tests. |
-| 31.4 | Rewrite the tier-split-stale structure docs beyond the current banners — `architecture.md` §4 tree, `tier_modules.md` tables, `architecture_tiers.md` body → engine/features/webui; graduate §1c "adding feature UI" into `admin_builder_guide.md` (step 13b) | [ ] |
+| 31.4 | Rewrite the tier-split-stale structure docs beyond the current banners — `architecture.md` §4 tree, `tier_modules.md` tables, `architecture_tiers.md` body → engine/features/webui; graduate §1c "adding feature UI" into `admin_builder_guide.md` (step 13b) | [x] `architecture.md` §4 tree + `tier_modules.md` + `architecture_tiers.md` body rewritten to the shipped layout; new "Extending the UI: Feature Panels" chapter in `admin_builder_guide.md` (+ `LORECRAFT_FEATURES` config row). Tier split fully complete. |
 
 ## Sprint 32 — Player onboarding & account UX
 
