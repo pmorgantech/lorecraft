@@ -116,7 +116,7 @@ def _handle_start_quest(data: JsonValue, ctx: "GameContext") -> None:  # type: i
 
 def _handle_end_dialogue(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
     del data
-    from lorecraft.npc.dialogue import _NPC_KEY, _NODE_KEY
+    from lorecraft.features.npc.dialogue import _NPC_KEY, _NODE_KEY
 
     flags = {**ctx.player.flags}
     flags.pop(_NPC_KEY, None)

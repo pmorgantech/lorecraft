@@ -20,7 +20,7 @@ from lorecraft.models.changeset import (
     WorldMigration,
 )
 from lorecraft.models.combat import CombatSession
-from lorecraft.models.dialogue import DialogueTree
+from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.models.issue import Issue
 from lorecraft.engine.models.items import ItemInstance, ItemStack

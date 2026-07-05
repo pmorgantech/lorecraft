@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.models.dialogue import DialogueTree
+from lorecraft.features.npc.models import DialogueTree
 from lorecraft.engine.repos.base import Repository
 
 

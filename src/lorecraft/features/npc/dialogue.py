@@ -8,7 +8,7 @@ from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
-    from lorecraft.repos.dialogue_repo import DialogueRepo
+    from lorecraft.features.npc.repo import DialogueRepo
     from lorecraft.engine.repos.npc_repo import NpcRepo
 
 _NPC_KEY = "_dialogue_npc_id"
@@ -194,7 +194,7 @@ def _visible_choices_for_flags(
 
 def _choice_visible(choice: JsonObject, ctx: GameContext) -> bool:
     """Evaluate all conditions on a choice using the registry; all must pass."""
-    from lorecraft.npc.dialogue_conditions import get_registry
+    from lorecraft.features.npc.dialogue_conditions import get_registry
 
     registry = get_registry()
     conditions: JsonObject = {}
@@ -217,7 +217,7 @@ def _visible_choices(node: JsonObject, ctx: GameContext) -> list[JsonObject]:
 
 def _apply_side_effects(effects: JsonObject, ctx: GameContext) -> None:
     """Apply dialogue side effects using the registered handlers."""
-    from lorecraft.npc.side_effects import get_registry
+    from lorecraft.features.npc.side_effects import get_registry
 
     registry = get_registry()
     registry.apply(effects, ctx)
@@ -225,6 +225,6 @@ def _apply_side_effects(effects: JsonObject, ctx: GameContext) -> None:
 
 def _start_quest(quest_id: str, ctx: GameContext) -> None:
     """Start a quest for the player. Kept for backward compatibility with tests."""
-    from lorecraft.npc.side_effects import _handle_start_quest
+    from lorecraft.features.npc.side_effects import _handle_start_quest
 
     _handle_start_quest(quest_id, ctx)

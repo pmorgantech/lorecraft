@@ -505,7 +505,7 @@ class InventoryService:
             other.id
         ) or other.combination_side_effects.get(item.id)
         if isinstance(effects, dict):
-            from lorecraft.npc.side_effects import get_registry
+            from lorecraft.features.npc.side_effects import get_registry
 
             get_registry().apply(effects, ctx)
 
@@ -984,7 +984,7 @@ class InventoryService:
 
         effects = item.mechanism_side_effects.get(new_state_name)
         if isinstance(effects, dict):
-            from lorecraft.npc.side_effects import get_registry
+            from lorecraft.features.npc.side_effects import get_registry
 
             get_registry().apply(effects, ctx)
 

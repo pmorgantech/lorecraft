@@ -16,7 +16,7 @@ from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.engine.repos.audit_repo import AuditRepo
-from lorecraft.repos.dialogue_repo import DialogueRepo
+from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo

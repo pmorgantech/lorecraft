@@ -18,7 +18,7 @@ from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
-from lorecraft.services.movement import MovementService
+from lorecraft.features.movement.service import MovementService
 
 
 def test_movement_service_moves_player_and_queues_event() -> None:

@@ -14,8 +14,8 @@ from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
 from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 from lorecraft.engine.models.world import Room
-from lorecraft.npc.dialogue import _start_quest
-from lorecraft.repos.dialogue_repo import DialogueRepo
+from lorecraft.features.npc.dialogue import _start_quest
+from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService

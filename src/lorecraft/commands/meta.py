@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
-from lorecraft.npc.dialogue import _NPC_KEY
+from lorecraft.features.npc.dialogue import _NPC_KEY
 from lorecraft.engine.services.save import SaveSlotService
 
 # Dialogue reply commands are only meaningful while in an active conversation.

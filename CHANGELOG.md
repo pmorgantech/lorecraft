@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.25.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — movement + NPC subsystem co-located; step 8 feature migration complete (batch 8, branch `tier_split`).**
+  - **movement feature** (new) — `services/movement.py` → `features/movement/service.py`. Classified Tier 2 (not an engine primitive) because `MovementService.move()` is terrain-gated and skill-checked, depending on the `terrain` and `skills` features.
+  - **npc feature** (new) — the whole NPC/dialogue subsystem co-located: `npc/dialogue.py` → `dialogue.py`, `npc/dialogue_conditions.py`, `npc/side_effects.py`, `npc/scheduler.py`, `models/dialogue.py` → `models.py`, `repos/dialogue_repo.py` → `repo.py`. Kept out of `engine/` because the dialogue side effects reach into inventory/quests; a future refinement could lift the pure tree traversal into the engine behind a Tier 1 side-effect registry. The empty `src/lorecraft/npc/` package was removed.
+  - `services/__init__.py` slimmed to just its docstring (the package now holds only the composition `ServiceContainer`).
+  `discover_features()` now returns **24 features**. Full suite 794 passed, lint + typecheck clean.
+  - **Step 8 status:** every Tier 2 game mechanic is now co-located under `features/<x>/`. What remains in the legacy dirs is not Tier 2 game code: `game/{broadcast,connection_manager}.py` (web plumbing → step 10 `webui/`), `services/container.py` (the composition hub), and `models/{admin,issue,news,combat,changeset}.py` + `repos/{issue,news}_repo.py` (admin console, `/report`+`/news` content, a combat stub, and world-versioning — addressed by later steps / their own homes).
+
 ## [0.24.0] - 2026-07-05
 
 ### Changed

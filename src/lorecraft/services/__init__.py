@@ -1,11 +1,7 @@
-"""Tier 2 gameplay services.
+"""Composition-layer service wiring.
 
-Tier 1 engine services (scheduler/item_location/meters/effects/save/
-mobile_route/audit) live in ``lorecraft.engine.services``.
+This package now holds only the ``ServiceContainer`` (`container.py`), which
+composes Tier 1 engine services (``lorecraft.engine.services``) with the Tier 2
+feature services (``lorecraft.features.<feature>.service``). It is deliberately
+*not* in ``engine/`` — the container imports features, which the engine may not.
 """
-
-from lorecraft.services.movement import MovementService
-
-__all__ = [
-    "MovementService",
-]

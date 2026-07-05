@@ -10,7 +10,7 @@ import yaml
 
 from lorecraft.engine.game.holders import Location
 from lorecraft.features.bank.models import Bank
-from lorecraft.models.dialogue import DialogueTree
+from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.features.quests.models import Quest

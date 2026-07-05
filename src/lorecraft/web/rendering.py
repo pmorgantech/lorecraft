@@ -178,7 +178,7 @@ def resolve_command_text(
     player_flags: Any | None = None,
 ) -> str:
     """Resolve disambiguated/numeric command input to full command text."""
-    from lorecraft.npc.dialogue import _NPC_KEY
+    from lorecraft.features.npc.dialogue import _NPC_KEY
 
     stripped = raw.strip()
     if not stripped.isdigit():

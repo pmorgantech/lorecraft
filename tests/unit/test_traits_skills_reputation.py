@@ -284,7 +284,7 @@ class TestReputation:
     def test_min_reputation_dialogue_condition(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
-        from lorecraft.npc.dialogue_conditions import get_registry
+        from lorecraft.features.npc.dialogue_conditions import get_registry
 
         _cmd_engine, ctx, session = built
         ReputationService().adjust(session, ctx.player.id, "npc", "mira", 5)

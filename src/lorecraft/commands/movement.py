@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.movement import MovementService
+from lorecraft.features.movement.service import MovementService
 
 
 CARDINAL_DIRECTIONS = ("north", "south", "east", "west")

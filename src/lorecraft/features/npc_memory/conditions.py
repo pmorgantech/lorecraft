@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lorecraft.features.quests import conditions as quest_conditions
-from lorecraft.npc import dialogue_conditions, side_effects
+from lorecraft.features.npc import dialogue_conditions, side_effects
 from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.types import JsonObject, JsonScalar, JsonValue
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 def _npc_remembers_satisfied(data: JsonValue, ctx: "GameContext") -> bool:
-    from lorecraft.npc.dialogue import current_npc_id
+    from lorecraft.features.npc.dialogue import current_npc_id
 
     npc_id = current_npc_id(ctx)
     if npc_id is None or not isinstance(data, list):
@@ -43,7 +43,7 @@ def _as_scalar(value: JsonValue) -> JsonScalar:
 
 
 def _handle_remember(data: JsonValue, ctx: "GameContext") -> None:
-    from lorecraft.npc.dialogue import current_npc_id
+    from lorecraft.features.npc.dialogue import current_npc_id
 
     npc_id = current_npc_id(ctx)
     if npc_id is None:

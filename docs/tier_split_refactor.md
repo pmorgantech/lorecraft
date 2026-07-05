@@ -29,7 +29,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 7b | ↳ `engine/services/` + `engine/repos/` — Tier 1 services/repos moved (0.16.0) | 1 | ✅ |
 | 7c | ↳ `engine/clock/world_clock` moved; season calendar decoupled from weather (0.17.0) | 1 | ✅ |
 | 7d | ↳ `engine/models/` (Tier 1 tables) + `engine/npc/` (dialogue engine) — deferred; models split sequenced with step 8 | 1/2 | ⬜ |
-| 8 | Move Tier 2 modules into `features/<x>/` packages | 2 | 🚧 |
+| 8 | Move Tier 2 modules into `features/<x>/` packages | 2 | ✅ |
 | 8a | ↳ Tier 1 models → `engine/models/` (folded in per sequencing decision) (0.18.0) | 1/2 | ✅ |
 | 8b | ↳ `reputation` fully co-located (conditions/service/models/repo) — first vertical slice (0.19.0) | 2 | ✅ |
 | 8c | ↳ traits (split: registry stays Tier 1), equipment, fatigue, item_components, containers co-located (0.20.0) | 2 | ✅ |
@@ -37,7 +37,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 8e | ↳ warmth, terrain, weather, light, encumbrance co-located (0.22.0) | 2 | ✅ |
 | 8f | ↳ transit, quests, trading, inventory co-located (0.23.0) | 2 | ✅ |
 | 8g | ↳ ledger→engine (Tier 1 fix), items + character features, restock→economy (0.24.0) | 1/2 | ✅ |
-| 8h | ↳ movement + npc/dialogue subsystem (engine dialogue tree vs Tier 2 conditions/side effects) | 1/2 | ⬜ |
+| 8h | ↳ movement (Tier 2: terrain/skill-gated) + npc/dialogue subsystem co-located; step 8 done (0.25.0) | 1/2 | ✅ |
 | 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |
 | 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |

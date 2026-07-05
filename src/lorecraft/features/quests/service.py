@@ -179,7 +179,7 @@ class QuestService:
             ctx.player.flags = {**ctx.player.flags, str(flag): value}
 
     def _apply_side_effects(self, effects: JsonObject, ctx: "GameContext") -> None:
-        from lorecraft.npc.side_effects import get_registry
+        from lorecraft.features.npc.side_effects import get_registry
 
         get_registry().apply(effects, ctx)
 

@@ -13,11 +13,11 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.dialogue import DialogueTree
+from lorecraft.features.npc.models import DialogueTree
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import NPC, Room
-from lorecraft.npc.dialogue import DialogueService, current_npc_id
-from lorecraft.repos.dialogue_repo import DialogueRepo
+from lorecraft.features.npc.dialogue import DialogueService, current_npc_id
+from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
@@ -177,7 +177,7 @@ class TestRememberSideEffect:
             ctx = _ctx(session, player)
             assert current_npc_id(ctx) is None
 
-            from lorecraft.npc.side_effects import get_registry
+            from lorecraft.features.npc.side_effects import get_registry
 
             get_registry().apply({"remember": ["helped"]}, ctx)
             session.commit()

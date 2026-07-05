@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
-from lorecraft.npc.dialogue import DialogueService, _NPC_KEY
+from lorecraft.features.npc.dialogue import DialogueService, _NPC_KEY
 
 
 def register_social_commands(

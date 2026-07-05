@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from dataclasses import dataclass, field
 
-from lorecraft.npc.dialogue import DialogueService
+from lorecraft.features.npc.dialogue import DialogueService
 from lorecraft.features.bank.service import BankService
 from lorecraft.features.character.service import CharacterInfoService
 from lorecraft.features.economy.service import EconomyService
@@ -13,7 +13,7 @@ from lorecraft.features.exploration.service import ExplorationService
 from lorecraft.features.fatigue.service import FatigueService
 from lorecraft.features.inventory.service import InventoryService
 from lorecraft.features.exploration.journal import JournalService
-from lorecraft.services.movement import MovementService
+from lorecraft.features.movement.service import MovementService
 from lorecraft.features.quests.service import QuestService
 from lorecraft.engine.services.save import SaveSlotService
 from lorecraft.features.trading.service import TradeService

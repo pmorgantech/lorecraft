@@ -22,10 +22,10 @@ from lorecraft.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
-from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
+from lorecraft.features.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.observability import bind_transaction_context
 from lorecraft.engine.repos.audit_repo import AuditRepo
-from lorecraft.repos.dialogue_repo import DialogueRepo
+from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo

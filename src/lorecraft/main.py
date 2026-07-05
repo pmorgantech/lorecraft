@@ -32,7 +32,7 @@ from lorecraft.features import (
 )
 from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
-from lorecraft.npc.scheduler import NpcScheduler
+from lorecraft.features.npc.scheduler import NpcScheduler
 from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
