@@ -162,6 +162,7 @@ On first run it prompts for a server URL + credentials, then stores the token at
 | `F5` | Clock — pause/resume, time-ratio, weather override |
 | `F6` | Issues |
 | `F7` | News |
+| `F8` | Help — help topics (read-only; create/edit via the web panel) |
 | `q` | Quit |
 
 ## Building World Content

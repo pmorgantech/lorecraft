@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.2] - 2026-07-05
+
+### Added
+
+- **Admin TUI: Help topics screen (F8).** The terminal admin client gains a read-only **Help Topics** screen (F8) listing id/name/title/category/keywords from `GET /admin/help`, with `r` to refresh — parity with the web console's Help tab (create/edit stays in the web panel, same as the TUI's News screen). Verified with a Textual pilot.
+
 ## [0.36.1] - 2026-07-05
 
 ### Added
