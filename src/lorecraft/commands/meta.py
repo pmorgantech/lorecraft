@@ -9,6 +9,8 @@ from lorecraft.engine.game.registry import (
     CommandScope,
 )
 from lorecraft.features.npc.dialogue import _NPC_KEY
+from lorecraft.models.help import HelpTopic
+from lorecraft.repos.help_repo import HelpRepo
 from lorecraft.engine.services.save import SaveSlotService
 
 # Dialogue reply commands are only meaningful while in an active conversation.
@@ -87,8 +89,8 @@ def _build_command_help(registry: CommandRegistry, verb: str) -> list[str]:
     command = registry.get(verb)
     if command is None:
         return [
-            f"No help for '{verb}' — unknown command.",
-            "Type 'help' for common commands, or 'help commands' for the full list.",
+            f"No help for '{verb}' — no such command or topic.",
+            "Type 'help commands' for all commands, or 'help topics' for help articles.",
         ]
 
     lines = [command.help_text or f"{command.verb} — (no description available)"]
@@ -113,6 +115,7 @@ def _build_curated_help(registry: CommandRegistry, ctx: GameContext) -> list[str
             lines.append(f"  {command.help_text}")
     lines.append("")
     lines.append("Type 'help commands' for the full list (by category),")
+    lines.append("'help topics' to browse help articles,")
     lines.append("or 'help <command>' for detail on a specific command.")
     return lines
 
@@ -143,6 +146,47 @@ def _build_commands_by_category(
         lines.append(f"{label}:")
         for command in sorted(commands, key=lambda c: c.verb):
             lines.append(f"  {command.help_text}")
+    return lines
+
+
+def _render_topic(topic: HelpTopic) -> list[str]:
+    """Full body of one help topic."""
+    lines = [f"[{topic.id}] {topic.title}"]
+    if topic.category:
+        lines.append(f"({topic.category})")
+    body = topic.body.rstrip()
+    if body:
+        lines.append("")
+        lines.append(body)
+    return lines
+
+
+def _render_topic_list(topics: list[HelpTopic], *, query: str = "") -> list[str]:
+    """The topic index as ``[id] name — Title``, grouped by category (in id order
+    of first appearance) so it stays organized and stable."""
+    header = (
+        f"Help topics matching '{query}' (type 'help <id or name>' to read one):"
+        if query
+        else "Help topics (type 'help <id or name>' to read one):"
+    )
+    if not topics:
+        return [f"No help topics match '{query}'. Type 'help topics' to list all."]
+
+    lines = [header]
+    category_order: list[str] = []
+    by_category: dict[str, list[HelpTopic]] = {}
+    for topic in topics:
+        category = topic.category or "General"
+        if category not in by_category:
+            by_category[category] = []
+            category_order.append(category)
+        by_category[category].append(topic)
+
+    for category in category_order:
+        lines.append("")
+        lines.append(f"{category}:")
+        for topic in by_category[category]:
+            lines.append(f"  [{topic.id}] {topic.name} — {topic.title}")
     return lines
 
 
@@ -178,9 +222,12 @@ def register_meta_commands(
     )
     def help_command(noun: str | None, ctx: GameContext) -> None:
         arg = (noun or "").strip()
-        first = arg.split()[0].lower() if arg else ""
+        parts = arg.split()
+        first = parts[0].lower() if parts else ""
+        rest = " ".join(parts[1:]).strip()
         in_dialogue = bool(ctx.player.flags.get(_NPC_KEY))
         in_combat = bool(ctx.player.active_combat_session_id)
+        topics = HelpRepo(ctx.session)
 
         if not first:
             # In a modal context (dialogue/combat) the scoped list is more
@@ -191,9 +238,36 @@ def register_meta_commands(
                 ctx.say("\n".join(_build_curated_help(registry, ctx)))
         elif first in ("commands", "all"):
             ctx.say("\n".join(_build_commands_by_category(registry, ctx)))
+        elif first in ("topics", "topic"):
+            # `help topics [search]` — the topic index, optionally filtered.
+            matches = topics.search(rest) if rest else topics.all_topics()
+            ctx.say("\n".join(_render_topic_list(list(matches), query=rest)))
+        elif first.isdigit():
+            # `help <id>` — a topic by its numeric id.
+            topic = topics.get(int(first))
+            if topic is not None:
+                ctx.say("\n".join(_render_topic(topic)))
+            else:
+                ctx.say(
+                    f"No help topic with id {first}. Type 'help topics' to list them."
+                )
+        elif registry.get(first) is not None:
+            # `help <command>` — detail; note a same-named topic if one exists.
+            lines = _build_command_help(registry, first)
+            same_named = topics.by_name(first)
+            if same_named is not None:
+                lines.append(
+                    f"See also help topic [{same_named.id}] {same_named.name}: "
+                    f"'help {same_named.id}'."
+                )
+            ctx.say("\n".join(lines))
         else:
-            # `help <command>` — detailed help for a specific command.
-            ctx.say("\n".join(_build_command_help(registry, first)))
+            # Not a command — try a topic by name, else fall through to a hint.
+            topic = topics.by_name(first)
+            if topic is not None:
+                ctx.say("\n".join(_render_topic(topic)))
+            else:
+                ctx.say("\n".join(_build_command_help(registry, first)))
 
     @registry.register(
         "quit",

@@ -204,8 +204,105 @@ def test_help_with_unknown_command_argument_reports_not_found() -> None:
         ctx = _build_context(session)
         registry.get("help").handler("flibbertigibbet", ctx)
 
-    assert "unknown command" in ctx.messages[0].lower()
+    assert "no such command or topic" in ctx.messages[0].lower()
     assert "help" in ctx.messages[0].lower()
+
+
+def _load_topics(session: Session) -> None:
+    from lorecraft.content.help import import_help, validate_help_document
+
+    import_help(
+        validate_help_document(
+            {
+                "topics": [
+                    {
+                        "id": 1,
+                        "name": "getting-started",
+                        "title": "Getting Started",
+                        "category": "Basics",
+                        "keywords": ["intro"],
+                        "body": "welcome text",
+                    },
+                    {
+                        "id": 2,
+                        "name": "combat",
+                        "title": "Fighting",
+                        "category": "World",
+                        "keywords": ["attack"],
+                        "body": "how to fight",
+                    },
+                ]
+            }
+        ),
+        session,
+    )
+    session.commit()
+
+
+def test_help_topics_lists_id_and_name_by_category() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        _load_topics(session)
+        ctx = _build_context(session)
+        registry.get("help").handler("topics", ctx)
+
+    out = ctx.messages[0]
+    assert "Help topics" in out
+    assert "[1] getting-started — Getting Started" in out
+    assert "[2] combat — Fighting" in out
+    assert "Basics:" in out and "World:" in out
+
+
+def test_help_topic_by_id_and_by_name() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        _load_topics(session)
+        ctx = _build_context(session)
+        registry.get("help").handler("2", ctx)  # by numeric id
+        by_id = ctx.messages[-1]
+        registry.get("help").handler("combat", ctx)  # by name
+        by_name = ctx.messages[-1]
+
+    assert "[2] Fighting" in by_id
+    assert "how to fight" in by_id
+    assert by_name == by_id  # same topic either way
+
+
+def test_help_topics_search_filters() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        _load_topics(session)
+        ctx = _build_context(session)
+        registry.get("help").handler("topics attack", ctx)  # keyword search
+
+    out = ctx.messages[0]
+    assert "combat" in out
+    assert "getting-started" not in out
+
+
+def test_help_unknown_numeric_topic_id() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        registry.get("help").handler("999", ctx)
+
+    assert "no help topic with id 999" in ctx.messages[0].lower()
 
 
 def _build_context(
