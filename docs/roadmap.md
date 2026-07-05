@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.4)
+## Where things stand (2026-07-05, v0.38.5)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -77,7 +77,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 |---|------|--------|
 | 37.1 | Batch scheduler execution: accumulate mutations across all due jobs, apply + commit once (preserve atomicity; verify via simulation) | [ ] Gated on 37.3 evidence — each `SCHEDULED_JOB_DUE` handler (`mobile_route`) currently opens its own session + commit; batching to one commit/tick is deferred until the load test shows it matters. |
 | 37.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) in `config.py`/`Settings` for many concurrent players; document in deployment notes | [x] `db_pool_size` (5) / `db_pool_recycle` (1800s) added to `Settings` + `LORECRAFT_DB_POOL_SIZE`/`_RECYCLE` env vars; `db._pool_kwargs` applies them to `create_engine` **only for a networked backend** (Postgres/MySQL) — skipped for SQLite (single-writer, static pool). Documented in `admin_builder_guide.md`; unit-tested. |
-| 37.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s issuing commands concurrently; report p95/p99 command latency before vs. after | [ ] ⟵ **next** |
+| 37.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s issuing commands concurrently; report p95/p99 command latency before vs. after | [x] `simulation`-marked test: N concurrent `VirtualPlayer`s (default 10, `LORECRAFT_LOAD_TEST_PLAYERS`) each run a fixed script over real WebSockets; reports p50/p95/p99/max, optionally as JSON (`LORECRAFT_LOAD_TEST_JSON`) for before/after diffs. **First baseline (10 players × 6 cmds): p50 ≈ 254 ms, p95/p99 ≈ 475 ms** — the single-threaded server serializes a lockstep command herd, so latency ≈ queue-position × per-command cost. Also fixed a pre-existing harness break (`create_player` missing `password_confirm` + a policy-compliant password) that had silently broken the whole `simulation` suite. |
 
 ## Sprint 38 — Concurrency decision gate *(only if 35–37 telemetry shows a hard limit)*
 
@@ -91,9 +91,12 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 **Sprints 35 and 36 are complete.** Parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size), and the telemetry stack is in place: the `perf_baseline.py` harness (35.1), per-operation `time_operation` logging (35.2), and the live `/admin/analytics/performance` p50/p95/p99-by-operation endpoint (35.3), sourced from the `perf` breakdown now stamped on every `COMMAND_EXECUTED` audit event.
 
-Next is **Sprint 37** — scheduler batching (37.1), connection-pool tuning knobs (37.2), and the repeatable multi-player load test (37.3). The load test is the key deliverable: it produces the real-traffic p95/p99 telemetry that feeds the **Sprint 38** concurrency decision gate (which stays closed unless the load test shows a hard single-process wall).
+**Sprint 37 is mostly done** (measure-first order): pool knobs (37.2) and the multi-player load test (37.3) shipped. The load test gives the first real evidence — **10 lockstep players → p50 ≈ 254 ms, p99 ≈ 475 ms**, i.e. command latency ≈ queue-position × per-command cost on the single-threaded loop. Two data-driven decisions remain:
 
-**Suggested order:** ~~35.1 → 35.2 → 35.3~~ ✅ · ~~36.1 → 36.2 → 36.3~~ ✅ → **37 (batching/pool/load test, next)** → 38 (concurrency gate, only if the load test shows a wall).
+- **37.1 (scheduler-commit batching)** — still gated: the load-test script is command-driven, not scheduler-heavy, so it hasn't yet shown per-job scheduler-commit cost. Decide whether to run a scheduler-heavy load variant (many due `mobile_route` jobs/tick) to get that evidence, or leave 37.1 deferred until a scheduler workload actually appears.
+- **38.1 (concurrency gate)** — the p99 ≈ 475 ms figure under a *synthetic lockstep herd* is the first input; before acting on it, get a realistic (jittered arrival) number and decide against a target. The gate stays closed unless a realistic workload shows a hard wall.
+
+**Suggested order:** ~~35.1 → 35.2 → 35.3~~ ✅ · ~~36.1 → 36.2 → 36.3~~ ✅ · ~~37.2 → 37.3~~ ✅ → **decide 37.1 (scheduler-heavy evidence?) → 38.1 (concurrency gate, realistic-load number first)**.
 
 ---
 

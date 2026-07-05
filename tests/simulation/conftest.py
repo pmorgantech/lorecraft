@@ -82,9 +82,18 @@ class SimulationServer:
 
     def create_player(self, username: str) -> str:
         """Create a character via the real `/lobby/create` route; return its id."""
+        # /lobby/create requires a matching `password_confirm` and enforces the
+        # default PasswordPolicy (mixed case + a digit), so send both fields with
+        # a policy-compliant password — otherwise it 400s. (Throwaway per-test
+        # sqlite credential, not a real secret.)
+        password = "Simulation-Test-1"  # gitleaks:allow
         response = httpx.post(
             f"{self.base_url}/lobby/create",
-            data={"username": username, "password": "simulation-test-password"},
+            data={
+                "username": username,
+                "password": password,
+                "password_confirm": password,
+            },
             follow_redirects=False,
         )
         if response.status_code != 303:

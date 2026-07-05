@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.5] - 2026-07-05
+
+### Added
+
+- **Sprint 37.3 — multi-player load test (`tests/simulation/test_load.py`).** A `simulation`-marked test spins up N concurrent `VirtualPlayer`s (default 10, override with `LORECRAFT_LOAD_TEST_PLAYERS`) that each run a fixed command script over real WebSockets against a live server, then reports **p50/p95/p99/max command latency** (also as JSON via `LORECRAFT_LOAD_TEST_JSON` for scripted before/after diffs). The server is single-process/single-threaded, so this measures how latency degrades as concurrent commands queue on one event loop — the evidence the Sprint 38 concurrency gate needs. **First baseline (10 players × 6 commands): p50 ≈ 254 ms, p95/p99 ≈ 475 ms**, i.e. latency ≈ queue-position × per-command cost under a lockstep herd. Documented in `docs/roadmap.md` Sprint 37.
+
+### Fixed
+
+- **Simulation harness `create_player` was silently broken.** `tests/simulation/conftest.py`'s `/lobby/create` call omitted the now-required `password_confirm` field and used a password that fails the default complexity policy, so **every `simulation`-marked test 400'd at character creation** (unnoticed because the suite is excluded from the default `make test`). Now sends a matching `password_confirm` and a policy-compliant password; the full simulation suite passes again.
+
 ## [0.38.4] - 2026-07-05
 
 ### Added
