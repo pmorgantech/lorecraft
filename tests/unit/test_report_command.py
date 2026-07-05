@@ -73,14 +73,17 @@ def _build_engine_and_ctx() -> tuple[CommandEngine, GameContext, Session]:
     return CommandEngine(registry, RuleEngine()), ctx, session
 
 
-def test_report_with_no_text_prompts_for_usage() -> None:
+def test_report_with_no_text_starts_guided_flow() -> None:
+    # Sprint 33.1: bare `report` now opens the guided wizard instead of erroring.
+    from lorecraft.commands.report import REPORT_WIZARD_FLAG
+
     cmd_engine, ctx, session = _build_engine_and_ctx()
 
     cmd_engine.handle_command("report", ctx)
 
-    assert ctx.messages == [
-        "Report what? Usage: report <description of the bug or issue>."
-    ]
+    assert ctx.player.flags.get(REPORT_WIZARD_FLAG) == "category"
+    assert "what kind" in ctx.messages[-1].lower()
+    # Nothing filed until the flow completes.
     assert session.exec(select(Issue)).first() is None
 
 

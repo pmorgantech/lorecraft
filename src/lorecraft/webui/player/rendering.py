@@ -178,9 +178,18 @@ def resolve_command_text(
     player_flags: Any | None = None,
 ) -> str:
     """Resolve disambiguated/numeric command input to full command text."""
+    from lorecraft.commands.report import REPORT_WIZARD_FLAG
     from lorecraft.features.npc.dialogue import _NPC_KEY
 
     stripped = raw.strip()
+
+    # Guided report wizard (Sprint 33.1): while active, any input is the answer
+    # to the current step — route it to the `report` command, which advances the
+    # flag-driven state machine. Checked before the numeric/dialogue branches so
+    # a one-word answer (e.g. "bug") or a number in a title is captured verbatim.
+    if player_flags and player_flags.get(REPORT_WIZARD_FLAG):
+        return f"report {stripped}" if stripped else "report"
+
     if not stripped.isdigit():
         return raw
 

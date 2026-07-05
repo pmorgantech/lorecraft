@@ -516,7 +516,7 @@ Username + password validation already shipped (v0.31.0); this builds on it.
 
 | # | Task | Status |
 |---|------|--------|
-| 33.1 | Guided, multi-turn `/report` flow (category → title → detail) replacing the current one-line note; keep the existing Sprint 10.5 issues pipeline underneath | [ ] |
+| 33.1 | Guided, multi-turn `/report` flow (category → title → detail) replacing the current one-line note; keep the existing Sprint 10.5 issues pipeline underneath | [x] Bare `report` opens a flag-driven wizard (category→title→detail, `cancel` aborts); web input routes to it via `resolve_command_text` (like dialogue). `report <text>` one-liner unchanged. Same `create_issue()` pipeline underneath. 13 tests. |
 | 33.2 | (stretch) Prioritized wishlist quick-wins pulled as scoped — e.g. clickable-link and page-length preferences (feed into the Sprint 32.2 blob), lore/journal surfacing | [ ] |
 
 ## Sprint 34 — Player-reported command polish ✅
