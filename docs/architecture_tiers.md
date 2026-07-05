@@ -1,8 +1,42 @@
 # Tier 1/Tier 2 Architecture: Current State & Extensibility
 
-> **Purpose:** This document describes how the lorecraft engine is layered into three tiers, how the current codebase implements (and doesn't yet fully implement) this split, and how to extend or disable Tier 2 features.
+> **⚠️ Status update (2026-07-05): the tier split is now implemented in the directory structure.** Tier 1 lives in `src/lorecraft/engine/` and Tier 2 in `src/lorecraft/features/` (24 feature packages). The engine no longer imports `features/` at all (enforced by `tests/unit/test_tier_boundaries.py`), features load via manifests/`discover_features()`, and `ServiceContainer` builds conditionally from the enabled set. **Sections below that say the split is "not yet reflected" or "planned" describe the pre-refactor state** and are retained for historical context — see [`tier_split_refactor.md`](tier_split_refactor.md) (the single source of truth for this work) and `CHANGELOG.md` 0.15.0–0.27.0 for what shipped. The implemented layout is summarized in §0 immediately below.
+>
+> **Purpose:** This document describes how the lorecraft engine is layered into three tiers and how to extend or disable Tier 2 features.
 >
 > **Reference docs:** See [`engine_core.md`](engine_core.md) for authoritative tier definitions and primitive specs; [`feature-registration.md`](feature-registration.md) for the registration pattern; [`tier_modules.md`](tier_modules.md) for a file-by-file tier classification.
+
+---
+
+## 0. Implemented Layout (2026-07-05)
+
+```
+src/lorecraft/
+├── engine/                 # Tier 1 — pure engine primitives, runs headless, imports no features/web
+│   ├── game/               # registry, context, events, engine, parser, grammar, holders, modifiers,
+│   │                       #   components, rng, checks, effects, meters, traits (registry only),
+│   │                       #   command_conditions, command_patterns, diagnostics, rules, transaction
+│   ├── services/           # scheduler, item_location, meters, effects, save, mobile_route, audit,
+│   │                       #   item_components (state accessor), ledger
+│   ├── repos/              # base, item/player/room/stack/npc/audit/meter/scheduler/ledger repos
+│   ├── models/             # world, player, player_auth, items, meters, scheduler, mobile, audit,
+│   │                       #   session, ledger
+│   └── clock/              # world_clock (+ season calendar)
+│
+├── features/               # Tier 2 — 24 optional feature packages, each with a FeatureManifest
+│   └── <feature>/          # __init__.py (manifest) + service/models/repo/commands/conditions/... as needed
+│                           #   bank, character, containers, economy, encumbrance, equipment, exploration,
+│                           #   fatigue, inventory, item_components, items, light, movement, npc,
+│                           #   npc_memory, quests, reputation, skills, terrain, trading, transit,
+│                           #   traits, warmth, weather
+│
+├── commands/               # composition layer: register_all_commands wires engine + feature verbs
+│                           #   (step 9 will relocate verbs into engine/commands + features/*/commands)
+├── web/                    # player + admin web host (step 10 → webui/player + webui/admin)
+├── services/container.py   # ServiceContainer — composes engine + feature services (not in engine/)
+├── models/, repos/         # residual non-feature tables/repos (combat stub, changeset, issue, news)
+└── main.py, config.py, db.py, state.py, errors.py, types.py, world/, content/, admin/, analytics.py
+```
 
 ---
 
@@ -10,8 +44,8 @@
 
 | Tier | Purpose | Lives in | Can be disabled? |
 |---|---|---|---|
-| **1 — Engine Core** | Content-agnostic primitives + registries | `src/lorecraft/` | No — foundational |
-| **2 — Standard Modules** | Opinionated gameplay (equipment, trading, fatigue, etc.) | Currently `src/lorecraft/`; planned `features/` | **Yes** — optional |
+| **1 — Engine Core** | Content-agnostic primitives + registries | `src/lorecraft/engine/` | No — foundational |
+| **2 — Standard Modules** | Opinionated gameplay (equipment, trading, fatigue, etc.) | `src/lorecraft/features/<feature>/` | **Yes** — optional |
 | **3 — Content** | Game-specific data (items, NPCs, world) | `world_content/*.yaml` | **Yes** — per-world |
 
 The key principle: **Tier 1 never imports or depends on Tier 2.** Tier 2 registers itself through Tier 1 extension points (registries, rules, conditions, side effects, event handlers).
@@ -255,9 +289,9 @@ To disable a feature (e.g., equipment, fatigue, trading), you must:
 
 ---
 
-## 7. Future Refactor: The `features/` Directory
+## 7. The `features/` Directory (✅ implemented 2026-07-05)
 
-**Planned** (not yet implemented): move all Tier 2 modules to a `features/` subdirectory structure:
+**This refactor has shipped** (CHANGELOG 0.15.0–0.27.0). All 24 Tier 2 modules now live in `features/<feature>/` packages, each exporting a `FeatureManifest`; the engine moved to `engine/`. The structure below is what the plan targeted and what now exists (feature verbs still register through the `commands/` composition layer pending step 9):
 
 ```
 features/

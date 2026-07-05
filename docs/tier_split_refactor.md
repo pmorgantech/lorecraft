@@ -24,11 +24,11 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 4 | Wrap **one** existing self-registering feature (`reputation`) in a manifest as a vertical slice, loaded via the new path | 2/3 | ✅ |
 | 5 | Migrate remaining Tier 2 self-registrations to manifests; delete side-effect imports from `main.py` | 3 | ✅ |
 | 6 | `ServiceContainer` builds conditionally from enabled features (economy/bank/fatigue gated; container goes fully feature-driven in step 8) | 3 | ✅ |
-| 7 | Create `engine/` package; move Tier 1 modules; update imports (batched) | 1 | 🚧 |
+| 7 | Create `engine/` package; move Tier 1 modules; update imports (batched) | 1 | ✅ |
 | 7a | ↳ `engine/game/` — 18 Tier 1 game modules moved; imports rewritten (0.15.0) | 1 | ✅ |
 | 7b | ↳ `engine/services/` + `engine/repos/` — Tier 1 services/repos moved (0.16.0) | 1 | ✅ |
 | 7c | ↳ `engine/clock/world_clock` moved; season calendar decoupled from weather (0.17.0) | 1 | ✅ |
-| 7d | ↳ `engine/models/` (Tier 1 tables) + `engine/npc/` (dialogue engine) — deferred; models split sequenced with step 8 | 1/2 | ⬜ |
+| 7d | ↳ Tier 1 models sequenced into step 8 (see 8a); the dialogue subsystem landed as the Tier 2 `features/npc` package (its side effects depend on features), not `engine/npc` | 1/2 | ✅ |
 | 8 | Move Tier 2 modules into `features/<x>/` packages | 2 | ✅ |
 | 8a | ↳ Tier 1 models → `engine/models/` (folded in per sequencing decision) (0.18.0) | 1/2 | ✅ |
 | 8b | ↳ `reputation` fully co-located (conditions/service/models/repo) — first vertical slice (0.19.0) | 2 | ✅ |
@@ -44,7 +44,23 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | 🚧 |
 | 12a | ↳ import-direction boundary test (`test_tier_boundaries.py`) — engine⇏features/web, features⇏web (0.27.0) | 5 | ✅ |
 | 12b | ↳ feature enable/disable integration tests | 5 | ⬜ |
-| 13 | Graduate §1c into `admin_builder_guide.md`; update `architecture_tiers.md`, `tier_modules.md`, `AGENTS.md` | 5 | ⬜ |
+| E  | Engine import-purity: `GameContext` purged of Tier 2 repos; nothing in `engine/` imports `features/` (0.26.0) | 1 | ✅ |
+| 13 | Graduate §1c into `admin_builder_guide.md`; update `architecture_tiers.md`, `tier_modules.md`, `AGENTS.md` | 5 | 🚧 |
+| 13a | ↳ `architecture_tiers.md` / `tier_modules.md` / `AGENTS.md` updated to the shipped layout (0.27.0) | 5 | ✅ |
+| 13b | ↳ graduate §1c "adding feature UI" into `admin_builder_guide.md` (blocked on step 11) | 5 | ⬜ |
+
+---
+
+## Current status (2026-07-05)
+
+**Done — the structural core of the split.** Tier 1 is physically isolated in `src/lorecraft/engine/` and the 24 Tier 2 features each own a package under `src/lorecraft/features/`. The engine runs headless and **imports nothing from `features/`** (enforced by `tests/unit/test_tier_boundaries.py`). Features are auto-discovered via manifests; `ServiceContainer` builds conditionally from the enabled set. Full suite (796 tests) green; lint + typecheck clean at every commit (0.15.0 → 0.27.0).
+
+**Remaining (in priority order):**
+
+- **Step 9 — command ownership.** Verbs still register through the `commands/` composition layer via `register_all_commands`. Relocating them into `engine/commands/` (engine built-ins) and `features/<x>/commands.py` requires resolving the `meta`/`social` modules' dependency on the `npc` feature (they'd violate the engine boundary if placed in `engine/commands/`), so they belong with `npc`/a shell package, not the engine.
+- **Steps 10–11 — web host extraction.** Move `web/` → `webui/player/` + `webui/admin/`, introduce the `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry), and implement the optional `presentation.py` seam (§1c), proving it with the transit minimap. This also lets `engine/game/context.py` drop its remaining `game.connection_manager` (web plumbing) and `repos.news_repo` (content) references. Largest remaining chunk.
+- **Step 12b — enable/disable integration tests.** Currently only `economy`/`bank`/`fatigue` services are truly feature-gated; most feature services are still built unconditionally in `main.py`/`ServiceContainer`. Full toggle coverage needs those wirings made manifest-driven first.
+- **Step 13b — graduate §1c** ("adding feature UI") into `admin_builder_guide.md` once the `presentation.py` seam (step 11) exists.
 
 ---
 

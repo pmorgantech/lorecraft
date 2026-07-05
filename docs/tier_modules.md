@@ -4,6 +4,20 @@
 
 This document provides a quick lookup table for which modules are Tier 1 (engine primitives) and which are Tier 2 (optional features).
 
+> **⚠️ Paths updated by the tier split (2026-07-05).** The tier *classifications* below still hold, but the files have physically moved (CHANGELOG 0.15.0–0.27.0). Translate the old paths in the tables using this map:
+>
+> | Old location | New home |
+> |---|---|
+> | `game/<tier-1 module>` (registry, context, events, engine, parser, grammar, holders, modifiers, components, rng, checks, effects, meters, transaction, diagnostics, rules, command_conditions, command_patterns) | `engine/game/` |
+> | `game/traits` (registry only) | `engine/game/traits.py` (Tier 2 sources → `features/traits/`) |
+> | `services/<tier-1>` (scheduler, item_location, meters, effects, save, mobile_route, audit, item_components-accessor, ledger) | `engine/services/` |
+> | `repos/<tier-1>` (base, item, player, room, stack, npc, audit, meter, scheduler, ledger) | `engine/repos/` |
+> | `models/<tier-1>` (world, player, player_auth, items, meters, scheduler, mobile, audit, session, ledger) | `engine/models/` |
+> | `clock/world_clock` | `engine/clock/world_clock.py` |
+> | every Tier 2 module (`game/*`, `services/*`, `models/*`, `repos/*`, `npc/*`, `clock/weather`, standard component/trait/holder/validator/condition modules, commands' feature verbs' services) | `features/<feature>/` — see the 24 packages listed in `architecture_tiers.md` §0 |
+>
+> Notable tier *re-classifications* the refactor made from the tables below: `services/item_components` (per-instance component-state accessor) and the whole `ledger` (service/model/repo) are **Tier 1** (the `GameContext` carries `LedgerService`); `movement` is **Tier 2** (terrain-gated, skill-checked, so it depends on the `terrain`/`skills` features); the `traits`/`skills` registries stay Tier 1 primitives while their standard content/sources are Tier 2.
+
 ---
 
 ## `src/lorecraft/game/` — Game Logic & Registries

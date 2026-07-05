@@ -13,6 +13,15 @@ code design and quality.
   `cast(GameContext, ctx)`; one service-wiring style; no new mixed-concern mega-modules.
 - Prefer finishing or removing a half-done seam over adding a new one.
 
+## Codebase structure (tier split, 2026-07-05)
+
+The Tier 1/Tier 2 separation is now physical (branch `tier_split`, CHANGELOG 0.15.0–0.27.0):
+
+- **`src/lorecraft/engine/`** — Tier 1 engine primitives (`game/`, `services/`, `repos/`, `models/`, `clock/`). Runs headless. **Must not import `lorecraft.features` or any web host** — enforced by `tests/unit/test_tier_boundaries.py`. When adding engine code, only depend on other `engine.*`, `lorecraft.types`, stdlib, and third-party.
+- **`src/lorecraft/features/<feature>/`** — Tier 2 optional features (24 packages), each an `__init__.py` exporting a `FeatureManifest` (+ `service.py`/`models.py`/`repo.py`/`commands.py`/`conditions.py`/… as needed). Features may import `engine.*` and each other, **never a web host**. New features: add a package with a manifest; it is auto-discovered by `discover_features()`.
+- **Composition layers** (may import both engine and features): `main.py`, `commands/` (`register_all_commands`), `services/container.py` (`ServiceContainer`), `web/`.
+- Feature verbs still register via the `commands/` composition layer (step 9 will relocate them into `engine/commands/` + `features/*/commands.py`). Web still lives in `web/` (step 10 → `webui/`). See [`docs/tier_split_refactor.md`](docs/tier_split_refactor.md) — the single source of truth for remaining tier-split work.
+
 ## Context strategy
 
 - Start with local files and tests.

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.27.1] - 2026-07-05
+
+### Changed
+
+- **Tier split — docs brought current with the shipped layout (step 13a, branch `tier_split`).** `architecture_tiers.md` gains a status banner + an "Implemented Layout" section and no longer claims the split is "not yet reflected"/"planned"; `tier_modules.md` gains an old-path→new-home translation map and notes the tier re-classifications (ledger + item-component-state accessor → Tier 1; movement → Tier 2); `AGENTS.md` gains a "Codebase structure (tier split)" section stating the engine⇏features rule and where new engine/feature code goes; `tier_split_refactor.md` gains a "Current status" section and updated tracker (steps 7, 8 ✅; 12, 13 🚧). Docs-only.
+
 ## [0.27.0] - 2026-07-05
 
 ### Added
