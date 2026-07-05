@@ -9,6 +9,7 @@ import time
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -101,32 +102,10 @@ def create_app(
             "Using an ephemeral random secret — admin tokens will not survive restarts."
         )
     # Expose the (possibly generated) secret via settings-like object without mutation.
-    resolved_settings = Settings(
-        database_path=settings.database_path,
-        audit_database_path=settings.audit_database_path,
-        world_time_ratio=settings.world_time_ratio,
-        websocket_path=settings.websocket_path,
-        disconnect_grace_seconds=settings.disconnect_grace_seconds,
-        admin_jwt_secret=effective_jwt_secret,
-        admin_jwt_access_ttl=settings.admin_jwt_access_ttl,
-        admin_jwt_refresh_ttl=settings.admin_jwt_refresh_ttl,
-        admin_seed_username=settings.admin_seed_username,
-        admin_seed_password=settings.admin_seed_password,
-        admin_seed_role=settings.admin_seed_role,
-        world_yaml_path=settings.world_yaml_path,
-        issues_yaml_path=settings.issues_yaml_path,
-        news_yaml_path=settings.news_yaml_path,
-        seed_player_id=settings.seed_player_id,
-        seed_player_username=settings.seed_player_username,
-        seed_player_start_room=settings.seed_player_start_room,
-        player_session_secret=settings.player_session_secret,
-        player_session_ttl_seconds=settings.player_session_ttl_seconds,
-        player_access_token_ttl_seconds=settings.player_access_token_ttl_seconds,
-        player_refresh_token_ttl_seconds=settings.player_refresh_token_ttl_seconds,
-        player_ws_ticket_ttl_seconds=settings.player_ws_ticket_ttl_seconds,
-        allow_query_player_id=settings.allow_query_player_id,
-        rng_seed=settings.rng_seed,
-    )
+    # Copy every setting through, overriding only the (possibly generated) admin
+    # JWT secret. `replace` (vs a field-by-field rebuild) means new Settings
+    # fields are forwarded automatically instead of being silently dropped.
+    resolved_settings = replace(settings, admin_jwt_secret=effective_jwt_secret)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

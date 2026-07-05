@@ -142,7 +142,11 @@ async def _test_create_character_happy_path() -> None:
             app,
             "POST",
             "/lobby/create",
-            form={"username": "Ashen_Wanderer", "password": "hunter2"},
+            form={
+                "username": "Ashen_Wanderer",
+                "password": "Hunter2pw",
+                "password_confirm": "Hunter2pw",
+            },
         )
         assert status == 303
         session_cookie = _cookie_value(headers, PLAYER_SESSION_COOKIE)
@@ -183,16 +187,26 @@ async def _test_create_character_with_wrong_password_for_existing_username() -> 
             app,
             "POST",
             "/lobby/create",
-            form={"username": "Dup", "password": "correct-pw"},
+            form={
+                "username": "Dup",
+                "password": "Correct-Pw2",
+                "password_confirm": "Correct-Pw2",
+            },
         )
         status, _, _ = await _request(
             app,
             "POST",
             "/lobby/create",
-            form={"username": "Dup", "password": "wrong-pw"},
+            form={
+                "username": "Dup",
+                "password": "Wrong-Pw2",
+                "password_confirm": "Wrong-Pw2",
+            },
         )
 
-    assert status == 401
+    # Wrong password for an existing username: create shares login_or_register,
+    # so it surfaces as an inline validation error (400), not a raw 401 page.
+    assert status == 400
 
 
 def test_create_character_with_matching_password_logs_in_existing_player() -> None:
@@ -212,13 +226,21 @@ async def _test_create_character_with_matching_password_logs_in_existing_player(
             app,
             "POST",
             "/lobby/create",
-            form={"username": "Repeat", "password": "same-pw"},
+            form={
+                "username": "Repeat",
+                "password": "Same-Pw2",
+                "password_confirm": "Same-Pw2",
+            },
         )
         second_status, second_headers, _ = await _request(
             app,
             "POST",
             "/lobby/create",
-            form={"username": "Repeat", "password": "same-pw"},
+            form={
+                "username": "Repeat",
+                "password": "Same-Pw2",
+                "password_confirm": "Same-Pw2",
+            },
         )
 
     assert first_status == 303
@@ -241,7 +263,10 @@ async def _test_create_character_rejects_invalid_username() -> None:
 
     async with _lifespan(app):
         status, _, _ = await _request(
-            app, "POST", "/lobby/create", form={"username": "ab", "password": "pw"}
+            app,
+            "POST",
+            "/lobby/create",
+            form={"username": "ab", "password": "pw", "password_confirm": "pw"},
         )
         assert status == 400
 
@@ -249,9 +274,80 @@ async def _test_create_character_rejects_invalid_username() -> None:
             app,
             "POST",
             "/lobby/create",
-            form={"username": "has a space", "password": "pw"},
+            form={
+                "username": "has a space",
+                "password": "pw",
+                "password_confirm": "pw",
+            },
         )
         assert status == 400
+
+
+def test_create_character_rejects_mismatched_password_confirmation() -> None:
+    anyio.run(_test_create_character_rejects_mismatched_password_confirmation)
+
+
+async def _test_create_character_rejects_mismatched_password_confirmation() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+
+    async with _lifespan(app):
+        status, headers, html = await _request(
+            app,
+            "POST",
+            "/lobby/create",
+            form={
+                "username": "Mismatch",
+                "password": "Hunter2pw",
+                "password_confirm": "Hunter2pwX",
+            },
+        )
+
+    assert status == 400
+    assert _cookie_value(headers, PLAYER_SESSION_COOKIE) is None
+    assert "Passwords do not match." in html
+    # No account should have been created.
+    with Session(game_engine) as session:
+        assert (
+            session.exec(select(Player).where(Player.username == "Mismatch")).first()
+            is None
+        )
+
+
+def test_create_character_rejects_weak_password() -> None:
+    anyio.run(_test_create_character_rejects_weak_password)
+
+
+async def _test_create_character_rejects_weak_password() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+
+    async with _lifespan(app):
+        # "lowercase" — long enough but no uppercase and no number (fails the
+        # default mixed-case + number requirements).
+        status, headers, html = await _request(
+            app,
+            "POST",
+            "/lobby/create",
+            form={
+                "username": "Weakling",
+                "password": "lowercase",
+                "password_confirm": "lowercase",
+            },
+        )
+
+    assert status == 400
+    assert _cookie_value(headers, PLAYER_SESSION_COOKIE) is None
+    assert "number" in html.lower()
+    with Session(game_engine) as session:
+        assert (
+            session.exec(select(Player).where(Player.username == "Weakling")).first()
+            is None
+        )
 
 
 def test_enter_world_rejects_unknown_player() -> None:
@@ -272,7 +368,9 @@ async def _test_enter_world_rejects_unknown_player() -> None:
             form={"username": "does_not_exist", "password": "whatever"},
         )
 
-    assert status == 404
+    # Unknown username on the Log In tab now re-renders the lobby with an inline
+    # error (400) instead of a raw 404 page.
+    assert status == 400
 
 
 def test_forged_session_cookie_does_not_grant_identity() -> None:
@@ -325,7 +423,11 @@ async def _test_allow_query_player_id_disabled_requires_signed_session() -> None
             app,
             "POST",
             "/lobby/create",
-            form={"username": "Signed_Only", "password": "hunter2"},
+            form={
+                "username": "Signed_Only",
+                "password": "Hunter2pw",
+                "password_confirm": "Hunter2pw",
+            },
         )
         assert create_status == 303
         session_cookie = _cookie_value(headers, PLAYER_SESSION_COOKIE)

@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.31.0] - 2026-07-05
+
+### Added
+
+- **Player creation: username feedback + configurable password policy (docs/wishlist.md).** The lobby "Create New Character" form now gives real validation feedback and enforces a password policy:
+  - **Username** — the create field validates live against `^[A-Za-z0-9_-]{3,30}$` (border turns red/green as you type; the valid example is `Ashen_Wanderer`, not the old invalid "Ashen Wanderer"), with the server as backstop.
+  - **Password** — a second **confirm-password** field with a live "passwords match" indicator and a per-requirement checklist; submit is disabled until valid. Enforced server-side by the new `PasswordPolicy` / `validate_password` (`webui/player/password_policy.py`) on both the HTMX create route and the JSON `POST /auth/login` — only when a *new* credential is set, never on ordinary login.
+  - **Configurable with defaults** (`LORECRAFT_PASSWORD_*`): `min_length=8`, `max_length=32`, `require_mixed_case=true`, `require_number=true`, `require_symbol=false`.
+  - Validation failures now **re-render the lobby with an inline error** (HTTP 400) instead of a raw error page (both the Create and Log In tabs).
+  - `main.py`'s brittle field-by-field `Settings` rebuild was replaced with `dataclasses.replace`, so new settings fields are forwarded automatically (this is also what makes the password env vars take effect). New tests: `test_password_policy.py` (12) + create-flow integration tests (confirm-mismatch, weak-password). Full suite 809 passed, lint + typecheck clean; verified end-to-end against a live server (weak → 400 inline, valid → 303).
+
 ## [0.30.1] - 2026-07-05
 
 ### Changed

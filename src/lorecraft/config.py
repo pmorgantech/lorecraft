@@ -58,6 +58,14 @@ class Settings:
     # Set to a fixed int for deterministic single-actor scripts (see
     # tests/simulation/test_audit_regression.py's determinism contract).
     rng_seed: int | None = None
+    # Password complexity policy enforced when a *new* local account credential
+    # is created (docs/wishlist.md — Player Creation). Not applied to logins of
+    # existing accounts. Configurable via LORECRAFT_PASSWORD_* env vars.
+    password_min_length: int = 8
+    password_max_length: int = 32
+    password_require_mixed_case: bool = True
+    password_require_symbol: bool = False
+    password_require_number: bool = True
 
 
 def _env_bool(name: str, default: bool) -> bool:
@@ -119,6 +127,13 @@ def load_settings() -> Settings:
         allow_query_player_id=_env_bool("LORECRAFT_ALLOW_QUERY_PLAYER_ID", True),
         log_level=os.getenv("LORECRAFT_LOG_LEVEL", "INFO"),
         rng_seed=_env_optional_int("LORECRAFT_RNG_SEED"),
+        password_min_length=int(os.getenv("LORECRAFT_PASSWORD_MIN_LENGTH", "8")),
+        password_max_length=int(os.getenv("LORECRAFT_PASSWORD_MAX_LENGTH", "32")),
+        password_require_mixed_case=_env_bool(
+            "LORECRAFT_PASSWORD_REQUIRE_MIXED_CASE", True
+        ),
+        password_require_symbol=_env_bool("LORECRAFT_PASSWORD_REQUIRE_SYMBOL", False),
+        password_require_number=_env_bool("LORECRAFT_PASSWORD_REQUIRE_NUMBER", True),
     )
 
 

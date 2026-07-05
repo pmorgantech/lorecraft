@@ -19,6 +19,21 @@ The engine uses **local username + password** authentication for LAN-party deplo
 
 ## Account Creation & Login Flow
 
+### Username & Password Validation
+
+- **Username** must match `^[A-Za-z0-9_-]{3,30}$` (3–30 chars: letters, numbers, `-`, `_`). The browser create form validates this live (the field border turns red/green as you type, via the HTML5 `pattern`), and `login_or_register()` re-checks it server-side.
+- **Password complexity** is enforced **only when a new credential is set** (account creation, or claiming a pre-existing passwordless player) — never on a normal login. The browser create form prompts for the password twice (with a live "passwords match" indicator and a per-requirement checklist) and disables submit until valid; the server (`PasswordPolicy.validate_password`, in `webui/player/password_policy.py`) is the authoritative backstop for both the HTMX form and the JSON `POST /auth/login`. The policy is **configuration with defaults**:
+
+  | Env var | Default | Meaning |
+  |---|---|---|
+  | `LORECRAFT_PASSWORD_MIN_LENGTH` | `8` | Minimum length |
+  | `LORECRAFT_PASSWORD_MAX_LENGTH` | `32` | Maximum length |
+  | `LORECRAFT_PASSWORD_REQUIRE_MIXED_CASE` | `true` | Require both upper- and lower-case |
+  | `LORECRAFT_PASSWORD_REQUIRE_NUMBER` | `true` | Require at least one digit |
+  | `LORECRAFT_PASSWORD_REQUIRE_SYMBOL` | `false` | Require at least one non-alphanumeric |
+
+  Validation failures re-render the lobby with an inline error (HTTP 400) rather than a raw error page; the API returns `400 {"detail": "..."}`.
+
 ### 1. First Login Creates Account
 
 There is **no separate registration step**. The first successful login for a given username creates the account atomically.

@@ -262,13 +262,21 @@ Classic clients expose a big `set` menu (`set unformatted-text`, `set vitals-per
 clickable-links, `page_length`, AFK/away). The transferable idea is a **per-account preferences
 layer**, persisted on the account and read by the render layer.
 
-- **Player Creation** - Character name example is "Ashen Wanderer" but the valid player names
+- ~~**Player Creation** - Character name example is "Ashen Wanderer" but the valid player names
   are "3-30 characters: letters, numbers, - or \_ only", so this example is wrong. Also, we
-  do not validate the entered name and reject it immediately (input should turn red).
-- **Player Creation** - We should prompt for a password twice and validate that they meet
+  do not validate the entered name and reject it immediately (input should turn red).~~
+  **Addressed (v0.31.0):** create form uses the valid example `Ashen_Wanderer`, a
+  `pattern`-based live validity check (border turns red/green as you type), and a
+  server-side backstop.
+- ~~**Player Creation** - We should prompt for a password twice and validate that they meet
   password complexity requirements and that they match. Complexity requirements should be
   configuration with defaults. min_length (8), max_length(32), mixed_case: true,
-  require_symbol: false, require_number: true
+  require_symbol: false, require_number: true~~
+  **Addressed (v0.31.0):** create form now has a confirm-password field with live match
+  feedback and a per-requirement checklist; the policy is enforced server-side and is
+  configurable via `LORECRAFT_PASSWORD_*` (defaults exactly as listed —
+  `min_length=8, max_length=32, mixed_case=true, require_symbol=false, require_number=true`).
+  See `PasswordPolicy` in `webui/player/password_policy.py`.
 - **Preferences system** — display density, feed verbosity, panel visibility, timestamp format,
   reduced-motion (transit/map animation off), colourblind-safe palette. One settings blob, one
   place rendering reads it.

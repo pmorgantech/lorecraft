@@ -3,7 +3,8 @@
 {% block title %}Lorecraft • Lobby{% endblock %}
 
 {% block content %}
-<div class="min-h-[calc(100vh-3.5rem)] bg-zinc-950 text-zinc-200 p-6" x-data="{ tab: 'join' }">
+<div class="min-h-[calc(100vh-3.5rem)] bg-zinc-950 text-zinc-200 p-6"
+     x-data="{ tab: '{{ active_tab | default('join') }}' }">
     <div class="max-w-4xl mx-auto">
         <!-- Header -->
         <div class="flex items-center justify-between mb-8">
@@ -18,6 +19,13 @@
             </div>
             {% endif %}
         </div>
+
+        {% if error %}
+        <div role="alert"
+             class="max-w-md mb-4 rounded-lg border border-red-800 bg-red-950/60 px-4 py-3 text-sm text-red-300">
+            {{ error }}
+        </div>
+        {% endif %}
 
         <!-- Tabs -->
         <div class="flex border-b border-zinc-800 mb-6">
@@ -36,6 +44,7 @@
                 <div>
                     <label for="enter-username" class="block text-sm text-zinc-400 mb-1">Character name</label>
                     <input type="text" id="enter-username" name="username" required minlength="3" maxlength="30"
+                           value="{{ form_username if active_tab == 'join' else '' }}"
                            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-600"
                            placeholder="Your character name">
                 </div>
@@ -53,26 +62,89 @@
         </div>
 
         <!-- CREATE CHARACTER -->
-        <div class="space-y-4 max-w-md" x-show="tab === 'create'">
+        <div class="space-y-4 max-w-md" x-show="tab === 'create'"
+             x-data="{
+                uname: '{{ form_username | e }}',
+                pw: '',
+                pwc: '',
+                min: {{ password_min_length }},
+                max: {{ password_max_length }},
+                reqMixed: {{ 'true' if password_require_mixed_case else 'false' }},
+                reqNumber: {{ 'true' if password_require_number else 'false' }},
+                reqSymbol: {{ 'true' if password_require_symbol else 'false' }},
+                get unameOk() { return /^[A-Za-z0-9_-]{3,30}$/.test(this.uname); },
+                get lenOk() { return this.pw.length >= this.min && this.pw.length <= this.max; },
+                get mixedOk() { return !this.reqMixed || (/[a-z]/.test(this.pw) && /[A-Z]/.test(this.pw)); },
+                get numberOk() { return !this.reqNumber || /[0-9]/.test(this.pw); },
+                get symbolOk() { return !this.reqSymbol || /[^A-Za-z0-9]/.test(this.pw); },
+                get matchOk() { return this.pwc.length > 0 && this.pw === this.pwc; },
+                get pwOk() { return this.lenOk && this.mixedOk && this.numberOk && this.symbolOk; },
+                get formOk() { return this.unameOk && this.pwOk && this.matchOk; }
+             }">
             <h2 class="text-xl font-semibold mb-4">Create a New Character</h2>
             <form method="post" action="/lobby/create" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
                 <div>
                     <label for="username" class="block text-sm text-zinc-400 mb-1">Character name</label>
                     <input type="text" id="username" name="username" required minlength="3" maxlength="30"
-                           pattern="[A-Za-z0-9_-]{3,30}"
-                           title="3-30 characters: letters, numbers, - or _ only"
-                           class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-600"
+                           pattern="{{ username_pattern }}"
+                           title="3–30 characters: letters, numbers, - or _ only"
+                           x-model="uname"
+                           :class="uname.length === 0 ? 'border-zinc-800' : (unameOk ? 'border-emerald-600' : 'border-red-600')"
+                           class="w-full bg-zinc-950 border rounded-lg px-3 py-2 text-zinc-200 focus:outline-none"
                            placeholder="e.g. Ashen_Wanderer">
-                    <p class="text-xs text-zinc-500 mt-1">3-30 characters: letters, numbers, - or _ only.</p>
+                    <p class="text-xs mt-1"
+                       :class="uname.length === 0 || unameOk ? 'text-zinc-500' : 'text-red-400'">
+                        3–30 characters: letters, numbers, - or _ only.
+                    </p>
                 </div>
                 <div>
                     <label for="create-password" class="block text-sm text-zinc-400 mb-1">Password</label>
-                    <input type="password" id="create-password" name="password" required minlength="1"
-                           class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-600"
+                    <input type="password" id="create-password" name="password" required
+                           minlength="{{ password_min_length }}" maxlength="{{ password_max_length }}"
+                           x-model="pw"
+                           :class="pw.length === 0 ? 'border-zinc-800' : (pwOk ? 'border-emerald-600' : 'border-red-600')"
+                           class="w-full bg-zinc-950 border rounded-lg px-3 py-2 text-zinc-200 focus:outline-none"
                            placeholder="••••••••">
+                    <ul class="text-xs mt-2 space-y-0.5">
+                        <li :class="pw.length === 0 ? 'text-zinc-500' : (lenOk ? 'text-emerald-400' : 'text-red-400')">
+                            <span x-text="pw.length === 0 ? '•' : (lenOk ? '✓' : '✗')"></span>
+                            {{ password_min_length }}–{{ password_max_length }} characters
+                        </li>
+                        {% if password_require_mixed_case %}
+                        <li :class="pw.length === 0 ? 'text-zinc-500' : (mixedOk ? 'text-emerald-400' : 'text-red-400')">
+                            <span x-text="pw.length === 0 ? '•' : (mixedOk ? '✓' : '✗')"></span>
+                            Upper- and lower-case letters
+                        </li>
+                        {% endif %}
+                        {% if password_require_number %}
+                        <li :class="pw.length === 0 ? 'text-zinc-500' : (numberOk ? 'text-emerald-400' : 'text-red-400')">
+                            <span x-text="pw.length === 0 ? '•' : (numberOk ? '✓' : '✗')"></span>
+                            At least one number
+                        </li>
+                        {% endif %}
+                        {% if password_require_symbol %}
+                        <li :class="pw.length === 0 ? 'text-zinc-500' : (symbolOk ? 'text-emerald-400' : 'text-red-400')">
+                            <span x-text="pw.length === 0 ? '•' : (symbolOk ? '✓' : '✗')"></span>
+                            At least one symbol
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div>
+                    <label for="create-password-confirm" class="block text-sm text-zinc-400 mb-1">Confirm password</label>
+                    <input type="password" id="create-password-confirm" name="password_confirm" required
+                           x-model="pwc"
+                           :class="pwc.length === 0 ? 'border-zinc-800' : (matchOk ? 'border-emerald-600' : 'border-red-600')"
+                           class="w-full bg-zinc-950 border rounded-lg px-3 py-2 text-zinc-200 focus:outline-none"
+                           placeholder="••••••••">
+                    <p class="text-xs mt-1 text-red-400" x-show="pwc.length > 0 && !matchOk" x-cloak>
+                        Passwords do not match.
+                    </p>
                 </div>
                 <button type="submit"
-                        class="w-full px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-sm font-semibold rounded-lg transition-colors">
+                        :disabled="!formOk"
+                        :class="formOk ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-zinc-700 cursor-not-allowed'"
+                        class="w-full px-5 py-2 text-sm font-semibold rounded-lg transition-colors">
                     Create &amp; Enter
                 </button>
             </form>

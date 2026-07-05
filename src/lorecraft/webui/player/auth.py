@@ -37,6 +37,7 @@ from lorecraft.engine.models.player_auth import PlayerAuth
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.state import AppState
+from lorecraft.webui.player.password_policy import PasswordPolicy, validate_password
 from lorecraft.webui.player.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
 from lorecraft.webui.player.session import (
     get_app_state,
@@ -60,6 +61,18 @@ class InvalidCredentialsError(ValueError):
     """Username exists but the password is wrong (or account can't be used)."""
 
 
+class InvalidPasswordError(ValueError):
+    """A *new* password fails the configured complexity policy.
+
+    Carries the individual policy failures so the caller can surface all of
+    them at once (the ``str()`` is a single joined message for API clients).
+    """
+
+    def __init__(self, failures: list[str]) -> None:
+        self.failures = failures
+        super().__init__(" ".join(failures))
+
+
 class StartRoomNotConfiguredError(RuntimeError):
     """The configured spawn room doesn't exist — a server config error."""
 
@@ -76,6 +89,19 @@ class LoginResult:
         self.created = created
 
 
+def _enforce_password_policy(password: str, policy: PasswordPolicy | None) -> None:
+    """Raise ``InvalidPasswordError`` if ``password`` fails ``policy``.
+
+    A ``None`` policy skips the check (keeps existing tests/back-compat callers
+    that don't pass one working, and matches "logins never re-validate").
+    """
+    if policy is None:
+        return
+    failures = validate_password(password, policy)
+    if failures:
+        raise InvalidPasswordError(failures)
+
+
 def login_or_register(
     db: DBSession,
     room_repo: RoomRepo,
@@ -84,6 +110,7 @@ def login_or_register(
     *,
     start_room: str,
     allow_create: bool = True,
+    password_policy: PasswordPolicy | None = None,
 ) -> LoginResult:
     """Verify an existing local account, or create one on first login.
 
@@ -121,6 +148,7 @@ def login_or_register(
 
     existing_player = player_repo.by_username(username)
     if existing_player is not None:
+        _enforce_password_policy(password, password_policy)
         auth = PlayerAuth(
             player_id=existing_player.id,
             provider=_PROVIDER_LOCAL,
@@ -134,6 +162,8 @@ def login_or_register(
 
     if not allow_create:
         raise PlayerNotFoundError("No account with that name. Try Create Character.")
+
+    _enforce_password_policy(password, password_policy)
 
     if room_repo.get(start_room) is None:
         raise StartRoomNotConfiguredError("Starting room is not configured.")
@@ -273,9 +303,14 @@ async def login(body: LoginBody, request: Request) -> dict[str, object]:
         room_repo = RoomRepo(db)
         try:
             result = login_or_register(
-                db, room_repo, body.username, body.password, start_room=start_room
+                db,
+                room_repo,
+                body.username,
+                body.password,
+                start_room=start_room,
+                password_policy=PasswordPolicy.from_settings(app_state.settings),
             )
-        except InvalidUsernameError as e:
+        except (InvalidUsernameError, InvalidPasswordError) as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except InvalidCredentialsError as e:
             raise HTTPException(status_code=401, detail=str(e)) from e

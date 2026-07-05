@@ -45,7 +45,7 @@ def test_first_login_creates_account() -> None:
     with Session(engine) as session:
         room_repo = RoomRepo(session)
         result = login_or_register(
-            session, room_repo, "newplayer", "hunter2", start_room=_START_ROOM
+            session, room_repo, "newplayer", "Hunter2pw", start_room=_START_ROOM
         )
         session.commit()
         assert result.created is True
@@ -58,7 +58,7 @@ def test_second_login_verifies_password() -> None:
     with Session(engine) as session:
         room_repo = RoomRepo(session)
         first = login_or_register(
-            session, room_repo, "returning", "hunter2", start_room=_START_ROOM
+            session, room_repo, "returning", "Hunter2pw", start_room=_START_ROOM
         )
         session.commit()
         first_id = first.player.id
@@ -66,7 +66,7 @@ def test_second_login_verifies_password() -> None:
     with Session(engine) as session:
         room_repo = RoomRepo(session)
         second = login_or_register(
-            session, room_repo, "returning", "hunter2", start_room=_START_ROOM
+            session, room_repo, "returning", "Hunter2pw", start_room=_START_ROOM
         )
     assert second.created is False
     assert second.player.id == first_id
@@ -98,7 +98,7 @@ def test_invalid_username_is_rejected() -> None:
         room_repo = RoomRepo(session)
         try:
             login_or_register(
-                session, room_repo, "a", "hunter2", start_room=_START_ROOM
+                session, room_repo, "a", "Hunter2pw", start_room=_START_ROOM
             )
             assert False, "expected InvalidUsernameError"
         except InvalidUsernameError:
@@ -111,7 +111,7 @@ def test_unconfigured_start_room_raises() -> None:
         room_repo = RoomRepo(session)
         try:
             login_or_register(
-                session, room_repo, "newplayer", "hunter2", start_room="nowhere"
+                session, room_repo, "newplayer", "Hunter2pw", start_room="nowhere"
             )
             assert False, "expected StartRoomNotConfiguredError"
         except StartRoomNotConfiguredError:

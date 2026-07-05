@@ -34,11 +34,13 @@ from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
+    InvalidPasswordError,
     InvalidUsernameError,
     PlayerNotFoundError,
     StartRoomNotConfiguredError,
     login_or_register,
 )
+from lorecraft.webui.player.password_policy import PasswordPolicy
 from lorecraft.webui.player.rendering import (
     audit_to_feed,
     build_map_data,
@@ -199,15 +201,45 @@ async def get_current_player_optional(request: Request) -> Player | None:
 # =============================================================================
 
 
+def _lobby_context(
+    request: Request,
+    app_state: object | None,
+    *,
+    player: Player | None = None,
+    error: str | None = None,
+    active_tab: str = "join",
+    form_username: str = "",
+) -> dict[str, object]:
+    """Shared lobby template context, including the (configurable) password
+    requirement list so the create form can show and validate against it."""
+    settings = getattr(app_state, "settings", None)
+    policy = (
+        PasswordPolicy.from_settings(settings)  # type: ignore[arg-type]
+        if settings is not None
+        else PasswordPolicy()
+    )
+    return {
+        "request": request,
+        "player": player,
+        "error": error,
+        "active_tab": active_tab,
+        "form_username": form_username,
+        "username_pattern": "[A-Za-z0-9_-]{3,30}",
+        "password_min_length": policy.min_length,
+        "password_max_length": policy.max_length,
+        "password_require_mixed_case": policy.require_mixed_case,
+        "password_require_number": policy.require_number,
+        "password_require_symbol": policy.require_symbol,
+        "password_requirements": policy.requirements(),
+    }
+
+
 @router.get("/lobby", response_class=HTMLResponse)
 async def lobby(
     request: Request, player: Player | None = Depends(get_current_player_optional)
 ):
     """Lobby: log in to an existing character or create a new one, both password-protected."""
-    context = {
-        "request": request,
-        "player": player,
-    }
+    context = _lobby_context(request, get_app_state(request), player=player)
     return templates.TemplateResponse(request, "lobby.html", context)
 
 
@@ -235,12 +267,23 @@ async def enter_world(
                 start_room=start_room,
                 allow_create=False,
             )
-        except InvalidUsernameError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        except PlayerNotFoundError as e:
-            raise HTTPException(status_code=404, detail=str(e)) from e
-        except InvalidCredentialsError as e:
-            raise HTTPException(status_code=401, detail=str(e)) from e
+        except (
+            InvalidUsernameError,
+            PlayerNotFoundError,
+            InvalidCredentialsError,
+        ) as e:
+            return templates.TemplateResponse(
+                request,
+                "lobby.html",
+                _lobby_context(
+                    request,
+                    app_state,
+                    error=str(e),
+                    active_tab="join",
+                    form_username=username,
+                ),
+                status_code=400,
+            )
         except StartRoomNotConfiguredError as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
         db.commit()
@@ -253,18 +296,47 @@ async def enter_world(
 
 @router.post("/lobby/create", response_class=RedirectResponse)
 async def create_character(
-    request: Request, username: str = Form(...), password: str = Form(...)
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(""),
 ):
     """Create a new player character (or claim a passwordless one) and log in.
 
     Shares `login_or_register()` with `/lobby/enter` and `POST /auth/login` —
-    the only difference is which lobby tab a browser user came from. If the
-    username already has a password set, this behaves like a login (and will
-    401 on a wrong password) rather than a hard "name taken" error.
+    the only difference is which lobby tab a browser user came from. Enforces
+    the configured password complexity policy and that the two password fields
+    match; on any validation failure the lobby is re-rendered with an inline
+    error on the Create tab (not a raw error page). If the username already has
+    a password set, this behaves like a login (and will 401 on a wrong
+    password) rather than a hard "name taken" error.
     """
     app_state = get_app_state(request)
     start_room = (
         app_state.settings.seed_player_start_room if app_state else "village_square"
+    )
+
+    def _create_error(message: str) -> HTMLResponse:
+        return templates.TemplateResponse(
+            request,
+            "lobby.html",
+            _lobby_context(
+                request,
+                app_state,
+                error=message,
+                active_tab="create",
+                form_username=username,
+            ),
+            status_code=400,
+        )
+
+    if password != password_confirm:
+        return _create_error("Passwords do not match.")
+
+    policy = (
+        PasswordPolicy.from_settings(app_state.settings)
+        if app_state is not None
+        else PasswordPolicy()
     )
     game_engine, _ = get_engines(request)
 
@@ -272,12 +344,19 @@ async def create_character(
         room_repo = RoomRepo(db)
         try:
             result = login_or_register(
-                db, room_repo, username, password, start_room=start_room
+                db,
+                room_repo,
+                username,
+                password,
+                start_room=start_room,
+                password_policy=policy,
             )
-        except InvalidUsernameError as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
-        except InvalidCredentialsError as e:
-            raise HTTPException(status_code=401, detail=str(e)) from e
+        except (
+            InvalidUsernameError,
+            InvalidPasswordError,
+            InvalidCredentialsError,
+        ) as e:
+            return _create_error(str(e))
         except StartRoomNotConfiguredError as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
         db.commit()

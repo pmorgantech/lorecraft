@@ -20,12 +20,12 @@ _SECRET = "test-secret-32-chars-long-enough!"
 
 
 def test_hash_password_is_verifiable() -> None:
-    stored = hash_password("hunter2")
-    assert verify_password("hunter2", stored)
+    stored = hash_password("Hunter2pw")
+    assert verify_password("Hunter2pw", stored)
 
 
 def test_wrong_password_is_rejected() -> None:
-    stored = hash_password("hunter2")
+    stored = hash_password("Hunter2pw")
     assert not verify_password("wrong", stored)
 
 

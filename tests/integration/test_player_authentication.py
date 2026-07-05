@@ -166,7 +166,7 @@ async def _test_login_creates_account_on_first_use() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "brandnew", "password": "hunter2"},
+            body={"username": "brandnew", "password": "Hunter2pw"},
         )
     assert status == 200
     assert data["created"] is True
@@ -193,14 +193,14 @@ async def _test_login_verifies_password_on_repeat_use() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "returning", "password": "correct-horse"},
+            body={"username": "returning", "password": "Correct-Horse2"},
         )
         assert first_status == 200
         second_status, second_data = await _http(
             app,
             "POST",
             "/auth/login",
-            body={"username": "returning", "password": "correct-horse"},
+            body={"username": "returning", "password": "Correct-Horse2"},
         )
     assert second_status == 200
     assert second_data["created"] is False
@@ -221,7 +221,7 @@ async def _test_login_wrong_password_returns_401() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "someone", "password": "right-password"},
+            body={"username": "someone", "password": "Right-Password2"},
         )
         status, _ = await _http(
             app,
@@ -246,7 +246,7 @@ async def _test_login_invalid_username_returns_400() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "a", "password": "hunter2"},
+            body={"username": "a", "password": "Hunter2pw"},
         )
     assert status == 400
 
@@ -270,7 +270,7 @@ async def _test_refresh_issues_new_access_and_refresh_tokens() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "refresher", "password": "hunter2"},
+            body={"username": "refresher", "password": "Hunter2pw"},
         )
         status, data = await _http(
             app,
@@ -299,7 +299,7 @@ async def _test_refresh_rejects_access_token() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "confused", "password": "hunter2"},
+            body={"username": "confused", "password": "Hunter2pw"},
         )
         status, _ = await _http(
             app,
@@ -345,7 +345,7 @@ async def _test_refresh_rejects_expired_refresh_token() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "expired_refresh", "password": "hunter2"},
+            body={"username": "expired_refresh", "password": "Hunter2pw"},
         )
         expired_token = issue_refresh_token(
             login_data["player_id"],
@@ -387,7 +387,7 @@ async def _test_ws_ticket_issued_with_bearer_token_connects_over_ws() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "ticketholder", "password": "hunter2"},
+            body={"username": "ticketholder", "password": "Hunter2pw"},
         )
         status, ticket_data = await _http(
             app, "POST", "/auth/ws-ticket", token=login_data["access_token"]
@@ -424,7 +424,7 @@ async def _test_ws_ticket_is_single_use() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "onetimer", "password": "hunter2"},
+            body={"username": "onetimer", "password": "Hunter2pw"},
         )
         _, ticket_data = await _http(
             app, "POST", "/auth/ws-ticket", token=login_data["access_token"]
@@ -470,7 +470,7 @@ async def _test_ws_ticket_request_rejects_expired_access_token() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "expired_access", "password": "hunter2"},
+            body={"username": "expired_access", "password": "Hunter2pw"},
         )
         expired_token = issue_access_token(
             login_data["player_id"],
@@ -548,7 +548,7 @@ async def _test_ws_ticket_via_session_cookie() -> None:
             app,
             "POST",
             "/auth/login",
-            body={"username": "cookieuser", "password": "hunter2"},
+            body={"username": "cookieuser", "password": "Hunter2pw"},
         )
         player_id = login_data["player_id"]
         cookie_token = create_player_token(
