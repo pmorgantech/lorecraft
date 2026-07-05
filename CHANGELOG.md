@@ -2,6 +2,20 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.32.0] - 2026-07-05
+
+### Changed
+
+- **Sprint 31.3: all Tier 2 feature services are now manifest-gated (tier-split step 12b).** Previously only `economy`/`bank`/`fatigue` were gated; `movement`, `inventory`, `dialogue` (npc), `quest`, `character_info`, `exploration`, `journal`, `trade` were built unconditionally, as were the `main.py`-level `light_fuel`/`restock`/`quest_timer`/`transit` schedulable services. Now every Tier 2 service is constructed only when its owning feature is enabled; only the Tier 1 `save` service is unconditional. `ServiceContainer._FEATURE_GATED_SERVICES` maps `container_field -> (feature_key, service_cls)` (handling the `dialogue`→`npc` and `journal`→`exploration` field/key mismatches); `register_all_commands` and `main.py` guard every feature's command registration and event wiring on its service being present. `main.py` resolves the enabled feature set before constructing feature-owned services.
+
+### Added
+
+- **`tests/integration/test_feature_toggling.py` — feature enable/disable coverage.** Four integration tests boot a real app with a reduced feature set and assert the gating takes effect end to end: disabling `economy`/`transit` drops their services + verbs while the app still serves `/health`; all-on registers the gated verbs; an empty feature set keeps only the Tier 1 shell verbs (`help`/`save`/`load`/`quit`).
+
+### Roadmap
+
+- **Folded the two open player reports in `docs/issues.yaml` into a new Sprint 34** (Player-reported command polish): 34.1 `help <command>` per-command help (issue-7502f412), 34.2 `score` progress command (issue-257c6643). Synced `issues.yaml` from the runtime DB (issue-257c6643 was DB-only).
+
 ## [0.31.5] - 2026-07-05
 
 ### Fixed

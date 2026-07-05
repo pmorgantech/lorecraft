@@ -42,11 +42,11 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | 🚧 |
 | 10a | ↳ `connection_manager`/`broadcast` → `engine/game/`; `game/` package deleted; `GameContext.news_repo` removed — engine now imports only `engine.*`+`types` (0.29.0) | 1 | ✅ |
 | 10b | ↳ `web/` → `webui/player/`, `admin/` → `webui/admin/` moved; paths/packaging updated; live boot verified (0.30.0) | 4 | ✅ |
-| 10c | ↳ add `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry) — additive framework, no current consumer | 4 | ⬜ |
-| 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |
-| 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | 🚧 |
+| 10c | ↳ add `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry) (0.31.4, Sprint 31.1) | 4 | ✅ |
+| 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap (0.31.4, Sprint 31.2) | 4 | ✅ |
+| 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | ✅ |
 | 12a | ↳ import-direction boundary test (`test_tier_boundaries.py`) — engine⇏features/web, features⇏web (0.27.0) | 5 | ✅ |
-| 12b | ↳ feature enable/disable integration tests | 5 | ⬜ |
+| 12b | ↳ feature enable/disable integration tests — all Tier 2 services manifest-gated + `test_feature_toggling.py` (Sprint 31.3) | 5 | ✅ |
 | E  | Engine import-purity: `GameContext` purged of Tier 2 repos; nothing in `engine/` imports `features/` (0.26.0) | 1 | ✅ |
 | 13 | Graduate §1c into `admin_builder_guide.md`; update `architecture_tiers.md`, `tier_modules.md`, `AGENTS.md` | 5 | 🚧 |
 | 13a | ↳ `architecture_tiers.md` / `tier_modules.md` / `AGENTS.md` updated to the shipped layout (0.27.0) | 5 | ✅ |
@@ -67,9 +67,13 @@ The import-direction boundary is enforced by a test that runs in `make test`/CI.
 
 **Remaining — additive / follow-on, none blocking the boundary:**
 
-- **Step 10c — `WebHost` abstraction** (multi-dir Jinja `ChoiceLoader` + panel/slot registry) and **Step 11 — the `presentation.py` feature-UI seam** (prove with the transit minimap). **Deliberately deferred:** these are *additive framework with no current consumer* — no shipped feature injects UI yet. Per `AGENTS.md` ("prefer finishing or removing a half-done seam over adding a new one") and §1b of this doc ("implement it lazily; grow toward the heavy version only if a second host ever needs the same contract"), this should be built **when the first feature needs feature-owned UI**, not speculatively. The web layer works today with its single hard-coded template dir.
-- **Step 12b — feature enable/disable integration tests.** Only `economy`/`bank`/`fatigue` services are truly gated today; most feature services are still built unconditionally in `main.py`/`ServiceContainer`. Full toggle coverage needs those wirings made manifest-driven first (a real follow-on refactor).
-- **Step 13b — graduate §1c** ("adding feature UI") into `admin_builder_guide.md` once step 11 exists.
+- **Step 13b — graduate §1c** ("adding feature UI") into `admin_builder_guide.md`. Now unblocked (step 11 shipped); pending in Sprint 31.4.
+
+**Shipped since (Sprint 31, v0.31.4+):**
+
+- **Step 10c — `WebHost` abstraction** (`webui/player/host.py`): multi-dir Jinja `ChoiceLoader` + `Panel` panel/slot registry, plus static-mount and script hooks. 9 unit tests.
+- **Step 11 — the `presentation.py` feature-UI seam** (§1c): `FeatureManifest.presentation` (optional dotted path), loaded by `webui/player.load_feature_presentations()` at host composition only (never headless). Proven by `features/transit/presentation.py` registering the minimap panel. The tier-boundary test now allows web imports specifically in `presentation.py` files (they are loaded *by* the host).
+- **Step 12b — feature enable/disable integration tests** (Sprint 31.3): every Tier 2 service is now manifest-gated (`ServiceContainer` + the `main.py` feature-owned schedulables); only Tier 1 `save` is unconditional. `tests/integration/test_feature_toggling.py` proves disabling a feature drops its service + verbs while the app still boots.
 
 ---
 
