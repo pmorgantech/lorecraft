@@ -11,6 +11,30 @@ from lorecraft.engine.services.save import SaveSlotService
 _DIALOGUE_ONLY_VERBS = frozenset({"choice", "bye"})
 
 
+def _build_command_help(registry: CommandRegistry, verb: str) -> list[str]:
+    """Detailed help for one command (issue-7502f412: `help <command>`).
+
+    Looks the verb up (including its aliases), and returns its usage/help text,
+    aliases, and scope. Returns a not-found line if the verb is unknown, so the
+    player gets useful feedback rather than the full list.
+    """
+    command = registry.get(verb)
+    if command is None:
+        return [
+            f"No help for '{verb}' — unknown command.",
+            "Type 'help' for the full list of commands.",
+        ]
+
+    lines = [command.help_text or f"{command.verb} — (no description available)"]
+    # All the other ways to invoke this command (primary verb + aliases),
+    # minus the one the player typed.
+    other_names = [name for name in (command.verb, *command.aliases) if name != verb]
+    if other_names:
+        lines.append(f"  Aliases: {', '.join(other_names)}")
+    lines.append(f"  Scope: {command.scope.value}")
+    return lines
+
+
 def _build_help_lines(registry: CommandRegistry, ctx: GameContext) -> list[str]:
     in_dialogue = bool(ctx.player.flags.get(_NPC_KEY))
     in_combat = bool(ctx.player.active_combat_session_id)
@@ -48,11 +72,15 @@ def register_meta_commands(
         "help",
         "?",
         scope=CommandScope.GLOBAL,
-        help="help — show this list",
+        help="help [command] — list commands, or show detail for one",
     )
     def help_command(noun: str | None, ctx: GameContext) -> None:
-        del noun
-        ctx.say("\n".join(_build_help_lines(registry, ctx)))
+        target = (noun or "").strip().split()[0] if noun and noun.strip() else None
+        if target:
+            # `help <command>` — detailed help for a specific command.
+            ctx.say("\n".join(_build_command_help(registry, target.lower())))
+        else:
+            ctx.say("\n".join(_build_help_lines(registry, ctx)))
 
     @registry.register(
         "quit",

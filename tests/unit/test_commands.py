@@ -52,7 +52,7 @@ def test_meta_commands_write_context_messages_and_updates() -> None:
         registry.get("quit").handler(None, ctx)
 
     assert ctx.messages[0].startswith("Available commands:")
-    assert "  help — show this list" in ctx.messages[0]
+    assert "  help [command]" in ctx.messages[0]
     assert "  go <direction>" in ctx.messages[0]
     assert ctx.messages[1] == "Goodbye."
     assert ctx.updates == {"disconnect": True}
@@ -84,7 +84,7 @@ def test_help_shows_dialogue_commands_and_hides_world_commands_in_conversation()
     assert ctx.messages[0].startswith("You are in conversation.")
     assert "choice <number>" in ctx.messages[0]
     assert "bye — end" in ctx.messages[0]
-    assert "help — show this list" in ctx.messages[0]
+    assert "help [command]" in ctx.messages[0]
     assert "go <direction>" not in ctx.messages[0]
     assert "take <item>" not in ctx.messages[0]
 
@@ -110,7 +110,7 @@ def test_help_hides_out_of_combat_commands_during_combat() -> None:
     assert ctx.messages[0].startswith("You are in combat.")
     assert "go <direction>" not in ctx.messages[0]
     assert "take <item>" not in ctx.messages[0]
-    assert "help — show this list" in ctx.messages[0]
+    assert "help [command]" in ctx.messages[0]
 
 
 def test_help_respects_room_disabled_commands() -> None:
@@ -134,6 +134,53 @@ def test_help_respects_room_disabled_commands() -> None:
 
     assert "take <item>" not in ctx.messages[0]
     assert "drop <item>" in ctx.messages[0]
+
+
+def test_help_with_argument_shows_specific_command_detail() -> None:
+    # issue-7502f412: `help <command>` shows help for that one command.
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        registry.get("help").handler("go", ctx)
+
+    out = ctx.messages[0]
+    # Detail for `go`, not the full list.
+    assert "go <direction>" in out
+    assert "Scope:" in out
+    assert "take <item>" not in out
+
+
+def test_help_with_alias_argument_lists_other_aliases() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        # `help ?` — ? is an alias of help; detail should list the primary verb.
+        registry.get("help").handler("?", ctx)
+
+    assert "Aliases:" in ctx.messages[0]
+    assert "help" in ctx.messages[0]
+
+
+def test_help_with_unknown_command_argument_reports_not_found() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        registry.get("help").handler("flibbertigibbet", ctx)
+
+    assert "unknown command" in ctx.messages[0].lower()
+    assert "help" in ctx.messages[0].lower()
 
 
 def _build_context(
