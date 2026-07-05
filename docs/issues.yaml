@@ -49,6 +49,20 @@ issues:
   - player-report
   assigned_to: ''
   links: []
+- id: issue-4d2dd39a
+  type: bug
+  title: test issue
+  description: test issue
+  created_by: player-1
+  created_at: '2026-07-05T20:37:07.969143Z'
+  updated_at: '2026-07-05T20:37:36.463540Z'
+  status: resolved
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  assigned_to: ''
+  links: []
 - id: issue-7502f412
   type: bug
   title: help <command> should display help for specific command
@@ -57,6 +71,60 @@ issues:
   created_at: '2026-07-04T15:06:19.761210Z'
   updated_at: '2026-07-04T15:06:19.761210Z'
   status: resolved
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  assigned_to: ''
+  links: []
+- id: issue-7f2e8f02
+  type: todo
+  title: Issues components should be a list.
+  description: ''
+  created_by: admin
+  created_at: '2026-07-05T19:42:28.600890Z'
+  updated_at: '2026-07-05T20:37:38.928246Z'
+  status: resolved
+  priority: high
+  component: ''
+  tags: []
+  assigned_to: ''
+  links: []
+- id: issue-9fbf545d
+  type: todo
+  title: Admin UI does not auto-update
+  description: ''
+  created_by: admin
+  created_at: '2026-07-05T19:42:13.941016Z'
+  updated_at: '2026-07-05T19:42:13.941016Z'
+  status: open
+  priority: normal
+  component: ''
+  tags: []
+  assigned_to: ''
+  links: []
+- id: issue-abcbb136
+  type: bug
+  title: test again
+  description: test again
+  created_by: player-1
+  created_at: '2026-07-05T20:37:47.731386Z'
+  updated_at: '2026-07-05T20:38:14.514300Z'
+  status: resolved
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  assigned_to: ''
+  links: []
+- id: issue-fd64ee3e
+  type: bug
+  title: Can we make the help easier to read? bold/color/formatting?
+  description: Can we make the help easier to read? bold/color/formatting?
+  created_by: player-1
+  created_at: '2026-07-05T19:41:22.531174Z'
+  updated_at: '2026-07-05T19:41:22.531174Z'
+  status: open
   priority: normal
   component: player-report
   tags:

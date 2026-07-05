@@ -10,7 +10,7 @@ if ! command -v graphify >/dev/null 2>&1; then
   exit 0
 fi
 
-graphify .
+graphify update --no-cluster --force .
 
 echo
 echo "Graph updated:"

@@ -231,3 +231,5 @@ test_dbs/
 !.claude/skills/
 !.claude/skills/kindle-doc-weaver/
 !.claude/skills/kindle-doc-weaver/SKILL.md
+
+docs/issues.yaml
