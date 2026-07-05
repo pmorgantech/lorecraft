@@ -130,7 +130,7 @@ Nine tabs, each backed by REST endpoints under `/admin/*`:
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
-| **Issues** | Repo-tracked issue tracker CRUD; table shows opened-by + created/updated dates (🕑 button toggles absolute dates ↔ relative ages), and each row expands (click) to full description, tags, links, assignee, and timestamps | `GET/POST/PUT /admin/issues` |
+| **Issues** | Repo-tracked issue tracker CRUD; `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write; table shows opened-by + created/updated dates (🕑 button toggles absolute dates ↔ relative ages), and each row expands (click) to full description, tags, links, assignee, and timestamps | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
 | **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
 | **Accounts** | Create/revoke admin accounts, assign roles (superadmin only) | `GET/POST /admin/accounts`, `DELETE /admin/accounts/{username}` |
@@ -138,6 +138,12 @@ Nine tabs, each backed by REST endpoints under `/admin/*`:
 Player moderation actions (teleport, flag edit, freeze/unfreeze, message) live under the
 player detail view reached from the Dashboard — see
 [Moderating Players](#moderating-players).
+
+**Live refresh:** the console keeps an `/admin/ws` push connection open (WS indicator, top-right).
+Beyond the Dashboard's live player table, the **Issues**, **News**, and **Help** tabs auto-reload
+when their content changes — including edits made by *another* admin or an out-of-band change — but
+only for whichever tab you're currently viewing. No manual Search/Refresh needed to see a fresh
+issue, announcement, or help topic.
 
 ## Admin TUI
 
@@ -247,10 +253,17 @@ Both are YAML-first (git-blame-able, reviewable in PRs) and synced into the DB o
 startup and on every admin mutation:
 
 - **Issues** (`docs/issues.yaml`) — bug/task tracker. Manage via the Issues tab, `F6`,
-  or `GET/POST/PUT /admin/issues`. Players can also file one directly from in-game with
-  `report <description>` (tagged `component="player-report"` for easy filtering) — it lands
-  in the DB immediately (visible right away in the Issues tab/API), but the git-tracked YAML
-  mirror only picks it up the next time an admin mutates *any* issue (same as any other
+  or `GET/POST/PUT /admin/issues`. The `component` field is a **registered, closed set**
+  (a dropdown in the create form and the filter bar), served from `GET /admin/issues/components`
+  and validated on write — the source of truth is `lorecraft/content/components.py`
+  (`ISSUE_COMPONENTS`: coarse structural areas — `engine`, `webui/player`, `webui/admin`,
+  `admin-tui`, `features`, `docs`, `infra`); the empty value means "unassigned". To add a
+  component, edit that tuple. Players can also file an issue directly from in-game with
+  `report <description>` — these keep the legacy `component="player-report"` (also a tag) and
+  are **not** validated against the registered set (they use the content path, not the admin
+  API); filter them by the `player-report` tag rather than the component dropdown. A report
+  lands in the DB immediately (visible right away in the Issues tab/API), but the git-tracked
+  YAML mirror only picks it up the next time an admin mutates *any* issue (same as any other
   DB-only write), not the instant it's filed.
 - **News** (`docs/news.yaml`) — in-game announcements. Manage via the News tab, `F7`,
   or `GET/POST/PUT/DELETE /admin/news`. Also exposed unauthenticated at `/api/news`

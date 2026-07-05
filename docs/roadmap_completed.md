@@ -12,6 +12,35 @@
 
 ---
 
+## Sprint 40 — Admin console live-refresh (done, v0.37.0, 2026-07-05)
+
+**Goal:** Content tabs in the admin console (Issues, News, Help) should update on their own when the underlying data changes, instead of going stale until a manual Search/Refresh. Born from admin-console issue *"Admin UI does not auto-update"*.
+
+**Approach — reuse the existing push channel, add nothing new.** The console already opens `/admin/ws` and fans out via `AdminBroadcaster`; it was only wired for `player_*`/`changeset_scan_done`. Content mutations now push a generic `{"type": "content_changed", "resource": "<tab>"}`.
+
+| # | Task | Status |
+|---|------|--------|
+| 40.1 | Shared helper `webui/admin/routers/_common.notify_content_changed(state, resource)`; called after every issue/news/help create/update/delete (each mutation already funnels through the router's `_sync_yaml`). | [x] |
+| 40.2 | Frontend: lift the tab-loader map to module scope (`TAB_LOADERS`), add `refreshIfActive(name)`, and handle `content_changed` in the WS `onmessage` — reload the named tab **only when it's the active one**. | [x] |
+| 40.3 | Integration test: a subscribed broadcaster queue receives `content_changed`/`issues` after `POST /admin/issues`. | [x] |
+
+## Sprint 41 — Registered issue components (done, v0.37.0, 2026-07-05)
+
+**Goal:** Replace the free-text issue `component` field with a **registered, strict closed set** surfaced as a dropdown, so components are consistent and filterable. Born from admin-console issue *"Issues components should be a list."*
+
+**Design:** coarse, structural taxonomy (not per-feature) — `engine`, `webui/player`, `webui/admin`, `admin-tui`, `features`, `docs`, `infra`. Single source of truth in `lorecraft/content/components.py`; the empty value ("unassigned") is always allowed.
+
+| # | Task | Status |
+|---|------|--------|
+| 41.1 | `content/components.py`: `ISSUE_COMPONENTS` + `is_valid_component()`. | [x] |
+| 41.2 | API: `GET /admin/issues/components` (serves the list to the dropdown, registered before `/issues/{issue_id}` so the literal path wins); validate `component` on `POST`/`PUT /admin/issues` (unknown → 400). | [x] |
+| 41.3 | Frontend: create-form and filter `component` inputs → `<select>`s populated once from the endpoint (cached). | [x] |
+| 41.4 | Tests: endpoint returns the set; unknown component rejected; unit tests for `is_valid_component`. | [x] |
+
+> **Interaction with in-game reports:** the `report` command keeps `component="player-report"` (and the matching tag). It uses the content path, which is deliberately *not* API-validated, so player reports are unaffected; those issues store and display their component unchanged. `player-report` is intentionally **not** in the registered structural set — filter such issues by their tag.
+
+---
+
 # Lorecraft — Roadmap
 
 **This is the single source of truth for implementation progress** — what's done and what's next. (`docs/status.md` was retired 2026-07-04 and archived to `docs/.archive/status.md`; its Phase-based tracking had drifted out of sync with this roadmap.)

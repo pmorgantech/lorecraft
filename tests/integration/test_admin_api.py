@@ -779,6 +779,109 @@ async def _test_update_issue_status(tmp_path) -> None:
         assert status == 404
 
 
+def test_issue_components_endpoint(tmp_path) -> None:
+    anyio.run(_test_issue_components_endpoint, tmp_path)
+
+
+async def _test_issue_components_endpoint(tmp_path) -> None:
+    from lorecraft.content.components import ISSUE_COMPONENTS
+
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        issues_yaml_path=str(tmp_path / "issues.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="observer")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="observer")
+        status, components = await _http(
+            app, "GET", "/admin/issues/components", token=token
+        )
+        assert status == 200
+        assert components == list(ISSUE_COMPONENTS)
+
+
+def test_create_issue_rejects_unknown_component(tmp_path) -> None:
+    anyio.run(_test_create_issue_rejects_unknown_component, tmp_path)
+
+
+async def _test_create_issue_rejects_unknown_component(tmp_path) -> None:
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        issues_yaml_path=str(tmp_path / "issues.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="moderator")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="moderator")
+        # A registered component is accepted.
+        status, created = await _http(
+            app,
+            "POST",
+            "/admin/issues",
+            body={"title": "Parser bug", "component": "engine"},
+            token=token,
+        )
+        assert status == 200
+        assert created["component"] == "engine"
+
+        # An unregistered component is rejected with 400.
+        status, err = await _http(
+            app,
+            "POST",
+            "/admin/issues",
+            body={"title": "Bad", "component": "not-a-real-component"},
+            token=token,
+        )
+        assert status == 400
+        assert "not-a-real-component" in err["detail"]
+
+
+def test_issue_mutation_broadcasts_content_changed(tmp_path) -> None:
+    anyio.run(_test_issue_mutation_broadcasts_content_changed, tmp_path)
+
+
+async def _test_issue_mutation_broadcasts_content_changed(tmp_path) -> None:
+    import asyncio
+
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        issues_yaml_path=str(tmp_path / "issues.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="moderator")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="moderator")
+        # Subscribe a queue exactly as a live admin WebSocket would.
+        q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=50)
+        app.state.lorecraft.admin_broadcaster.add(q)
+
+        status, _ = await _http(
+            app, "POST", "/admin/issues", body={"title": "Fix"}, token=token
+        )
+        assert status == 200
+
+        drained = []
+        while not q.empty():
+            drained.append(q.get_nowait())
+        assert {"type": "content_changed", "resource": "issues"} in drained
+
+
 # ---------------------------------------------------------------------------
 # News
 # ---------------------------------------------------------------------------

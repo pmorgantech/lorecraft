@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.37.0] - 2026-07-05
+
+### Added
+
+- **Sprint 40 — admin console live-refresh on content changes.** The admin console already opened an `/admin/ws` push channel (`AdminBroadcaster`) but only used it for player/changeset events; content tabs (Issues, News, Help) went stale until you hit Search/Refresh. Content mutations now push a generic `{"type": "content_changed", "resource": "<tab>"}` event (new shared helper `webui/admin/routers/_common.notify_content_changed`), and the frontend reloads that tab **only when it's the one currently open** (`refreshIfActive`). So a second admin — or your own session after an out-of-band edit — sees new/edited issues, news, and help topics without a manual refresh. No new infrastructure; reuses the existing broadcaster + WS.
+- **Sprint 41 — registered issue components (dropdown, closed set).** The issue `component` field was free-text; it is now a **strict, registered set** exposed as a dropdown in the admin console's create and filter controls. The single source of truth is `lorecraft/content/components.py` (`ISSUE_COMPONENTS`): a coarse, structural taxonomy — `engine`, `webui/player`, `webui/admin`, `admin-tui`, `features`, `docs`, `infra` — served to the UI via `GET /admin/issues/components` and validated on `POST`/`PUT /admin/issues` (unknown component → HTTP 400; empty = "unassigned" is always allowed). In-game player reports keep their legacy `component="player-report"` (they use the content path, which is not API-validated, and are also tagged `player-report`); they store and display unchanged.
+
 ## [0.36.10] - 2026-07-05
 
 ### Changed

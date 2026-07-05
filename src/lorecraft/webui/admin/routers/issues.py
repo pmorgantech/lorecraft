@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from lorecraft.webui.admin.auth import Moderator, Observer
+from lorecraft.webui.admin.routers._common import notify_content_changed
+from lorecraft.content.components import ISSUE_COMPONENTS, is_valid_component
 from lorecraft.content.issues import create_issue as build_issue
 from lorecraft.content.issues import export_issues_yaml
 from lorecraft.content.paths import resolve_repo_path
@@ -42,6 +44,25 @@ def _issue_dict(issue: Any) -> dict[str, Any]:
 
 def _sync_yaml(state: Any, session: Session) -> None:
     export_issues_yaml(session, resolve_repo_path(state.settings.issues_yaml_path))
+
+
+def _validate_component(component: str) -> None:
+    if not is_valid_component(component):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Unknown component {component!r}. "
+                f"Valid components: {', '.join(ISSUE_COMPONENTS)}."
+            ),
+        )
+
+
+# Registered before `/issues/{issue_id}` so the literal path wins over the
+# path-parameter route (FastAPI matches in declaration order).
+@router.get("/issues/components")
+async def list_components(_: Observer) -> list[str]:
+    """The closed set of components an issue may relate to (for the dropdown)."""
+    return list(ISSUE_COMPONENTS)
 
 
 @router.get("/issues")
@@ -91,6 +112,7 @@ class _CreateIssueBody(BaseModel):
 async def create_issue(
     body: _CreateIssueBody, request: Request, token: Moderator
 ) -> dict[str, Any]:
+    _validate_component(body.component)
     state = _state(request)
     with Session(state.game_engine) as session:
         issue = build_issue(
@@ -108,6 +130,7 @@ async def create_issue(
         session.commit()
         session.refresh(issue)
         _sync_yaml(state, session)
+        notify_content_changed(state, "issues")
         return _issue_dict(issue)
 
 
@@ -125,6 +148,8 @@ class _UpdateIssueBody(BaseModel):
 async def update_issue(
     issue_id: str, body: _UpdateIssueBody, request: Request, _: Moderator
 ) -> dict[str, Any]:
+    if body.component is not None:
+        _validate_component(body.component)
     state = _state(request)
     with Session(state.game_engine) as session:
         repo = IssueRepo(session)
@@ -150,4 +175,5 @@ async def update_issue(
         session.commit()
         session.refresh(issue)
         _sync_yaml(state, session)
+        notify_content_changed(state, "issues")
         return _issue_dict(issue)

@@ -301,7 +301,7 @@
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
             <input id="i-filter-status" placeholder="status" style="width:110px;" />
             <input id="i-filter-priority" placeholder="priority" style="width:110px;" />
-            <input id="i-filter-component" placeholder="component" style="width:110px;" />
+            <select id="i-filter-component" style="width:130px;" title="Filter by component"></select>
             <button onclick="loadIssues()">Search</button>
             <button id="i-date-toggle" onclick="toggleIssueDateMode()" title="Switch date columns between absolute dates and relative ages">🕑 Dates</button>
           </div>
@@ -324,7 +324,7 @@
                 <option value="critical">critical</option>
               </select>
             </div>
-            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">COMPONENT</label><input id="i-component" placeholder="component" style="width:130px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">COMPONENT</label><select id="i-component" style="width:140px;"></select></div>
             <button onclick="createIssue()">+ Create</button>
           </div>
         </div>
@@ -530,15 +530,22 @@ function showError(msg) {
 // Tab routing
 // ────────────────────────────────────────
 
+const TAB_LOADERS = {
+  dashboard: loadDashboard, audit: loadAudit, world: loadRooms,
+  changesets: loadChangesets, clock: loadClock, issues: loadIssues,
+  news: loadNews, help: loadHelp, accounts: loadAccounts
+};
+
 function showTab(name) {
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
-  const loaders = {
-    dashboard: loadDashboard, audit: loadAudit, world: loadRooms,
-    changesets: loadChangesets, clock: loadClock, issues: loadIssues,
-    news: loadNews, help: loadHelp, accounts: loadAccounts
-  };
-  if (loaders[name]) loaders[name]();
+  if (TAB_LOADERS[name]) TAB_LOADERS[name]();
+}
+
+// Reload a tab's data only when it is the one currently visible.
+function refreshIfActive(name) {
+  const panel = document.getElementById("tab-" + name);
+  if (panel && panel.classList.contains("active") && TAB_LOADERS[name]) TAB_LOADERS[name]();
 }
 
 // ────────────────────────────────────────
@@ -776,7 +783,24 @@ async function setWeather() {
 // Issues
 // ────────────────────────────────────────
 
+// Registered issue components (closed set) — fetched once, populates the
+// create + filter dropdowns. Single source of truth is the backend.
+let _componentsCache = null;
+async function loadComponents() {
+  if (_componentsCache) return _componentsCache;
+  const list = await api("GET", "/admin/issues/components");
+  _componentsCache = Array.isArray(list) ? list : [];
+  const opts = _componentsCache.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+  const createSel = document.getElementById("i-component");
+  const filterSel = document.getElementById("i-filter-component");
+  // Create form defaults to "(none)"; filter defaults to "component" (= any).
+  if (createSel) createSel.innerHTML = `<option value="">(none)</option>` + opts;
+  if (filterSel) filterSel.innerHTML = `<option value="">component</option>` + opts;
+  return _componentsCache;
+}
+
 async function loadIssues() {
+  await loadComponents();
   const params = new URLSearchParams();
   const status    = document.getElementById("i-filter-status").value.trim();
   const priority  = document.getElementById("i-filter-priority").value.trim();
@@ -1092,11 +1116,14 @@ function connectAdminWs() {
     try {
       const msg = JSON.parse(e.data);
       if (["player_connected","player_disconnected","player_moved"].includes(msg.type)) {
-        // Only refresh if dashboard tab is active
-        if (document.getElementById("tab-dashboard").classList.contains("active")) loadDashboard();
+        refreshIfActive("dashboard");
       }
       if (msg.type === "changeset_scan_done") {
-        if (document.getElementById("tab-changesets").classList.contains("active")) loadChangesets();
+        refreshIfActive("changesets");
+      }
+      // Content mutated by another admin (or out-of-band) — reload that tab if open.
+      if (msg.type === "content_changed" && typeof msg.resource === "string") {
+        refreshIfActive(msg.resource);
       }
     } catch(_) {}
   };

@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
 from lorecraft.webui.admin.auth import Moderator, Observer
+from lorecraft.webui.admin.routers._common import notify_content_changed
 from lorecraft.content.news import export_news_yaml
 from lorecraft.content.paths import resolve_repo_path
 from lorecraft.models.news import NewsItem
@@ -84,6 +85,7 @@ async def create_news(
         session.commit()
         session.refresh(item)
         _sync_yaml(state, session)
+        notify_content_changed(state, "news")
         return _news_dict(item)
 
 
@@ -122,6 +124,7 @@ async def update_news(
         session.commit()
         session.refresh(item)
         _sync_yaml(state, session)
+        notify_content_changed(state, "news")
         return _news_dict(item)
 
 
@@ -136,4 +139,5 @@ async def delete_news(news_id: str, request: Request, _: Moderator) -> dict[str,
         repo.delete(item)
         session.commit()
         _sync_yaml(state, session)
+        notify_content_changed(state, "news")
         return {"id": news_id, "status": "deleted"}

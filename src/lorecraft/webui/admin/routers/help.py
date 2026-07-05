@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from lorecraft.webui.admin.auth import Moderator, Observer
+from lorecraft.webui.admin.routers._common import notify_content_changed
 from lorecraft.content.help import export_help_yaml
 from lorecraft.content.paths import resolve_repo_path
 from lorecraft.models.help import HelpTopic
@@ -99,6 +100,7 @@ async def create_help(
         session.commit()
         session.refresh(topic)
         _sync_yaml(state, session)
+        notify_content_changed(state, "help")
         return _topic_dict(topic)
 
 
@@ -140,6 +142,7 @@ async def update_help(
         session.commit()
         session.refresh(topic)
         _sync_yaml(state, session)
+        notify_content_changed(state, "help")
         return _topic_dict(topic)
 
 
@@ -154,4 +157,5 @@ async def delete_help(topic_id: int, request: Request, _: Moderator) -> dict[str
         repo.delete(topic)
         session.commit()
         _sync_yaml(state, session)
+        notify_content_changed(state, "help")
         return {"id": topic_id, "status": "deleted"}

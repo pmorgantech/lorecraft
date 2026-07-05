@@ -27,6 +27,11 @@ of already-complete subsystems).
 new **Tier 1 engine primitive** — timed room effects (Sprint 39, design-first). That's the whole
 active roadmap below.
 
+**Recently completed (v0.37.0, 2026-07-05):** admin console **live-refresh** on content changes
+(Sprint 40) and **registered issue components** as a strict dropdown (Sprint 41) — both born from
+admin-console issues raised during dogfooding. Detail in [`roadmap_completed.md`](roadmap_completed.md)
+and [`../CHANGELOG.md`](../CHANGELOG.md).
+
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
 
@@ -134,10 +139,10 @@ Next highest-value move is **in-app telemetry (35.2/35.3)** — the baseline har
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), and 39 (timed room effects).
-- **Reserved but never used:** 40–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), and 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0).
+- **Reserved but never used:** 42–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 40.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 42.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
