@@ -14,7 +14,7 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
-from lorecraft.game.fatigue_source import FATIGUE_METER_KEY, FatigueModifierSource
+from lorecraft.features.fatigue.source import FATIGUE_METER_KEY, FatigueModifierSource
 from lorecraft.engine.game.holders import Location
 from lorecraft.game.item_effects import compile_item_modifiers
 from lorecraft.engine.game.registry import CommandRegistry
@@ -34,8 +34,8 @@ from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.game.equipment_source import register as _register_equipment_source
-from lorecraft.game.fatigue_source import register as _register_fatigue
+from lorecraft.features.equipment.sources import register as _register_equipment_source
+from lorecraft.features.fatigue.source import register as _register_fatigue
 
 # The "fatigue" meter + equipment sources used to register as import side
 # effects (the fatigue meter via this module's `from fatigue_source import ...`).

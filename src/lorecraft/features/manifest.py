@@ -2,7 +2,7 @@
 
 A `FeatureManifest` is what a Tier 2 feature exports so the engine can load
 it *by configuration* instead of via the brittle side-effect imports that
-`main.py` currently carries (`import lorecraft.game.fatigue_source  # noqa`).
+`main.py` used to carry (e.g. `import lorecraft.game.fatigue_source  # noqa`).
 Each feature package's ``__init__`` builds one manifest and calls
 :func:`register_feature`; the loader (see ``lorecraft.features.loader``) then
 selects which registered features to actually wire based on the enabled set.

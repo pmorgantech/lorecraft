@@ -9,8 +9,9 @@ import pytest
 from sqlmodel import Session, create_engine
 
 from lorecraft.features.reputation.conditions import register as _register_reputation
-from lorecraft.game.standard_traits import register as _register_standard_traits
-import lorecraft.game.traits as traits_module
+from lorecraft.features.traits.standard import register as _register_standard_traits
+from lorecraft.features.traits.sources import register as _register_trait_sources
+import lorecraft.engine.game.traits as traits_module
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
@@ -35,12 +36,12 @@ from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.services.skills import SkillService
-from lorecraft.services.traits import TraitService
+from lorecraft.features.traits.service import TraitService
 
 # Traits + reputation used to register as import side effects; they now register
 # via their feature register()s. Call them once for this module's tests
 # (idempotent — safe if another module also registered).
-traits_module.register()
+_register_trait_sources()
 _register_standard_traits()
 _register_reputation()
 

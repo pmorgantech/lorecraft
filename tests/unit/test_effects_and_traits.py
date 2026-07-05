@@ -9,14 +9,14 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.errors import ValidationError
-from lorecraft.game import traits as traits_module
+from lorecraft.engine.game import traits as traits_module
 from lorecraft.engine.game.effects import EffectDef
 from lorecraft.engine.game.effects import get_registry as get_effect_registry
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.modifiers import Modifier, resolve_for
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.game.traits import TraitDef
-from lorecraft.game.traits import get_registry as get_trait_registry
+from lorecraft.engine.game.traits import TraitDef
+from lorecraft.engine.game.traits import get_registry as get_trait_registry
 from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.services.effects import EffectService
 

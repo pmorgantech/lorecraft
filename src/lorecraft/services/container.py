@@ -10,7 +10,7 @@ from lorecraft.services.bank import BankService
 from lorecraft.services.character_info import CharacterInfoService
 from lorecraft.services.economy import EconomyService
 from lorecraft.services.exploration import ExplorationService
-from lorecraft.services.fatigue import FatigueService
+from lorecraft.features.fatigue.service import FatigueService
 from lorecraft.services.inventory import InventoryService
 from lorecraft.services.journal import JournalService
 from lorecraft.services.movement import MovementService

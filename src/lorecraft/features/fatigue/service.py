@@ -13,7 +13,7 @@ from lorecraft.game import encumbrance
 from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.game.fatigue_source import FATIGUE_METER_KEY
+from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.game.warmth import resolve_warmth
 from lorecraft.services.skills import SkillService

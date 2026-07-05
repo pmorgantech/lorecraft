@@ -1,10 +1,10 @@
 """Equipment feature: equipped-item modifier/trait sources + the player
 equip-slot move validator.
 
-Migrated to the manifest system (tier split, step 5). Registration still lives
-in `lorecraft.game.equipment_source` and `lorecraft.game.equipment_validators`;
-the manifest wraps both. Depends on `traits` because the equipment trait source
-registers on the trait registry that the traits feature owns.
+Self-contained Tier 2 package (tier split, step 8): its slot defs (`slots.py`),
+modifier/trait sources (`sources.py`), and equip-slot move validator
+(`validators.py`) live here, wired by the manifest. Depends on `traits` because
+the equipment trait source registers on the trait registry that feature owns.
 """
 
 from __future__ import annotations
@@ -12,8 +12,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lorecraft.features.manifest import FeatureManifest, register_feature
-from lorecraft.game.equipment_source import register as _register_equipment_source
-from lorecraft.game.equipment_validators import (
+from lorecraft.features.equipment.sources import register as _register_equipment_source
+from lorecraft.features.equipment.validators import (
     register as _register_equipment_validators,
 )
 

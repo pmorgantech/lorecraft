@@ -78,7 +78,7 @@ def _light_check(parameter: str, ctx: "GameContext") -> ConditionResult:
 
 def _has_lit_equipped_source(ctx: "GameContext") -> bool:
     from lorecraft.engine.models.items import ItemInstance
-    from lorecraft.services.item_components import get_component_state
+    from lorecraft.engine.services.item_components import get_component_state
 
     for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
         if stack.slot is None or stack.instance_id is None:

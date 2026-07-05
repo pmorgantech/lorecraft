@@ -11,7 +11,7 @@ from __future__ import annotations
 from sqlmodel import Session, select
 
 from lorecraft.engine.game import modifiers as modifiers_module
-from lorecraft.game import traits as traits_module
+from lorecraft.engine.game import traits as traits_module
 from lorecraft.game.item_effects import compile_item_modifiers, item_granted_traits
 from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.engine.models.items import ItemStack

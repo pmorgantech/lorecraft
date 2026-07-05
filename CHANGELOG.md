@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.20.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — five features co-located into their packages (step 8, batch 3, branch `tier_split`).** `traits`, `equipment`, `fatigue`, `item_components`, and `containers` now own their code under `features/<x>/` instead of pointing back at `game/`/`services/`:
+  - **traits** — `game/traits.py` **split** along its natural seam: the Tier 1 registry primitives (`TraitDef`, `TraitSource`, `TraitRegistry`, `get_registry`) stay in the engine at `engine/game/traits.py`, while the Tier 2 sources (`ActiveEffectTraitSource`, `TraitModifierSource`, `register()`) move to `features/traits/sources.py`. `standard_traits.py` → `standard.py`, `services/traits.py` → `service.py`.
+  - **equipment** — `equipment_slots/source/validators.py` → `features/equipment/{slots,sources,validators}.py`.
+  - **fatigue** — `fatigue_source.py` → `source.py`, `services/fatigue.py` → `service.py`.
+  - **item_components** — `standard_components.py` → `components.py`. Separately, `services/item_components.py` was recognized as **Tier 1** (a generic per-instance component-state accessor depending only on `engine.models.items`, and already imported by Tier 1 `engine/game/command_conditions.py`) and moved to `engine/services/item_components.py`, fixing a latent engine→feature import.
+  - **containers** — `container_validators.py` → `features/containers/validators.py`.
+  Imports rewritten across `src/` and `tests/`; feature manifests and docstrings updated to reflect co-location. Full suite 794 passed, lint + typecheck clean.
+
 ## [0.19.0] - 2026-07-05
 
 ### Changed

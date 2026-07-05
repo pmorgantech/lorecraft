@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.game import traits as traits_module
+from lorecraft.engine.game import traits as traits_module
 from lorecraft.engine.game.modifiers import Modifier
-from lorecraft.game.traits import TraitDef
+from lorecraft.engine.game.traits import TraitDef
 from lorecraft.engine.models.player import PlayerStats
 
 STANDARD_TRAITS = [

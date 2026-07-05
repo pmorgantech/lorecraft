@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.fatigue import FatigueService
+from lorecraft.features.fatigue.service import FatigueService
 
 
 def register_condition_commands(

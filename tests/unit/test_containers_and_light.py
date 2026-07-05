@@ -34,9 +34,11 @@ from lorecraft.services.light_fuel import LightFuelService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.world.loader import import_world
 from lorecraft.world.validator import ItemData, RoomData, WorldDocument
-from lorecraft.game.standard_components import register as _register_item_components
-from lorecraft.game.container_validators import register as _register_containers
-from lorecraft.game.equipment_validators import (
+from lorecraft.features.item_components.components import (
+    register as _register_item_components,
+)
+from lorecraft.features.containers.validators import register as _register_containers
+from lorecraft.features.equipment.validators import (
     register as _register_equipment_validators,
 )
 

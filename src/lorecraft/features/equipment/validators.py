@@ -14,7 +14,7 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from lorecraft.errors import ConflictError, ValidationError
-from lorecraft.game.equipment_slots import (
+from lorecraft.features.equipment.slots import (
     WIELD_SLOTS,
     WORN_SLOTS,
     is_valid_physical_slot,

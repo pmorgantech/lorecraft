@@ -40,10 +40,12 @@ from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.world.loader import import_world
 from lorecraft.world.validator import ItemData, RoomData, WorldDocument
-from lorecraft.game.traits import register as _register_traits
-from lorecraft.game.standard_components import register as _register_item_components
-from lorecraft.game.equipment_source import register as _register_equipment_source
-from lorecraft.game.equipment_validators import (
+from lorecraft.features.traits.sources import register as _register_traits
+from lorecraft.features.item_components.components import (
+    register as _register_item_components,
+)
+from lorecraft.features.equipment.sources import register as _register_equipment_source
+from lorecraft.features.equipment.validators import (
     register as _register_equipment_validators,
 )
 
@@ -328,7 +330,7 @@ class TestEquipmentModifiersAndTraits:
     def test_equipped_item_grants_trait(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
-        import lorecraft.game.traits as traits_module
+        import lorecraft.engine.game.traits as traits_module
 
         cmd_engine, ctx, session = built
         _carry(ctx, "ruby_ring")

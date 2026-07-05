@@ -31,7 +31,9 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.game.standard_components import register as _register_item_components
+from lorecraft.features.item_components.components import (
+    register as _register_item_components,
+)
 
 # Standard item components (openable, etc.) used to register as an import side
 # effect; they now register via the item_components feature's register().
