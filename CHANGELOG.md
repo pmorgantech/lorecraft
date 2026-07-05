@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.6] - 2026-07-05
+
+### Changed
+
+- **Sprint 65 (multiplayer trade/transit tests) moved to `wishlist.md`; performance band renumbered 66–69 → 35–38.** The multiplayer trade/transit simulation-test pass was coverage-hardening of already-complete, stable subsystems, so it moved to the wishlist (under *Multiplayer sim-test coverage*) rather than sitting in the active roadmap. With it gone, the performance & scaling band is the only remaining roadmap work and was renumbered to fill the reserved 35–38 gap (35 telemetry/baseline, 36 parser scaling, 37 batching/pool/load, 38 concurrency gate); all cross-references, the sprint-numbering guard (used 1–38; next new = 39), and the "recommended next step" note updated. `docs/roadmap_completed.md` trimmed to completed history only (the open perf band and Sprint 65 no longer appear there as if active; the dated historical narrative is preserved).
+
 ## [0.36.5] - 2026-07-05
 
 ### Changed

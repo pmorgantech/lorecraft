@@ -276,8 +276,9 @@ stealth/persuasion/bribery/flee are first-class alternatives; non-lethal outcome
 paths.
 
 **4. PvP consent.** Consent-based, opt-in PvP reusing the combat system; soft by default;
-challenge/accept. (The multiplayer PvP-consent *simulation tests* also moved here from roadmap
-Sprint 65, whose trade/transit test portion stays live.)
+challenge/accept. (The multiplayer PvP-consent *simulation tests* moved here from roadmap Sprint 65
+along with the rest of that sprint — see *Multiplayer sim-test coverage* under World-building &
+tooling.)
 
 ### Seeded from MUD patch notes & client comparison (2026-07-03)
 
@@ -583,6 +584,16 @@ What "done" looks like (not scheduled — this is a plan-ahead note, not a sprin
 **When to act:** once a scripting layer decision is made (or firmly deferred) and/or a second
 world/setting is actually wanted — don't build the split speculatively before either pressure
 exists. Revisit this note at that point.
+
+### Multiplayer sim-test coverage 🤔 (trade / transit)
+
+Was roadmap **Sprint 65** (moved here 2026-07-05 — the trade/transit subsystems it covers are
+already complete and stable, so this is coverage-hardening, not a blocker). A multi-player
+simulation-test pass over player-to-player **trade** and **shared-vehicle transit** using the
+`tests/simulation/` `VirtualPlayer` harness: concurrent trade escrow (no dupe/loss), shared-vehicle
+boarding/arrival with multiple riders, and the audit-regression diff across a scripted multi-player
+run. Overlaps the `lorecraft.tools.simulation` CLI idea and the perf band's load test (roadmap
+Sprint 37.3). (The PvP-consent portion is under *Combat, reframed* above, with the combat set-aside.)
 
 ### News & announcements ✅
 
