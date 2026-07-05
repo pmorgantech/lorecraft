@@ -34,6 +34,7 @@ from lorecraft.features import (
 )
 from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
+from lorecraft.content.help import ensure_help_bootstrapped
 from lorecraft.features.npc.scheduler import NpcScheduler
 from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.scheduler import SchedulerService
@@ -127,6 +128,9 @@ def create_app(
         with Session(resolved_game_engine) as news_session:
             ensure_news_bootstrapped(news_session, resolved_settings.news_yaml_path)
             news_session.commit()
+        with Session(resolved_game_engine) as help_session:
+            ensure_help_bootstrapped(help_session, resolved_settings.help_yaml_path)
+            help_session.commit()
 
         manager = ConnectionManager()
         bus = EventBus()

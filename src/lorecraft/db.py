@@ -22,6 +22,7 @@ from lorecraft.models.changeset import (
 from lorecraft.models.combat import CombatSession
 from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
+from lorecraft.models.help import HelpTopic
 from lorecraft.models.issue import Issue
 from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.ledger import CoinBalance
@@ -75,6 +76,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     ScheduledJob,
     Issue,
     NewsItem,
+    HelpTopic,
     Meter,
     ActiveEffect,
     CoinBalance,

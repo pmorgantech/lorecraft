@@ -32,6 +32,7 @@ class Settings:
     world_yaml_path: str = "world_content/world.yaml"
     issues_yaml_path: str = "docs/issues.yaml"
     news_yaml_path: str = "docs/news.yaml"
+    help_yaml_path: str = "docs/help_topics.yaml"
     seed_player_id: str = "player-1"
     seed_player_username: str = "player-1"
     seed_player_start_room: str = "village_square"
@@ -106,6 +107,7 @@ def load_settings() -> Settings:
         ),
         issues_yaml_path=os.getenv("LORECRAFT_ISSUES_YAML_PATH", "docs/issues.yaml"),
         news_yaml_path=os.getenv("LORECRAFT_NEWS_YAML_PATH", "docs/news.yaml"),
+        help_yaml_path=os.getenv("LORECRAFT_HELP_YAML_PATH", "docs/help_topics.yaml"),
         seed_player_id=os.getenv("LORECRAFT_SEED_PLAYER_ID", "player-1"),
         seed_player_username=os.getenv("LORECRAFT_SEED_PLAYER_USERNAME", "player-1"),
         seed_player_start_room=os.getenv(

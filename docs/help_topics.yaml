@@ -1,0 +1,87 @@
+format_version: '1.0'
+topics:
+- id: 1
+  name: getting-started
+  title: Getting Started
+  category: Basics
+  keywords: [start, begin, newbie, intro, new, first]
+  body: |
+    Welcome to the world. A few things to try first:
+      - 'look' describes where you are and what's around.
+      - 'go <direction>' (or just north/south/east/west) moves between rooms.
+      - 'take <item>' picks things up; 'inventory' shows what you carry.
+      - 'examine <item>' reads an item's description.
+      - 'talk <name>' starts a conversation with a person.
+    Type 'help commands' for the full command list, or 'help topics' to browse
+    these help articles.
+- id: 2
+  name: movement
+  title: Moving Around
+  category: Basics
+  keywords: [move, travel, walk, directions, exits, go, north, south]
+  body: |
+    Use 'go <direction>' to move — north, south, east, west, up, down, and
+    sometimes in/out. The direction words work on their own too (just 'north').
+    'look' lists the visible exits. Some exits are hidden until you 'search',
+    and some are locked until you hold the right key ('unlock <direction>').
+- id: 3
+  name: inventory
+  title: Items & Inventory
+  category: Basics
+  keywords: [items, carry, take, drop, get, wear, wield, equip, containers]
+  body: |
+    'take <item>' picks something up and 'drop <item>' puts it down.
+    'inventory' lists what you carry; 'examine <item>' reads its description.
+    Wearables and weapons use 'wear'/'remove' and 'wield'/'unwield'; 'equipment'
+    shows what you have equipped. Containers support 'open', 'close', and
+    'put <item> in <container>' / 'take <item> from <container>'.
+- id: 4
+  name: talking
+  title: Talking to People
+  category: World
+  keywords: [talk, npc, dialogue, conversation, say, social, chat]
+  body: |
+    'talk <name>' begins a conversation with a nearby person. While talking,
+    reply by number ('choice 1') and 'bye' ends the chat. 'say <message>'
+    speaks aloud to everyone in the room. Being helpful (or not) is remembered —
+    see 'help reputation'.
+- id: 5
+  name: quests
+  title: Quests & Your Journal
+  category: World
+  keywords: [quest, journal, objectives, tasks, story, lore]
+  body: |
+    Conversations and discoveries can start quests. 'journal' reviews the places
+    you've visited, people you've met, lore you've learned, and your active
+    quests and their current step. Quests can branch on what you do, so choices
+    matter.
+- id: 6
+  name: trading
+  title: Buying, Selling & Money
+  category: World
+  keywords: [trade, buy, sell, shop, coins, money, bank, economy, barter]
+  body: |
+    Shops let you 'list' their stock, then 'buy <item>' or 'sell <item>'.
+    'appraise <item>' estimates a value. Prices vary by region and your
+    bartering skill and reputation. Banks keep coins safe: 'deposit', 'withdraw',
+    and 'balance' at a branch. Players can trade directly with 'offer' / 'accept'.
+- id: 7
+  name: score
+  title: Tracking Your Progress
+  category: Character
+  keywords: [score, progress, level, xp, experience, stats, wealth]
+  body: |
+    'score' shows a summary of your progress: level and experience, quests
+    completed and in progress, wealth (coins carried and banked), reputation,
+    and how much of the world you've discovered. 'skills', 'traits', and
+    'reputation' break out the details.
+- id: 8
+  name: condition
+  title: Rest, Sleep & Stamina
+  category: Character
+  keywords: [rest, sleep, camp, stamina, fatigue, tired, warmth, survival]
+  body: |
+    Traveling and acting drain stamina; low stamina hurts your skill checks.
+    'rest' recovers a little, 'camp' a good deal, and 'sleep' recovers all of it
+    (and advances time). Sleeping is safest in a sheltered spot; cold weather is
+    harder to rest through unless you're dressed warmly.
