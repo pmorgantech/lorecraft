@@ -94,6 +94,8 @@ Every operation in the engine maps to exactly one of these five layers. When in 
 
 ## 4. Project Structure
 
+> **⚠️ Superseded (2026-07-05): this tree predates the tier split.** The flat `game/` / `models/` / `services/` layout below has been replaced by a three-axis structure — Tier 1 in `src/lorecraft/engine/`, Tier 2 features in `src/lorecraft/features/<feature>/`, and web hosts in `src/lorecraft/webui/{player,admin}/` — with the engine enforced (by `tests/unit/test_tier_boundaries.py`) to import nothing from features or web. See **[`architecture_tiers.md`](architecture_tiers.md) §0** for the current layout and **[`tier_split_refactor.md`](tier_split_refactor.md)** for the migration. The tree below is retained as the *conceptual* module map (subsystem names/roles are still accurate; only their directories moved).
+
 ```
 .
 ├── src/

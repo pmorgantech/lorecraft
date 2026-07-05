@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.31.1] - 2026-07-05
+
+### Changed
+
+- **Docs — `architecture.md` §4 marked superseded by the tier split.** Added a banner noting the flat `game/`/`models/`/`services/` tree predates the tier split and pointing to `architecture_tiers.md` §0 (current layout) + `tier_split_refactor.md`; the tree is retained as the conceptual module map. Docs-only.
+
 ## [0.31.0] - 2026-07-05
 
 ### Added
