@@ -328,7 +328,7 @@
         </div>
         <div class="panel" style="overflow-x:auto;flex:1;">
           <table>
-            <thead><tr><th>ID</th><th>Type</th><th>Title</th><th>Status</th><th>Priority</th><th>Component</th><th></th></tr></thead>
+            <thead><tr><th></th><th>ID</th><th>Type</th><th>Title</th><th>Status</th><th>Priority</th><th>Component</th><th>Opened by</th><th>Created</th><th>Updated</th></tr></thead>
             <tbody id="issues-tbody"></tbody>
           </table>
         </div>
@@ -761,9 +761,14 @@ async function loadIssues() {
   tbody.innerHTML = "";
   if (!Array.isArray(issues)) return;
   const statusColor = {open: "amber", "in-progress": "amber", resolved: "green", deferred: "gray", duplicate: "gray"};
+  const COLSPAN = 10;
   for (const i of issues) {
     const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    tr.title = "Click for details";
+    tr.onclick = (ev) => { if (!ev.target.closest("select")) toggleIssueDetails(i.id); };
     tr.innerHTML = `
+      <td style="color:var(--text-dim)"><span id="issue-caret-${esc(i.id)}">&#9656;</span></td>
       <td style="font-family:monospace;color:var(--amber)">${esc(i.id)}</td>
       <td>${badge(i.type, "gray")}</td>
       <td><b>${esc(i.title)}</b></td>
@@ -775,9 +780,47 @@ async function loadIssues() {
       </td>
       <td>${badge(i.priority, statusColor[i.status] || "gray")}</td>
       <td style="color:var(--text-dim)">${esc(i.component)}</td>
-      <td></td>`;
+      <td style="color:var(--text-dim)">${esc(i.created_by) || "&mdash;"}</td>
+      <td style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.created_at))}">${esc(fmtDate(i.created_at))}</td>
+      <td style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.updated_at))}">${esc(fmtDate(i.updated_at))}</td>`;
     tbody.appendChild(tr);
+
+    // Hidden detail row, toggled by clicking the summary row.
+    const detail = document.createElement("tr");
+    detail.id = `issue-detail-${i.id}`;
+    detail.style.display = "none";
+    const tags = (i.tags || []).map(t => badge(t, "gray")).join(" ") || `<span style="color:var(--text-dim)">none</span>`;
+    const links = (i.links || []).map(l => {
+      const url = typeof l === "string" ? l : (l.url || l.href || "");
+      const label = typeof l === "string" ? l : (l.label || l.title || url);
+      return url ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:var(--amber)">${esc(label)}</a>` : esc(label);
+    }).join(", ") || `<span style="color:var(--text-dim)">none</span>`;
+    detail.innerHTML = `
+      <td></td>
+      <td colspan="${COLSPAN - 1}" style="background:var(--panel-2, #14161c);">
+        <div style="padding:0.5rem 0.25rem;display:grid;gap:0.4rem;">
+          <div><b style="color:var(--text-dim);font-size:0.75rem;">DESCRIPTION</b><div style="white-space:pre-wrap;">${esc(i.description) || '<span style="color:var(--text-dim)">(no description)</span>'}</div></div>
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
+            <div><b style="color:var(--text-dim);font-size:0.75rem;">OPENED BY</b><br>${esc(i.created_by) || "&mdash;"}</div>
+            <div><b style="color:var(--text-dim);font-size:0.75rem;">ASSIGNED TO</b><br>${esc(i.assigned_to) || "&mdash;"}</div>
+            <div><b style="color:var(--text-dim);font-size:0.75rem;">CREATED</b><br>${esc(fmtDateTime(i.created_at))}</div>
+            <div><b style="color:var(--text-dim);font-size:0.75rem;">UPDATED</b><br>${esc(fmtDateTime(i.updated_at))}</div>
+          </div>
+          <div><b style="color:var(--text-dim);font-size:0.75rem;">TAGS</b> ${tags}</div>
+          <div><b style="color:var(--text-dim);font-size:0.75rem;">LINKS</b> ${links}</div>
+        </div>
+      </td>`;
+    tbody.appendChild(detail);
   }
+}
+
+function toggleIssueDetails(id) {
+  const row = document.getElementById(`issue-detail-${id}`);
+  const caret = document.getElementById(`issue-caret-${id}`);
+  if (!row) return;
+  const open = row.style.display === "none";
+  row.style.display = open ? "table-row" : "none";
+  if (caret) caret.innerHTML = open ? "&#9662;" : "&#9656;";
 }
 
 async function createIssue() {
@@ -942,6 +985,15 @@ function esc(s) {
 }
 function badge(text, color) {
   return `<span class="badge badge-${color}">${esc(text)}</span>`;
+}
+// Epoch-seconds (float) -> short date / full datetime. 0/absent -> em dash.
+function fmtDate(epoch) {
+  if (!epoch) return "—";
+  return new Date(epoch * 1000).toLocaleDateString();
+}
+function fmtDateTime(epoch) {
+  if (!epoch) return "—";
+  return new Date(epoch * 1000).toLocaleString();
 }
 
 // ────────────────────────────────────────
