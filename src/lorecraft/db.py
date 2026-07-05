@@ -111,18 +111,36 @@ def sqlite_url(database_path: str) -> str:
     return database_url(database_path)
 
 
+def _pool_kwargs(url: str, settings: Settings) -> dict[str, int]:
+    """Connection-pool kwargs for `create_engine`, or empty for SQLite.
+
+    SQLite is single-writer and its dialect uses a thread-local/static pool, so
+    QueuePool's `pool_size`/`pool_recycle` don't apply (and can error on the
+    in-memory `StaticPool`). Only a networked backend (Postgres/MySQL) — the
+    many-concurrent-players deployment target — gets the tuned pool.
+    """
+    if url.startswith("sqlite"):
+        return {}
+    return {
+        "pool_size": settings.db_pool_size,
+        "pool_recycle": settings.db_pool_recycle,
+    }
+
+
 def create_game_engine(
     settings: Settings | None = None, *, echo: bool = False
 ) -> Engine:
     settings = settings or load_settings()
-    return create_engine(database_url(settings.database_path), echo=echo)
+    url = database_url(settings.database_path)
+    return create_engine(url, echo=echo, **_pool_kwargs(url, settings))
 
 
 def create_audit_engine(
     settings: Settings | None = None, *, echo: bool = False
 ) -> Engine:
     settings = settings or load_settings()
-    return create_engine(database_url(settings.audit_database_path), echo=echo)
+    url = database_url(settings.audit_database_path)
+    return create_engine(url, echo=echo, **_pool_kwargs(url, settings))
 
 
 def create_tables(

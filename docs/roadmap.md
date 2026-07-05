@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.3)
+## Where things stand (2026-07-05, v0.38.4)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -71,11 +71,13 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 **Goal:** Batch same-epoch jobs into one commit; tune the DB pool; add a repeatable multi-player load test.
 
+**Sequencing (measure-first, decided 2026-07-05):** the 35.1 baseline never measured `scheduler_tick` (a server-loop path), so **37.1 batching is an unmeasured optimization** touching the event/session contract. Doing it order **37.2 → 37.3 → 37.1**: land the safe pool knobs, build the load test to get real multi-player p95/p99 evidence, then apply scheduler batching **only if** the load test shows per-job scheduler-commit cost. Mirrors the band's "measure first" rule and the Sprint 36 profiling-driven precedent.
+
 | # | Task | Status |
 |---|------|--------|
-| 37.1 | Batch scheduler execution: accumulate mutations across all due jobs, apply + commit once (preserve atomicity; verify via simulation) | [ ] |
-| 37.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) in `config.py`/`Settings` for many concurrent players; document in deployment notes | [ ] |
-| 37.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s issuing commands concurrently; report p95/p99 command latency before vs. after | [ ] |
+| 37.1 | Batch scheduler execution: accumulate mutations across all due jobs, apply + commit once (preserve atomicity; verify via simulation) | [ ] Gated on 37.3 evidence — each `SCHEDULED_JOB_DUE` handler (`mobile_route`) currently opens its own session + commit; batching to one commit/tick is deferred until the load test shows it matters. |
+| 37.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) in `config.py`/`Settings` for many concurrent players; document in deployment notes | [x] `db_pool_size` (5) / `db_pool_recycle` (1800s) added to `Settings` + `LORECRAFT_DB_POOL_SIZE`/`_RECYCLE` env vars; `db._pool_kwargs` applies them to `create_engine` **only for a networked backend** (Postgres/MySQL) — skipped for SQLite (single-writer, static pool). Documented in `admin_builder_guide.md`; unit-tested. |
+| 37.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s issuing commands concurrently; report p95/p99 command latency before vs. after | [ ] ⟵ **next** |
 
 ## Sprint 38 — Concurrency decision gate *(only if 35–37 telemetry shows a hard limit)*
 

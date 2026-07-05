@@ -18,6 +18,12 @@ load_dotenv()
 class Settings:
     database_path: str = "game.db"
     audit_database_path: str = "audit.db"
+    # Connection-pool tuning for a networked backend (Postgres/MySQL) serving
+    # many concurrent players. Ignored for SQLite, which is single-writer and
+    # uses a thread-local/static pool that these QueuePool knobs don't apply to
+    # (see db._pool_kwargs). pool_recycle is seconds; -1 disables recycling.
+    db_pool_size: int = 5
+    db_pool_recycle: int = 1800  # 30 minutes
     world_time_ratio: float = 60.0
     websocket_path: str = "/ws"
     disconnect_grace_seconds: float = 60.0
@@ -89,6 +95,8 @@ def load_settings() -> Settings:
     return Settings(
         database_path=os.getenv("LORECRAFT_DB_PATH", "game.db"),
         audit_database_path=os.getenv("LORECRAFT_AUDIT_DB_PATH", "audit.db"),
+        db_pool_size=int(os.getenv("LORECRAFT_DB_POOL_SIZE", "5")),
+        db_pool_recycle=int(os.getenv("LORECRAFT_DB_POOL_RECYCLE", "1800")),
         world_time_ratio=float(os.getenv("LORECRAFT_WORLD_TIME_RATIO", "60.0")),
         websocket_path=os.getenv("LORECRAFT_WEBSOCKET_PATH", "/ws"),
         disconnect_grace_seconds=float(

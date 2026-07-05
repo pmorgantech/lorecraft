@@ -81,6 +81,8 @@ defined in `src/lorecraft/config.py`.
 |----------|---------|-------|
 | `LORECRAFT_DB_PATH` | `game.db` | Game database path |
 | `LORECRAFT_AUDIT_DB_PATH` | `audit.db` | Audit log database path |
+| `LORECRAFT_DB_POOL_SIZE` | `5` | SQLAlchemy connection-pool size. **Applies only to a networked backend** (Postgres/MySQL) — ignored for SQLite (single-writer). Raise for many concurrent players. |
+| `LORECRAFT_DB_POOL_RECYCLE` | `1800` (30 min) | Recycle pooled connections older than this many seconds (avoids stale server-side connections); `-1` disables. Networked backends only. |
 | `LORECRAFT_WORLD_TIME_RATIO` | `60.0` | In-game seconds per real second |
 | `LORECRAFT_WEBSOCKET_PATH` | `/ws` | Player WebSocket endpoint |
 | `LORECRAFT_DISCONNECT_GRACE_SECONDS` | `60.0` | Grace period before a dropped connection is treated as a real disconnect |

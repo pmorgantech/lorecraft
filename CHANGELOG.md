@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.4] - 2026-07-05
+
+### Added
+
+- **Sprint 37.2 — connection-pool tuning knobs.** Added `db_pool_size` (default 5) and `db_pool_recycle` (default 1800 s) to `Settings`, configurable via `LORECRAFT_DB_POOL_SIZE` / `LORECRAFT_DB_POOL_RECYCLE`. A new `db._pool_kwargs` passes them to `create_engine` **only for a networked backend** (Postgres/MySQL — the many-concurrent-players deployment target); SQLite is skipped because it is single-writer and its dialect uses a thread-local/static pool that these `QueuePool` knobs don't apply to (and `pool_size` errors on the in-memory `StaticPool`). Documented in the `admin_builder_guide.md` configuration reference; unit-tested (sqlite → no kwargs, Postgres → tuned, env parsing). No behavior change for the default SQLite dev/test setup.
+
+### Changed
+
+- **Sprint 37 sequenced measure-first.** Reordered to **37.2 → 37.3 → 37.1**: the 35.1 baseline never measured `scheduler_tick`, so 37.1 (batching each `SCHEDULED_JOB_DUE` handler's per-job commit into one commit/tick) is an unmeasured change to the event/session contract — it's now gated on the 37.3 load test producing real p95/p99 evidence that scheduler-commit cost matters, per the band's "measure first" rule and the Sprint 36 precedent.
+
 ## [0.38.3] - 2026-07-05
 
 ### Added
