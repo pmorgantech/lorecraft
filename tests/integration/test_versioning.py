@@ -10,8 +10,8 @@ from lorecraft.config import Settings
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.models.changeset import ChangesetItem, ConflictScanResult
-from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Room, WorldMeta
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Exit, Room, WorldMeta
 from lorecraft.world.versioning import VersioningService
 
 

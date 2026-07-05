@@ -13,7 +13,7 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.models.player import Player, PlayerStats
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.services.meters import MeterService
 
@@ -230,7 +230,7 @@ def test_recompute_maximum_rejects_unregistered_key() -> None:
     engine = _make_engine()
     with Session(engine) as session:
         service = MeterService(engine, GameRng())
-        from lorecraft.models.meters import Meter
+        from lorecraft.engine.models.meters import Meter
 
         orphan = Meter(
             entity_type="player", entity_id="p1", key="ghost", current=1, maximum=1

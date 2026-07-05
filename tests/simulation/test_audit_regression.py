@@ -20,7 +20,7 @@ from collections.abc import Callable
 
 import pytest
 
-from lorecraft.models.audit import AuditEvent
+from lorecraft.engine.models.audit import AuditEvent
 from tests.simulation.conftest import SimulationServer
 from tests.simulation.virtual_player import VirtualPlayer
 

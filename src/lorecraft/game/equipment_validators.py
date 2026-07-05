@@ -21,7 +21,7 @@ from lorecraft.game.equipment_slots import (
     item_fits_slot,
 )
 from lorecraft.engine.game.holders import Location, get_registry as get_holder_registry
-from lorecraft.models.world import Item
+from lorecraft.engine.models.world import Item
 from lorecraft.engine.repos.stack_repo import StackRepo
 
 

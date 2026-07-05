@@ -16,8 +16,8 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.issue import Issue
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo

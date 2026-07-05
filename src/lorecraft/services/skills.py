@@ -12,7 +12,7 @@ from sqlmodel import Session
 
 from lorecraft.errors import NotFoundError
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.models.player import PlayerStats
+from lorecraft.engine.models.player import PlayerStats
 
 MAX_LEVEL = 100
 BASE_LEVEL = 0

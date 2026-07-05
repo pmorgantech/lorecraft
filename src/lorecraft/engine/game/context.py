@@ -13,8 +13,8 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResu
 from lorecraft.engine.game.parser import ParsedCommand
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room, WorldClock
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo

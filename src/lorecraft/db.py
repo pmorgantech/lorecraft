@@ -11,7 +11,7 @@ from sqlmodel import SQLModel, create_engine
 
 from lorecraft.config import Settings, load_settings
 from lorecraft.models.admin import AdminUser
-from lorecraft.models.audit import AuditEvent
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.models.bank import Bank, BankAccount
 from lorecraft.models.changeset import (
     Changeset,
@@ -23,16 +23,16 @@ from lorecraft.models.combat import CombatSession
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.models.issue import Issue
-from lorecraft.models.items import ItemInstance, ItemStack
+from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.models.ledger import CoinBalance
-from lorecraft.models.meters import ActiveEffect, Meter
-from lorecraft.models.mobile import MobileRouteState
+from lorecraft.engine.models.meters import ActiveEffect, Meter
+from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.models.news import NewsItem
 from lorecraft.models.npc_memory import NpcMemory
-from lorecraft.models.player import Player, PlayerStats, SaveSlot
-from lorecraft.models.player_auth import PlayerAuth
-from lorecraft.models.session import PlayerSession
-from lorecraft.models.world import (
+from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.engine.models.player_auth import PlayerAuth
+from lorecraft.engine.models.session import PlayerSession
+from lorecraft.engine.models.world import (
     Exit,
     Item,
     NPC,
@@ -43,7 +43,7 @@ from lorecraft.models.world import (
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.interaction import PvpConsent, TradeOffer
 from lorecraft.models.reputation import Reputation
-from lorecraft.models.scheduler import ScheduledJob
+from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.models.transit import TransitLine, TransitStop
 
 

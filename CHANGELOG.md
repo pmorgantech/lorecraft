@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.18.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — Tier 1 models moved into `engine/models/` (step 8, batch 1, branch `tier_split`).** Nine pure-Tier-1 model files (`world`, `player`, `player_auth`, `items`, `meters`, `scheduler`, `mobile`, `audit`, `session`) moved to `engine/models/` via history-preserving `git mv`; all `lorecraft.models.*` imports for them rewritten to `lorecraft.engine.models.*` across `src/` and `tests/` (including `db.py`, the SQLModel table-registration aggregator). The Tier 1 model classes are now re-exported from `engine/models/__init__.py`; `models/__init__.py` keeps only the remaining Tier 2 tables. Table creation is unaffected — `db.py` registers each table by class, independent of module location. No package-level `from lorecraft.models import X` usages existed, so the re-export split is purely cosmetic. Full suite 794 passed, lint + typecheck clean. The remaining Tier 2 model files move into their `features/` packages as each feature is migrated.
+
 ## [0.17.0] - 2026-07-05
 
 ### Changed

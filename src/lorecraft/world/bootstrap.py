@@ -9,8 +9,8 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from lorecraft.config import Settings
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room, WorldMeta
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room, WorldMeta
 from lorecraft.world.loader import load_world_yaml
 
 log = logging.getLogger(__name__)

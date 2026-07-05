@@ -27,8 +27,8 @@ from lorecraft.engine.game.events import GameEvent
 from lorecraft.game.exploration import is_exit_discovered
 from lorecraft.engine.game.holders import Location
 from lorecraft.game import terrain as terrain_module
-from lorecraft.models.items import ItemInstance, ItemStack
-from lorecraft.models.world import Item
+from lorecraft.engine.models.items import ItemInstance, ItemStack
+from lorecraft.engine.models.world import Item
 from lorecraft.services.item_components import get_component_state, set_component_state
 from lorecraft.types import JsonValue
 

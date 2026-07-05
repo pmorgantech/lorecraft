@@ -8,9 +8,9 @@ from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player, PlayerStats, SaveSlot
-from lorecraft.models.world import Item, Room
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.engine.models.world import Item, Room
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.meter_repo import MeterRepo

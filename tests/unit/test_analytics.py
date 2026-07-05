@@ -14,8 +14,8 @@ from lorecraft.analytics import (
 )
 from lorecraft.db import create_tables
 from lorecraft.engine.game.events import GameEvent
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.session import PlayerSession
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.session import PlayerSession
 from lorecraft.types import JsonObject
 
 

@@ -14,8 +14,8 @@ from lorecraft.engine.game.parser import parse_command
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo

@@ -17,7 +17,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.models.mobile import MobileRouteState
+from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.scheduler import SchedulerService
 

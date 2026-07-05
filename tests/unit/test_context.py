@@ -6,8 +6,8 @@ from lorecraft.engine.game.context import GameContext, build_game_context
 from lorecraft.engine.game.events import EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room, WorldClock
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo

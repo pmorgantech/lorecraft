@@ -6,7 +6,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.models.world import NPC
+from lorecraft.engine.models.world import NPC
 
 
 class NpcScheduler:

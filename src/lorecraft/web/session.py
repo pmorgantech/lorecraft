@@ -23,8 +23,8 @@ from lorecraft.game.item_rules import register_item_rules
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -247,7 +247,7 @@ def set_player_session_cookie(
 
 def ensure_player_session(player: Player, db: DBSession) -> str:
     """Ensure there's an active PlayerSession row for the player."""
-    from lorecraft.models.session import PlayerSession
+    from lorecraft.engine.models.session import PlayerSession
 
     now = time.time()
     ps = PlayerRepo(db).active_session(player.id)

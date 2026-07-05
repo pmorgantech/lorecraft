@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 from lorecraft.engine.game import effects as effects_module
 from lorecraft.engine.game import modifiers as modifiers_module
 from lorecraft.engine.game.modifiers import Modifier
-from lorecraft.models.meters import ActiveEffect
+from lorecraft.engine.models.meters import ActiveEffect
 
 
 @dataclass(frozen=True)

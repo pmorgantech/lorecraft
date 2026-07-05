@@ -14,8 +14,8 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.dialogue import DialogueTree
-from lorecraft.models.player import Player
-from lorecraft.models.world import NPC, Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import NPC, Room
 from lorecraft.npc.dialogue import DialogueService, current_npc_id
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo

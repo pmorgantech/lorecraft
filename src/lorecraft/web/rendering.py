@@ -12,9 +12,9 @@ from typing import Any
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.room_repo import RoomRepo
 
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
@@ -153,7 +153,7 @@ def mark_oob_swap(html: str, element_id: str) -> str:
 
 def create_dev_player(db: DBSession, room_repo: RoomRepo, player_id: str) -> Any | None:
     """Create a dev/test player at village_square when explicitly requested."""
-    from lorecraft.models.player import Player
+    from lorecraft.engine.models.player import Player
 
     start_room = "village_square"
     if room_repo.get(start_room) is None:

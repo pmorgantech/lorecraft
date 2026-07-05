@@ -21,7 +21,7 @@ from sqlmodel import Session as DBSession
 from lorecraft.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.player import Player
+from lorecraft.engine.models.player import Player
 from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.observability import bind_transaction_context
 from lorecraft.engine.repos.audit_repo import AuditRepo
@@ -142,7 +142,7 @@ async def get_current_player(request: Request) -> Player:
             existing = repo.get("player-1") or repo.by_username("player-1")
             if existing:
                 return existing
-            from lorecraft.models.world import Room
+            from lorecraft.engine.models.world import Room
 
             dev = Player(
                 id="player-1",

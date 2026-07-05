@@ -17,8 +17,8 @@ from lorecraft.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 
 _SECRET = "test-jwt-secret-for-admin-tests!"
 _SETTINGS = Settings(
@@ -503,7 +503,7 @@ def test_freeze_player_sets_ghost_state() -> None:
 
 
 async def _test_freeze_player() -> None:
-    from lorecraft.models.session import PlayerSession
+    from lorecraft.engine.models.session import PlayerSession
 
     game_engine, audit_engine = _make_engines()
     app = create_app(
@@ -536,7 +536,7 @@ def test_unfreeze_player_clears_ghost_state() -> None:
 
 
 async def _test_unfreeze_player() -> None:
-    from lorecraft.models.session import PlayerSession
+    from lorecraft.engine.models.session import PlayerSession
 
     game_engine, audit_engine = _make_engines()
     app = create_app(

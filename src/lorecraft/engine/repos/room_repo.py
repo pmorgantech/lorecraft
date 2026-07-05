@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from sqlmodel import Session, select
 
-from lorecraft.models.world import Exit, Room, WorldClock, WorldMeta
+from lorecraft.engine.models.world import Exit, Room, WorldClock, WorldMeta
 from lorecraft.engine.repos.base import Repository
 
 

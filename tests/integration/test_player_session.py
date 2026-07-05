@@ -13,7 +13,7 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
-from lorecraft.models.player import Player
+from lorecraft.engine.models.player import Player
 from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE
 
 AsgiMessage = dict[str, Any]

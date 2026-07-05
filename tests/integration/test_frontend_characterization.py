@@ -31,10 +31,10 @@ from lorecraft.config import Settings
 from lorecraft.db import create_tables
 from lorecraft.engine.game.holders import Location
 from lorecraft.main import create_app
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player
-from lorecraft.models.session import PlayerSession
-from lorecraft.models.world import Item
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.session import PlayerSession
+from lorecraft.engine.models.world import Item
 from lorecraft.engine.services.item_location import ItemLocationService
 
 AsgiMessage = dict[str, Any]

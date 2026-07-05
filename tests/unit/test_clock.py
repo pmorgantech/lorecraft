@@ -7,7 +7,7 @@ from lorecraft.engine.clock.world_clock import (
 )
 from lorecraft.db import create_tables
 from lorecraft.engine.game.events import EventBus, GameEvent
-from lorecraft.models.world import WorldClock
+from lorecraft.engine.models.world import WorldClock
 from sqlmodel import Session, create_engine
 
 

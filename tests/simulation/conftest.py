@@ -28,8 +28,8 @@ from sqlmodel import Session, col, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player
 from lorecraft.engine.repos.stack_repo import StackRepo
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

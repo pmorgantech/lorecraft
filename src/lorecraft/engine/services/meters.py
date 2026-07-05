@@ -19,7 +19,7 @@ from lorecraft.engine.game import meters as meters_module
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.models.meters import Meter
+from lorecraft.engine.models.meters import Meter
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.services.scheduler import SchedulerEventContext
 

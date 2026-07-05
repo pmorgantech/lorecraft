@@ -1,8 +1,8 @@
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Exit, Room
 from lorecraft.engine.repos import RoomRepo
 from lorecraft.web.rendering import CARTOGRAPHY_REVEAL_THRESHOLD, build_map_data
 

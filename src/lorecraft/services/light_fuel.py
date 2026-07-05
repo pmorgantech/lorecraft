@@ -13,7 +13,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, select
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.models.items import ItemInstance
+from lorecraft.engine.models.items import ItemInstance
 from lorecraft.services.item_components import get_component_state, set_component_state
 
 

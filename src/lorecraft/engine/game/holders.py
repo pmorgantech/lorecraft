@@ -15,9 +15,9 @@ from typing import Callable
 
 from sqlmodel import Session
 
-from lorecraft.models.items import ItemInstance
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.items import ItemInstance
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 
 
 @dataclass(frozen=True)

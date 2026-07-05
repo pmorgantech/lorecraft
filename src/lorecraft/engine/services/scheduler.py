@@ -16,7 +16,7 @@ from sqlmodel import Session
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.models.scheduler import ScheduledJob
+from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
 from lorecraft.types import JsonObject
 

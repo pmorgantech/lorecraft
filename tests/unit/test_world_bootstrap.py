@@ -8,8 +8,8 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.world.bootstrap import ensure_world_bootstrapped, resolve_world_yaml_path
 
 

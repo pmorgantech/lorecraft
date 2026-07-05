@@ -13,8 +13,8 @@ from typing import TypeVar
 from sqlmodel import Session
 
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.items import ItemStack
-from lorecraft.models.world import Item
+from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.world import Item
 from lorecraft.engine.repos.base import Repository
 from lorecraft.engine.repos.stack_repo import StackRepo
 

@@ -18,7 +18,7 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
-from lorecraft.models.player_auth import PlayerAuth
+from lorecraft.engine.models.player_auth import PlayerAuth
 
 AsgiMessage = dict[str, Any]
 

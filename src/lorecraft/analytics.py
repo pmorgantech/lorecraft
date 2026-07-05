@@ -19,8 +19,8 @@ from typing import Any
 from sqlmodel import Session, col, select
 
 from lorecraft.engine.game.events import GameEvent
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.session import PlayerSession
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.session import PlayerSession
 from lorecraft.types import JsonValue
 
 _RANGE_RE = re.compile(r"^(\d+)([hdwm])$")

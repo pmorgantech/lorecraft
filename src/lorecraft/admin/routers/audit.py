@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 from sqlmodel import Session, col, select
 
 from lorecraft.admin.auth import Observer
-from lorecraft.models.audit import AuditEvent
+from lorecraft.engine.models.audit import AuditEvent
 
 router = APIRouter(tags=["admin"])
 

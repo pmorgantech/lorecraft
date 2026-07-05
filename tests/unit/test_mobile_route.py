@@ -7,8 +7,8 @@ from sqlmodel import Session, create_engine
 from lorecraft.db import create_tables
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.models.mobile import MobileRouteState
-from lorecraft.models.world import WorldClock
+from lorecraft.engine.models.mobile import MobileRouteState
+from lorecraft.engine.models.world import WorldClock
 from lorecraft.engine.services.mobile_route import (
     MobileRouteService,
     RouteHooks,

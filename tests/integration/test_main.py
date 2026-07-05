@@ -9,10 +9,10 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player
-from lorecraft.models.session import PlayerSession
-from lorecraft.models.world import Room
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.session import PlayerSession
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.stack_repo import StackRepo
 
 AsgiMessage = dict[str, Any]
@@ -82,7 +82,7 @@ async def _test_web_client_assets_expose_minimal_browser_harness() -> None:
 
     async with _lifespan(app):
         # Ensure a player exists in *this* app's engines (the web UI may use app.state or its fallback)
-        from lorecraft.models.player import Player
+        from lorecraft.engine.models.player import Player
         from sqlmodel import Session as DBSession
 
         game_engine = (

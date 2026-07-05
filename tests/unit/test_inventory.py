@@ -6,9 +6,9 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.items import ItemStack
-from lorecraft.models.player import Player
-from lorecraft.models.world import Item, Room
+from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Item, Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo

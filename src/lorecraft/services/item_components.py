@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.models.items import ItemInstance
+from lorecraft.engine.models.items import ItemInstance
 from lorecraft.types import JsonValue
 
 

@@ -6,7 +6,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.models.scheduler import ScheduledJob
+from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.services.scheduler import SchedulerService
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from lorecraft.errors import NotFoundError
-from lorecraft.models.player import PlayerStats
+from lorecraft.engine.models.player import PlayerStats
 
 
 class TraitService:

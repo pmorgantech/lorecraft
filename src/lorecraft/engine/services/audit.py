@@ -6,7 +6,7 @@ import time
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
-from lorecraft.models.audit import AuditEvent
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.types import JsonObject
 

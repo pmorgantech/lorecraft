@@ -6,9 +6,9 @@ from collections.abc import Sequence
 
 from sqlmodel import Session, col, select
 
-from lorecraft.models.player import Player, PlayerStats, SaveSlot
-from lorecraft.models.player_auth import PlayerAuth
-from lorecraft.models.session import PlayerSession
+from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.engine.models.player_auth import PlayerAuth
+from lorecraft.engine.models.session import PlayerSession
 from lorecraft.engine.repos.base import Repository
 
 

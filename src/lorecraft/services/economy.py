@@ -26,7 +26,7 @@ from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.grammar import score_match
 from lorecraft.engine.game.holders import Location
 from lorecraft.models.economy import Shop, ShopStock
-from lorecraft.models.world import Item, NPC
+from lorecraft.engine.models.world import Item, NPC
 from lorecraft.repos.economy_repo import EconomyRepo
 from lorecraft.services.inventory import parse_item_target
 from lorecraft.services.ledger import ExchangeLeg, LedgerService

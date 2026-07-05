@@ -16,9 +16,9 @@ from lorecraft.models.changeset import (
     ConflictScanResult,
     WorldMigration,
 )
-from lorecraft.models.items import ItemStack
-from lorecraft.models.player import Player
-from lorecraft.models.world import Exit, Item, Room, WorldMeta
+from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Exit, Item, Room, WorldMeta
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
 

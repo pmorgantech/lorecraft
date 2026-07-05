@@ -9,7 +9,7 @@ module assumes it's only ever called on already-linted item effects.
 from __future__ import annotations
 
 from lorecraft.engine.game.modifiers import Modifier
-from lorecraft.models.world import Item
+from lorecraft.engine.models.world import Item
 
 
 def compile_item_modifiers(item: Item) -> list[Modifier]:

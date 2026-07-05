@@ -21,8 +21,8 @@ from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.repos.economy_repo import EconomyRepo
-from lorecraft.models.world import Item, NPC, Room
-from lorecraft.models.player import Player, PlayerStats
+from lorecraft.engine.models.world import Item, NPC, Room
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo

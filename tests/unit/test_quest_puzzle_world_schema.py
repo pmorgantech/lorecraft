@@ -9,7 +9,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.models.quest import Quest
-from lorecraft.models.world import Item
+from lorecraft.engine.models.world import Item
 from lorecraft.world.loader import export_world_document, load_world_yaml
 from lorecraft.world.validator import WorldValidationError, validate_world_document
 

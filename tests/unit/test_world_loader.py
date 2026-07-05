@@ -4,9 +4,9 @@ from sqlmodel import Session, create_engine, select
 from lorecraft.db import create_tables
 from lorecraft.models.bank import Bank
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
-from lorecraft.models.items import ItemStack
+from lorecraft.engine.models.items import ItemStack
 from lorecraft.models.transit import TransitLine, TransitStop
-from lorecraft.models.world import Exit, Item, Room
+from lorecraft.engine.models.world import Exit, Item, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
 from lorecraft.world.loader import export_world_document, load_world_yaml
 from lorecraft.world.validator import WorldValidationError, validate_world_document

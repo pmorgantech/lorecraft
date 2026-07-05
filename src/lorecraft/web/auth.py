@@ -32,8 +32,8 @@ from lorecraft.admin.auth import (
     hash_password,
     verify_password,
 )
-from lorecraft.models.player import Player
-from lorecraft.models.player_auth import PlayerAuth
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.player_auth import PlayerAuth
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.state import AppState

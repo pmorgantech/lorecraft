@@ -6,8 +6,8 @@ from __future__ import annotations
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.web.auth import (
     InvalidCredentialsError,

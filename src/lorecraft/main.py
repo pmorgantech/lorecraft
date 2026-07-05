@@ -50,8 +50,8 @@ from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.game.item_rules import register_item_rules
 from lorecraft.models.admin import AdminUser
-from lorecraft.models.player import Player, PlayerStats
-from lorecraft.models.world import NPC, Room
+from lorecraft.engine.models.player import Player, PlayerStats
+from lorecraft.engine.models.world import NPC, Room
 from lorecraft.observability import bind_transaction_context, configure_logging
 from lorecraft.world.bootstrap import ensure_world_bootstrapped
 from lorecraft.engine.repos.item_repo import ItemRepo

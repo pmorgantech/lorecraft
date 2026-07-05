@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from sqlmodel import Session, select
 
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.world import Exit, Item, Room
+from lorecraft.engine.models.world import Exit, Item, Room
 from lorecraft.engine.services.item_location import ItemLocationService
 
 DISAMBIG_ROOM_ID = "key_gallery"

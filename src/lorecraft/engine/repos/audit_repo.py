@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from sqlmodel import Session, col, select
 
-from lorecraft.models.audit import AuditEvent
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.repos.base import Repository
 
 

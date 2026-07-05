@@ -12,9 +12,9 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionSource
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player, PlayerStats, SaveSlot
-from lorecraft.models.session import PlayerSession
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.engine.models.session import PlayerSession
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo

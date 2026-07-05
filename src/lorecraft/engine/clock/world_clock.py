@@ -11,7 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.models.world import WorldClock
+from lorecraft.engine.models.world import WorldClock
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.types import JsonObject
 

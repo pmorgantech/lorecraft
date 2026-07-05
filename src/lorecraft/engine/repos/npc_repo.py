@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from sqlmodel import Session, select
 
-from lorecraft.models.world import NPC
+from lorecraft.engine.models.world import NPC
 from lorecraft.engine.repos.base import Repository
 
 

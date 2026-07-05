@@ -18,8 +18,8 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.world import Exit, Room
-from lorecraft.models.player import Player, PlayerStats
+from lorecraft.engine.models.world import Exit, Room
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo

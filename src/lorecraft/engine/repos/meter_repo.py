@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.meters import Meter
+from lorecraft.engine.models.meters import Meter
 
 
 class MeterRepo:

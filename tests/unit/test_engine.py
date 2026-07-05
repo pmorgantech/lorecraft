@@ -11,9 +11,9 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine, RuleResult
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player
-from lorecraft.models.world import Item, Room
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Item, Room
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo

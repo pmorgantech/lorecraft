@@ -9,7 +9,7 @@ from sqlmodel import Session
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.models.world import WorldClock
+from lorecraft.engine.models.world import WorldClock
 from lorecraft.engine.repos.room_repo import RoomRepo
 
 WEATHER_TABLE: dict[str, tuple[str, ...]] = {

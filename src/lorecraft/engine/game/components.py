@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from lorecraft.models.world import Item
+from lorecraft.engine.models.world import Item
 from lorecraft.types import JsonValue
 
 

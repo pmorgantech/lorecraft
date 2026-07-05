@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlmodel import Session, and_, func, select
 
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.items import ItemStack
+from lorecraft.engine.models.items import ItemStack
 
 
 class StackRepo:

@@ -9,7 +9,7 @@ from sqlmodel import Session, create_engine, select
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.models.player import Player
+from lorecraft.engine.models.player import Player
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.services.quest_timer import QuestTimerService
 

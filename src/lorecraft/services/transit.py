@@ -20,9 +20,9 @@ from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.mobile import MobileRouteState
+from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.models.transit import TransitLine, TransitStop
-from lorecraft.models.world import Room
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.repos.transit_repo import TransitRepo
 from lorecraft.engine.services.mobile_route import (

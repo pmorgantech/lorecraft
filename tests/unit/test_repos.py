@@ -2,10 +2,10 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables, database_url, sqlite_url
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.audit import AuditEvent
-from lorecraft.models.player import Player, PlayerStats, SaveSlot
-from lorecraft.models.session import PlayerSession
-from lorecraft.models.world import Exit, Item, NPC, Room
+from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
+from lorecraft.engine.models.session import PlayerSession
+from lorecraft.engine.models.world import Exit, Item, NPC, Room
 from lorecraft.engine.repos import AuditRepo, ItemRepo, NpcRepo, PlayerRepo, RoomRepo
 from lorecraft.engine.services.item_location import ItemLocationService
 

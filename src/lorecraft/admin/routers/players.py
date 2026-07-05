@@ -9,8 +9,8 @@ from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
 from lorecraft.admin.auth import Moderator, Observer
-from lorecraft.models.player import Player
-from lorecraft.models.world import Room
+from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.stack_repo import StackRepo
 
 router = APIRouter(tags=["admin"])
@@ -50,7 +50,7 @@ async def player_state(player_id: str, request: Request, _: Observer) -> dict[st
         player = session.get(Player, player_id)
         if player is None:
             raise HTTPException(status_code=404, detail="Player not found")
-        from lorecraft.models.session import PlayerSession
+        from lorecraft.engine.models.session import PlayerSession
 
         player_sessions = list(
             session.exec(
@@ -154,7 +154,7 @@ async def freeze_player(
 ) -> dict[str, str]:
     state = _state(request)
     with Session(state.game_engine) as session:
-        from lorecraft.models.session import PlayerSession
+        from lorecraft.engine.models.session import PlayerSession
 
         sessions = list(
             session.exec(
@@ -183,7 +183,7 @@ async def unfreeze_player(
 ) -> dict[str, str]:
     state = _state(request)
     with Session(state.game_engine) as session:
-        from lorecraft.models.session import PlayerSession
+        from lorecraft.engine.models.session import PlayerSession
 
         sessions = list(
             session.exec(
