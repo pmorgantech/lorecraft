@@ -47,29 +47,44 @@ def register_all_commands(
     don't exercise transit).
     """
     services = services or ServiceContainer.build()
-    # Tier 1 shell/engine verbs — always registered.
-    register_meta_commands(registry, services.save)
-    register_news_commands(registry)
-    register_report_commands(registry)
+    # Tier 1 shell/engine verbs — always registered. Each module's verbs are
+    # labelled with a help category here (one source of truth) via the
+    # `registry.category(...)` context, so the help system can group them.
+    with registry.category("system"):
+        register_meta_commands(registry, services.save)
+        register_news_commands(registry)
+        register_report_commands(registry)
     # Feature-gated: register a feature's verbs only when its service exists
     # (i.e. the owning Tier 2 feature is enabled — see ServiceContainer.build).
     if services.movement is not None:
-        register_movement_commands(registry, services.movement)
+        with registry.category("movement"):
+            register_movement_commands(registry, services.movement)
     if services.inventory is not None:
-        register_inventory_commands(registry, services.inventory)
+        with registry.category("inventory"):
+            register_inventory_commands(registry, services.inventory)
     if services.dialogue is not None:
-        register_social_commands(registry, services.dialogue)
+        with registry.category("social"):
+            register_social_commands(registry, services.dialogue)
     if services.character_info is not None:
-        register_character_commands(registry, services.character_info)
+        with registry.category("character"):
+            register_character_commands(registry, services.character_info)
     if services.exploration is not None and services.journal is not None:
-        register_exploration_commands(registry, services.exploration, services.journal)
+        with registry.category("exploration"):
+            register_exploration_commands(
+                registry, services.exploration, services.journal
+            )
     if services.fatigue is not None:
-        register_condition_commands(registry, services.fatigue)
+        with registry.category("condition"):
+            register_condition_commands(registry, services.fatigue)
     if services.economy is not None:
-        register_economy_commands(registry, services.economy)
+        with registry.category("economy"):
+            register_economy_commands(registry, services.economy)
     if services.bank is not None:
-        register_bank_commands(registry, services.bank)
+        with registry.category("banking"):
+            register_bank_commands(registry, services.bank)
     if services.trade is not None:
-        register_trade_commands(registry, services.trade)
+        with registry.category("trading"):
+            register_trade_commands(registry, services.trade)
     if transit is not None:
-        register_transit_commands(registry, transit)
+        with registry.category("transit"):
+            register_transit_commands(registry, transit)

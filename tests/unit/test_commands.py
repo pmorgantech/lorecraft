@@ -51,14 +51,39 @@ def test_meta_commands_write_context_messages_and_updates() -> None:
         registry.get("help").handler(None, ctx)
         registry.get("quit").handler(None, ctx)
 
-    assert ctx.messages[0].startswith("Available commands:")
-    assert "  help [command]" in ctx.messages[0]
+    # Bare `help` in normal play now shows a curated set + a pointer.
+    assert ctx.messages[0].startswith("Common commands:")
     assert "  go <direction>" in ctx.messages[0]
+    assert "help commands" in ctx.messages[0]
     assert ctx.messages[1] == "Goodbye."
     assert ctx.updates == {"disconnect": True}
     # Dialogue-reply commands are hidden until a conversation is active.
     assert "choice <number>" not in ctx.messages[0]
     assert "bye — end" not in ctx.messages[0]
+
+
+def test_help_commands_groups_by_category() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        registry.get("help").handler("commands", ctx)
+
+    out = ctx.messages[0]
+    assert out.startswith("All commands")
+    # Category headers present.
+    assert "Movement:" in out
+    assert "Items & Inventory:" in out
+    assert "System:" in out
+    # Movement verbs are alphabetized within their group (go before look-ish).
+    move_section = out.split("Movement:")[1].split("\n\n")[0]
+    verbs = [
+        line.strip().split()[0] for line in move_section.splitlines() if line.strip()
+    ]
+    assert verbs == sorted(verbs)
 
 
 def test_help_shows_dialogue_commands_and_hides_world_commands_in_conversation() -> (
@@ -84,7 +109,7 @@ def test_help_shows_dialogue_commands_and_hides_world_commands_in_conversation()
     assert ctx.messages[0].startswith("You are in conversation.")
     assert "choice <number>" in ctx.messages[0]
     assert "bye — end" in ctx.messages[0]
-    assert "help [command]" in ctx.messages[0]
+    assert "help [command|commands]" in ctx.messages[0]
     assert "go <direction>" not in ctx.messages[0]
     assert "take <item>" not in ctx.messages[0]
 
@@ -110,7 +135,7 @@ def test_help_hides_out_of_combat_commands_during_combat() -> None:
     assert ctx.messages[0].startswith("You are in combat.")
     assert "go <direction>" not in ctx.messages[0]
     assert "take <item>" not in ctx.messages[0]
-    assert "help [command]" in ctx.messages[0]
+    assert "help [command|commands]" in ctx.messages[0]
 
 
 def test_help_respects_room_disabled_commands() -> None:

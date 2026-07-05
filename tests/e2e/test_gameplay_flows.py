@@ -77,9 +77,11 @@ def test_help_output_preserves_line_breaks(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     _create_character(page, live_server, username)
 
-    _send_command(page, "help")
+    # `help commands` is the multi-line grouped list (bare `help` is now a short
+    # curated set); either way the span must preserve newlines.
+    _send_command(page, "help commands")
 
-    message_span = page.locator("#feed .msg", has_text="Available commands").locator(
+    message_span = page.locator("#feed .msg", has_text="All commands").locator(
         "span.whitespace-pre-line"
     )
     message_span.wait_for()
