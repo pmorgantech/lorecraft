@@ -111,3 +111,38 @@ kbd {
 .exit-dir:hover {
     color: #34d399;
 }
+
+/* ---- Per-account presentation preferences (Sprint 32.2) ---- */
+
+/* Compact display density: tighten panel padding and feed line spacing so more
+   fits on screen. Comfortable (default) leaves the existing Tailwind spacing. */
+.density-compact .panel,
+.density-compact [data-panel] {
+    padding: 0.4rem 0.5rem;
+}
+.density-compact #feed > * {
+    margin-top: 0.15rem;
+    margin-bottom: 0.15rem;
+    line-height: 1.2;
+}
+
+/* Reduced motion: honour the player's choice (and the OS setting) by disabling
+   animations/transitions across the UI. The transit minimap JS also checks the
+   body.reduced-motion class before animating. */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}

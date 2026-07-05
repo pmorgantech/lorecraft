@@ -255,6 +255,70 @@ async def _test_game_screen_state_includes_current_player() -> None:
     assert player.username in html or player.id in html
 
 
+def test_game_screen_default_prefs_render_comfortable() -> None:
+    anyio.run(_test_game_screen_default_prefs_render_comfortable)
+
+
+async def _test_game_screen_default_prefs_render_comfortable() -> None:
+    """A player with no stored preferences renders the comfortable default."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        status, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert status == 200
+    assert "density-comfortable" in html
+    # reduced-motion class is absent by default; feed verbosity default is normal.
+    assert "reduced-motion" not in html
+    assert 'data-feed-verbosity="normal"' in html
+
+
+def test_game_screen_reflects_stored_preferences() -> None:
+    anyio.run(_test_game_screen_reflects_stored_preferences)
+
+
+async def _test_game_screen_reflects_stored_preferences() -> None:
+    """Stored preferences drive the body classes/data attributes on /game."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        # Set preferences on the seeded player, then render.
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {
+                "display_density": "compact",
+                "reduced_motion": True,
+                "feed_verbosity": "terse",
+            }
+            db.add(player)
+            db.commit()
+        status, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert status == 200
+    assert "density-compact" in html
+    assert "reduced-motion" in html
+    assert 'data-feed-verbosity="terse"' in html
+
+
 def test_game_screen_state_includes_inventory() -> None:
     anyio.run(_test_game_screen_state_includes_inventory)
 

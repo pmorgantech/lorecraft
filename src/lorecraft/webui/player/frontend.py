@@ -41,6 +41,7 @@ from lorecraft.webui.player.auth import (
     login_or_register,
 )
 from lorecraft.webui.player.password_policy import PasswordPolicy
+from lorecraft.webui.player.preferences import resolve_preferences
 from lorecraft.webui.player.rendering import (
     audit_to_feed,
     build_map_data,
@@ -448,6 +449,9 @@ async def game_screen(
             "world_time": world_time,
             **room_panel,
             **map_data,
+            # Per-account presentation preferences (Sprint 32.2) — resolved in
+            # exactly one place and injected as `prefs` for the base shell + panels.
+            **resolve_preferences(player.preferences).to_context(),
         }
     return templates.TemplateResponse(request, "game.html", context)
 
