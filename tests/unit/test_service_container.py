@@ -1,6 +1,7 @@
 """ServiceContainer builds feature-gated services conditionally (tier split,
-step 6): economy/bank/fatigue exist only when their feature is enabled, and
-command registration skips a gated feature whose service is absent."""
+step 12b): every Tier 2 feature service exists only when its owning feature is
+enabled, and command registration skips a gated feature whose service is absent.
+Only the Tier 1 ``save`` service is unconditionally present."""
 
 from __future__ import annotations
 
@@ -15,7 +16,6 @@ def test_default_build_has_all_services() -> None:
     assert services.economy is not None
     assert services.bank is not None
     assert services.fatigue is not None
-    # Always-on services are present too.
     assert services.movement is not None
     assert services.trade is not None
 
@@ -32,8 +32,30 @@ def test_empty_enabled_disables_all_gated_services() -> None:
     assert services.economy is None
     assert services.bank is None
     assert services.fatigue is None
-    # But always-on services remain.
-    assert services.inventory is not None
+    # Every Tier 2 service is now gated too.
+    assert services.inventory is None
+    assert services.movement is None
+    assert services.dialogue is None
+    assert services.quest is None
+    assert services.character_info is None
+    assert services.exploration is None
+    assert services.journal is None
+    assert services.trade is None
+    # Only the Tier 1 save service remains unconditionally.
+    assert services.save is not None
+
+
+def test_field_name_vs_feature_key_mapping() -> None:
+    # dialogue is owned by the "npc" feature; journal shares "exploration".
+    npc_only = ServiceContainer.build(enabled={"npc"})
+    assert npc_only.dialogue is not None
+    assert npc_only.exploration is None
+    assert npc_only.journal is None
+
+    exploration_only = ServiceContainer.build(enabled={"exploration"})
+    assert exploration_only.exploration is not None
+    assert exploration_only.journal is not None
+    assert exploration_only.dialogue is None
 
 
 def test_register_all_commands_skips_absent_gated_services() -> None:

@@ -18,16 +18,28 @@ from lorecraft.features.quests.service import QuestService
 from lorecraft.engine.services.save import SaveSlotService
 from lorecraft.features.trading.service import TradeService
 
-# Container fields that belong to a migrated Tier 2 feature, keyed by feature.
-# `build()` instantiates these only when the feature is enabled; everything
-# else is (for now) always-on because its feature has not been migrated to the
-# manifest system yet. The mapping grows as more features are migrated, and the
-# whole container becomes feature-driven once features own their services
-# (docs/tier_split_refactor.md, step 8).
-_FEATURE_GATED_SERVICES: dict[str, type] = {
-    "fatigue": FatigueService,
-    "economy": EconomyService,
-    "bank": BankService,
+# Every Tier 2 feature service the container holds, mapped
+# ``container_field -> (feature_key, service_cls)``. ``build()`` instantiates a
+# field only when its owning feature is enabled; otherwise the field is ``None``
+# and consumers must guard before use (command registration and event wiring
+# already do — see ``register_all_commands`` and ``main.py``).
+#
+# Note two field names differ from their feature key: ``dialogue`` is owned by
+# the ``npc`` feature, and ``journal`` shares the ``exploration`` feature with
+# ``exploration``. Only Tier 1 ``save`` (``engine/services/save``) is not gated —
+# it is engine infrastructure, always present (docs/tier_split_refactor.md step 12b).
+_FEATURE_GATED_SERVICES: dict[str, tuple[str, type]] = {
+    "movement": ("movement", MovementService),
+    "inventory": ("inventory", InventoryService),
+    "dialogue": ("npc", DialogueService),
+    "quest": ("quests", QuestService),
+    "character_info": ("character", CharacterInfoService),
+    "exploration": ("exploration", ExplorationService),
+    "journal": ("exploration", JournalService),
+    "trade": ("trading", TradeService),
+    "fatigue": ("fatigue", FatigueService),
+    "economy": ("economy", EconomyService),
+    "bank": ("bank", BankService),
 }
 
 
@@ -39,25 +51,28 @@ class ServiceContainer:
     instead of instantiating their own, so there is exactly one place
     that decides how a service is built.
 
-    Feature-gated services (``fatigue``, ``economy``, ``bank``) are ``None``
-    when their Tier 2 feature is disabled; consumers must check before use.
+    Every Tier 2 feature service (see ``_FEATURE_GATED_SERVICES``) is ``None``
+    when its owning feature is disabled; consumers must check before use. Only
+    the Tier 1 ``save`` service is unconditionally present.
     """
 
-    movement: MovementService = field(default_factory=MovementService)
-    inventory: InventoryService = field(default_factory=InventoryService)
     save: SaveSlotService = field(default_factory=SaveSlotService)
-    dialogue: DialogueService = field(default_factory=DialogueService)
-    quest: QuestService = field(default_factory=QuestService)
-    character_info: CharacterInfoService = field(default_factory=CharacterInfoService)
-    exploration: ExplorationService = field(default_factory=ExplorationService)
-    journal: JournalService = field(default_factory=JournalService)
     # Feature-gated (see _FEATURE_GATED_SERVICES). Default factories keep a bare
     # ServiceContainer() fully populated; build() overrides with None when the
     # owning feature is disabled.
+    movement: MovementService | None = field(default_factory=MovementService)
+    inventory: InventoryService | None = field(default_factory=InventoryService)
+    dialogue: DialogueService | None = field(default_factory=DialogueService)
+    quest: QuestService | None = field(default_factory=QuestService)
+    character_info: CharacterInfoService | None = field(
+        default_factory=CharacterInfoService
+    )
+    exploration: ExplorationService | None = field(default_factory=ExplorationService)
+    journal: JournalService | None = field(default_factory=JournalService)
     fatigue: FatigueService | None = field(default_factory=FatigueService)
     economy: EconomyService | None = field(default_factory=EconomyService)
     bank: BankService | None = field(default_factory=BankService)
-    trade: TradeService = field(default_factory=TradeService)
+    trade: TradeService | None = field(default_factory=TradeService)
 
     @classmethod
     def build(cls, enabled: Collection[str] | None = None) -> ServiceContainer:
@@ -65,15 +80,15 @@ class ServiceContainer:
 
         Args:
             enabled: Feature keys that are active. Feature-gated services whose
-                key is absent are set to ``None``. ``enabled=None`` means "all
-                features on" — the behaviour-preserving default used by tests
-                and by a default server boot.
+                owning feature is absent are set to ``None``. ``enabled=None``
+                means "all features on" — the behaviour-preserving default used
+                by tests and by a default server boot.
         """
-        gated: dict[str, object | None] = {}
-        for key, service_cls in _FEATURE_GATED_SERVICES.items():
-            gated[key] = service_cls() if (enabled is None or key in enabled) else None
-        return cls(
-            fatigue=gated["fatigue"],  # type: ignore[arg-type]
-            economy=gated["economy"],  # type: ignore[arg-type]
-            bank=gated["bank"],  # type: ignore[arg-type]
-        )
+        kwargs: dict[str, object | None] = {}
+        for container_field, (
+            feature_key,
+            service_cls,
+        ) in _FEATURE_GATED_SERVICES.items():
+            active = enabled is None or feature_key in enabled
+            kwargs[container_field] = service_cls() if active else None
+        return cls(**kwargs)  # type: ignore[arg-type]

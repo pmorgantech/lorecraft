@@ -151,16 +151,6 @@ def create_app(
         effect_service.register(bus)
         mobile_route_service = MobileRouteService(resolved_game_engine, scheduler)
         mobile_route_service.register(bus)
-        light_fuel_service = LightFuelService(resolved_game_engine)
-        light_fuel_service.register(bus)
-        restock_service = RestockService(resolved_game_engine)
-        restock_service.register(bus)
-        quest_timer_service = QuestTimerService(resolved_game_engine, manager)
-        quest_timer_service.register(bus)
-        transit_service = TransitService(
-            resolved_game_engine, mobile_route_service, manager
-        )
-        transit_service.load_lines()
 
         # Resolve the enabled Tier 2 feature set up front so services can be
         # built conditionally (docs/tier_split_refactor.md). Discovery imports
@@ -172,11 +162,37 @@ def create_app(
             enabled_features, available_features.keys()
         )
         loaded_features = load_features(enabled_feature_keys, available_features)
+        enabled_set = set(loaded_features)
         if loaded_features:
             log.info("Enabled features: %s", ", ".join(loaded_features))
 
-        services = ServiceContainer.build(enabled=set(loaded_features))
-        services.quest.register(bus)
+        # Feature-owned schedulable services: built and bus-registered only when
+        # their owning Tier 2 feature is enabled. Unlike the ServiceContainer
+        # services these hold the live engine/manager, so they live here rather
+        # than in the (no-arg) container. Tier 1 services above (scheduler,
+        # meters, effects, mobile_route) are always on.
+        light_fuel_service = None
+        if "light" in enabled_set:
+            light_fuel_service = LightFuelService(resolved_game_engine)
+            light_fuel_service.register(bus)
+        restock_service = None
+        if "economy" in enabled_set:
+            restock_service = RestockService(resolved_game_engine)
+            restock_service.register(bus)
+        quest_timer_service = None
+        if "quests" in enabled_set:
+            quest_timer_service = QuestTimerService(resolved_game_engine, manager)
+            quest_timer_service.register(bus)
+        transit_service = None
+        if "transit" in enabled_set:
+            transit_service = TransitService(
+                resolved_game_engine, mobile_route_service, manager
+            )
+            transit_service.load_lines()
+
+        services = ServiceContainer.build(enabled=enabled_set)
+        if services.quest is not None:
+            services.quest.register(bus)
         if services.fatigue is not None:
             services.fatigue.register(bus)
 
