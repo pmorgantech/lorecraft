@@ -26,7 +26,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session as DBSession
 
-from lorecraft.admin.auth import (
+from lorecraft.webui.admin.auth import (
     create_token,
     decode_token,
     hash_password,
@@ -37,8 +37,12 @@ from lorecraft.engine.models.player_auth import PlayerAuth
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.state import AppState
-from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
-from lorecraft.web.session import get_app_state, get_engines, player_session_secret
+from lorecraft.webui.player.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
+from lorecraft.webui.player.session import (
+    get_app_state,
+    get_engines,
+    player_session_secret,
+)
 
 log = logging.getLogger(__name__)
 

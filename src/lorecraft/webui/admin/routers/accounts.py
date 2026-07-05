@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from lorecraft.admin.auth import Superadmin, hash_password
+from lorecraft.webui.admin.auth import Superadmin, hash_password
 from lorecraft.models.admin import AdminUser
 
 router = APIRouter(tags=["admin"])

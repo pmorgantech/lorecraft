@@ -35,7 +35,7 @@ from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject
-from lorecraft.web.player_auth import (
+from lorecraft.webui.player.player_auth import (
     PLAYER_SESSION_COOKIE,
     create_player_token,
 )

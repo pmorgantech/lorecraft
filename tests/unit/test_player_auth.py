@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lorecraft.admin.auth import create_token
-from lorecraft.web.player_auth import create_player_token, decode_player_id
+from lorecraft.webui.admin.auth import create_token
+from lorecraft.webui.player.player_auth import create_player_token, decode_player_id
 
 _SECRET = "test-secret-32-chars-long-enough!"
 _OTHER_SECRET = "a-completely-different-secret!!"

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from lorecraft.admin.auth import Moderator, Observer
+from lorecraft.webui.admin.auth import Moderator, Observer
 from lorecraft.content.issues import create_issue as build_issue
 from lorecraft.content.issues import export_issues_yaml
 from lorecraft.content.paths import resolve_repo_path

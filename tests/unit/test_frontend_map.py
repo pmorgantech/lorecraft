@@ -4,7 +4,10 @@ from lorecraft.db import create_tables
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Exit, Room
 from lorecraft.engine.repos import RoomRepo
-from lorecraft.web.rendering import CARTOGRAPHY_REVEAL_THRESHOLD, build_map_data
+from lorecraft.webui.player.rendering import (
+    CARTOGRAPHY_REVEAL_THRESHOLD,
+    build_map_data,
+)
 
 
 def test_build_map_data_handles_equal_distance_rooms() -> None:

@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from lorecraft.admin.auth import Observer, Superadmin
+from lorecraft.webui.admin.auth import Observer, Superadmin
 from lorecraft.engine.repos.room_repo import RoomRepo
 
 router = APIRouter(tags=["admin"])

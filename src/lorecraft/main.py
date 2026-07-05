@@ -17,10 +17,10 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
-from lorecraft.admin.api import admin_router
-from lorecraft.admin.auth import hash_password
-from lorecraft.admin.broadcaster import AdminBroadcaster
-from lorecraft.admin.websocket import admin_ws_endpoint
+from lorecraft.webui.admin.api import admin_router
+from lorecraft.webui.admin.auth import hash_password
+from lorecraft.webui.admin.broadcaster import AdminBroadcaster
+from lorecraft.webui.admin.websocket import admin_ws_endpoint
 from lorecraft.features.weather.handlers import register_weather_handlers
 from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
@@ -67,19 +67,19 @@ from lorecraft.features.transit.service import TransitService
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
-from lorecraft.web.auth import consume_ws_ticket
-from lorecraft.web.auth import router as player_auth_router
-from lorecraft.web.frontend import router as web_router
-from lorecraft.web.news_api import router as news_api_router
+from lorecraft.webui.player.auth import consume_ws_ticket
+from lorecraft.webui.player.auth import router as player_auth_router
+from lorecraft.webui.player.frontend import router as web_router
+from lorecraft.webui.player.news_api import router as news_api_router
 
 log = logging.getLogger(__name__)
 
-WEB_DIR = Path(__file__).parent / "web"
+WEB_DIR = Path(__file__).parent / "webui" / "player"
 WEB_ASSETS = {
     "app.css": "text/css",
     "app.js": "text/javascript",
 }
-ADMIN_WEB_DIR = WEB_DIR / "admin"
+ADMIN_WEB_DIR = Path(__file__).parent / "webui" / "admin"
 
 
 def create_app(

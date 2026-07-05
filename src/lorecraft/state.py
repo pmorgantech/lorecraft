@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.engine import Engine
 
-from lorecraft.admin.broadcaster import AdminBroadcaster
+from lorecraft.webui.admin.broadcaster import AdminBroadcaster
 from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.config import Settings
 from lorecraft.engine.game.connection_manager import ConnectionManager

@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from sqlmodel import Session
 
-from lorecraft.admin.auth import Observer
+from lorecraft.webui.admin.auth import Observer
 from lorecraft.analytics import (
     InvalidRangeError,
     command_latency_percentiles,

@@ -8,7 +8,7 @@ import logging
 import jwt
 from fastapi import WebSocket, WebSocketDisconnect
 
-from lorecraft.admin.auth import decode_token
+from lorecraft.webui.admin.auth import decode_token
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject
 

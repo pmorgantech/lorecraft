@@ -334,7 +334,7 @@ def test_refresh_rejects_expired_refresh_token() -> None:
 
 
 async def _test_refresh_rejects_expired_refresh_token() -> None:
-    from lorecraft.web.auth import issue_refresh_token
+    from lorecraft.webui.player.auth import issue_refresh_token
 
     game_engine, audit_engine = _make_engines()
     app = create_app(
@@ -459,7 +459,7 @@ def test_ws_ticket_request_rejects_expired_access_token() -> None:
 
 
 async def _test_ws_ticket_request_rejects_expired_access_token() -> None:
-    from lorecraft.web.auth import issue_access_token
+    from lorecraft.webui.player.auth import issue_access_token
 
     game_engine, audit_engine = _make_engines()
     app = create_app(
@@ -510,7 +510,7 @@ async def _test_ws_ticket_expires_after_ttl() -> None:
     covers the expiry branch in consume_ws_ticket() distinct from the
     single-use (already-consumed) case tested above."""
     from lorecraft.state import AppState
-    from lorecraft.web.auth import consume_ws_ticket, issue_ws_ticket
+    from lorecraft.webui.player.auth import consume_ws_ticket, issue_ws_ticket
 
     game_engine, audit_engine = _make_engines()
     app = create_app(
@@ -538,7 +538,10 @@ async def _test_ws_ticket_via_session_cookie() -> None:
     app = create_app(
         settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
     )
-    from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE, create_player_token
+    from lorecraft.webui.player.player_auth import (
+        PLAYER_SESSION_COOKIE,
+        create_player_token,
+    )
 
     async with _lifespan(app):
         _, login_data = await _http(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.web.rendering import mark_oob_swap
+from lorecraft.webui.player.rendering import mark_oob_swap
 
 
 def test_mark_oob_swap_handles_multiline_opening_tag() -> None:

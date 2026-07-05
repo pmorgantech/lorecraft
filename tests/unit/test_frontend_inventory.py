@@ -6,7 +6,7 @@ from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Item
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.web.session import inventory_snapshot
+from lorecraft.webui.player.session import inventory_snapshot
 
 
 def test_inventory_snapshot_groups_duplicate_items() -> None:

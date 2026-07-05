@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
-from lorecraft.admin.auth import Moderator, Observer
+from lorecraft.webui.admin.auth import Moderator, Observer
 from lorecraft.content.news import export_news_yaml
 from lorecraft.content.paths import resolve_repo_path
 from lorecraft.models.news import NewsItem

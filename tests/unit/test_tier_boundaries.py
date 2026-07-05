@@ -2,7 +2,7 @@
 
 The tier refactor (docs/tier_split_refactor.md) physically separates the engine
 (Tier 1, ``lorecraft.engine``), optional features (Tier 2,
-``lorecraft.features``), and the web delivery hosts (``lorecraft.web`` /
+``lorecraft.features``), and the web delivery hosts (``lorecraft.webui.player`` /
 ``lorecraft.webui``). The whole point is enforceable direction:
 
 * ``engine/`` must not import ``features/`` or any web host — it runs headless.
@@ -25,7 +25,7 @@ SRC_ROOT = Path(__file__).resolve().parents[2] / "src" / "lorecraft"
 
 # Web host packages. ``web`` is the current player/admin frontend; ``webui`` is
 # its post-refactor home (step 10). Both are forbidden imports for engine/features.
-WEB_PREFIXES = ("lorecraft.web", "lorecraft.webui")
+WEB_PREFIXES = ("lorecraft.webui.player", "lorecraft.webui")
 FEATURES_PREFIX = "lorecraft.features"
 
 

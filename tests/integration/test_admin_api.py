@@ -13,7 +13,7 @@ import anyio
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, create_engine
 
-from lorecraft.admin.auth import create_token, hash_password
+from lorecraft.webui.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser

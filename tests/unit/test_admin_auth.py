@@ -2,7 +2,7 @@
 
 import pytest
 
-from lorecraft.admin.auth import (
+from lorecraft.webui.admin.auth import (
     ROLE_LEVELS,
     create_token,
     decode_token,

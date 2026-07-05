@@ -1,6 +1,6 @@
 [project]
 name = "lorecraft"
-version = "0.29.0"
+version = "0.30.0"
 description = "Persistent multiplayer text adventure engine."
 requires-python = ">=3.12"
 dependencies = [
@@ -28,7 +28,12 @@ admin-tui = ["textual>=0.80.0"]
 e2e = ["playwright>=1.47.0", "pytest"]
 
 [tool.setuptools.package-data]
-lorecraft = ["web/*", "web/admin/*"]
+lorecraft = [
+    "webui/player/*",
+    "webui/player/static/**/*",
+    "webui/player/templates/**/*",
+    "webui/admin/*",
+]
 
 [tool.ruff.lint]
 extend-select = ["TID251"]
@@ -44,7 +49,7 @@ extend-select = ["TID251"]
 
 [tool.basedpyright]
 include = ["src"]
-exclude = ["src/lorecraft/admin/tui"]
+exclude = ["src/lorecraft/webui/admin/tui"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 

@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from lorecraft.admin.auth import Observer, WorldBuilder
+from lorecraft.webui.admin.auth import Observer, WorldBuilder
 from lorecraft.models.changeset import ConflictScanResult
 from lorecraft.engine.models.world import Item, NPC, Room
 from lorecraft.engine.repos.meter_repo import MeterRepo

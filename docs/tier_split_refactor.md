@@ -41,7 +41,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 9 | Commands: feature verbs → `features/<x>/commands.py`; shell verbs (meta/social/news/report) + composition root stay in `commands/` (0.28.0) | 4 | ✅ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | 🚧 |
 | 10a | ↳ `connection_manager`/`broadcast` → `engine/game/`; `game/` package deleted; `GameContext.news_repo` removed — engine now imports only `engine.*`+`types` (0.29.0) | 1 | ✅ |
-| 10b | ↳ move `web/` → `webui/player/`, `admin/` → `webui/admin/`; add `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry) | 4 | ⬜ |
+| 10b | ↳ `web/` → `webui/player/`, `admin/` → `webui/admin/` moved; paths/packaging updated; live boot verified (0.30.0) | 4 | ✅ |
+| 10c | ↳ add `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry) — additive framework, no current consumer | 4 | ⬜ |
 | 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |
 | 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | 🚧 |
 | 12a | ↳ import-direction boundary test (`test_tier_boundaries.py`) — engine⇏features/web, features⇏web (0.27.0) | 5 | ✅ |

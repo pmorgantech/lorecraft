@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.30.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — web hosts extracted into `webui/` (step 10b, branch `tier_split`).** The player web UI moved `src/lorecraft/web/` → `src/lorecraft/webui/player/`, and the admin console moved `src/lorecraft/admin/` → `src/lorecraft/webui/admin/` (with `web/admin/index.html` → `webui/admin/index.html`). All `lorecraft.web.*` → `lorecraft.webui.player.*` and `lorecraft.admin.*` → `lorecraft.webui.admin.*` imports rewritten; hardcoded Jinja template dirs, `main.py`'s `WEB_DIR`/`ADMIN_WEB_DIR`, the `pyproject.toml` `package-data`, and the basedpyright `exclude` all updated. Web is now the "third axis" (`webui/`, audience-named `player`/`admin`) that composes engine + features, as the design intended — separate from Tier 1 `engine/` and Tier 2 `features/`. Verified: full suite 796 passed, lint + typecheck clean, and a live `uvicorn` boot serves `/health`, `/lobby` (Jinja templates), `/admin` (HTML shell), and `/static/*` from the new paths. **Still open:** the `WebHost` abstraction (multi-dir Jinja `ChoiceLoader` + panel/slot registry, step 10c) and the `presentation.py` feature-UI seam (step 11) — additive framework with no current consumer.
+
 ## [0.29.0] - 2026-07-05
 
 ### Changed

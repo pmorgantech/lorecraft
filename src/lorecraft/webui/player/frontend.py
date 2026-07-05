@@ -32,14 +32,14 @@ from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.save import SessionSafetyService
-from lorecraft.web.auth import (
+from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
     InvalidUsernameError,
     PlayerNotFoundError,
     StartRoomNotConfiguredError,
     login_or_register,
 )
-from lorecraft.web.rendering import (
+from lorecraft.webui.player.rendering import (
     audit_to_feed,
     build_map_data,
     create_dev_player,
@@ -47,7 +47,7 @@ from lorecraft.web.rendering import (
     mark_oob_swap,
     resolve_command_text,
 )
-from lorecraft.web.session import (
+from lorecraft.webui.player.session import (
     CommandResult,
     expire_grace_periods,
     get_app_state,
@@ -70,7 +70,7 @@ from lorecraft.web.session import (
 log = logging.getLogger(__name__)
 
 router = APIRouter()
-templates = Jinja2Templates(directory="src/lorecraft/web/templates")
+templates = Jinja2Templates(directory="src/lorecraft/webui/player/templates")
 
 
 def _carried_snapshot(item_repo: ItemRepo, player_id: str) -> list[tuple[str, int]]:
@@ -85,13 +85,16 @@ async def get_current_player(request: Request) -> Player:
     """Resolve the current player.
 
     Prefers the signed `lorecraft_session` cookie minted by `/lobby/enter` and
-    `/lobby/create` (see `lorecraft.web.player_auth`) — this is the only path
+    `/lobby/create` (see `lorecraft.webui.player.player_auth`) — this is the only path
     that can't be forged by a client. Falls back to the legacy dev/test path
     (`?player_id=`/`&pid=` or an unsigned `player_id` cookie) when no valid
     signed session is present, gated by `Settings.allow_query_player_id`.
     """
-    from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
-    from lorecraft.web.session import player_session_secret
+    from lorecraft.webui.player.player_auth import (
+        PLAYER_SESSION_COOKIE,
+        decode_player_id,
+    )
+    from lorecraft.webui.player.session import player_session_secret
 
     app_state = get_app_state(request)
     game_engine, _ = get_engines(request)

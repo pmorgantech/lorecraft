@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.web.session import format_idle_duration, presence_for_player
+from lorecraft.webui.player.session import format_idle_duration, presence_for_player
 
 
 class _FakeManager:

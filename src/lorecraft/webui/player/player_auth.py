@@ -1,6 +1,6 @@
 """Player session cookie authentication for the HTMX/lobby web client.
 
-Reuses the JWT primitives from `lorecraft.admin.auth` but signs with a
+Reuses the JWT primitives from `lorecraft.webui.admin.auth` but signs with a
 separate secret (`Settings.player_session_secret`) and a distinct
 `token_type`, so a player session token can never be replayed as an admin
 token even if secrets were ever mixed up.
@@ -12,7 +12,7 @@ import logging
 
 import jwt
 
-from lorecraft.admin.auth import create_token, decode_token
+from lorecraft.webui.admin.auth import create_token, decode_token
 
 log = logging.getLogger(__name__)
 

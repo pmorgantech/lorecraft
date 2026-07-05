@@ -9,7 +9,7 @@ from lorecraft.db import create_tables
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.room_repo import RoomRepo
-from lorecraft.web.auth import (
+from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
     InvalidUsernameError,
     StartRoomNotConfiguredError,

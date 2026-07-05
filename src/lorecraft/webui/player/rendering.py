@@ -17,7 +17,7 @@ from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.room_repo import RoomRepo
 
-templates = Jinja2Templates(directory="src/lorecraft/web/templates")
+templates = Jinja2Templates(directory="src/lorecraft/webui/player/templates")
 
 
 CARTOGRAPHY_REVEAL_THRESHOLD = 20
