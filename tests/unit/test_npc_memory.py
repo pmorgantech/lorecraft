@@ -9,7 +9,7 @@ from sqlmodel import Session, create_engine
 from lorecraft.features.npc_memory.conditions import register as _register_npc_memory
 from lorecraft.db import create_tables
 from lorecraft.features.quests import conditions as quest_conditions
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.transaction import TransactionContext

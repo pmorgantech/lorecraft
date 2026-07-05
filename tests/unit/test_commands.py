@@ -2,7 +2,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.registry import CommandRegistry

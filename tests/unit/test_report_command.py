@@ -7,7 +7,7 @@ from sqlmodel import Session, create_engine, select
 from lorecraft.commands import register_all_commands
 from lorecraft.commands.report import _MAX_REPORT_LENGTH
 from lorecraft.db import create_tables
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
@@ -19,7 +19,6 @@ from lorecraft.models.issue import Issue
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
-from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
@@ -61,7 +60,6 @@ def _build_engine_and_ctx() -> tuple[CommandEngine, GameContext, Session]:
         meters=MeterService(session.get_bind(), GameRng()),
         effects=EffectService(session.get_bind(), GameRng()),
         npc_repo=NpcRepo(session),
-        news_repo=NewsRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
         audit=None,

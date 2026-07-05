@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 
 
 def test_is_connected_reflects_registration() -> None:

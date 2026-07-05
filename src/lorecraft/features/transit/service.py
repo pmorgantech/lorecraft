@@ -16,7 +16,7 @@ import logging
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location

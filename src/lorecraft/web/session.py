@@ -16,7 +16,7 @@ from fastapi import Request
 from sqlmodel import Session as DBSession
 
 from lorecraft.db import create_audit_engine, create_game_engine
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
 from lorecraft.features.items.rules import register_item_rules

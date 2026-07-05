@@ -18,7 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
-from lorecraft.game.broadcast import broadcast_command_effects
+from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player

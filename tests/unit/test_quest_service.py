@@ -7,7 +7,7 @@ import time
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.transaction import TransactionContext

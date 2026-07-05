@@ -37,8 +37,8 @@ from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
-from lorecraft.game.broadcast import broadcast_command_effects
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.broadcast import broadcast_command_effects
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent

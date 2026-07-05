@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.29.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — `connection_manager`/`broadcast` → engine; `game/` package deleted; engine is now fully import-pure (step 10a, branch `tier_split`).** `game/connection_manager.py` and `game/broadcast.py` were the last two modules in the legacy `game/` package. `ConnectionManager` depends only on `lorecraft.types.JsonWebSocket` (a Protocol) — transport-agnostic, genuinely Tier 1 — so both moved to `engine/game/`, and the empty `src/lorecraft/game/` package was removed. This turned `GameContext`'s `manager` import into engine→engine. Separately, `GameContext.news_repo` (the last non-engine import in the engine, `repos.news_repo`) was removed; the `/news` command builds `NewsRepo(ctx.session)` itself. **Result: every module under `src/lorecraft/engine/` now imports only `engine.*` and `lorecraft.types`** — no `features/`, no web, no `services`/`models`/`repos`/`commands`/`content`. Full suite 796 passed, lint + typecheck clean.
+
 ## [0.28.0] - 2026-07-05
 
 ### Changed

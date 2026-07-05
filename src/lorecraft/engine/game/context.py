@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Session
 
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.engine.game.parser import ParsedCommand
 from lorecraft.engine.game.rng import GameRng
@@ -17,7 +17,6 @@ from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
-from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
@@ -59,7 +58,6 @@ class GameContext:
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
     rollback_state: Callable[[], None] | None = None
-    news_repo: NewsRepo | None = None
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     arrival_messages: list[str] = field(default_factory=list)
@@ -187,7 +185,6 @@ def build_game_context(
         meters=meters,
         effects=effects,
         npc_repo=NpcRepo(session),
-        news_repo=NewsRepo(session),
         manager=manager,
         bus=bus,
         audit=AuditRepo(audit_session) if audit_session is not None else None,

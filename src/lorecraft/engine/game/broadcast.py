@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.types import JsonValue
 

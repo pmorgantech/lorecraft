@@ -6,12 +6,11 @@ import time
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
+from lorecraft.repos.news_repo import NewsRepo
 
 
 def _format_news_lines(ctx: GameContext) -> list[str]:
-    if ctx.news_repo is None:
-        return ["No news available."]
-    items = ctx.news_repo.list_active(now=time.time())
+    items = NewsRepo(ctx.session).list_active(now=time.time())
     if not items:
         return ["No news right now."]
     lines = ["=== News ==="]

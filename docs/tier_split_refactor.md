@@ -39,7 +39,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 8g | ↳ ledger→engine (Tier 1 fix), items + character features, restock→economy (0.24.0) | 1/2 | ✅ |
 | 8h | ↳ movement (Tier 2: terrain/skill-gated) + npc/dialogue subsystem co-located; step 8 done (0.25.0) | 1/2 | ✅ |
 | 9 | Commands: feature verbs → `features/<x>/commands.py`; shell verbs (meta/social/news/report) + composition root stay in `commands/` (0.28.0) | 4 | ✅ |
-| 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |
+| 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | 🚧 |
+| 10a | ↳ `connection_manager`/`broadcast` → `engine/game/`; `game/` package deleted; `GameContext.news_repo` removed — engine now imports only `engine.*`+`types` (0.29.0) | 1 | ✅ |
+| 10b | ↳ move `web/` → `webui/player/`, `admin/` → `webui/admin/`; add `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry) | 4 | ⬜ |
 | 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |
 | 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | 🚧 |
 | 12a | ↳ import-direction boundary test (`test_tier_boundaries.py`) — engine⇏features/web, features⇏web (0.27.0) | 5 | ✅ |

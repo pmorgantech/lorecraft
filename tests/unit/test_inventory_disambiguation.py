@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus

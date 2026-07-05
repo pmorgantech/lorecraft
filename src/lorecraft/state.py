@@ -9,7 +9,7 @@ from sqlalchemy.engine import Engine
 from lorecraft.admin.broadcaster import AdminBroadcaster
 from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.config import Settings
-from lorecraft.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.registry import CommandRegistry
