@@ -139,10 +139,10 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), and 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0).
-- **Reserved but never used:** 42–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), and 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0).
+- **Reserved but never used:** 43–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 42.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 43.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 

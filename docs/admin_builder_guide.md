@@ -130,7 +130,7 @@ Nine tabs, each backed by REST endpoints under `/admin/*`:
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
-| **Issues** | Repo-tracked issue tracker CRUD; `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write; table shows opened-by + created/updated dates (🕑 button toggles absolute dates ↔ relative ages), and each row expands (click) to full description, tags, links, assignee, and timestamps | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
+| **Issues** | Repo-tracked issue tracker CRUD. **Resolved/deferred are hidden by default** — a "Hide status" checkbox group toggles any status in/out of view; plus a **priority** filter and a **sort** selector (Priority / Recently updated / Recently created). Filter+sort run client-side (hide/sort choices persist per browser); a header count shows `N shown · M hidden`. `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write. Table shows opened-by + created/updated dates (🕑 toggles absolute dates ↔ relative ages); rows expand (click) to description, tags, links, assignee, timestamps. Live-refreshes on any change — admin edits **and** in-game player `report`s | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
 | **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
 | **Accounts** | Create/revoke admin accounts, assign roles (superadmin only) | `GET/POST /admin/accounts`, `DELETE /admin/accounts/{username}` |
@@ -141,9 +141,9 @@ player detail view reached from the Dashboard — see
 
 **Live refresh:** the console keeps an `/admin/ws` push connection open (WS indicator, top-right).
 Beyond the Dashboard's live player table, the **Issues**, **News**, and **Help** tabs auto-reload
-when their content changes — including edits made by *another* admin or an out-of-band change — but
-only for whichever tab you're currently viewing. No manual Search/Refresh needed to see a fresh
-issue, announcement, or help topic.
+when their content changes — including edits made by *another* admin, an out-of-band change, or an
+in-game player `report` filing a new issue — but only for whichever tab you're currently viewing.
+No manual Search/Refresh needed to see a fresh issue, announcement, or help topic.
 
 **Session expiry:** access tokens are short-lived (`LORECRAFT_ADMIN_JWT_ACCESS_TTL`, default 900 s / 15 min) and the
 console holds no refresh token. When the token expires, the next authenticated action (or the admin

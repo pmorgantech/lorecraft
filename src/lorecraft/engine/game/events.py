@@ -65,6 +65,7 @@ class GameEvent(StrEnum):
     TRANSIT_ARRIVED = "transit_arrived"
     TRANSIT_BOARDED = "transit_boarded"
     TRANSIT_DISEMBARKED = "transit_disembarked"
+    ISSUE_FILED = "issue_filed"
 
 
 WORK_EVENTS = {

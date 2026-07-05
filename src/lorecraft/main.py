@@ -262,11 +262,19 @@ def create_app(
             except RuntimeError:
                 pass  # No running event loop (e.g., in tests)
 
+        def _push_issue_filed(event: Event, ctx: object) -> None:
+            # An in-game `report` filed an issue via the content path (not the
+            # admin API), so mirror the admin routers' content_changed push so
+            # any open Issues tab live-refreshes. Same message shape the routers
+            # emit via notify_content_changed.
+            admin_broadcaster.push({"type": "content_changed", "resource": "issues"})
+
         bus.on(GameEvent.PLAYER_MOVED, _push_player_moved)
         bus.on(GameEvent.PLAYER_DISCONNECTED, _push_player_disconnected)
         bus.on(GameEvent.PLAYER_RECONNECTED, _push_player_reconnected)
         bus.on(GameEvent.TIME_ADVANCED, _push_clock_tick)
         bus.on(GameEvent.TIME_ADVANCED, _schedule_clock_broadcast)
+        bus.on(GameEvent.ISSUE_FILED, _push_issue_filed)
 
         # Initialize WebHost and load feature presentations (step 11 of tier-split
         # refactor). Features with optional presentation.py modules can contribute

@@ -297,14 +297,28 @@
       <!-- Issues -->
       <div id="tab-issues" class="tab-panel">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-          <h2>Issues</h2>
-          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-            <input id="i-filter-status" placeholder="status" style="width:110px;" />
-            <input id="i-filter-priority" placeholder="priority" style="width:110px;" />
-            <select id="i-filter-component" style="width:130px;" title="Filter by component"></select>
-            <button onclick="loadIssues()">Search</button>
+          <h2 style="display:flex;align-items:baseline;gap:0.5rem;">Issues <span id="i-count" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+            <select id="i-filter-priority" style="width:125px;" title="Filter by priority" onchange="loadIssues()">
+              <option value="">any priority</option>
+              <option value="critical">critical</option>
+              <option value="high">high</option>
+              <option value="normal">normal</option>
+              <option value="low">low</option>
+            </select>
+            <select id="i-filter-component" style="width:130px;" title="Filter by component" onchange="loadIssues()"></select>
+            <select id="i-sort" style="width:175px;" title="Sort order" onchange="loadIssues()">
+              <option value="priority">Sort: Priority</option>
+              <option value="updated">Sort: Recently updated</option>
+              <option value="created">Sort: Recently created</option>
+            </select>
+            <button onclick="loadIssues()" title="Reload">↻</button>
             <button id="i-date-toggle" onclick="toggleIssueDateMode()" title="Switch date columns between absolute dates and relative ages">🕑 Dates</button>
           </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-top:0.25rem;color:var(--text-dim);font-size:0.8rem;">
+          <span>Hide status:</span>
+          <span id="i-hide-group" style="display:flex;gap:0.85rem;flex-wrap:wrap;"></span>
         </div>
         <div id="issues-create" class="panel">
           <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
@@ -798,6 +812,58 @@ async function setWeather() {
 // Issues
 // ────────────────────────────────────────
 
+const ISSUE_STATUSES = ["open", "in-progress", "resolved", "deferred", "duplicate"];
+// Terminal-ish statuses hidden by default so the list shows actionable work.
+const ISSUE_STATUS_HIDDEN_DEFAULT = ["resolved", "deferred"];
+const PRIORITY_RANK = { critical: 0, high: 1, normal: 2, low: 3 };
+const ISSUE_PREFS_KEY = "lc_admin_issue_prefs";
+
+// View prefs (which statuses to hide + sort order), persisted across reloads.
+function loadIssuePrefs() {
+  try {
+    const raw = localStorage.getItem(ISSUE_PREFS_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p.hide) && typeof p.sort === "string") return p;
+    }
+  } catch (_) {}
+  return { hide: ISSUE_STATUS_HIDDEN_DEFAULT.slice(), sort: "priority" };
+}
+function saveIssuePrefs(prefs) {
+  try { localStorage.setItem(ISSUE_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
+}
+
+// Build the "Hide status" checkboxes + apply the saved sort — once per session.
+let _issueControlsReady = false;
+function ensureIssueControls() {
+  if (_issueControlsReady) return;
+  const prefs = loadIssuePrefs();
+  const group = document.getElementById("i-hide-group");
+  if (group) {
+    group.innerHTML = ISSUE_STATUSES.map(s => `
+      <label style="cursor:pointer;user-select:none;">
+        <input type="checkbox" value="${s}" ${prefs.hide.includes(s) ? "checked" : ""}
+               onchange="loadIssues()"> ${s}</label>`).join("");
+  }
+  const sortSel = document.getElementById("i-sort");
+  if (sortSel) sortSel.value = prefs.sort;
+  _issueControlsReady = true;
+}
+function currentHideSet() {
+  return Array.from(document.querySelectorAll("#i-hide-group input:checked")).map(el => el.value);
+}
+
+// Sort in place. "priority" => priority first (newest-updated tiebreak); the
+// date modes => date first (priority tiebreak). Missing values sort last.
+function sortIssues(issues, key) {
+  const byPriority = (a, b) => (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
+  const byUpdated  = (a, b) => (b.updated_at || 0) - (a.updated_at || 0);
+  const byCreated  = (a, b) => (b.created_at || 0) - (a.created_at || 0);
+  if (key === "updated")      issues.sort((a, b) => byUpdated(a, b) || byPriority(a, b));
+  else if (key === "created") issues.sort((a, b) => byCreated(a, b) || byPriority(a, b));
+  else                        issues.sort((a, b) => byPriority(a, b) || byUpdated(a, b));
+}
+
 // Registered issue components (closed set) — fetched once, populates the
 // create + filter dropdowns. Single source of truth is the backend.
 let _componentsCache = null;
@@ -816,20 +882,39 @@ async function loadComponents() {
 
 async function loadIssues() {
   await loadComponents();
-  const params = new URLSearchParams();
-  const status    = document.getElementById("i-filter-status").value.trim();
-  const priority  = document.getElementById("i-filter-priority").value.trim();
-  const component = document.getElementById("i-filter-component").value.trim();
-  if (status)    params.set("status", status);
-  if (priority)  params.set("priority", priority);
-  if (component) params.set("component", component);
-  const qs = params.size ? "?" + params : "";
-  const issues = await api("GET", `/admin/issues${qs}`);
+  ensureIssueControls();
+  // Fetch the full set, then filter + sort client-side (the tracker is
+  // low-volume, so this keeps one coherent model and always-fresh data).
+  const all = await api("GET", "/admin/issues");
   const tbody = document.getElementById("issues-tbody");
   tbody.innerHTML = "";
-  if (!Array.isArray(issues)) return;
+  if (!Array.isArray(all)) return;
+
+  const hide      = currentHideSet();
+  const priority  = document.getElementById("i-filter-priority").value;
+  const component = document.getElementById("i-filter-component").value;
+  const sortKey   = document.getElementById("i-sort").value;
+  saveIssuePrefs({ hide, sort: sortKey });
+
+  let issues = all.filter(i => !hide.includes(i.status));
+  if (priority)  issues = issues.filter(i => i.priority === priority);
+  if (component) issues = issues.filter(i => i.component === component);
+  sortIssues(issues, sortKey);
+
+  const countEl = document.getElementById("i-count");
+  if (countEl) {
+    const hidden = all.length - issues.length;
+    countEl.textContent = `${issues.length} shown` + (hidden > 0 ? ` · ${hidden} hidden` : "");
+  }
+
   const statusColor = {open: "amber", "in-progress": "amber", resolved: "green", deferred: "gray", duplicate: "gray"};
   const COLSPAN = 10;
+  if (issues.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="${COLSPAN}" style="color:var(--text-dim);text-align:center;padding:1rem;">No issues match the current filters.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
   for (const i of issues) {
     const tr = document.createElement("tr");
     tr.style.cursor = "pointer";
@@ -842,7 +927,7 @@ async function loadIssues() {
       <td><b>${esc(i.title)}</b></td>
       <td>
         <select onchange="updateIssueStatus('${esc(i.id)}', this.value)" style="width:auto;">
-          ${["open","in-progress","resolved","deferred","duplicate"].map(s =>
+          ${ISSUE_STATUSES.map(s =>
             `<option value="${s}" ${s === i.status ? "selected" : ""}>${s}</option>`).join("")}
         </select>
       </td>

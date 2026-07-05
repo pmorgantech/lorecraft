@@ -39,6 +39,20 @@
 
 > **Interaction with in-game reports:** the `report` command keeps `component="player-report"` (and the matching tag). It uses the content path, which is deliberately *not* API-validated, so player reports are unaffected; those issues store and display their component unchanged. `player-report` is intentionally **not** in the registered structural set — filter such issues by their tag.
 
+## Sprint 42 — Issues tab filter/sort + player-report live-refresh (done, v0.38.0, 2026-07-05)
+
+**Goal:** Make the admin Issues tab usable at volume and truly live. Two dogfooding asks: (1) hide resolved/deferred by default with a way to choose what's filtered out, and sort by priority or date; (2) fix that player-filed reports didn't live-update the tab.
+
+**Filter/sort (client-side).** The tracker is low-volume, so the tab fetches the full list and filters + sorts in the browser for one coherent model: default-hide `resolved`+`deferred` via a **"Hide status" checkbox group** (any status toggleable), a **priority** filter dropdown, and a **sort** selector — *Priority* (priority-first, newest-updated tiebreak), *Recently updated*, *Recently created* (date-first, priority tiebreak). Header shows `N shown · M hidden`; hide/sort prefs persist in `localStorage`. Replaced the old free-text status/priority filter inputs.
+
+**Live-refresh for player reports.** The `report` command created issues via the content path (no `content_changed` push), so an open Issues tab stayed stale. Added `GameEvent.ISSUE_FILED`, emitted by the command; `main.py` forwards it to the admin broadcaster as the same `content_changed`/`issues` message the admin routers send. Now player reports (and any bus-emitting issue source) live-refresh like admin edits.
+
+| # | Task | Status |
+|---|------|--------|
+| 42.1 | Client-side default filter (hide resolved/deferred), "Hide status" checkbox group, priority filter, sort selector (priority / recently-updated / recently-created); count + `localStorage` persistence. | [x] |
+| 42.2 | `GameEvent.ISSUE_FILED` emitted by `report` (one-liner + wizard paths); `main.py` forwards to the admin broadcaster as `content_changed`/`issues`. | [x] |
+| 42.3 | Tests: report emits `ISSUE_FILED` (unit); admin **Issues** browser e2e (`tests/e2e/test_admin_issues.py`) for default-hide, sort, and out-of-band live update; shared admin e2e fixture/login helper moved to `tests/e2e/conftest.py` with content-YAML isolation. | [x] |
+
 ---
 
 # Lorecraft — Roadmap

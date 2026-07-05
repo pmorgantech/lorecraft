@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.0] - 2026-07-05
+
+### Added
+
+- **Sprint 42 — Issues tab: default filter, configurable status hiding, and selectable sort.** The admin Issues tab now **hides resolved and deferred issues by default** so the list shows actionable work, with a **"Hide status" checkbox group** to toggle any status (open · in-progress · resolved · deferred · duplicate) in/out of view. Added a **priority filter** dropdown and a **sort selector** — *Priority* (priority first, newest-updated tiebreak), *Recently updated*, or *Recently created* (date first, priority tiebreak) — so you can prefer priority or recency. Filtering and sorting run client-side over the full list (the tracker is low-volume), a header count shows `N shown · M hidden`, and the hide/sort choices persist across reloads in `localStorage`. The free-text status/priority filter inputs were replaced by these controls.
+
+### Fixed
+
+- **In-game player reports now live-refresh the admin Issues tab.** Filing a report via the `report` command created the issue through the content path (not the admin API), so it never triggered the `content_changed` push and an open Issues tab stayed stale until reload. The command now emits a new `GameEvent.ISSUE_FILED`, which `main.py` forwards to the admin broadcaster as the same `content_changed`/`issues` message the admin routers already send — so player-filed reports (and any bus-emitting issue source) appear live, matching admin-initiated changes. First admin **Issues** browser e2e coverage added (`tests/e2e/test_admin_issues.py`) for the default filter, sort, and live-update paths; the admin live-server fixture + login helper were lifted into `tests/e2e/conftest.py` and now isolate the content YAML mirrors to a temp dir.
+
 ## [0.37.2] - 2026-07-05
 
 ### Fixed

@@ -19,6 +19,7 @@ from typing import cast
 
 from lorecraft.content.issues import create_issue
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 from lorecraft.types import JsonObject
 
@@ -73,6 +74,7 @@ def _file_report(
         created_by=ctx.player.username,
         tags=["player-report", category],
     )
+    ctx.emit(GameEvent.ISSUE_FILED, issue_id=issue.id)
     ctx.say(f"Thanks — logged as {issue.id} ({category}). The team will take a look.")
 
 
@@ -89,6 +91,7 @@ def _log_one_liner(ctx: GameContext, text: str) -> None:
         created_by=ctx.player.username,
         tags=["player-report"],
     )
+    ctx.emit(GameEvent.ISSUE_FILED, issue_id=issue.id)
     note = " (truncated to 1000 characters)" if truncated else ""
     ctx.say(f"Thanks — logged as {issue.id}{note}. The team will take a look.")
 

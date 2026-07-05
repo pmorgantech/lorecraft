@@ -110,6 +110,49 @@ def test_report_creates_an_issue_visible_to_the_admin_tracker() -> None:
     assert "logged" in ctx.messages[0].lower()
 
 
+def test_report_emits_issue_filed_event() -> None:
+    # The admin console live-refreshes its Issues tab off this event (main.py
+    # forwards ISSUE_FILED to the admin broadcaster as a content_changed push).
+    from lorecraft.engine.game.events import Event, GameEvent
+
+    cmd_engine, ctx, session = _build_engine_and_ctx()
+    seen: list[Event] = []
+    ctx.bus.on(GameEvent.ISSUE_FILED, lambda event, _ctx: seen.append(event))
+
+    cmd_engine.handle_command("report the torch flickers oddly", ctx)
+
+    issue = session.exec(select(Issue)).first()
+    assert issue is not None
+    assert len(seen) == 1
+    assert seen[0].payload.get("issue_id") == issue.id
+
+
+def test_report_wizard_completion_emits_issue_filed_event() -> None:
+    # The guided flow routes free text to the handler directly (the web layer,
+    # not the parser), so drive the handler rather than parsing each answer.
+    from lorecraft.commands.report import REPORT_WIZARD_FLAG
+    from lorecraft.engine.game.events import Event, GameEvent
+
+    _, ctx, session = _build_engine_and_ctx()
+    registry = CommandRegistry()
+    register_all_commands(registry)
+    report = registry.get("report").handler
+
+    seen: list[Event] = []
+    ctx.bus.on(GameEvent.ISSUE_FILED, lambda event, _ctx: seen.append(event))
+
+    report(None, ctx)  # start wizard
+    report("bug", ctx)  # category
+    report("Torch bug", ctx)  # title
+    report("skip", ctx)  # detail -> files the report
+
+    assert ctx.player.flags.get(REPORT_WIZARD_FLAG) is None
+    assert len(seen) == 1
+    issue = session.exec(select(Issue)).first()
+    assert issue is not None
+    assert seen[0].payload.get("issue_id") == issue.id
+
+
 def test_report_truncates_overly_long_text() -> None:
     cmd_engine, ctx, session = _build_engine_and_ctx()
     long_text = "x" * (_MAX_REPORT_LENGTH + 500)

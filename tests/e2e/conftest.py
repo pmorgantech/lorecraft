@@ -26,6 +26,10 @@ sync_playwright = playwright_sync_api.sync_playwright
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _STARTUP_TIMEOUT_SECONDS = 10.0
 
+# Seeded admin used by the admin-console e2e tests.
+ADMIN_USER = "e2e-admin"
+ADMIN_PASS = "e2e-admin-pass-1234"
+
 
 class _LiveServer:
     """Runs the real FastAPI app under uvicorn on a background thread."""
@@ -70,6 +74,43 @@ def live_server(tmp_path: Path) -> Iterator[str]:
         yield server.base_url
     finally:
         server.stop()
+
+
+@pytest.fixture
+def admin_server(tmp_path: Path) -> Iterator[str]:
+    """Boot the real app (fresh DB) with a seeded superadmin for admin-console tests."""
+    settings = Settings(
+        database_path=str(tmp_path / "e2e-game.db"),
+        audit_database_path=str(tmp_path / "e2e-audit.db"),
+        world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
+        # Point content mirrors at empty tmp files so the tracker starts clean
+        # (don't bootstrap the repo's real docs/issues.yaml into the test DB).
+        issues_yaml_path=str(tmp_path / "issues.yaml"),
+        news_yaml_path=str(tmp_path / "news.yaml"),
+        help_yaml_path=str(tmp_path / "help_topics.yaml"),
+        seed_player_id="",
+        seed_player_username="",
+        admin_jwt_secret="e2e-admin-session-secret-key-32chars!",
+        admin_seed_username=ADMIN_USER,
+        admin_seed_password=ADMIN_PASS,
+        admin_seed_role="superadmin",
+    )
+    server = _LiveServer(create_app(settings=settings))
+    server.start()
+    try:
+        yield server.base_url
+    finally:
+        server.stop()
+
+
+def admin_login(page: Any, base_url: str) -> None:
+    """Drive the admin login form until the admin shell is visible."""
+    page.goto(f"{base_url}/admin")
+    page.wait_for_selector("#login-screen", state="visible")
+    page.fill("#l-username", ADMIN_USER)
+    page.fill("#l-password", ADMIN_PASS)
+    page.click("#l-submit")
+    page.wait_for_selector("#admin-screen", state="visible")
 
 
 @pytest.fixture(scope="session")
