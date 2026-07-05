@@ -339,6 +339,10 @@ layer**, persisted on the account and read by the render layer.
   A general tool: puzzle timers (a plate opens a gate for 30s), weather hazards, lingering zones,
   farming growth. Worth naming as a primitive — lots of content wants it. Builds on
   `SchedulerService` + `TIME_ADVANCED`.
+  **→ Promoted to roadmap [Sprint 39](roadmap.md#sprint-39--timed-room-effects-tier-1-engine-primitive-design-first)**
+  (2026-07-05, design-first): decided to **reuse the Sprint 19 `ActiveEffect`/`EffectService`
+  timed-effect primitive** (already generic over `entity_type` — a room is just
+  `entity_type="room"`) rather than a new `RoomEffect` model or a component carrier.
 
 #### Systems & balance design notes
 

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.7] - 2026-07-05
+
+### Added
+
+- **Roadmap Sprint 39 — timed room effects (Tier 1 engine primitive, design-first).** Promoted the wishlist "Timed room effects / auras" idea to a scoped roadmap sprint. The design decision is recorded up front: **reuse the Sprint 19 `ActiveEffect`/`EffectService` timed-effect primitive** (already generic over `entity_type`, so a room is just `entity_type="room"`) rather than adding a parallel `RoomEffect` model (which would duplicate the scheduler expiry sweep) or a component carrier (wrong shape). The spec calls out that "room effect" bundles two mechanics — room-state effects (a plate opens a gate for 30s) vs. occupant auras (drain fatigue / slow travel) — and gates all implementation (39.2–39.4) behind a reviewed design task (39.1) written into `engine_core.md`. Roadmap "what's left", the numbering guard (used 1–39; next new = 40), and the wishlist entry updated to cross-reference.
+
 ## [0.36.6] - 2026-07-05
 
 ### Changed

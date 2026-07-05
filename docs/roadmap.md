@@ -23,8 +23,9 @@ moved to the wishlist.
 system, not the centerpiece), and the multiplayer trade/transit **test pass** (coverage-hardening
 of already-complete subsystems).
 
-**What's actually left** is one thing: a measure-first **performance & scaling band**
-(Sprints 35–38). That's the whole active roadmap below.
+**What's actually left:** a measure-first **performance & scaling band** (Sprints 35–38), and one
+new **Tier 1 engine primitive** — timed room effects (Sprint 39, design-first). That's the whole
+active roadmap below.
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
@@ -85,6 +86,30 @@ The band's baseline (35.1) is already done and it surfaced a **concrete, evidenc
 
 ---
 
+## Sprint 39 — Timed room effects (Tier 1 engine primitive, design-first)
+
+**Goal:** A general, content-agnostic primitive for applying a **time-limited effect to a room** — puzzle timers (a plate opens a gate for 30s), passive occupant auras (slow travel, drain fatigue), weather hazards, lingering zones, farming growth. From [`wishlist.md`](wishlist.md) → *Timed room effects / auras*.
+
+**Design decided (2026-07-05): reuse the Sprint 19 timed-effect primitive — do _not_ add a new model or a component carrier.** `ActiveEffect` (`engine/models/meters.py`) is already generic over `entity_type`/`entity_id`; `EffectService.apply()` / `active_for(session, entity_type, entity_id)` already exist; the scheduler-driven expiry sweep (`_on_time_advanced` → `EFFECT_EXPIRED`) already runs. **A room effect is just `entity_type="room"`, `entity_id=<room_id>`.**
+
+- A parallel `RoomEffect` model + scheduler runner would **duplicate the expiry-sweep machinery** — this engine deliberately keeps one timing mechanism (cf. transit reusing `SchedulerService`, no second timer).
+- A component carrier (like `ItemInstance` components) is the **wrong shape** — components are per-instance *item* state, not timed room state.
+
+**"Room effect" bundles two mechanics with shared storage but different read/hook surfaces** — this is exactly what 39.1 must pin down before any code:
+1. **Room-state effects** (gate open, exit sealed) — mutate the *room/exit*; read by movement.
+2. **Occupant auras** (fatigue drain, slow travel) — affect *players in* the room; applied on-enter / resolved per action or per tick.
+
+| # | Task | Status |
+|---|------|--------|
+| 39.1 | **Design spec first.** A room-effect hook interface over the Sprint 19 `EffectDef`/`EffectService`: `on_apply(room)` / `on_expire(room)` for room-state, plus how occupant auras are read (movement gate + a room-scoped `ModifierRegistry` source vs. a per-tick occupant sweep). Settle the two-mechanics split, the trigger surface (a Sprint 30 mechanism/plate calling `apply(...)` with a TTL), and interaction with existing mechanism items. Write it up as a new Tier 1 primitive section in [`engine_core.md`](engine_core.md). **No implementation until this is reviewed.** | [ ] |
+| 39.2 | Room-effect application + expiry on the existing primitive: register room-scoped `EffectDef`s; `apply(entity_type="room", …, expires_at_epoch=now+ttl)`; `on_expire` reverses room-state (closes the gate). Reuses the existing sweep — no new scheduler, no new model. | [ ] |
+| 39.3 | Read/gate points: movement/exit checks and modifier resolution consult `active_for("room", room_id)`; a plate/mechanism (Sprint 30) applying a timed "gate open" room effect is the first content example. | [ ] |
+| 39.4 | Tests: expiry sweep closes a gate opened for N ticks; an occupant aura modifies a resolved value; audit-regression stays stable; content-lint validates room `EffectDef` state. | [ ] |
+
+> **Sequencing:** independent of the performance band — 39.1 (design) can be picked up now; 39.2+ wait on that spec's review. If both progress at once, keep them on separate branches/worktrees to avoid roadmap churn.
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -105,10 +130,10 @@ The band's baseline (35.1) is already done and it surfaced a **concrete, evidenc
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5) and 35–38 (this performance band).
-- **Reserved but never used:** 39–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), and 39 (timed room effects).
+- **Reserved but never used:** 40–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 39.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 40.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
