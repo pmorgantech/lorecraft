@@ -1,7 +1,7 @@
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables, database_url, sqlite_url
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession

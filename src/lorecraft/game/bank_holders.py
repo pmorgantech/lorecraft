@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.game.holders import HolderTypeDef, get_registry
+from lorecraft.engine.game.holders import HolderTypeDef, get_registry
 from lorecraft.models.bank import BankAccount
 
 

@@ -13,8 +13,8 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from lorecraft.game import modifiers as modifiers_module
-from lorecraft.game.modifiers import Modifier
+from lorecraft.engine.game import modifiers as modifiers_module
+from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.models.meters import ActiveEffect
 
 

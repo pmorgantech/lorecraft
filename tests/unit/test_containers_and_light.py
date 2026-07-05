@@ -11,14 +11,14 @@ from sqlmodel import Session, create_engine
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
-from lorecraft.game.holders import Location
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.items import ItemInstance
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.models.world import Room
@@ -377,7 +377,7 @@ class TestLightFuelDrain:
         session.commit()
 
         service = LightFuelService(session.get_bind())
-        from lorecraft.game.events import Event, GameEvent
+        from lorecraft.engine.game.events import Event, GameEvent
 
         service._on_time_advanced(Event(GameEvent.TIME_ADVANCED, {}), None)
 
@@ -401,7 +401,7 @@ class TestLightFuelDrain:
         session.commit()
 
         service = LightFuelService(session.get_bind())
-        from lorecraft.game.events import Event, GameEvent
+        from lorecraft.engine.game.events import Event, GameEvent
 
         service._on_time_advanced(Event(GameEvent.TIME_ADVANCED, {}), None)
 

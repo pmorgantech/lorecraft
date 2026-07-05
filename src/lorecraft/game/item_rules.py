@@ -10,11 +10,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lorecraft.game.rules import RuleEngine, RuleFn, RuleResult
+from lorecraft.engine.game.rules import RuleEngine, RuleFn, RuleResult
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 
 def _bound_item_veto(ctx: object, payload: JsonObject) -> RuleResult:

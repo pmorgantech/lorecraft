@@ -13,7 +13,7 @@ from lorecraft.commands.report import register_report_commands
 from lorecraft.commands.social import register_social_commands
 from lorecraft.commands.trade import register_trade_commands
 from lorecraft.commands.transit import register_transit_commands
-from lorecraft.game.registry import CommandRegistry
+from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.transit import TransitService
 

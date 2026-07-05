@@ -25,6 +25,9 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 5 | Migrate remaining Tier 2 self-registrations to manifests; delete side-effect imports from `main.py` | 3 | ✅ |
 | 6 | `ServiceContainer` builds conditionally from enabled features (economy/bank/fatigue gated; container goes fully feature-driven in step 8) | 3 | ✅ |
 | 7 | Create `engine/` package; move Tier 1 modules; update imports (batched) | 1 | 🚧 |
+| 7a | ↳ `engine/game/` — 18 Tier 1 game modules moved; imports rewritten (0.15.0) | 1 | ✅ |
+| 7b | ↳ `engine/services/` + `engine/repos/` — Tier 1 services/repos | 1 | ⬜ |
+| 7c | ↳ `engine/clock/`, `engine/models/`, `engine/npc/` — remaining Tier 1 | 1 | ⬜ |
 | 8 | Move Tier 2 modules into `features/<x>/` packages | 2 | ⬜ |
 | 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |

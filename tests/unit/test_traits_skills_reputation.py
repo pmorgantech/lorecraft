@@ -14,14 +14,14 @@ import lorecraft.game.traits as traits_module
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
-from lorecraft.game.modifiers import resolve_for
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.modifiers import resolve_for
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.models.world import Room
 from lorecraft.repos.item_repo import ItemRepo
@@ -261,7 +261,7 @@ class TestReputation:
     def test_reputation_at_least_condition_blocks_below_threshold(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
-        from lorecraft.game.command_conditions import get_registry
+        from lorecraft.engine.game.command_conditions import get_registry
 
         _cmd_engine, ctx, _session = built
         result = get_registry().evaluate("reputation_at_least:npc:mira:10", ctx)
@@ -271,7 +271,7 @@ class TestReputation:
     def test_reputation_at_least_condition_passes_above_threshold(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
-        from lorecraft.game.command_conditions import get_registry
+        from lorecraft.engine.game.command_conditions import get_registry
 
         _cmd_engine, ctx, session = built
         ReputationService().adjust(session, ctx.player.id, "npc", "mira", 20)

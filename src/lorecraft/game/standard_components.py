@@ -8,7 +8,7 @@ and docs/roadmap.md Sprint 30.2 for "mechanism" (levers/dials puzzles).
 
 from __future__ import annotations
 
-from lorecraft.game.components import ComponentDef, get_registry
+from lorecraft.engine.game.components import ComponentDef, get_registry
 from lorecraft.models.world import Item
 from lorecraft.types import JsonValue
 

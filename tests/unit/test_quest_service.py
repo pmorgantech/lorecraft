@@ -8,9 +8,9 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.world import Room
@@ -20,7 +20,7 @@ from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService
 from lorecraft.repos.npc_repo import NpcRepo

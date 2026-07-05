@@ -6,12 +6,12 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
-from lorecraft.game.diagnostics import (
+from lorecraft.engine.game.diagnostics import (
     ParseDiagnostics,
     ParseStep,
     diagnose_command,
 )
-from lorecraft.game.grammar import (
+from lorecraft.engine.game.grammar import (
     DEFERRED_DISAMBIGUATION_ROLE,
     DIRECTION_ALIASES,
     DIRECTIONS,
@@ -32,7 +32,7 @@ from lorecraft.game.grammar import (
 from lorecraft.types import JsonValue
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 log = logging.getLogger(__name__)
 

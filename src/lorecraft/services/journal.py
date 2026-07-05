@@ -9,7 +9,7 @@ authoring mechanism to learn.
 
 from __future__ import annotations
 
-from lorecraft.game.context import GameContext
+from lorecraft.engine.game.context import GameContext
 
 LORE_FLAG_PREFIX = "lore:"
 

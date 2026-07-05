@@ -1,4 +1,4 @@
-from lorecraft.game.parser import ParsedCommand, parse
+from lorecraft.engine.game.parser import ParsedCommand, parse
 
 
 def test_direction_alias_becomes_go_command() -> None:

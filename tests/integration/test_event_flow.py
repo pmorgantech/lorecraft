@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 
 
 # =============================================================================

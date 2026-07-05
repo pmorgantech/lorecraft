@@ -17,9 +17,9 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.models.world import Room

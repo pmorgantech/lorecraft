@@ -10,11 +10,11 @@ from sqlmodel import Session, create_engine
 from lorecraft.db import create_tables
 from lorecraft.errors import ValidationError
 from lorecraft.game import traits as traits_module
-from lorecraft.game.effects import EffectDef
-from lorecraft.game.effects import get_registry as get_effect_registry
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.modifiers import Modifier, resolve_for
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.effects import EffectDef
+from lorecraft.engine.game.effects import get_registry as get_effect_registry
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.modifiers import Modifier, resolve_for
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.game.traits import TraitDef
 from lorecraft.game.traits import get_registry as get_trait_registry
 from lorecraft.models.meters import ActiveEffect
@@ -302,7 +302,7 @@ def test_active_effect_trait_source_and_modifier_source_are_registered_by_defaul
 ):
     """Confirms game/traits.py and game/effects.py's module-load registrations
     happened (both files must have been imported at least once)."""
-    from lorecraft.game.modifiers import get_registry as get_modifier_registry
+    from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 
     assert len(traits_module.get_registry()._sources) >= 1  # type: ignore[attr-defined]
     assert len(get_modifier_registry()._sources) >= 2  # type: ignore[attr-defined]

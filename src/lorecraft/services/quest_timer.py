@@ -24,7 +24,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.player import Player
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.repos.quest_repo import QuestRepo

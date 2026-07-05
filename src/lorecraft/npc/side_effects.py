@@ -11,13 +11,13 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from lorecraft.game.events import GameEvent
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.quest import PlayerQuestProgress
 from lorecraft.types import JsonObject, JsonValue
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 SideEffectHandler = Callable[[JsonValue, "GameContext"], None]
 

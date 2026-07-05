@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from sqlmodel import Session, select
 
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.world import Exit, Item, Room
 from lorecraft.services.item_location import ItemLocationService
 

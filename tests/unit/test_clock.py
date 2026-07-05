@@ -5,7 +5,7 @@ from lorecraft.clock.world_clock import (
     advance_clock,
 )
 from lorecraft.db import create_tables
-from lorecraft.game.events import EventBus, GameEvent
+from lorecraft.engine.game.events import EventBus, GameEvent
 from lorecraft.models.world import WorldClock
 from sqlmodel import Session, create_engine
 

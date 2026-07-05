@@ -1,7 +1,7 @@
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item
 from lorecraft.repos.item_repo import ItemRepo

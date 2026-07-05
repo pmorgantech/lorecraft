@@ -6,7 +6,7 @@ from collections.abc import Awaitable
 from typing import TYPE_CHECKING, Protocol, TypeAlias, TypedDict
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 
 JsonScalar: TypeAlias = str | int | float | bool | None

@@ -13,11 +13,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 QuestConditionPredicate = Callable[[JsonObject, "GameContext"], bool]
 

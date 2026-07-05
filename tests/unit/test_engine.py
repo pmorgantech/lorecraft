@@ -3,14 +3,14 @@ from types import SimpleNamespace
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
-from lorecraft.game.context import GameContext
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
-from lorecraft.game.holders import Location
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine, RuleResult
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine, RuleResult
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item, Room

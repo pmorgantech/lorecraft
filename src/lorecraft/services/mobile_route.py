@@ -16,7 +16,7 @@ from typing import Callable
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.mobile import MobileRouteState
 from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.services.scheduler import SchedulerService

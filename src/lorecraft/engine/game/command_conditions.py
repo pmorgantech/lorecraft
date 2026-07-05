@@ -11,10 +11,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 
 @dataclass(frozen=True)

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from lorecraft.game.checks import CHECK_CEIL, CHECK_FLOOR, skill_check
-from lorecraft.game.modifiers import Modifier
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.checks import CHECK_CEIL, CHECK_FLOOR, skill_check
+from lorecraft.engine.game.modifiers import Modifier
+from lorecraft.engine.game.rng import GameRng
 
 
 def test_routine_check_uses_effective_skill_as_target() -> None:

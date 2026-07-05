@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 ConditionPredicate = Callable[[JsonObject, "GameContext"], bool]
 

@@ -10,8 +10,8 @@ without a parallel system to keep in sync.
 from __future__ import annotations
 
 from lorecraft.content.issues import create_issue
-from lorecraft.game.context import GameContext
-from lorecraft.game.registry import CommandRegistry, CommandScope
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 
 _MAX_REPORT_LENGTH = 1000
 _MAX_TITLE_LENGTH = 80

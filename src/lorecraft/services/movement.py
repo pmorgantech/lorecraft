@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from lorecraft.game import terrain as terrain_module
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
-from lorecraft.game.grammar import OPPOSITE_DIRECTIONS
-from lorecraft.game.holders import Location
-from lorecraft.game.modifiers import resolve_for
-from lorecraft.game.parser import DIRECTION_ALIASES
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.grammar import OPPOSITE_DIRECTIONS
+from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.modifiers import resolve_for
+from lorecraft.engine.game.parser import DIRECTION_ALIASES
 from lorecraft.services.skills import SkillService
 
 _skills = SkillService()

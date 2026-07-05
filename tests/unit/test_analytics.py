@@ -13,7 +13,7 @@ from lorecraft.analytics import (
     top_commands,
 )
 from lorecraft.db import create_tables
-from lorecraft.game.events import GameEvent
+from lorecraft.engine.game.events import GameEvent
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.session import PlayerSession
 from lorecraft.types import JsonObject

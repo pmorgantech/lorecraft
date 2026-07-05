@@ -11,8 +11,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from lorecraft.game.modifiers import Modifier, resolve
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.modifiers import Modifier, resolve
+from lorecraft.engine.game.rng import GameRng
 
 # There is ALWAYS at least a 5% chance either way — no impossible checks, no
 # sure things. Engine constants; a world wanting different bounds overrides

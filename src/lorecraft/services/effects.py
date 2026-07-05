@@ -13,9 +13,9 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from lorecraft.errors import ValidationError
-from lorecraft.game import effects as effects_module
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game import effects as effects_module
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.meters import ActiveEffect
 from lorecraft.services.scheduler import SchedulerEventContext
 from lorecraft.types import JsonObject

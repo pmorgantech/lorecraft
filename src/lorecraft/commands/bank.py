@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.registry import CommandCondition, CommandRegistry
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
 from lorecraft.services.bank import BankService
 
 

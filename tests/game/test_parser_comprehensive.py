@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lorecraft.game.parser import diagnose_command, parse_command
+from lorecraft.engine.game.parser import diagnose_command, parse_command
 
 
 class TestBasicAndRoles:

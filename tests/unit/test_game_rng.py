@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.rng import GameRng
 
 
 def test_same_seed_produces_identical_sequences() -> None:

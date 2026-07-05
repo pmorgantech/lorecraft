@@ -10,11 +10,11 @@ from __future__ import annotations
 from lorecraft.clock.weather import COLD_WEATHERS, apply_daily_weather
 from lorecraft.clock.world_clock import SECONDS_PER_HOUR, apply_clock_fields
 from lorecraft.game import encumbrance
-from lorecraft.game.checks import skill_check
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.checks import skill_check
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.game.fatigue_source import FATIGUE_METER_KEY
-from lorecraft.game.modifiers import get_registry as get_modifier_registry
+from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.game.warmth import resolve_warmth
 from lorecraft.services.skills import SkillService
 
@@ -55,7 +55,7 @@ class FatigueService:
         bus.on(GameEvent.PLAYER_MOVED, self._on_player_moved)
 
     def _on_player_moved(self, event: Event, ctx: object) -> None:
-        from lorecraft.game.context import GameContext as _GC
+        from lorecraft.engine.game.context import GameContext as _GC
 
         if isinstance(ctx, _GC):
             self.drain_for_travel(ctx)

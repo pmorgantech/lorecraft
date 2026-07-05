@@ -11,14 +11,14 @@ from sqlmodel import Session, create_engine
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.holders import Location
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.repos.economy_repo import EconomyRepo
 from lorecraft.models.world import Item, NPC, Room

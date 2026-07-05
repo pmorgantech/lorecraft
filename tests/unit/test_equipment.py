@@ -11,22 +11,22 @@ from sqlmodel import Session, create_engine
 from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
+from lorecraft.engine.game.context import GameContext
 from lorecraft.game.encumbrance import (
     carry_base,
     encumbrance_band,
     resolve_carry_capacity,
     total_carried_weight,
 )
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.holders import Location
 from lorecraft.game.item_rules import register_item_rules
-from lorecraft.game.modifiers import resolve_for
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.modifiers import resolve_for
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.models.world import Room
 from lorecraft.repos.item_repo import ItemRepo

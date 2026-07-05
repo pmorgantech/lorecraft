@@ -9,10 +9,10 @@ from typing import TYPE_CHECKING
 from sqlmodel import Session
 
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.events import Event, EventBus, GameEvent, HandlerResult
-from lorecraft.game.parser import ParsedCommand
-from lorecraft.game.rng import GameRng
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
+from lorecraft.engine.game.parser import ParsedCommand
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
 from lorecraft.repos.audit_repo import AuditRepo
@@ -26,7 +26,7 @@ from lorecraft.repos.room_repo import RoomRepo
 from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.types import JsonObject, JsonValue
 
-# lorecraft.services imports lorecraft.game.context (services/audit.py et al.), so a
+# lorecraft.services imports lorecraft.engine.game.context (services/audit.py et al.), so a
 # module-level import of lorecraft.services.item_location here would be circular via
 # services/__init__.py. TYPE_CHECKING-only import for the annotation (deferred by
 # `from __future__ import annotations`); build_game_context() imports it for real.

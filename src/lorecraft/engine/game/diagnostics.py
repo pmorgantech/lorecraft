@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, cast
 from lorecraft.types import JsonValue
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
-    from lorecraft.game.parser import ParseResult
+    from lorecraft.engine.game.context import GameContext
+    from lorecraft.engine.game.parser import ParseResult
 
 
 @dataclass
@@ -39,8 +39,8 @@ def diagnose_command(
     verbose: bool = True,
 ) -> ParseDiagnostics:
     """Parse a command and collect diagnostic information."""
-    from lorecraft.game.grammar import normalize, tokenize
-    from lorecraft.game.parser import parse_command
+    from lorecraft.engine.game.grammar import normalize, tokenize
+    from lorecraft.engine.game.parser import parse_command
 
     diag = ParseDiagnostics(raw=raw)
     diag.normalized = normalize(raw)

@@ -10,9 +10,9 @@ from lorecraft.npc.npc_memory_conditions import register as _register_npc_memory
 from lorecraft.db import create_tables
 from lorecraft.game import quest_conditions
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import EventBus
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.player import Player
 from lorecraft.models.world import NPC, Room
@@ -28,7 +28,7 @@ from lorecraft.repos.stack_repo import StackRepo
 from lorecraft.services.effects import EffectService
 from lorecraft.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.services.meters import MeterService
 
 # NPC-memory conditions/side effect used to register as an import side effect;

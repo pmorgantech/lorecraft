@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from sqlmodel import Session
 
 from lorecraft.errors import ConflictError, NotFoundError, ValidationError
-from lorecraft.game.holders import (
+from lorecraft.engine.game.holders import (
     HolderRegistry,
     Location,
     get_registry as get_holder_registry,

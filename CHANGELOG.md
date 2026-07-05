@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.15.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — `engine/` package created; Tier 1 `game/` modules moved (step 7, batch 1, branch `tier_split`).** New `src/lorecraft/engine/` package now holds the pure-Tier-1 engine primitives. The 18 Tier 1 modules from `game/` — `registry`, `context`, `events`, `engine`, `parser`, `grammar`, `command_patterns`, `command_conditions`, `holders`, `modifiers`, `components`, `rng`, `checks`, `effects`, `meters`, `transaction`, `diagnostics`, `rules` — moved to `engine/game/` (history-preserving `git mv`), and every import across `src/` and `tests/` was rewritten to `lorecraft.engine.game.*`. No behaviour change and no code edits beyond import paths — full suite 794 passed, lint + typecheck clean. Tier 2 `game/` modules (traits, equipment, fatigue, economy/bank holders, etc.) stay put; they move into `features/` in step 8. `context.py`'s reference to `game.connection_manager` is unchanged (that module is web plumbing and moves to `webui/` in step 10).
+
 ## [0.14.10] - 2026-07-04
 
 ### Changed

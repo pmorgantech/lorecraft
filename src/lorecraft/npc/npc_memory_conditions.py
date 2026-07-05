@@ -25,7 +25,7 @@ from lorecraft.repos.npc_memory_repo import NpcMemoryRepo
 from lorecraft.types import JsonObject, JsonScalar, JsonValue
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
 
 
 def _npc_remembers_satisfied(data: JsonValue, ctx: "GameContext") -> bool:

@@ -14,8 +14,8 @@ import uuid
 from sqlmodel import Session, select
 
 from lorecraft.errors import ConflictError, NotFoundError, ValidationError
-from lorecraft.game.components import get_registry as get_component_registry
-from lorecraft.game.holders import (
+from lorecraft.engine.game.components import get_registry as get_component_registry
+from lorecraft.engine.game.holders import (
     HolderRegistry,
     Location,
     get_registry as get_holder_registry,

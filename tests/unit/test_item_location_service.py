@@ -14,10 +14,10 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.errors import ConflictError, NotFoundError, ValidationError
-from lorecraft.game.components import ComponentDef
-from lorecraft.game.components import get_registry as get_component_registry
-from lorecraft.game.holders import Location
-from lorecraft.game.holders import get_registry as get_holder_registry
+from lorecraft.engine.game.components import ComponentDef
+from lorecraft.engine.game.components import get_registry as get_component_registry
+from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.holders import get_registry as get_holder_registry
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item, Room
 from lorecraft.repos.item_repo import ItemRepo

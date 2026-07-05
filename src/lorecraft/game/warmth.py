@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.game.modifiers import resolve_for
+from lorecraft.engine.game.modifiers import resolve_for
 
 WARMTH_KEY = "warmth"
 BASE_WARMTH = 0.0

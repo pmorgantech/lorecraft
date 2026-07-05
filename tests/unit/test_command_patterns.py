@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.game.command_patterns import (
+from lorecraft.engine.game.command_patterns import (
     CommandPattern,
     container_roles,
     gesture_roles,
@@ -12,7 +12,7 @@ from lorecraft.game.command_patterns import (
     speech_roles,
     transfer_roles,
 )
-from lorecraft.game.parser import ParsedCommand
+from lorecraft.engine.game.parser import ParsedCommand
 
 
 def test_pattern_for_known_verbs() -> None:

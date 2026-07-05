@@ -11,7 +11,7 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from lorecraft.errors import NotFoundError
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.player import PlayerStats
 
 MAX_LEVEL = 100

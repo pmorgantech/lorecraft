@@ -15,16 +15,16 @@ from __future__ import annotations
 import time
 
 from lorecraft.errors import ConflictError, NotFoundError
-from lorecraft.game.command_patterns import (
+from lorecraft.engine.game.command_patterns import (
     ROLE_OBJECT,
     ROLE_QUANTITY,
     ROLE_RECIPIENT,
     role_int,
     role_str,
 )
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.repos.trade_repo import TradeRepo
 from lorecraft.services.ledger import ExchangeLeg, LedgerService
 

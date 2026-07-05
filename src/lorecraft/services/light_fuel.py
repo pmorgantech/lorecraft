@@ -12,7 +12,7 @@ from __future__ import annotations
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.items import ItemInstance
 from lorecraft.services.item_components import get_component_state, set_component_state
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import TypeVar
 
 from lorecraft.errors import ConflictError, ValidationError
-from lorecraft.game.command_patterns import (
+from lorecraft.engine.game.command_patterns import (
     ROLE_DESTINATION,
     ROLE_INSTRUMENT,
     ROLE_RECIPIENT,
@@ -16,16 +16,16 @@ from lorecraft.game.command_patterns import (
     ROLE_TARGET,
     role_str,
 )
-from lorecraft.game.context import GameContext
+from lorecraft.engine.game.context import GameContext
 from lorecraft.game.encumbrance import (
     encumbrance_band,
     resolve_carry_capacity,
     total_carried_weight,
 )
 from lorecraft.game.equipment_slots import FINGER_SLOTS, slot_label
-from lorecraft.game.events import GameEvent
+from lorecraft.engine.game.events import GameEvent
 from lorecraft.game.exploration import is_exit_discovered
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.game import terrain as terrain_module
 from lorecraft.models.items import ItemInstance, ItemStack
 from lorecraft.models.world import Item

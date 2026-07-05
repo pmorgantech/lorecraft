@@ -8,8 +8,8 @@ import uuid
 from sqlmodel import Session, select
 
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.changeset import (
     Changeset,
     ChangesetItem,

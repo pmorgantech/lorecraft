@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import time
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
 from lorecraft.models.audit import AuditEvent
 from lorecraft.repos.audit_repo import AuditRepo
 from lorecraft.types import JsonObject

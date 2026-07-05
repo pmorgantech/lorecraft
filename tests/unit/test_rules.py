@@ -1,4 +1,4 @@
-from lorecraft.game.rules import RuleEngine, RuleResult
+from lorecraft.engine.game.rules import RuleEngine, RuleResult
 
 
 def test_rule_engine_allows_when_no_rules_registered() -> None:

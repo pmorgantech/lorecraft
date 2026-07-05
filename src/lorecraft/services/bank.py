@@ -9,9 +9,9 @@ LedgerService.execute_exchange leg (Sprint 20).
 
 from __future__ import annotations
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.repos.bank_repo import BankRepo
 from lorecraft.services.ledger import ExchangeLeg, LedgerService
 

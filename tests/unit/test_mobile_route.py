@@ -5,8 +5,8 @@ from __future__ import annotations
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.world import WorldClock
 from lorecraft.services.mobile_route import (

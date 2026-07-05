@@ -5,7 +5,7 @@ command registration skips a gated feature whose service is absent."""
 from __future__ import annotations
 
 from lorecraft.commands import register_all_commands
-from lorecraft.game.registry import CommandRegistry
+from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.services.container import ServiceContainer
 
 

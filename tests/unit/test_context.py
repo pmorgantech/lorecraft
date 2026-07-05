@@ -2,10 +2,10 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import GameContext, build_game_context
-from lorecraft.game.events import EventBus, GameEvent
-from lorecraft.game.rng import GameRng
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import GameContext, build_game_context
+from lorecraft.engine.game.events import EventBus, GameEvent
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room, WorldClock
 from lorecraft.repos.item_repo import ItemRepo

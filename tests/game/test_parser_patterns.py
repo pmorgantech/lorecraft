@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from lorecraft.game.command_patterns import (
+from lorecraft.engine.game.command_patterns import (
     CommandPattern,
     container_roles,
     gesture_roles,
@@ -14,7 +14,7 @@ from lorecraft.game.command_patterns import (
     speech_roles,
     transfer_roles,
 )
-from lorecraft.game.parser import parse, parse_command
+from lorecraft.engine.game.parser import parse, parse_command
 
 
 class TestMovementPattern:

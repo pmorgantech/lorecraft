@@ -13,7 +13,7 @@ from typing import Literal
 
 from sqlmodel import Session
 
-from lorecraft.game.modifiers import resolve_for
+from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.repos.item_repo import ItemRepo
 from lorecraft.repos.stack_repo import StackRepo
 

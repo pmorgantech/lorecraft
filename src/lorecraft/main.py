@@ -39,15 +39,15 @@ from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.broadcast import broadcast_command_effects
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.context import build_game_context
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.meters import MeterDef
-from lorecraft.game.meters import get_registry as get_meter_registry
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import build_game_context
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.meters import MeterDef
+from lorecraft.engine.game.meters import get_registry as get_meter_registry
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.game.item_rules import register_item_rules
 from lorecraft.models.admin import AdminUser
 from lorecraft.models.player import Player, PlayerStats

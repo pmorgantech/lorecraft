@@ -8,7 +8,7 @@ from typing import cast
 from sqlmodel import Session, select
 import yaml
 
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.bank import Bank
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.models.economy import RegionPricing, Shop, ShopStock

@@ -14,7 +14,7 @@ from __future__ import annotations
 from sqlalchemy import Engine
 from sqlmodel import Session
 
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.repos.economy_repo import EconomyRepo
 
 

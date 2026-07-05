@@ -14,8 +14,8 @@ from uuid import uuid4
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.scheduler import ScheduledJob
 from lorecraft.repos.scheduler_repo import SchedulerRepo
 from lorecraft.types import JsonObject

@@ -15,10 +15,10 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.errors import NotFoundError, ValidationError
-from lorecraft.game import meters as meters_module
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.modifiers import resolve_for
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game import meters as meters_module
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.modifiers import resolve_for
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.meters import Meter
 from lorecraft.repos.meter_repo import MeterRepo
 from lorecraft.services.scheduler import SchedulerEventContext

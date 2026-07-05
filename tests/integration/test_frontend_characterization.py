@@ -29,7 +29,7 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.db import create_tables
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.main import create_app
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player

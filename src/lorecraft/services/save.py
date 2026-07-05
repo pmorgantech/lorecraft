@@ -8,10 +8,10 @@ from uuid import uuid4
 
 from sqlmodel import Session
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.holders import Location
-from lorecraft.game.transaction import TransactionSource
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession

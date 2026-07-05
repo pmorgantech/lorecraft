@@ -21,10 +21,10 @@ region/demand/discount adjustments (a rough, shop-independent estimate).
 from __future__ import annotations
 
 from lorecraft.errors import ConflictError
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
-from lorecraft.game.grammar import score_match
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.grammar import score_match
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.economy import Shop, ShopStock
 from lorecraft.models.world import Item, NPC
 from lorecraft.repos.economy_repo import EconomyRepo

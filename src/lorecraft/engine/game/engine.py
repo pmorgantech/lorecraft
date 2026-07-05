@@ -6,11 +6,11 @@ import logging
 import time
 from dataclasses import dataclass
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.events import GameEvent
-from lorecraft.game.parser import ParsedCommand, parse_command, registry_verb
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rules import RuleEngine
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_verb
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.services.audit import AuditService
 from lorecraft.types import JsonObject, JsonValue
 

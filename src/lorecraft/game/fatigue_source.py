@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.game import meters as meters_module
-from lorecraft.game import modifiers as modifiers_module
+from lorecraft.engine.game import meters as meters_module
+from lorecraft.engine.game import modifiers as modifiers_module
 from lorecraft.game import skills as skills_module
-from lorecraft.game.meters import MeterDef
-from lorecraft.game.modifiers import Modifier
+from lorecraft.engine.game.meters import MeterDef
+from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.models.player import PlayerStats
 from lorecraft.repos.meter_repo import MeterRepo
 

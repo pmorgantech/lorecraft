@@ -6,8 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from lorecraft.game.command_conditions import ConditionResult, get_registry
-from lorecraft.game.context import GameContext
+from lorecraft.engine.game.command_conditions import ConditionResult, get_registry
+from lorecraft.engine.game.context import GameContext
 from lorecraft.types import CommandHandler
 
 

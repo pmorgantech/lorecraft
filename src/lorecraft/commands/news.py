@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import time
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.registry import CommandRegistry, CommandScope
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 
 
 def _format_news_lines(ctx: GameContext) -> list[str]:

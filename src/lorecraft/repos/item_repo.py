@@ -12,7 +12,7 @@ from typing import TypeVar
 
 from sqlmodel import Session
 
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.items import ItemStack
 from lorecraft.models.world import Item
 from lorecraft.repos.base import Repository

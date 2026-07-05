@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.world import NPC
 
 

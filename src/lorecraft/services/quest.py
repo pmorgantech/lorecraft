@@ -17,12 +17,12 @@ import time
 from typing import TYPE_CHECKING
 
 from lorecraft.game import quest_conditions
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
     from lorecraft.models.quest import PlayerQuestProgress, Quest
 
 
@@ -46,7 +46,7 @@ class QuestService:
 
     def check_progression(self, event: Event, ctx: object) -> None:
         del event
-        from lorecraft.game.context import GameContext as _GC
+        from lorecraft.engine.game.context import GameContext as _GC
 
         if not isinstance(ctx, _GC) or ctx.quest_repo is None:
             return

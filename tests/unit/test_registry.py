@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from lorecraft.game.registry import CommandCondition, CommandRegistry
+from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
 
 
 def test_registry_registers_primary_verb_and_aliases() -> None:

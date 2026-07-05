@@ -19,8 +19,8 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
 from lorecraft.game.broadcast import broadcast_command_effects
-from lorecraft.game.context import build_game_context
-from lorecraft.game.transaction import TransactionContext
+from lorecraft.engine.game.context import build_game_context
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.observability import bind_transaction_context
@@ -806,7 +806,7 @@ async def partial_map_full(
 
 
 def _cartography_level(db: DBSession, player_id: str) -> int:
-    from lorecraft.game.modifiers import resolve_for
+    from lorecraft.engine.game.modifiers import resolve_for
     from lorecraft.services.skills import SkillService
 
     skills = SkillService()

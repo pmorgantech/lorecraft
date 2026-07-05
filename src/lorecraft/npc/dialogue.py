@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
-    from lorecraft.game.context import GameContext
+    from lorecraft.engine.game.context import GameContext
     from lorecraft.repos.dialogue_repo import DialogueRepo
     from lorecraft.repos.npc_repo import NpcRepo
 

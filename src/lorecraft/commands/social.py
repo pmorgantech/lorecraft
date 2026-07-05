@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from lorecraft.game.context import GameContext
-from lorecraft.game.registry import CommandRegistry, CommandScope
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 from lorecraft.npc.dialogue import DialogueService, _NPC_KEY
 
 

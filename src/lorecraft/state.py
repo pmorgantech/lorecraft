@@ -10,11 +10,11 @@ from lorecraft.admin.broadcaster import AdminBroadcaster
 from lorecraft.clock.world_clock import WorldClockRunner
 from lorecraft.config import Settings
 from lorecraft.game.connection_manager import ConnectionManager
-from lorecraft.game.engine import CommandEngine
-from lorecraft.game.events import EventBus
-from lorecraft.game.registry import CommandRegistry
-from lorecraft.game.rng import GameRng
-from lorecraft.game.rules import RuleEngine
+from lorecraft.engine.game.engine import CommandEngine
+from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.effects import EffectService
 from lorecraft.services.meters import MeterService

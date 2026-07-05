@@ -7,7 +7,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.errors import ConflictError, NotFoundError, ValidationError
-from lorecraft.game.holders import Location
+from lorecraft.engine.game.holders import Location
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item, Room
 from lorecraft.repos.stack_repo import StackRepo

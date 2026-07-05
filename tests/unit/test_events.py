@@ -1,4 +1,4 @@
-from lorecraft.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
 
 
 def test_event_bus_runs_handlers_by_priority() -> None:

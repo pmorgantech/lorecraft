@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.game.modifiers import (
+from lorecraft.engine.game.modifiers import (
     Modifier,
     ModifierRegistry,
     resolve,
@@ -123,7 +123,7 @@ def test_modifier_registry_collects_from_all_registered_sources() -> None:
 
 
 def test_resolve_for_uses_the_global_registry() -> None:
-    from lorecraft.game import modifiers as modifiers_module
+    from lorecraft.engine.game import modifiers as modifiers_module
 
     engine = create_engine("sqlite://")
     create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))

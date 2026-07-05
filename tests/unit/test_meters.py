@@ -9,10 +9,10 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.errors import NotFoundError, ValidationError
-from lorecraft.game.events import Event, EventBus, GameEvent
-from lorecraft.game.meters import MeterDef
-from lorecraft.game.meters import get_registry as get_meter_registry
-from lorecraft.game.rng import GameRng
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.meters import MeterDef
+from lorecraft.engine.game.meters import get_registry as get_meter_registry
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.player import Player, PlayerStats
 from lorecraft.repos.meter_repo import MeterRepo
 from lorecraft.services.meters import MeterService

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from lorecraft.game.parser import ParsedCommand
+from lorecraft.engine.game.parser import ParsedCommand
 
 # Semantic role keys produced by the parser (flexible vocabulary for v1).
 ROLE_OBJECT = "object"
