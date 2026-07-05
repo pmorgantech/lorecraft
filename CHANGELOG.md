@@ -2,6 +2,14 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.34.0] - 2026-07-05
+
+### Added
+
+- **Sprint 32.3: accessibility mode.** The account settings page gains a **high-contrast theme** (black/white with brighter accent + borders, a visible keyboard focus ring, WCAG-AA contrast) and **real text scaling** (normal/large/xlarge, via root font-size). Both ride on the 32.2 preferences layer (`high_contrast` + `font_scale`, resolved into a combined `body_classes` string). Templates gained real accessibility structure: a "Skip to main content" link, `role="banner"`/`role="main"` landmarks, and a `role="log"` + `aria-live="polite"` narrative feed for screen readers, plus a robust `.sr-only` utility. Honours the OS `prefers-reduced-motion` setting too.
+- **Sprint 34.1: `help <command>` shows per-command detail (issue-7502f412).** `help <verb>` now prints that command's help text, its other aliases, and its scope instead of always dumping the full list; an unknown verb reports not-found and points back to bare `help`. Bare `help` is unchanged. Closes the open player report.
+- **Sprint 34.2: `score` command (issue-257c6643).** A single progress report aggregating existing state — level/XP, quests completed/in-progress, wealth (carried + banked coins), reputation count, and discoveries (rooms visited / NPCs met). No new persistent schema; each section reads its own feature's tables and degrades to zero when empty. Closes the open player report. **Both player-reported issues are now resolved; none remain open.**
+
 ## [0.33.0] - 2026-07-05
 
 ### Added
