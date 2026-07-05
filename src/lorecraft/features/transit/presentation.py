@@ -12,9 +12,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
+    from sqlmodel import Session
 
-    from lorecraft.models import Player
+    from lorecraft.engine.models.player import Player
     from lorecraft.webui.player.host import WebHost
 
 
@@ -32,10 +32,11 @@ def build_minimap_context(player: Player, db: Session) -> dict[str, Any]:
         Dictionary with map_data + room context for partials/minimap.html template.
     """
     # Import here to avoid web-layer deps at module level
-    from lorecraft.repos.item_repo import ItemRepo
-    from lorecraft.repos.npc_repo import NpcRepo
-    from lorecraft.repos.room_repo import RoomRepo
-    from lorecraft.webui.player.rendering import room_panel_context, build_map_data
+    from lorecraft.engine.repos.item_repo import ItemRepo
+    from lorecraft.engine.repos.npc_repo import NpcRepo
+    from lorecraft.engine.repos.room_repo import RoomRepo
+    from lorecraft.webui.player.rendering import build_map_data
+    from lorecraft.webui.player.session import room_panel_context
 
     room_repo = RoomRepo(db)
     room = room_repo.get(player.current_room_id) if player.current_room_id else None
