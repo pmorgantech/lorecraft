@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Lorecraft Admin & Builder Guide
 
 An operational guide for running a Lorecraft server, moderating players, and building

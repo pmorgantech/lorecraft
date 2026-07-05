@@ -220,6 +220,14 @@ graphify-out/
 # Misc documentation in PDF format
 *.pdf
 
+# Local mail/app passwords for Kindle delivery scripts
+.agents/skills/*/.apppw
+*.apppw
+
 # Do not commit the test dbs for now - these are seeded from import scripts
 test_dbs/
 .claude
+!.claude/
+!.claude/skills/
+!.claude/skills/kindle-doc-weaver/
+!.claude/skills/kindle-doc-weaver/SKILL.md

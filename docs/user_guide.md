@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Lorecraft Player Guide
 
 A guide to playing Lorecraft in the browser: creating a character, moving around, talking

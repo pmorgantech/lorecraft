@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Building Worlds with YAML
 
 This guide explains how to design and author game worlds in Lorecraft using YAML. It covers rooms, exits, items, and world structure.

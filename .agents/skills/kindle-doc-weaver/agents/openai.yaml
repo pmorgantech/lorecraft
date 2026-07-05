@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kindle Doc Weaver"
+  short_description: "Build linked docs EPUB/PDF for Kindle"
+  default_prompt: "Use $kindle-doc-weaver to weave docs/*.md into a cross-linked Kindle-ready EPUB/PDF and optionally email it to my Kindle gateway."
