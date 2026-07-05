@@ -22,6 +22,11 @@ class Player(SQLModel, table=True):
     world_schema_version: int = 1
     active_combat_session_id: str | None = None
     ghost_state: bool = False
+    # Opaque per-account presentation preferences blob. The engine stores it
+    # without interpreting it; the web host (webui/player/preferences.py) owns
+    # the schema, defaults, and validation, keeping display concerns out of
+    # Tier 1. Empty {} means "all defaults".
+    preferences: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
 
 
 class PlayerStats(SQLModel, table=True):

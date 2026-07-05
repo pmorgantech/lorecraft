@@ -1,0 +1,123 @@
+"""Per-account presentation preferences (Sprint 32.2).
+
+The engine stores an opaque ``Player.preferences`` JSON blob; this module is the
+single place that gives it meaning — the schema, the defaults, validation, and
+the template context the render layer reads. Keeping the interpretation here (in
+the web host) rather than in the Tier 1 model keeps display concerns out of the
+engine: a headless run never needs to know what "feed verbosity" is.
+
+Design contract: the render layer resolves preferences in exactly one place
+(``resolve_preferences``) and passes ``PlayerPreferences.to_context()`` into the
+base template, so every panel sees a consistent, fully-defaulted view. An empty
+or partial stored blob always resolves to valid defaults — a new or legacy
+account never renders broken.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, fields
+from typing import Any
+
+from lorecraft.types import JsonObject
+
+# Allowed values for the enum-like preferences. Anything outside these falls
+# back to the default, so a hand-edited or stale blob can never inject an
+# invalid class name / format string into a template.
+DISPLAY_DENSITIES = ("comfortable", "compact")
+FEED_VERBOSITIES = ("verbose", "normal", "terse")
+TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")
+
+# Panels the player may hide. Kept here (not derived from the WebHost registry)
+# so an unknown/removed panel name in a stored blob degrades gracefully.
+TOGGLEABLE_PANELS = ("minimap", "inventory", "players_online", "quest_tracker")
+
+
+@dataclass(frozen=True)
+class PlayerPreferences:
+    """Fully-resolved, always-valid presentation preferences for one account."""
+
+    display_density: str = "comfortable"
+    feed_verbosity: str = "normal"
+    timestamp_format: str = "relative"
+    reduced_motion: bool = False
+    # Panel id -> visible. Absent panels default to visible.
+    hidden_panels: tuple[str, ...] = ()
+
+    def to_context(self) -> dict[str, Any]:
+        """Template context for the base shell (read in one place by the renderer)."""
+        data = asdict(self)
+        data["hidden_panels"] = list(self.hidden_panels)
+        # Convenience booleans/classes so templates stay logic-light.
+        data["is_compact"] = self.display_density == "compact"
+        data["density_class"] = f"density-{self.display_density}"
+        data["motion_class"] = "reduced-motion" if self.reduced_motion else ""
+        return {"prefs": data}
+
+    def to_stored(self) -> JsonObject:
+        """Serialize back to the opaque blob stored on ``Player.preferences``.
+
+        Only non-default values are written, so the stored blob stays small and
+        forward-compatible (a future default change is picked up automatically
+        for accounts that never overrode it).
+        """
+        default = PlayerPreferences()
+        out: JsonObject = {}
+        if self.display_density != default.display_density:
+            out["display_density"] = self.display_density
+        if self.feed_verbosity != default.feed_verbosity:
+            out["feed_verbosity"] = self.feed_verbosity
+        if self.timestamp_format != default.timestamp_format:
+            out["timestamp_format"] = self.timestamp_format
+        if self.reduced_motion != default.reduced_motion:
+            out["reduced_motion"] = self.reduced_motion
+        if self.hidden_panels:
+            out["hidden_panels"] = list(self.hidden_panels)
+        return out
+
+
+def _clean_enum(value: Any, allowed: tuple[str, ...], default: str) -> str:
+    return value if isinstance(value, str) and value in allowed else default
+
+
+def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
+    """Turn a stored (possibly empty/partial/invalid) blob into valid preferences.
+
+    This is the single entry point the render layer uses. Unknown keys are
+    ignored; invalid values fall back to their default; hidden-panel names not in
+    ``TOGGLEABLE_PANELS`` are dropped. The result is always renderable.
+    """
+    raw = raw or {}
+    hidden_raw = raw.get("hidden_panels", [])
+    hidden = (
+        tuple(p for p in hidden_raw if isinstance(p, str) and p in TOGGLEABLE_PANELS)
+        if isinstance(hidden_raw, list)
+        else ()
+    )
+    return PlayerPreferences(
+        display_density=_clean_enum(
+            raw.get("display_density"), DISPLAY_DENSITIES, "comfortable"
+        ),
+        feed_verbosity=_clean_enum(
+            raw.get("feed_verbosity"), FEED_VERBOSITIES, "normal"
+        ),
+        timestamp_format=_clean_enum(
+            raw.get("timestamp_format"), TIMESTAMP_FORMATS, "relative"
+        ),
+        reduced_motion=bool(raw.get("reduced_motion", False)),
+        hidden_panels=hidden,
+    )
+
+
+def apply_updates(current: PlayerPreferences, updates: JsonObject) -> PlayerPreferences:
+    """Return a new PlayerPreferences with ``updates`` applied over ``current``.
+
+    Only known fields are honoured, and each value is re-validated through
+    ``resolve_preferences`` so an update can never persist an invalid value.
+    Used by the settings-update route.
+    """
+    known = {f.name for f in fields(PlayerPreferences)}
+    merged = current.to_stored()
+    for key, value in updates.items():
+        if key in known:
+            merged[key] = value
+    return resolve_preferences(merged)
