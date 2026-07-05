@@ -27,18 +27,44 @@ class ItemRepo(Repository[Item, str]):
         self._stacks = StackRepo(session)
 
     def get_many(self, ids: Iterable[str]) -> dict[str, Item]:
-        """Batch-load Item rows by id in a single query, keyed by id.
+        """Batch-load full Item rows by id in a single query, keyed by id.
 
         Ids with no matching row are simply absent from the result; duplicate
         ids are collapsed. An empty id set short-circuits without a query. Used
-        to eliminate per-stack N+1 round-trips on the parser-resolution hot path
-        (room contents, carried inventory) — see get_inventory / _pair_with_items.
+        to eliminate per-stack N+1 round-trips (see _pair_with_items) for callers
+        that need the whole definition (take/drop/use). Parser noun-resolution,
+        which only needs name+aliases, uses the lighter name_index projection.
         """
         unique = list(dict.fromkeys(ids))
         if not unique:
             return {}
         statement = select(Item).where(col(Item.id).in_(unique))
         return {item.id: item for item in self.session.exec(statement).all()}
+
+    def name_index(self, ids: Iterable[str]) -> dict[str, tuple[str, list[str]]]:
+        """Project ``(name, aliases)`` for the given item ids, keyed by id.
+
+        A column projection for the parser-resolution hot path: it selects only
+        the three fields noun-matching needs, so — unlike get_many — it neither
+        builds full Item ORM instances nor decodes the unused JSON columns
+        (``usable_with``/``loot_table``/``effects``). Profiling the Sprint 36.1
+        result showed that full-row materialization, not the matcher scan, was
+        the residual parse cost at large inventory sizes (roadmap Sprint 36.2).
+
+        Ids with no row are absent; duplicate ids collapse; empty input skips
+        the query. Each aliases list is copied so callers can't mutate cached
+        column state.
+        """
+        unique = list(dict.fromkeys(ids))
+        if not unique:
+            return {}
+        statement = select(Item.id, Item.name, Item.aliases).where(
+            col(Item.id).in_(unique)
+        )
+        return {
+            row_id: (name, list(aliases))
+            for row_id, name, aliases in self.session.exec(statement).all()
+        }
 
     def items_in_room(self, room_id: str) -> list[tuple[ItemStack, Item]]:
         """All stacks loose in a room, paired with their Item definition."""

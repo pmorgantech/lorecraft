@@ -159,6 +159,30 @@ def test_item_repo_get_many_batch_loads_deduplicates_and_skips_missing() -> None
         assert items.get_many([]) == {}
 
 
+def test_item_repo_name_index_projects_name_and_aliases() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        items = ItemRepo(session)
+        items.add(Item(id="gem", name="Gem", description="Bright.", aliases=["stone"]))
+        items.add(Item(id="coin", name="Coin", description="Round."))
+        session.commit()
+
+        # Duplicate ids collapse; a missing id is absent; aliases come through.
+        index = items.name_index(["gem", "coin", "gem", "ghost"])
+
+        assert set(index) == {"gem", "coin"}
+        assert index["gem"] == ("Gem", ["stone"])
+        assert index["coin"] == ("Coin", [])
+        # Empty input short-circuits to an empty dict.
+        assert items.name_index([]) == {}
+
+        # Returned alias lists are copies — mutating one must not corrupt the row.
+        index["gem"][1].append("mutated")
+        assert items.name_index(["gem"])["gem"] == ("Gem", ["stone"])
+
+
 def test_audit_repo_uses_separate_audit_session() -> None:
     audit_engine = create_engine("sqlite://")
     create_tables(game_engine=create_engine("sqlite://"), audit_engine=audit_engine)

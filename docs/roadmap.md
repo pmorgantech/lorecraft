@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.36.9)
+## Where things stand (2026-07-05, v0.36.10)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -50,15 +50,17 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | 35.2 | Structured perf logging in `observability.py`: `time_operation(name)` ctx-manager; instrument `command_parse`, `condition_evaluate`, `db_commit`, `scheduler_tick`, `broadcast_send` (warn >50 ms) | [ ] |
 | 35.3 | Analytics API `/admin/analytics/performance` — p50/p95/p99 by operation from audit `duration_ms` payloads (extends existing latency query) | [ ] |
 
-## Sprint 36 — Parser entity-resolution scaling *(prioritized by the 35.1 baseline)*
+## Sprint 36 — Parser entity-resolution scaling *(prioritized by the 35.1 baseline)* — ✅ complete
 
 **Goal:** The baseline shows parse cost is **linear in visible-entity count**, not a cache-miss problem. Fix the resolution itself before considering memoization.
 
+**Outcome:** parse cost is now roughly **flat** in inventory size and the tail is gone — cumulative vs. the 35.1 baseline, `parse:examine@100items` went **16.92 → 1.82 ms p50 (9.3×)** with **p99 ~18 → ~1.9 ms**. Profiling drove the fix: the bottleneck was DB round-trips (36.1) then full-`Item` ORM materialization (36.2), *not* the matcher scan the sprint was originally scoped around — so 36.2 became a column projection rather than a name/alias index, and 36.3's memoization gate came back **negative** (resolution no longer material).
+
 | # | Task | Status |
 |---|------|--------|
-| 36.1 | Eliminate the per-item DB round-trips in `GameContext.get_inventory()` (batch-load item rows in one query instead of `item_repo.get()` per stack) | [x] Landed via new `ItemRepo.get_many(ids)`; also fixes `_pair_with_items` (room-contents/`get_visible_entities` path). Semantics-preserving. `perf_baseline.py` before→after (same machine): `parse:examine@25items` **4.79 → 1.47 ms p50 (3.3×)**, `@100items` **16.92 → 3.01 ms p50 (5.6×)**. Residual ~3 ms @100 is the matcher's O(entities) name scan (→ 36.2); a thin p99 tail (~22 ms) from the large `IN`-clause query remains to re-check in 36.3. |
-| 36.2 | Index visible entities/inventory by normalized name+alias once per parse (dict/trie) so noun resolution is ~O(1) per phrase instead of scanning every entity | [ ] ⟵ **next** |
-| 36.3 | Re-run `perf_baseline.py`; record before/after in the sprint. Only add result memoization (LRU keyed on `(raw, player_id, entity_hash)`) if resolution is still material after 36.1–36.2 | [ ] |
+| 36.1 | Eliminate the per-item DB round-trips in `GameContext.get_inventory()` (batch-load item rows in one query instead of `item_repo.get()` per stack) | [x] Landed via new `ItemRepo.get_many(ids)`; also fixed `_pair_with_items` (room-contents/`get_visible_entities` path). `perf_baseline.py`: `parse:examine@25items` **4.79 → 1.47 ms p50 (3.3×)**, `@100items` **16.92 → 3.01 ms p50 (5.6×)**. |
+| 36.2 | ~~Index visible entities/inventory by normalized name+alias once per parse~~ → **column projection** (profiling showed full-`Item` materialization, ~72% of parse, was the residual cost — the matcher scan was only ~6%) | [x] `get_visible_entities`/`get_inventory` now use `ItemRepo.name_index(ids)`, a `select(Item.id, Item.name, Item.aliases)` projection — no ORM instances, no decoding the unused `usable_with`/`loot_table`/`effects` JSON columns. `@25items` **1.47 → 1.13 ms p50**, `@100items` **3.01 → 1.82 ms p50**, and the **p99 tail collapsed ~22 → ~1.9 ms**. Semantics-preserving. |
+| 36.3 | Re-run `perf_baseline.py`; record before/after in the sprint. Only add result memoization (LRU keyed on `(raw, player_id, entity_hash)`) if resolution is still material after 36.1–36.2 | [x] Re-measured (above). At ~1.8 ms p50 / ~1.9 ms p99 for 100 items — well under the 50 ms "slow" line and flat in entity count — resolution is **no longer material**, so **no LRU memoization added**. A cross-command immutable-`Item` cache stays available as a future lever but isn't justified by the numbers. |
 
 ## Sprint 37 — Scheduler batching, pool tuning & load test
 
@@ -80,9 +82,11 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ### Recommended next step (2026-07-05)
 
-**36.1 is done** — batch-loading the item rows cut `parse:examine@100items` from ~17 ms to ~3 ms p50 (5.6×) and @25items from ~4.8 ms to ~1.5 ms (3.3×). The remaining ~3 ms at 100 items is now the matcher's **O(visible entities) name/alias scan**, not DB cost — exactly what **Sprint 36.2** targets (index entities by normalized name+alias once per parse so noun resolution is ~O(1) per phrase). That's the highest-value next move: low-risk, semantics-preserving, verifiable with the same harness. A thin p99 tail (~22 ms @100 items) from the single large `IN`-clause query is worth re-checking during 36.3's re-measure.
+**Sprint 36 is complete** — parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size). The evidenced bottleneck the 35.1 baseline surfaced is fixed, and 36.3's memoization gate came back negative, so there's no further parser work to do here.
 
-**Suggested order:** ~~36.1~~ → **36.2 (next)** → re-measure (36.3) → 35.2/35.3 (in-app telemetry) → 37 (batching/pool/load test) → 38 (concurrency gate, only if the load test shows a wall).
+Next highest-value move is **in-app telemetry (35.2/35.3)** — the baseline harness gives before/after for micro-paths, but live p50/p95/p99 by operation (from audit `duration_ms`) is what tells us where real player traffic spends time, and it's the prerequisite for the Sprint 38 concurrency decision gate. After that, **Sprint 37** (scheduler batching, pool tuning, and the multi-player load test) is the remaining measured-optimization work.
+
+**Suggested order:** ~~36.1 → 36.2 → 36.3~~ ✅ → **35.2/35.3 (in-app telemetry, next)** → 37 (batching/pool/load test) → 38 (concurrency gate, only if the load test shows a wall).
 
 ---
 

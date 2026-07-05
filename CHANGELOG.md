@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.10] - 2026-07-05
+
+### Changed
+
+- **Sprint 36.2 — parser resolution now projects `(id, name, aliases)` instead of materializing full `Item` rows; Sprint 36.3 re-measure closes the parser-scaling work.** Profiling the 36.1 result showed the residual parse cost at large inventory sizes was **SQLAlchemy materializing full `Item` ORM objects** (each decoding four JSON columns) — ~72% of parse time — not the matcher scan (~6%) that 36.2 was originally scoped to index. So `GameContext.get_visible_entities()` / `get_inventory()` now use a new **column projection** `ItemRepo.name_index(ids)` that selects only the three fields noun-matching needs (skips ORM instance creation and decoding the unused `usable_with`/`loot_table`/`effects` columns). Semantics-preserving (ordering, item-id dedup, per-stack room entries unchanged). Re-running `scripts/perf_baseline.py`, cumulative vs. the original 35.1 baseline: `parse:examine@25items` **4.79 → 1.13 ms p50 (4.2×)** and `@100items` **16.92 → 1.82 ms p50 (9.3×)**, with the @100 **p99 tail collapsing from ~18–23 ms to ~1.9 ms** (full-row population, not the `IN` clause, was the tail). Parse cost is now roughly flat in inventory size. Per Sprint 36.3's gate — *add LRU memoization only if resolution is still material after 36.1–36.2* — resolution is no longer material (~1.8 ms p50 / ~1.9 ms p99 at 100 items, well under the 50 ms "slow" line), so **no result memoization is added**; a cross-command immutable-`Item` cache remains available as a future lever but isn't justified by the numbers.
+
 ## [0.36.9] - 2026-07-05
 
 ### Changed

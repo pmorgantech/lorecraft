@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
+from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.parser import ParsedCommand
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
@@ -110,27 +111,42 @@ class GameContext:
             self.rollback_state()
 
     def get_visible_entities(self) -> list[tuple[str, str, list[str]]]:
-        """Return room items and NPCs as (id, name, aliases) for parser resolution."""
+        """Return room items and NPCs as (id, name, aliases) for parser resolution.
+
+        Uses the name_index column projection rather than materializing full Item
+        rows: parser resolution only reads name+aliases, and full-row
+        materialization was the dominant parse cost at scale (roadmap 36.2).
+        """
+        stacks = self.stack_repo.stacks_at(Location("room", self.room.id))
+        names = self.item_repo.name_index(stack.item_id for stack in stacks)
         entities: list[tuple[str, str, list[str]]] = []
-        for _stack, item in self.item_repo.items_in_room(self.room.id):
-            entities.append((item.id, item.name, list(item.aliases)))
+        for stack in stacks:
+            entry = names.get(stack.item_id)
+            if entry is not None:
+                name, aliases = entry
+                entities.append((stack.item_id, name, aliases))
         for npc in self.npc_repo.in_room(self.room.id):
             entities.append((npc.id, npc.name, [npc.name.lower()]))
         return entities
 
     def get_inventory(self) -> list[tuple[str, str, list[str]]]:
-        """Return carried items as (id, name, aliases) for parser resolution."""
+        """Return carried items as (id, name, aliases) for parser resolution.
+
+        Projects name+aliases via name_index instead of materializing full Item
+        rows — see get_visible_entities.
+        """
         stacks = self.stack_repo.stacks_for_owner("player", self.player.id)
-        items_by_id = self.item_repo.get_many(stack.item_id for stack in stacks)
+        names = self.item_repo.name_index(stack.item_id for stack in stacks)
         inventory: list[tuple[str, str, list[str]]] = []
         seen: set[str] = set()
         for stack in stacks:
             if stack.item_id in seen:
                 continue
-            item = items_by_id.get(stack.item_id)
-            if item is not None:
+            entry = names.get(stack.item_id)
+            if entry is not None:
                 seen.add(stack.item_id)
-                inventory.append((item.id, item.name, list(item.aliases)))
+                name, aliases = entry
+                inventory.append((stack.item_id, name, aliases))
         return inventory
 
 
