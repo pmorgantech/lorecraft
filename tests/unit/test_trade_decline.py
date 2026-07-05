@@ -14,7 +14,6 @@ from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
-from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
@@ -102,88 +101,6 @@ def two_players() -> Iterator[tuple[CommandEngine, Session, EventBus]]:
     register_all_commands(registry, ServiceContainer.build())
     yield CommandEngine(registry, RuleEngine()), session, bus
     session.close()
-
-
-class TestOfferAndAccept:
-    def test_item_for_coins_swap(
-        self, two_players: tuple[CommandEngine, Session, EventBus]
-    ) -> None:
-        cmd_engine, session, bus = two_players
-        alice = _ctx_for(ALICE_ID, session, bus)
-        alice.item_location.spawn("sword", Location("player", ALICE_ID))
-        alice.ledger.credit(session, "player", BOB_ID, 100)
-        session.commit()
-
-        cmd_engine.handle_command("offer sword to bob", alice)
-        bob = _ctx_for(BOB_ID, session, bus)
-        cmd_engine.handle_command("offer 40 coins to alice", bob)
-        cmd_engine.handle_command("accept", bob)
-
-        assert bob.stack_repo.quantity_of(Location("player", BOB_ID), "sword") == 1
-        assert alice.stack_repo.quantity_of(Location("player", ALICE_ID), "sword") == 0
-        assert alice.ledger.balance_of(session, "player", ALICE_ID) == 40
-        assert alice.ledger.balance_of(session, "player", BOB_ID) == 60
-        assert any("Trade complete" in m for m in bob.messages)
-
-    def test_accept_with_nothing_pledged(
-        self, two_players: tuple[CommandEngine, Session, EventBus]
-    ) -> None:
-        cmd_engine, session, bus = two_players
-        alice = _ctx_for(ALICE_ID, session, bus)
-        session.commit()
-
-        cmd_engine.handle_command("offer 0 coins to bob", alice)
-        cmd_engine.handle_command("accept", alice)
-
-        assert any("nothing pledged" in m for m in alice.messages)
-
-    def test_accept_fails_if_pledge_no_longer_available(
-        self, two_players: tuple[CommandEngine, Session, EventBus]
-    ) -> None:
-        cmd_engine, session, bus = two_players
-        alice = _ctx_for(ALICE_ID, session, bus)
-        alice.item_location.spawn("sword", Location("player", ALICE_ID))
-        session.commit()
-
-        cmd_engine.handle_command("offer sword to bob", alice)
-        bob = _ctx_for(BOB_ID, session, bus)
-        cmd_engine.handle_command("offer 40 coins to alice", bob)
-        # Alice gives the sword away before Bob accepts -- the escrow
-        # revalidation inside execute_exchange must catch this.
-        stack_id = next(
-            s.id
-            for s in alice.stack_repo.stacks_for_owner("player", ALICE_ID)
-            if s.item_id == "sword"
-        )
-        assert stack_id is not None
-        alice.item_location.destroy(stack_id, 1)
-        session.commit()
-
-        cmd_engine.handle_command("accept", bob)
-
-        assert any("fell through" in m for m in bob.messages)
-
-    def test_offer_rejects_bound_item(
-        self, two_players: tuple[CommandEngine, Session, EventBus]
-    ) -> None:
-        cmd_engine, session, bus = two_players
-        alice = _ctx_for(ALICE_ID, session, bus)
-        alice.item_location.spawn("heirloom", Location("player", ALICE_ID))
-        session.commit()
-
-        cmd_engine.handle_command("offer heirloom to bob", alice)
-
-        assert any("can't trade" in m for m in alice.messages)
-
-    def test_offer_rejects_unknown_recipient(
-        self, two_players: tuple[CommandEngine, Session, EventBus]
-    ) -> None:
-        cmd_engine, session, bus = two_players
-        alice = _ctx_for(ALICE_ID, session, bus)
-
-        cmd_engine.handle_command("offer sword to nobody", alice)
-
-        assert any("no nobody here" in m for m in alice.messages)
 
 
 class TestDecline:

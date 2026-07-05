@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.3] - 2026-07-05
+
+### Added
+
+- **Performance baseline harness (`scripts/perf_baseline.py`).** A reproducible micro-benchmark that drives the real parse / condition-eval / command-dispatch / commit paths against the Ashmoore world in a disposable DB and reports p50/p95/p99 per operation — the checked-in "before" picture for the new Performance & scaling band (roadmap Sprints 66–69). First run shows parser entity-resolution is **O(visible entities)**: `examine` parse is ~0.7 ms baseline but ~4.8 ms at 25 inventory items and ~17 ms at 100 (p99 ~36 ms), while condition eval is ~0.002 ms and a no-op game-state commit ~0.015 ms — so the band prioritizes fixing the parser's linear resolution (Sprint 67) over speculative caching, and defers all threading/multiprocessing behind a data-gated decision (Sprint 69).
+
+### Changed
+
+- **Roadmap: added the Performance & scaling band (Sprints 66–69).** Telemetry-first plan — measure, fix the evidenced bottleneck (parser resolution), then a load test, with any concurrency work gated on real telemetry rather than added speculatively.
+- **Test parallelism: split three multi-class test monoliths into one file per class** so pytest-xdist's `--dist=loadfile` can spread them across workers: `test_transit.py` (6 classes), `test_traits_skills_reputation.py` (3), and `test_trade.py` (2) → 11 focused files. No test logic changed; all 39 cases still pass, counts unchanged.
+
 ## [0.36.2] - 2026-07-05
 
 ### Added

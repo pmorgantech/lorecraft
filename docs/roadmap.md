@@ -592,6 +592,54 @@ first-class alternatives; non-lethal outcomes supported.
 
 ---
 
+# Performance & scaling band (Sprints 66–69) — measure, then optimize; no threading yet
+
+**Goal:** Establish performance telemetry, capture a **baseline before any optimization**, then implement high-ROI single-process optimizations (indexing/batching/caching, pool tuning) to support many concurrent players. No architectural changes; the single-process / single-threaded design (architecture.md §1) is retained until real telemetry proves a hard limit.
+
+**Cross-cutting / schedulable ahead of combat (66–69 is a number, not a strict order).** This band is infrastructure, not a Tier 2 feature; the product owner may pull it ahead of the remaining combat sprints (61–65). Numbered 66+ only to avoid colliding with existing sprints.
+
+**Rationale:** Adding multithreading/multiprocessing now would introduce concurrency bugs (shared `GameContext`, SQLite single-writer, `GameRng` determinism) without evidence of a real bottleneck. Measure first (Sprint 66), fix only where the baseline shows cost, and revisit concurrency when telemetry shows contention.
+
+## Sprint 66 — Performance telemetry & baseline ⟵ do first
+
+**Goal:** Make optimization evidence-driven. **Capture the "before" picture before touching any hot path.**
+
+| # | Task | Status |
+|---|------|--------|
+| 66.1 | Baseline micro-benchmark harness `scripts/perf_baseline.py` — drives real parse / condition / dispatch / commit paths against the Ashmoore world in a disposable DB; reports p50/p95/p99 per operation (checked in, reproducible before/after) | [x] Landed with first baseline (see below). Reveals parser entity-resolution is **O(visible entities)**: `examine` parse is 0.7 ms baseline → **4.8 ms @25 items → 17 ms @100 items** (p99 ~36 ms), while condition eval is ~0.002 ms and a no-op commit ~0.015 ms. |
+| 66.2 | Structured perf logging in `observability.py`: `time_operation(name)` ctx-manager; instrument `command_parse`, `condition_evaluate`, `db_commit`, `scheduler_tick`, `broadcast_send` (warn >50 ms) | [ ] |
+| 66.3 | Analytics API `/admin/analytics/performance` — p50/p95/p99 by operation from audit `duration_ms` payloads (extends existing latency query) | [ ] |
+
+## Sprint 67 — Parser entity-resolution scaling *(prioritized by the 66.1 baseline)*
+
+**Goal:** The baseline shows parse cost is **linear in visible-entity count**, not a cache-miss problem. Fix the resolution itself before considering memoization.
+
+| # | Task | Status |
+|---|------|--------|
+| 67.1 | Eliminate the per-item DB round-trips in `GameContext.get_inventory()` (batch-load item rows in one query instead of `item_repo.get()` per stack) | [ ] |
+| 67.2 | Index visible entities/inventory by normalized name+alias once per parse (dict/trie) so noun resolution is ~O(1) per phrase instead of scanning every entity | [ ] |
+| 67.3 | Re-run `perf_baseline.py`; record before/after in the sprint. Only add result memoization (LRU keyed on `(raw, player_id, entity_hash)`) if resolution is still material after 67.1–67.2 | [ ] |
+
+## Sprint 68 — Scheduler batching, pool tuning & load test
+
+**Goal:** Batch same-epoch jobs into one commit; tune the DB pool; add a repeatable multi-player load test.
+
+| # | Task | Status |
+|---|------|--------|
+| 68.1 | Batch scheduler execution: accumulate mutations across all due jobs, apply + commit once (preserve atomicity; verify via simulation) | [ ] |
+| 68.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) in `config.py`/`Settings` for many concurrent players; document in deployment notes | [ ] |
+| 68.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s issuing commands concurrently; report p95/p99 command latency before vs. after | [ ] |
+
+## Sprint 69 — Concurrency decision gate *(only if 66–68 telemetry shows a hard limit)*
+
+**Goal:** Revisit multithreading/multiprocessing **with data**, not speculatively. Likely order if needed: async command loop → parser thread-pool → async scheduler → (last resort) region sharding. See the analysis notes captured with Sprint 66.
+
+| # | Task | Status |
+|---|------|--------|
+| 69.1 | Decide + document, from real load-test telemetry, whether/what concurrency to add and its transaction-isolation plan (own session per worker, serialized commits, `GameRng` determinism preserved) | [ ] |
+
+---
+
 ## Backlog
 
 | Item | Notes |
