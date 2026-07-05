@@ -145,6 +145,13 @@ when their content changes — including edits made by *another* admin or an out
 only for whichever tab you're currently viewing. No manual Search/Refresh needed to see a fresh
 issue, announcement, or help topic.
 
+**Session expiry:** access tokens are short-lived (`LORECRAFT_ADMIN_JWT_ACCESS_TTL`, default 900 s / 15 min) and the
+console holds no refresh token. When the token expires, the next authenticated action (or the admin
+WebSocket reconnecting) is rejected and the console **automatically logs you out** back to the login
+screen with a "session expired" notice — clearing the stale token and WS rather than leaving a dead
+session on screen. A `403` (valid session, insufficient role) does *not* log you out; it just reports
+the missing permission. Log back in to continue.
+
 ## Admin TUI
 
 A terminal client (Textual) mirroring most of the web panel, useful over SSH or for

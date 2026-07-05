@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.37.2] - 2026-07-05
+
+### Fixed
+
+- **Admin console now auto-logs-out on a stale/invalid session instead of flashing a toast.** Previously an authenticated request that came back `401` (expired/invalid access token) only showed a transient "Session expired — please log in again." error bar while leaving the dead token in place — the console stayed on-screen and every subsequent request kept failing, and an idle tab's admin WebSocket would reconnect-loop forever with the expired token. Now a `401` on any authenticated request (but **not** a `403`, which is a valid session lacking a role, nor the login call itself) triggers a full logout: the access token and WS are cleared and the user is returned to the login screen with a "Your session expired" notice (`sessionExpired()` in `webui/admin/index.html`, idempotent under concurrent 401s). This also fixes a latent bug where a failed login flashed the same "session expired" toast.
+- **Admin WebSocket now delivers close code 1008 to the browser on token rejection.** `admin_ws_endpoint` previously `close()`d the socket *before* `accept()`, so a rejected handshake surfaced to the browser as an ambiguous `1006` (indistinguishable from a network blip) — the client couldn't tell a stale session from a transient drop. It now accepts first, then closes with `1008` on an invalid/expired token, so the admin UI can force a logout (rather than reconnect-loop) specifically on auth rejection while still auto-reconnecting on genuine network drops. First **admin browser e2e coverage** added (`tests/e2e/test_admin_session.py`) exercising both the HTTP-401 and WS-1008 logout paths.
+
 ## [0.37.1] - 2026-07-05
 
 ### Added

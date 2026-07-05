@@ -18,6 +18,12 @@ log = logging.getLogger(__name__)
 async def admin_ws_endpoint(websocket: WebSocket, app_state: AppState) -> None:
     """Accept admin WS connections; push events, accept subscribe commands."""
     token_str = websocket.query_params.get("token", "")
+    # Accept the handshake *before* validating so that, on a bad/expired token,
+    # the client receives an application close code (1008) it can act on — the
+    # admin UI uses 1008 to distinguish a stale session (force logout) from a
+    # transient network drop (reconnect). Closing before accept would reject the
+    # handshake at the HTTP layer, and the browser would only see 1006.
+    await websocket.accept()
     try:
         decode_token(token_str, app_state.settings.admin_jwt_secret)
     except jwt.InvalidTokenError as e:
@@ -25,7 +31,6 @@ async def admin_ws_endpoint(websocket: WebSocket, app_state: AppState) -> None:
         await websocket.close(code=1008, reason="Invalid or missing token")
         return
 
-    await websocket.accept()
     q: asyncio.Queue[JsonObject] = asyncio.Queue(maxsize=200)
     app_state.admin_broadcaster.add(q)
 

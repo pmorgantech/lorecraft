@@ -491,6 +491,17 @@ function logout() {
   document.getElementById("l-error").textContent = "";
 }
 
+// A stale/invalid session was detected (HTTP 401 on an authed request, or the
+// admin WS closing with an auth code). Wipe credentials + the WS and drop back
+// to the login screen, rather than leaving a dead token in place. Idempotent:
+// concurrent 401s (a tab firing several requests at once) only log out once.
+function sessionExpired() {
+  if (!state.accessToken) return;  // already logged out
+  logout();  // clears token, closes WS, shows login screen, blanks l-error
+  document.getElementById("l-error").textContent =
+    "Your session expired — please log in again.";
+}
+
 function showAdmin() {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("admin-screen").style.display  = "flex";
@@ -509,8 +520,12 @@ async function api(method, path, body, noAuth) {
   try {
     const resp = await fetch(path, {method, headers, body: body ? JSON.stringify(body) : undefined});
     const data = await resp.json();
-    if (!resp.ok && resp.status === 401) {
-      showError("Session expired — please log in again.");
+    // 401 on an authenticated request => the access token is stale/invalid.
+    // Force a full logout back to the login screen (403 = valid session but
+    // insufficient role, so it is left alone). `noAuth` requests are the login
+    // call itself, where 401 means bad credentials and doLogin handles it.
+    if (!resp.ok && resp.status === 401 && !noAuth) {
+      sessionExpired();
     }
     return data;
   } catch(e) {
@@ -1108,8 +1123,11 @@ function connectAdminWs() {
   ws.onopen = () => {
     document.getElementById("ws-indicator").style.color = "var(--phosphor)";
   };
-  ws.onclose = () => {
+  ws.onclose = (ev) => {
     document.getElementById("ws-indicator").style.color = "var(--muted)";
+    // 1008 (policy violation) is what the server sends when it rejects the
+    // token — a stale session. Force logout instead of reconnecting forever.
+    if (ev.code === 1008) { sessionExpired(); return; }
     if (state.accessToken) setTimeout(connectAdminWs, 4000);
   };
   ws.onmessage = (e) => {
