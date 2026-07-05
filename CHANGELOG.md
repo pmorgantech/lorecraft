@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.32.2] - 2026-07-05
+
+### Changed
+
+- **Kindle doc weaver — Paperwhite table tuning.** EPUB output now embeds a small Kindle stylesheet and defaults to `--epub-table-mode lists`, converting Markdown pipe tables into stacked key/value bullet lists for small e-ink screens while preserving normal tables for PDF output. This keeps roadmap/status tables readable on a 7-inch Paperwhite without forcing tiny columns.
+
 ## [0.32.1] - 2026-07-05
 
 ### Added

@@ -65,6 +65,8 @@ The current ignored guides are `user_guide.md`, `admin_builder_guide.md`, and `w
 
 - **EPUB:** best for Paperwhite; generated directly by Pandoc with no Python PDF module and no PDF engine.
 - **EPUB split level:** default to `--epub-split-level 2`. The Kindle will paginate reflowable text on the device; this setting only keeps the EPUB's internal chapter files shorter and more responsive by splitting at `##` sections.
+- **EPUB tables:** default to `--epub-table-mode lists`, converting Markdown pipe tables into stacked key/value bullets so roadmap/status tables remain readable on a 7-inch Paperwhite screen. Use `--epub-table-mode css` only when preserving table shape matters more than readability.
+- **EPUB CSS:** embed a small Kindle stylesheet that wraps code blocks and table cells, reduces table/code font size, and keeps lists compact.
 - **PDF:** useful for exact layout/archive. If PDF is requested, prefer `xelatex` through TeX Live for Markdown-heavy technical docs with Unicode and tables. `lualatex` is a reasonable second choice; `pdflatex` is less Unicode-friendly. `weasyprint` is a Python package but depends on native Cairo/Pango libraries and is better for HTML/CSS page rendering than this docs workflow. `wkhtmltopdf` is older WebKit-based HTML rendering. `tectonic` is convenient when available as a single binary, but TeX Live `xelatex` is usually the most predictable Pandoc target.
 
 The script requires `pandoc` for EPUB/PDF output. PDF output additionally requires a Pandoc-compatible PDF engine such as `xelatex`, `lualatex`, `pdflatex`, `tectonic`, `wkhtmltopdf`, or `weasyprint`. If a PDF engine is missing, build `--format epub` or install one of those engines.

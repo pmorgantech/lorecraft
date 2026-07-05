@@ -12,6 +12,7 @@ import shutil
 import smtplib
 import subprocess
 import sys
+import tempfile
 from email.message import EmailMessage
 from mimetypes import guess_type
 from pathlib import Path
@@ -231,6 +232,105 @@ def weave_docs(docs: list[Path], title: str) -> str:
     return "\n".join(parts).rstrip() + "\n"
 
 
+def split_pipe_row(line: str) -> list[str]:
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+    return [cell.strip() for cell in line.split("|")]
+
+
+def is_table_separator(line: str) -> bool:
+    cells = split_pipe_row(line)
+    if not cells:
+        return False
+    return all(re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells)
+
+
+def is_pipe_table_start(lines: list[str], index: int) -> bool:
+    if index + 1 >= len(lines):
+        return False
+    return "|" in lines[index] and is_table_separator(lines[index + 1])
+
+
+def convert_pipe_tables_to_lists(markdown: str) -> str:
+    lines = markdown.splitlines()
+    output: list[str] = []
+    index = 0
+    in_fence = False
+
+    while index < len(lines):
+        line = lines[index]
+        if re.match(r"^\s*(```|~~~)", line):
+            in_fence = not in_fence
+            output.append(line)
+            index += 1
+            continue
+        if in_fence or not is_pipe_table_start(lines, index):
+            output.append(line)
+            index += 1
+            continue
+
+        headers = split_pipe_row(lines[index])
+        index += 2
+        rows: list[list[str]] = []
+        while index < len(lines) and "|" in lines[index].strip():
+            rows.append(split_pipe_row(lines[index]))
+            index += 1
+
+        output.append("")
+        output.append(
+            "<!-- kindle-doc-weaver: table converted for small e-ink screens -->"
+        )
+        for row in rows:
+            row = [*row, *([""] * max(0, len(headers) - len(row)))]
+            primary = row[0] if row else ""
+            primary_header = headers[0] if headers else "Item"
+            output.append(f"- **{primary_header}:** {primary}".rstrip())
+            for header, value in zip(headers[1:], row[1:], strict=False):
+                if value:
+                    output.append(f"  - **{header}:** {value}")
+        output.append("")
+
+    return "\n".join(output).rstrip() + "\n"
+
+
+def kindle_epub_css() -> str:
+    return """
+body {
+  line-height: 1.35;
+}
+table {
+  border-collapse: collapse;
+  font-size: 0.82em;
+  max-width: 100%;
+  table-layout: fixed;
+  width: 100%;
+}
+th,
+td {
+  overflow-wrap: anywhere;
+  padding: 0.15em 0.25em;
+  vertical-align: top;
+  word-break: break-word;
+}
+pre {
+  font-size: 0.78em;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+code {
+  overflow-wrap: anywhere;
+}
+ul,
+ol {
+  margin-left: 1em;
+  padding-left: 1em;
+}
+""".strip()
+
+
 def unique_output_stem(output_dir: Path, today: dt.date, extensions: list[str]) -> str:
     stem = f"lorecraft_{today:%Y%m%d}"
     existing_suffixes = {
@@ -271,10 +371,13 @@ def run_pandoc(
     toc_depth: int,
     pdf_engine: str | None,
     epub_split_level: int,
+    epub_table_mode: str,
 ) -> None:
+    pandoc_input = markdown_path
+    temp_dir: tempfile.TemporaryDirectory[str] | None = None
     command = [
         "pandoc",
-        str(markdown_path),
+        str(pandoc_input),
         "--from",
         "markdown+smart",
         "--toc",
@@ -284,12 +387,35 @@ def run_pandoc(
         str(output_path),
     ]
     if output_path.suffix == ".epub":
+        temp_dir = tempfile.TemporaryDirectory()
+        temp_path = Path(temp_dir.name)
+        css_path = temp_path / "kindle-paperwhite.css"
+        css_path.write_text(kindle_epub_css(), encoding="utf-8")
+        if epub_table_mode == "lists":
+            epub_markdown_path = temp_path / markdown_path.name
+            epub_markdown_path.write_text(
+                convert_pipe_tables_to_lists(markdown_path.read_text(encoding="utf-8")),
+                encoding="utf-8",
+            )
+            pandoc_input = epub_markdown_path
+            command[1] = str(pandoc_input)
         command.extend(
-            ["--standalone", "--to", "epub3", f"--split-level={epub_split_level}"]
+            [
+                "--standalone",
+                "--to",
+                "epub3",
+                f"--split-level={epub_split_level}",
+                "--css",
+                str(css_path),
+            ]
         )
     elif pdf_engine:
         command.extend(["--pdf-engine", pdf_engine])
-    subprocess.run(command, check=True)
+    try:
+        subprocess.run(command, check=True)
+    finally:
+        if temp_dir is not None:
+            temp_dir.cleanup()
 
 
 def smtp_password(args: argparse.Namespace) -> str:
@@ -356,6 +482,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         type=int,
         default=2,
         help="EPUB chunk split heading level. 2 keeps Kindle chapters responsive.",
+    )
+    parser.add_argument(
+        "--epub-table-mode",
+        choices=("lists", "css"),
+        default="lists",
+        help="Use lists for Paperwhite-readable tables or css to preserve tables.",
     )
     parser.add_argument("--pdf-engine", help="Pandoc PDF engine to use")
     parser.add_argument(
@@ -440,6 +572,7 @@ def main(argv: list[str]) -> int:
             args.toc_depth,
             engine,
             args.epub_split_level,
+            args.epub_table_mode,
         )
         print(f"Wrote {output_path.suffix.lstrip('.').upper()}: {output_path}")
 
