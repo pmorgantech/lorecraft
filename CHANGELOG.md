@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.31.4] - 2026-07-05
+
+### Changed
+
+- **Sprint 31: Finish tier split — WebHost abstraction (31.1) + presentation.py seam (31.2).** Tier-split refactor step 10c + §1c: `WebHost` class (webui/player/host.py) provides multi-directory Jinja `ChoiceLoader` and panel/slot registry; features with optional `presentation.py` can now contribute UI panels via `register(web_host)`. Transit feature gained `presentation.py` as proof, registering its minimap panel (id="minimap", slot="right-rail"). Loading only runs in web hosts (never headless), tier boundary enforced by test; `presentation.py` files explicitly allowed to import web modules. New `create_web_host()` + `load_feature_presentations()` in `webui/player/__init__.py`; `FeatureManifest` gains optional `presentation` field; `AppState` gains optional `web_host`. 9 WebHost unit tests + 818 suite passed.
+
 ## [0.31.3] - 2026-07-05
 
 ### Changed
