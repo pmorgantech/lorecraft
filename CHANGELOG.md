@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.22.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — five small features co-located (step 8, batch 5, branch `tier_split`).** New feature packages: `warmth` (`game/warmth.py` → `rules.py`), `terrain` (`game/terrain.py` → `definitions.py`), `weather` (`clock/weather.py` → `handlers.py`), `light` (`services/light_fuel.py` → `service.py`), `encumbrance` (`game/encumbrance.py` → `rules.py`), each with a passive manifest. `discover_features()` now returns 16 features. `weather`'s `register_weather_handlers` and `light`'s service stay wired from `main.py` (they need the live bus/engine/rng), so their manifests are passive for now — this also preserves exact bus-handler registration order. `clock/` is now empty of code. Full suite 794 passed, lint + typecheck clean.
+  - *Fixed in-flight:* the bare `from lorecraft.game import encumbrance` rewrite initially dropped the binding name (`encumbrance` → `rules`), silently breaking fatigue's travel-drain (the `NameError` was swallowed by the event bus); restored via `import rules as encumbrance`. A fatigue test caught it.
+
 ## [0.21.0] - 2026-07-05
 
 ### Changed

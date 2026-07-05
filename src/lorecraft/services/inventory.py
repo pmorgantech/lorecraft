@@ -17,7 +17,7 @@ from lorecraft.engine.game.command_patterns import (
     role_str,
 )
 from lorecraft.engine.game.context import GameContext
-from lorecraft.game.encumbrance import (
+from lorecraft.features.encumbrance.rules import (
     encumbrance_band,
     resolve_carry_capacity,
     total_carried_weight,
@@ -26,7 +26,7 @@ from lorecraft.features.equipment.slots import FINGER_SLOTS, slot_label
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.features.exploration.rules import is_exit_discovered
 from lorecraft.engine.game.holders import Location
-from lorecraft.game import terrain as terrain_module
+from lorecraft.features.terrain import definitions as terrain_module
 from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.world import Item
 from lorecraft.engine.services.item_components import (

@@ -21,7 +21,7 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.game.warmth import resolve_warmth
+from lorecraft.features.warmth.rules import resolve_warmth
 from lorecraft.engine.models.world import Exit, Item, Room, WorldClock
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo

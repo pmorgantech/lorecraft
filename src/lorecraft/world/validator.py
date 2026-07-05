@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from lorecraft.clock.weather import WEATHER_TABLE
+from lorecraft.features.weather.handlers import WEATHER_TABLE
 
 KNOWN_WEATHER = frozenset(w for states in WEATHER_TABLE.values() for w in states)
 

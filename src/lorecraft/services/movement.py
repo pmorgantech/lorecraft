@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.game import terrain as terrain_module
+from lorecraft.features.terrain import definitions as terrain_module
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.grammar import OPPOSITE_DIRECTIONS

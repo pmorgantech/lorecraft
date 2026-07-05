@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field
 
-from lorecraft.game.terrain import get_registry as get_terrain_registry
+from lorecraft.features.terrain.definitions import get_registry as get_terrain_registry
 from lorecraft.world.validator import WorldDocument
 
 

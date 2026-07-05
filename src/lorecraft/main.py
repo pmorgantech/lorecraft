@@ -21,7 +21,7 @@ from lorecraft.admin.api import admin_router
 from lorecraft.admin.auth import hash_password
 from lorecraft.admin.broadcaster import AdminBroadcaster
 from lorecraft.admin.websocket import admin_ws_endpoint
-from lorecraft.clock.weather import register_weather_handlers
+from lorecraft.features.weather.handlers import register_weather_handlers
 from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.features import (
@@ -59,7 +59,7 @@ from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.services.light_fuel import LightFuelService
+from lorecraft.features.light.service import LightFuelService
 from lorecraft.services.restock import RestockService
 from lorecraft.services.quest_timer import QuestTimerService
 from lorecraft.engine.services.mobile_route import MobileRouteService

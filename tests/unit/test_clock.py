@@ -1,4 +1,4 @@
-from lorecraft.clock.weather import apply_daily_weather
+from lorecraft.features.weather.handlers import apply_daily_weather
 from lorecraft.engine.clock.world_clock import (
     SECONDS_PER_HOUR,
     WorldClockRunner,

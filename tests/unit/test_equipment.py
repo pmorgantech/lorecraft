@@ -12,7 +12,7 @@ from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
-from lorecraft.game.encumbrance import (
+from lorecraft.features.encumbrance.rules import (
     carry_base,
     encumbrance_band,
     resolve_carry_capacity,

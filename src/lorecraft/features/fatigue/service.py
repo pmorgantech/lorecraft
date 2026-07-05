@@ -7,15 +7,15 @@ safe-vs-unsafe risk, warmth/exposure, and dream flavor.
 
 from __future__ import annotations
 
-from lorecraft.clock.weather import COLD_WEATHERS, apply_daily_weather
+from lorecraft.features.weather.handlers import COLD_WEATHERS, apply_daily_weather
 from lorecraft.engine.clock.world_clock import SECONDS_PER_HOUR, apply_clock_fields
-from lorecraft.game import encumbrance
+from lorecraft.features.encumbrance import rules as encumbrance
 from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
-from lorecraft.game.warmth import resolve_warmth
+from lorecraft.features.warmth.rules import resolve_warmth
 from lorecraft.features.skills.service import SkillService
 
 UNBURDENED_MOVE_DRAIN = 2.0
