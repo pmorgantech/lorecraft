@@ -24,6 +24,14 @@ class Settings:
     # (see db._pool_kwargs). pool_recycle is seconds; -1 disables recycling.
     db_pool_size: int = 5
     db_pool_recycle: int = 1800  # 30 minutes
+    # SQLite durability/throughput (ignored for other backends). WAL makes every
+    # commit cheap (append to -wal, periodic checkpoint) instead of a full fsync
+    # per commit — the dominant cost the Sprint 37 benchmarks surfaced (~20–29×
+    # on scheduler ticks). synchronous=NORMAL under WAL is safe against app
+    # crashes; only an OS crash / power loss can lose the last transaction(s).
+    # Set FULL for full durability (still faster than the old DELETE journal).
+    db_sqlite_wal: bool = True
+    db_sqlite_synchronous: str = "NORMAL"  # OFF | NORMAL | FULL | EXTRA
     world_time_ratio: float = 60.0
     websocket_path: str = "/ws"
     disconnect_grace_seconds: float = 60.0
@@ -97,6 +105,8 @@ def load_settings() -> Settings:
         audit_database_path=os.getenv("LORECRAFT_AUDIT_DB_PATH", "audit.db"),
         db_pool_size=int(os.getenv("LORECRAFT_DB_POOL_SIZE", "5")),
         db_pool_recycle=int(os.getenv("LORECRAFT_DB_POOL_RECYCLE", "1800")),
+        db_sqlite_wal=_env_bool("LORECRAFT_DB_SQLITE_WAL", True),
+        db_sqlite_synchronous=os.getenv("LORECRAFT_DB_SQLITE_SYNCHRONOUS", "NORMAL"),
         world_time_ratio=float(os.getenv("LORECRAFT_WORLD_TIME_RATIO", "60.0")),
         websocket_path=os.getenv("LORECRAFT_WEBSOCKET_PATH", "/ws"),
         disconnect_grace_seconds=float(

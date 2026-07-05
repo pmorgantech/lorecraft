@@ -83,6 +83,8 @@ defined in `src/lorecraft/config.py`.
 | `LORECRAFT_AUDIT_DB_PATH` | `audit.db` | Audit log database path |
 | `LORECRAFT_DB_POOL_SIZE` | `5` | SQLAlchemy connection-pool size. **Applies only to a networked backend** (Postgres/MySQL) — ignored for SQLite (single-writer). Raise for many concurrent players. |
 | `LORECRAFT_DB_POOL_RECYCLE` | `1800` (30 min) | Recycle pooled connections older than this many seconds (avoids stale server-side connections); `-1` disables. Networked backends only. |
+| `LORECRAFT_DB_SQLITE_WAL` | `true` | Enable SQLite **WAL** journal mode — makes every commit cheap (append + periodic checkpoint) instead of a full fsync per commit (~20–29× faster scheduler ticks, ~4–6× faster commands under load). SQLite only. Turn off only for network filesystems, which don't support WAL. |
+| `LORECRAFT_DB_SQLITE_SYNCHRONOUS` | `NORMAL` | SQLite `synchronous` pragma (`OFF`/`NORMAL`/`FULL`/`EXTRA`). `NORMAL` under WAL is safe against app crashes and can lose only the last transaction(s) on OS crash / power loss. Set `FULL` for full durability (still faster than the old default). SQLite only. |
 | `LORECRAFT_WORLD_TIME_RATIO` | `60.0` | In-game seconds per real second |
 | `LORECRAFT_WEBSOCKET_PATH` | `/ws` | Player WebSocket endpoint |
 | `LORECRAFT_DISCONNECT_GRACE_SECONDS` | `60.0` | Grace period before a dropped connection is treated as a real disconnect |

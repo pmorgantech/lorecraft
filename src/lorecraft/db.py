@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
-from sqlalchemy import inspect, text
+from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
@@ -127,12 +128,49 @@ def _pool_kwargs(url: str, settings: Settings) -> dict[str, int]:
     }
 
 
+_VALID_SYNCHRONOUS = {"OFF", "NORMAL", "FULL", "EXTRA"}
+
+
+def configure_sqlite_engine(engine: Engine, settings: Settings) -> Engine:
+    """Attach a connect-listener setting WAL + synchronous pragmas on SQLite.
+
+    A no-op for non-SQLite backends and harmless for `:memory:` (which ignores
+    WAL). WAL makes each commit an append to the `-wal` file with fsync deferred
+    to periodic checkpoints, instead of a full fsync per commit — the dominant
+    cost the Sprint 37 benchmarks surfaced. `journal_mode` is persistent in the
+    DB header (idempotent to re-set); `synchronous` is per-connection, so both
+    are set on every new connection. Returns the engine for call chaining.
+    """
+    if engine.dialect.name != "sqlite":
+        return engine
+    synchronous = settings.db_sqlite_synchronous.upper()
+    if synchronous not in _VALID_SYNCHRONOUS:
+        raise ValueError(
+            f"invalid db_sqlite_synchronous {settings.db_sqlite_synchronous!r}; "
+            f"expected one of {sorted(_VALID_SYNCHRONOUS)}"
+        )
+    use_wal = settings.db_sqlite_wal
+
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_connection: Any, _record: Any) -> None:
+        cursor = dbapi_connection.cursor()
+        try:
+            if use_wal:
+                cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute(f"PRAGMA synchronous={synchronous}")
+        finally:
+            cursor.close()
+
+    return engine
+
+
 def create_game_engine(
     settings: Settings | None = None, *, echo: bool = False
 ) -> Engine:
     settings = settings or load_settings()
     url = database_url(settings.database_path)
-    return create_engine(url, echo=echo, **_pool_kwargs(url, settings))
+    engine = create_engine(url, echo=echo, **_pool_kwargs(url, settings))
+    return configure_sqlite_engine(engine, settings)
 
 
 def create_audit_engine(
@@ -140,7 +178,8 @@ def create_audit_engine(
 ) -> Engine:
     settings = settings or load_settings()
     url = database_url(settings.audit_database_path)
-    return create_engine(url, echo=echo, **_pool_kwargs(url, settings))
+    engine = create_engine(url, echo=echo, **_pool_kwargs(url, settings))
+    return configure_sqlite_engine(engine, settings)
 
 
 def create_tables(

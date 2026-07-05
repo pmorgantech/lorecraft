@@ -1,5 +1,7 @@
+from pathlib import Path
+
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlmodel import create_engine
 
 from lorecraft.config import Settings, load_settings
@@ -7,7 +9,9 @@ from lorecraft.db import (
     AUDIT_TABLE_MODELS,
     GAME_TABLE_MODELS,
     _pool_kwargs,
+    configure_sqlite_engine,
     create_audit_tables,
+    create_game_engine,
     create_tables,
 )
 
@@ -57,3 +61,36 @@ def test_load_settings_reads_pool_env(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = load_settings()
     assert settings.db_pool_size == 15
     assert settings.db_pool_recycle == 900
+
+
+def test_create_game_engine_enables_wal_on_file_db(tmp_path: Path) -> None:
+    db_path = tmp_path / "wal.db"
+    engine = create_game_engine(Settings(database_path=str(db_path)))
+    with engine.connect() as conn:
+        journal_mode = conn.execute(text("PRAGMA journal_mode")).scalar()
+        synchronous = conn.execute(text("PRAGMA synchronous")).scalar()
+    assert journal_mode == "wal"
+    assert synchronous == 1  # NORMAL
+
+
+def test_configure_sqlite_engine_respects_full_synchronous(tmp_path: Path) -> None:
+    db_path = tmp_path / "full.db"
+    engine = create_game_engine(
+        Settings(database_path=str(db_path), db_sqlite_synchronous="FULL")
+    )
+    with engine.connect() as conn:
+        assert conn.execute(text("PRAGMA synchronous")).scalar() == 2  # FULL
+
+
+def test_configure_sqlite_engine_rejects_invalid_synchronous(tmp_path: Path) -> None:
+    engine = create_engine(f"sqlite:///{tmp_path / 'x.db'}")
+    with pytest.raises(ValueError, match="db_sqlite_synchronous"):
+        configure_sqlite_engine(engine, Settings(db_sqlite_synchronous="BOGUS"))
+
+
+def test_load_settings_reads_sqlite_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LORECRAFT_DB_SQLITE_WAL", "false")
+    monkeypatch.setenv("LORECRAFT_DB_SQLITE_SYNCHRONOUS", "FULL")
+    settings = load_settings()
+    assert settings.db_sqlite_wal is False
+    assert settings.db_sqlite_synchronous == "FULL"

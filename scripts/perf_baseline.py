@@ -35,7 +35,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.commands import register_all_commands
 from lorecraft.config import Settings
-from lorecraft.db import create_tables
+from lorecraft.db import configure_sqlite_engine, create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
@@ -111,15 +111,17 @@ def build_harness(
     db_path: Path,
 ) -> tuple[CommandEngine, GameContext, Session, CommandRegistry]:
     """Bootstrap the real world into a disposable DB and wire a GameContext."""
-    game_engine = create_engine(f"sqlite:///{db_path}")
-    audit_engine = create_engine("sqlite://")
-    create_tables(game_engine=game_engine, audit_engine=audit_engine)
-
     repo_root = Path(__file__).resolve().parents[1]
     settings = Settings(
         database_path=str(db_path),
         world_yaml_path=str(repo_root / "world_content" / "world.yaml"),
     )
+    # Match the app's real engine config (WAL etc.) so measurements reflect prod.
+    game_engine = configure_sqlite_engine(
+        create_engine(f"sqlite:///{db_path}"), settings
+    )
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
     ensure_world_bootstrapped(game_engine, settings)
 
     # The proof-of-primitive "hp" meter def the real app registers at lifespan.
@@ -187,7 +189,9 @@ def _measure_scheduler_tick(
         Waypoint(position_id="b", x=1, y=0, dwell_ticks=1.0, travel_ticks=1.0),
     )
     for n in job_counts:
-        engine = create_engine(f"sqlite:///{db_dir / f'sched-{n}.db'}")
+        engine = configure_sqlite_engine(
+            create_engine(f"sqlite:///{db_dir / f'sched-{n}.db'}"), Settings()
+        )
         create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
         with Session(engine) as setup_session:
             setup_session.add(WorldClock(game_epoch=0.0, real_epoch=0.0))

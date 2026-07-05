@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.6)
+## Where things stand (2026-07-05, v0.38.7)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -23,9 +23,12 @@ moved to the wishlist.
 system, not the centerpiece), and the multiplayer trade/transit **test pass** (coverage-hardening
 of already-complete subsystems).
 
-**What's actually left:** a measure-first **performance & scaling band** (Sprints 35–38), and one
-new **Tier 1 engine primitive** — timed room effects (Sprint 39, design-first). That's the whole
-active roadmap below.
+**What's actually left:** one new **Tier 1 engine primitive** — timed room effects (Sprint 39,
+design-first). The measure-first **performance & scaling band** (Sprints 35–38) is now effectively
+complete — parser resolution (Sprint 36, 9.3×) and SQLite **WAL mode** (Sprint 37.4, ~20–29× on
+commits) landed; scheduler-commit batching (37.1) and the concurrency gate (38.1) were **deferred to
+[`wishlist.md`](wishlist.md)** because the evidence showed fsync (not CPU) was the wall and WAL
+removed it. That leaves Sprint 39 as the whole active roadmap below.
 
 **Recently completed (v0.37.0, 2026-07-05):** admin console **live-refresh** on content changes
 (Sprint 40) and **registered issue components** as a strict dropdown (Sprint 41) — both born from
@@ -67,41 +70,33 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | 36.2 | ~~Index visible entities/inventory by normalized name+alias once per parse~~ → **column projection** (profiling showed full-`Item` materialization, ~72% of parse, was the residual cost — the matcher scan was only ~6%) | [x] `get_visible_entities`/`get_inventory` now use `ItemRepo.name_index(ids)`, a `select(Item.id, Item.name, Item.aliases)` projection — no ORM instances, no decoding the unused `usable_with`/`loot_table`/`effects` JSON columns. `@25items` **1.47 → 1.13 ms p50**, `@100items` **3.01 → 1.82 ms p50**, and the **p99 tail collapsed ~22 → ~1.9 ms**. Semantics-preserving. |
 | 36.3 | Re-run `perf_baseline.py`; record before/after in the sprint. Only add result memoization (LRU keyed on `(raw, player_id, entity_hash)`) if resolution is still material after 36.1–36.2 | [x] Re-measured (above). At ~1.8 ms p50 / ~1.9 ms p99 for 100 items — well under the 50 ms "slow" line and flat in entity count — resolution is **no longer material**, so **no LRU memoization added**. A cross-command immutable-`Item` cache stays available as a future lever but isn't justified by the numbers. |
 
-## Sprint 37 — Scheduler batching, pool tuning & load test
+## Sprint 37 — Pool tuning, load test & the WAL win — ✅ effectively complete
 
-**Goal:** Batch same-epoch jobs into one commit; tune the DB pool; add a repeatable multi-player load test.
-
-**Sequencing (measure-first, decided 2026-07-05):** the 35.1 baseline never measured `scheduler_tick` (a server-loop path), so **37.1 batching is an unmeasured optimization** touching the event/session contract. Doing it order **37.2 → 37.3 → 37.1**: land the safe pool knobs, build the load test to get real multi-player p95/p99 evidence, then apply scheduler batching **only if** the load test shows per-job scheduler-commit cost. Mirrors the band's "measure first" rule and the Sprint 36 profiling-driven precedent.
+**Goal (as scoped):** batch same-epoch scheduler jobs; tune the DB pool; add a repeatable multi-player load test. **Outcome:** measure-first (37.2 → 37.3 → benchmarks) surfaced that the real bottleneck is **fsync-per-commit on the single SQLite writer**, not the scheduler specifically — so the high-ROI fix turned out to be **SQLite WAL mode (37.4 below)**, which the benchmarks confirm is a broad ~20–29× (scheduler) / ~4–6× (commands) win. **37.1 scheduler batching became marginal after WAL and is deferred to [`wishlist.md`](wishlist.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 37.1 | Batch scheduler execution: accumulate mutations across all due jobs, apply + commit once (preserve atomicity; verify via simulation) | [ ] Gated on 37.3 evidence — each `SCHEDULED_JOB_DUE` handler (`mobile_route`) currently opens its own session + commit; batching to one commit/tick is deferred until the load test shows it matters. |
-| 37.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) in `config.py`/`Settings` for many concurrent players; document in deployment notes | [x] `db_pool_size` (5) / `db_pool_recycle` (1800s) added to `Settings` + `LORECRAFT_DB_POOL_SIZE`/`_RECYCLE` env vars; `db._pool_kwargs` applies them to `create_engine` **only for a networked backend** (Postgres/MySQL) — skipped for SQLite (single-writer, static pool). Documented in `admin_builder_guide.md`; unit-tested. |
-| 37.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s issuing commands concurrently; report p95/p99 command latency before vs. after | [x] `simulation`-marked test: N concurrent `VirtualPlayer`s (default 10, `LORECRAFT_LOAD_TEST_PLAYERS`) each run a fixed script over real WebSockets; reports p50/p95/p99/max, optionally as JSON (`LORECRAFT_LOAD_TEST_JSON`) for before/after diffs. **First baseline (10 players × 6 cmds): p50 ≈ 254 ms, p95/p99 ≈ 475 ms** — the single-threaded server serializes a lockstep command herd, so latency ≈ queue-position × per-command cost. Also fixed a pre-existing harness break (`create_player` missing `password_confirm` + a policy-compliant password) that had silently broken the whole `simulation` suite. |
+| 37.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) in `config.py`/`Settings`; document in deployment notes | [x] `db_pool_size` (5) / `db_pool_recycle` (1800s) + `LORECRAFT_DB_POOL_SIZE`/`_RECYCLE`; `db._pool_kwargs` applies them **only for a networked backend** (Postgres/MySQL). Documented; unit-tested. |
+| 37.3 | Load test (`tests/simulation/test_load.py`): N `VirtualPlayer`s concurrently; report p95/p99 before vs. after | [x] `simulation`-marked test, N players (default 10) over real WebSockets, p50/p95/p99/max (+ JSON, + `LORECRAFT_LOAD_TEST_JITTER_MS`). Lockstep baseline p50 254 → **58 ms after WAL**; p99 475 → **83 ms**. Also fixed a pre-existing harness break that had silently broken the whole `simulation` suite. |
+| 37.4 | **SQLite WAL mode** (emerged from the 37.3 benchmarks) — `journal_mode=WAL` + tunable `synchronous` so every commit is cheap instead of a full fsync | [x] `db.configure_sqlite_engine` sets WAL + `synchronous` (default `NORMAL`) via a connect-listener on SQLite engines only; `db_sqlite_wal` / `db_sqlite_synchronous` + `LORECRAFT_DB_SQLITE_*`. `perf_baseline.py` `scheduler_tick@50jobs` **1410 → 48 ms (~29×)**; load test p50 **254 → 58 ms**. Documented; unit-tested; full suite + sim suite green. |
+| ~~37.1~~ | ~~Batch scheduler execution into one commit/tick~~ → **deferred to [`wishlist.md`](wishlist.md)** | Marginal after WAL (50 jobs/tick ≈ 48 ms). Restore only if a scheduler-heavy workload appears. |
 
-## Sprint 38 — Concurrency decision gate *(only if 35–37 telemetry shows a hard limit)*
+## Sprint 38 — Concurrency decision gate → **deferred to [`wishlist.md`](wishlist.md)**
 
-**Goal:** Revisit multithreading/multiprocessing **with data**, not speculatively. Likely order if needed: async command loop → parser thread-pool → async scheduler → (last resort) region sharding. See the analysis notes captured with Sprint 35.
-
-| # | Task | Status |
-|---|------|--------|
-| 38.1 | Decide + document, from real load-test telemetry, whether/what concurrency to add and its transaction-isolation plan (own session per worker, serialized commits, `GameRng` determinism preserved) | [ ] |
+**Decision (2026-07-05):** the load-test/benchmark evidence shows the wall is **fsync serialization on a single SQLite writer, not CPU** — adding threads/processes wouldn't parallelize SQLite writes, and WAL (37.4) already removed most of the commit cost. So the concurrency gate stays **closed** and the spec moves to the wishlist; reconsider only if a *post-WAL* realistic-load test shows a hard single-process wall.
 
 ### Recommended next step (2026-07-05)
 
 **Sprints 35 and 36 are complete.** Parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size), and the telemetry stack is in place: the `perf_baseline.py` harness (35.1), per-operation `time_operation` logging (35.2), and the live `/admin/analytics/performance` p50/p95/p99-by-operation endpoint (35.3), sourced from the `perf` breakdown now stamped on every `COMMAND_EXECUTED` audit event.
 
-**Sprint 37 is mostly done** (measure-first order): pool knobs (37.2) and the multi-player load test (37.3) shipped, and the two missing benchmarks (scheduler-tick in `perf_baseline.py`, jittered load) were added (v0.38.6) — which produced a **decisive, band-reshaping finding**.
+**The performance & scaling band (Sprints 35–38) is effectively complete.** Measure-first paid off twice: Sprint 36 (parser resolution, 9.3×) and the fsync/WAL finding. The dominant cost across every path was **fsync-per-commit on the single SQLite writer**; **SQLite WAL mode (37.4)** fixed it broadly — `scheduler_tick@50jobs` **1410 → 48 ms (~29×)**, load-test p50 **254 → 58 ms**. Consequences, now resolved:
 
-**Evidence (2026-07-05, v0.38.6):** the dominant cost across every path is **fsync-per-commit on the single SQLite writer** (~12–15 ms/commit in this environment, default `DELETE` journal). The scheduler tick scales ~28 ms/job (**50 due jobs ≈ 1068 ms**); commands cost ~2 commits each (10 players jittered → p50 100 ms; lockstep → 254 ms). A throwaway `PRAGMA journal_mode=WAL; synchronous=NORMAL` cut the scheduler tick **~20–29×** (50 jobs **1068 → 47 ms**). Two consequences:
+- **37.1 (scheduler-commit batching)** — **deferred to [`wishlist.md`](wishlist.md)**; marginal after WAL.
+- **38.1 (concurrency/threading)** — **deferred to [`wishlist.md`](wishlist.md)**; the wall was fsync, not CPU — threads don't parallelize a single SQLite writer. Revisit only if a *post-WAL* realistic-load test shows a hard wall.
 
-- **A new, higher-value fix surfaced: SQLite WAL mode + `synchronous=NORMAL`** — one small, broad change that speeds *every* commit (commands, scheduler, audit), unlike the scheduler-only 37.1. Carries a durability trade-off (WAL+NORMAL can lose the last transaction on OS crash/power loss, not on app crash) worth an explicit decision. **← recommended next perf move.**
-- **38.1 (concurrency/threading) is the wrong fix** and should be **deferred to `wishlist.md`**: the wall is fsync serialization on one writer, not CPU — threads don't parallelize SQLite writes. Reduce commit cost (WAL) first; only reconsider concurrency if a *post-WAL* load test still shows a wall.
-- **37.1 (scheduler-commit batching)** stays justified but **drops in priority**: once WAL lands, 50 jobs/tick ≈ 47 ms is tolerable, so batching becomes a marginal follow-up rather than urgent. Candidate for `wishlist.md` unless a scheduler-heavy workload appears.
+**Next: Sprint 39 — timed room effects (design-first).** The whole remaining active roadmap. 39.1 (design spec into `engine_core.md`) is the gate; 39.2+ wait on its review.
 
-**Disposition pending user call (2026-07-05):** adopt WAL as a new perf task, then move 38.1 (and likely 37.1) to `wishlist.md` and proceed to Sprint 39.
-
-**Suggested order:** ~~35.1 → 35.2 → 35.3~~ ✅ · ~~36.1 → 36.2 → 36.3~~ ✅ · ~~37.2 → 37.3~~ ✅ · benchmarks ✅ → **WAL mode (recommended) → defer 37.1/38.1 to wishlist → Sprint 39**.
+**Suggested order:** ~~35~~ ✅ · ~~36~~ ✅ · ~~37 (pool/load/WAL)~~ ✅ · 37.1 + 38.1 → wishlist ✅ → **Sprint 39 (next)**.
 
 ---
 

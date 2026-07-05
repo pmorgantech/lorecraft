@@ -599,6 +599,29 @@ boarding/arrival with multiple riders, and the audit-regression diff across a sc
 run. Overlaps the `lorecraft.tools.simulation` CLI idea and the perf band's load test (roadmap
 Sprint 37.3). (The PvP-consent portion is under *Combat, reframed* above, with the combat set-aside.)
 
+### Scheduler-commit batching 🤔 (was roadmap Sprint 37.1 — deferred 2026-07-05)
+
+Batch all due scheduler jobs in a tick into **one** commit instead of one session+commit per job.
+Currently each `SCHEDULED_JOB_DUE` handler (`mobile_route`) opens its own `Session` and commits;
+`scripts/perf_baseline.py`'s `scheduler_tick@Njobs` measured this at ~28 ms/job on the old `DELETE`
+journal (50 jobs ≈ 1410 ms). **Deferred because SQLite WAL (Sprint 37.4) cut that to ~48 ms @ 50
+jobs**, making batching marginal — and it would touch the decoupled event/session contract (handlers
+would share a tick-scoped session and defer commits). Restore under a fresh number **only if** a
+scheduler-heavy workload (many concurrent transit routes / timed effects due per tick) actually
+appears; the benchmark is already in place to re-justify it.
+
+### Concurrency / multithreading gate 🤔 (was roadmap Sprint 38.1 — deferred 2026-07-05)
+
+Adding an async command loop, a parser thread-pool, or process/region sharding. **Deferred because
+the measured wall is fsync serialization on the single SQLite writer, not CPU** — threads don't
+parallelize SQLite writes, and WAL (Sprint 37.4) removed most of the commit cost anyway
+(load-test p50 254 → 58 ms, p99 475 → 83 ms). The transaction-isolation design (own session per
+worker, serialized commits, `GameRng` determinism) is still the right spec if this returns.
+**Trigger to revisit:** a *post-WAL* realistic-load run (`tests/simulation/test_load.py`, e.g.
+`LORECRAFT_LOAD_TEST_PLAYERS=50 LORECRAFT_LOAD_TEST_JITTER_MS=…`) that still shows a hard
+single-process wall — likely after moving to a networked backend (Postgres) where the pool knobs
+(Sprint 37.2) start to matter.
+
 ### News & announcements ✅
 
 Already shipped ([Sprint 10.5](roadmap.md#sprint-105--tooling-infrastructure-)): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here

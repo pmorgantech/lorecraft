@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.7] - 2026-07-05
+
+### Added
+
+- **Sprint 37.4 — SQLite WAL mode (the fsync fix the benchmarks pointed to).** New `db.configure_sqlite_engine` attaches a connect-listener that sets `PRAGMA journal_mode=WAL` + `PRAGMA synchronous=<level>` on **SQLite engines only** (no-op for other backends and for `:memory:`), wired into `create_game_engine`/`create_audit_engine`. Configurable via `db_sqlite_wal` (default on) and `db_sqlite_synchronous` (default `NORMAL`) / `LORECRAFT_DB_SQLITE_WAL` / `LORECRAFT_DB_SQLITE_SYNCHRONOUS`. WAL makes each commit an append to the `-wal` file with fsync deferred to periodic checkpoints, instead of a full fsync per commit — the dominant cost the Sprint 37 benchmarks surfaced. **Measured win, reproduced in `perf_baseline.py` and the load test:** `scheduler_tick@50jobs` **1410 → 48 ms (~29×)**; multi-player load test p50 **254 → 58 ms**, p99 **475 → 83 ms**. `synchronous=NORMAL` under WAL is safe against application crashes and can lose only the last transaction(s) on OS crash / power loss; set `FULL` for full durability (still faster than the old `DELETE` journal). Documented in `admin_builder_guide.md`; unit-tested; full + simulation suites green.
+
+### Changed
+
+- **Performance & scaling band (Sprints 35–38) closed out; 37.1 and 38.1 deferred to `wishlist.md`.** The measure-first evidence showed the wall was fsync-per-commit on the single SQLite writer, and WAL (37.4) removed most of it broadly. So **scheduler-commit batching (37.1)** — marginal after WAL (~48 ms @ 50 jobs/tick) — and the **concurrency/threading gate (38.1)** — the wrong fix, since threads can't parallelize a single SQLite writer — both move to the wishlist with their evidence and re-trigger conditions. The remaining active roadmap is Sprint 39 (timed room effects, design-first).
+
 ## [0.38.6] - 2026-07-05
 
 ### Added
