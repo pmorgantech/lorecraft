@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.35.3] - 2026-07-05
+
+### Added
+
+- **Admin Issues tab — date/age toggle.** A 🕑 button next to the Issues search flips the Created/Updated columns between absolute dates (`7/5/2026`) and relative ages (`2 hours ago`). The button label reflects the current mode (Dates/Ages); toggling re-renders the visible date cells in place (no refetch, expanded detail rows stay open), and the hover tooltip always shows the full timestamp. Verified end-to-end in a headless browser (toggle flips the cell text and back, no console errors).
+
 ## [0.35.2] - 2026-07-05
 
 ### Changed

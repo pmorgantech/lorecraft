@@ -302,6 +302,7 @@
             <input id="i-filter-priority" placeholder="priority" style="width:110px;" />
             <input id="i-filter-component" placeholder="component" style="width:110px;" />
             <button onclick="loadIssues()">Search</button>
+            <button id="i-date-toggle" onclick="toggleIssueDateMode()" title="Switch date columns between absolute dates and relative ages">🕑 Dates</button>
           </div>
         </div>
         <div id="issues-create" class="panel">
@@ -781,8 +782,8 @@ async function loadIssues() {
       <td>${badge(i.priority, statusColor[i.status] || "gray")}</td>
       <td style="color:var(--text-dim)">${esc(i.component)}</td>
       <td style="color:var(--text-dim)">${esc(i.created_by) || "&mdash;"}</td>
-      <td style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.created_at))}">${esc(fmtDate(i.created_at))}</td>
-      <td style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.updated_at))}">${esc(fmtDate(i.updated_at))}</td>`;
+      <td class="issue-date" data-epoch="${i.created_at || 0}" style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.created_at))}">${esc(renderIssueDate(i.created_at))}</td>
+      <td class="issue-date" data-epoch="${i.updated_at || 0}" style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.updated_at))}">${esc(renderIssueDate(i.updated_at))}</td>`;
     tbody.appendChild(tr);
 
     // Hidden detail row, toggled by clicking the summary row.
@@ -994,6 +995,34 @@ function fmtDate(epoch) {
 function fmtDateTime(epoch) {
   if (!epoch) return "—";
   return new Date(epoch * 1000).toLocaleString();
+}
+// Relative "age" (e.g. "3 days ago"). 0/absent -> em dash.
+function fmtAge(epoch) {
+  if (!epoch) return "—";
+  const secs = Date.now() / 1000 - epoch;
+  const dir = secs >= 0 ? "ago" : "from now";
+  const abs = Math.abs(secs);
+  const units = [["year", 31536000], ["month", 2592000], ["day", 86400], ["hour", 3600], ["minute", 60]];
+  for (const [name, s] of units) {
+    if (abs >= s) { const n = Math.floor(abs / s); return `${n} ${name}${n > 1 ? "s" : ""} ${dir}`; }
+  }
+  return "just now";
+}
+
+// Issues date columns can show absolute dates or relative ages (toggle button).
+let issuesDateMode = "date"; // "date" | "age"
+function renderIssueDate(epoch) {
+  return issuesDateMode === "age" ? fmtAge(epoch) : fmtDate(epoch);
+}
+function toggleIssueDateMode() {
+  issuesDateMode = issuesDateMode === "date" ? "age" : "date";
+  const btn = document.getElementById("i-date-toggle");
+  if (btn) btn.innerHTML = issuesDateMode === "age" ? "🕑 Ages" : "🕑 Dates";
+  // Re-render the visible date cells in place — no refetch, keeps rows expanded.
+  document.querySelectorAll("#issues-tbody .issue-date").forEach(td => {
+    const epoch = parseFloat(td.getAttribute("data-epoch")) || 0;
+    td.textContent = renderIssueDate(epoch);
+  });
 }
 
 // ────────────────────────────────────────

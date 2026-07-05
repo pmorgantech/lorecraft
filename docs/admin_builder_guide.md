@@ -129,7 +129,7 @@ Eight tabs, each backed by REST endpoints under `/admin/*`:
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
-| **Issues** | Repo-tracked issue tracker CRUD; table shows opened-by + created/updated dates, and each row expands (click) to full description, tags, links, assignee, and timestamps | `GET/POST/PUT /admin/issues` |
+| **Issues** | Repo-tracked issue tracker CRUD; table shows opened-by + created/updated dates (🕑 button toggles absolute dates ↔ relative ages), and each row expands (click) to full description, tags, links, assignee, and timestamps | `GET/POST/PUT /admin/issues` |
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
 | **Accounts** | Create/revoke admin accounts, assign roles (superadmin only) | `GET/POST /admin/accounts`, `DELETE /admin/accounts/{username}` |
 
