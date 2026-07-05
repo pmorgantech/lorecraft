@@ -507,7 +507,7 @@ Username + password validation already shipped (v0.31.0); this builds on it.
 | # | Task | Status |
 |---|------|--------|
 | 32.1 | In-game character-creation / intro walkthrough — authored like dialogue/quests (YAML + the dialogue & side-effect registries), **skippable and repeatable**, runs once after first spawn (no in-engine special-casing) | [ ] |
-| 32.2 | Per-account **preferences layer** — one settings blob on the account (display density, feed verbosity, panel visibility, timestamp format, reduced-motion for transit/map animation) that the render layer reads in exactly one place | [ ] |
+| 32.2 | Per-account **preferences layer** — one settings blob on the account (display density, feed verbosity, panel visibility, timestamp format, reduced-motion for transit/map animation) that the render layer reads in exactly one place | [x] Opaque `Player.preferences` blob (engine-stored, webui-interpreted); `webui/player/preferences.py` owns schema/defaults/validation; `resolve_preferences()` read in one place (`/game` SSR context → `prefs`); `/settings` page to view/update; `hidden_panels` gates game.html panels; `.density-compact`/`.reduced-motion` CSS. 24 tests. |
 | 32.3 | **Accessibility mode** — semantic HTML/ARIA, high-contrast / screen-reader-friendly, colourblind-safe palette, real font scaling (a genuine browser-client differentiator; cheap now, costly to retrofit) | [ ] |
 
 ## Sprint 33 — Reporting & content-tooling polish

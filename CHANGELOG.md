@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.33.0] - 2026-07-05
+
+### Added
+
+- **Sprint 32.2: per-account presentation preferences.** Players get an account-level settings page (`GET/POST /settings`, linked from the top nav) to control **display density** (comfortable/compact), **feed verbosity**, **timestamp format**, **reduced motion**, and **panel visibility** (hide minimap / inventory / players-online / quest-tracker). The engine stores an opaque `Player.preferences` JSON blob and never interprets it; `webui/player/preferences.py` is the single place that gives it meaning (schema, defaults, validation). The render layer resolves preferences in exactly one place (`resolve_preferences(player.preferences).to_context()` in the `/game` SSR context) and exposes them to templates as `prefs`; `base.html` applies `density-compact`/`reduced-motion` body classes (backed by new `custom.css` rules + a `prefers-reduced-motion` media query), and `game.html` gates the four toggleable panels on `prefs.hidden_panels`. Invalid, partial, or legacy blobs always resolve to valid defaults, and every settings POST is re-validated through `apply_updates` so an invalid value can never be stored (only non-defaults are persisted). 24 tests (18 unit + 6 integration). The accessible form markup (fieldsets/legends/labels) also seeds Sprint 32.3.
+
 ## [0.32.3] - 2026-07-05
 
 ### Changed
