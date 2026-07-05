@@ -600,6 +600,14 @@ just a username/password form (see `web/auth.py` and `player_authentication.md`)
 in-game character-creation flow or introductory walkthrough once a player is dropped into the
 world.
 
+**Roadmap status (2026-07-05):** this was roadmap **Sprint 32.1** (in-game character-creation /
+intro walkthrough — authored like dialogue/quests via YAML + the dialogue & side-effect
+registries, **skippable and repeatable**, runs once after first spawn with no in-engine
+special-casing). Deferred and moved here 2026-07-05; the open product decision is the **trigger
+UX** — an opt-in `tutorial` command vs. auto-open-once after first spawn — which also needs a
+guide NPC + onboarding dialogue tree authored in `world.yaml` and a config-driven first-spawn
+hook. (Sprint 32.2 preferences + 32.3 accessibility already shipped; 32.1 was the only open piece.)
+
 - **Character creation, in-world** — once traits/backgrounds/skills exist (see _Traits, skills
   & character identity_ above), creation becomes more than a name: choose a background/origin,
   maybe answer a few flavor questions that set starting traits/skills/gear. Could be a scripted

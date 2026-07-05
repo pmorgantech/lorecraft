@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.5] - 2026-07-05
+
+### Changed
+
+- **Roadmap slimmed to remaining work only; completed history split out.** `docs/roadmap.md` went from ~660 lines to a concise list of what's *left* — Sprint 65 (multiplayer trade/transit tests) and the Performance & scaling band (66–69) — plus backlog, a sprint-numbering guard (used 1–34/65–69; 61–64 retired to wishlist; next new = 70), a playtesting quickstart, and an assessment recommending the perf band be sequenced ahead of Sprint 65. The full detail of the completed sprints (1–34, foundation + Tier 1 engine-core + Tier 2 pillar band + tier-split follow-ons) and the Foundation exit criteria moved verbatim to a new tracked file, **`docs/roadmap_completed.md`**.
+- **Sprint 32.1 (in-game intro walkthrough) moved to `wishlist.md`.** It was the last open piece of Sprint 32 (32.2 preferences + 32.3 accessibility already shipped) and was deferred pending a product decision on its trigger UX; its spec now lives under *Onboarding & first-time experience* in the wishlist. Sprint 32 therefore has no remaining roadmap work.
+
 ## [0.36.4] - 2026-07-05
 
 ### Changed
