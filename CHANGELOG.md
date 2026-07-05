@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.31.5] - 2026-07-05
+
+### Fixed
+
+- **`scripts/import_world.py` — stale pre-tier-split imports broke `./start.sh --init-dbs-if-missing`.** The world-import script still imported from the old flat module layout (`lorecraft.models.dialogue`, `lorecraft.models.items`, `lorecraft.models.player`, `lorecraft.models.quest`, `lorecraft.models.world`, `lorecraft.repos.stack_repo`), all of which moved during the tier split — so a fresh DB init crashed with `ModuleNotFoundError: No module named 'lorecraft.models.dialogue'`. Repointed to the post-split homes (`lorecraft.features.npc.models`, `lorecraft.engine.models.*`, `lorecraft.features.quests.models`, `lorecraft.engine.repos.stack_repo`). Scripts aren't covered by the test suite, so this regression slipped through the split. Verified: `import_world.py --fresh` imports the Ashmoore world (19 rooms, 35 items, 1 NPC, 1 quest, seed players) and `create_audit_db.py` both run clean.
+
 ## [0.31.4] - 2026-07-05
 
 ### Changed

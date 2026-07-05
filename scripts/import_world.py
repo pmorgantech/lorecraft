@@ -28,12 +28,12 @@ sys.path.insert(0, str(repo_root / "src"))
 from sqlmodel import Session, create_engine, select  # noqa: E402
 
 from lorecraft.db import create_tables  # noqa: E402
-from lorecraft.models.dialogue import DialogueTree  # noqa: E402
-from lorecraft.models.items import ItemStack  # noqa: E402
-from lorecraft.models.player import Player  # noqa: E402
-from lorecraft.models.quest import PlayerQuestProgress, Quest  # noqa: E402
-from lorecraft.models.world import Exit, Item, NPC, Room, WorldMeta  # noqa: E402
-from lorecraft.repos.stack_repo import StackRepo  # noqa: E402
+from lorecraft.features.npc.models import DialogueTree  # noqa: E402
+from lorecraft.engine.models.items import ItemStack  # noqa: E402
+from lorecraft.engine.models.player import Player  # noqa: E402
+from lorecraft.features.quests.models import PlayerQuestProgress, Quest  # noqa: E402
+from lorecraft.engine.models.world import Exit, Item, NPC, Room, WorldMeta  # noqa: E402
+from lorecraft.engine.repos.stack_repo import StackRepo  # noqa: E402
 from lorecraft.world.loader import load_world_yaml  # noqa: E402
 from lorecraft.config import Settings, load_settings  # noqa: E402
 from lorecraft.world.bootstrap import ensure_seed_player  # noqa: E402
