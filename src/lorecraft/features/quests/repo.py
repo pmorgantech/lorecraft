@@ -33,6 +33,17 @@ class QuestRepo(Repository[Quest, str]):
             ).all()
         )
 
+    def all_progress(self, player_id: str) -> list[PlayerQuestProgress]:
+        """Every quest-progress row for a player, any status (for the `score`
+        report — Sprint 34.2), so completed and failed quests are counted too."""
+        return list(
+            self.session.exec(
+                select(PlayerQuestProgress).where(
+                    PlayerQuestProgress.player_id == player_id
+                )
+            ).all()
+        )
+
     def player_progress(
         self, player_id: str, quest_id: str
     ) -> PlayerQuestProgress | None:

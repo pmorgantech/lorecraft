@@ -519,15 +519,16 @@ Username + password validation already shipped (v0.31.0); this builds on it.
 | 33.1 | Guided, multi-turn `/report` flow (category → title → detail) replacing the current one-line note; keep the existing Sprint 10.5 issues pipeline underneath | [ ] |
 | 33.2 | (stretch) Prioritized wishlist quick-wins pulled as scoped — e.g. clickable-link and page-length preferences (feed into the Sprint 32.2 blob), lore/journal surfacing | [ ] |
 
-## Sprint 34 — Player-reported command polish
+## Sprint 34 — Player-reported command polish ✅
 
 **Goal:** Close the two open player reports in `docs/issues.yaml` — small, self-contained
 command wins that improve day-to-day play. Both came in via the in-game `/report` pipeline.
+**Complete** — both player reports resolved; no open issues remain.
 
 | # | Task | Status |
 |---|------|--------|
 | 34.1 | `help <command>` shows detailed help for one command (usage, aliases, scope) instead of always dumping the full list; bare `help` unchanged ([`issue-7502f412`](issues.yaml)) | [x] `help <verb>` shows that command's help text, aliases, and scope; unknown verb reports not-found; bare `help` unchanged. issue-7502f412 resolved. 3 tests. |
-| 34.2 | `score` command — a player progress report (level/xp, quest completion, coins/net worth, reputation, discoveries) reading existing stats/quest/economy state; no new persistent schema ([`issue-257c6643`](issues.yaml)) | [ ] |
+| 34.2 | `score` command — a player progress report (level/xp, quest completion, coins/net worth, reputation, discoveries) reading existing stats/quest/economy state; no new persistent schema ([`issue-257c6643`](issues.yaml)) | [x] `score` in the character feature aggregates level/xp, quests (completed/active), wealth (carried + banked), reputation count, discoveries (rooms/NPCs). Reads existing tables only; degrades to zeros. issue-257c6643 resolved. 4 tests. |
 
 ---
 

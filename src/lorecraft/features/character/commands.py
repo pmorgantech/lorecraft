@@ -39,3 +39,12 @@ def register_character_commands(
     def reputation_command(noun: str | None, ctx: GameContext) -> None:
         del noun
         service.list_reputation(ctx)
+
+    @registry.register(
+        "score",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="score — your progress: level/xp, quests, wealth, reputation, discoveries",
+    )
+    def score_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        service.score(ctx)
