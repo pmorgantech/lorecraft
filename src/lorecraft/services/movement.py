@@ -9,7 +9,7 @@ from lorecraft.engine.game.grammar import OPPOSITE_DIRECTIONS
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.parser import DIRECTION_ALIASES
-from lorecraft.services.skills import SkillService
+from lorecraft.features.skills.service import SkillService
 
 _skills = SkillService()
 

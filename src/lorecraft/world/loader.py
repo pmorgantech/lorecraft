@@ -9,9 +9,9 @@ from sqlmodel import Session, select
 import yaml
 
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.bank import Bank
+from lorecraft.features.bank.models import Bank
 from lorecraft.models.dialogue import DialogueTree
-from lorecraft.models.economy import RegionPricing, Shop, ShopStock
+from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.models.quest import Quest
 from lorecraft.models.transit import TransitLine, TransitStop

@@ -19,8 +19,8 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.economy import RegionPricing, Shop, ShopStock
-from lorecraft.repos.economy_repo import EconomyRepo
+from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
+from lorecraft.features.economy.repo import EconomyRepo
 from lorecraft.engine.models.world import Item, NPC, Room
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
@@ -29,13 +29,13 @@ from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.services.container import ServiceContainer
-from lorecraft.services.economy import EconomyService
+from lorecraft.features.economy.service import EconomyService
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.services.restock import RestockService
-from lorecraft.game.economy_holders import register as _register_economy
+from lorecraft.features.economy.holders import register as _register_economy
 
 # The "shop" holder type used to register as an import side effect; it now
 # registers via the economy feature's register(). Call it once here.

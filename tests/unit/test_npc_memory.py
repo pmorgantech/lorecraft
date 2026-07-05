@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, create_engine
 
-from lorecraft.npc.npc_memory_conditions import register as _register_npc_memory
+from lorecraft.features.npc_memory.conditions import register as _register_npc_memory
 from lorecraft.db import create_tables
 from lorecraft.game import quest_conditions
 from lorecraft.game.connection_manager import ConnectionManager
@@ -19,7 +19,7 @@ from lorecraft.engine.models.world import NPC, Room
 from lorecraft.npc.dialogue import DialogueService, current_npc_id
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
-from lorecraft.repos.npc_memory_repo import NpcMemoryRepo
+from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext
-from lorecraft.game.exploration import is_exit_discovered, mark_exit_discovered
+from lorecraft.features.exploration.rules import (
+    is_exit_discovered,
+    mark_exit_discovered,
+)
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
-from lorecraft.services.skills import SkillService
+from lorecraft.features.skills.service import SkillService
 
 # A routine search; a room author could later vary this per-room via terrain
 # or a room flag, but a flat difficulty keeps the first cut simple.

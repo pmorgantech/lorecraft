@@ -18,7 +18,7 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.models.bank import Bank
+from lorecraft.features.bank.models import Bank
 from lorecraft.engine.models.world import NPC, Room
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
@@ -31,7 +31,7 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.game.bank_holders import register as _register_bank
+from lorecraft.features.bank.holders import register as _register_bank
 
 # The "bank_account" holder type used to register as an import side effect; it
 # now registers via the bank feature's register(). Call it once here.

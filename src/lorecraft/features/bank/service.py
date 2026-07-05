@@ -12,7 +12,7 @@ from __future__ import annotations
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
-from lorecraft.repos.bank_repo import BankRepo
+from lorecraft.features.bank.repo import BankRepo
 from lorecraft.services.ledger import ExchangeLeg, LedgerService
 
 

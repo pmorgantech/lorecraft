@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 
 from lorecraft.game import quest_conditions
 from lorecraft.npc import dialogue_conditions, side_effects
-from lorecraft.repos.npc_memory_repo import NpcMemoryRepo
+from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.types import JsonObject, JsonScalar, JsonValue
 
 if TYPE_CHECKING:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.game import skills as skills_module
+from lorecraft.features.skills import definitions as skills_module
 from lorecraft.engine.game import traits as traits_module
 from lorecraft.engine.game.context import GameContext
 from lorecraft.features.reputation.repo import ReputationRepo

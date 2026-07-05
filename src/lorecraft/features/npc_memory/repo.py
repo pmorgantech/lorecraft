@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.npc_memory import NpcMemory
+from lorecraft.features.npc_memory.models import NpcMemory
 from lorecraft.types import JsonScalar
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.economy import EconomyService
+from lorecraft.features.economy.service import EconomyService
 
 
 def register_economy_commands(

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.exploration import ExplorationService
-from lorecraft.services.journal import JournalService
+from lorecraft.features.exploration.service import ExplorationService
+from lorecraft.features.exploration.journal import JournalService
 
 
 def register_exploration_commands(

@@ -15,7 +15,7 @@ from sqlmodel import Session
 
 from lorecraft.engine.game import meters as meters_module
 from lorecraft.engine.game import modifiers as modifiers_module
-from lorecraft.game import skills as skills_module
+from lorecraft.features.skills import definitions as skills_module
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.engine.models.player import PlayerStats

@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.21.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — five more features co-located (step 8, batch 4, branch `tier_split`).** `economy`, `bank`, `npc_memory`, `skills`, and `exploration` now own their code under `features/<x>/`:
+  - **economy** — `economy_holders.py` → `holders.py`, `services/economy.py` → `service.py`, `models/economy.py` → `models.py`, `repos/economy_repo.py` → `repo.py`.
+  - **bank** — `bank_holders.py` → `holders.py`, `services/bank.py` → `service.py`, `models/bank.py` → `models.py`, `repos/bank_repo.py` → `repo.py`.
+  - **npc_memory** — `npc/npc_memory_conditions.py` → `conditions.py`, `models/npc_memory.py` → `models.py`, `repos/npc_memory_repo.py` → `repo.py`.
+  - **skills** (new package) — `game/skills.py` → `definitions.py`, `services/skills.py` → `service.py`. Passive manifest (registers nothing on shared registries beyond the skill defs its consumers import directly; skill defs stay idempotently registered on import).
+  - **exploration** (new package) — `game/exploration.py` → `rules.py`, `services/exploration.py` → `service.py`, `services/journal.py` → `journal.py`. Passive manifest.
+  `discover_features()` now returns 11 features (adds `skills`, `exploration`). Command modules (`commands/economy.py`, `commands/bank.py`, `commands/exploration.py`) stay put until step 9's dispatcher dissolution; their imports were rewritten. Full suite 794 passed, lint + typecheck clean.
+
 ## [0.20.0] - 2026-07-05
 
 ### Changed

@@ -2,8 +2,8 @@ import pytest
 from sqlmodel import Session, create_engine, select
 
 from lorecraft.db import create_tables
-from lorecraft.models.bank import Bank
-from lorecraft.models.economy import RegionPricing, Shop, ShopStock
+from lorecraft.features.bank.models import Bank
+from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.engine.models.world import Exit, Item, Room

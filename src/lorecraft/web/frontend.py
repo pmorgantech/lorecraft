@@ -807,7 +807,7 @@ async def partial_map_full(
 
 def _cartography_level(db: DBSession, player_id: str) -> int:
     from lorecraft.engine.game.modifiers import resolve_for
-    from lorecraft.services.skills import SkillService
+    from lorecraft.features.skills.service import SkillService
 
     skills = SkillService()
     base = skills.get_level(db, player_id, "cartography")

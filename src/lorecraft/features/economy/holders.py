@@ -11,7 +11,7 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from lorecraft.engine.game.holders import HolderTypeDef, get_registry
-from lorecraft.models.economy import Shop
+from lorecraft.features.economy.models import Shop
 
 
 def _shop_exists(session: Session, holder_id: str) -> bool:

@@ -15,7 +15,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.repos.economy_repo import EconomyRepo
+from lorecraft.features.economy.repo import EconomyRepo
 
 
 class RestockService:

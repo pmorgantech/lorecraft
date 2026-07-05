@@ -35,7 +35,7 @@ from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.reputation.service import ReputationService
-from lorecraft.services.skills import SkillService
+from lorecraft.features.skills.service import SkillService
 from lorecraft.features.traits.service import TraitService
 
 # Traits + reputation used to register as import side effects; they now register

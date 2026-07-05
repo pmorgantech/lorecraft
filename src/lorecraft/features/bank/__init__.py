@@ -1,9 +1,9 @@
 """Bank feature: bank accounts — registers the "bank_account" holder type.
 
-Migrated to the manifest system (tier split, step 5). The holder registration
-still lives in `lorecraft.game.bank_holders`; the manifest wraps it so it loads
-via config instead of a side-effect import. The bank service/commands join this
-manifest in a later step.
+Self-contained Tier 2 package (tier split, step 8): the "bank_account" holder
+(`holders.py`), service (`service.py`), model (`models.py`), and repo
+(`repo.py`) live here; the manifest registers the holder. (The banking command
+module dissolves into the package in step 9.)
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lorecraft.features.manifest import FeatureManifest, register_feature
-from lorecraft.game.bank_holders import register as _register_bank
+from lorecraft.features.bank.holders import register as _register_bank
 
 if TYPE_CHECKING:
     from lorecraft.state import AppState

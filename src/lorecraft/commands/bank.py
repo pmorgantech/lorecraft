@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.bank import BankService
+from lorecraft.features.bank.service import BankService
 
 
 def register_bank_commands(

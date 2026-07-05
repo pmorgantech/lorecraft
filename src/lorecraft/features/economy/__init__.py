@@ -1,9 +1,9 @@
 """Economy feature: shops (buy/sell) — registers the "shop" holder type.
 
-Migrated to the manifest system (tier split, step 5). The holder registration
-still lives in `lorecraft.game.economy_holders`; the manifest wraps it so it
-loads via config instead of a side-effect import. The economy service/commands
-join this manifest in a later step.
+Self-contained Tier 2 package (tier split, step 8): the "shop" holder
+(`holders.py`), service (`service.py`), model (`models.py`), and repo
+(`repo.py`) live here; the manifest registers the holder. (The `buy`/`sell`
+command module dissolves into the package in step 9.)
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from lorecraft.features.manifest import FeatureManifest, register_feature
-from lorecraft.game.economy_holders import register as _register_economy
+from lorecraft.features.economy.holders import register as _register_economy
 
 if TYPE_CHECKING:
     from lorecraft.state import AppState

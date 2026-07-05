@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from sqlmodel import Session, select
 
-from lorecraft.models.bank import Bank, BankAccount
+from lorecraft.features.bank.models import Bank, BankAccount
 
 
 class BankRepo:

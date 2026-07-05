@@ -16,7 +16,7 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.game.warmth import resolve_warmth
-from lorecraft.services.skills import SkillService
+from lorecraft.features.skills.service import SkillService
 
 UNBURDENED_MOVE_DRAIN = 2.0
 BURDENED_MOVE_DRAIN = 4.0

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.economy import RegionPricing, Shop, ShopStock
+from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 
 
 class EconomyRepo:

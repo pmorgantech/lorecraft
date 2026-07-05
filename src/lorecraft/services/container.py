@@ -6,13 +6,13 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 
 from lorecraft.npc.dialogue import DialogueService
-from lorecraft.services.bank import BankService
+from lorecraft.features.bank.service import BankService
 from lorecraft.services.character_info import CharacterInfoService
-from lorecraft.services.economy import EconomyService
-from lorecraft.services.exploration import ExplorationService
+from lorecraft.features.economy.service import EconomyService
+from lorecraft.features.exploration.service import ExplorationService
 from lorecraft.features.fatigue.service import FatigueService
 from lorecraft.services.inventory import InventoryService
-from lorecraft.services.journal import JournalService
+from lorecraft.features.exploration.journal import JournalService
 from lorecraft.services.movement import MovementService
 from lorecraft.services.quest import QuestService
 from lorecraft.engine.services.save import SaveSlotService

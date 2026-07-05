@@ -12,7 +12,7 @@ from sqlmodel import SQLModel, create_engine
 from lorecraft.config import Settings, load_settings
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.audit import AuditEvent
-from lorecraft.models.bank import Bank, BankAccount
+from lorecraft.features.bank.models import Bank, BankAccount
 from lorecraft.models.changeset import (
     Changeset,
     ChangesetItem,
@@ -21,14 +21,14 @@ from lorecraft.models.changeset import (
 )
 from lorecraft.models.combat import CombatSession
 from lorecraft.models.dialogue import DialogueTree
-from lorecraft.models.economy import RegionPricing, Shop, ShopStock
+from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.models.issue import Issue
 from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.models.ledger import CoinBalance
 from lorecraft.engine.models.meters import ActiveEffect, Meter
 from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.models.news import NewsItem
-from lorecraft.models.npc_memory import NpcMemory
+from lorecraft.features.npc_memory.models import NpcMemory
 from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.engine.models.player_auth import PlayerAuth
 from lorecraft.engine.models.session import PlayerSession
