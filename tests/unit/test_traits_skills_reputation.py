@@ -32,7 +32,7 @@ from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.features.skills.service import SkillService

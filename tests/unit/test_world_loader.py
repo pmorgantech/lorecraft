@@ -7,7 +7,7 @@ from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Exit, Item, Room
-from lorecraft.repos.ledger_repo import LedgerRepo
+from lorecraft.engine.repos.ledger_repo import LedgerRepo
 from lorecraft.world.loader import export_world_document, load_world_yaml
 from lorecraft.world.validator import WorldValidationError, validate_world_document
 

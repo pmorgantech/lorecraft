@@ -2,6 +2,7 @@
 
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.items import ItemInstance, ItemStack
+from lorecraft.engine.models.ledger import CoinBalance
 from lorecraft.engine.models.meters import ActiveEffect, Meter
 from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
@@ -21,6 +22,7 @@ __all__ = [
     "NPC",
     "ActiveEffect",
     "AuditEvent",
+    "CoinBalance",
     "Exit",
     "Item",
     "ItemInstance",

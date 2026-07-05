@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from lorecraft.npc.dialogue import DialogueService
 from lorecraft.features.bank.service import BankService
-from lorecraft.services.character_info import CharacterInfoService
+from lorecraft.features.character.service import CharacterInfoService
 from lorecraft.features.economy.service import EconomyService
 from lorecraft.features.exploration.service import ExplorationService
 from lorecraft.features.fatigue.service import FatigueService

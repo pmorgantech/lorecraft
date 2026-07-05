@@ -29,7 +29,7 @@ from lorecraft.features.economy.models import Shop, ShopStock
 from lorecraft.engine.models.world import Item, NPC
 from lorecraft.features.economy.repo import EconomyRepo
 from lorecraft.features.inventory.service import parse_item_target
-from lorecraft.services.ledger import ExchangeLeg, LedgerService
+from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.features.skills.service import SkillService
 

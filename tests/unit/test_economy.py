@@ -32,9 +32,9 @@ from lorecraft.services.container import ServiceContainer
 from lorecraft.features.economy.service import EconomyService
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.services.restock import RestockService
+from lorecraft.features.economy.restock import RestockService
 from lorecraft.features.economy.holders import register as _register_economy
 
 # The "shop" holder type used to register as an import side effect; it now

@@ -16,9 +16,9 @@ from lorecraft.engine.models.items import ItemStack
 from lorecraft.features.quests.models import Quest
 from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Exit, Item, NPC, Room
-from lorecraft.repos.ledger_repo import LedgerRepo
+from lorecraft.engine.repos.ledger_repo import LedgerRepo
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import (
     BankBranchData,

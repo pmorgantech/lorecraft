@@ -12,7 +12,7 @@ from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Item, Room
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import ExchangeLeg, LedgerService
+from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 
 
 def _make_session() -> Session:

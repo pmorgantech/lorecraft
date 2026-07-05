@@ -19,7 +19,7 @@ from lorecraft.db import create_audit_engine, create_game_engine
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
-from lorecraft.game.item_rules import register_item_rules
+from lorecraft.features.items.rules import register_item_rules
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine

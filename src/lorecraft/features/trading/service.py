@@ -26,7 +26,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.features.trading.repo import TradeRepo
-from lorecraft.services.ledger import ExchangeLeg, LedgerService
+from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 
 
 class TradeService:

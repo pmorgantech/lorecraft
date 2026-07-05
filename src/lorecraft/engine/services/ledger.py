@@ -19,7 +19,7 @@ from lorecraft.engine.game.holders import (
     get_registry as get_holder_registry,
 )
 from lorecraft.engine.repos.item_repo import ItemRepo
-from lorecraft.repos.ledger_repo import LedgerRepo
+from lorecraft.engine.repos.ledger_repo import LedgerRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.ledger import CoinBalance
+from lorecraft.engine.models.ledger import CoinBalance
 
 
 class LedgerRepo:

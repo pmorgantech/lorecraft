@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.character_info import CharacterInfoService
+from lorecraft.features.character.service import CharacterInfoService
 
 
 def register_character_commands(

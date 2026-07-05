@@ -21,7 +21,7 @@ from lorecraft.features.encumbrance.rules import (
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.holders import Location
-from lorecraft.game.item_rules import register_item_rules
+from lorecraft.features.items.rules import register_item_rules
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
@@ -36,7 +36,7 @@ from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.world.loader import import_world
 from lorecraft.world.validator import ItemData, RoomData, WorldDocument

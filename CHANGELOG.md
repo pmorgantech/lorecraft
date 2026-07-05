@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.24.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — ledger corrected to Tier 1; items/character features + restock relocated (step 8, batch 7, branch `tier_split`).**
+  - **ledger → engine (Tier 1 fix).** `LedgerService` is carried by the Tier 1 `GameContext` (`ctx.ledger`), so coin/currency movement is a core primitive, not a feature. `services/ledger.py` → `engine/services/ledger.py`, `models/ledger.py` → `engine/models/ledger.py`, `repos/ledger_repo.py` → `engine/repos/ledger_repo.py`. `CoinBalance` moved to the `engine/models/__init__.py` aggregator. This removes an engine→`services` import from `context.py`.
+  - **items feature** (new) — `game/item_effects.py` → `features/items/effects.py`, `game/item_rules.py` → `features/items/rules.py`. Passive manifest (`register_item_rules` still called from `main.py`).
+  - **character feature** (new) — `services/character_info.py` → `features/character/service.py`. Passive manifest.
+  - **restock → economy** — `services/restock.py` → `features/economy/restock.py` (it only ever read the economy repo).
+  `discover_features()` now returns 22 features. Full suite 794 passed, lint + typecheck clean.
+
 ## [0.23.0] - 2026-07-05
 
 ### Changed

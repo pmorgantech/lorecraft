@@ -29,7 +29,7 @@ from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 
 ROOM_ID = "square"

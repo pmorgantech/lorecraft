@@ -48,7 +48,7 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.game.item_rules import register_item_rules
+from lorecraft.features.items.rules import register_item_rules
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import NPC, Room
@@ -60,7 +60,7 @@ from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.light.service import LightFuelService
-from lorecraft.services.restock import RestockService
+from lorecraft.features.economy.restock import RestockService
 from lorecraft.features.quests.timer import QuestTimerService
 from lorecraft.engine.services.mobile_route import MobileRouteService
 from lorecraft.features.transit.service import TransitService

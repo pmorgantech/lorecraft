@@ -22,7 +22,7 @@ from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService

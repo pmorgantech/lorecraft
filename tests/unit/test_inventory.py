@@ -23,7 +23,7 @@ from lorecraft.features.inventory.service import (
     parse_item_target,
 )
 from lorecraft.engine.services.item_location import ItemLocationService
-from lorecraft.services.ledger import LedgerService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService

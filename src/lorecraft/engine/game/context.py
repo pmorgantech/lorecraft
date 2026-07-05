@@ -33,7 +33,7 @@ from lorecraft.types import JsonObject, JsonValue
 if TYPE_CHECKING:
     from lorecraft.engine.services.effects import EffectService
     from lorecraft.engine.services.item_location import ItemLocationService
-    from lorecraft.services.ledger import LedgerService
+    from lorecraft.engine.services.ledger import LedgerService
     from lorecraft.engine.services.meters import MeterService
 
 
@@ -171,7 +171,7 @@ def build_game_context(
     silently wrong data, not a safe default.
     """
     from lorecraft.engine.services.item_location import ItemLocationService
-    from lorecraft.services.ledger import LedgerService
+    from lorecraft.engine.services.ledger import LedgerService
 
     stack_repo = StackRepo(session)
     item_repo = ItemRepo(session)
