@@ -33,6 +33,22 @@ issues:
   - sprint-10.5
   assigned_to: peter
   links: []
+- id: issue-257c6643
+  type: bug
+  title: We need a score command to report game progress and experience/quest reward
+    p...
+  description: We need a score command to report game progress and experience/quest
+    reward points.
+  created_by: player-2
+  created_at: '2026-07-05T14:13:09.516016Z'
+  updated_at: '2026-07-05T14:13:09.516016Z'
+  status: open
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  assigned_to: ''
+  links: []
 - id: issue-7502f412
   type: bug
   title: help <command> should display help for specific command
