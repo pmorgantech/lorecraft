@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.28.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — feature verbs co-located with their features (step 9, branch `tier_split`).** The nine single-feature command modules moved from the shared `commands/` bucket into their owning feature packages as `features/<feature>/commands.py`: `movement`, `inventory`, `character`, `exploration`, `condition`→`fatigue`, `economy`, `bank`, `trade`→`trading`, `transit`. What remains in `commands/` is the shell/out-of-character layer — `meta` (help/quit/save/load), `social` (say/talk/choice/bye), `news`, `report` — which span concerns (say/talk touch the `npc` feature; `/news` and `/report` touch content) rather than belonging to one feature, plus `register_all_commands`, now documented as the **composition root** that wires the shell verbs together with every feature's verbs. This keeps the engine boundary intact (the engine owns the `CommandRegistry` mechanism but provides no verbs; `commands/` is a composition layer that may import features, which the engine may not). Full suite 796 passed, lint + typecheck clean. Deviation from the plan's "delete `register_all_commands`, each feature self-registers via its manifest" ideal is intentional and documented — the dispatcher is retained as a low-churn composition point (it is called by ~30 tests and `main.py`); converting to fully manifest-driven command registration is a follow-on.
+
 ## [0.27.1] - 2026-07-05
 
 ### Changed

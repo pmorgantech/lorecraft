@@ -1,18 +1,29 @@
-"""Command registration helpers."""
+"""Command composition root.
 
-from lorecraft.commands.bank import register_bank_commands
-from lorecraft.commands.character import register_character_commands
-from lorecraft.commands.condition import register_condition_commands
-from lorecraft.commands.economy import register_economy_commands
-from lorecraft.commands.exploration import register_exploration_commands
-from lorecraft.commands.inventory import register_inventory_commands
+After the tier split (step 9), each feature owns its verbs in
+``lorecraft.features.<feature>.commands``; only the shell/out-of-character
+commands (``meta``, ``social``, ``news``, ``report``) still live in this
+package, because they span concerns (help/quit/save, say/talk, /news, /report)
+rather than belonging to one Tier 2 feature. ``register_all_commands`` is the
+composition point that wires the engine's shell verbs together with every
+feature's verbs into a single ``CommandRegistry`` — a legitimate composition
+concern (it may import features; the engine may not import it). Feature-gated
+verbs (fatigue/economy/bank) register only when their service is present.
+"""
+
+from lorecraft.features.bank.commands import register_bank_commands
+from lorecraft.features.character.commands import register_character_commands
+from lorecraft.features.fatigue.commands import register_condition_commands
+from lorecraft.features.economy.commands import register_economy_commands
+from lorecraft.features.exploration.commands import register_exploration_commands
+from lorecraft.features.inventory.commands import register_inventory_commands
 from lorecraft.commands.meta import register_meta_commands
-from lorecraft.commands.movement import register_movement_commands
+from lorecraft.features.movement.commands import register_movement_commands
 from lorecraft.commands.news import register_news_commands
 from lorecraft.commands.report import register_report_commands
 from lorecraft.commands.social import register_social_commands
-from lorecraft.commands.trade import register_trade_commands
-from lorecraft.commands.transit import register_transit_commands
+from lorecraft.features.trading.commands import register_trade_commands
+from lorecraft.features.transit.commands import register_transit_commands
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.services.container import ServiceContainer
 from lorecraft.features.transit.service import TransitService

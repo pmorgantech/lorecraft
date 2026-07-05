@@ -203,7 +203,9 @@ class TestParserAndInventoryIntegration:
             session.commit()
             ctx = _build_context(session, player)
             registry = CommandRegistry()
-            from lorecraft.commands.inventory import register_inventory_commands
+            from lorecraft.features.inventory.commands import (
+                register_inventory_commands,
+            )
 
             register_inventory_commands(registry)
             cmd_engine = CommandEngine(registry, RuleEngine())
@@ -222,7 +224,9 @@ class TestParserAndInventoryIntegration:
             session.commit()
             ctx = _build_context(session, player)
             registry = CommandRegistry()
-            from lorecraft.commands.inventory import register_inventory_commands
+            from lorecraft.features.inventory.commands import (
+                register_inventory_commands,
+            )
 
             register_inventory_commands(registry)
             cmd_engine = CommandEngine(registry, RuleEngine())

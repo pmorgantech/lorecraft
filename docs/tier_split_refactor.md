@@ -38,7 +38,7 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 8f | ↳ transit, quests, trading, inventory co-located (0.23.0) | 2 | ✅ |
 | 8g | ↳ ledger→engine (Tier 1 fix), items + character features, restock→economy (0.24.0) | 1/2 | ✅ |
 | 8h | ↳ movement (Tier 2: terrain/skill-gated) + npc/dialogue subsystem co-located; step 8 done (0.25.0) | 1/2 | ✅ |
-| 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |
+| 9 | Commands: feature verbs → `features/<x>/commands.py`; shell verbs (meta/social/news/report) + composition root stay in `commands/` (0.28.0) | 4 | ✅ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |
 | 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |
 | 12 | Import-direction lint + CI checks; feature enable/disable integration tests | 5 | 🚧 |
