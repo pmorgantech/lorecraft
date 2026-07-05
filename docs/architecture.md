@@ -94,96 +94,73 @@ Every operation in the engine maps to exactly one of these five layers. When in 
 
 ## 4. Project Structure
 
-> **⚠️ Superseded (2026-07-05): this tree predates the tier split.** The flat `game/` / `models/` / `services/` layout below has been replaced by a three-axis structure — Tier 1 in `src/lorecraft/engine/`, Tier 2 features in `src/lorecraft/features/<feature>/`, and web hosts in `src/lorecraft/webui/{player,admin}/` — with the engine enforced (by `tests/unit/test_tier_boundaries.py`) to import nothing from features or web. See **[`architecture_tiers.md`](architecture_tiers.md) §0** for the current layout and **[`tier_split_refactor.md`](tier_split_refactor.md)** for the migration. The tree below is retained as the *conceptual* module map (subsystem names/roles are still accurate; only their directories moved).
+The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–0.32.0; design in [`tier_split_refactor.md`](tier_split_refactor.md), boundary in [`architecture_tiers.md`](architecture_tiers.md)):
+
+- **Tier 1 — `engine/`**: content-agnostic primitives. Runs headless; imports only `engine.*` and `lorecraft.types` — never `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`).
+- **Tier 2 — `features/`**: 24 optional, self-contained feature packages, each owning its own `models`/`service`/`repo`/`commands`/`conditions`/…, declared by a `FeatureManifest`. Discovered via `discover_features()` and gated by the enabled set.
+- **Web — `webui/`**: the delivery hosts (`player/` HTMX UI + `admin/` console) that compose an engine + features. A feature may optionally ship a `presentation.py` picked up by the web host.
+- **Composition root** (`main.py`, `commands/`, `services/container.py`, `state.py`) may import features and web; the engine may not import any of them.
 
 ```
 .
 ├── src/
 │   └── lorecraft/
-│       ├── main.py                    # FastAPI app, startup/shutdown lifecycle
-│       ├── config.py                  # Env-driven config (time ratio, DB path, etc.)
+│       ├── main.py                    # FastAPI app + startup lifespan (composition root)
+│       ├── state.py                   # AppState (services, registries, web_host)
+│       ├── config.py  db.py  errors.py  types.py  observability.py  analytics.py
 │       │
-│       ├── game/
-│       │   ├── context.py             # GameContext dataclass
-│       │   ├── engine.py              # handle_command() — the main dispatch loop
-│       │   ├── parser.py              # Raw text → ParsedCommand
-│       │   ├── registry.py            # Command registration and dispatch
-│       │   ├── events.py              # GameEvent enum + EventBus
-│       │   ├── rules.py               # RuleEngine
-│       │   ├── transaction.py         # TransactionContext
-│       │   └── connection_manager.py  # WebSocket connection pool, room broadcasts
+│       ├── engine/                    # ── Tier 1: content-agnostic primitives (headless)
+│       │   ├── game/                  # context, engine, parser, registry, events, rules,
+│       │   │                          #   rng, checks, modifiers, meters, effects, traits,
+│       │   │                          #   components, holders, broadcast, connection_manager
+│       │   ├── models/                # player, world, items, meters, ledger, mobile,
+│       │   │                          #   audit, session, scheduler, player_auth
+│       │   ├── services/              # item_location, meters, effects, ledger, scheduler,
+│       │   │                          #   mobile_route, item_components, audit, save
+│       │   ├── repos/                 # player/room/item/npc/audit/stack/ledger/meter/…_repo
+│       │   └── clock/world_clock.py   # WorldClock + real-time loop
 │       │
-│       ├── models/                    # SQLModel table definitions
-│       │   ├── player.py
-│       │   ├── world.py               # Room, Exit, Item, NPC, WorldClock, WorldMeta
-│       │   ├── audit.py               # AuditEvent
-│       │   ├── quest.py               # Quest, QuestStage, PlayerQuestProgress
-│       │   ├── combat.py              # CombatSession, CombatSlot
-│       │   ├── session.py             # PlayerSession (disconnect tracking)
-│       │   └── changeset.py           # Changeset, ChangesetItem, WorldMigration
+│       ├── features/                  # ── Tier 2: optional feature packages (one dir each)
+│       │   ├── manifest.py            # FeatureManifest + registry
+│       │   ├── loader.py              # discover_features / load_features / resolve_enabled
+│       │   ├── economy/               # e.g. models, service, repo, commands, holders, restock
+│       │   │   └── …                  #   (+ optional presentation.py for feature UI)
+│       │   ├── transit/               # …, presentation.py (registers the minimap panel)
+│       │   └── …                      # inventory, movement, npc, quests, trading, bank,
+│       │                              #   equipment, traits, skills, exploration, fatigue,
+│       │                              #   warmth, terrain, weather, light, reputation,
+│       │                              #   containers, item_components, items, character,
+│       │                              #   npc_memory, encumbrance
 │       │
-│       ├── services/
-│       │   ├── movement.py            # MovementService
-│       │   ├── inventory.py           # InventoryService
-│       │   ├── combat.py              # CombatService
-│       │   ├── dialogue.py            # DialogueService
-│       │   ├── quest.py               # QuestService
-│       │   ├── scheduler.py           # SchedulerService
-│       │   ├── audit.py               # AuditService (write + render)
-│       │   └── save.py                # SaveSlotService
+│       ├── webui/                     # ── Web: delivery hosts (compose engine + features)
+│       │   ├── player/                # HTMX/Alpine/Jinja player UI
+│       │   │   ├── __init__.py        #   create_web_host / load_feature_presentations
+│       │   │   ├── host.py            #   WebHost: multi-dir Jinja loader + panel/slot registry
+│       │   │   ├── frontend.py  session.py  rendering.py  auth.py  player_auth.py
+│       │   │   └── templates/  static/
+│       │   └── admin/                 # Admin REST API + push WS + Textual TUI
+│       │       ├── api.py  websocket.py  auth.py  broadcaster.py
+│       │       └── routers/           # players, world, clock, audit, accounts, issues, news, …
 │       │
-│       ├── commands/                  # One file per command group
-│       │   ├── movement.py            # go, north, south, etc.
-│       │   ├── inventory.py           # take, drop, look, examine
-│       │   ├── social.py              # say, emote, who
-│       │   ├── combat.py              # attack, flee, use_skill
-│       │   └── meta.py                # save, load, help, quit
+│       ├── commands/                  # Shell/OOC verbs + register_all_commands (composition)
+│       │   ├── meta.py  social.py  news.py  report.py
+│       │   └── __init__.py            #   wires engine shell verbs + every feature's verbs
 │       │
-│       ├── hooks/                     # World-specific event hooks (story logic)
-│       │   ├── __init__.py            # register_all_hooks(bus)
-│       │   └── *.py                   # One file per story area
-│       │
-│       ├── clock/
-│       │   ├── world_clock.py         # WorldClock singleton, real-time loop
-│       │   └── weather.py             # Weather/season state machine
-│       │
-│       ├── npc/
-│       │   ├── scheduler.py           # NPC movement scheduler
-│       │   ├── dialogue.py            # Dialogue tree walker
-│       │   └── combat_ai.py           # NPC combat decision logic
-│       │
-│       ├── admin/
-│       │   ├── api.py                 # Admin REST API (FastAPI router)
-│       │   ├── websocket.py           # Admin push WebSocket
-│       │   ├── auth.py                # JWT auth, role checks
-│       │   └── tui/                   # Textual TUI client
-│       │       └── app.py
-│       │
-│       ├── world/
-│       │   ├── loader.py              # YAML → DB import
-│       │   ├── exporter.py            # DB → YAML flush
-│       │   ├── validator.py           # Pydantic validation + referential integrity
-│       │   └── versioning.py          # Changeset, conflict scanner, promotion
-│       │
-│       └── repos/                     # Data access layer (thin wrappers over SQLModel)
-│           ├── player_repo.py
-│           ├── room_repo.py
-│           ├── item_repo.py
-│           ├── npc_repo.py
-│           └── audit_repo.py
+│       ├── services/container.py      # ServiceContainer — builds Tier 2 services per enabled set
+│       ├── content/                   # issues.py, news.py (YAML↔DB), paths.py
+│       ├── world/                     # loader, validator, versioning, bootstrap (YAML → DB)
+│       └── tools/                     # world_cli.py, validators.py
 │
 ├── tests/
-│   ├── unit/                         # Pure function tests (parser, rules, dialogue)
-│   ├── integration/                  # In-memory SQLite tests per subsystem
+│   ├── unit/                         # Pure function tests (+ test_tier_boundaries.py)
+│   ├── integration/                  # In-memory SQLite tests (+ test_feature_toggling.py)
+│   ├── e2e/                          # Playwright browser tests
 │   └── simulation/                   # N scripted virtual players over real WebSockets
 │
-└── world_content/                    # Separate git repo (symlinked or submodule)
-    ├── rooms/
-    ├── items/
-    ├── npcs/
-    ├── quests/
-    └── dialogue/
+└── world_content/                    # world.yaml (rooms/items/npcs/quests/dialogue/…)
 ```
+
+> **Note.** Combat/PvP subsystems (`features/combat`, `npc/combat_ai`, `models/combat`) are **not yet built** — deferred to roadmap Sprints 61–65. The stat/skill/equipment primitives they will consume already exist in `engine/` and the relevant `features/`.
 
 ---
 
