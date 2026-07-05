@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.32.3] - 2026-07-05
+
+### Changed
+
+- **Sprint 31.4: structure docs rewritten to the shipped tier layout (tier-split step 13); Sprint 31 complete.** Went beyond the earlier staleness banners and rewrote the actual content: `architecture.md` §4 now shows the `engine/`/`features/`/`webui/` three-axis tree (was the pre-split flat `game/`/`models/`/`services/` tree); `tier_modules.md` is reorganized into per-axis tables (engine subtables, the 24 feature packages, webui hosts, composition root) with the manifest/`discover_features` model replacing the old side-effect-import section; `architecture_tiers.md` §2/§3/§4/§5/§6/§8 rewritten from "the split is NOT yet reflected / register via side-effect imports / disable by removing imports" to the shipped manifest + config-driven (`enabled_features` / `LORECRAFT_FEATURES`) reality. Graduated the `tier_split_refactor.md` §1c "adding feature UI" design into `admin_builder_guide.md` as a new **"Extending the UI: Feature Panels"** chapter, plus a `LORECRAFT_FEATURES` row in the config reference. `tier_split_refactor.md` marked **complete** (all steps 0–13). Docs-only.
+- **Roadmap: folded the two open player reports into a new Sprint 34** (Player-reported command polish): 34.1 `help <command>` per-command help (issue-7502f412), 34.2 `score` progress command (issue-257c6643). Synced `docs/issues.yaml` from the runtime DB (issue-257c6643 was DB-only). Combat/PvP renumbered 40–44 → 61–65 to reserve 34–60.
+
 ## [0.32.2] - 2026-07-05
 
 ### Changed
