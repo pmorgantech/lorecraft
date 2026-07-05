@@ -146,3 +146,71 @@ kbd {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* ---- Accessibility mode (Sprint 32.3) ---- */
+
+/* Real font scaling: scale the root font size so rem-based Tailwind sizes grow
+   proportionally. Applied on <body> via prefs.font_scale_class. */
+.font-large { font-size: 1.15rem; }
+.font-xlarge { font-size: 1.3rem; }
+
+/* High-contrast theme: near-black background, pure-white text, brighter accent
+   and borders, and a visible focus ring, to meet WCAG AA contrast. Overrides
+   the default zinc/emerald palette without changing markup. */
+.high-contrast {
+    background: #000 !important;
+    color: #fff !important;
+}
+.high-contrast .bg-panel,
+.high-contrast .bg-panel-light,
+.high-contrast .bg-zinc-900,
+.high-contrast .bg-zinc-950,
+.high-contrast [class*="bg-zinc-9"] {
+    background: #000 !important;
+}
+.high-contrast .text-zinc-400,
+.high-contrast .text-zinc-500,
+.high-contrast .text-text-muted {
+    color: #e0e0e0 !important;
+}
+.high-contrast .border,
+.high-contrast [class*="border-zinc"],
+.high-contrast [class*="border-border"] {
+    border-color: #fff !important;
+}
+.high-contrast .text-emerald-400,
+.high-contrast .text-emerald-500,
+.high-contrast .text-emerald-600 {
+    color: #4ade80 !important; /* brighter green, AA on black */
+}
+/* Always-visible focus outline in high-contrast mode (keyboard nav). */
+.high-contrast a:focus,
+.high-contrast button:focus,
+.high-contrast select:focus,
+.high-contrast input:focus {
+    outline: 3px solid #ffd500 !important;
+    outline-offset: 2px !important;
+}
+
+/* Screen-reader-only utility (Tailwind Play CDN provides sr-only, but define it
+   here too so it works even if the CDN class set changes). */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}

@@ -17,7 +17,17 @@ class TestResolvePreferences:
         assert prefs.feed_verbosity == "normal"
         assert prefs.timestamp_format == "relative"
         assert prefs.reduced_motion is False
+        assert prefs.high_contrast is False
+        assert prefs.font_scale == "normal"
         assert prefs.hidden_panels == ()
+
+    def test_accessibility_fields_resolve(self) -> None:
+        prefs = resolve_preferences({"high_contrast": True, "font_scale": "xlarge"})
+        assert prefs.high_contrast is True
+        assert prefs.font_scale == "xlarge"
+
+    def test_invalid_font_scale_falls_back(self) -> None:
+        assert resolve_preferences({"font_scale": "huge"}).font_scale == "normal"
 
     def test_none_blob_gives_defaults(self) -> None:
         assert resolve_preferences(None) == PlayerPreferences()
@@ -72,6 +82,23 @@ class TestToContext:
         assert prefs["motion_class"] == ""
         assert prefs["is_compact"] is False
 
+    def test_body_classes_combines_only_active(self) -> None:
+        # Default: only the two always-present classes (density + font scale).
+        default = PlayerPreferences().to_context()["prefs"]
+        assert default["body_classes"] == "density-comfortable font-normal"
+
+        full = PlayerPreferences(
+            display_density="compact",
+            reduced_motion=True,
+            high_contrast=True,
+            font_scale="large",
+        ).to_context()["prefs"]
+        assert full["body_classes"] == (
+            "density-compact reduced-motion high-contrast font-large"
+        )
+        assert full["contrast_class"] == "high-contrast"
+        assert full["font_scale_class"] == "font-large"
+
 
 class TestToStored:
     def test_defaults_serialize_to_empty_blob(self) -> None:
@@ -89,6 +116,8 @@ class TestToStored:
             feed_verbosity="terse",
             timestamp_format="clock24",
             reduced_motion=True,
+            high_contrast=True,
+            font_scale="xlarge",
             hidden_panels=("minimap",),
         )
         assert resolve_preferences(original.to_stored()) == original

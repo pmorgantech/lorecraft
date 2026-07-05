@@ -27,6 +27,8 @@ from lorecraft.types import JsonObject
 DISPLAY_DENSITIES = ("comfortable", "compact")
 FEED_VERBOSITIES = ("verbose", "normal", "terse")
 TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")
+# Accessibility (Sprint 32.3): real font scaling and a high-contrast theme.
+FONT_SCALES = ("normal", "large", "xlarge")
 
 # Panels the player may hide. Kept here (not derived from the WebHost registry)
 # so an unknown/removed panel name in a stored blob degrades gracefully.
@@ -41,6 +43,8 @@ class PlayerPreferences:
     feed_verbosity: str = "normal"
     timestamp_format: str = "relative"
     reduced_motion: bool = False
+    high_contrast: bool = False
+    font_scale: str = "normal"
     # Panel id -> visible. Absent panels default to visible.
     hidden_panels: tuple[str, ...] = ()
 
@@ -52,6 +56,19 @@ class PlayerPreferences:
         data["is_compact"] = self.display_density == "compact"
         data["density_class"] = f"density-{self.display_density}"
         data["motion_class"] = "reduced-motion" if self.reduced_motion else ""
+        data["contrast_class"] = "high-contrast" if self.high_contrast else ""
+        data["font_scale_class"] = f"font-{self.font_scale}"
+        # A single space-joined class string the <body> can drop straight in.
+        data["body_classes"] = " ".join(
+            c
+            for c in (
+                data["density_class"],
+                data["motion_class"],
+                data["contrast_class"],
+                data["font_scale_class"],
+            )
+            if c
+        )
         return {"prefs": data}
 
     def to_stored(self) -> JsonObject:
@@ -71,6 +88,10 @@ class PlayerPreferences:
             out["timestamp_format"] = self.timestamp_format
         if self.reduced_motion != default.reduced_motion:
             out["reduced_motion"] = self.reduced_motion
+        if self.high_contrast != default.high_contrast:
+            out["high_contrast"] = self.high_contrast
+        if self.font_scale != default.font_scale:
+            out["font_scale"] = self.font_scale
         if self.hidden_panels:
             out["hidden_panels"] = list(self.hidden_panels)
         return out
@@ -105,6 +126,8 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
             raw.get("timestamp_format"), TIMESTAMP_FORMATS, "relative"
         ),
         reduced_motion=bool(raw.get("reduced_motion", False)),
+        high_contrast=bool(raw.get("high_contrast", False)),
+        font_scale=_clean_enum(raw.get("font_scale"), FONT_SCALES, "normal"),
         hidden_panels=hidden,
     )
 

@@ -54,7 +54,7 @@
         </div>
       </fieldset>
 
-      <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">
+      <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4 space-y-4">
         <legend class="px-1 text-sm font-semibold text-zinc-300">Accessibility & motion</legend>
         <label class="flex items-center gap-2 text-sm text-zinc-300">
           <input type="checkbox" name="reduced_motion" value="on"
@@ -62,6 +62,21 @@
                  class="rounded border-zinc-600 bg-zinc-800">
           Reduce motion (disable map/transit animations and transitions)
         </label>
+        <label class="flex items-center gap-2 text-sm text-zinc-300">
+          <input type="checkbox" name="high_contrast" value="on"
+                 {% if prefs.high_contrast %}checked{% endif %}
+                 class="rounded border-zinc-600 bg-zinc-800">
+          High-contrast theme (stronger colours for low vision)
+        </label>
+        <div>
+          <label for="font_scale" class="block text-sm text-zinc-400 mb-1">Text size</label>
+          <select id="font_scale" name="font_scale"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in font_scale_options %}
+            <option value="{{ opt }}" {% if prefs.font_scale == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </fieldset>
 
       <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">

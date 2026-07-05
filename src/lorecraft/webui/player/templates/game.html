@@ -11,7 +11,7 @@
     mobileTab: 'feed'
 }">
     <!-- Main game area -->
-    <div class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
+    <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
         <!-- LEFT SIDEBAR: Room + Inventory + Minimap -->
         <div
@@ -75,6 +75,7 @@
 
             <!-- Feed content (append-only strategy) -->
             <div id="feed"
+                 role="log" aria-live="polite" aria-label="Game narrative log"
                  class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg font-serif scroll-smooth"
                  data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
                 <!-- Initial server-rendered messages -->

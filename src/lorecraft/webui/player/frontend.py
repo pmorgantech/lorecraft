@@ -44,6 +44,7 @@ from lorecraft.webui.player.password_policy import PasswordPolicy
 from lorecraft.webui.player.preferences import (
     DISPLAY_DENSITIES,
     FEED_VERBOSITIES,
+    FONT_SCALES,
     TIMESTAMP_FORMATS,
     TOGGLEABLE_PANELS,
     apply_updates,
@@ -478,6 +479,7 @@ def _settings_context(request: Request, player: Player, *, saved: bool = False) 
         "density_options": DISPLAY_DENSITIES,
         "verbosity_options": FEED_VERBOSITIES,
         "timestamp_options": TIMESTAMP_FORMATS,
+        "font_scale_options": FONT_SCALES,
         "toggleable_panels": TOGGLEABLE_PANELS,
         **prefs.to_context(),
     }
@@ -509,8 +511,10 @@ async def update_settings(
         "display_density": form.get("display_density"),
         "feed_verbosity": form.get("feed_verbosity"),
         "timestamp_format": form.get("timestamp_format"),
+        "font_scale": form.get("font_scale"),
         # An unchecked checkbox is simply absent from the form.
         "reduced_motion": "reduced_motion" in form,
+        "high_contrast": "high_contrast" in form,
         "hidden_panels": [
             v for v in form.getlist("hidden_panels") if isinstance(v, str)
         ],

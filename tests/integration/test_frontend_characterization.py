@@ -319,6 +319,61 @@ async def _test_game_screen_reflects_stored_preferences() -> None:
     assert 'data-feed-verbosity="terse"' in html
 
 
+def test_game_screen_has_accessibility_landmarks() -> None:
+    anyio.run(_test_game_screen_has_accessibility_landmarks)
+
+
+async def _test_game_screen_has_accessibility_landmarks() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    # Skip link, main landmark, and a live-region feed for screen readers.
+    assert "Skip to main content" in html
+    assert 'id="main-content"' in html
+    assert 'role="main"' in html
+    assert 'aria-live="polite"' in html
+
+
+def test_game_screen_applies_accessibility_body_classes() -> None:
+    anyio.run(_test_game_screen_applies_accessibility_body_classes)
+
+
+async def _test_game_screen_applies_accessibility_body_classes() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"high_contrast": True, "font_scale": "xlarge"}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "high-contrast" in html
+    assert "font-xlarge" in html
+
+
 def test_game_screen_hides_panel_when_preference_set() -> None:
     anyio.run(_test_game_screen_hides_panel_when_preference_set)
 
