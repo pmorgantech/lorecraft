@@ -139,6 +139,26 @@ def test_item_repo_matches_plural_queries_against_plural_item_names() -> None:
     assert coin_matches[0][1].id == "copper_coin"
 
 
+def test_item_repo_get_many_batch_loads_deduplicates_and_skips_missing() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        items = ItemRepo(session)
+        items.add(Item(id="gem", name="Gem", description="Bright."))
+        items.add(Item(id="coin", name="Coin", description="Round."))
+        session.commit()
+
+        # Duplicate ids collapse; a missing id is simply absent from the result.
+        loaded = items.get_many(["gem", "coin", "gem", "ghost"])
+
+        assert set(loaded) == {"gem", "coin"}
+        assert loaded["gem"].name == "Gem"
+        assert loaded["coin"].name == "Coin"
+        # Empty input short-circuits to an empty dict.
+        assert items.get_many([]) == {}
+
+
 def test_audit_repo_uses_separate_audit_session() -> None:
     audit_engine = create_engine("sqlite://")
     create_tables(game_engine=create_engine("sqlite://"), audit_engine=audit_engine)

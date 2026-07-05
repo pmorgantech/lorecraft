@@ -120,12 +120,14 @@ class GameContext:
 
     def get_inventory(self) -> list[tuple[str, str, list[str]]]:
         """Return carried items as (id, name, aliases) for parser resolution."""
+        stacks = self.stack_repo.stacks_for_owner("player", self.player.id)
+        items_by_id = self.item_repo.get_many(stack.item_id for stack in stacks)
         inventory: list[tuple[str, str, list[str]]] = []
         seen: set[str] = set()
-        for stack in self.stack_repo.stacks_for_owner("player", self.player.id):
+        for stack in stacks:
             if stack.item_id in seen:
                 continue
-            item = self.item_repo.get(stack.item_id)
+            item = items_by_id.get(stack.item_id)
             if item is not None:
                 seen.add(stack.item_id)
                 inventory.append((item.id, item.name, list(item.aliases)))

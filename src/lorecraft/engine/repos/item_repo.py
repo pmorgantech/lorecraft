@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import TypeVar
 
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.models.items import ItemStack
@@ -25,6 +25,20 @@ class ItemRepo(Repository[Item, str]):
     def __init__(self, session: Session) -> None:
         super().__init__(session, Item)
         self._stacks = StackRepo(session)
+
+    def get_many(self, ids: Iterable[str]) -> dict[str, Item]:
+        """Batch-load Item rows by id in a single query, keyed by id.
+
+        Ids with no matching row are simply absent from the result; duplicate
+        ids are collapsed. An empty id set short-circuits without a query. Used
+        to eliminate per-stack N+1 round-trips on the parser-resolution hot path
+        (room contents, carried inventory) — see get_inventory / _pair_with_items.
+        """
+        unique = list(dict.fromkeys(ids))
+        if not unique:
+            return {}
+        statement = select(Item).where(col(Item.id).in_(unique))
+        return {item.id: item for item in self.session.exec(statement).all()}
 
     def items_in_room(self, room_id: str) -> list[tuple[ItemStack, Item]]:
         """All stacks loose in a room, paired with their Item definition."""
@@ -108,9 +122,10 @@ class ItemRepo(Repository[Item, str]):
     def _pair_with_items(
         self, stacks: Sequence[ItemStack]
     ) -> list[tuple[ItemStack, Item]]:
+        items_by_id = self.get_many(stack.item_id for stack in stacks)
         paired: list[tuple[ItemStack, Item]] = []
         for stack in stacks:
-            item = self.get(stack.item_id)
+            item = items_by_id.get(stack.item_id)
             if item is not None:
                 paired.append((stack, item))
         return paired

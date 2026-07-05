@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.36.5)
+## Where things stand (2026-07-05, v0.36.9)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -56,8 +56,8 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 | # | Task | Status |
 |---|------|--------|
-| 36.1 | Eliminate the per-item DB round-trips in `GameContext.get_inventory()` (batch-load item rows in one query instead of `item_repo.get()` per stack) | [ ] |
-| 36.2 | Index visible entities/inventory by normalized name+alias once per parse (dict/trie) so noun resolution is ~O(1) per phrase instead of scanning every entity | [ ] |
+| 36.1 | Eliminate the per-item DB round-trips in `GameContext.get_inventory()` (batch-load item rows in one query instead of `item_repo.get()` per stack) | [x] Landed via new `ItemRepo.get_many(ids)`; also fixes `_pair_with_items` (room-contents/`get_visible_entities` path). Semantics-preserving. `perf_baseline.py` before→after (same machine): `parse:examine@25items` **4.79 → 1.47 ms p50 (3.3×)**, `@100items` **16.92 → 3.01 ms p50 (5.6×)**. Residual ~3 ms @100 is the matcher's O(entities) name scan (→ 36.2); a thin p99 tail (~22 ms) from the large `IN`-clause query remains to re-check in 36.3. |
+| 36.2 | Index visible entities/inventory by normalized name+alias once per parse (dict/trie) so noun resolution is ~O(1) per phrase instead of scanning every entity | [ ] ⟵ **next** |
 | 36.3 | Re-run `perf_baseline.py`; record before/after in the sprint. Only add result memoization (LRU keyed on `(raw, player_id, entity_hash)`) if resolution is still material after 36.1–36.2 | [ ] |
 
 ## Sprint 37 — Scheduler batching, pool tuning & load test
@@ -80,9 +80,9 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ### Recommended next step (2026-07-05)
 
-The band's baseline (35.1) is already done and it surfaced a **concrete, evidence-backed** bottleneck: parser resolution is O(visible entities) — ~17 ms at 100 inventory items, p99 spiking toward the 50 ms "slow" line, and it slows *every* noun-resolving command. So the highest-value next move is **Sprint 36.1** (kill the N+1 DB round-trips in `get_inventory()`) then **36.2** (index entities per parse) — both low-risk, semantics-preserving, and verifiable with the harness we already have. In-app telemetry (35.2/35.3) can follow; the baseline harness already gives us the before/after data for the parser fix.
+**36.1 is done** — batch-loading the item rows cut `parse:examine@100items` from ~17 ms to ~3 ms p50 (5.6×) and @25items from ~4.8 ms to ~1.5 ms (3.3×). The remaining ~3 ms at 100 items is now the matcher's **O(visible entities) name/alias scan**, not DB cost — exactly what **Sprint 36.2** targets (index entities by normalized name+alias once per parse so noun resolution is ~O(1) per phrase). That's the highest-value next move: low-risk, semantics-preserving, verifiable with the same harness. A thin p99 tail (~22 ms @100 items) from the single large `IN`-clause query is worth re-checking during 36.3's re-measure.
 
-**Suggested order:** 36.1 → 36.2 → re-measure (36.3) → 35.2/35.3 (in-app telemetry) → 37 (batching/pool/load test) → 38 (concurrency gate, only if the load test shows a wall).
+**Suggested order:** ~~36.1~~ → **36.2 (next)** → re-measure (36.3) → 35.2/35.3 (in-app telemetry) → 37 (batching/pool/load test) → 38 (concurrency gate, only if the load test shows a wall).
 
 ---
 

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.9] - 2026-07-05
+
+### Changed
+
+- **Sprint 36.1 — eliminated the parser's per-item N+1 DB round-trips.** `GameContext.get_inventory()` and `ItemRepo._pair_with_items()` (which backs `items_in_room` → `get_visible_entities`, the room-contents path) previously called `item_repo.get()` once per stack, so noun resolution issued one query per visible/carried item. Both now batch-load their Item rows in a single query via a new `ItemRepo.get_many(ids)`, keyed by id (dedupes ids, skips missing rows, short-circuits on empty input). Semantics-preserving — ordering and item-id dedup are unchanged. Re-running `scripts/perf_baseline.py` on the same machine: `parse:examine` at 25 inventory items drops **4.79 ms → 1.47 ms p50 (3.3×)** and at 100 items **16.92 ms → 3.01 ms p50 (5.6×)**; the residual ~3 ms at 100 items is the matcher's O(entities) name scan, which is Sprint 36.2's target. (A thin p99 tail (~22 ms) remains at 100 items from the large `IN`-clause query — noted for the 36.2 re-measure; the p50/p95 distribution improved decisively.)
+
 ## [0.36.8] - 2026-07-05
 
 ### Fixed
