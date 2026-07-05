@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.30.1] - 2026-07-05
+
+### Changed
+
+- **Tier split — docs mark the structural refactor complete (branch `tier_split`).** `tier_split_refactor.md`'s "Current status" now states the split is structurally done (engine fully import-pure, 24 feature packages, `webui/` web hosts, boundary-enforced) and reframes the remaining `WebHost`/`presentation.py` seam (steps 10c/11) as *additive framework deliberately deferred until a feature needs feature-owned UI* (per `AGENTS.md` and §1b), with feature enable/disable tests (12b) as a follow-on. `AGENTS.md`'s structure section updated for the `webui/` move and feature-owned command verbs. Docs-only.
+
 ## [0.30.0] - 2026-07-05
 
 ### Changed

@@ -56,14 +56,20 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 
 ## Current status (2026-07-05)
 
-**Done — the structural core of the split.** Tier 1 is physically isolated in `src/lorecraft/engine/` and the 24 Tier 2 features each own a package under `src/lorecraft/features/`. The engine runs headless and **imports nothing from `features/`** (enforced by `tests/unit/test_tier_boundaries.py`). Features are auto-discovered via manifests; `ServiceContainer` builds conditionally from the enabled set. Full suite (796 tests) green; lint + typecheck clean at every commit (0.15.0 → 0.27.0).
+**✅ The tier split is structurally complete.** The three axes are physically separated:
 
-**Remaining (in priority order):**
+- **Tier 1** → `src/lorecraft/engine/` (`game/`, `services/`, `repos/`, `models/`, `clock/`). Runs headless; **every engine module imports only `engine.*` and `lorecraft.types`** — no features, no web, no services/models/repos/commands/content (proven by `tests/unit/test_tier_boundaries.py` + the 0.29.0 purity sweep).
+- **Tier 2** → `src/lorecraft/features/` — 24 self-contained feature packages, each with a `FeatureManifest`, owning its `service`/`models`/`repo`/`commands`/`conditions`/… Auto-discovered via `discover_features()`; `ServiceContainer` builds conditionally from the enabled set.
+- **Web** → `src/lorecraft/webui/` (`player/` + `admin/`), the third axis composing engine + features.
+- **Composition** → `commands/` (shell verbs + `register_all_commands`), `services/container.py`, `main.py` — may import features; the engine may not.
 
-- **Step 9 — command ownership.** Verbs still register through the `commands/` composition layer via `register_all_commands`. Relocating them into `engine/commands/` (engine built-ins) and `features/<x>/commands.py` requires resolving the `meta`/`social` modules' dependency on the `npc` feature (they'd violate the engine boundary if placed in `engine/commands/`), so they belong with `npc`/a shell package, not the engine.
-- **Steps 10–11 — web host extraction.** Move `web/` → `webui/player/` + `webui/admin/`, introduce the `WebHost` (multi-dir Jinja `ChoiceLoader` + panel/slot registry), and implement the optional `presentation.py` seam (§1c), proving it with the transit minimap. This also lets `engine/game/context.py` drop its remaining `game.connection_manager` (web plumbing) and `repos.news_repo` (content) references. Largest remaining chunk.
-- **Step 12b — enable/disable integration tests.** Currently only `economy`/`bank`/`fatigue` services are truly feature-gated; most feature services are still built unconditionally in `main.py`/`ServiceContainer`. Full toggle coverage needs those wirings made manifest-driven first.
-- **Step 13b — graduate §1c** ("adding feature UI") into `admin_builder_guide.md` once the `presentation.py` seam (step 11) exists.
+The import-direction boundary is enforced by a test that runs in `make test`/CI. Full suite (796 tests) green; lint + typecheck clean at every commit (0.15.0 → 0.30.0).
+
+**Remaining — additive / follow-on, none blocking the boundary:**
+
+- **Step 10c — `WebHost` abstraction** (multi-dir Jinja `ChoiceLoader` + panel/slot registry) and **Step 11 — the `presentation.py` feature-UI seam** (prove with the transit minimap). **Deliberately deferred:** these are *additive framework with no current consumer* — no shipped feature injects UI yet. Per `AGENTS.md` ("prefer finishing or removing a half-done seam over adding a new one") and §1b of this doc ("implement it lazily; grow toward the heavy version only if a second host ever needs the same contract"), this should be built **when the first feature needs feature-owned UI**, not speculatively. The web layer works today with its single hard-coded template dir.
+- **Step 12b — feature enable/disable integration tests.** Only `economy`/`bank`/`fatigue` services are truly gated today; most feature services are still built unconditionally in `main.py`/`ServiceContainer`. Full toggle coverage needs those wirings made manifest-driven first (a real follow-on refactor).
+- **Step 13b — graduate §1c** ("adding feature UI") into `admin_builder_guide.md` once step 11 exists.
 
 ---
 
