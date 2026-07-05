@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Lorecraft • Settings{% endblock %}
+
+{% block content %}
+<main class="min-h-[calc(100vh-3.5rem)] bg-zinc-950 text-zinc-200 p-6">
+  <div class="max-w-2xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-emerald-400">Account Settings</h1>
+        <p class="text-sm text-zinc-500">Display preferences for {{ current_player.username }}.</p>
+      </div>
+      <a href="/game" class="text-sm text-emerald-400 hover:underline">&larr; Back to game</a>
+    </div>
+
+    {% if saved %}
+    <div role="status" class="mb-4 rounded border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">
+      Preferences saved.
+    </div>
+    {% endif %}
+
+    <form method="post" action="/settings" class="space-y-6">
+      <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">
+        <legend class="px-1 text-sm font-semibold text-zinc-300">Display</legend>
+
+        <div class="mb-4">
+          <label for="display_density" class="block text-sm text-zinc-400 mb-1">Display density</label>
+          <select id="display_density" name="display_density"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in density_options %}
+            <option value="{{ opt }}" {% if prefs.display_density == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label for="feed_verbosity" class="block text-sm text-zinc-400 mb-1">Feed verbosity</label>
+          <select id="feed_verbosity" name="feed_verbosity"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in verbosity_options %}
+            <option value="{{ opt }}" {% if prefs.feed_verbosity == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="timestamp_format" class="block text-sm text-zinc-400 mb-1">Timestamp format</label>
+          <select id="timestamp_format" name="timestamp_format"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in timestamp_options %}
+            <option value="{{ opt }}" {% if prefs.timestamp_format == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">
+        <legend class="px-1 text-sm font-semibold text-zinc-300">Accessibility & motion</legend>
+        <label class="flex items-center gap-2 text-sm text-zinc-300">
+          <input type="checkbox" name="reduced_motion" value="on"
+                 {% if prefs.reduced_motion %}checked{% endif %}
+                 class="rounded border-zinc-600 bg-zinc-800">
+          Reduce motion (disable map/transit animations and transitions)
+        </label>
+      </fieldset>
+
+      <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">
+        <legend class="px-1 text-sm font-semibold text-zinc-300">Hidden panels</legend>
+        <p class="text-xs text-zinc-500 mb-2">Checked panels are hidden from the game screen.</p>
+        <div class="grid grid-cols-2 gap-2">
+          {% for panel in toggleable_panels %}
+          <label class="flex items-center gap-2 text-sm text-zinc-300">
+            <input type="checkbox" name="hidden_panels" value="{{ panel }}"
+                   {% if panel in prefs.hidden_panels %}checked{% endif %}
+                   class="rounded border-zinc-600 bg-zinc-800">
+            {{ panel|replace('_', ' ')|capitalize }}
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+
+      <div class="flex items-center gap-3">
+        <button type="submit"
+                class="rounded bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-semibold text-white">
+          Save preferences
+        </button>
+        <a href="/game" class="text-sm text-zinc-400 hover:underline">Cancel</a>
+      </div>
+    </form>
+  </div>
+</main>
+{% endblock %}

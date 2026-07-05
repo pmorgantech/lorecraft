@@ -15,6 +15,7 @@ account never renders broken.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, fields
 from typing import Any
 
@@ -108,15 +109,18 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
     )
 
 
-def apply_updates(current: PlayerPreferences, updates: JsonObject) -> PlayerPreferences:
+def apply_updates(
+    current: PlayerPreferences, updates: Mapping[str, Any]
+) -> PlayerPreferences:
     """Return a new PlayerPreferences with ``updates`` applied over ``current``.
 
     Only known fields are honoured, and each value is re-validated through
     ``resolve_preferences`` so an update can never persist an invalid value.
-    Used by the settings-update route.
+    Accepts loosely-typed values (e.g. straight from form parsing); anything
+    invalid falls back to the default. Used by the settings-update route.
     """
     known = {f.name for f in fields(PlayerPreferences)}
-    merged = current.to_stored()
+    merged: dict[str, Any] = dict(current.to_stored())
     for key, value in updates.items():
         if key in known:
             merged[key] = value

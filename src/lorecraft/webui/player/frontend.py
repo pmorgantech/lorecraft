@@ -41,7 +41,14 @@ from lorecraft.webui.player.auth import (
     login_or_register,
 )
 from lorecraft.webui.player.password_policy import PasswordPolicy
-from lorecraft.webui.player.preferences import resolve_preferences
+from lorecraft.webui.player.preferences import (
+    DISPLAY_DENSITIES,
+    FEED_VERBOSITIES,
+    TIMESTAMP_FORMATS,
+    TOGGLEABLE_PANELS,
+    apply_updates,
+    resolve_preferences,
+)
 from lorecraft.webui.player.rendering import (
     audit_to_feed,
     build_map_data,
@@ -454,6 +461,73 @@ async def game_screen(
             **resolve_preferences(player.preferences).to_context(),
         }
     return templates.TemplateResponse(request, "game.html", context)
+
+
+# =============================================================================
+# ACCOUNT SETTINGS (Sprint 32.2)
+# =============================================================================
+
+
+def _settings_context(request: Request, player: Player, *, saved: bool = False) -> dict:
+    """Build the settings-form context from the account's resolved preferences."""
+    prefs = resolve_preferences(player.preferences)
+    return {
+        "request": request,
+        "current_player": player,
+        "saved": saved,
+        "density_options": DISPLAY_DENSITIES,
+        "verbosity_options": FEED_VERBOSITIES,
+        "timestamp_options": TIMESTAMP_FORMATS,
+        "toggleable_panels": TOGGLEABLE_PANELS,
+        **prefs.to_context(),
+    }
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_screen(
+    request: Request, player: Player = Depends(get_current_player)
+):
+    """Account preferences page (display density, feed verbosity, motion, panels)."""
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        player = PlayerRepo(db).get(player.id) or player
+        context = _settings_context(request, player)
+    return templates.TemplateResponse(request, "settings.html", context)
+
+
+@router.post("/settings", response_class=HTMLResponse)
+async def update_settings(
+    request: Request, player: Player = Depends(get_current_player)
+):
+    """Persist a preferences update, then re-render the settings page.
+
+    Every field is re-validated through ``apply_updates`` (invalid values fall
+    back to their default), so the stored blob can never hold an invalid value.
+    """
+    form = await request.form()
+    updates: dict[str, object] = {
+        "display_density": form.get("display_density"),
+        "feed_verbosity": form.get("feed_verbosity"),
+        "timestamp_format": form.get("timestamp_format"),
+        # An unchecked checkbox is simply absent from the form.
+        "reduced_motion": "reduced_motion" in form,
+        "hidden_panels": [
+            v for v in form.getlist("hidden_panels") if isinstance(v, str)
+        ],
+    }
+
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        repo = PlayerRepo(db)
+        player = repo.get(player.id) or player
+        current = resolve_preferences(player.preferences)
+        # Reassign (not mutate) so SQLModel flags the JSON column dirty.
+        player.preferences = apply_updates(current, updates).to_stored()
+        repo.add(player)
+        db.commit()
+        db.refresh(player)
+        context = _settings_context(request, player, saved=True)
+    return templates.TemplateResponse(request, "settings.html", context)
 
 
 # =============================================================================

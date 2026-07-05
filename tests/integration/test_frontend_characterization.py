@@ -319,6 +319,109 @@ async def _test_game_screen_reflects_stored_preferences() -> None:
     assert 'data-feed-verbosity="terse"' in html
 
 
+def test_settings_get_renders_form() -> None:
+    anyio.run(_test_settings_get_renders_form)
+
+
+async def _test_settings_get_renders_form() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        status, html = await _http_get(
+            app, "/settings", cookies={"player_id": "player-1"}
+        )
+
+    assert status == 200
+    assert 'name="display_density"' in html
+    assert 'name="reduced_motion"' in html
+    assert 'name="hidden_panels"' in html
+
+
+def test_settings_post_persists_preferences() -> None:
+    anyio.run(_test_settings_post_persists_preferences)
+
+
+async def _test_settings_post_persists_preferences() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        status, html = await _http_post_form(
+            app,
+            "/settings",
+            form={
+                "display_density": "compact",
+                "feed_verbosity": "terse",
+                "timestamp_format": "clock24",
+                "reduced_motion": "on",
+                "hidden_panels": "minimap",
+            },
+            cookies={"player_id": "player-1"},
+        )
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+
+    assert status == 200
+    assert "Preferences saved." in html
+    assert player is not None
+    # Only non-default values are stored.
+    assert player.preferences["display_density"] == "compact"
+    assert player.preferences["feed_verbosity"] == "terse"
+    assert player.preferences["timestamp_format"] == "clock24"
+    assert player.preferences["reduced_motion"] is True
+    assert player.preferences["hidden_panels"] == ["minimap"]
+    # And the rendered form reflects the saved state on the way back.
+    assert "density-compact" in html
+
+
+def test_settings_post_invalid_value_falls_back_to_default() -> None:
+    anyio.run(_test_settings_post_invalid_value_falls_back_to_default)
+
+
+async def _test_settings_post_invalid_value_falls_back_to_default() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        await _http_post_form(
+            app,
+            "/settings",
+            form={"display_density": "not-a-real-density"},
+            cookies={"player_id": "player-1"},
+        )
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+
+    assert player is not None
+    # Invalid value never persists — the blob stays empty (all defaults).
+    assert "display_density" not in player.preferences
+
+
 def test_game_screen_state_includes_inventory() -> None:
     anyio.run(_test_game_screen_state_includes_inventory)
 

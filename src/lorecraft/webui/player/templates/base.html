@@ -105,6 +105,9 @@
                 <span class="text-zinc-500">Player:</span>
                 <span class="font-semibold text-emerald-400">{{ current_player.username if current_player else 'Guest' }}</span>
             </div>
+            {% if current_player %}
+            <a href="/settings" class="text-zinc-400 hover:text-emerald-400" title="Settings" aria-label="Account settings">Settings</a>
+            {% endif %}
             <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Connected"></div>
 
             <!-- Global loading indicator -->
