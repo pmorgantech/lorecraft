@@ -22,7 +22,7 @@ from lorecraft.admin.auth import hash_password
 from lorecraft.admin.broadcaster import AdminBroadcaster
 from lorecraft.admin.websocket import admin_ws_endpoint
 from lorecraft.clock.weather import register_weather_handlers
-from lorecraft.clock.world_clock import WorldClockRunner
+from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.features import (
     discover_features,

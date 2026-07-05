@@ -8,7 +8,7 @@ safe-vs-unsafe risk, warmth/exposure, and dream flavor.
 from __future__ import annotations
 
 from lorecraft.clock.weather import COLD_WEATHERS, apply_daily_weather
-from lorecraft.clock.world_clock import SECONDS_PER_HOUR, apply_clock_fields
+from lorecraft.engine.clock.world_clock import SECONDS_PER_HOUR, apply_clock_fields
 from lorecraft.game import encumbrance
 from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext

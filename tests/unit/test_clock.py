@@ -1,8 +1,9 @@
-from lorecraft.clock.weather import apply_daily_weather, season_for_day
-from lorecraft.clock.world_clock import (
+from lorecraft.clock.weather import apply_daily_weather
+from lorecraft.engine.clock.world_clock import (
     SECONDS_PER_HOUR,
     WorldClockRunner,
     advance_clock,
+    season_for_day,
 )
 from lorecraft.db import create_tables
 from lorecraft.engine.game.events import EventBus, GameEvent

@@ -12,8 +12,6 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.world import WorldClock
 from lorecraft.engine.repos.room_repo import RoomRepo
 
-SEASONS = ("spring", "summer", "autumn", "winter")
-DAYS_PER_SEASON = 30
 WEATHER_TABLE: dict[str, tuple[str, ...]] = {
     "spring": ("clear", "light_rain", "overcast", "clear", "clear"),
     "summer": ("clear", "clear", "hot", "clear", "thunderstorm"),
@@ -28,11 +26,6 @@ COLD_WEATHERS = frozenset({"snow", "blizzard", "fog"})
 
 class WeatherChoice(Protocol):
     def __call__(self, seq: tuple[str, ...]) -> str: ...
-
-
-def season_for_day(day: int) -> str:
-    season_index = ((max(day, 1) - 1) // DAYS_PER_SEASON) % len(SEASONS)
-    return SEASONS[season_index]
 
 
 def roll_weather(clock: WorldClock, choice: WeatherChoice) -> str:

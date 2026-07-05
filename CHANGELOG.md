@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.17.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — world clock moved into `engine/clock/`; season calendar decoupled from weather (step 7, batch 3, branch `tier_split`).** `clock/world_clock.py` moved to `engine/clock/world_clock.py`. To keep the engine free of Tier 2 imports, the season calendar (`SEASONS`, `DAYS_PER_SEASON`, `season_for_day`) — a Tier 1 clock concern, since `WorldClock.current_season` is a core field — was **hoisted out of Tier 2 `clock/weather.py` into `world_clock.py`**, removing the engine→feature import it previously had. Tier 2 `weather.py` stays in `clock/` and keeps its self-contained `WEATHER_TABLE` (season-name literals), so it needs no back-import into the clock. Imports rewritten across `src/` and `tests/`. Full suite 794 passed, lint + typecheck clean.
+- **Note on Tier 1 models.** The pure-Tier-1 model files (`world`, `player`, `items`, `meters`, `scheduler`, `mobile`, `audit`, `session`) remain in `models/` for now: the directory is a shared SQLModel registration aggregator (`models/__init__.py`) where Tier 1 and Tier 2 tables coexist, so its split is sequenced together with the Tier 2 model relocation in step 8 rather than half-split with compat shims.
+
 ## [0.16.0] - 2026-07-05
 
 ### Changed

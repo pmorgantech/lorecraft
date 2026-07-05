@@ -10,7 +10,6 @@ import time
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from lorecraft.clock.weather import season_for_day
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.world import WorldClock
 from lorecraft.engine.repos.room_repo import RoomRepo
@@ -19,6 +18,16 @@ from lorecraft.types import JsonObject
 SECONDS_PER_DAY = 24 * 60 * 60
 SECONDS_PER_HOUR = 60 * 60
 START_HOUR = 8
+
+# Season calendar is a Tier 1 clock concern (WorldClock.current_season is a
+# core field). Tier 2 weather keys its tables off these season names.
+SEASONS = ("spring", "summer", "autumn", "winter")
+DAYS_PER_SEASON = 30
+
+
+def season_for_day(day: int) -> str:
+    season_index = ((max(day, 1) - 1) // DAYS_PER_SEASON) % len(SEASONS)
+    return SEASONS[season_index]
 
 
 @dataclass(frozen=True)

@@ -27,7 +27,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 7 | Create `engine/` package; move Tier 1 modules; update imports (batched) | 1 | 🚧 |
 | 7a | ↳ `engine/game/` — 18 Tier 1 game modules moved; imports rewritten (0.15.0) | 1 | ✅ |
 | 7b | ↳ `engine/services/` + `engine/repos/` — Tier 1 services/repos moved (0.16.0) | 1 | ✅ |
-| 7c | ↳ `engine/clock/`, `engine/models/`, `engine/npc/` — remaining Tier 1 | 1 | ⬜ |
+| 7c | ↳ `engine/clock/world_clock` moved; season calendar decoupled from weather (0.17.0) | 1 | ✅ |
+| 7d | ↳ `engine/models/` (Tier 1 tables) + `engine/npc/` (dialogue engine) — deferred; models split sequenced with step 8 | 1/2 | ⬜ |
 | 8 | Move Tier 2 modules into `features/<x>/` packages | 2 | ⬜ |
 | 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |
