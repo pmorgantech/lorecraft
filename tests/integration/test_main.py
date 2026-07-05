@@ -13,7 +13,7 @@ from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import Room
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 AsgiMessage = dict[str, Any]
 AsgiReceive = Callable[[], Awaitable[AsgiMessage]]

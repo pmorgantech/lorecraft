@@ -10,8 +10,8 @@ from lorecraft.errors import ConflictError, NotFoundError, ValidationError
 from lorecraft.engine.game.holders import Location
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item, Room
-from lorecraft.repos.stack_repo import StackRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import ExchangeLeg, LedgerService
 
 

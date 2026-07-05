@@ -19,7 +19,7 @@ from lorecraft.game import skills as skills_module
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.models.player import PlayerStats
-from lorecraft.repos.meter_repo import MeterRepo
+from lorecraft.engine.repos.meter_repo import MeterRepo
 
 FATIGUE_METER_KEY = "fatigue"
 

@@ -23,17 +23,17 @@ from lorecraft.models.economy import RegionPricing, Shop, ShopStock
 from lorecraft.repos.economy_repo import EconomyRepo
 from lorecraft.models.world import Item, NPC, Room
 from lorecraft.models.player import Player, PlayerStats
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.npc_repo import NpcRepo
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.npc_repo import NpcRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.services.container import ServiceContainer
 from lorecraft.services.economy import EconomyService
-from lorecraft.services.effects import EffectService
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
-from lorecraft.services.meters import MeterService
+from lorecraft.engine.services.meters import MeterService
 from lorecraft.services.restock import RestockService
 from lorecraft.game.economy_holders import register as _register_economy
 

@@ -35,7 +35,7 @@ from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import Item
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.services.item_location import ItemLocationService
 
 AsgiMessage = dict[str, Any]
 

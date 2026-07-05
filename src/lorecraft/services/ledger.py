@@ -18,10 +18,10 @@ from lorecraft.engine.game.holders import (
     Location,
     get_registry as get_holder_registry,
 )
-from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.repos.ledger_repo import LedgerRepo
-from lorecraft.repos.stack_repo import StackRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.engine.services.item_location import ItemLocationService
 
 
 @dataclass(frozen=True)

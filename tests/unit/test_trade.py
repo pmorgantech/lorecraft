@@ -21,16 +21,16 @@ from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.world import Item, Room
 from lorecraft.models.player import Player, PlayerStats
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.npc_repo import NpcRepo
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.npc_repo import NpcRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.services.container import ServiceContainer
-from lorecraft.services.effects import EffectService
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
-from lorecraft.services.meters import MeterService
+from lorecraft.engine.services.meters import MeterService
 
 ROOM_ID = "square"
 ALICE_ID = "alice"

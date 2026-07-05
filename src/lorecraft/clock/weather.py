@@ -10,7 +10,7 @@ from sqlmodel import Session
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.world import WorldClock
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 
 SEASONS = ("spring", "summer", "autumn", "winter")
 DAYS_PER_SEASON = 30

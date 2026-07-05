@@ -14,8 +14,8 @@ from typing import Literal
 from sqlmodel import Session
 
 from lorecraft.engine.game.modifiers import resolve_for
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 EncumbranceBand = Literal["unburdened", "burdened", "overloaded"]
 

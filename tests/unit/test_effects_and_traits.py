@@ -18,7 +18,7 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.game.traits import TraitDef
 from lorecraft.game.traits import get_registry as get_trait_registry
 from lorecraft.models.meters import ActiveEffect
-from lorecraft.services.effects import EffectService
+from lorecraft.engine.services.effects import EffectService
 
 
 def _make_engine():

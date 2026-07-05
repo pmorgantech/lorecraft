@@ -11,7 +11,7 @@ from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_verb
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rules import RuleEngine
-from lorecraft.services.audit import AuditService
+from lorecraft.engine.services.audit import AuditService
 from lorecraft.types import JsonObject, JsonValue
 
 log = logging.getLogger(__name__)

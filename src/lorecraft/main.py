@@ -34,7 +34,7 @@ from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.npc.scheduler import NpcScheduler
 from lorecraft.services.container import ServiceContainer
-from lorecraft.services.scheduler import SchedulerService
+from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
 from lorecraft.game.broadcast import broadcast_command_effects
@@ -54,17 +54,17 @@ from lorecraft.models.player import Player, PlayerStats
 from lorecraft.models.world import NPC, Room
 from lorecraft.observability import bind_transaction_context, configure_logging
 from lorecraft.world.bootstrap import ensure_world_bootstrapped
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.services.effects import EffectService
-from lorecraft.services.meters import MeterService
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.meters import MeterService
 from lorecraft.services.light_fuel import LightFuelService
 from lorecraft.services.restock import RestockService
 from lorecraft.services.quest_timer import QuestTimerService
-from lorecraft.services.mobile_route import MobileRouteService
+from lorecraft.engine.services.mobile_route import MobileRouteService
 from lorecraft.services.transit import TransitService
-from lorecraft.services.save import SessionSafetyService
+from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
 from lorecraft.web.auth import consume_ws_ticket

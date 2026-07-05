@@ -9,7 +9,7 @@ from lorecraft.types import JsonObject
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
     from lorecraft.repos.dialogue_repo import DialogueRepo
-    from lorecraft.repos.npc_repo import NpcRepo
+    from lorecraft.engine.repos.npc_repo import NpcRepo
 
 _NPC_KEY = "_dialogue_npc_id"
 _NODE_KEY = "_dialogue_node_id"

@@ -17,7 +17,7 @@ from lorecraft.models.quest import Quest
 from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.models.world import Exit, Item, NPC, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import (

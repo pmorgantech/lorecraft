@@ -11,19 +11,19 @@ from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.world import Item, Room
-from lorecraft.repos.audit_repo import AuditRepo
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.meter_repo import MeterRepo
-from lorecraft.repos.stack_repo import StackRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.repos.audit_repo import AuditRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.meter_repo import MeterRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.services.effects import EffectService
-from lorecraft.services.meters import MeterService
-from lorecraft.repos.npc_repo import NpcRepo
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.services.save import SaveSlotService, SessionSafetyService
+from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.meters import MeterService
+from lorecraft.engine.repos.npc_repo import NpcRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.services.save import SaveSlotService, SessionSafetyService
 
 
 def _hp_base_maximum(entity_type: str, entity_id: str, session: Session) -> float:

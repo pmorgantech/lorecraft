@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from lorecraft.admin.auth import Observer, Superadmin
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 
 router = APIRouter(tags=["admin"])
 

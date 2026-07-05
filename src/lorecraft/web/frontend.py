@@ -24,14 +24,14 @@ from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.models.player import Player
 from lorecraft.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.observability import bind_transaction_context
-from lorecraft.repos.audit_repo import AuditRepo
+from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.repos.dialogue_repo import DialogueRepo
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.npc_repo import NpcRepo
-from lorecraft.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.npc_repo import NpcRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.repos.quest_repo import QuestRepo
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.services.save import SessionSafetyService
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.web.auth import (
     InvalidCredentialsError,
     InvalidUsernameError,

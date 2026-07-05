@@ -19,8 +19,8 @@ from lorecraft.models.changeset import (
 from lorecraft.models.items import ItemStack
 from lorecraft.models.player import Player
 from lorecraft.models.world import Exit, Item, Room, WorldMeta
-from lorecraft.repos.stack_repo import StackRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.engine.services.item_location import ItemLocationService
 
 
 class VersioningService:

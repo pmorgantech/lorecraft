@@ -30,7 +30,7 @@ from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _STARTUP_TIMEOUT_SECONDS = 10.0

@@ -8,7 +8,7 @@ from sqlmodel import Session, create_engine
 from lorecraft.db import create_tables
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.web.auth import (
     InvalidCredentialsError,
     InvalidUsernameError,

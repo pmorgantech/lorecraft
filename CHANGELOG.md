@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.16.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — Tier 1 services and repos moved into `engine/` (step 7, batch 2, branch `tier_split`).** Seven Tier 1 services (`scheduler`, `item_location`, `meters`, `effects`, `save`, `mobile_route`, `audit`) moved to `engine/services/`, and nine Tier 1 repositories (`base`, `item_repo`, `player_repo`, `room_repo`, `stack_repo`, `scheduler_repo`, `meter_repo`, `audit_repo`, `npc_repo`) moved to `engine/repos/` (history-preserving `git mv`). Imports across `src/` and `tests/` rewritten to `lorecraft.engine.services.*` / `lorecraft.engine.repos.*`. The public repo re-exports (`AuditRepo`, `ItemRepo`, `NpcRepo`, `PlayerRepo`, `RoomRepo`) now live in `engine/repos/__init__.py`; the old `repos/`/`services/` package inits are trimmed to their remaining Tier 2 members. No behaviour change — full suite 794 passed, lint + typecheck clean. The moved code still imports `lorecraft.models.*` (Mixed; models core split is deferred).
+
 ## [0.15.0] - 2026-07-05
 
 ### Changed

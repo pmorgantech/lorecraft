@@ -14,7 +14,7 @@ from sqlmodel import Session, create_engine, select
 from lorecraft.config import Settings
 from lorecraft.main import create_app
 from lorecraft.models.player import Player
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 AsgiMessage = dict[str, Any]
 

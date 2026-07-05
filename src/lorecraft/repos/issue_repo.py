@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from sqlmodel import Session, col, select
 
 from lorecraft.models.issue import Issue
-from lorecraft.repos.base import Repository
+from lorecraft.engine.repos.base import Repository
 
 
 class IssueRepo(Repository[Issue, str]):

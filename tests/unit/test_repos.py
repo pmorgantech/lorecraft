@@ -6,8 +6,8 @@ from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession
 from lorecraft.models.world import Exit, Item, NPC, Room
-from lorecraft.repos import AuditRepo, ItemRepo, NpcRepo, PlayerRepo, RoomRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.repos import AuditRepo, ItemRepo, NpcRepo, PlayerRepo, RoomRepo
+from lorecraft.engine.services.item_location import ItemLocationService
 
 
 def test_database_url_preserves_sqlalchemy_urls() -> None:

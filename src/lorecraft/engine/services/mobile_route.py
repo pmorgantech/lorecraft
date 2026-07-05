@@ -18,8 +18,8 @@ from sqlmodel import Session
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.mobile import MobileRouteState
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.services.scheduler import SchedulerService
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.services.scheduler import SchedulerService
 
 
 @dataclass(frozen=True)

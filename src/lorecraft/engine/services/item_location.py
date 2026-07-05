@@ -22,8 +22,8 @@ from lorecraft.engine.game.holders import (
 )
 from lorecraft.models.items import ItemInstance, ItemStack
 from lorecraft.models.world import Item
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 
 class ItemLocationService:

@@ -23,18 +23,18 @@ from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.models.world import Item, Room, WorldClock
 from lorecraft.models.player import Player, PlayerStats
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.npc_repo import NpcRepo
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.npc_repo import NpcRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.services.container import ServiceContainer
-from lorecraft.services.effects import EffectService
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
-from lorecraft.services.meters import MeterService
-from lorecraft.services.mobile_route import MobileRouteService
-from lorecraft.services.scheduler import SchedulerService
+from lorecraft.engine.services.meters import MeterService
+from lorecraft.engine.services.mobile_route import MobileRouteService
+from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.services.transit import TransitService, route_id_for_line
 
 PIER_ID = "pier"

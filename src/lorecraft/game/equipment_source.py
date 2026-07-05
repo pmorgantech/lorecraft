@@ -16,7 +16,7 @@ from lorecraft.game.item_effects import compile_item_modifiers, item_granted_tra
 from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.models.items import ItemStack
 from lorecraft.models.world import Item
-from lorecraft.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
 
 
 def _equipped_items(session: Session, player_id: str) -> list[Item]:

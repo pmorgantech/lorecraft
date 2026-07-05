@@ -14,8 +14,8 @@ from lorecraft.errors import ConflictError, ValidationError
 from lorecraft.engine.game.holders import Location, get_registry as get_holder_registry
 from lorecraft.models.items import ItemInstance, ItemStack
 from lorecraft.models.world import Item
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 MAX_NESTING_DEPTH = 3
 

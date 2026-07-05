@@ -11,7 +11,7 @@ from sqlmodel import Session, col, select
 from lorecraft.admin.auth import Moderator, Observer
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 router = APIRouter(tags=["admin"])
 

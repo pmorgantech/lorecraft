@@ -15,7 +15,7 @@ from sqlmodel import Session as DBSession
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player
 from lorecraft.models.world import Room
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 
 templates = Jinja2Templates(directory="src/lorecraft/web/templates")
 

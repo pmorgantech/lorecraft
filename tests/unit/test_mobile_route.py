@@ -9,13 +9,13 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.world import WorldClock
-from lorecraft.services.mobile_route import (
+from lorecraft.engine.services.mobile_route import (
     MobileRouteService,
     RouteHooks,
     RouteSpec,
     Waypoint,
 )
-from lorecraft.services.scheduler import SchedulerService
+from lorecraft.engine.services.scheduler import SchedulerService
 
 
 def _engine():

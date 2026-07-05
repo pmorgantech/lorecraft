@@ -4,8 +4,8 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.holders import Location
 from lorecraft.models.player import Player
 from lorecraft.models.world import Item
-from lorecraft.repos.item_repo import ItemRepo
-from lorecraft.services.item_location import ItemLocationService
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.web.session import inventory_snapshot
 
 

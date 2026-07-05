@@ -15,8 +15,8 @@ from sqlmodel import Session
 from lorecraft.engine.game.holders import Location
 from lorecraft.models.items import ItemStack
 from lorecraft.models.world import Item
-from lorecraft.repos.base import Repository
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.base import Repository
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 _C = TypeVar("_C")
 

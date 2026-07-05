@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlmodel import Session
 
 from lorecraft.models.dialogue import DialogueTree
-from lorecraft.repos.base import Repository
+from lorecraft.engine.repos.base import Repository
 
 
 class DialogueRepo(Repository[DialogueTree, str]):

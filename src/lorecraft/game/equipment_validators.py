@@ -22,7 +22,7 @@ from lorecraft.game.equipment_slots import (
 )
 from lorecraft.engine.game.holders import Location, get_registry as get_holder_registry
 from lorecraft.models.world import Item
-from lorecraft.repos.stack_repo import StackRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 
 
 def _validate_player_equip(

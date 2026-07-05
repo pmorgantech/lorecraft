@@ -34,8 +34,8 @@ from lorecraft.admin.auth import (
 )
 from lorecraft.models.player import Player
 from lorecraft.models.player_auth import PlayerAuth
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.state import AppState
 from lorecraft.web.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
 from lorecraft.web.session import get_app_state, get_engines, player_session_secret

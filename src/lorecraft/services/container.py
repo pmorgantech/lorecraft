@@ -15,7 +15,7 @@ from lorecraft.services.inventory import InventoryService
 from lorecraft.services.journal import JournalService
 from lorecraft.services.movement import MovementService
 from lorecraft.services.quest import QuestService
-from lorecraft.services.save import SaveSlotService
+from lorecraft.engine.services.save import SaveSlotService
 from lorecraft.services.trade import TradeService
 
 # Container fields that belong to a migrated Tier 2 feature, keyed by feature.

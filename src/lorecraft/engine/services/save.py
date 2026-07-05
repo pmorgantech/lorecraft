@@ -15,9 +15,9 @@ from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.models.audit import AuditEvent
 from lorecraft.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.models.session import PlayerSession
-from lorecraft.repos.audit_repo import AuditRepo
-from lorecraft.repos.player_repo import PlayerRepo
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.audit_repo import AuditRepo
+from lorecraft.engine.repos.player_repo import PlayerRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.types import JsonObject, JsonValue
 
 VALID_SAVE_SLOTS = {"auto", "slot1", "slot2", "slot3"}

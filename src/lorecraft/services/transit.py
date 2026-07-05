@@ -23,9 +23,9 @@ from lorecraft.engine.game.holders import Location
 from lorecraft.models.mobile import MobileRouteState
 from lorecraft.models.transit import TransitLine, TransitStop
 from lorecraft.models.world import Room
-from lorecraft.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.repos.transit_repo import TransitRepo
-from lorecraft.services.mobile_route import (
+from lorecraft.engine.services.mobile_route import (
     MobileRouteService,
     RouteHooks,
     RouteSpec,

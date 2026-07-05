@@ -8,7 +8,7 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.models.scheduler import ScheduledJob
 from lorecraft.engine.game.rng import GameRng
-from lorecraft.services.scheduler import SchedulerService
+from lorecraft.engine.services.scheduler import SchedulerService
 
 
 def _engine():

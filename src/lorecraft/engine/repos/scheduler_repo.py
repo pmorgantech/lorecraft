@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from sqlmodel import Session, select
 
 from lorecraft.models.scheduler import ScheduledJob
-from lorecraft.repos.base import Repository
+from lorecraft.engine.repos.base import Repository
 
 
 class SchedulerRepo(Repository[ScheduledJob, str]):

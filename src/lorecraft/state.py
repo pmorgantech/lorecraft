@@ -16,10 +16,10 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.services.container import ServiceContainer
-from lorecraft.services.effects import EffectService
-from lorecraft.services.meters import MeterService
-from lorecraft.services.mobile_route import MobileRouteService
-from lorecraft.services.scheduler import SchedulerService
+from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.meters import MeterService
+from lorecraft.engine.services.mobile_route import MobileRouteService
+from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.types import JsonObject
 
 

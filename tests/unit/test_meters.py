@@ -14,8 +14,8 @@ from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.models.player import Player, PlayerStats
-from lorecraft.repos.meter_repo import MeterRepo
-from lorecraft.services.meters import MeterService
+from lorecraft.engine.repos.meter_repo import MeterRepo
+from lorecraft.engine.services.meters import MeterService
 
 
 def _make_engine():
