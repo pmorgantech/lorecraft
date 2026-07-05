@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.2] - 2026-07-05
+
+### Changed
+
+- **Docs: `AGENTS.md` now documents the git-worktree testing footgun.** Added a "Running tests from a git worktree" subsection to the Testing guide: the `.venv` lives only in the primary working tree and its editable install resolves `import lorecraft` to the *primary* tree's `src`, so a bare `python -m pytest`/`make test` from a `.claude/worktrees/<name>` checkout silently tests the wrong source. Documents the fix — activate the primary venv and prepend `PYTHONPATH="$PWD/src"` — with a copy-paste, path-agnostic recipe (`MAIN=$(dirname "$(git rev-parse --git-common-dir)")`), a one-line "am I testing the right tree?" check, the `make`-from-worktree form, the worktree-local-venv alternative, and the e2e content-YAML `tmp_path` isolation note.
+
 ## [0.38.1] - 2026-07-05
 
 ### Fixed

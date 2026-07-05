@@ -86,3 +86,37 @@ python -m pytest -n auto --dist=loadfile --cov=src/lorecraft --cov-report=term-m
 - Override worker count: `PYTEST_WORKERS=4 make test` (default `auto`).
 - Requires the dev extra (`pytest-xdist`, `pytest-cov` for coverage runs): `pip install -e ".[dev]"`.
 - Do not add `-n` to `make test-e2e` or `make test-simulation`; those targets stay serial.
+
+### Running tests from a git worktree (the PYTHONPATH footgun)
+
+Agents usually work in a `.claude/worktrees/<name>` checkout, and there's a subtle trap
+that silently tests the **wrong** source. Two facts cause it:
+
+1. **The `.venv` lives only in the primary working tree (repo root), not in the worktree.**
+   So `python` isn't even on `PATH` in a fresh worktree shell until you activate that venv.
+2. **That venv's editable install (`pip install -e`) resolves `import lorecraft` to the
+   *primary* tree's `src/lorecraft`** — *not* your worktree's. So a bare
+   `python -m pytest` (or `make test`) run from a worktree passes/fails against the primary
+   tree's code and **your worktree edits are never exercised.** Nothing errors; you just get
+   green (or red) for the wrong tree.
+
+**Fix:** activate the primary venv and prepend `PYTHONPATH=<worktree>/src` so imports resolve
+to the worktree. Copy-paste recipe that works from *inside* any worktree (no hardcoded paths):
+
+```bash
+MAIN=$(dirname "$(git rev-parse --git-common-dir)")   # primary working tree (repo root)
+source "$MAIN/.venv/bin/activate"                      # `python`/`pytest` on PATH only after this
+PYTHONPATH="$PWD/src" python -m pytest -n auto --dist=loadfile path/to/test_file.py
+PYTHONPATH="$PWD/src" python -m basedpyright            # typecheck the worktree too
+```
+
+- Confirm you're testing the right tree once: `PYTHONPATH="$PWD/src" python -c "import lorecraft, sys; print(lorecraft.__file__)"`
+  must print a path **under your worktree**, not the repo root.
+- To use the Makefile targets from a worktree, inject the same var:
+  `PYTHONPATH="$PWD/src" make test` (xdist workers inherit the env). `ruff` needs no PYTHONPATH.
+- Heavier but foolproof alternative: give the worktree its own venv
+  (`python -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"`); then plain
+  `make test` "just works" there. Prefer the `PYTHONPATH` one-liner for quick runs.
+- **e2e/live-server tests:** point the app's content mirrors at a temp dir in the fixture
+  (`issues_yaml_path`/`news_yaml_path`/`help_yaml_path` → `tmp_path`) so a run can't export
+  test data into the repo's `docs/*.yaml`. `PYTHONPATH="$PWD/src"` still applies.
