@@ -5,7 +5,7 @@ from lorecraft.db import create_tables
 from lorecraft.features.bank.models import Bank
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
-from lorecraft.models.transit import TransitLine, TransitStop
+from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Exit, Item, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
 from lorecraft.world.loader import export_world_document, load_world_yaml

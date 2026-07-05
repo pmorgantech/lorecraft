@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.transit import TransitLine, TransitStop
+from lorecraft.features.transit.models import TransitLine, TransitStop
 
 
 class TransitRepo:

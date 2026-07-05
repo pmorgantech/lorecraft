@@ -28,7 +28,7 @@ from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.repos.quest_repo import QuestRepo
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
@@ -290,7 +290,7 @@ def room_panel_context(
     npc_repo: NpcRepo,
 ) -> dict[str, Any]:
     """Build context data for the room panel (exits, items, NPCs)."""
-    from lorecraft.services.inventory import room_items_visible_labels
+    from lorecraft.features.inventory.service import room_items_visible_labels
 
     if room is None:
         return {"exits": [], "items_visible": [], "npcs": []}

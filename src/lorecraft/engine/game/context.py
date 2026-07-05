@@ -21,7 +21,7 @@ from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.repos.news_repo import NewsRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.repos.quest_repo import QuestRepo
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.types import JsonObject, JsonValue

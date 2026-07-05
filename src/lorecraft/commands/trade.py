@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.trade import TradeService
+from lorecraft.features.trading.service import TradeService
 
 
 def register_trade_commands(

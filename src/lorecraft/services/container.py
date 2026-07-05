@@ -11,12 +11,12 @@ from lorecraft.services.character_info import CharacterInfoService
 from lorecraft.features.economy.service import EconomyService
 from lorecraft.features.exploration.service import ExplorationService
 from lorecraft.features.fatigue.service import FatigueService
-from lorecraft.services.inventory import InventoryService
+from lorecraft.features.inventory.service import InventoryService
 from lorecraft.features.exploration.journal import JournalService
 from lorecraft.services.movement import MovementService
-from lorecraft.services.quest import QuestService
+from lorecraft.features.quests.service import QuestService
 from lorecraft.engine.services.save import SaveSlotService
-from lorecraft.services.trade import TradeService
+from lorecraft.features.trading.service import TradeService
 
 # Container fields that belong to a migrated Tier 2 feature, keyed by feature.
 # `build()` instantiates these only when the feature is enabled; everything

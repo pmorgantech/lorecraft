@@ -13,8 +13,8 @@ from lorecraft.features.bank.models import Bank
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
-from lorecraft.models.quest import Quest
-from lorecraft.models.transit import TransitLine, TransitStop
+from lorecraft.features.quests.models import Quest
+from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Exit, Item, NPC, Room
 from lorecraft.repos.ledger_repo import LedgerRepo
 from lorecraft.engine.services.item_location import ItemLocationService

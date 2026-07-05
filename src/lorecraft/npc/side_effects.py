@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
-from lorecraft.models.quest import PlayerQuestProgress
+from lorecraft.features.quests.models import PlayerQuestProgress
 from lorecraft.types import JsonObject, JsonValue
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ def _handle_clear_flags(data: JsonValue, ctx: "GameContext") -> None:  # type: i
 
 
 def _handle_give_item(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
-    from lorecraft.services.inventory import inventory_update_entries
+    from lorecraft.features.inventory.service import inventory_update_entries
 
     item_id = str(data)
     item = ctx.item_repo.get(item_id)

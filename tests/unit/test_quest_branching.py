@@ -11,14 +11,14 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
-from lorecraft.models.quest import Quest
+from lorecraft.features.quests.models import Quest
 from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.npc.dialogue import _start_quest
 from lorecraft.repos.dialogue_repo import DialogueRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.repos.quest_repo import QuestRepo
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.effects import EffectService
@@ -27,7 +27,7 @@ from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.reputation.conditions import register as _register_reputation
-from lorecraft.services.quest import QuestService
+from lorecraft.features.quests.service import QuestService
 from lorecraft.features.reputation.service import ReputationService
 
 # The `adjust_reputation` side effect used to register as an import side effect;

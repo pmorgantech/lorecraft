@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from sqlmodel import Session, or_, select
 
-from lorecraft.models.interaction import TradeOffer
+from lorecraft.features.trading.models import TradeOffer
 
 TRADE_OFFER_TTL_SECONDS = 300.0
 

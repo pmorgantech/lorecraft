@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lorecraft.game import quest_conditions
+from lorecraft.features.quests import conditions as quest_conditions
 from lorecraft.npc import dialogue_conditions, side_effects
 from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.types import JsonObject, JsonScalar, JsonValue

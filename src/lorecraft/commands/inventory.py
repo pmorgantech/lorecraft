@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.inventory import InventoryService
+from lorecraft.features.inventory.service import InventoryService
 
 
 def register_inventory_commands(

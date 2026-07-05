@@ -8,7 +8,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.features.npc_memory.conditions import register as _register_npc_memory
 from lorecraft.db import create_tables
-from lorecraft.game import quest_conditions
+from lorecraft.features.quests import conditions as quest_conditions
 from lorecraft.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus
@@ -22,7 +22,7 @@ from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.features.npc_memory.repo import NpcMemoryRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.repos.quest_repo import QuestRepo
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.effects import EffectService

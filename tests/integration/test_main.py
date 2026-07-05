@@ -269,7 +269,7 @@ def test_websocket_movement_persists_quest_progression() -> None:
 async def _test_websocket_movement_persists_quest_progression() -> None:
     import time as time_module
 
-    from lorecraft.models.quest import PlayerQuestProgress, Quest
+    from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 
     game_engine = create_engine(
         "sqlite://",

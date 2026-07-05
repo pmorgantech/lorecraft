@@ -35,7 +35,8 @@ Legend: ✅ done · 🚧 in progress · ⬜ not started
 | 8c | ↳ traits (split: registry stays Tier 1), equipment, fatigue, item_components, containers co-located (0.20.0) | 2 | ✅ |
 | 8d | ↳ economy, bank, npc_memory, skills, exploration co-located (0.21.0) | 2 | ✅ |
 | 8e | ↳ warmth, terrain, weather, light, encumbrance co-located (0.22.0) | 2 | ✅ |
-| 8f | ↳ remaining (transit, quests, trading, inventory, item_effects/rules, quest_conditions, ledger, restock, character_info, movement, combat, dialogue) | 2 | ⬜ |
+| 8f | ↳ transit, quests, trading, inventory co-located (0.23.0) | 2 | ✅ |
+| 8g | ↳ remaining (item_effects/rules, ledger, restock, character_info, movement, combat, dialogue/npc engine) | 2 | ⬜ |
 | 9 | Commands: dissolve shared `commands/`; engine built-ins → `engine/commands/`, feature verbs → their feature | 4 | ⬜ |
 | 10 | Extract web into `webui/player/` + `webui/admin/`; add `WebHost` (multi-dir Jinja loader + panel/slot registry) | 4 | ⬜ |
 | 11 | Implement the `presentation.py` seam (§1c); prove with `transit` minimap | 4 | ⬜ |

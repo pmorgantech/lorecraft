@@ -24,7 +24,7 @@ from sqlmodel import Session, create_engine, delete
 from lorecraft.db import create_tables, database_url
 from lorecraft.models.dialogue import DialogueTree
 from lorecraft.engine.models.items import ItemStack
-from lorecraft.models.quest import Quest
+from lorecraft.features.quests.models import Quest
 from lorecraft.engine.models.world import Exit, Item, NPC, Room
 from lorecraft.tools.validators import run_all_checks
 from lorecraft.world.loader import export_world_document, load_world_yaml

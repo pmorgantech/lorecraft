@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
-from lorecraft.services.transit import TransitService
+from lorecraft.features.transit.service import TransitService
 
 
 def register_transit_commands(

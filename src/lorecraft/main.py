@@ -61,9 +61,9 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.light.service import LightFuelService
 from lorecraft.services.restock import RestockService
-from lorecraft.services.quest_timer import QuestTimerService
+from lorecraft.features.quests.timer import QuestTimerService
 from lorecraft.engine.services.mobile_route import MobileRouteService
-from lorecraft.services.transit import TransitService
+from lorecraft.features.transit.service import TransitService
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue

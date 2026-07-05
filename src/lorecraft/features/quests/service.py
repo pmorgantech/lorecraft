@@ -16,14 +16,14 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from lorecraft.game import quest_conditions
+from lorecraft.features.quests import conditions as quest_conditions
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
-    from lorecraft.models.quest import PlayerQuestProgress, Quest
+    from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 
 
 def _carries(ctx: "GameContext", item_id: str) -> bool:

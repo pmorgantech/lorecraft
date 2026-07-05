@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.quest import PlayerQuestProgress, Quest
+from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 from lorecraft.engine.repos.base import Repository
 
 

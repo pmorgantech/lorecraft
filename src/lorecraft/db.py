@@ -40,11 +40,11 @@ from lorecraft.engine.models.world import (
     WorldClock,
     WorldMeta,
 )
-from lorecraft.models.quest import PlayerQuestProgress, Quest
-from lorecraft.models.interaction import PvpConsent, TradeOffer
+from lorecraft.features.quests.models import PlayerQuestProgress, Quest
+from lorecraft.features.trading.models import PvpConsent, TradeOffer
 from lorecraft.features.reputation.models import Reputation
 from lorecraft.engine.models.scheduler import ScheduledJob
-from lorecraft.models.transit import TransitLine, TransitStop
+from lorecraft.features.transit.models import TransitLine, TransitStop
 
 
 GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (

@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.23.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — four larger features co-located (step 8, batch 6, branch `tier_split`).** New feature packages, each with service + tables + repo (+ conditions/timer):
+  - **transit** — `services/transit.py` → `service.py`, `models/transit.py` → `models.py`, `repos/transit_repo.py` → `repo.py`.
+  - **quests** — `services/quest.py` → `service.py`, `services/quest_timer.py` → `timer.py`, `models/quest.py` → `models.py`, `repos/quest_repo.py` → `repo.py`, `game/quest_conditions.py` → `conditions.py` (its standard predicates register on import; consumers `quests`/`npc_memory` import it via `import conditions as quest_conditions` to keep the binding name).
+  - **trading** — `services/trade.py` → `service.py`, `models/interaction.py` → `models.py` (`TradeOffer` + `PvpConsent`), `repos/trade_repo.py` → `repo.py`.
+  - **inventory** — `services/inventory.py` → `service.py`.
+  All passive manifests (services stay wired via the `ServiceContainer`/`main.py`); `discover_features()` now returns 20 features. `Quest`/`PlayerQuestProgress`/`TradeOffer`/`PvpConsent` dropped out of the `models/__init__.py` aggregator. Command modules remain in `commands/` until step 9. Full suite 794 passed, lint + typecheck clean.
+
 ## [0.22.0] - 2026-07-05
 
 ### Changed

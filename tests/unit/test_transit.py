@@ -20,7 +20,7 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.mobile import MobileRouteState
-from lorecraft.models.transit import TransitLine, TransitStop
+from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Item, Room, WorldClock
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
@@ -35,7 +35,7 @@ from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.services.mobile_route import MobileRouteService
 from lorecraft.engine.services.scheduler import SchedulerService
-from lorecraft.services.transit import TransitService, route_id_for_line
+from lorecraft.features.transit.service import TransitService, route_id_for_line
 
 PIER_ID = "pier"
 ROCK_ID = "rock"

@@ -12,7 +12,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
-from lorecraft.models.quest import PlayerQuestProgress, Quest
+from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 from lorecraft.engine.models.world import Room
 from lorecraft.npc.dialogue import _start_quest
 from lorecraft.repos.dialogue_repo import DialogueRepo
@@ -25,9 +25,9 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
-from lorecraft.repos.quest_repo import QuestRepo
+from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
-from lorecraft.services.quest import QuestService
+from lorecraft.features.quests.service import QuestService
 
 
 def _engine():

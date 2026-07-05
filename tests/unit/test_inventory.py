@@ -14,7 +14,7 @@ from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
-from lorecraft.services.inventory import (
+from lorecraft.features.inventory.service import (
     InventoryService,
     format_inventory_entry,
     format_inventory_summary,

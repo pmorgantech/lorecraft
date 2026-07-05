@@ -15,7 +15,7 @@ from lorecraft.commands.trade import register_trade_commands
 from lorecraft.commands.transit import register_transit_commands
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.services.container import ServiceContainer
-from lorecraft.services.transit import TransitService
+from lorecraft.features.transit.service import TransitService
 
 
 def register_all_commands(
