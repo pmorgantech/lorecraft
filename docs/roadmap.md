@@ -31,7 +31,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`tier_split_refactor.md`](tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
 
-**Next up: [Sprints 32–34](#post-tier-split-band-sprints-3133--next-up)** — Sprint 31 (finish the tier split: WebHost + `presentation.py` seam + full feature toggling + doc refresh) is **complete** (v0.31.4–0.32.0); the tier split is now fully done. Remaining near-term: player onboarding & account-preferences/accessibility UX (32), reporting/tooling polish (33), and player-reported command polish (34: `help <command>`, `score`). **Combat and PvP are deferred to last** as [Sprints 61–65](#deferred-to-last-combat--pvp-sprints-6164). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Current (2026-07-05):** the post-tier-split band (Sprints 31–34) is essentially done — **Sprint 31** (tier split fully complete, v0.31.4–0.32.3), **Sprint 32.2/32.3** (account preferences + accessibility, v0.33.0–0.34.0), **Sprint 33** (guided `/report` + page-length quick-win, v0.35.0), and **Sprint 34** (`help <command>` + `score`, v0.34.0 — both open player reports resolved). **Only [Sprint 32.1](#sprint-32--player-onboarding--account-ux) (in-game intro walkthrough) remains, deliberately deferred** pending a product decision on its trigger UX. **Combat and PvP are deferred to last** as [Sprints 61–65](#deferred-to-last-combat--pvp-sprints-6164). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -503,10 +503,12 @@ feature toggling real. Everything here is non-breaking (the app ships and passes
 **Goal:** Make first contact a real arrival and give players an account-level home for
 preferences. From [`wishlist.md`](wishlist.md) (Player Creation / Preferences / Accessibility).
 Username + password validation already shipped (v0.31.0); this builds on it.
+**Status:** 32.2 (preferences) + 32.3 (accessibility) shipped (v0.33.0–0.34.0); **32.1 deferred**
+(2026-07-05, user decision — intro-trigger UX to be revisited).
 
 | # | Task | Status |
 |---|------|--------|
-| 32.1 | In-game character-creation / intro walkthrough — authored like dialogue/quests (YAML + the dialogue & side-effect registries), **skippable and repeatable**, runs once after first spawn (no in-engine special-casing) | [ ] |
+| 32.1 | In-game character-creation / intro walkthrough — authored like dialogue/quests (YAML + the dialogue & side-effect registries), **skippable and repeatable**, runs once after first spawn (no in-engine special-casing) | [ ] **Deferred** (2026-07-05): trigger UX (opt-in `tutorial` vs. auto-open-once) is a product choice to settle first; needs a guide NPC + onboarding dialogue tree authored in `world.yaml` + a config-driven first-spawn hook. |
 | 32.2 | Per-account **preferences layer** — one settings blob on the account (display density, feed verbosity, panel visibility, timestamp format, reduced-motion for transit/map animation) that the render layer reads in exactly one place | [x] Opaque `Player.preferences` blob (engine-stored, webui-interpreted); `webui/player/preferences.py` owns schema/defaults/validation; `resolve_preferences()` read in one place (`/game` SSR context → `prefs`); `/settings` page to view/update; `hidden_panels` gates game.html panels; `.density-compact`/`.reduced-motion` CSS. 24 tests. |
 | 32.3 | **Accessibility mode** — semantic HTML/ARIA, high-contrast / screen-reader-friendly, colourblind-safe palette, real font scaling (a genuine browser-client differentiator; cheap now, costly to retrofit) | [ ] |
 

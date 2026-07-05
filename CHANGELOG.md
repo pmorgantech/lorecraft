@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.35.1] - 2026-07-05
+
+### Changed
+
+- **Roadmap — post-tier-split band status updated; Sprint 32.1 marked deferred.** "Current position" now reflects that Sprints 31, 32.2/32.3, 33, and 34 have shipped, leaving only Sprint 32.1 (in-game intro walkthrough), deliberately deferred pending a product decision on its trigger UX (opt-in `tutorial` vs. auto-open-once). Docs-only.
+
 ## [0.35.0] - 2026-07-05
 
 ### Added
