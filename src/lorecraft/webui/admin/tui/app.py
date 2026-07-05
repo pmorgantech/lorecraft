@@ -9,7 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:
     from textual.app import App, ComposeResult
@@ -40,8 +40,13 @@ _CRED_PATH = Path.home() / ".config" / "lorecraft-admin" / "credentials.json"
 
 
 def _load_creds() -> dict[str, str]:
-    if _CRED_PATH.exists():
-        return json.loads(_CRED_PATH.read_text())
+    try:
+        if _CRED_PATH.exists():
+            data = json.loads(_CRED_PATH.read_text())
+            if isinstance(data, dict):
+                return {str(k): str(v) for k, v in data.items()}
+    except (OSError, json.JSONDecodeError):
+        return {}
     return {}
 
 
@@ -51,15 +56,29 @@ def _save_creds(data: dict[str, str]) -> None:
     _CRED_PATH.chmod(0o600)
 
 
+def _clear_saved_access_token() -> None:
+    creds = _load_creds()
+    if not creds:
+        return
+    creds.pop("access_token", None)
+    _save_creds(creds)
+
+
 # ---------------------------------------------------------------------------
 # HTTP helper (stdlib, no extra deps)
 # ---------------------------------------------------------------------------
 
 
 class _Api:
-    def __init__(self, base_url: str, access_token: str = "") -> None:
+    def __init__(
+        self,
+        base_url: str,
+        access_token: str = "",
+        on_unauthorized: Callable[[], None] | None = None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.access_token = access_token
+        self.on_unauthorized = on_unauthorized
 
     def _request(
         self,
@@ -77,6 +96,11 @@ class _Api:
             with urllib.request.urlopen(req, timeout=5) as resp:
                 return json.loads(resp.read())
         except urllib.error.HTTPError as exc:
+            if exc.code == 401 and self.access_token:
+                self.access_token = ""
+                _clear_saved_access_token()
+                if path != "/admin/auth/token" and self.on_unauthorized is not None:
+                    self.on_unauthorized()
             return {"error": exc.reason, "status": exc.code}
         except Exception as exc:
             return {"error": str(exc)}
@@ -105,6 +129,10 @@ class _Api:
 class LoginScreen(Screen[None]):
     TITLE = "Login"
 
+    def __init__(self, message: str = "") -> None:
+        super().__init__()
+        self._message = message
+
     def compose(self) -> ComposeResult:
         yield Header()
         with Vertical(id="login-box"):
@@ -113,7 +141,7 @@ class LoginScreen(Screen[None]):
             yield Input(placeholder="Username", id="username")
             yield Input(placeholder="Password", password=True, id="password")
             yield Button("Login", variant="primary", id="login-btn")
-            yield Label("", id="login-error")
+            yield Label(self._message, id="login-error")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -133,7 +161,10 @@ class LoginScreen(Screen[None]):
             self.query_one("#login-error", Label).update("Login failed.")
             return
         _save_creds({"base_url": url, "access_token": token, "username": username})
-        self.app.api = api  # type: ignore[attr-defined]
+        app = self.app
+        app._session_invalidated = False  # type: ignore[attr-defined]
+        api.on_unauthorized = app.handle_unauthorized  # type: ignore[attr-defined]
+        app.api = api  # type: ignore[attr-defined]
         self.app.push_screen("players")
 
 
@@ -687,18 +718,37 @@ class LoreCraftAdminApp(App[None]):
 
     def __init__(self) -> None:
         super().__init__()
+        self._session_invalidated = False
         creds = _load_creds()
         base_url = creds.get(
             "base_url", os.getenv("LORECRAFT_ADMIN_URL", "http://localhost:8000")
         )
         token = creds.get("access_token", "")
-        self.api = _Api(base_url, token)
+        self.api = _Api(base_url, token, on_unauthorized=self.handle_unauthorized)
 
     def on_mount(self) -> None:
         if self.api.access_token:
             self.push_screen("players")
         else:
             self.push_screen(LoginScreen())
+
+    def handle_unauthorized(self) -> None:
+        if self._session_invalidated:
+            return
+        self._session_invalidated = True
+        self.api.access_token = ""
+        _clear_saved_access_token()
+
+        def show_login() -> None:
+            if self.screen_stack:
+                self.switch_screen(LoginScreen("Session expired. Please log in again."))
+            else:
+                self.push_screen(LoginScreen("Session expired. Please log in again."))
+
+        try:
+            self.call_from_thread(show_login)
+        except RuntimeError:
+            show_login()
 
 
 def main() -> None:  # pragma: no cover

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.1] - 2026-07-05
+
+### Fixed
+
+- **Admin TUI now invalidates stale saved bearer tokens on 401.** The TUI persisted only its access token, so after the API restarted with a different ephemeral `LORECRAFT_ADMIN_JWT_SECRET` it would silently reuse an unverifiable token and every protected screen (`Players`, `Issues`, `Audit`, `World`, `Changesets`, `Clock`) returned 401 with `admin_token_decode_failed: Signature verification failed`. A protected-endpoint 401 now clears the in-memory token, removes `access_token` from `~/.config/lorecraft-admin/credentials.json`, and sends the TUI back to the login screen with a session-expired message. Login failures still stay as normal login failures, and malformed credential JSON now fails closed instead of crashing startup.
+
 ## [0.38.0] - 2026-07-05
 
 ### Added

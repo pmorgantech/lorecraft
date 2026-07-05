@@ -164,7 +164,9 @@ python -m lorecraft.admin.tui.app
 
 On first run it prompts for a server URL + credentials, then stores the token at
 `~/.config/lorecraft-admin/credentials.json` (mode `0600`) for silent reuse. Set
-`LORECRAFT_ADMIN_URL` to point it at a non-default host.
+`LORECRAFT_ADMIN_URL` to point it at a non-default host. If the saved token expires
+or was signed by a previous ephemeral server secret, the next protected request clears
+that saved token and returns you to the login screen.
 
 | Key | Screen |
 |-----|--------|
