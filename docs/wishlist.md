@@ -240,7 +240,9 @@ naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)
 
 ### Combat, reframed as a supporting system 🤔
 
-Combat stays on the roadmap ([Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system)) but is **deliberately not the centerpiece**:
+Combat is **set aside from the active roadmap** (2026-07-05 — it kept forcing sprint-renumbering
+churn and isn't worth the hassle right now) but remains **deliberately not the centerpiece** when
+it returns:
 
 - **Avoidance as first-class** — stealth, persuasion, bribery, and clever item use should
   resolve most encounters without a fight. Combat is a fallback, not the default.
@@ -248,6 +250,34 @@ Combat stays on the roadmap ([Sprints 31–33](roadmap.md#sprint-31--combat-core
   several, and often not the interesting one.
 - **Encounters serve stories** — fights exist to raise stakes in quests/exploration, not as a
   grind loop for XP. No "kill 10 rats." See the death-penalty decision (lean soft).
+
+#### Set-aside sprint specs (were roadmap Sprints 61–64, moved here 2026-07-05)
+
+Ready-to-restore, roadmap-grade specs — when combat/PvP graduates back onto the roadmap these
+become sprints again (renumber to whatever's next). Design docs:
+[`combat_system.md`](combat_system.md), [`death_resurrection.md`](death_resurrection.md).
+
+**1. Combat core services (supporting system).** Server-side resolution, no commands/UI yet;
+first real consumer of the feature-registration pattern (roadmap 10.4), reading equipment-derived
+stats. Deliberately below trade/transit/quests — combat serves stories, it isn't the loop.
+- `services/combat.py` — sessions, ticks, damage.
+- Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at
+  `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container
+  (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff.
+- `npc/combat_ai.py` — behavior modes from YAML.
+
+**2. Combat commands + UI (avoidance-first).** Combat as one resolution among several —
+stealth/persuasion/bribery/flee are first-class alternatives; non-lethal outcomes supported.
+- `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off);
+  complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`).
+- Combat UI in HTMX feed + status panel.
+
+**3. Combat testing.** Integration + browser tests for the combat loop and avoidance/non-lethal
+paths.
+
+**4. PvP consent.** Consent-based, opt-in PvP reusing the combat system; soft by default;
+challenge/accept. (The multiplayer PvP-consent *simulation tests* also moved here from roadmap
+Sprint 65, whose trade/transit test portion stays live.)
 
 ### Seeded from MUD patch notes & client comparison (2026-07-03)
 
@@ -363,9 +393,9 @@ layer**, persisted on the account and read by the render layer.
 
 ## Gameplay systems
 
-### Combat 💚 (already on the roadmap)
+### Combat 💚 (set aside from the roadmap — 2026-07-05)
 
-[Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system) (moved down from the original 18–20 in the 2026-07-03 pillar re-sequence —
+Set aside to this doc 2026-07-05 (specs above under *Combat, reframed*; moved down from the original 18–20 in the 2026-07-03 pillar re-sequence —
 combat is a supporting system, not the centerpiece). **NPC combat first, PvP later** — simpler
 state machine, lets death/respawn mechanics settle before adding player-vs-player. First real
 consumer of the feature-registration pattern.
@@ -379,7 +409,7 @@ lose some carried coins/loot; banked and equipped/bound items are safe).
 `BankAccount`) → NPC shops → regional pricing → banks → player-to-player trade.
 _Deferred:_ auctions, dynamic global market — until there's real trading volume.
 
-### PvP 🤔 (on the roadmap, Sprint 34)
+### PvP 🤔 (set aside from the roadmap — 2026-07-05)
 
 Consent-based (challenge/accept) reusing the combat system. **Design choice pending:** soft
 opt-in PvP (most modern MUDs, Aardwolf's "99% harmless") vs. anything more punishing. Lean

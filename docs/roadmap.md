@@ -31,7 +31,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`tier_split_refactor.md`](tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
 
-**Current (2026-07-05):** the post-tier-split band (Sprints 31–34) is essentially done — **Sprint 31** (tier split fully complete, v0.31.4–0.32.3), **Sprint 32.2/32.3** (account preferences + accessibility, v0.33.0–0.34.0), **Sprint 33** (guided `/report` + page-length quick-win, v0.35.0), and **Sprint 34** (`help <command>` + `score`, v0.34.0 — both open player reports resolved). **Only [Sprint 32.1](#sprint-32--player-onboarding--account-ux) (in-game intro walkthrough) remains, deliberately deferred** pending a product decision on its trigger UX. **Combat and PvP are deferred to last** as [Sprints 61–65](#deferred-to-last-combat--pvp-sprints-6164). See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Current (2026-07-05):** the post-tier-split band (Sprints 31–34) is essentially done — **Sprint 31** (tier split fully complete, v0.31.4–0.32.3), **Sprint 32.2/32.3** (account preferences + accessibility, v0.33.0–0.34.0), **Sprint 33** (guided `/report` + page-length quick-win, v0.35.0), and **Sprint 34** (`help <command>` + `score`, v0.34.0 — both open player reports resolved). **Open roadmap items:** [Sprint 32.1](#sprint-32--player-onboarding--account-ux) (in-game intro walkthrough, deferred pending a product decision on its trigger UX), [Sprint 65](#sprint-65--multiplayer-trade--transit-tests) (multiplayer trade/transit simulation tests), and the new [Performance & scaling band (Sprints 66–69)](#performance--scaling-band-sprints-6669--measure-then-optimize-no-threading-yet). **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept forcing roadmap renumbering; ready-to-restore specs live there. See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -364,7 +364,7 @@ exploration, which it serves.
 > **Design docs:** [`engine_core.md`](engine_core.md) (Tier boundary + Tier 1 primitives — read first),
 > [`inventory_equipment.md`](inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
-> [`death_resurrection.md`](death_resurrection.md) ([Sprint 40](#sprint-40--combat-core-services-supporting-system) death penalty),
+> [`death_resurrection.md`](death_resurrection.md) (death penalty; combat set aside to [`wishlist.md`](wishlist.md)),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
 > [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
 > registries), [`transit_systems.md`](transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
@@ -480,9 +480,9 @@ Extends the stage/flag quest system with branch conditions and mechanism puzzles
 > (engine/ is import-pure; 24 feature packages under `features/`; `webui/player` + `webui/admin`;
 > the boundary is enforced by `tests/unit/test_tier_boundaries.py`). These three sprints capture
 > the remaining tier-split follow-ons plus the highest-value UX/wishlist gaps surfaced along the
-> way. **Combat (40–42) and PvP (43–44) are deferred to last** and were renumbered out of the
-> 31–35 slots they used to occupy. See [`tier_split_refactor.md`](tier_split_refactor.md) and
-> [`wishlist.md`](wishlist.md).
+> way. **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept
+> forcing roadmap renumbering; ready-to-restore specs live there. See
+> [`tier_split_refactor.md`](tier_split_refactor.md).
 
 ## Sprint 31 — Finish the tier split: feature-UI seam, toggling & doc refresh ✅
 
@@ -536,59 +536,16 @@ command wins that improve day-to-day play. Both came in via the in-game `/report
 
 ---
 
-## Deferred to last: combat & PvP (Sprints 61–64)
+## Sprint 65 — Multiplayer trade & transit tests
 
-> Combat is a **supporting system, not the centerpiece** (pillar order: Exploration > Trading >
-> Questing > Puzzles). These were Sprints 31–35, renumbered to 40–44, now renumbered to 61–64
-> to reserve 34–60 for future work. See [`combat_system.md`](combat_system.md) and
-> [`death_resurrection.md`](death_resurrection.md).
-
-## Sprint 61 — Combat core services (supporting system)
-
-**Goal:** Server-side combat resolution, no commands/UI yet. First consumer of the
-feature-registration pattern (10.4), reading equipment-derived stats. **Deliberately below
-trade/transit/quests** — combat serves stories, it isn't the loop. **See [`combat_system.md`](combat_system.md)
-and [`death_resurrection.md`](death_resurrection.md).**
+> The trade and transit subsystems are already complete (Sprints 28–29); these simulation tests
+> are independent of combat/PvP. The PvP-consent test portion was set aside with combat/PvP to
+> [`wishlist.md`](wishlist.md) (2026-07-05); could be pulled forward if multiplayer trade/transit
+> regressions need coverage sooner.
 
 | # | Task | Status |
 |---|------|--------|
-| 61.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
-| 61.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
-| 61.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
-
-## Sprint 62 — Combat commands + UI (avoidance-first)
-
-**Goal:** Combat as one resolution among several — stealth/persuasion/bribery/flee are
-first-class alternatives; non-lethal outcomes supported.
-
-| # | Task | Status |
-|---|------|--------|
-| 62.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 62.2 | Combat UI in HTMX feed + status panel | [ ] |
-
-## Sprint 63 — Combat testing
-
-| # | Task | Status |
-|---|------|--------|
-| 63.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
-
-## Sprint 64 — PvP consent
-
-**Goal:** Consent-based, opt-in PvP reusing the combat system. Soft by default.
-
-| # | Task | Status |
-|---|------|--------|
-| 64.1 | PvP consent + challenge/accept | [ ] |
-
-## Sprint 65 — Multiplayer trade / PvP / transit tests
-
-> Note: the trade and transit subsystems are already complete (Sprints 28–29); the trade/transit
-> simulation-test portions here are independent of combat/PvP and could be pulled forward if
-> multiplayer trade/transit regressions need coverage sooner.
-
-| # | Task | Status |
-|---|------|--------|
-| 65.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
+| 65.1 | Multi-player trade and shared-vehicle transit simulation tests | [ ] |
 
 ---
 
@@ -596,7 +553,7 @@ first-class alternatives; non-lethal outcomes supported.
 
 **Goal:** Establish performance telemetry, capture a **baseline before any optimization**, then implement high-ROI single-process optimizations (indexing/batching/caching, pool tuning) to support many concurrent players. No architectural changes; the single-process / single-threaded design (architecture.md §1) is retained until real telemetry proves a hard limit.
 
-**Cross-cutting / schedulable ahead of combat (66–69 is a number, not a strict order).** This band is infrastructure, not a Tier 2 feature; the product owner may pull it ahead of the remaining combat sprints (61–65). Numbered 66+ only to avoid colliding with existing sprints.
+**Cross-cutting / schedulable (66–69 is a number, not a strict order).** This band is infrastructure, not a Tier 2 feature; the product owner may pull it ahead of the other open sprints (32.1, 65) — see the assessment note below. Numbered 66+ only to avoid colliding with existing sprints.
 
 **Rationale:** Adding multithreading/multiprocessing now would introduce concurrency bugs (shared `GameContext`, SQLite single-writer, `GameRng` determinism) without evidence of a real bottleneck. Measure first (Sprint 66), fix only where the baseline shows cost, and revisit concurrency when telemetry shows contention.
 
@@ -658,7 +615,7 @@ first-class alternatives; non-lethal outcomes supported.
 
 ## Build-order reference
 
-See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish + player-reported command polish (31–34, next up)** → combat (61–63) → PvP + multiplayer tests (64–65).
+See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish + player-reported command polish (31–34)** → multiplayer trade/transit tests (65) → performance & scaling (66–69). Combat & PvP set aside to [`wishlist.md`](wishlist.md) (2026-07-05).
 
 **Note (2026-07-03):** the feature band was re-sequenced from the original combat-first order to a pillar-driven order (Exploration > Trading > Questing > Puzzles; combat supporting). `architecture.md` §28's phase list predates this and is kept for historical reference — this roadmap is authoritative for sequencing.
 
@@ -687,7 +644,7 @@ Empty databases import `world_content/world.yaml` on startup (configurable via `
 
 ---
 
-*Last updated: 2026-07-04 — **[Sprint 30](#sprint-30--quests--puzzles-depth-) complete**, closing out every non-combat/PvP Tier 2 sprint (22–30). Branching quests (stage `branches`: conditions + `next_stage` + `side_effects`, backward-compatible with pre-existing linear quests), NPC memory (`models/npc_memory.py`, scoped per-player-per-NPC), a new pluggable `game/quest_conditions.py` registry, mechanism items (levers/dials via a new `"mechanism"` standard component + `turn`/`pull`/`activate` commands), item-combination consequences (`Item.combination_side_effects`), and `services/quest_timer.py`'s `QuestTimerService` (timed clock-driven quest stage deadlines, `RestockService`'s scheduler shape). 26 new tests; full suite (739 unit/integration + 10 e2e + 5 simulation) green. Version bumped to 0.14.0. Sprints 31–35 (combat core, combat commands/UI, combat testing, PvP consent, multiplayer trade/PvP/transit tests) remain — deliberately out of scope for this pass.
+*Last updated: 2026-07-05 — **Combat & PvP set aside to [`wishlist.md`](wishlist.md)** (former Sprints 61–64 + the PvP-consent portion of 65) to stop them forcing roadmap renumbering; ready-to-restore specs preserved there. Added the **Performance & scaling band (66–69)** and the `scripts/perf_baseline.py` baseline harness (v0.36.3–0.36.4). Earlier (2026-07-04) — **[Sprint 30](#sprint-30--quests--puzzles-depth-) complete**, closing out every non-combat/PvP Tier 2 sprint (22–30). Branching quests (stage `branches`: conditions + `next_stage` + `side_effects`, backward-compatible with pre-existing linear quests), NPC memory (`models/npc_memory.py`, scoped per-player-per-NPC), a new pluggable `game/quest_conditions.py` registry, mechanism items (levers/dials via a new `"mechanism"` standard component + `turn`/`pull`/`activate` commands), item-combination consequences (`Item.combination_side_effects`), and `services/quest_timer.py`'s `QuestTimerService` (timed clock-driven quest stage deadlines, `RestockService`'s scheduler shape). 26 new tests; full suite (739 unit/integration + 10 e2e + 5 simulation) green. Version bumped to 0.14.0. Sprints 31–35 (combat core, combat commands/UI, combat testing, PvP consent, multiplayer trade/PvP/transit tests) remain — deliberately out of scope for this pass.
 
 Earlier — **[Sprints 20](#sprint-20--ledger--atomic-transfer-) and [21](#sprint-21--scheduled-moving-entity-moving-room-) complete**, closing out the Tier 1 engine-core band. `models/ledger.py`'s `CoinBalance` + `services/ledger.py`'s `LedgerService` add coin balances on any registered holder and one atomic multi-leg `execute_exchange()` for coins and items together (validate-all-then-apply-all, no partial exchange). `models/mobile.py`'s `MobileRouteState` + `services/mobile_route.py`'s `MobileRouteService` add the generic scheduled route runner (ping-pong or circular waypoint cycling, position interpolation, pluggable `RouteHooks`) that transit will ride on — reuses `SchedulerService` for all timing, no second timing mechanism. 29 new tests, all green first run; full suite (538 unit/integration + 3 e2e + 5 simulation) green. Version bumped to 0.3.0. Tier 2 feature band now open, starting at [Sprint 22](#sprint-22--standard-item-components--definition-fields).
 

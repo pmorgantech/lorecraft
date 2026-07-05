@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.4] - 2026-07-05
+
+### Changed
+
+- **Combat & PvP set aside to `wishlist.md`.** Roadmap Sprints 61–64 (combat core services, combat commands/UI, combat testing, PvP consent) — plus the PvP-consent portion of Sprint 65 — moved out of the active roadmap into `wishlist.md` as ready-to-restore, roadmap-grade specs. They kept forcing sprint renumbering and aren't worth the churn right now; nothing is lost. Sprint 65 is retained and retitled **"Multiplayer trade & transit tests"** (its trade/transit portions are independent of combat and stay live). Roadmap cross-references (current position, design-docs index, post-tier-split note, build-order reference, footer) updated to match; the open roadmap items are now Sprint 32.1, Sprint 65, and the Performance & scaling band (66–69).
+
 ## [0.36.3] - 2026-07-05
 
 ### Added
