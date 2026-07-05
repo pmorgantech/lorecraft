@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.1)
+## Where things stand (2026-07-05, v0.38.3)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -45,7 +45,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 > These sprints fill the reserved 35–60 numbering gap (see *Sprint numbering* below).
 
-## Sprint 35 — Performance telemetry & baseline ⟵ do first
+## Sprint 35 — Performance telemetry & baseline — ✅ complete
 
 **Goal:** Make optimization evidence-driven. **Capture the "before" picture before touching any hot path.**
 
@@ -53,7 +53,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 |---|------|--------|
 | 35.1 | Baseline micro-benchmark harness `scripts/perf_baseline.py` — drives real parse / condition / dispatch / commit paths against the Ashmoore world in a disposable DB; reports p50/p95/p99 per operation (checked in, reproducible before/after) | [x] Landed with first baseline. Reveals parser entity-resolution is **O(visible entities)**: `examine` parse is 0.7 ms baseline → **4.8 ms @25 items → 17 ms @100 items** (p99 ~36 ms), while condition eval is ~0.002 ms and a no-op commit ~0.015 ms. |
 | 35.2 | Structured perf logging in `observability.py`: `time_operation(name)` ctx-manager; instrument `command_parse`, `condition_evaluate`, `db_commit`, `scheduler_tick`, `broadcast_send` (warn >50 ms) | [x] `time_operation(name, *, warn_ms=50.0)` added to `observability.py` — DEBUG normally, WARNING over budget, never swallows exceptions; txn/corr IDs auto-attached by the root filter. Instrumented all five sites (`command_parse`/`condition_evaluate`/`db_commit` in `engine.py`, `scheduler_tick` in `scheduler.py`, `broadcast_send` on both `ConnectionManager` broadcasts). Call sites stay stable for 35.3 to layer persistence into the ctx-manager. |
-| 35.3 | Analytics API `/admin/analytics/performance` — p50/p95/p99 by operation from audit `duration_ms` payloads (extends existing latency query) | [ ] |
+| 35.3 | Analytics API `/admin/analytics/performance` — p50/p95/p99 by operation from audit `duration_ms` payloads (extends existing latency query) | [x] `time_operation` now yields an `OperationTiming`; `CommandEngine` stamps a per-operation `perf` breakdown (`command_parse`/`condition_evaluate`/`db_commit`) onto each `COMMAND_EXECUTED` payload. New `analytics.operation_latency_percentiles` groups those (plus the top-level handler time as `command_handler`) into p50/p95/p99 per operation, exposed at `GET /admin/analytics/performance` (`Observer` auth, `range` param). End-to-end test asserts the payload; endpoint/query/`OperationTiming` unit-tested. |
 
 ## Sprint 36 — Parser entity-resolution scaling *(prioritized by the 35.1 baseline)* — ✅ complete
 
@@ -87,11 +87,11 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ### Recommended next step (2026-07-05)
 
-**Sprint 36 is complete** — parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size). The evidenced bottleneck the 35.1 baseline surfaced is fixed, and 36.3's memoization gate came back negative, so there's no further parser work to do here.
+**Sprints 35 and 36 are complete.** Parser entity-resolution is no longer a scaling concern (`parse:examine@100items` **16.92 → 1.82 ms p50, 9.3×**, p99 tail gone, cost flat in inventory size), and the telemetry stack is in place: the `perf_baseline.py` harness (35.1), per-operation `time_operation` logging (35.2), and the live `/admin/analytics/performance` p50/p95/p99-by-operation endpoint (35.3), sourced from the `perf` breakdown now stamped on every `COMMAND_EXECUTED` audit event.
 
-**35.2 is done** — `time_operation(name)` now wraps the five hot operations and emits structured perf logs (WARNING over the 50 ms budget). Next is **35.3**: surface those measurements as p50/p95/p99 by operation via `/admin/analytics/performance`, extending the existing `command_latency_percentiles` query. That needs the per-operation durations to reach the audit log — the 35.2 call sites are already placed so the persistence can be layered into `time_operation` without touching them. After 35.3, **Sprint 37** (scheduler batching, pool tuning, and the multi-player load test) is the remaining measured-optimization work, feeding the Sprint 38 concurrency gate.
+Next is **Sprint 37** — scheduler batching (37.1), connection-pool tuning knobs (37.2), and the repeatable multi-player load test (37.3). The load test is the key deliverable: it produces the real-traffic p95/p99 telemetry that feeds the **Sprint 38** concurrency decision gate (which stays closed unless the load test shows a hard single-process wall).
 
-**Suggested order:** ~~36.1 → 36.2 → 36.3~~ ✅ → **35.2/35.3 (in-app telemetry, next)** → 37 (batching/pool/load test) → 38 (concurrency gate, only if the load test shows a wall).
+**Suggested order:** ~~35.1 → 35.2 → 35.3~~ ✅ · ~~36.1 → 36.2 → 36.3~~ ✅ → **37 (batching/pool/load test, next)** → 38 (concurrency gate, only if the load test shows a wall).
 
 ---
 

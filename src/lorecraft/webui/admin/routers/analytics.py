@@ -13,6 +13,7 @@ from lorecraft.analytics import (
     InvalidRangeError,
     command_latency_percentiles,
     npc_interaction_counts,
+    operation_latency_percentiles,
     parse_range,
     player_hours,
     quest_completion_counts,
@@ -82,3 +83,15 @@ async def analytics_latency(
     since = _since(range)
     with Session(state.audit_engine) as session:
         return command_latency_percentiles(session, since=since)
+
+
+@router.get("/performance")
+async def analytics_performance(
+    request: Request, _: Observer, range: str = "24h"
+) -> dict[str, dict[str, float]]:
+    """p50/p95/p99 by operation (command_parse / condition_evaluate / db_commit
+    / command_handler) from COMMAND_EXECUTED perf payloads (Sprint 35.3)."""
+    state = _state(request)
+    since = _since(range)
+    with Session(state.audit_engine) as session:
+        return operation_latency_percentiles(session, since=since)

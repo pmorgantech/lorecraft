@@ -13,6 +13,8 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.repos.stack_repo import StackRepo
 
@@ -142,6 +144,43 @@ async def _test_post_command_moves_player_east() -> None:
     assert player is not None
     assert player.current_room_id == "market_stalls"
     assert "go east" in html.lower() or "You go east" in html
+
+
+def test_post_command_records_perf_breakdown_in_audit() -> None:
+    anyio.run(_test_post_command_records_perf_breakdown)
+
+
+async def _test_post_command_records_perf_breakdown() -> None:
+    # End-to-end: a real command's COMMAND_EXECUTED audit event carries the
+    # Sprint 35.3 per-operation `perf` breakdown that /analytics/performance reads.
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS,
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        status, _ = await _http_form_post(
+            app,
+            "/command",
+            form={"command": "look"},
+            cookies={"player_id": "player-1"},
+        )
+
+        with Session(audit_engine) as session:
+            event = session.exec(
+                select(AuditEvent).where(
+                    AuditEvent.event_type == GameEvent.COMMAND_EXECUTED.value
+                )
+            ).first()
+
+    assert status == 200
+    assert event is not None
+    perf = event.payload_json.get("perf")
+    assert isinstance(perf, dict)
+    assert set(perf) == {"command_parse", "condition_evaluate", "db_commit"}
+    assert all(isinstance(value, (int, float)) for value in perf.values())
 
 
 def test_post_command_takes_item() -> None:

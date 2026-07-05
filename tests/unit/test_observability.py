@@ -90,6 +90,13 @@ def test_time_operation_warns_when_over_threshold(
     assert "name=slow_op" in records[0].getMessage()
 
 
+def test_time_operation_yields_measured_duration() -> None:
+    with time_operation("measured", warn_ms=1000.0) as timing:
+        time.sleep(0.002)
+    assert timing.name == "measured"
+    assert timing.duration_ms >= 2.0  # sleep guarantees at least the requested time
+
+
 def test_time_operation_reraises_and_still_logs_on_exception(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

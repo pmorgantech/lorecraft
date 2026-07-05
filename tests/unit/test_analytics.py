@@ -7,6 +7,7 @@ from lorecraft.analytics import (
     InvalidRangeError,
     command_latency_percentiles,
     npc_interaction_counts,
+    operation_latency_percentiles,
     parse_range,
     player_hours,
     quest_completion_counts,
@@ -36,7 +37,7 @@ def _event(
     event_type: str,
     real_time: float,
     target_id: str | None = None,
-    payload: dict[str, str | float] | None = None,
+    payload: JsonObject | None = None,
 ) -> AuditEvent:
     return AuditEvent(
         transaction_id="tx-1",
@@ -211,6 +212,86 @@ def test_command_latency_percentiles_empty_when_no_events() -> None:
         result = command_latency_percentiles(session, since=0.0)
 
     assert result == {"p50": 0.0, "p95": 0.0, "p99": 0.0, "count": 0}
+
+
+def test_operation_latency_percentiles_grouped_by_operation() -> None:
+    engine = _audit_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        for parse_ms in [1.0, 2.0, 3.0, 4.0, 5.0]:
+            session.add(
+                _event(
+                    event_type=GameEvent.COMMAND_EXECUTED.value,
+                    real_time=now,
+                    payload={
+                        "verb": "look",
+                        "duration_ms": parse_ms * 10,  # command_handler timing
+                        "perf": {
+                            "command_parse": parse_ms,
+                            "condition_evaluate": 0.01,
+                            "db_commit": 0.02,
+                        },
+                    },
+                )
+            )
+        # Outside range — excluded from every operation.
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now - 1_000_000,
+                payload={
+                    "verb": "look",
+                    "duration_ms": 9999.0,
+                    "perf": {"command_parse": 9999.0},
+                },
+            )
+        )
+        session.commit()
+
+        result = operation_latency_percentiles(session, since=now - 100)
+
+    assert set(result) == {
+        "command_handler",
+        "command_parse",
+        "condition_evaluate",
+        "db_commit",
+    }
+    assert result["command_parse"]["count"] == 5
+    assert result["command_parse"]["p50"] == 3.0
+    assert result["command_parse"]["p99"] == 5.0
+    # The top-level duration_ms surfaces as the command_handler operation.
+    assert result["command_handler"]["count"] == 5
+    assert result["command_handler"]["p50"] == 30.0
+
+
+def test_operation_latency_percentiles_includes_events_without_perf() -> None:
+    # Pre-35.3 COMMAND_EXECUTED events (no perf breakdown) still contribute
+    # their command_handler timing.
+    engine = _audit_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        session.add(
+            _event(
+                event_type=GameEvent.COMMAND_EXECUTED.value,
+                real_time=now,
+                payload={"verb": "look", "duration_ms": 15.0},
+            )
+        )
+        session.commit()
+
+        result = operation_latency_percentiles(session, since=now - 100)
+
+    assert set(result) == {"command_handler"}
+    assert result["command_handler"]["count"] == 1
+    assert result["command_handler"]["p50"] == 15.0
+
+
+def test_operation_latency_percentiles_empty_when_no_events() -> None:
+    engine = _audit_engine()
+    with Session(engine) as session:
+        result = operation_latency_percentiles(session, since=0.0)
+
+    assert result == {}
 
 
 def test_player_hours_sums_session_duration() -> None:

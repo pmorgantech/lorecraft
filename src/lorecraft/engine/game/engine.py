@@ -42,7 +42,7 @@ class CommandEngine:
     rules: RuleEngine
 
     def handle_command(self, raw: str, ctx: GameContext) -> ParsedCommand:
-        with time_operation("command_parse"):
+        with time_operation("command_parse") as parse_timing:
             result = parse_command(raw, context=ctx)
         if result.error_message:
             ctx.say(result.error_message)
@@ -65,13 +65,15 @@ class CommandEngine:
 
         last_parsed = result.commands[-1]
         for parsed in result.commands:
-            executed = self._execute_parsed(parsed, ctx)
+            executed = self._execute_parsed(
+                parsed, ctx, parse_ms=parse_timing.duration_ms
+            )
             if executed is not None:
                 last_parsed = executed
         return last_parsed
 
     def _execute_parsed(
-        self, parsed: ParsedCommand, ctx: GameContext
+        self, parsed: ParsedCommand, ctx: GameContext, *, parse_ms: float = 0.0
     ) -> ParsedCommand | None:
         lookup_verb = registry_verb(parsed.verb)
         if not lookup_verb:
@@ -85,7 +87,7 @@ class CommandEngine:
             self._record_blocked(ctx, parsed, "unknown_command", "Unknown command.")
             return None
 
-        with time_operation("condition_evaluate"):
+        with time_operation("condition_evaluate") as condition_timing:
             condition = self.registry.evaluate_conditions(command, ctx)
         if not condition.allowed:
             reason = condition.reason or "You can't do that."
@@ -118,9 +120,14 @@ class CommandEngine:
         # rather than raising, so this can't turn a failed handler into a rollback
         # of the command's own already-applied changes).
         ctx.flush_events()
-        with time_operation("db_commit"):
+        with time_operation("db_commit") as commit_timing:
             ctx.commit_state_changes()
-        self._record_success(ctx, parsed, duration_ms)
+        perf: JsonObject = {
+            "command_parse": round(parse_ms, 3),
+            "condition_evaluate": round(condition_timing.duration_ms, 3),
+            "db_commit": round(commit_timing.duration_ms, 3),
+        }
+        self._record_success(ctx, parsed, duration_ms, perf=perf)
         log.info("command_executed verb=%s duration_ms=%.2f", parsed.verb, duration_ms)
         return parsed
 
@@ -180,10 +187,19 @@ class CommandEngine:
         ctx.commit_audit_events()
 
     def _record_success(
-        self, ctx: GameContext, parsed: ParsedCommand, duration_ms: float
+        self,
+        ctx: GameContext,
+        parsed: ParsedCommand,
+        duration_ms: float,
+        *,
+        perf: JsonObject | None = None,
     ) -> None:
         payload = _command_audit_payload(parsed)
         payload["duration_ms"] = round(duration_ms, 3)
+        if perf:
+            # Per-operation breakdown (command_parse/condition_evaluate/db_commit)
+            # feeding analytics.operation_latency_percentiles (Sprint 35.3).
+            payload["perf"] = perf
         AuditService.from_context(ctx).record(
             ctx,
             GameEvent.COMMAND_EXECUTED,

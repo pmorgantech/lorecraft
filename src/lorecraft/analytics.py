@@ -123,6 +123,51 @@ def command_latency_percentiles(session: Session, *, since: float) -> dict[str, 
     }
 
 
+def operation_latency_percentiles(
+    session: Session, *, since: float
+) -> dict[str, dict[str, float]]:
+    """p50/p95/p99 latency (ms) **per named operation** since `since`.
+
+    Extends `command_latency_percentiles` from a single aggregate to a
+    per-operation view. Reads the `perf` breakdown that
+    `CommandEngine._record_success` stamps on `COMMAND_EXECUTED` payloads —
+    `command_parse` / `condition_evaluate` / `db_commit` (Sprint 35.2/35.3
+    instrumentation) — plus the top-level command-handler `duration_ms`,
+    surfaced as the `command_handler` operation so the existing metric is
+    included. Events without a `perf` field (pre-35.3) still contribute their
+    `command_handler` timing. Returns `{operation: {p50, p95, p99, count}}`,
+    empty if no matching events.
+
+    scheduler_tick / broadcast_send are timed too (35.2) but happen outside the
+    per-command audit path, so they surface only in structured logs, not here.
+    """
+    stmt = select(AuditEvent).where(
+        AuditEvent.event_type == GameEvent.COMMAND_EXECUTED.value,
+        col(AuditEvent.real_time) >= since,
+    )
+    per_operation: dict[str, list[float]] = {}
+    for event in session.exec(stmt).all():
+        payload = event.payload_json
+        handler = payload.get("duration_ms")
+        if isinstance(handler, (int, float)):
+            per_operation.setdefault("command_handler", []).append(float(handler))
+        perf = payload.get("perf")
+        if isinstance(perf, dict):
+            for name, value in perf.items():
+                if isinstance(value, (int, float)):
+                    per_operation.setdefault(name, []).append(float(value))
+    result: dict[str, dict[str, float]] = {}
+    for name, values in per_operation.items():
+        values.sort()
+        result[name] = {
+            "p50": _percentile(values, 0.50),
+            "p95": _percentile(values, 0.95),
+            "p99": _percentile(values, 0.99),
+            "count": len(values),
+        }
+    return result
+
+
 def _percentile(sorted_values: list[float], fraction: float) -> float:
     """Nearest-rank percentile; `sorted_values` must be sorted ascending."""
     if not sorted_values:

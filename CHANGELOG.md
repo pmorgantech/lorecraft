@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.3] - 2026-07-05
+
+### Added
+
+- **Sprint 35.3 — per-operation latency analytics (`GET /admin/analytics/performance`).** Completes the Sprint 35 telemetry stack. `time_operation` now yields an `OperationTiming` whose `duration_ms` is readable after the block, and `CommandEngine` stamps a per-operation **`perf` breakdown** (`command_parse` / `condition_evaluate` / `db_commit`) onto every `COMMAND_EXECUTED` audit payload. A new `analytics.operation_latency_percentiles` groups those durations — plus the existing top-level handler time, surfaced as the `command_handler` operation — into **p50/p95/p99 + count per operation**, exposed at `GET /admin/analytics/performance` (`Observer` auth, `range` param like the other analytics endpoints). This extends `command_latency_percentiles` from a single aggregate to a per-operation view, so an admin can see whether real-traffic latency is going to parsing, condition checks, or the DB commit. Events predating this change (no `perf` field) still contribute their `command_handler` timing. `scheduler_tick`/`broadcast_send` remain timed in the structured logs (35.2) but sit outside the per-command audit path, so they don't appear here. Documented in `admin_builder_guide.md`.
+
 ## [0.38.2] - 2026-07-05
 
 ### Changed

@@ -82,8 +82,25 @@ def bind_transaction_context(
         _current.reset(token)
 
 
+@dataclass
+class OperationTiming:
+    """Handle yielded by ``time_operation``.
+
+    ``duration_ms`` is 0.0 while the block runs and is filled in when it exits,
+    so a caller that needs the measurement — e.g. to stamp it onto an audit
+    payload for the Sprint 35.3 ``/admin/analytics/performance`` query — can read
+    it after the ``with`` block. Callers that only want the log line can ignore
+    the yielded value entirely.
+    """
+
+    name: str
+    duration_ms: float = 0.0
+
+
 @contextmanager
-def time_operation(name: str, *, warn_ms: float = _SLOW_OPERATION_MS) -> Iterator[None]:
+def time_operation(
+    name: str, *, warn_ms: float = _SLOW_OPERATION_MS
+) -> Iterator[OperationTiming]:
     """Time a named operation and emit one structured perf log line.
 
     Logs at DEBUG normally, escalating to WARNING when the block takes longer
@@ -93,21 +110,23 @@ def time_operation(name: str, *, warn_ms: float = _SLOW_OPERATION_MS) -> Iterato
     it. Instrumentation only: it never suppresses an exception, and the elapsed
     time is still logged when the block raises.
 
-    The measured durations are what the Sprint 35.3 ``/admin/analytics/performance``
-    query aggregates into per-operation p50/p95/p99; call sites stay stable as
-    that persistence is layered in here.
+    Yields an :class:`OperationTiming` whose ``duration_ms`` is populated on
+    exit; ``with time_operation(name) as t: ...`` then reads ``t.duration_ms``.
     """
+    timing = OperationTiming(name)
     start = time.perf_counter()
     try:
-        yield
+        yield timing
     finally:
-        duration_ms = (time.perf_counter() - start) * 1000.0
-        if duration_ms > warn_ms:
+        timing.duration_ms = (time.perf_counter() - start) * 1000.0
+        if timing.duration_ms > warn_ms:
             log.warning(
                 "perf_operation name=%s duration_ms=%.3f slow_threshold_ms=%.0f",
                 name,
-                duration_ms,
+                timing.duration_ms,
                 warn_ms,
             )
         else:
-            log.debug("perf_operation name=%s duration_ms=%.3f", name, duration_ms)
+            log.debug(
+                "perf_operation name=%s duration_ms=%.3f", name, timing.duration_ms
+            )
