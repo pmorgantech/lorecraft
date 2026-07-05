@@ -29,6 +29,17 @@ class TestResolvePreferences:
     def test_invalid_font_scale_falls_back(self) -> None:
         assert resolve_preferences({"font_scale": "huge"}).font_scale == "normal"
 
+    def test_feed_page_length_resolves_from_int_and_string(self) -> None:
+        assert resolve_preferences({"feed_page_length": 80}).feed_page_length == 80
+        # Form values arrive as strings.
+        assert resolve_preferences({"feed_page_length": "20"}).feed_page_length == 20
+
+    def test_feed_page_length_invalid_falls_back(self) -> None:
+        # Not in the allowed set, or non-numeric -> default 40.
+        assert resolve_preferences({"feed_page_length": 999}).feed_page_length == 40
+        assert resolve_preferences({"feed_page_length": "lots"}).feed_page_length == 40
+        assert resolve_preferences({}).feed_page_length == 40
+
     def test_none_blob_gives_defaults(self) -> None:
         assert resolve_preferences(None) == PlayerPreferences()
 

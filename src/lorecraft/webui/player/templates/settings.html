@@ -43,12 +43,22 @@
           </select>
         </div>
 
-        <div>
+        <div class="mb-4">
           <label for="timestamp_format" class="block text-sm text-zinc-400 mb-1">Timestamp format</label>
           <select id="timestamp_format" name="timestamp_format"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
             {% for opt in timestamp_options %}
             <option value="{{ opt }}" {% if prefs.timestamp_format == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="feed_page_length" class="block text-sm text-zinc-400 mb-1">Feed entries to load</label>
+          <select id="feed_page_length" name="feed_page_length"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in feed_page_length_options %}
+            <option value="{{ opt }}" {% if prefs.feed_page_length == opt %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
           </select>
         </div>

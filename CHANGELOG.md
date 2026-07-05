@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.35.0] - 2026-07-05
+
+### Added
+
+- **Sprint 33.1: guided multi-turn `/report` flow.** Bare `report` now opens a short modal wizard — pick a category (bug/feedback/idea), give a title, then a detail (or `skip`); `cancel` aborts at any step. State lives in `player.flags` (like the dialogue system), and the web layer routes free-text input to the wizard via `resolve_command_text` while it's active, so no command prefix is needed. `report <description>` remains a one-liner fast path, and both land in the same Sprint 10.5 `create_issue()` pipeline (the category maps onto the tracker's `type` and is added as a tag).
+- **Sprint 33.2: page-length preference (wishlist quick-win).** A `feed_page_length` preference (20/40/80) added to the Sprint 32.2 account-preferences blob now drives how many feed entries the game screen loads, with a matching select on the settings page. Feeds through the same single-point resolver; invalid/legacy values fall back to 40.
+
+### Marks Sprint 33 complete
+
+- With 33.1 + 33.2 shipped, the post-tier-split "next up" band (Sprints 31–34) is done except the deferred Sprint 32.1 (in-game intro walkthrough). Both open player-reported issues were closed in Sprint 34.
+
 ## [0.34.0] - 2026-07-05
 
 ### Added

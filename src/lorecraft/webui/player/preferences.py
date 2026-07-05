@@ -29,6 +29,9 @@ FEED_VERBOSITIES = ("verbose", "normal", "terse")
 TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")
 # Accessibility (Sprint 32.3): real font scaling and a high-contrast theme.
 FONT_SCALES = ("normal", "large", "xlarge")
+# Wishlist quick-win (Sprint 33.2): how many feed entries to load on the game
+# screen. A page-length preference that feeds into this same blob.
+FEED_PAGE_LENGTHS = (20, 40, 80)
 
 # Panels the player may hide. Kept here (not derived from the WebHost registry)
 # so an unknown/removed panel name in a stored blob degrades gracefully.
@@ -45,6 +48,7 @@ class PlayerPreferences:
     reduced_motion: bool = False
     high_contrast: bool = False
     font_scale: str = "normal"
+    feed_page_length: int = 40
     # Panel id -> visible. Absent panels default to visible.
     hidden_panels: tuple[str, ...] = ()
 
@@ -92,6 +96,8 @@ class PlayerPreferences:
             out["high_contrast"] = self.high_contrast
         if self.font_scale != default.font_scale:
             out["font_scale"] = self.font_scale
+        if self.feed_page_length != default.feed_page_length:
+            out["feed_page_length"] = self.feed_page_length
         if self.hidden_panels:
             out["hidden_panels"] = list(self.hidden_panels)
         return out
@@ -99,6 +105,16 @@ class PlayerPreferences:
 
 def _clean_enum(value: Any, allowed: tuple[str, ...], default: str) -> str:
     return value if isinstance(value, str) and value in allowed else default
+
+
+def _clean_int(value: Any, allowed: tuple[int, ...], default: int) -> int:
+    # Accept ints or numeric strings (form values arrive as strings), but only
+    # from the allowed set — anything else falls back to the default.
+    try:
+        candidate = int(value)
+    except (TypeError, ValueError):
+        return default
+    return candidate if candidate in allowed else default
 
 
 def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
@@ -128,6 +144,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         reduced_motion=bool(raw.get("reduced_motion", False)),
         high_contrast=bool(raw.get("high_contrast", False)),
         font_scale=_clean_enum(raw.get("font_scale"), FONT_SCALES, "normal"),
+        feed_page_length=_clean_int(raw.get("feed_page_length"), FEED_PAGE_LENGTHS, 40),
         hidden_panels=hidden,
     )
 

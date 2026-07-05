@@ -43,6 +43,7 @@ from lorecraft.webui.player.auth import (
 from lorecraft.webui.player.password_policy import PasswordPolicy
 from lorecraft.webui.player.preferences import (
     DISPLAY_DENSITIES,
+    FEED_PAGE_LENGTHS,
     FEED_VERBOSITIES,
     FONT_SCALES,
     TIMESTAMP_FORMATS,
@@ -411,11 +412,17 @@ async def game_screen(
         )
         map_data = build_map_data(room_repo, player, current_room)
 
+        # Feed length is a per-account preference (Sprint 33.2 quick-win).
+        prefs = resolve_preferences(player.preferences)
+        feed_limit = prefs.feed_page_length
+
         feed_events = []
         if current_room:
-            feed_events = list(audit_repo.recent_for_room(current_room.id, limit=40))
+            feed_events = list(
+                audit_repo.recent_for_room(current_room.id, limit=feed_limit)
+            )
         if not feed_events:
-            feed_events = list(audit_repo.recent_for_actor(player.id, limit=30))
+            feed_events = list(audit_repo.recent_for_actor(player.id, limit=feed_limit))
 
         feed_events = [
             e for e in feed_events if "COMMAND" not in (e.event_type or "").upper()
@@ -458,8 +465,9 @@ async def game_screen(
             **room_panel,
             **map_data,
             # Per-account presentation preferences (Sprint 32.2) — resolved in
-            # exactly one place and injected as `prefs` for the base shell + panels.
-            **resolve_preferences(player.preferences).to_context(),
+            # exactly one place (above) and injected as `prefs` for the base
+            # shell + panels.
+            **prefs.to_context(),
         }
     return templates.TemplateResponse(request, "game.html", context)
 
@@ -480,6 +488,7 @@ def _settings_context(request: Request, player: Player, *, saved: bool = False) 
         "verbosity_options": FEED_VERBOSITIES,
         "timestamp_options": TIMESTAMP_FORMATS,
         "font_scale_options": FONT_SCALES,
+        "feed_page_length_options": FEED_PAGE_LENGTHS,
         "toggleable_panels": TOGGLEABLE_PANELS,
         **prefs.to_context(),
     }
@@ -512,6 +521,7 @@ async def update_settings(
         "feed_verbosity": form.get("feed_verbosity"),
         "timestamp_format": form.get("timestamp_format"),
         "font_scale": form.get("font_scale"),
+        "feed_page_length": form.get("feed_page_length"),
         # An unchecked checkbox is simply absent from the form.
         "reduced_motion": "reduced_motion" in form,
         "high_contrast": "high_contrast" in form,

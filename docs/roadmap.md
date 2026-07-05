@@ -510,14 +510,16 @@ Username + password validation already shipped (v0.31.0); this builds on it.
 | 32.2 | Per-account **preferences layer** — one settings blob on the account (display density, feed verbosity, panel visibility, timestamp format, reduced-motion for transit/map animation) that the render layer reads in exactly one place | [x] Opaque `Player.preferences` blob (engine-stored, webui-interpreted); `webui/player/preferences.py` owns schema/defaults/validation; `resolve_preferences()` read in one place (`/game` SSR context → `prefs`); `/settings` page to view/update; `hidden_panels` gates game.html panels; `.density-compact`/`.reduced-motion` CSS. 24 tests. |
 | 32.3 | **Accessibility mode** — semantic HTML/ARIA, high-contrast / screen-reader-friendly, colourblind-safe palette, real font scaling (a genuine browser-client differentiator; cheap now, costly to retrofit) | [ ] |
 
-## Sprint 33 — Reporting & content-tooling polish
+## Sprint 33 — Reporting & content-tooling polish ✅
 
 **Goal:** Small, self-contained, combat-independent wins surfaced during the split + wishlist.
+**Complete** — guided `/report` (33.1) shipped; the page-length wishlist quick-win (33.2) shipped
+(further stretch quick-wins remain optional under 33.2).
 
 | # | Task | Status |
 |---|------|--------|
 | 33.1 | Guided, multi-turn `/report` flow (category → title → detail) replacing the current one-line note; keep the existing Sprint 10.5 issues pipeline underneath | [x] Bare `report` opens a flag-driven wizard (category→title→detail, `cancel` aborts); web input routes to it via `resolve_command_text` (like dialogue). `report <text>` one-liner unchanged. Same `create_issue()` pipeline underneath. 13 tests. |
-| 33.2 | (stretch) Prioritized wishlist quick-wins pulled as scoped — e.g. clickable-link and page-length preferences (feed into the Sprint 32.2 blob), lore/journal surfacing | [ ] |
+| 33.2 | (stretch) Prioritized wishlist quick-wins pulled as scoped — e.g. clickable-link and page-length preferences (feed into the Sprint 32.2 blob), lore/journal surfacing | [x] Page-length quick-win: `feed_page_length` preference (20/40/80) added to the 32.2 blob and driving the `/game` feed load limit + settings select. Further quick-wins (clickable links, lore surfacing) remain open under this stretch item. |
 
 ## Sprint 34 — Player-reported command polish ✅
 
