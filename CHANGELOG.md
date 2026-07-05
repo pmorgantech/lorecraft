@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.8] - 2026-07-05
+
+### Fixed
+
+- **WebSocket broadcast to closed connections no longer crashes.** When `broadcast_global()` attempted to send clock updates to a disconnected player whose WebSocket had already closed (e.g., page navigation), it raised `RuntimeError: Unexpected ASGI message 'websocket.send' after sending 'websocket.close'`. Now `send_to_player()` catches the error, cleans up the dead connection (including room tracking), and allows the broadcast to continue without crashing.
+
 ## [0.36.7] - 2026-07-05
 
 ### Added

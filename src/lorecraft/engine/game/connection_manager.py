@@ -34,7 +34,10 @@ class ConnectionManager:
         ws = self._connections.get(player_id)
         if ws is None:
             return
-        await ws.send_json(message)
+        try:
+            await ws.send_json(message)
+        except RuntimeError:
+            await self.disconnect(player_id)
 
     async def broadcast_to_room(
         self,
