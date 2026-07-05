@@ -11,7 +11,7 @@ SEED_AUDIT_DB="${SCRIPT_DIR}/test_dbs/lorecraft-dev-audit.db"
 RUNTIME_GAME_DB="/tmp/lorecraft-dev-game.db"
 RUNTIME_AUDIT_DB="/tmp/lorecraft-dev-audit.db"
 WORLD_PATH="${SCRIPT_DIR}/world_content"
-INIT_DBS_IF_MISSING=0
+INIT_DBS_IF_MISSING=1
 INIT_DBS_ONLY=0
 
 usage() {
@@ -38,8 +38,8 @@ repo_path() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --init-dbs-if-missing)
-      INIT_DBS_IF_MISSING=1
+    ---no-init-dbs)
+      INIT_DBS_IF_MISSING=0
       shift
       ;;
     --init-dbs-only)

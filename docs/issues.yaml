@@ -63,6 +63,20 @@ issues:
   - player-report
   assigned_to: ''
   links: []
+- id: issue-4f14de56
+  type: bug
+  title: test again again
+  description: test again again
+  created_by: player-1
+  created_at: '2026-07-05T20:56:02.617472Z'
+  updated_at: '2026-07-05T20:56:13.893303Z'
+  status: resolved
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  assigned_to: ''
+  links: []
 - id: issue-7502f412
   type: bug
   title: help <command> should display help for specific command

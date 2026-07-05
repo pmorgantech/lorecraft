@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="${SCRIPT_DIR}/.venv"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+VENV_PYTHON="${VENV_DIR}/bin/python"
+
+if [[ ! -x "${VENV_PYTHON}" ]]; then
+  "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+fi
+
+if ! "${VENV_PYTHON}" - "${SCRIPT_DIR}" <<'PY'
+import importlib.util
+import sys
+from pathlib import Path
+
+script_dir = Path(sys.argv[1]).resolve()
+missing = [
+    module
+    for module in ("textual", "lorecraft")
+    if importlib.util.find_spec(module) is None
+]
+if missing:
+    raise SystemExit(1)
+
+import lorecraft
+
+if not Path(lorecraft.__file__).resolve().is_relative_to(script_dir):
+    raise SystemExit(1)
+PY
+then
+  "${VENV_PYTHON}" -m pip install -e ".[admin-tui]"
+fi
+
+exec "${VENV_PYTHON}" -m lorecraft.webui.admin.tui.app "$@"
