@@ -491,7 +491,7 @@ feature toggling real. Everything here is non-breaking (the app ships and passes
 
 | # | Task | Status |
 |---|------|--------|
-| 31.1 | `WebHost` abstraction (tier split step 10c): multi-directory Jinja `ChoiceLoader` + a panel/slot registry, so a feature can contribute templates/panels instead of the single hard-coded template dir | [ ] |
+| 31.1 | `WebHost` abstraction (tier split step 10c): multi-directory Jinja `ChoiceLoader` + a panel/slot registry, so a feature can contribute templates/panels instead of the single hard-coded template dir | [x] `WebHost` + `Panel` classes; `add_template_dir`/`add_panel`/`add_static`/`add_script` + `build_jinja_environment()`. 9 unit tests. |
 | 31.2 | Optional `presentation.py` feature-UI seam (tier split §1c / step 11); prove it by re-homing the existing transit minimap (Sprint 29.3) onto the seam — loads only when the feature *and* the web host are enabled | [ ] |
 | 31.3 | Make Tier 2 feature **services** manifest-gated (today only `economy`/`bank`/`fatigue` are; the rest are built unconditionally in `main.py`/`ServiceContainer`), then add feature enable/disable integration tests (tier split step 12b) | [ ] |
 | 31.4 | Rewrite the tier-split-stale structure docs beyond the current banners — `architecture.md` §4 tree, `tier_modules.md` tables, `architecture_tiers.md` body → engine/features/webui; graduate §1c "adding feature UI" into `admin_builder_guide.md` (step 13b) | [ ] |

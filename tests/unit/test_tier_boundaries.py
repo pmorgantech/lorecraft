@@ -41,13 +41,19 @@ def _imported_modules(path: Path) -> set[str]:
     return modules
 
 
-def _py_files(package: str) -> Iterator[Path]:
-    yield from (SRC_ROOT / package).rglob("*.py")
+def _py_files(package: str, *, exclude_presentation: bool = False) -> Iterator[Path]:
+    for path in (SRC_ROOT / package).rglob("*.py"):
+        # presentation.py files are loaded by web hosts and may import web modules
+        if exclude_presentation and path.name == "presentation.py":
+            continue
+        yield path
 
 
-def _violations(package: str, forbidden: tuple[str, ...]) -> list[str]:
+def _violations(
+    package: str, forbidden: tuple[str, ...], *, exclude_presentation: bool = False
+) -> list[str]:
     bad: list[str] = []
-    for path in _py_files(package):
+    for path in _py_files(package, exclude_presentation=exclude_presentation):
         for module in _imported_modules(path):
             if any(module == p or module.startswith(p + ".") for p in forbidden):
                 rel = path.relative_to(SRC_ROOT.parent.parent)
@@ -64,7 +70,9 @@ def test_engine_does_not_import_features_or_web() -> None:
 
 
 def test_features_do_not_import_web() -> None:
-    violations = _violations("features", WEB_PREFIXES)
+    # presentation.py files are optional feature UI modules loaded by the web host,
+    # so they may import web modules. The core feature code must stay clean.
+    violations = _violations("features", WEB_PREFIXES, exclude_presentation=True)
     assert not violations, (
         "features/ (Tier 2) must not import a web host; found:\n  "
         + "\n  ".join(sorted(violations))

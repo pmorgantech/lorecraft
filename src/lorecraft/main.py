@@ -22,6 +22,7 @@ from lorecraft.webui.admin.api import admin_router
 from lorecraft.webui.admin.auth import hash_password
 from lorecraft.webui.admin.broadcaster import AdminBroadcaster
 from lorecraft.webui.admin.websocket import admin_ws_endpoint
+from lorecraft.webui.player import create_web_host, load_feature_presentations
 from lorecraft.features.weather.handlers import register_weather_handlers
 from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
@@ -247,6 +248,13 @@ def create_app(
         bus.on(GameEvent.TIME_ADVANCED, _push_clock_tick)
         bus.on(GameEvent.TIME_ADVANCED, _schedule_clock_broadcast)
 
+        # Initialize WebHost and load feature presentations (step 11 of tier-split
+        # refactor). Features with optional presentation.py modules can contribute
+        # UI panels, static mounts, and scripts. This runs once at app startup,
+        # never in headless modes (tests, simulation, CLI).
+        web_host = create_web_host()
+        load_feature_presentations(web_host, available_features)
+
         state = AppState(
             settings=resolved_settings,
             game_engine=resolved_game_engine,
@@ -264,6 +272,7 @@ def create_app(
             meters=meter_service,
             effects=effect_service,
             mobile_routes=mobile_route_service,
+            web_host=web_host,
         )
         register_all_commands(state.registry, state.services, transit=transit_service)
 

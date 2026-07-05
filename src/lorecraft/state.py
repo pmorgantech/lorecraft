@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from sqlalchemy.engine import Engine
 
@@ -21,6 +22,9 @@ from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.services.mobile_route import MobileRouteService
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.types import JsonObject
+
+if TYPE_CHECKING:
+    from lorecraft.webui.player.host import WebHost
 
 
 @dataclass
@@ -46,3 +50,6 @@ class AppState:
     # epoch seconds). In-memory only, matching pending_disambig — fine for
     # this engine's single-process deployment target. See web/auth.py.
     ws_tickets: dict[str, tuple[str, float]] = field(default_factory=dict)
+    # Optional WebHost for composing feature UI panels (set only by webui/player,
+    # never by the headless engine). Loaded once at app startup.
+    web_host: WebHost | None = None
