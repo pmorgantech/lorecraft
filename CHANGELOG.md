@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.35.2] - 2026-07-05
+
+### Changed
+
+- **Admin UI — richer Issues tab.** The Issues tab hid most of the data the `/admin/issues` API already returned. It now shows **Opened by**, **Created**, and **Updated** columns, and each row is **clickable to expand a detail panel** with the full description, opened-by / assigned-to, full created/updated timestamps, tags, and links (rendered as anchors). A caret (▸/▾) shows expand state; the inline status dropdown still works without toggling the row. Pure frontend change (`webui/admin/index.html`) — verified end-to-end in a headless browser (admin login → Issues tab renders the new columns and the detail row expands, no console errors).
+
 ## [0.35.1] - 2026-07-05
 
 ### Changed
