@@ -158,6 +158,7 @@
       <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
       <div class="tab" data-tab="issues"     onclick="showTab('issues')">Issues</div>
       <div class="tab" data-tab="news"       onclick="showTab('news')">News</div>
+      <div class="tab" data-tab="help"       onclick="showTab('help')">Help</div>
       <div class="tab" data-tab="accounts"   onclick="showTab('accounts')">Accounts</div>
     </div>
 
@@ -372,6 +373,33 @@
         </div>
       </div>
 
+      <!-- Help topics -->
+      <div id="tab-help" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+          <h2>Help Topics</h2>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <input id="h-search" placeholder="filter by name/title" style="width:180px;" oninput="renderHelp()" />
+            <button onclick="loadHelp()">↻ Refresh</button>
+          </div>
+        </div>
+        <div id="help-create" class="panel">
+          <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">NAME (slug)</label><input id="h-name" placeholder="e.g. combat" style="width:150px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">TITLE</label><input id="h-title" placeholder="Topic title" style="width:200px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">CATEGORY</label><input id="h-category" placeholder="e.g. Basics" style="width:130px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.75rem;">KEYWORDS (comma)</label><input id="h-keywords" placeholder="fight, attack" style="width:160px;" /></div>
+            <button onclick="createHelp()">+ Create</button>
+          </div>
+          <div class="field" style="margin-top:0.5rem;"><label style="color:var(--text-dim);font-size:0.75rem;">BODY</label><textarea id="h-body" placeholder="The help article text (shown to players)." style="width:100%;min-height:70px;"></textarea></div>
+        </div>
+        <div class="panel" style="overflow-x:auto;flex:1;">
+          <table>
+            <thead><tr><th></th><th>ID</th><th>Name</th><th>Title</th><th>Category</th><th>Keywords</th><th></th></tr></thead>
+            <tbody id="help-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Accounts -->
       <div id="tab-accounts" class="tab-panel">
         <h2>Admin Accounts</h2>
@@ -508,7 +536,7 @@ function showTab(name) {
   const loaders = {
     dashboard: loadDashboard, audit: loadAudit, world: loadRooms,
     changesets: loadChangesets, clock: loadClock, issues: loadIssues,
-    news: loadNews, accounts: loadAccounts
+    news: loadNews, help: loadHelp, accounts: loadAccounts
   };
   if (loaders[name]) loaders[name]();
 }
@@ -891,6 +919,107 @@ async function deleteNews(newsId) {
   const r = await api("DELETE", `/admin/news/${newsId}`);
   if (r.detail) showError(r.detail);
   else loadNews();
+}
+
+// ────────────────────────────────────────
+// Help topics
+// ────────────────────────────────────────
+
+let helpTopics = [];
+
+async function loadHelp() {
+  const topics = await api("GET", "/admin/help");
+  helpTopics = Array.isArray(topics) ? topics : [];
+  renderHelp();
+}
+
+function renderHelp() {
+  const tbody = document.getElementById("help-tbody");
+  tbody.innerHTML = "";
+  const q = (document.getElementById("h-search").value || "").trim().toLowerCase();
+  const rows = helpTopics.filter(t =>
+    !q || t.name.toLowerCase().includes(q) || (t.title || "").toLowerCase().includes(q));
+  for (const t of rows) {
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    tr.title = "Click to view/edit body";
+    tr.onclick = (ev) => { if (!ev.target.closest("button")) toggleHelpDetail(t.id); };
+    tr.innerHTML = `
+      <td style="color:var(--text-dim)"><span id="help-caret-${t.id}">&#9656;</span></td>
+      <td style="font-family:monospace;color:var(--amber)">${t.id}</td>
+      <td style="font-family:monospace">${esc(t.name)}</td>
+      <td><b>${esc(t.title)}</b></td>
+      <td style="color:var(--text-dim)">${esc(t.category) || "&mdash;"}</td>
+      <td style="color:var(--text-dim)">${(t.keywords || []).map(k => esc(k)).join(", ")}</td>
+      <td><button onclick="deleteHelp(${t.id})" style="color:var(--red, #f87171);font-size:0.75rem;">Delete</button></td>`;
+    tbody.appendChild(tr);
+
+    const detail = document.createElement("tr");
+    detail.id = `help-detail-${t.id}`;
+    detail.style.display = "none";
+    detail.innerHTML = `
+      <td></td>
+      <td colspan="6" style="background:var(--panel-2, #14161c);">
+        <div style="padding:0.5rem 0.25rem;display:grid;gap:0.4rem;">
+          <textarea id="help-body-${t.id}" style="width:100%;min-height:120px;white-space:pre-wrap;">${esc(t.body)}</textarea>
+          <div style="display:flex;gap:0.5rem;align-items:flex-end;flex-wrap:wrap;">
+            <div class="field"><label style="color:var(--text-dim);font-size:0.7rem;">TITLE</label><input id="help-title-${t.id}" value="${esc(t.title)}" style="width:200px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.7rem;">CATEGORY</label><input id="help-category-${t.id}" value="${esc(t.category)}" style="width:130px;" /></div>
+            <div class="field"><label style="color:var(--text-dim);font-size:0.7rem;">KEYWORDS (comma)</label><input id="help-keywords-${t.id}" value="${(t.keywords || []).map(esc).join(', ')}" style="width:180px;" /></div>
+            <button onclick="saveHelp(${t.id})">Save</button>
+          </div>
+        </div>
+      </td>`;
+    tbody.appendChild(detail);
+  }
+}
+
+function toggleHelpDetail(id) {
+  const row = document.getElementById(`help-detail-${id}`);
+  const caret = document.getElementById(`help-caret-${id}`);
+  if (!row) return;
+  const open = row.style.display === "none";
+  row.style.display = open ? "table-row" : "none";
+  if (caret) caret.innerHTML = open ? "&#9662;" : "&#9656;";
+}
+
+function parseKeywords(raw) {
+  return (raw || "").split(",").map(k => k.trim()).filter(Boolean);
+}
+
+async function createHelp() {
+  const name = document.getElementById("h-name").value.trim();
+  const title = document.getElementById("h-title").value.trim();
+  if (!name || !title) { showError("Name and title are required"); return; }
+  const body = {
+    name, title,
+    category: document.getElementById("h-category").value.trim(),
+    keywords: parseKeywords(document.getElementById("h-keywords").value),
+    body: document.getElementById("h-body").value,
+  };
+  const r = await api("POST", "/admin/help", body);
+  if (r.detail) { showError(r.detail); return; }
+  ["h-name","h-title","h-category","h-keywords","h-body"].forEach(id => document.getElementById(id).value = "");
+  loadHelp();
+}
+
+async function saveHelp(id) {
+  const body = {
+    title: document.getElementById(`help-title-${id}`).value.trim(),
+    category: document.getElementById(`help-category-${id}`).value.trim(),
+    keywords: parseKeywords(document.getElementById(`help-keywords-${id}`).value),
+    body: document.getElementById(`help-body-${id}`).value,
+  };
+  const r = await api("PUT", `/admin/help/${id}`, body);
+  if (r.detail) showError(r.detail);
+  else loadHelp();
+}
+
+async function deleteHelp(id) {
+  if (!confirm(`Delete help topic ${id}?`)) return;
+  const r = await api("DELETE", `/admin/help/${id}`);
+  if (r.detail) showError(r.detail);
+  else loadHelp();
 }
 
 // ────────────────────────────────────────

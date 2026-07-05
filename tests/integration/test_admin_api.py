@@ -834,6 +834,95 @@ async def _test_create_list_and_delete_news(tmp_path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Help topics
+# ---------------------------------------------------------------------------
+
+
+def test_create_update_and_delete_help_topic(tmp_path) -> None:
+    anyio.run(_test_create_update_and_delete_help_topic, tmp_path)
+
+
+async def _test_create_update_and_delete_help_topic(tmp_path) -> None:
+    settings = Settings(
+        database_path=":memory:",
+        audit_database_path=":memory:",
+        admin_jwt_secret=_SECRET,
+        help_yaml_path=str(tmp_path / "help.yaml"),
+    )
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=settings, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="moderator")
+    async with _lifespan(app):
+        _seed_admin(game_engine, role="moderator")
+
+        # Create (id auto-assigned).
+        status, created = await _http(
+            app,
+            "POST",
+            "/admin/help",
+            body={
+                "name": "combat-basics",
+                "title": "Combat Basics",
+                "category": "World",
+                "body": "swing your weapon",
+                "keywords": ["fight", "attack"],
+            },
+            token=token,
+        )
+        assert status == 200
+        assert created["name"] == "combat-basics"
+        assert created["id"] >= 1
+        topic_id = created["id"]
+
+        # A duplicate name is rejected.
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/help",
+            body={"name": "combat-basics", "title": "Dup"},
+            token=token,
+        )
+        assert status == 409
+
+        # A bad slug is rejected.
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/help",
+            body={"name": "has spaces", "title": "Bad"},
+            token=token,
+        )
+        assert status == 400
+
+        # Update.
+        status, updated = await _http(
+            app,
+            "PUT",
+            f"/admin/help/{topic_id}",
+            body={"title": "Fighting 101", "keywords": ["FIGHT"]},
+            token=token,
+        )
+        assert status == 200
+        assert updated["title"] == "Fighting 101"
+        assert updated["keywords"] == ["fight"]  # lowercased
+
+        status, listed = await _http(app, "GET", "/admin/help", token=token)
+        assert status == 200
+        assert any(t["id"] == topic_id for t in listed)
+
+        # Delete.
+        status, _ = await _http(app, "DELETE", f"/admin/help/{topic_id}", token=token)
+        assert status == 200
+        status, after = await _http(app, "GET", "/admin/help", token=token)
+        assert not any(t["id"] == topic_id for t in after)
+
+    # The YAML mirror was written on mutation.
+    assert (tmp_path / "help.yaml").is_file()
+
+
+# ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
 
