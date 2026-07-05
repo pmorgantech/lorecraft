@@ -35,6 +35,7 @@
             </div>
 
             <!-- Inventory: flexible between room and map -->
+            {% if 'inventory' not in prefs.hidden_panels %}
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Inventory</span>
@@ -42,13 +43,16 @@
                 </div>
                 {% include "partials/inventory.html" %}
             </div>
+            {% endif %}
 
             <!-- Mini-map (at bottom, size perfect - do not change) -->
+            {% if 'minimap' not in prefs.hidden_panels %}
             <div class="mt-px flex-none">
                 <div class="w-full aspect-square max-h-64">
                     {% include "partials/minimap.html" %}
                 </div>
             </div>
+            {% endif %}
         </div>
 
         <!-- CENTER: Main Feed / Narrative Log -->
@@ -90,6 +94,7 @@
             class="lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
 
             <!-- Players in Room / Online -->
+            {% if 'players_online' not in prefs.hidden_panels %}
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Here Now</span>
@@ -97,14 +102,17 @@
                 </div>
                 {% include "partials/players_online.html" %}
             </div>
+            {% endif %}
 
             <!-- Quest tracker -->
+            {% if 'quest_tracker' not in prefs.hidden_panels %}
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-[120px]">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Quests</span>
                 </div>
                 {% include "partials/quest_tracker.html" %}
             </div>
+            {% endif %}
         </div>
 
     </div>

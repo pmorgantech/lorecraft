@@ -319,6 +319,40 @@ async def _test_game_screen_reflects_stored_preferences() -> None:
     assert 'data-feed-verbosity="terse"' in html
 
 
+def test_game_screen_hides_panel_when_preference_set() -> None:
+    anyio.run(_test_game_screen_hides_panel_when_preference_set)
+
+
+async def _test_game_screen_hides_panel_when_preference_set() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        # Baseline: minimap panel present.
+        _, before = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+        assert "minimap" in before.lower()
+
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"hidden_panels": ["minimap"]}
+            db.add(player)
+            db.commit()
+
+        _, after = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    # The minimap partial include is gated out (the panel markup is gone).
+    assert after.lower().count("minimap") < before.lower().count("minimap")
+
+
 def test_settings_get_renders_form() -> None:
     anyio.run(_test_settings_get_renders_form)
 
