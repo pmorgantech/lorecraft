@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.36.0] - 2026-07-05
+
+### Added
+
+- **Help system overhaul: command categories, curated help, and authored help topics.**
+  - **`help` (bare)** now shows a short curated set of the most critical commands plus pointers, instead of dumping everything (in dialogue/combat it still shows the context-scoped list).
+  - **`help commands`** lists every available command **grouped by category** (Movement, Social, Items & Inventory, Trade, …) and **alphabetized within each group**. Categories are assigned in one place (`register_all_commands` wraps each module's registration in a `registry.category(...)` block); a new `CommandDefinition.category` + `CommandRegistry.category()` context manager back this.
+  - **`help <command>`** unchanged detail, now also prints the command's category.
+  - **Help topics (articles):** a new DB/YAML-backed `HelpTopic` (numeric `id` + unique slug `name`, `title`, `body`, `category`, `keywords`), authored in `docs/help_topics.yaml` (8 seed topics) and imported on first startup (`LORECRAFT_HELP_YAML_PATH`, mirrors the news/issues pattern). `help topics` lists them as `[id] name — Title` grouped by category; `help topics <word>` searches name/title/keywords; `help <id>` or `help <name>` reads one. A command whose name matches a topic gets a "See also help topic [id]" pointer.
+  - New `models/help.py`, `content/help.py` (validate/import/export/bootstrap), `repos/help_repo.py` (by-reference / search). 30 tests across the three parts; full suite 885 passing. Verified the live in-game output (curated help, grouped `help commands`, `help topics`, `help 6`, `help topics trade`).
+
 ## [0.35.3] - 2026-07-05
 
 ### Added

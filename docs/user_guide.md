@@ -295,11 +295,29 @@ expected to happen instead:
 Thanks — logged as issue-a1b2c3d4. The team will take a look.
 ```
 
+## Getting Help In-Game
+
+The `help` command is your in-game reference:
+
+- **`help`** — a short list of the most common commands to get you started, plus
+  pointers to the fuller help below. (During a conversation or combat it instead shows
+  the commands that apply right now.)
+- **`help commands`** — every command available to you, grouped by category (Movement,
+  Social, Items & Inventory, Trade, …) and alphabetized within each group.
+- **`help <command>`** — detail on one command: its usage, aliases, category, and scope
+  (e.g. `help go`, `help buy`).
+- **`help topics`** — browse the help **articles**: longer explanations of systems like
+  movement, trading, quests, and rest. Each is listed as `[id] name — Title`.
+- **`help topics <word>`** — search the articles by name, title, or keyword
+  (e.g. `help topics money`).
+- **`help <id>` or `help <name>`** — read a specific article, by its number or its name
+  (e.g. `help 6` or `help trading`).
+
 ## Full Command Reference
 
 This list is generated from the same `help` text the game shows you in-session — type
-`help` any time for the live, context-aware version (it hides commands that don't apply
-right now, e.g. dialogue-only commands when you're not in a conversation).
+`help commands` any time for the live, context-aware version (it hides commands that don't
+apply right now, e.g. dialogue-only commands when you're not in a conversation).
 
 | Command | Aliases | What it does |
 |---------|---------|----------------|
@@ -354,7 +372,8 @@ right now, e.g. dialogue-only commands when you're not in a conversation).
 | `report <description>` | `/report <description>` | Report a bug or issue to the developers |
 | `save [slot]` | | Save your progress |
 | `load [slot]` | | Load a saved game |
-| `help` | `?` | Show the command list (context-aware) |
+| `help [command\|commands]` | `?` | Common commands, the full grouped list, or detail on one |
+| `help topics [search]` | | Browse/search help articles; `help <id\|name>` reads one |
 | `quit` | | Return to the lobby |
 
 ## Tips & Troubleshooting

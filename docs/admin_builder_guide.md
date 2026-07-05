@@ -93,6 +93,7 @@ defined in `src/lorecraft/config.py`.
 | `LORECRAFT_WORLD_YAML_PATH` | `world_content/world.yaml` | World file imported into an empty game DB on startup |
 | `LORECRAFT_ISSUES_YAML_PATH` | `docs/issues.yaml` | Repo-tracked issue list, synced to DB |
 | `LORECRAFT_NEWS_YAML_PATH` | `docs/news.yaml` | Repo-tracked announcements, synced to DB |
+| `LORECRAFT_HELP_YAML_PATH` | `docs/help_topics.yaml` | Repo-tracked in-game help articles, imported into the DB on first startup |
 | `LORECRAFT_SEED_PLAYER_ID` / `_USERNAME` / `_START_ROOM` | `player-1` / `player-1` / `village_square` | Optional dev player auto-created on startup |
 | `LORECRAFT_PLAYER_SESSION_SECRET` | *(unset)* | Signs player session cookies (and player access/refresh JWTs); auto-generated and persisted to `.env` on first real server startup if unset |
 | `LORECRAFT_PLAYER_SESSION_TTL_SECONDS` | `604800` (7 days) | Player session cookie lifetime |
@@ -252,6 +253,13 @@ startup and on every admin mutation:
 - **News** (`docs/news.yaml`) — in-game announcements. Manage via the News tab, `F7`,
   or `GET/POST/PUT/DELETE /admin/news`. Also exposed unauthenticated at `/api/news`
   (JSON) and `/api/news/feed` (RSS 2.0), and in-game via the `news` command.
+- **Help topics** (`docs/help_topics.yaml`) — the in-game help *articles* players read via
+  `help topics` / `help <id>` / `help <name>`. Each topic has a numeric `id`, a unique
+  slug `name`, a `title`, a `category` (used to group the listing), a `body`, and optional
+  `keywords` (extra search terms). Authored in YAML and imported into the DB on first
+  startup; ids and names must be unique and names must be slugs. (Command help — `help`,
+  `help commands`, `help <command>` — is separate and comes from each command's own
+  registered help text, not this file.)
 
 Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](tooling_infrastructure.md#design-decisions)**.
 
