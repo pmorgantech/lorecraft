@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.8] - 2026-07-05
+
+### Changed
+
+- **Docs: assessed PostgreSQL migration and recorded the finding in `wishlist.md`.** Concluded it would **not** improve performance at the current single-process design (the measured wall was fsync-per-commit on a single writer, already fixed by WAL; Postgres fsyncs per commit too, plus per-query network/IPC, and its concurrent-writer advantage can't be used by a single-threaded engine) — so it's deferred and tied to the concurrency gate (was Sprint 38.1). Captured the migration effort (code is largely DB-agnostic; the real work is adding Alembic + a data-migration path, since there's no migration tooling today) so the analysis isn't lost.
+
 ## [0.38.7] - 2026-07-05
 
 ### Added

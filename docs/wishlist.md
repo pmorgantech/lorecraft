@@ -622,6 +622,30 @@ worker, serialized commits, `GameRng` determinism) is still the right spec if th
 single-process wall — likely after moving to a networked backend (Postgres) where the pool knobs
 (Sprint 37.2) start to matter.
 
+### PostgreSQL migration 🤔 (assessed 2026-07-05 — not a performance win yet)
+
+Considered and **deferred**: moving the game/audit DBs from SQLite to Postgres would **not** help
+performance at the current single-process design, and would likely regress command latency.
+
+- **Why no win now:** the measured bottleneck was *fsync-per-commit on a single writer*, fixed by
+  WAL ([Sprint 37.4](roadmap.md)). Postgres also fsyncs per commit (`synchronous_commit=on`) **plus** a
+  network/IPC round-trip per query, so its commit latency is ≥ SQLite+WAL with extra per-query
+  overhead. Postgres's real edge is *concurrent writers* (MVCC, no single-writer lock) — but the
+  engine is single-threaded/single-process (architecture.md §1) and never issues concurrent writes,
+  so it can't exploit that. The wall was fsync serialization, not write-lock contention.
+- **When it becomes worth it:** alongside the concurrency gate (see *Concurrency / multithreading
+  gate* above, was Sprint 38.1) — i.e. when you scale out to **multiple app processes/workers**
+  sharing one DB — or for **operational** reasons independent of speed (managed backups, replication,
+  many services on one DB). Measure first, as always.
+- **Migration effort (if/when):** code is largely DB-agnostic — `database_url()` already passes
+  `postgresql+psycopg://…` through, the pool knobs (Sprint 37.2) already target networked backends,
+  and WAL/compat-column code is SQLite-gated; JSON columns use portable `Column(JSON)`; no
+  SQLite-specific SQL. So *running* on PG ≈ add a `psycopg` dep + point the URL + test against a real
+  PG (~a day). The **non-trivial** parts: there's **no Alembic** (schema is metadata `create_tables`
+  + ad-hoc SQLite-only `ALTER TABLE`s), so add a real migration tool before prod; migrating an
+  *existing* SQLite world's **data** needs `pgloader` / an export-import script; and CI would need a
+  Postgres service to validate.
+
 ### News & announcements ✅
 
 Already shipped ([Sprint 10.5](roadmap.md#sprint-105--tooling-infrastructure-)): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here
