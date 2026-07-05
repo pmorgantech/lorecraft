@@ -42,7 +42,7 @@ from lorecraft.engine.models.world import (
 )
 from lorecraft.models.quest import PlayerQuestProgress, Quest
 from lorecraft.models.interaction import PvpConsent, TradeOffer
-from lorecraft.models.reputation import Reputation
+from lorecraft.features.reputation.models import Reputation
 from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.models.transit import TransitLine, TransitStop
 

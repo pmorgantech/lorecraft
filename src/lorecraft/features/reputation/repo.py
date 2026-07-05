@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lorecraft.models.reputation import Reputation
+from lorecraft.features.reputation.models import Reputation
 
 
 class ReputationRepo:

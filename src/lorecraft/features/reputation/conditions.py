@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 from lorecraft.engine.game import command_conditions
 from lorecraft.engine.game.command_conditions import ConditionResult
 from lorecraft.npc import dialogue_conditions, side_effects
-from lorecraft.services.reputation import ReputationService
+from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
 
 if TYPE_CHECKING:

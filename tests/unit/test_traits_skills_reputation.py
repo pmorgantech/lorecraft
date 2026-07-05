@@ -8,7 +8,7 @@ from collections.abc import Iterator
 import pytest
 from sqlmodel import Session, create_engine
 
-from lorecraft.game.reputation_conditions import register as _register_reputation
+from lorecraft.features.reputation.conditions import register as _register_reputation
 from lorecraft.game.standard_traits import register as _register_standard_traits
 import lorecraft.game.traits as traits_module
 from lorecraft.commands import register_all_commands
@@ -33,7 +33,7 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.services.reputation import ReputationService
+from lorecraft.features.reputation.service import ReputationService
 from lorecraft.services.skills import SkillService
 from lorecraft.services.traits import TraitService
 

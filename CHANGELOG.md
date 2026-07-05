@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.19.0] - 2026-07-05
+
+### Changed
+
+- **Tier split — reputation is now a self-contained feature package (step 8, batch 2, branch `tier_split`).** The reputation feature's four scattered files were pulled into `features/reputation/`: `game/reputation_conditions.py` → `conditions.py`, `services/reputation.py` → `service.py`, `models/reputation.py` → `models.py`, `repos/reputation_repo.py` → `repo.py` (history-preserving `git mv`, dropping the now-redundant `reputation_` prefixes). Imports rewritten across `src/` and `tests/`; `db.py` now imports the `Reputation` table from `features.reputation.models` (table registration unchanged), and the model dropped out of the `models/__init__.py` aggregator. This is the first end-to-end Tier 2 vertical slice proving the step-8 pattern (conditions + service + model + repo co-located, wired via the manifest). Full suite 794 passed, lint + typecheck clean.
+
 ## [0.18.0] - 2026-07-05
 
 ### Changed

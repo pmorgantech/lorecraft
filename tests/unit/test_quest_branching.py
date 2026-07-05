@@ -26,9 +26,9 @@ from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.services.ledger import LedgerService
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.game.reputation_conditions import register as _register_reputation
+from lorecraft.features.reputation.conditions import register as _register_reputation
 from lorecraft.services.quest import QuestService
-from lorecraft.services.reputation import ReputationService
+from lorecraft.features.reputation.service import ReputationService
 
 # The `adjust_reputation` side effect used to register as an import side effect;
 # it now registers via the reputation feature's register(). Call it once here.

@@ -14,7 +14,6 @@ from lorecraft.models.combat import CombatSession
 from lorecraft.models.interaction import PvpConsent, TradeOffer
 from lorecraft.models.ledger import CoinBalance
 from lorecraft.models.quest import PlayerQuestProgress, Quest
-from lorecraft.models.reputation import Reputation
 
 __all__ = [
     "Changeset",
@@ -25,7 +24,6 @@ __all__ = [
     "PlayerQuestProgress",
     "PvpConsent",
     "Quest",
-    "Reputation",
     "TradeOffer",
     "WorldMigration",
 ]

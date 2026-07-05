@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from sqlmodel import Session
 
-from lorecraft.repos.reputation_repo import ReputationRepo
+from lorecraft.features.reputation.repo import ReputationRepo
 
 MIN_STANDING = -100
 MAX_STANDING = 100
