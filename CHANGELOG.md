@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.31.3] - 2026-07-05
+
+### Changed
+
+- **Roadmap — reserve 34–60 for future sprints; move combat/PvP to 61–65.** Combat (61–63) and PvP/multiplayer tests (64–65) renumbered from 40–44 to open up the 34–60 range for additional foundation and feature sprints. This aligns with the strategy of front-loading exploration/trading/questing/puzzles (pillars 1–4) and deferring combat (supporting system). No code changes. Docs-only.
+
 ## [0.31.2] - 2026-07-05
 
 ### Changed

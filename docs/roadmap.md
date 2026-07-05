@@ -519,14 +519,14 @@ Username + password validation already shipped (v0.31.0); this builds on it.
 
 ---
 
-## Deferred to last: combat & PvP (Sprints 40–44)
+## Deferred to last: combat & PvP (Sprints 61–64)
 
 > Combat is a **supporting system, not the centerpiece** (pillar order: Exploration > Trading >
-> Questing > Puzzles). These were Sprints 31–35; renumbered to 40–44 so the roadmap's numeric
-> order matches execution order (do 31–33 first). See [`combat_system.md`](combat_system.md) and
+> Questing > Puzzles). These were Sprints 31–35, renumbered to 40–44, now renumbered to 61–64
+> to reserve 34–60 for future work. See [`combat_system.md`](combat_system.md) and
 > [`death_resurrection.md`](death_resurrection.md).
 
-## Sprint 40 — Combat core services (supporting system)
+## Sprint 61 — Combat core services (supporting system)
 
 **Goal:** Server-side combat resolution, no commands/UI yet. First consumer of the
 feature-registration pattern (10.4), reading equipment-derived stats. **Deliberately below
@@ -535,35 +535,35 @@ and [`death_resurrection.md`](death_resurrection.md).**
 
 | # | Task | Status |
 |---|------|--------|
-| 40.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
-| 40.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
-| 40.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
+| 61.1 | `services/combat.py` — sessions, ticks, damage | [ ] |
+| 61.2 | Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff | [ ] |
+| 61.3 | `npc/combat_ai.py` — behavior modes from YAML | [ ] |
 
-## Sprint 41 — Combat commands + UI (avoidance-first)
+## Sprint 62 — Combat commands + UI (avoidance-first)
 
 **Goal:** Combat as one resolution among several — stealth/persuasion/bribery/flee are
 first-class alternatives; non-lethal outcomes supported.
 
 | # | Task | Status |
 |---|------|--------|
-| 41.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
-| 41.2 | Combat UI in HTMX feed + status panel | [ ] |
+| 62.1 | `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off); complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`) | [ ] |
+| 62.2 | Combat UI in HTMX feed + status panel | [ ] |
 
-## Sprint 42 — Combat testing
+## Sprint 63 — Combat testing
 
 | # | Task | Status |
 |---|------|--------|
-| 42.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
+| 63.1 | Integration + browser tests for combat loop and avoidance/non-lethal paths | [ ] |
 
-## Sprint 43 — PvP consent
+## Sprint 64 — PvP consent
 
 **Goal:** Consent-based, opt-in PvP reusing the combat system. Soft by default.
 
 | # | Task | Status |
 |---|------|--------|
-| 43.1 | PvP consent + challenge/accept | [ ] |
+| 64.1 | PvP consent + challenge/accept | [ ] |
 
-## Sprint 44 — Multiplayer trade / PvP / transit tests
+## Sprint 65 — Multiplayer trade / PvP / transit tests
 
 > Note: the trade and transit subsystems are already complete (Sprints 28–29); the trade/transit
 > simulation-test portions here are independent of combat/PvP and could be pulled forward if
@@ -571,7 +571,7 @@ first-class alternatives; non-lethal outcomes supported.
 
 | # | Task | Status |
 |---|------|--------|
-| 44.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
+| 65.1 | Multi-player trade, PvP consent, and shared-vehicle transit simulation tests | [ ] |
 
 ---
 
@@ -593,7 +593,7 @@ first-class alternatives; non-lethal outcomes supported.
 
 ## Build-order reference
 
-See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish (31–33, next up)** → combat (40–42) → PvP + multiplayer tests (43–44).
+See `docs/architecture.md` §28 for the original phase order, and `CODE_AUDIT.md` for the audit driving the foundation band. Order: player authentication ([Sprint 4](#sprint-4--player-authentication-production-hardening-)) → foundation hardening ([Sprints 5–15](#sprint-5--error-handling--exception-hierarchy-)) → **foundation gate** → **Tier 1 engine primitives ([Sprints 16–21](#sprint-16--item-locationownership--instance-state), [`engine_core.md`](engine_core.md))** → item components & equipment (22–23) → traits/skills & exploration + UI (24–26) → condition/trade/transit (27–29) → quests & puzzles (30) → **finish tier split + onboarding/UX + polish (31–33, next up)** → combat (61–63) → PvP + multiplayer tests (64–65).
 
 **Note (2026-07-03):** the feature band was re-sequenced from the original combat-first order to a pillar-driven order (Exploration > Trading > Questing > Puzzles; combat supporting). `architecture.md` §28's phase list predates this and is kept for historical reference — this roadmap is authoritative for sequencing.
 
