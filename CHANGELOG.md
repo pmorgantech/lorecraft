@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.11] - 2026-07-05
+
+### Changed
+
+- **Sprint 39.1 spec revised after a single-owner (one-system-per-behavior) audit.** The audit found the room-*state* mechanic's "read-through" design (movement consulting active room effects via `EffectDef.opens_exits`/`seals_exits`) was a soft violation: it forked *exit passability* into **two stores** (the `Exit` row *and* the effect rows), a second system answering the same question. Reworked in `engine_core.md` §3.9 so a timed gate instead **writes the one authoritative `Exit` state** via `on_apply`/`on_expire` (stashing the prior state in `payload` for an exact restore) — the effect is just another *timed writer* of the state `lock`/`unlock` already write, so **movement is unchanged, `opens_exits`/`seals_exits` are gone, and the engine gains no exit awareness** ("open the gate" is a Tier 2 `EffectDef` hook over `RoomRepo`). The occupant-*aura* mechanic was already correct — it extends the §3.5 multi-source modifier resolver (which stays the single owner of "effective value") rather than adding a parallel one. Net: each behavior keeps exactly one owner — `Exit`/movement → passability, the §3.4 sweep → timing, §3.5 → modifiers. Still design-only; 39.2 awaits sign-off.
+
 ## [0.38.10] - 2026-07-05
 
 ### Changed

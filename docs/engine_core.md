@@ -712,29 +712,40 @@ class MobileRouteService:
 **Reuse, don't rebuild.** A room effect is a §3.4 `ActiveEffect` with `entity_type="room"`,
 `entity_id=<room_id>`. `EffectService.apply()` / `active_for()` and the `_on_time_advanced`
 expiry sweep are already generic over `entity_type` — **no new model, no new scheduler, no
-second timer** (cf. §3.8 transit reusing `SchedulerService`). The **presence** of an active
-room effect *is* the room state; its **expiry is the existing sweep deleting the row**, so state
-reverts with zero reversal logic.
+second timer** (cf. §3.8 transit reusing `SchedulerService`).
 
-"Room effect" bundles **two mechanics** with shared storage but different read surfaces:
+**Guiding rule — extend each behavior through *its own existing owner*, don't add a parallel
+system.** A "room effect" bundles two mechanics; each is extended along the grain of how the engine
+already factors that behavior, so no behavior ends up with two owners.
 
-**(1) Room-state effects** (gate opened, exit sealed) — read-through by movement.
-- The exit check consults `effects.active_for(session, "room", room_id)` and asks each effect's
-  `EffectDef.opens_exits(effect)` / `seals_exits(effect)` which directions it opens or seals while
-  active. An exit is passable iff `(normally passable and not sealed by an active effect) or opened
-  by an active effect`.
-- **No exit-row mutation and no `on_expire` reversal:** when `expires_at_epoch` passes, the sweep
-  deletes the row and the exit returns to its base state automatically. There is exactly one source
-  of truth (the row's existence), so nothing can drift out of sync.
+**(1) Room-state effects** (a plate opens a gate for 30 s) — the effect **writes the
+already-authoritative state**; it does not add a second one.
+- Exit passability today has a **single owner**: the `Exit` row (`locked` / `condition_flags`), read
+  by `MovementService.move()`; the `lock`/`unlock` commands already write it. A timed gate is just
+  **another writer of that same state, on a timer**: the effect's `on_apply` opens the gate and
+  `on_expire` restores it, with the `ActiveEffect` row as the timer and the §3.4 sweep firing the
+  transitions. **Movement is unchanged** — it keeps reading the one authoritative `Exit` state.
+- The effect stashes the **prior state it overrode** in its `payload` on apply, so `on_expire`
+  restores exactly that (a normally-open exit isn't wrongly sealed; a normally-locked one isn't left
+  open). The effect owns its own undo — that's not a second store, it's a reversible action carrying
+  its inverse.
+- *Rejected: "read-through"* (movement also consulting `active_for("room", …)` via `opens_exits`/
+  `seals_exits` fields). That forks exit passability into **two stores** — the `Exit` row *and* the
+  effect rows — i.e. a second system answering the same question. Here the engine gains **no exit
+  awareness at all**; "what *open the gate* means" lives entirely in the Tier 2 `EffectDef` hook.
 
-**(2) Occupant auras** (fatigue drain, slow travel) — read through the §3.5 resolver.
-- A new Tier 1 `RoomAuraModifierSource` (registered with the §3.5 `ModifierRegistry`): when
-  resolving modifiers for a **player**, it loads the player's `current_room_id` and contributes the
-  modifiers of that room's active effects, via the same `EffectDef.modifiers(effect)` §3.4 already
-  defines.
+**(2) Occupant auras** (fatigue drain, slow travel) — the effect is **a new input to the one
+modifier resolver**, not a second resolver.
+- Modifier resolution already *is* a multi-source model (§3.5 `ModifierRegistry` + pluggable
+  `ModifierSource`s: active-effect, equipment, traits, terrain). Auras extend it the intended way —
+  a new Tier 1 `RoomAuraModifierSource`: resolving modifiers for a **player**, it loads
+  `current_room_id` and contributes that room's active-effect modifiers via the same
+  `EffectDef.modifiers(effect)` §3.4 defines (shared helper — no effect→modifier logic duplicated
+  with `ActiveEffectModifierSource`). §3.5 stays the single owner of "effective value"; the aura is
+  one more contributor.
 - **No per-player stored state and no per-tick occupant sweep:** the aura applies to whoever is in
-  the room *at resolution time* and stops the instant they leave, because the source keys off
-  `current_room_id`. Enter/leave correctness is free.
+  the room *at resolution time* and lifts the instant they leave, because the source keys off
+  `current_room_id`.
 
 **EffectDef extension** (additive, backward-compatible — existing effects and their call sites are
 unchanged):
@@ -745,28 +756,29 @@ class EffectDef:
     key: str
     modifiers: Callable[[ActiveEffect], list[Modifier]]              # §3.5 (auras reuse this)
     grants_traits: Callable[[ActiveEffect], list[str]] = lambda e: []
-    opens_exits: Callable[[ActiveEffect], list[str]] = lambda e: []  # NEW: dirs opened while active
-    seals_exits: Callable[[ActiveEffect], list[str]] = lambda e: []  # NEW: dirs sealed while active
-    on_apply:  Callable[[Session, ActiveEffect], None] | None = None # NEW: optional side-effect on apply
-    on_expire: Callable[[Session, ActiveEffect], None] | None = None # NEW: optional side-effect on expiry
+    on_apply:  Callable[[Session, ActiveEffect], None] | None = None # NEW: transition-in writer
+    on_expire: Callable[[Session, ActiveEffect], None] | None = None # NEW: transition-out (restore)
 ```
 
-- `opens_exits`/`seals_exits` drive the room-state read (movement); `modifiers` drives auras (via
-  `RoomAuraModifierSource`). All three are **pure reads** of the row + `payload` — no mutation.
-- `on_apply`/`on_expire` are **optional side-effect hooks only** (narration like "the gate grinds
-  open", spawning, emitting an event) — the core gate/aura mechanics do **not** depend on them, so a
-  missing or failing hook can never strand room state. `EffectService.apply()` calls `on_apply`
-  after the row is flushed; the expiry sweep calls `on_expire` before deleting the row — both inside
-  the sweep's own session, **no new scheduler**.
-- **Hook discipline:** both are **session-scoped** — they mutate only through the passed `Session`
-  and must not message clients directly (architecture.md §26: nothing is told to a client before the
-  DB commit lands; narration goes through an event the host renders post-commit). The expiry sweep
-  **isolates each `on_expire` in its own `try/except`** so one bad hook can't strand the rest of the
-  tick's expirations — mirroring `EventBus.emit`'s handler-error isolation.
+- The **only** new surface is the `on_apply`/`on_expire` pair — **no `opens_exits`/`seals_exits` and
+  no new movement check** (a dropped read-through draft). `modifiers` already carries auras. A *pure*
+  effect (a debuff that only contributes modifiers, e.g. today's "weakened") leaves both hooks
+  `None`, so existing effects and call sites are unchanged.
+- For room-state, the hooks are the **mechanism** (they write the authoritative `Exit`/room state);
+  for other effects they're optional. `EffectService.apply()` calls `on_apply` after the row is
+  flushed; the sweep calls `on_expire` before deleting the row — both inside the caller's / sweep's
+  own session, **no new scheduler**.
+- **Hook discipline:** session-scoped only — they mutate through the passed `Session` and must not
+  message clients directly (architecture.md §26: nothing is told to a client before the DB commit
+  lands; narration goes through an event the host renders post-commit). On an `on_expire` failure the
+  sweep **logs, isolates it (`try/except`), and leaves the row** (doesn't delete) so a transient
+  failure self-heals next tick and a persistent one stays visible — one bad hook never strands the
+  rest of the tick's expirations (mirrors `EventBus.emit` isolation).
 
 **Read / gate points:**
-- **Movement / exit check** (`features/movement`): the exit resolver additionally treats a direction
-  as passable when an active room effect opens it, and as blocked when one seals it.
+- **Movement / exit check** (`features/movement`): **unchanged.** It keeps reading the exit's own
+  `locked` / `condition_flags`; a room-state effect's `on_apply`/`on_expire` write those (via
+  `RoomRepo`), so movement needs no room-effect awareness.
 - **Modifier resolution** (`game/modifiers.resolve_for`, a hot path): `RoomAuraModifierSource` adds
   **one indexed query** (the current room's active effects) per resolution — the same shape as the
   existing §3.4 `ActiveEffectModifierSource`. Acceptable; if profiling later flags it, memoize per
@@ -774,10 +786,9 @@ class EffectDef:
   commits that cost — this adds only a read.)*
 
 **Verified seams (2026-07-05 code review):**
-- `MovementService.move()` has a **single exit-check block** — fetch `exit_` → test
-  `condition_flags` → test `locked` — so the room-effect open/seal check slots in there and composes
-  with the existing gates (`opens_exits` overrides a `locked`/hidden exit; `seals_exits` blocks a
-  normally-open one).
+- `MovementService.move()` reads the exit's own `locked` / `condition_flags`, so a room-state effect
+  that writes those needs **no movement change** — the effect is another writer of the state
+  `lock`/`unlock` already write.
 - Player modifier resolution **already** flows through `resolve_for(session, "player", …)` (movement's
   terrain-skill gate uses it), so `RoomAuraModifierSource`, once registered, is picked up with **no
   per-call-site change**.
@@ -792,30 +803,34 @@ class EffectDef:
   (`NPC.current_room_id` exists) deferred until a content need appears.
 
 **Trigger surface:** any Tier 2 command or a Sprint 30 mechanism/plate calls
-`effects.apply(session, "room", room_id, "passage_open", duration_ticks=30, payload={"exits": ["north"]}, clock_epoch=now)`.
+`effects.apply(session, "room", room_id, "passage_open", duration_ticks=30, payload={...}, clock_epoch=now)`.
 The **first content example** (39.3): a pressure-plate mechanism whose side-effect handler applies a
-timed `passage_open` room effect instead of a permanent `mechanism_states` toggle — the time-limited
-variant of the existing mechanism item state.
+timed `passage_open` room `EffectDef` — its `on_apply` opens the target exit and stashes the prior
+exit state in `payload`; its `on_expire` restores it — the time-limited variant of a permanent
+`mechanism_states` toggle.
 
 **Invariants / blast radius (per §3.0 conventions):**
-- **No new table, no migration** (reuses `ActiveEffect`); **no new scheduler** (reuses the §3.4 sweep).
+- **No new table, no migration** (reuses `ActiveEffect`); **no new scheduler** (reuses the §3.4
+  sweep); **no new exit-passability store and no movement changes** (the effect writes the existing
+  `Exit` state).
 - **Deterministic:** no RNG; expiry is clock-driven and order-independent (each row independent).
 - `duration_ticks=None` → a room effect that persists until explicitly `remove()`d (same as §3.4).
-- Room `EffectDef`s are validated by content-lint (39.4) like other effect keys.
+- World-content references to room-effect keys are validated by content-lint (39.4) — a plate's
+  `passage_open` resolves to a registered `EffectDef` and names a real exit.
 
 **Design decisions settled here (open for review before 39.2 implementation):**
-1. **Room-state = read-through, not mutate-and-reverse.** Rejected mutating `Exit.locked` on apply
-   and reversing on expire. `Exit` already carries `locked` / `condition_flags` gates (checked in
-   `MovementService.move()`), so mutate-and-reverse can't just force-lock on expiry — it would
-   wrongly lock a *normally-open* exit — it must **remember and restore the prior exit state**. That
-   duplicated, restorable state is the real complexity, and it strands the gate open if `on_expire`
-   never runs. Read-through keeps the row's existence as the single source of truth and leans
-   entirely on the existing sweep.
-2. **Auras = a §3.5 modifier source, not a per-tick occupant sweep.** Rejected sweeping occupants
-   each tick to add/remove per-player effects: it stores derived state, needs enter/leave
-   bookkeeping, and adds per-tick cost. The modifier source is read-through and self-correcting.
-3. **`on_apply`/`on_expire` are side-effect hooks, not the mechanism.** They exist for
-   narration/spawns; the gate and aura work without them, so they can't leave room state stranded.
+1. **Room-state: the effect writes the one authoritative `Exit` state via `on_apply`/`on_expire`
+   (undo stashed in `payload`); movement is unchanged.** Rejected read-through (movement also
+   consulting active room effects) — it would fork exit passability into two stores, a second system
+   answering the same question. Trade-off accepted: `on_expire` must run to restore, made safe by the
+   durable effect row + sweep + the keep-the-row-on-failure isolation above.
+2. **Auras = a §3.5 modifier source, not a per-tick occupant sweep.** Extends the existing multi-source
+   resolver (which stays the single owner of "effective value") instead of storing derived per-player
+   state or adding a second per-tick loop.
+3. **The engine gains no exit/room-state awareness.** "What *open the gate* means" is a Tier 2
+   `EffectDef` hook over existing services (`RoomRepo`); Tier 1 ships only the timed-effect primitive,
+   the generic `on_apply`/`on_expire` hooks, and the aura modifier source. So each behavior keeps one
+   owner: `Exit`/movement → passability, §3.4 sweep → timing, §3.5 → modifiers.
 
 ---
 
