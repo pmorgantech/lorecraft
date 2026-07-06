@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 
 from lorecraft.observability import time_operation
 from lorecraft.types import JsonObject, JsonWebSocket
+
+log = logging.getLogger(__name__)
 
 
 class ConnectionManager:
@@ -37,7 +40,17 @@ class ConnectionManager:
             return
         try:
             await ws.send_json(message)
-        except RuntimeError:
+        except Exception:
+            # Transport boundary: a failed send means the socket is dead or
+            # dying (the concrete exception type is host-framework-specific —
+            # starlette raises WebSocketDisconnect, not just RuntimeError, when
+            # a broadcast races a closing connection). Whatever the type, the
+            # remedy is the same: drop the connection so one dead socket never
+            # breaks a broadcast to everyone else. Never silent — logged with
+            # the traceback.
+            log.info(
+                "dropping connection for %s: send failed", player_id, exc_info=True
+            )
             await self.disconnect(player_id)
 
     async def broadcast_to_room(

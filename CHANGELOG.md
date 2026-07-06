@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.2] - 2026-07-05
+
+### Fixed
+
+- **Unhandled `WebSocketDisconnect` noise on every disconnect-during-broadcast.** Two-part fix for the "Exception in ASGI application" traceback the CI logs surfaced: (1) the disconnect handler now deregisters the leaving socket **before** the `player_left` broadcast — that broadcast has no `exclude`, so it used to try to send to the just-closed socket; (2) `ConnectionManager.send_to_player` treats **any** send failure as a dead connection (logged with traceback, connection dropped) instead of catching only `RuntimeError` — the concrete exception is host-framework-specific (starlette raises `WebSocketDisconnect` when a broadcast races a closing socket), and one dead socket must never break a broadcast to everyone else. Unit-tested (send failure drops the connection without raising; a broadcast survives one dead socket and still reaches the rest).
+
 ## [0.40.1] - 2026-07-05
 
 ### Fixed

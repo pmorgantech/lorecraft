@@ -470,6 +470,12 @@ def create_app(
                         },
                         exclude=player.id,
                     )
+            # Deregister the leaving socket *before* the player_left broadcast:
+            # this broadcast has no `exclude`, so with the connection still in
+            # the pool it would try to send to the just-closed socket — the
+            # WebSocketDisconnect that used to escape as ASGI-level log noise
+            # on every disconnect-during-broadcast.
+            await state.manager.disconnect(player_id)
             await state.manager.broadcast_to_room(
                 room_id,
                 {
@@ -478,7 +484,6 @@ def create_app(
                     "username": player_username,
                 },
             )
-            await state.manager.disconnect(player_id)
 
     return app
 
