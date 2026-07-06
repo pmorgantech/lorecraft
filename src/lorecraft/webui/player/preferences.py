@@ -49,6 +49,9 @@ class PlayerPreferences:
     high_contrast: bool = False
     font_scale: str = "normal"
     feed_page_length: int = 40
+    # Chat/feed split (Sprint 45): route chat messages to their own pane
+    # instead of the narrative feed. Off = today's single feed.
+    separate_chat: bool = False
     # Panel id -> visible. Absent panels default to visible.
     hidden_panels: tuple[str, ...] = ()
 
@@ -98,6 +101,8 @@ class PlayerPreferences:
             out["font_scale"] = self.font_scale
         if self.feed_page_length != default.feed_page_length:
             out["feed_page_length"] = self.feed_page_length
+        if self.separate_chat != default.separate_chat:
+            out["separate_chat"] = self.separate_chat
         if self.hidden_panels:
             out["hidden_panels"] = list(self.hidden_panels)
         return out
@@ -145,6 +150,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         high_contrast=bool(raw.get("high_contrast", False)),
         font_scale=_clean_enum(raw.get("font_scale"), FONT_SCALES, "normal"),
         feed_page_length=_clean_int(raw.get("feed_page_length"), FEED_PAGE_LENGTHS, 40),
+        separate_chat=bool(raw.get("separate_chat", False)),
         hidden_panels=hidden,
     )
 

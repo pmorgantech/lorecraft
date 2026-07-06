@@ -667,6 +667,20 @@ async def handle_command(
                 }
             )
 
+        # Chat channel (Sprint 45): the actor's own chat echo, tagged so the
+        # client can route it to the chat pane when separate_chat is on. With
+        # the preference off it renders in the single feed like before.
+        for m in ctx.chat_messages:
+            feed_msgs.append(
+                {
+                    "id": f"msg-{session_id}-{len(feed_msgs)}",
+                    "timestamp": ts,
+                    "actor": None,
+                    "text": m,
+                    "type": "chat",
+                }
+            )
+
         disconnect_requested = bool(getattr(ctx, "updates", {}).get("disconnect"))
 
         new_inv = inventory_snapshot(after_player, item_repo)

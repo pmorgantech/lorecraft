@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.3] - 2026-07-05
+
+### Added
+
+- **Sprint 45.1 — chat channel threaded end to end (Phase 1 of the chat/feed split,** [`chat_feed_split.md`](docs/chat_feed_split.md)**).** Chat and room narration used to share one channel with no signal to tell them apart; there is now a `chat` category at every seam. `GameContext` gains `say_chat()`/`tell_room_chat()` backed by new `chat_messages`/`room_chat_messages` lists (mirroring `messages`/`room_messages`); `say` speaks through them (the "Say what?" prompt stays narrative); `broadcast_command_effects` emits room chat as `feed_append` with `message_type:"chat"`; the WS `command_result` carries a `chat_messages` field; the HTMX command path renders the actor's echo as `type:"chat"` feed items; and `PlayerPreferences.separate_chat` (default **off**) is stored/resolved/round-tripped ready for the Phase 2 dual-pane UI. **Default UX is unchanged** — both render paths degrade the new type into today's single feed until Phase 2 routes by the preference. Movement/action narration (`tell_room`) is untouched and stays narrative. 7 new unit tests (say routing, broadcast tagging + speaker exclusion, preference round-trip); default + simulation suites green.
+
 ## [0.40.2] - 2026-07-05
 
 ### Fixed

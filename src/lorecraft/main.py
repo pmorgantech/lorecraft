@@ -560,6 +560,7 @@ async def _handle_websocket_command(
         await broadcast_command_effects(state.manager, ctx, pre_room_id=pre_room_id)
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
+        chat_messages: list[JsonValue] = list(ctx.chat_messages)
 
         # Capture and store any pending disambiguation; don't send to client.
         disambig = ctx.updates.pop("disambig_pending", None)
@@ -577,6 +578,7 @@ async def _handle_websocket_command(
             "noun": parsed.noun,
             "messages": messages,
             "room_messages": room_messages,
+            "chat_messages": chat_messages,
             "updates": updates,
         }
         return response

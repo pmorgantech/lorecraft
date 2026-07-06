@@ -62,6 +62,8 @@ class GameContext:
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     arrival_messages: list[str] = field(default_factory=list)
+    chat_messages: list[str] = field(default_factory=list)
+    room_chat_messages: list[str] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
     parsed_command: ParsedCommand | None = None
@@ -74,6 +76,22 @@ class GameContext:
         the command doesn't move them) — see `tell_arrival` for the opposite
         case of narrating to the room the actor is entering."""
         self.room_messages.append(text)
+
+    def say_chat(self, text: str) -> None:
+        """The actor's own echo of a chat message (e.g. 'You say: "hi"').
+
+        Chat is player-to-player conversation (`say` today; future
+        shout/whisper/tell reuse this channel) — kept separate from `say`'s
+        narrative `messages` so clients can route conversation to its own
+        pane (Sprint 45) instead of letting chatter scroll room/quest/action
+        output out of view."""
+        self.chat_messages.append(text)
+
+    def tell_room_chat(self, text: str) -> None:
+        """Chat heard by the rest of the room (e.g. 'X says: "hi"') —
+        broadcast with `message_type: "chat"` rather than `room_event`, so
+        receiving clients can tell conversation from narration."""
+        self.room_chat_messages.append(text)
 
     def tell_arrival(self, text: str) -> None:
         """Narrate to the room the actor is entering (e.g. "X arrives from

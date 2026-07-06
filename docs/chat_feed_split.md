@@ -60,6 +60,13 @@ B sees it — in the **chat pane** with the preference on, in the **main feed** 
 ## Phasing
 
 1. **Phase 1 (headless-testable)** — GameContext chat channel + `say_command` switch + `command_result.chat_messages` + `broadcast` `message_type:"chat"` + the `separate_chat` preference. Unit-tested.
+   **✅ Shipped (45.1, v0.40.3).** Implementation note: chat needed **two** context lists, not one —
+   `chat_messages` (the actor's own echo → `command_result.chat_messages` / HTMX `type:"chat"` feed
+   items) and `room_chat_messages` (the room's copy → `feed_append`/`message_type:"chat"`), mirroring
+   the existing `messages`/`room_messages` pair. Both render paths degrade the new type into the
+   single feed (the game feed template's class conditional falls back to `narrative`; the raw dev
+   client got an explicit `chat_messages` loop), so default UX is byte-identical until Phase 2 routes
+   by the preference.
 2. **Phase 2 (browser)** — `app.js` dual-pane routing, `index.html` pane, `app.css` styling, settings toggle; verify in a real browser + a two-player e2e.
 3. **Phase 3 (later)** — global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; **per-channel mute** (a preferences-blob setting suppressing a channel's messages — folded in 2026-07-05, same rendering/preferences surface as the tags); mobile tab collapse polish.
 

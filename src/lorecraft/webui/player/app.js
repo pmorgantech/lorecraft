@@ -506,6 +506,9 @@ function routeMessage(message) {
     for (const text of message.room_messages || []) {
       appendMessage("room_event", text);
     }
+    for (const text of message.chat_messages || []) {
+      appendMessage("chat", text);
+    }
     applyUpdates(message.updates || {});
     if (message.updates?.disconnect) {
       state.socket?.close(1000, "quit");

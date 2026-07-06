@@ -344,3 +344,74 @@ def _build_context(
         ),
         session_id="session-1",
     )
+
+
+def test_say_routes_to_the_chat_channel_not_narrative() -> None:
+    """Sprint 45: `say` is conversation — it must populate the chat lists
+    (routable to a chat pane) and leave the narrative channels untouched, while
+    the "Say what?" prompt stays a narrative system message."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        registry.get("say").handler("hello there", ctx)
+
+        assert ctx.chat_messages == ['You say: "hello there"']
+        assert ctx.room_chat_messages == ['petem says: "hello there"']
+        assert ctx.messages == []
+        assert ctx.room_messages == []
+
+        prompt_ctx = _build_context(session)
+        registry.get("say").handler(None, prompt_ctx)
+        assert prompt_ctx.messages == ["Say what?"]
+        assert prompt_ctx.chat_messages == []
+
+
+def test_room_chat_broadcasts_with_chat_message_type() -> None:
+    """Sprint 45: room chat goes out as feed_append/message_type:"chat" to the
+    rest of the room (never back to the speaker), alongside — not replacing —
+    room_event narration."""
+    import asyncio
+
+    from lorecraft.engine.game.broadcast import broadcast_command_effects
+    from lorecraft.types import JsonObject
+
+    class _RecordingSocket:
+        def __init__(self) -> None:
+            self.sent: list[JsonObject] = []
+
+        async def accept(self) -> None:  # pragma: no cover - protocol completeness
+            pass
+
+        async def send_json(self, data: JsonObject) -> None:
+            self.sent.append(data)
+
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    manager = ConnectionManager()
+    speaker_socket = _RecordingSocket()
+    listener_socket = _RecordingSocket()
+    manager._connections["player-1"] = speaker_socket  # type: ignore[assignment]
+    manager._connections["listener"] = listener_socket  # type: ignore[assignment]
+    manager.move_player("player-1", None, "tavern")
+    manager.move_player("listener", None, "tavern")
+
+    with Session(engine) as session:
+        ctx = _build_context(session)
+        ctx.manager = manager
+        ctx.tell_room_chat('petem says: "hello"')
+        ctx.tell_room("petem waves.")
+        asyncio.run(broadcast_command_effects(manager, ctx, pre_room_id="tavern"))
+
+    feed_types = [
+        (m["message_type"], m["content"])
+        for m in listener_socket.sent
+        if m.get("type") == "feed_append"
+    ]
+    assert ("chat", 'petem says: "hello"') in feed_types
+    assert ("room_event", "petem waves.") in feed_types
+    # The speaker never receives their own room broadcast.
+    assert all(m.get("type") != "feed_append" for m in speaker_socket.sent)

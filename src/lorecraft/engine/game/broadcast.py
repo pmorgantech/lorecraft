@@ -65,6 +65,26 @@ async def broadcast_command_effects(
         except Exception as exc:
             log.debug("room_feed_broadcast_failed: %s", exc)
 
+    # Chat (Sprint 45): same feed_append shape, but tagged "chat" so clients
+    # with the separate_chat preference route conversation to its own pane
+    # instead of the narrative feed. Chat never moves the player, so the
+    # narration room is the actor's current room in practice.
+    for chat_msg in ctx.room_chat_messages:
+        if not narration_room:
+            continue
+        try:
+            await manager.broadcast_to_room(
+                narration_room,
+                {
+                    "type": "feed_append",
+                    "content": str(chat_msg),
+                    "message_type": "chat",
+                },
+                exclude=actor_id,
+            )
+        except Exception as exc:
+            log.debug("chat_feed_broadcast_failed: %s", exc)
+
     for arrival_msg in ctx.arrival_messages:
         if not after_room_id:
             continue

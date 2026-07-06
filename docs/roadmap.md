@@ -186,7 +186,7 @@ browser to verify** (not the headless unit tests).
 
 | # | Task | Status |
 |---|------|--------|
-| 45.1 | **Phase 1 (headless-testable)** — GameContext chat channel (`say_chat`/`tell_room_chat` + `chat_messages`); `say_command` switches to it; `command_result.chat_messages` + `broadcast` `message_type:"chat"`; `separate_chat` player preference. | [ ] |
+| 45.1 | **Phase 1 (headless-testable)** — GameContext chat channel (`say_chat`/`tell_room_chat` + `chat_messages`); `say_command` switches to it; `command_result.chat_messages` + `broadcast` `message_type:"chat"`; `separate_chat` player preference. | [x] `GameContext.say_chat`/`tell_room_chat` (+ `chat_messages`/`room_chat_messages`); `say` switched ("Say what?" stays narrative); `broadcast_command_effects` emits `message_type:"chat"`; `command_result.chat_messages` on the WS path, `type:"chat"` feed items on the HTMX path, dev-client fallback loop; `PlayerPreferences.separate_chat` (default off, round-trips). Default UX unchanged — both render paths degrade the new type into the single feed until Phase 2. 7 new unit tests. (v0.40.3) |
 | 45.2 | **Phase 2 (browser)** — `app.js` dual-pane routing, `index.html` pane, `app.css` styling, settings toggle; verify in a real browser + a two-player e2e (A `say`s → B sees it in the chat pane with the pref on, main feed with it off; "A leaves north." always narrative). | [ ] |
 | 45.3 | **Phase 3 (later)** — future global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; **per-channel mute** (a preferences-blob setting suppressing a channel's messages — folded in 2026-07-05, same rendering/preferences surface as the tags); mobile tab-collapse polish. | [ ] |
 

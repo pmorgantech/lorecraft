@@ -153,3 +153,30 @@ class TestApplyUpdates:
     def test_apply_ignores_unknown_field(self) -> None:
         updated = apply_updates(PlayerPreferences(), {"garbage": "x"})
         assert updated == PlayerPreferences()
+
+
+class TestSeparateChat:
+    """Chat/feed split preference (Sprint 45)."""
+
+    def test_defaults_off(self) -> None:
+        assert PlayerPreferences().separate_chat is False
+        assert resolve_preferences({}).separate_chat is False
+
+    def test_resolves_and_round_trips(self) -> None:
+        prefs = resolve_preferences({"separate_chat": True})
+        assert prefs.separate_chat is True
+        assert prefs.to_stored() == {"separate_chat": True}
+        assert resolve_preferences(prefs.to_stored()) == prefs
+
+    def test_default_not_written_to_stored_blob(self) -> None:
+        assert "separate_chat" not in PlayerPreferences().to_stored()
+
+    def test_apply_updates_toggles(self) -> None:
+        on = apply_updates(PlayerPreferences(), {"separate_chat": True})
+        assert on.separate_chat is True
+        off = apply_updates(on, {"separate_chat": False})
+        assert off.separate_chat is False
+
+    def test_present_in_template_context(self) -> None:
+        context = resolve_preferences({"separate_chat": True}).to_context()
+        assert context["prefs"]["separate_chat"] is True

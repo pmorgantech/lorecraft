@@ -57,8 +57,10 @@ def register_social_commands(
         if noun is None:
             ctx.say("Say what?")
             return
-        ctx.say(f'You say: "{noun}"')
-        ctx.tell_room(f'{ctx.player.username} says: "{noun}"')
+        # Chat channel (Sprint 45): conversation, not room narration — lets
+        # clients route it to a chat pane when separate_chat is on.
+        ctx.say_chat(f'You say: "{noun}"')
+        ctx.tell_room_chat(f'{ctx.player.username} says: "{noun}"')
 
     @registry.register(
         "bye",
