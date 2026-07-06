@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.0] - 2026-07-05
+
+### Added
+
+- **Sprint 43 complete — session record & playback (43.3: mixed-scenario soak + CI knob)** ([`session_replay.md`](docs/session_replay.md) Phase 3). New `mix_scenarios(server, scenarios, repeats=…, jitter_ms=…)` in `tests/simulation/replay.py` replays **distinct recorded sessions concurrently** — each scenario gets its own fresh player driving its own command stream, looped `repeats` times — so different behaviors (quest dialogue, movement, item contention) interleave over shared world state, the pattern that surfaces crashes a lockstep script can't. Fan-out and mix now share one `_run_concurrent` runner, and the report core (`percentile_summary()`) moved beside `latency_report()` in `lorecraft.tools.session_replay`. New `tests/simulation/test_soak.py` mixes the golden-path + load-default recordings: a quick 2-repeat default keeps push/PR CI fast, `LORECRAFT_SOAK_REPEATS` scales it into a real soak (verified @25 repeats = 325 commands, p50 ~11 ms / p99 ~30 ms), `LORECRAFT_SOAK_JSON` exports the report. The CI `simulation` job gained a `workflow_dispatch` `soak_repeats` input for opt-in longer soaks without touching the push/PR path. With 43.1 (record + golden audit diff) and 43.2 (N-player fan-out), the wishlist's `lorecraft.tools.simulation` idea is fully superseded: record real play once, then regress it, load-test it, and soak it.
+
 ## [0.39.6] - 2026-07-05
 
 ### Added

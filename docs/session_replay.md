@@ -106,6 +106,12 @@ report shape so before/after diffs are scriptable.
    default; `LORECRAFT_LOAD_TEST_SCENARIO=<path>` drives it with any recorded session.
 3. **Phase 3 — mixed scenarios + soak + CI.** `--mix`, longer runs, an opt-in CI job (marked
    `simulation`, kept out of the default suite).
+   **✅ Shipped (43.3, v0.40.0):** `mix_scenarios(server, scenarios, repeats=…, jitter_ms=…)`
+   replays distinct recorded sessions concurrently, looped for soak; `tests/simulation/test_soak.py`
+   mixes the golden-path + load-default recordings (quick 2-repeat default; `LORECRAFT_SOAK_REPEATS`
+   scales it up). CI's `simulation` job (already push/PR-gated) gained a `workflow_dispatch`
+   `soak_repeats` input for opt-in longer soaks. Report = shared `percentile_summary()` +
+   `scenarios`/`repeats` context (`LORECRAFT_SOAK_JSON` exports it).
 
 ## Non-goals (initially)
 

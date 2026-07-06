@@ -32,9 +32,10 @@ the §3.9 design, `on_apply`/`on_expire` hooks, occupant auras (`RoomAuraModifie
 `passage_open` timed-gate content example all shipped.
 
 **Newly promoted from [`wishlist.md`](wishlist.md) (2026-07-05):** **Sprint 43** — session record &
-playback for advanced testing ([`session_replay.md`](session_replay.md)); **Sprint 44** —
-weather-driven world effects (on the Sprint 39 primitive); **Sprint 45** — split the social/chat
-feed from the narrative feed (opt-in). See the *Promoted from the wishlist* section below.
+playback for advanced testing ([`session_replay.md`](session_replay.md)) — **✅ complete, v0.40.0**;
+**Sprint 44** — weather-driven world effects (on the Sprint 39 primitive) — **✅ complete**;
+**Sprint 45** — split the social/chat feed from the narrative feed (opt-in). See the *Promoted from
+the wishlist* section below.
 
 **Reconciled from an unrecorded 2026-07-03 planning list (2026-07-05):** **Sprint 46** — item
 discovery journal; **Sprint 47** — `follow` command; **Sprint 48** — scavenger hunt events
@@ -139,7 +140,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 Newly-scheduled work drawn from [`wishlist.md`](wishlist.md) after the performance band + Sprint 39 wrapped.
 
-## Sprint 43 — Session record & playback (advanced testing)
+## Sprint 43 — Session record & playback (advanced testing) — ✅ complete
 
 **Goal:** record real/scripted player command streams and replay them — one scenario across **N
 simulated players**, or a mix concurrently — for regression (golden audit-trail diff), load
@@ -152,7 +153,7 @@ fan-out + metrics), and the seeded-`GameRng` audit-regression determinism. **Ful
 |---|------|--------|
 | 43.1 | **Phase 1** — `record` from the audit log → scenario JSON; single-actor `replay` via one `VirtualPlayer`; assert the normalised audit trail against a golden (data-drives `test_audit_regression.py`). | [x] `lorecraft.tools.session_replay`: versioned scenario JSON (logical actors, `{t, actor, raw}`, `world_yaml`/`rng_seed` stamps), `record_scenario()` + `record` CLI off any audit DB, shared `normalize_events()`. Replay: `tests/simulation/replay.py` (fresh `VirtualPlayer`, fast timing); `test_audit_regression.py` now data-driven off checked-in `scenarios/golden_path.json` with a **checked-in golden trail** (`golden_path.audit.json`; regen via `LORECRAFT_UPDATE_GOLDENS=1`). Sim-server factory takes `rng_seed`. Unit + sim suites green. (v0.39.4) |
 | 43.2 | **Phase 2** — N-player fan-out (`--players N`) reusing the load-test percentile report; replace the fixed `test_load.py` script with recorded traffic. | [x] `fan_out_scenario()` in `tests/simulation/replay.py` maps a single-actor scenario onto N fresh concurrent `VirtualPlayer`s; report assembly (`percentile`/`latency_report`) moved to `lorecraft.tools.session_replay` (unit-tested, CLI-reusable). `test_load.py` now replays `scenarios/load_default.json` (the old read-heavy loop) and `LORECRAFT_LOAD_TEST_SCENARIO` points it at any recorded session — verified with `golden_path.json` @5 players. Same report shape/knobs (`_PLAYERS`/`_JITTER_MS`/`_JSON`); numbers match the post-WAL baseline (p50 ~56 ms @10). (v0.39.6) |
-| 43.3 | **Phase 3** — mixed concurrent scenarios (`--mix`), longer soak runs, and an opt-in `simulation`-marked CI job. | [ ] |
+| 43.3 | **Phase 3** — mixed concurrent scenarios (`--mix`), longer soak runs, and an opt-in `simulation`-marked CI job. | [x] `mix_scenarios(server, scenarios, repeats=…)` replays distinct recorded sessions concurrently, each looped for soak, over a shared `_run_concurrent` runner (fan-out is now the same-script case); report = shared `percentile_summary()` + mix context. New `test_soak.py` mixes golden-path + load-default (quick 2-repeat default; `LORECRAFT_SOAK_REPEATS` for real soaks — verified @25 = 325 commands, p99 ~30 ms). CI's existing `simulation` job gains a `workflow_dispatch` `soak_repeats` input for opt-in longer runs. (v0.40.0) |
 
 ## Sprint 44 — Weather-driven world effects — ✅ complete
 

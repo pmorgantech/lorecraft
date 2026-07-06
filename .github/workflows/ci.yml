@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Opt-in longer soak (Sprint 43.3): dispatch with a repeat count to loop the
+  # mixed-scenario soak (tests/simulation/test_soak.py) far past the quick
+  # default the push/PR runs use.
+  workflow_dispatch:
+    inputs:
+      soak_repeats:
+        description: "Mixed-scenario soak repeats (default 25 for a dispatched run)"
+        default: "25"
+        required: false
 
 permissions:
   contents: read
@@ -41,6 +50,9 @@ jobs:
 
       - run: pip install -e ".[dev]"
       - run: make test-simulation
+        env:
+          # Empty on push/PR runs → the soak test's quick default applies.
+          LORECRAFT_SOAK_REPEATS: ${{ inputs.soak_repeats || '' }}
 
   e2e:
     name: Browser end-to-end (Playwright)

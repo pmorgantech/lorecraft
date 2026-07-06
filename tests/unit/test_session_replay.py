@@ -18,6 +18,7 @@ from lorecraft.tools.session_replay import (
     main,
     normalize_events,
     percentile,
+    percentile_summary,
     record_scenario,
     save_scenario,
 )
@@ -177,6 +178,18 @@ def test_latency_report_shape_matches_load_test() -> None:
         "commands_per_player": 1,
         "total_commands": 3,
         "jitter_ms": 5,
+        "p50_ms": 20.0,
+        "p95_ms": 30.0,
+        "p99_ms": 30.0,
+        "max_ms": 30.0,
+    }
+
+
+def test_percentile_summary_is_the_shared_report_core() -> None:
+    summary = percentile_summary([30.0, 10.0, 20.0])
+
+    assert summary == {
+        "total_commands": 3,
         "p50_ms": 20.0,
         "p95_ms": 30.0,
         "p99_ms": 30.0,

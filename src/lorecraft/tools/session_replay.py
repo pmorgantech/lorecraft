@@ -187,6 +187,19 @@ def percentile(sorted_ms: Sequence[float], fraction: float) -> float:
     return round(sorted_ms[index], 3)
 
 
+def percentile_summary(latencies_ms: Iterable[float]) -> dict[str, float | int]:
+    """`total_commands` + p50/p95/p99/max over a latency sample — the common
+    core of the load-test and mixed-scenario reports."""
+    ordered = sorted(latencies_ms)
+    return {
+        "total_commands": len(ordered),
+        "p50_ms": percentile(ordered, 0.50),
+        "p95_ms": percentile(ordered, 0.95),
+        "p99_ms": percentile(ordered, 0.99),
+        "max_ms": round(ordered[-1], 3) if ordered else 0.0,
+    }
+
+
 def latency_report(
     latencies_ms: Iterable[float],
     *,
@@ -197,16 +210,11 @@ def latency_report(
     """The Sprint 37.3 load-test report shape (p50/p95/p99/max), shared so
     fan-out replay and the load test emit byte-compatible JSON for scripted
     before/after diffs."""
-    ordered = sorted(latencies_ms)
     return {
         "players": players,
         "commands_per_player": commands_per_player,
-        "total_commands": len(ordered),
         "jitter_ms": jitter_ms,
-        "p50_ms": percentile(ordered, 0.50),
-        "p95_ms": percentile(ordered, 0.95),
-        "p99_ms": percentile(ordered, 0.99),
-        "max_ms": round(ordered[-1], 3) if ordered else 0.0,
+        **percentile_summary(latencies_ms),
     }
 
 
