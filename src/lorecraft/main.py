@@ -199,6 +199,8 @@ def create_app(
             services.quest.register(bus)
         if services.fatigue is not None:
             services.fatigue.register(bus)
+        if services.follow is not None:
+            services.follow.register(bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:

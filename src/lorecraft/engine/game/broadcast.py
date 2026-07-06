@@ -127,3 +127,13 @@ async def broadcast_command_effects(
             )
         except Exception as exc:
             log.debug("state_change_broadcast_left_room_failed: %s", exc)
+
+    # Deferred deliveries (Sprint 47): WS pushes a synchronous handler queued for
+    # another player (e.g. moving a follower). Exception-isolated like the room
+    # broadcasts above — one failed push must not drop the rest.
+    for deliver in ctx.pending_deliveries:
+        try:
+            await deliver()
+        except Exception as exc:
+            log.debug("pending_delivery_failed: %s", exc)
+    ctx.pending_deliveries.clear()

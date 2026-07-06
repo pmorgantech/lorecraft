@@ -80,6 +80,23 @@ unlock north
 go north
 ```
 
+### Following another player
+
+`follow <player>` makes you move with someone when they move — handy for travelling together
+(and boarding transit as a group). It's overt: they see that you're following, and both of
+you see the movement. `unfollow` stops. A bare `follow` shows who you're following and who's
+following you.
+
+```
+follow Aldric        — travel with Aldric when they move
+follow               — show your current follow status
+unfollow             — stop following
+```
+
+If a door you can't pass (a locked exit, terrain you lack the skill for) blocks you when your
+leader moves through it, your follow simply breaks and you're both told. Chains work
+(A follows B follows C, and the whole line moves together).
+
 ## Looking, Taking, and Using Items
 
 ```
@@ -324,6 +341,8 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `go <direction>` | `north`/`south`/`east`/`west` (bare) | Move to an adjacent room |
 | `unlock <direction>` | | Unlock an exit if you carry its key |
 | `lock <direction>` | | Lock an exit if you carry its key |
+| `follow <player>` | | Move with a player when they move (bare `follow` shows status) |
+| `unfollow` | | Stop following |
 | `look` | | Describe your surroundings |
 | `examine <item>` | `inspect`, `x` | Read an item's description |
 | `take <item>` | | Pick up an item (`2 <item>`, `all <item>` also work) |

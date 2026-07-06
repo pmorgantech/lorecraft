@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.6] - 2026-07-06
+
+### Added
+
+- **Sprint 47 — `follow` command (social movement).** `follow <player>` makes you travel with a target when they move; `unfollow` stops; a bare `follow` shows who you follow and who follows you. It's overt (both sides get narration) and re-runs the **standard** movement gates for each follower — a locked exit or terrain you lack the skill for simply breaks the follow and tells both sides. Chains work (A→B→C moves as a line, since each auto-move emits its own `PLAYER_MOVED`); cycles are rejected when you try to create them. Implemented as a new Tier 2 `follow` feature (`FollowService` holds an in-memory follow graph and subscribes to `PLAYER_MOVED`; followers are re-moved through `MovementService.move` on a `dataclasses.replace` sub-context). Unit-tested (follower moves, chain cascade, self/absent/cycle rejection, gate-failure break) and verified live with two real WebSocket players.
+
+### Changed
+
+- **`GameContext.pending_deliveries` — a generic deferred-async-delivery seam.** Synchronous event handlers that need to push a WS message to *another* player (the follow cascade is the first user) can now queue a coroutine factory via `ctx.defer_delivery(...)`; `broadcast_command_effects` drains them (exception-isolated) after the command completes, bridging the synchronous event bus to the async WS layer without each handler needing its own event loop.
+
 ## [0.40.5] - 2026-07-06
 
 ### Added

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -67,6 +67,22 @@ class GameContext:
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
     parsed_command: ParsedCommand | None = None
+    # Deferred async WS deliveries produced by *synchronous* handlers that need
+    # to push to another player's socket (e.g. Sprint 47 follow moving a
+    # follower). Each entry is a zero-arg coroutine factory; the async command
+    # loop drains them via `broadcast_command_effects` after handle_command
+    # returns, since the event bus itself is synchronous and can't await.
+    pending_deliveries: list[Callable[[], Awaitable[None]]] = field(
+        default_factory=list
+    )
+
+    def defer_delivery(self, factory: Callable[[], Awaitable[None]]) -> None:
+        """Queue a coroutine factory to be awaited in the async command loop.
+
+        Lets a sync event handler schedule a WS push to another player without
+        an event loop of its own; drained (exception-isolated) by
+        `broadcast_command_effects`."""
+        self.pending_deliveries.append(factory)
 
     def say(self, text: str) -> None:
         self.messages.append(text)

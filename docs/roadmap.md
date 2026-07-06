@@ -211,7 +211,7 @@ exploration payoff (pillar #1).
 | 46.1 | Track first discovery per item *definition* (not per instance): `Player.discovered_items`, set on first `take`/`examine` — same pattern as `met_npcs` (set on first `talk`). | [x] `Player.discovered_items` + `SaveSlot.discovered_items` (save/load parity); `_record_item_discovery()` in `inventory/service.py`, hooked from `_emit_item_taken` (all take paths) and `examine` — per-definition (`item.id`), idempotent. Additive sqlite migrations for both tables. (v0.40.5) |
 | 46.2 | `journal` gains an "Items discovered" section (names, matching the journal's existing read-only style); unit tests for first-discovery tracking + journal output. | [x] `JournalService._show_items` between people-met and lore, same read-only style ("Items discovered: …" / "none yet."). 4 new unit tests (take-once idempotent, examine-without-take, journal shows names, empty state). |
 
-## Sprint 47 — Follow command (social movement)
+## Sprint 47 — Follow command (social movement) — ✅ complete
 
 **Goal:** `follow <player>` — when the target moves, followers move with them; `unfollow` stops.
 Overt, not stealthy: both sides see narration. The lightweight slice of the wishlist's *Player
@@ -220,8 +220,8 @@ building parties.
 
 | # | Task | Status |
 |---|------|--------|
-| 47.1 | Follow state + movement hook: follower auto-moves on the target's movement event, re-running the standard movement gates (terrain/skill/hidden/locked exits) — a failed gate breaks the follow with a message to both sides. Chains allowed (A→B→C), cycles rejected. | [ ] |
-| 47.2 | `follow <player>`/`unfollow` commands (movement feature `commands.py`); narration both sides ("X begins following you."); bare `follow` shows current status; tests incl. a multi-room chain and a gate-failure break. | [ ] |
+| 47.1 | Follow state + movement hook: follower auto-moves on the target's movement event, re-running the standard movement gates (terrain/skill/hidden/locked exits) — a failed gate breaks the follow with a message to both sides. Chains allowed (A→B→C), cycles rejected. | [x] New Tier 2 `follow` feature: `FollowService` holds an **in-memory** follow graph and subscribes to `PLAYER_MOVED`; co-located connected followers are re-moved through the standard `MovementService.move` gates via a `dataclasses.replace` sub-context. Gate failure (detected by not reaching the target's room) breaks the follow and notifies both sides; chains cascade because each auto-move emits its own `PLAYER_MOVED`; cycles rejected at follow-time. Needed a generic engine seam — `GameContext.pending_deliveries` (deferred async WS pushes drained by `broadcast_command_effects`), since the event bus is synchronous but followers need live pushes. (v0.40.6) |
+| 47.2 | `follow <player>`/`unfollow` commands (movement feature `commands.py`); narration both sides ("X begins following you."); bare `follow` shows current status; tests incl. a multi-room chain and a gate-failure break. | [x] `follow`/`unfollow` verbs (movement category); both-sides narration on follow/unfollow (target push); bare `follow` shows who you follow + who follows you. 5 unit tests (follower moves, A→B→C chain cascade, self/absent reject, cycle reject, gate-failure break) + a **live two-player WS check** (follower's socket gets "You follow X east." + panel refresh). |
 
 ## Sprint 48 — Scavenger hunt events (design-first)
 
