@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.6] - 2026-07-05
+
+### Added
+
+- **Sprint 43.2 — N-player scenario fan-out; the load test now replays recorded traffic** (Phase 2 of [`session_replay.md`](docs/session_replay.md)). New `fan_out_scenario(server, scenario, players=N, jitter_ms=…)` in `tests/simulation/replay.py` maps a single-actor scenario onto N freshly created concurrent `VirtualPlayer`s and returns the Sprint 37.3 percentile report — whose assembly (`percentile()`/`latency_report()`) moved into `lorecraft.tools.session_replay` so the report shape is unit-tested and reusable by the future replay CLI. `test_load.py` no longer hard-codes its command script: the read-heavy loop became the checked-in `tests/simulation/scenarios/load_default.json`, and `LORECRAFT_LOAD_TEST_SCENARIO=<path>` points the same harness at **any recorded session** (verified by fanning the golden-path recording out to 5 players — including 5-way contention over one coin). Report shape and knobs (`LORECRAFT_LOAD_TEST_PLAYERS`/`_JITTER_MS`/`_JSON`) unchanged, JSON now also stamps the scenario name; numbers match the post-WAL baseline (p50 ~56 ms @10 players lockstep). Default + simulation suites green.
+
 ## [0.39.5] - 2026-07-05
 
 ### Added

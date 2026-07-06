@@ -100,6 +100,10 @@ report shape so before/after diffs are scriptable.
    golden trail under `tests/simulation/scenarios/` (`LORECRAFT_UPDATE_GOLDENS=1` regenerates).
 2. **Phase 2 — N-player fan-out + metrics.** `--players N`, reuse the load-test percentile report.
    Replaces the fixed `test_load.py` script with recorded traffic.
+   **✅ Shipped (43.2, v0.39.6):** `fan_out_scenario(server, scenario, players=N, jitter_ms=…)` in
+   `tests/simulation/replay.py`; `percentile()`/`latency_report()` (the shared report shape) moved
+   to `lorecraft.tools.session_replay`. `test_load.py` replays `scenarios/load_default.json` by
+   default; `LORECRAFT_LOAD_TEST_SCENARIO=<path>` drives it with any recorded session.
 3. **Phase 3 — mixed scenarios + soak + CI.** `--mix`, longer runs, an opt-in CI job (marked
    `simulation`, kept out of the default suite).
 

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "description": "Default load-test traffic: the Sprint 37.3 read-heavy loop in scenario form. look/inventory/who are always valid and don't mutate shared state; the go east/go west pair exercises movement + room-broadcast fan-out. Even a move with no exit still returns a command_result, so latency is measured for every command regardless.",
+  "world_yaml": "world_content/world.yaml",
+  "rng_seed": 1,
+  "actors": [
+    "player-1"
+  ],
+  "commands": [
+    {"t": 0.0, "actor": "player-1", "raw": "look"},
+    {"t": 1.0, "actor": "player-1", "raw": "inventory"},
+    {"t": 2.0, "actor": "player-1", "raw": "who"},
+    {"t": 3.0, "actor": "player-1", "raw": "go east"},
+    {"t": 4.0, "actor": "player-1", "raw": "look"},
+    {"t": 5.0, "actor": "player-1", "raw": "go west"}
+  ]
+}

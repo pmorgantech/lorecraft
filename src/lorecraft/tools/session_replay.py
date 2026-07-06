@@ -179,6 +179,37 @@ def normalize_events(events: Iterable[AuditEvent]) -> list[NormalizedEvent]:
     ]
 
 
+def percentile(sorted_ms: Sequence[float], fraction: float) -> float:
+    """Nearest-rank percentile; `sorted_ms` must be sorted ascending."""
+    if not sorted_ms:
+        return 0.0
+    index = min(len(sorted_ms) - 1, int(len(sorted_ms) * fraction))
+    return round(sorted_ms[index], 3)
+
+
+def latency_report(
+    latencies_ms: Iterable[float],
+    *,
+    players: int,
+    commands_per_player: int,
+    jitter_ms: int = 0,
+) -> dict[str, float | int]:
+    """The Sprint 37.3 load-test report shape (p50/p95/p99/max), shared so
+    fan-out replay and the load test emit byte-compatible JSON for scripted
+    before/after diffs."""
+    ordered = sorted(latencies_ms)
+    return {
+        "players": players,
+        "commands_per_player": commands_per_player,
+        "total_commands": len(ordered),
+        "jitter_ms": jitter_ms,
+        "p50_ms": percentile(ordered, 0.50),
+        "p95_ms": percentile(ordered, 0.95),
+        "p99_ms": percentile(ordered, 0.99),
+        "max_ms": round(ordered[-1], 3) if ordered else 0.0,
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m lorecraft.tools.session_replay",

@@ -13,9 +13,11 @@ from lorecraft.types import JsonObject
 from lorecraft.tools.session_replay import (
     Scenario,
     ScenarioCommand,
+    latency_report,
     load_scenario,
     main,
     normalize_events,
+    percentile,
     record_scenario,
     save_scenario,
 )
@@ -155,6 +157,39 @@ def test_normalize_events_keeps_only_replay_stable_fields() -> None:
             "severity": "INFO",
         }
     ]
+
+
+def test_percentile_nearest_rank() -> None:
+    ordered = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+
+    assert percentile(ordered, 0.50) == 6.0
+    assert percentile(ordered, 0.99) == 10.0
+    assert percentile([], 0.50) == 0.0
+
+
+def test_latency_report_shape_matches_load_test() -> None:
+    report = latency_report(
+        [30.0, 10.0, 20.0], players=3, commands_per_player=1, jitter_ms=5
+    )
+
+    assert report == {
+        "players": 3,
+        "commands_per_player": 1,
+        "total_commands": 3,
+        "jitter_ms": 5,
+        "p50_ms": 20.0,
+        "p95_ms": 30.0,
+        "p99_ms": 30.0,
+        "max_ms": 30.0,
+    }
+
+
+def test_latency_report_empty_is_all_zeros() -> None:
+    report = latency_report([], players=0, commands_per_player=0)
+
+    assert report["total_commands"] == 0
+    assert report["p50_ms"] == 0.0
+    assert report["max_ms"] == 0.0
 
 
 def test_cli_record_writes_scenario_file(tmp_path: Path) -> None:
