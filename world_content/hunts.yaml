@@ -1,0 +1,17 @@
+# Scavenger-hunt definitions (Sprint 48). See docs/scavenger_hunt.md.
+# Definitions only — a hunt places its clue items into the world only while it
+# is running (opened by an admin trigger or a scheduled job).
+version: 1
+hunts:
+  - id: harvest_trinkets
+    name: The Harvest Trinket Hunt
+    description: >-
+      Three festival trinkets have gone missing about Ashmoore — a gilded
+      acorn, a tiny brass bell, and a faded ribbon. Find all three to claim a
+      reward from the festival coffers.
+    clue_items: [trinket_acorn, trinket_bell, trinket_ribbon]
+    spawn_rooms: [village_square, market_stalls, wandering_crow_inn]
+    reward:
+      coins: 50
+      lore: harvest_trinkets
+    duration_ticks: 240

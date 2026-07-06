@@ -740,6 +740,33 @@ items:
     takeable: true
     tradeable: false
 
+  # --- Scavenger-hunt trinkets (Sprint 48) ---
+  # Definitions only; placed into the world only while the Harvest Trinket
+  # hunt (world_content/hunts.yaml) is running.
+  - id: trinket_acorn
+    name: Gilded Acorn
+    description: >-
+      A little acorn dipped in gold leaf, light as the real thing. One of the
+      Harvest Festival trinkets, lost about town.
+    takeable: true
+    tradeable: false
+
+  - id: trinket_bell
+    name: Tiny Brass Bell
+    description: >-
+      A brass bell no bigger than a thimble, with a bright, clear ring. One of
+      the Harvest Festival trinkets.
+    takeable: true
+    tradeable: false
+
+  - id: trinket_ribbon
+    name: Faded Harvest Ribbon
+    description: >-
+      A length of russet ribbon, sun-faded and frayed at the ends. One of the
+      Harvest Festival trinkets.
+    takeable: true
+    tradeable: false
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------

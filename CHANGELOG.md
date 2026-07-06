@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.8] - 2026-07-06
+
+### Added
+
+- **Sprint 48 — scavenger hunt events (implementation).** A time-boxed world event: a themed set of clue items is scattered across a pool of rooms, and finding them all earns a reward. New auto-discovered Tier 2 `hunts` feature built entirely on existing primitives — item spawns for placement, the `ITEM_TAKEN` event for finds, **player flags** for per-player progress (persist through save/load, journal-visible, no new table), the **ledger** for coin rewards, and **news items** for announcements (synchronous — no async-from-scheduler broadcast). Definitions load from `world_content/hunts.yaml` (`LORECRAFT_HUNTS_YAML_PATH`) into an in-memory registry at startup, with a `lint_hunts` content check that every clue item and spawn room resolves to real world content. A hunt opens/closes via an admin/manual trigger or a scheduled `hunt_open`/`hunt_close` job (`SCHEDULED_JOB_DUE` handler); a read-only `hunts` command shows active hunts and your progress. Ships the **Harvest Trinket Hunt** for Ashmoore (three new trinket item definitions in `world.yaml`, placed only while the hunt runs). 10 unit tests (spawn/find/reward/lore/close/scheduled lifecycle, content-lint, schema validation, shipped-content lint); the audit-regression golden is unaffected (definitions aren't placed by default). Design: [`scavenger_hunt.md`](docs/scavenger_hunt.md).
+
 ## [0.40.7] - 2026-07-06
 
 ### Added

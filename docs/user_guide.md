@@ -152,7 +152,12 @@ data controls this. If a room is dark, bring a light source.
 ```
 search          — look for hidden exits and secrets in the room
 journal         — review places visited, people met, items discovered, lore learned, and active quests
+hunts           — list any scavenger hunts running now and your progress
 ```
+
+Every so often a **scavenger hunt** runs: a themed set of items is scattered across a handful
+of rooms, and finding all of them earns a reward. `hunts` shows what's active and how many
+you've found; just `take` the hunt items you come across — the last one completes the hunt.
 
 Not every exit shows up in a room's description — `search` rolls your perception skill
 (better with practice, traits, and equipment) to find hidden passages. Once you've found

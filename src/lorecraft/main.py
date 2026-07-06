@@ -201,6 +201,9 @@ def create_app(
             services.fatigue.register(bus)
         if services.follow is not None:
             services.follow.register(bus)
+        if services.hunts is not None:
+            _load_hunt_definitions(resolved_settings.hunts_yaml_path)
+            services.hunts.register(bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
@@ -584,6 +587,23 @@ async def _handle_websocket_command(
             "updates": updates,
         }
         return response
+
+
+def _load_hunt_definitions(hunts_yaml_path: str) -> None:
+    """Load scavenger-hunt definitions (Sprint 48) into the in-memory registry
+    at startup. A missing file is fine — it just means no hunts are defined."""
+    from pathlib import Path
+
+    from lorecraft.features.hunts.models import get_registry, load_hunts_yaml
+
+    registry = get_registry()
+    registry.clear()
+    if not Path(hunts_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_hunts_yaml(hunts_yaml_path))
+    except Exception as exc:  # malformed hunt content shouldn't crash boot
+        log.warning("failed to load hunts from %s: %s", hunts_yaml_path, exc)
 
 
 def _get_state(app: FastAPI) -> AppState:
