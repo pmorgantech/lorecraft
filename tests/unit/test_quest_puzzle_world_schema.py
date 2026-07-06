@@ -141,6 +141,30 @@ class TestValidatorRejections:
                 }
             )
 
+    def _plate(self, passage: object) -> dict:
+        return {
+            "items": [
+                {
+                    "id": "plate",
+                    "name": "Plate",
+                    "description": "d",
+                    "mechanism_states": ["off", "on"],
+                    "mechanism_side_effects": {"on": {"open_timed_passage": passage}},
+                }
+            ]
+        }
+
+    def test_rejects_open_timed_passage_missing_direction(self) -> None:
+        with pytest.raises(WorldValidationError, match="non-empty 'direction'"):
+            validate_world_document(self._plate({"ticks": 30}))
+
+    def test_rejects_open_timed_passage_nonpositive_ticks(self) -> None:
+        with pytest.raises(WorldValidationError, match="positive numeric 'ticks'"):
+            validate_world_document(self._plate({"direction": "north", "ticks": 0}))
+
+    def test_accepts_valid_open_timed_passage(self) -> None:
+        validate_world_document(self._plate({"direction": "north", "ticks": 30}))
+
     def test_rejects_combination_side_effect_for_missing_item(self) -> None:
         with pytest.raises(WorldValidationError, match="missing item"):
             validate_world_document(

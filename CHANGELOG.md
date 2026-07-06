@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.16] - 2026-07-05
+
+### Added
+
+- **Sprint 39.4 — timed-room-effects content-lint + test closeout (Sprint 39 complete).** Added `world/validator._validate_open_timed_passage`: a plate/lever's `open_timed_passage` mechanism side effect is shape-checked (non-empty `direction`, positive numeric `ticks`) so a malformed timed-gate trigger fails world validation instead of silently no-op'ing at runtime (the direction→exit resolution stays a runtime concern — an item's room isn't known statically). With the tests already added in 39.2/39.3 (gate open→relock, normally-open exit unchanged, aura modify+lift, `on_expire` savepoint isolation, `on_apply`-raise rollback) and confirmed audit-regression stability, **Sprint 39 (timed room effects) is complete** — and with the performance band closed out, **the active roadmap is now empty** (remaining work lives in `wishlist.md` + the roadmap Backlog).
+
 ## [0.38.15] - 2026-07-05
 
 ### Added

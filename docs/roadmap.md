@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.15)
+## Where things stand (2026-07-05, v0.38.16)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -23,12 +23,15 @@ moved to the wishlist.
 system, not the centerpiece), and the multiplayer trade/transit **test pass** (coverage-hardening
 of already-complete subsystems).
 
-**What's actually left:** one new **Tier 1 engine primitive** — timed room effects (Sprint 39,
-design-first). The measure-first **performance & scaling band** (Sprints 35–38) is now effectively
-complete — parser resolution (Sprint 36, 9.3×) and SQLite **WAL mode** (Sprint 37.4, ~20–29× on
+**The active roadmap is now clear.** The measure-first **performance & scaling band** (Sprints 35–38)
+is complete — parser resolution (Sprint 36, 9.3×) and SQLite **WAL mode** (Sprint 37.4, ~20–29× on
 commits) landed; scheduler-commit batching (37.1) and the concurrency gate (38.1) were **deferred to
 [`wishlist.md`](wishlist.md)** because the evidence showed fsync (not CPU) was the wall and WAL
-removed it. That leaves Sprint 39 as the whole active roadmap below.
+removed it. **Sprint 39 — timed room effects** (the last planned Tier 1 primitive) is also **✅ complete**:
+the §3.9 design, `on_apply`/`on_expire` hooks, occupant auras (`RoomAuraModifierSource`), and the
+`passage_open` timed-gate content example all shipped. **No sprints remain on the active roadmap** —
+next work comes from the [`wishlist.md`](wishlist.md) backlog + the Backlog table below (a planning
+decision on what to promote).
 
 **Recently completed (v0.37.0, 2026-07-05):** admin console **live-refresh** on content changes
 (Sprint 40) and **registered issue components** as a strict dropdown (Sprint 41) — both born from
@@ -100,7 +103,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ---
 
-## Sprint 39 — Timed room effects (Tier 1 engine primitive, design-first)
+## Sprint 39 — Timed room effects (Tier 1 engine primitive, design-first) — ✅ complete
 
 **Goal:** A general, content-agnostic primitive for applying a **time-limited effect to a room** — puzzle timers (a plate opens a gate for 30s), passive occupant auras (slow travel, drain fatigue), weather hazards, lingering zones, farming growth. From [`wishlist.md`](wishlist.md) → *Timed room effects / auras*.
 
@@ -118,7 +121,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | 39.1 | **Design spec first.** A room-effect hook interface over the Sprint 19 `EffectDef`/`EffectService`: `on_apply(room)` / `on_expire(room)` for room-state, plus how occupant auras are read (movement gate + a room-scoped `ModifierRegistry` source vs. a per-tick occupant sweep). Settle the two-mechanics split, the trigger surface (a Sprint 30 mechanism/plate calling `apply(...)` with a TTL), and interaction with existing mechanism items. Write it up as a new Tier 1 primitive section in [`engine_core.md`](engine_core.md). **No implementation until this is reviewed.** | [~] **Spec written — [`engine_core.md`](engine_core.md) §3.9; awaiting review before 39.2.** Decisions (revised after a single-owner audit): room-state effects **write the one authoritative `Exit` state** via `on_apply`/`on_expire` (undo stashed in `payload`) — **movement unchanged, no `opens_exits` read-through** (that would fork exit passability into two stores); auras are a new **`RoomAuraModifierSource`** (§3.5), extending the existing multi-source resolver (no per-tick occupant sweep). The engine gains **no exit awareness** — "open the gate" is a Tier 2 `EffectDef` hook over `RoomRepo`. Each behavior keeps one owner (Exit/movement → passability, §3.4 sweep → timing, §3.5 → modifiers); no new model/table/scheduler. |
 | 39.2 | Room-effect application + expiry on the existing primitive: register room-scoped `EffectDef`s; `apply(entity_type="room", …, expires_at_epoch=now+ttl)`; `on_expire` reverses room-state (closes the gate). Reuses the existing sweep — no new scheduler, no new model. | [x] Added `on_apply`/`on_expire` hooks to `EffectDef`; `EffectService.apply()` fires `on_apply` after flush (in the caller's txn); the expiry sweep fires `on_expire` before delete, each isolated in a **savepoint** (`begin_nested`) — a failing hook rolls back only its own writes and the row is **kept for retry** (no `EFFECT_EXPIRED` for it). Unit-tested (fire timing, on_apply-raise rollback, on_expire failure isolation). No new model/scheduler. |
 | 39.3 | Read/gate points: movement/exit checks and modifier resolution consult `active_for("room", room_id)`; a plate/mechanism (Sprint 30) applying a timed "gate open" room effect is the first content example. | [x] **Modifier read point:** new Tier 1 `RoomAuraModifierSource` (game/effects.py, shares `_effect_modifiers` with `ActiveEffectModifierSource`) — resolving a **player**'s modifiers pulls in their `current_room_id`'s room effects, so `resolve_for` auto-picks-up auras with no call-site change. **Movement read point:** unchanged (per §3.9 the effect writes the authoritative `Exit`). **Content example:** `features/exploration/room_effects.py` — a `passage_open` room `EffectDef` (on_apply opens an exit + stashes prior `locked`; on_expire restores) and an `open_timed_passage` mechanism side-effect handler so a Sprint 30 plate opens a timed gate from world YAML; wired via exploration's new `register_fn`. Gate + aura integration-tested. |
-| 39.4 | Tests: expiry sweep closes a gate opened for N ticks; an occupant aura modifies a resolved value; audit-regression stays stable; content-lint validates that world-content references to room-effect keys (e.g. a plate's `passage_open`) resolve to a registered `EffectDef` and name valid exit directions. Plus (from the 39.1 review): `on_expire`-raises isolation in the sweep; aura lifts on room-leave; a normally-open exit isn't stranded when a `seals_exits` effect expires. | [ ] |
+| 39.4 | Tests: expiry sweep closes a gate opened for N ticks; an occupant aura modifies a resolved value; audit-regression stays stable; content-lint validates that world-content references to room-effect keys (e.g. a plate's `passage_open`) resolve to a registered `EffectDef` and name valid exit directions. Plus (from the 39.1 review): `on_expire`-raises isolation in the sweep; aura lifts on room-leave; a normally-open exit isn't stranded when a `seals_exits` effect expires. | [x] Gate open→relock, normally-open-exit-unchanged, aura modify+lift, `on_expire` savepoint isolation, `on_apply`-raise rollback all covered. Audit-regression stable (no room effects in the Ashmoore script → unchanged output). Added `world/validator._validate_open_timed_passage` shape-lint (non-empty `direction`, positive `ticks`) + tests; the direction→exit resolution stays a runtime concern (item room not known statically). |
 
 > **Sequencing:** independent of the performance band — 39.1 (design) can be picked up now; 39.2+ wait on that spec's review. If both progress at once, keep them on separate branches/worktrees to avoid roadmap churn.
 

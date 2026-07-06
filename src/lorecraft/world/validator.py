@@ -313,6 +313,29 @@ def _validate_quest_condition(
             )
 
 
+def _validate_open_timed_passage(
+    item_id: str, state_name: str, data: object
+) -> list[str]:
+    """Shape-check an `open_timed_passage` mechanism side effect (Sprint 39.3).
+
+    Catches authoring errors in a plate/lever that opens a timed gate; the
+    handler needs a non-empty `direction` and a positive `ticks`. (Whether the
+    direction resolves to a real exit is a runtime concern — the item's room is
+    not known statically.)
+    """
+    where = f"item {item_id} mechanism_side_effects[{state_name!r}] open_timed_passage"
+    if not isinstance(data, dict):
+        return [f"{where} must be a mapping with 'direction' and 'ticks'"]
+    errors: list[str] = []
+    direction = data.get("direction")
+    if not isinstance(direction, str) or not direction.strip():
+        errors.append(f"{where} needs a non-empty 'direction'")
+    ticks = data.get("ticks")
+    if isinstance(ticks, bool) or not isinstance(ticks, (int, float)) or ticks <= 0:
+        errors.append(f"{where} needs a positive numeric 'ticks'")
+    return errors
+
+
 def validate_world_document(data: object) -> WorldDocument:
     try:
         document = WorldDocument.model_validate(data)
@@ -382,11 +405,20 @@ def validate_world_document(data: object) -> WorldDocument:
             errors.append(
                 f"item {item.id} mechanism_states must have at least 2 states"
             )
-        for state_name in item.mechanism_side_effects:
+        for state_name, side_effects in item.mechanism_side_effects.items():
             if state_name not in item.mechanism_states:
                 errors.append(
                     f"item {item.id} mechanism_side_effects references unknown "
                     f"state {state_name!r} (not in mechanism_states)"
+                )
+            open_passage = (
+                side_effects.get("open_timed_passage")
+                if isinstance(side_effects, dict)
+                else None
+            )
+            if open_passage is not None:
+                errors.extend(
+                    _validate_open_timed_passage(item.id, state_name, open_passage)
                 )
         for other_item_id in item.combination_side_effects:
             if other_item_id not in item_ids:
