@@ -551,6 +551,10 @@ exists in only one room; a `read` inscription on one item). **Adopt the concept,
 
 ### Engine / game-data separation 💚 (architectural — plan for it, don't do it yet)
 
+> **Deep-dive plan (2026-07-05): [`engine_content_separation.md`](engine_content_separation.md)** —
+> the content contract, an inventory decision (what's world content vs operational vs engine-dev
+> artifact), the scripting-layer constraint, and a phased migration. The note below is the summary.
+
 **Design intent (2026-07-03):** be able to cleanly split the **engine** (Lorecraft the
 Python/FastAPI codebase) from **game data** (world YAML, dialogue, quests, and — once it
 exists — any bolted-on scripting) so a given world's content can live in **its own repo**,

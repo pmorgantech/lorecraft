@@ -1,3 +1,3 @@
 """Lorecraft multiplayer text adventure engine."""
 
-__version__ = "0.39.1"
+__version__ = "0.39.2"

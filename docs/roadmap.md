@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.39.1)
+## Where things stand (2026-07-05, v0.39.2)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character

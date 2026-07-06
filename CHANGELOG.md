@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.2] - 2026-07-05
+
+### Added
+
+- **Docs: engine / game-data separation deep-dive (`engine_content_separation.md`).** Deepened the wishlist "plan for it, don't do it yet" note into a concrete plan for splitting the engine from game data ("one engine, many worlds"). Covers what's already in our favor (tier split done, all content paths env-externalized, validator + versioning/changeset plumbing + `WorldMeta.schema_version`/`engine_version` exist, one load seam), a **content inventory decision** (rooms/items/NPCs/dialogue/quests/help = world content → content repo; news = operational; issues = engine-dev artifact stays behind), the **content contract** (layout + schema version + validation-as-gate + scripting entry points), the **hard part** (a future scripting layer is *game data* and must load through the external boundary — don't add it via an engine-internal import path), and a phased migration (consolidate + contract → externalize the reference world → decouple tests → scripting-if-it-lands). Linked from `wishlist.md`. Planning-only; unscheduled until a scripting decision or a second world creates the pressure.
+
 ## [0.39.1] - 2026-07-05
 
 ### Added
