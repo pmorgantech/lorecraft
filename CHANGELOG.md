@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.23] - 2026-07-06
+
+### Added
+
+- **Sprint 50 P3 — interaction-flow e2e tests (`test_gameplay_flows.py`, +3 tests).** Cover the real JS/Alpine seams beyond the single-choice smoke tests: **command history** ArrowUp/ArrowDown across multiple entries with index-reset after submit (guards the Alpine `x-model` recall bug in both directions); a **full multi-choice dialogue traversal** (Mira's greeting → town-news branch) followed by dismissal via the "End conversation" button, asserting the overlay is visible during and hidden after; and **invalid-command robustness** — an unparseable command shows the parser's "I don't understand" line while the input still clears and refocuses (proving `handleCommandSuccess` runs even on a blocked, non-mutating response).
+
+### Note
+
+- **P3.3 (locked door → key golden path) deferred.** The plan assumed an exit-lock (`unlock`/`open` a locked exit, then `go` through it), but the Ashmoore world has **no locked exits** — `cage_lock`/`cage_key` are *items* in the locksmith's disambiguation set, and no exit references a key. The exit lock/unlock/move mechanic (`features/movement`) is already unit/integration-tested, and fabricating shipped world content solely to satisfy one e2e test would violate the repo's data-driven/no-reward-hacking principles and perturb the audit-regression golden. If a locked exit is added to Ashmoore as real content later, the e2e can follow.
+
 ## [0.40.22] - 2026-07-06
 
 ### Added

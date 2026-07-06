@@ -13,7 +13,11 @@ from typing import Any
 
 import pytest
 
-from tests.e2e._helpers import create_character, send_command
+from tests.e2e._helpers import (
+    create_character,
+    send_command,
+    send_command_via_enter,
+)
 
 pytestmark = pytest.mark.e2e
 
@@ -105,3 +109,108 @@ def test_dialogue_choice_starts_quest(page: Any, live_server: str) -> None:
     page.locator("#dialogue-overlay", has_text="I'll look into it.").wait_for()
 
     page.locator("#quest-tracker", has_text="Lights in the Square").wait_for()
+
+
+# ---------------------------------------------------------------------------
+# Priority 3 (Sprint 50) — interaction flows touching real JS/Alpine
+# ---------------------------------------------------------------------------
+
+
+def test_command_history_arrow_up_down_navigation(page: Any, live_server: str) -> None:
+    """P3.1: ArrowUp/ArrowDown walk the multi-entry command history, and the
+    index resets after a submit.
+
+    The existing history test only covers a single-entry ArrowUp+Enter. This
+    guards the Alpine `x-model` seam that produced the original recall bug
+    across several entries and in both directions. History is recorded on the
+    input's own Enter keydown (setupCommandHistory in app.js), so all setup
+    commands are submitted via Enter.
+    """
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+
+    input_box = page.locator("#command-input")
+
+    # Three distinct, read-only commands → history == [look, inventory, help].
+    for command in ("look", "inventory", "help"):
+        send_command_via_enter(page, command)
+
+    input_box.click()
+
+    # ArrowUp walks backwards from newest to oldest.
+    input_box.press("ArrowUp")
+    assert input_box.input_value() == "help"
+    input_box.press("ArrowUp")
+    assert input_box.input_value() == "inventory"
+    input_box.press("ArrowUp")
+    assert input_box.input_value() == "look"
+
+    # ArrowDown walks forward again.
+    input_box.press("ArrowDown")
+    assert input_box.input_value() == "inventory"
+    input_box.press("ArrowDown")
+    assert input_box.input_value() == "help"
+    # Past the newest entry, the field clears (index back to -1).
+    input_box.press("ArrowDown")
+    assert input_box.input_value() == ""
+
+    # After a fresh submit the index resets: one ArrowUp shows the newest entry.
+    send_command_via_enter(page, "look")
+    input_box.click()
+    input_box.press("ArrowUp")
+    assert input_box.input_value() == "look"
+
+
+def test_full_dialogue_traversal_then_dismiss(page: Any, live_server: str) -> None:
+    """P3.2: traverse a multi-choice dialogue branch, then dismiss it.
+
+    The existing dialogue test clicks exactly one choice. This walks Mira's
+    greeting → town_news branch (two choice nodes) and then closes via the
+    "End conversation" button, asserting the overlay is present during and
+    hidden after dismissal.
+    """
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+
+    send_command(page, "go west")
+    page.locator("#room-description", has_text="Wandering Crow Inn").wait_for()
+
+    send_command(page, "talk mira")
+    overlay = page.locator("#dialogue-overlay")
+    overlay.wait_for(state="visible")
+    # Greeting node offers multiple choices.
+    assert "Any news around town?" in overlay.inner_text()
+    assert "Nothing, thanks." in overlay.inner_text()
+
+    # Advance to the town_news node (a second choice branch).
+    overlay.get_by_text("Any news around town?").click()
+    page.locator(
+        "#dialogue-overlay", has_text="Strange lights have been seen"
+    ).wait_for()
+
+    # Dismiss via the End conversation button; the overlay closes.
+    overlay.get_by_text("End conversation").click()
+    overlay.wait_for(state="hidden")
+
+
+def test_invalid_command_shows_error_and_refocuses_input(
+    page: Any, live_server: str
+) -> None:
+    """P3.4: an unparseable command shows the parser error and still clears +
+    refocuses the input.
+
+    Proves handleCommandSuccess runs even on a non-mutating/blocked response
+    (the feed gains the "I don't understand" line, the input empties, and focus
+    returns to it so the player can immediately retry).
+    """
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+
+    send_command(page, "asdfqwer")
+
+    page.locator("#feed", has_text="I don't understand").wait_for()
+    # Input cleared (send_command already waited on this) and refocused.
+    assert page.locator("#command-input").input_value() == ""
+    page.wait_for_function(
+        "document.activeElement === document.getElementById('command-input')"
+    )
