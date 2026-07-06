@@ -1045,6 +1045,7 @@ async def _test_analytics_endpoints_empty() -> None:
             "/admin/analytics/commands",
             "/admin/analytics/npcs",
             "/admin/analytics/quests",
+            "/admin/analytics/quest-funnel",
             "/admin/analytics/player-hours",
         ):
             status, data = await _http(app, "GET", path, token=token)
@@ -1101,10 +1102,21 @@ async def _test_analytics_dashboard() -> None:
             app, "GET", "/admin/analytics/dashboard", token=token
         )
         assert status == 200
-        assert set(data) == {"range", "latency_by_operation", "timeline", "heatmap"}
+        assert set(data) == {
+            "range",
+            "latency_by_operation",
+            "timeline",
+            "heatmap",
+            "top_commands",
+            "npc_interactions",
+            "quest_funnel",
+        }
         # Heatmap is always a dense 24-bucket histogram.
         assert isinstance(data["heatmap"], list) and len(data["heatmap"]) == 24
         assert isinstance(data["timeline"], list)
+        assert data["top_commands"] == []
+        assert data["npc_interactions"] == []
+        assert data["quest_funnel"] == []
 
 
 def test_analytics_dashboard_requires_auth() -> None:

@@ -203,6 +203,39 @@
           <h3>Player activity by hour (UTC)</h3>
           <div id="an-heatmap" style="display:flex;align-items:flex-end;gap:2px;height:90px;"></div>
         </div>
+
+        <!-- WIDGET: timeline-chart (Sprint 51) — delete this block + its
+             render function + its ANALYTICS_WIDGETS entry to remove. -->
+        <div id="an-widget-timeline-chart" class="panel">
+          <h3>Command Latency Over Time</h3>
+          <div id="an-timeline-chart"></div>
+        </div>
+        <!-- /WIDGET: timeline-chart -->
+
+        <!-- WIDGET: top-commands (Sprint 51) — delete this block + its
+             render function + its ANALYTICS_WIDGETS entry to remove. -->
+        <div id="an-widget-top-commands" class="panel">
+          <h3>Top Commands</h3>
+          <div id="an-top-commands" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+        <!-- /WIDGET: top-commands -->
+
+        <!-- WIDGET: npc-interactions (Sprint 51) — delete this block + its
+             render function + its ANALYTICS_WIDGETS entry to remove. -->
+        <div id="an-widget-npc-interactions" class="panel">
+          <h3>NPC Interactions</h3>
+          <div id="an-npc-interactions" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+        <!-- /WIDGET: npc-interactions -->
+
+        <!-- WIDGET: quest-funnel (Sprint 51) — delete this block + its
+             render function + its ANALYTICS_WIDGETS entry to remove. -->
+        <div id="an-widget-quest-funnel" class="panel">
+          <h3>Quest Completion Funnel</h3>
+          <div id="an-quest-funnel" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+        <!-- /WIDGET: quest-funnel -->
+
         <div class="panel" style="overflow:auto;flex:1;">
           <h3>Recent operations</h3>
           <table>
@@ -701,6 +734,138 @@ async function loadAnalytics() {
     tr.innerHTML = `<td>${esc(t)}</td><td>${esc(op.verb || "")}</td><td style="color:var(--amber)">${esc(op.actor_id || "")}</td><td>${esc(op.room_id || "")}</td><td>${ms}</td>`;
     tl.appendChild(tr);
   }
+
+  for (const widget of ANALYTICS_WIDGETS) widget.render(data);
+}
+
+// ────────────────────────────────────────
+// Analytics widgets (Sprint 51) — each is a self-contained {id, render(data)}
+// entry. To remove one: delete its <!-- WIDGET --> block in the HTML above,
+// its render function below, and its line in ANALYTICS_WIDGETS. None of them
+// reference each other or share helpers, so removing one never touches the
+// others.
+// ────────────────────────────────────────
+
+const ANALYTICS_WIDGETS = [
+  { id: "timeline-chart", render: renderTimelineChartWidget },
+  { id: "top-commands", render: renderTopCommandsWidget },
+  { id: "npc-interactions", render: renderNpcInteractionsWidget },
+  { id: "quest-funnel", render: renderQuestFunnelWidget },
+];
+
+// ─── WIDGET: timeline-chart ─────────────────────────────────────
+// SVG line/scatter of command handler duration_ms over time, built from the
+// same `timeline` feed the "Recent operations" table renders (newest-first;
+// reversed here for a left-to-right chronological x-axis).
+function renderTimelineChartWidget(data) {
+  const el = document.getElementById("an-timeline-chart");
+  if (!el) return;
+  const points = (data.timeline || [])
+    .filter(op => op.duration_ms != null)
+    .slice()
+    .reverse();
+  if (points.length < 2) {
+    el.innerHTML = `<div style="color:var(--text-dim);padding:0.5rem 0;">Not enough timed command activity in range.</div>`;
+    return;
+  }
+  const W = 600, H = 140, PAD = 28;
+  const times = points.map(p => p.real_time);
+  const durations = points.map(p => p.duration_ms);
+  const tMin = Math.min(...times), tMax = Math.max(...times) || tMin + 1;
+  const dMax = Math.max(1, ...durations);
+  const x = t => PAD + ((t - tMin) / (tMax - tMin || 1)) * (W - PAD * 1.5);
+  const y = d => H - PAD - (d / dMax) * (H - PAD * 1.5);
+  const coords = points.map(p => `${x(p.real_time).toFixed(1)},${y(p.duration_ms).toFixed(1)}`);
+  const dots = points.map(p =>
+    `<circle cx="${x(p.real_time).toFixed(1)}" cy="${y(p.duration_ms).toFixed(1)}" r="2.5" fill="var(--phosphor)"><title>${esc(p.verb || "")} — ${p.duration_ms.toFixed(2)}ms at ${new Date(p.real_time * 1000).toLocaleTimeString()}</title></circle>`
+  ).join("");
+  el.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;">
+      <line x1="${PAD}" y1="${H - PAD}" x2="${W - PAD / 2}" y2="${H - PAD}" stroke="var(--muted)" />
+      <line x1="${PAD}" y1="${PAD / 2}" x2="${PAD}" y2="${H - PAD}" stroke="var(--muted)" />
+      <text x="4" y="${PAD / 2 + 4}" font-size="9" fill="var(--text-dim)">${dMax.toFixed(0)}ms</text>
+      <text x="4" y="${H - PAD + 4}" font-size="9" fill="var(--text-dim)">0ms</text>
+      <text x="${PAD}" y="${H - 4}" font-size="9" fill="var(--text-dim)">${esc(new Date(tMin * 1000).toLocaleTimeString())}</text>
+      <text x="${W - PAD * 3}" y="${H - 4}" font-size="9" fill="var(--text-dim)">${esc(new Date(tMax * 1000).toLocaleTimeString())}</text>
+      <polyline points="${coords.join(" ")}" fill="none" stroke="var(--phosphor)" stroke-width="1.5" opacity="0.6" />
+      ${dots}
+    </svg>`;
+}
+
+// ─── WIDGET: top-commands ───────────────────────────────────────
+// Horizontal bar list of the most frequently executed verbs in range.
+function renderTopCommandsWidget(data) {
+  const el = document.getElementById("an-top-commands");
+  if (!el) return;
+  const rows = data.top_commands || [];
+  if (rows.length === 0) {
+    el.innerHTML = `<div style="color:var(--text-dim);">No command activity in range.</div>`;
+    return;
+  }
+  const max = Math.max(1, ...rows.map(r => r.count));
+  el.innerHTML = rows.map(r => `
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <div style="width:110px;flex-shrink:0;font-size:0.8rem;">${esc(r.verb)}</div>
+      <div style="flex:1;background:var(--bg-raised);border-radius:2px;">
+        <div style="width:${Math.round((r.count / max) * 100)}%;background:var(--phosphor);height:14px;border-radius:2px;"></div>
+      </div>
+      <div style="width:40px;text-align:right;font-size:0.8rem;color:var(--text-dim);">${r.count}</div>
+    </div>`).join("");
+}
+
+// ─── WIDGET: npc-interactions ───────────────────────────────────
+// Horizontal bar list of the most-interacted-with NPCs (top 10) in range.
+// Sourced from AuditEvent.target_id on COMMAND_EXECUTED/BLOCKED/FAILED rows
+// (Sprint 51 wired this up in engine.py — only set when the resolved target
+// is a real NPC, so item/player targets don't pollute the count).
+function renderNpcInteractionsWidget(data) {
+  const el = document.getElementById("an-npc-interactions");
+  if (!el) return;
+  const rows = (data.npc_interactions || []).slice(0, 10);
+  if (rows.length === 0) {
+    el.innerHTML = `<div style="color:var(--text-dim);">No NPC interactions in range.</div>`;
+    return;
+  }
+  const max = Math.max(1, ...rows.map(r => r.interactions));
+  el.innerHTML = rows.map(r => `
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <div style="width:110px;flex-shrink:0;font-size:0.8rem;font-family:monospace;color:var(--amber);">${esc(r.npc_id)}</div>
+      <div style="flex:1;background:var(--bg-raised);border-radius:2px;">
+        <div style="width:${Math.round((r.interactions / max) * 100)}%;background:var(--phosphor);height:14px;border-radius:2px;"></div>
+      </div>
+      <div style="width:40px;text-align:right;font-size:0.8rem;color:var(--text-dim);">${r.interactions}</div>
+    </div>`).join("");
+}
+
+// ─── WIDGET: quest-funnel ───────────────────────────────────────
+// Per-quest stacked bar: completed (phosphor) / in-progress (amber) / failed
+// (red), scaled against that quest's own `started` total. Sourced from live
+// PlayerQuestProgress rows (game DB), not the audit log — see
+// quest_completion_funnel()'s docstring in analytics.py for why.
+function renderQuestFunnelWidget(data) {
+  const el = document.getElementById("an-quest-funnel");
+  if (!el) return;
+  const rows = data.quest_funnel || [];
+  if (rows.length === 0) {
+    el.innerHTML = `<div style="color:var(--text-dim);">No quest activity in range.</div>`;
+    return;
+  }
+  el.innerHTML = rows.map(r => {
+    const total = Math.max(1, r.started);
+    const pct = n => Math.round((n / total) * 100);
+    return `
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
+          <span style="font-family:monospace;color:var(--amber);">${esc(r.quest_id)}</span>
+          <span style="color:var(--text-dim);">${r.started} started · ${r.completed} completed · ${r.failed} failed · ${r.in_progress} in progress</span>
+        </div>
+        <div style="display:flex;height:14px;border-radius:2px;overflow:hidden;background:var(--bg-raised);">
+          <div style="width:${pct(r.completed)}%;background:var(--phosphor);" title="${r.completed} completed"></div>
+          <div style="width:${pct(r.in_progress)}%;background:var(--amber);" title="${r.in_progress} in progress"></div>
+          <div style="width:${pct(r.failed)}%;background:var(--danger);" title="${r.failed} failed"></div>
+        </div>
+      </div>`;
+  }).join("");
 }
 
 // ────────────────────────────────────────

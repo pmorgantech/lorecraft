@@ -47,6 +47,12 @@ discovery journal; **Sprint 47** — `follow` command; **Sprint 48** — scaveng
 admin-console issues raised during dogfooding. Detail in [`roadmap_completed.md`](roadmap_completed.md)
 and [`../CHANGELOG.md`](../CHANGELOG.md).
 
+**Recently completed (v0.42.0, 2026-07-06):** **Sprint 51** — four more Analytics-tab widgets
+(timeline chart, top commands, NPC interaction stats, quest completion funnel), plus a real bug fix
+found along the way: `AuditEvent.target_id` was never populated, so `npc_interaction_counts` was
+always empty against real data. On a `webui`-scoped branch, held for merge pending other in-flight
+agent work.
+
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
 
@@ -303,6 +309,22 @@ e2e 36 green.
 | 50.7 | **Priority 4 — Panel rendering (`test_panel_rendering.py`):** P4.1 minimap current-room highlight moves on movement; P4.2 equipment/wield/wear/unwield flow; P4.3 feed autoscroll + top/bottom controls. | [x] All 3 passing. P4.1/P4.3 (v0.41.3); **P4.2 (v0.41.5)** now backed by a real **Equippable Helmet** (`slot: head`, `wearable`) in the blacksmith forge. Test: `take` → helmet in inventory; `wear` → leaves the loose inventory panel; `remove` → returns. Closes the "demo world can't exercise equipment" gap. |
 | 50.8 | **Priority 5 — High-value but flaky (P5.1 reconnect test).** WS reconnect / resync backfill: A and B connected; set B offline; A acts (missed); set B online; `app.js` reconnect + `reconnect_sync` / `feed?since=` should backfill. Assert (with generous polling) B's feed eventually contains the missed line. Implement last with long `wait_for_function` timeouts. | [x] **Reframed & passing (v0.41.5).** `context.set_offline(True)` doesn't sever an open WebSocket here (verified — `isConnected()` stays true, so a "missed" message is a false positive), so the test forces a genuine drop via a clearly-named client debug hook `window.Lorecraft.debugDropSocket()` and asserts the socket **auto-reconnects and resumes live delivery** (`test_reconnect.py`, stable over repeated runs). **Backfill of messages missed *during* the outage is intentionally out of scope:** `say`/room narration are transient — not written to the room audit feed (verified: a reload doesn't show a room-mate's `say`), so neither a reload nor `reconnect_sync` can replay them. Durable chatter replay would be a separate design decision (persist room broadcasts), not a bug this test asserts. |
 
+## Sprint 51 — Four more analytics widgets (observability) — ✅ complete
+
+**Goal:** Round out the Sprint 49 Analytics tab with the four widgets requested but not yet built: a timeline chart, a top-commands bar chart, NPC interaction stats, and a quest completion funnel. Built on a `webui`-scoped branch, architected so any one widget can be dropped later without touching the others.
+
+**Discovery mid-sprint:** two of the four requested widgets sit on analytics functions (`npc_interaction_counts`, `quest_completion_counts`) whose backing data was **never actually populated** — `AuditEvent.target_id` was never set on any audit record, and quest lifecycle events (`QUEST_UPDATED`/`COMPLETED`/`FAILED`) are only ever queued on the in-process event bus, never persisted as audit rows. Their existing unit tests only ever exercised fabricated `AuditEvent` rows, masking the gap.
+
+| # | Task | Status |
+|---|------|--------|
+| 51.1 | **Timeline chart** — SVG scatter/line of command handler latency over time. | [x] `renderTimelineChartWidget`, built from the existing `operation_timeline()` feed (already real data; no backend change). |
+| 51.2 | **Top commands bar chart.** | [x] `renderTopCommandsWidget`, wired to the existing (already real, previously unused by the dashboard) `top_commands()` — folded into `/admin/analytics/dashboard` as `top_commands`. |
+| 51.3 | **NPC interaction stats** — required fixing the `target_id` gap first. | [x] `CommandEngine` now resolves the parsed command's target/object/recipient id against `NpcRepo` and threads it into `COMMAND_EXECUTED`/`BLOCKED`/`FAILED` audit records (only when it names a real NPC). `renderNpcInteractionsWidget` + `npc_interactions` dashboard key. Verified live: `talk mira` in the Ashmoore dev world → `npc_interactions: [{"npc_id": "innkeeper", ...}]`. |
+| 51.4 | **Quest completion funnel** — the audit-log path (`quest_completion_counts`) is a dead end (see discovery above); sourced from live game state instead. | [x] New `analytics.quest_completion_funnel()` reads `PlayerQuestProgress` rows (started/completed/failed/in-progress per quest) directly from the game DB. `renderQuestFunnelWidget` + `quest_funnel` dashboard key + standalone `GET /admin/analytics/quest-funnel`. Verified live (`investigate_lights` funnel populated after a real quest-start dialogue choice). |
+| 51.5 | Tests + architecture for removability. | [x] Each of the 4 widgets is a self-contained `{id, render(data)}` entry in `ANALYTICS_WIDGETS`, delimited by `<!-- WIDGET --> ... <!-- /WIDGET -->` HTML comments — delete a widget's block + render function + registry line to drop it without touching the others. Unit tests: engine `target_id` resolution (NPC vs. non-NPC target), `quest_completion_funnel`. Integration test: dashboard payload schema. Full suite + simulation (audit-regression golden) unaffected. |
+
+> **Rationale:** The `target_id` fix is a genuine, narrowly-scoped bug fix (foundation/observability, not new feature surface) uncovered by trying to build the NPC widget honestly rather than against dead data. The quest-audit gap (`quest_completion_counts`) is intentionally left unfixed — tracked here as a known gap rather than expanded into this sprint's scope. Merged after the Sprint 50 e2e work (rebased for version/changelog).
+
 ---
 
 ## Backlog
@@ -325,10 +347,10 @@ e2e 36 green.
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), and 50 (e2e browser test coverage — multiplayer/UX layers).
-- **Reserved but never used:** 51–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), and 51 (four more analytics widgets + the `target_id` audit fix).
+- **Reserved but never used:** 52–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 51.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 52.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 

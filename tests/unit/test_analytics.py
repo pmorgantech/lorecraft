@@ -13,12 +13,14 @@ from lorecraft.analytics import (
     parse_range,
     player_hours,
     quest_completion_counts,
+    quest_completion_funnel,
     top_commands,
 )
 from lorecraft.db import create_tables
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.session import PlayerSession
+from lorecraft.features.quests.models import PlayerQuestProgress
 from lorecraft.types import JsonObject
 
 
@@ -177,6 +179,67 @@ def test_quest_completion_counts_by_quest_id() -> None:
         result = quest_completion_counts(session, since=now - 100)
 
     assert result == [{"quest_id": "find_sword", "completions": 2}]
+
+
+def test_quest_completion_funnel_sourced_from_live_progress_rows() -> None:
+    """Unlike quest_completion_counts (audit-log based, always empty against
+    real data — see its docstring), the funnel reads PlayerQuestProgress
+    rows directly, which the real quest flow does populate."""
+    engine = _game_engine()
+    now = 1_000_000.0
+    with Session(engine) as session:
+        session.add(
+            PlayerQuestProgress(
+                player_id="p1",
+                quest_id="find_sword",
+                current_stage_id="done",
+                status="completed",
+                started_at=now,
+                completed_at=now + 10,
+            )
+        )
+        session.add(
+            PlayerQuestProgress(
+                player_id="p2",
+                quest_id="find_sword",
+                current_stage_id="stage-1",
+                status="active",
+                started_at=now,
+            )
+        )
+        session.add(
+            PlayerQuestProgress(
+                player_id="p3",
+                quest_id="find_sword",
+                current_stage_id="stage-1",
+                status="failed",
+                started_at=now,
+                completed_at=now + 5,
+            )
+        )
+        # Outside the range — excluded.
+        session.add(
+            PlayerQuestProgress(
+                player_id="p4",
+                quest_id="find_sword",
+                current_stage_id="stage-1",
+                status="active",
+                started_at=now - 1_000_000,
+            )
+        )
+        session.commit()
+
+        result = quest_completion_funnel(session, since=now - 100)
+
+    assert result == [
+        {
+            "quest_id": "find_sword",
+            "started": 3,
+            "completed": 1,
+            "failed": 1,
+            "in_progress": 1,
+        }
+    ]
 
 
 def test_command_latency_percentiles_computed_from_duration_ms() -> None:

@@ -19,6 +19,7 @@ from lorecraft.analytics import (
     parse_range,
     player_hours,
     quest_completion_counts,
+    quest_completion_funnel,
     top_commands,
 )
 
@@ -67,6 +68,19 @@ async def analytics_quests(
         return quest_completion_counts(session, since=since)
 
 
+@router.get("/quest-funnel")
+async def analytics_quest_funnel(
+    request: Request, _: Observer, range: str = "7d"
+) -> list[dict[str, Any]]:
+    """Per-quest started/completed/failed counts (Sprint 51), sourced from
+    live `PlayerQuestProgress` rows rather than the (currently unpopulated)
+    audit log — see `quest_completion_funnel`'s docstring."""
+    state = _state(request)
+    since = _since(range)
+    with Session(state.game_engine) as session:
+        return quest_completion_funnel(session, since=since)
+
+
 @router.get("/player-hours")
 async def analytics_player_hours(
     request: Request, _: Observer, range: str = "7d"
@@ -101,18 +115,32 @@ async def analytics_performance(
 
 @router.get("/dashboard")
 async def analytics_dashboard(
-    request: Request, _: Observer, range: str = "24h", timeline_limit: int = 100
+    request: Request,
+    _: Observer,
+    range: str = "24h",
+    timeline_limit: int = 100,
+    commands_limit: int = 10,
 ) -> dict[str, Any]:
-    """One-call analytics dashboard payload (Sprint 49): p50/p95/p99 latency by
-    operation, the recent operation timeline, and the activity-by-hour heatmap.
-    Backs the admin console's Analytics tab."""
+    """One-call analytics dashboard payload backing the admin console's
+    Analytics tab. Sprint 49: p50/p95/p99 latency by operation, the recent
+    operation timeline, and the activity-by-hour heatmap. Sprint 51 adds
+    three more widget payloads (`top_commands`, `npc_interactions`,
+    `quest_funnel`) — each is an independent key computed from its own
+    analytics function, so any one widget can be dropped from the frontend
+    (or this key removed here) without touching the others."""
     state = _state(request)
     since = _since(range)
     timeline_limit = max(1, min(timeline_limit, 500))
+    commands_limit = max(1, min(commands_limit, 50))
     with Session(state.audit_engine) as session:
-        return {
+        payload: dict[str, Any] = {
             "range": range,
             "latency_by_operation": operation_latency_percentiles(session, since=since),
             "timeline": operation_timeline(session, limit=timeline_limit),
             "heatmap": activity_by_hour(session, since=since),
+            "top_commands": top_commands(session, since=since, limit=commands_limit),
+            "npc_interactions": npc_interaction_counts(session, since=since),
         }
+    with Session(state.game_engine) as game_session:
+        payload["quest_funnel"] = quest_completion_funnel(game_session, since=since)
+    return payload

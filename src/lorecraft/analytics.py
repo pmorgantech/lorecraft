@@ -21,6 +21,7 @@ from sqlmodel import Session, col, select
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.session import PlayerSession
+from lorecraft.features.quests.models import PlayerQuestProgress
 from lorecraft.types import JsonValue
 
 _RANGE_RE = re.compile(r"^(\d+)([hdwm])$")
@@ -95,6 +96,39 @@ def quest_completion_counts(session: Session, *, since: float) -> list[dict[str,
         {"quest_id": quest_id, "completions": count}
         for quest_id, count in counts.most_common()
     ]
+
+
+def quest_completion_funnel(
+    game_session: Session, *, since: float
+) -> list[dict[str, Any]]:
+    """Per-quest started/completed/failed/in-progress counts (Sprint 51).
+
+    Sourced from live `PlayerQuestProgress` rows in the **game** DB, not the
+    audit log — unlike `quest_completion_counts` above, whose event types
+    (`QUEST_UPDATED`/`QUEST_COMPLETED`/`QUEST_FAILED`) are only ever queued on
+    the in-process event bus and never persisted as `AuditEvent` rows, so
+    that query is always empty against real data. `started_at`/`completed_at`
+    are real epoch seconds (same clock as `AuditEvent.real_time`), so `since`
+    windows the same way. Sorted by `started` descending.
+    """
+    stmt = select(PlayerQuestProgress).where(
+        col(PlayerQuestProgress.started_at) >= since
+    )
+    per_quest: dict[str, dict[str, int]] = {}
+    for progress in game_session.exec(stmt).all():
+        bucket = per_quest.setdefault(
+            progress.quest_id,
+            {"started": 0, "completed": 0, "failed": 0, "in_progress": 0},
+        )
+        bucket["started"] += 1
+        if progress.status == "completed":
+            bucket["completed"] += 1
+        elif progress.status == "failed":
+            bucket["failed"] += 1
+        else:
+            bucket["in_progress"] += 1
+    ranked = sorted(per_quest.items(), key=lambda kv: kv[1]["started"], reverse=True)
+    return [{"quest_id": quest_id, **counts} for quest_id, counts in ranked]
 
 
 def command_latency_percentiles(session: Session, *, since: float) -> dict[str, float]:

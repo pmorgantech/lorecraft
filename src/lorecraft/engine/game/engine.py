@@ -6,6 +6,11 @@ import logging
 import time
 from dataclasses import dataclass
 
+from lorecraft.engine.game.command_patterns import (
+    ROLE_OBJECT,
+    ROLE_RECIPIENT,
+    ROLE_TARGET,
+)
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_verb
@@ -45,6 +50,24 @@ def _command_audit_payload(parsed: ParsedCommand, **extra: str) -> JsonObject:
         }
         payload["resolved_ids"] = resolved
     return payload
+
+
+def _npc_target_id(parsed: ParsedCommand, ctx: GameContext) -> str | None:
+    """The NPC id a command targeted, if any.
+
+    Checked against `ctx.npc_repo` (not just "any resolved id") so item or
+    player targets (e.g. `take sword`, `give coin to bob`) don't get counted
+    as NPC interactions — only an id that actually names an NPC does. Feeds
+    `AuditEvent.target_id`, which `analytics.npc_interaction_counts` reads
+    (Sprint 51 — previously always `None`, so that query was always empty).
+    """
+    if ctx.npc_repo is None:
+        return None
+    for role in (ROLE_TARGET, ROLE_OBJECT, ROLE_RECIPIENT):
+        candidate = parsed.resolved_ids.get(role)
+        if candidate and ctx.npc_repo.get(candidate) is not None:
+            return candidate
+    return None
 
 
 @dataclass
@@ -186,6 +209,7 @@ class CommandEngine:
         AuditService.from_context(ctx).record(
             ctx,
             GameEvent.COMMAND_FAILED,
+            target_id=_npc_target_id(parsed, ctx),
             severity="ERROR",
             summary=f"Command handler crashed: {_command_summary_text(parsed)}",
             payload=payload,
@@ -203,6 +227,7 @@ class CommandEngine:
         AuditService.from_context(ctx).record(
             ctx,
             GameEvent.COMMAND_BLOCKED,
+            target_id=_npc_target_id(parsed, ctx),
             severity="WARNING",
             summary=f"Command blocked: {reason}",
             payload=payload,
@@ -226,6 +251,7 @@ class CommandEngine:
         AuditService.from_context(ctx).record(
             ctx,
             GameEvent.COMMAND_EXECUTED,
+            target_id=_npc_target_id(parsed, ctx),
             severity="INFO",
             summary=f"Command executed: {_command_summary_text(parsed)}",
             payload=payload,

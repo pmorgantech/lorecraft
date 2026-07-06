@@ -297,15 +297,19 @@ Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](too
 
 ## Analytics
 
-The **Analytics tab** (Sprint 49) surfaces the ops picture at a glance: p50/p95/p99 latency by
-operation, a player-activity-by-hour heatmap, and a recent-operations timeline. It's backed by a
-one-call endpoint; the underlying query endpoints are also available directly:
+The **Analytics tab** (Sprint 49, expanded Sprint 51) surfaces the ops picture at a glance:
+p50/p95/p99 latency by operation, a player-activity-by-hour heatmap, a recent-operations timeline
+(+ **timeline chart**), a **top commands** bar chart, **NPC interaction stats**, and a **quest
+completion funnel**. It's backed by a one-call endpoint; the underlying query endpoints are also
+available directly:
 
 ```
-GET /admin/analytics/dashboard      — combined: latency_by_operation + timeline + heatmap
+GET /admin/analytics/dashboard      — combined: latency_by_operation + timeline + heatmap +
+                                      top_commands + npc_interactions + quest_funnel
 GET /admin/analytics/commands       — most-used commands
 GET /admin/analytics/npcs           — NPC interaction counts
-GET /admin/analytics/quests         — quest completion counts
+GET /admin/analytics/quests         — quest completion counts (audit-log based — see note below)
+GET /admin/analytics/quest-funnel   — per-quest started/completed/failed/in-progress (game-state based)
 GET /admin/analytics/player-hours   — playtime from PlayerSession records
 GET /admin/analytics/latency        — command-handler p50/p95/p99 (ms)
 GET /admin/analytics/performance    — p50/p95/p99 by operation (command_parse,
@@ -313,11 +317,29 @@ GET /admin/analytics/performance    — p50/p95/p99 by operation (command_parse,
 ```
 
 All accept a `range` query param (`24h`, `7d`, `2w`, `30m`; default varies per endpoint);
-`/dashboard` also takes `timeline_limit` (default 100, capped at 500). `/performance` (Sprint
-35.3) breaks latency down per operation from the `perf` field the engine stamps on each
-`COMMAND_EXECUTED` audit event, so you can see whether time is going to parsing, condition checks,
-or the DB commit. `scheduler_tick`/`broadcast_send` are timed in the structured logs (WARNING over
-50 ms) but sit outside the per-command audit path.
+`/dashboard` also takes `timeline_limit` (default 100, capped at 500) and `commands_limit` (default
+10, capped at 50). `/performance` (Sprint 35.3) breaks latency down per operation from the `perf`
+field the engine stamps on each `COMMAND_EXECUTED` audit event, so you can see whether time is
+going to parsing, condition checks, or the DB commit. `scheduler_tick`/`broadcast_send` are timed
+in the structured logs (WARNING over 50 ms) but sit outside the per-command audit path.
+
+**`/quests` vs. `/quest-funnel`:** `quest_completion_counts` (backing `/quests`) reads the audit
+log for `QUEST_COMPLETED` events — but those are only ever queued on the in-process event bus, never
+persisted as audit rows, so this endpoint is always empty against real data (a pre-existing gap,
+not fixed as part of Sprint 51). `quest_completion_funnel` (backing `/quest-funnel`, and the
+dashboard's `quest_funnel` key) sidesteps this by reading live `PlayerQuestProgress` rows from the
+game DB instead — use this one.
+
+**NPC interactions require a resolved target.** `npc_interaction_counts` reads `AuditEvent.target_id`,
+which `CommandEngine` sets (Sprint 51) only when the parsed command's target/object/recipient
+role resolves to a real NPC (via `NpcRepo`) — so `talk mira`, `attack goblin`, etc. count, but
+`take sword` never pollutes the NPC count.
+
+**Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
+`{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array
+(`src/lorecraft/webui/admin/index.html`), delimited by `<!-- WIDGET: ... --> ... <!-- /WIDGET -->`
+HTML comments. To drop one: delete its HTML block, its `render...Widget()` function, and its one
+line in `ANALYTICS_WIDGETS` — none of them reference each other or share helpers.
 
 ## Extending the UI: Feature Panels
 

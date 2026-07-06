@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.0] - 2026-07-06
+
+### Added
+
+- **Sprint 51 — four more analytics dashboard widgets.** The admin console's Analytics tab gains a **timeline chart** (SVG scatter/line of command handler latency over time), a **top commands bar chart**, **NPC interaction stats**, and a **quest completion funnel** — each an independently removable `{id, render(data)}` entry in a small `ANALYTICS_WIDGETS` registry (delete a widget's `<!-- WIDGET -->` HTML block + render function + registry line to drop it without touching the others; no charting library, plain SVG/div bars matching the existing heatmap style).
+- **Quest completion funnel sourced from live game state.** New `analytics.quest_completion_funnel()` reads `PlayerQuestProgress` rows directly (started/completed/failed/in-progress per quest) rather than the audit log.
+- **`GET /admin/analytics/quest-funnel`** — standalone endpoint for the funnel data; also folded into `/admin/analytics/dashboard` alongside new `top_commands` and `npc_interactions` keys.
+
+### Fixed
+
+- **`AuditEvent.target_id` was never populated**, which meant `analytics.npc_interaction_counts` — and the pre-existing `/admin/analytics/npcs` endpoint — were always empty against real data (discovered while wiring up the NPC interaction widget; unit tests had only ever exercised it against fabricated audit rows). `CommandEngine` now resolves the parsed command's target/object/recipient id against `NpcRepo` and threads it into every `COMMAND_EXECUTED`/`COMMAND_BLOCKED`/`COMMAND_FAILED` audit record when (and only when) it names a real NPC, so item/player targets don't pollute the count. Verified live against the Ashmoore dev world (`talk mira` → `npc_interactions: [{"npc_id": "innkeeper", "interactions": ...}]`).
+- Also discovered but **not fixed** (out of scope for this sprint): `QUEST_UPDATED`/`QUEST_COMPLETED`/`QUEST_FAILED` are only ever queued on the in-process event bus and never persisted as audit rows, so the existing `analytics.quest_completion_counts` / `/admin/analytics/quests` remain always-empty against real data. The new funnel above sidesteps this by reading game state instead.
 ## [0.41.1] - 2026-07-06
 
 ### Changed

@@ -7,13 +7,14 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.parser import ParsedCommand
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine, RuleResult
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player
-from lorecraft.engine.models.world import Item, Room
+from lorecraft.engine.models.world import NPC, Item, Room
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
@@ -194,6 +195,75 @@ def test_engine_emits_command_executed_event_on_bus() -> None:
     assert captured[0]["summary"] == "look tavern"
     assert captured[0]["actor_id"] == "player-1"
     assert captured[0]["room_id"] == "tavern"
+
+
+def test_engine_records_npc_target_id_when_command_targets_an_npc() -> None:
+    """Sprint 51: AuditEvent.target_id is set when the command's resolved
+    target is a real NPC, feeding analytics.npc_interaction_counts (which was
+    always empty before this, since target_id was never populated)."""
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("talk")
+    def talk(noun, ctx):
+        ctx.say("Mira nods.")
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        game_session.add(
+            NPC(
+                id="npc-mira",
+                name="Mira",
+                description="A wandering merchant.",
+                current_room_id="tavern",
+                home_room_id="tavern",
+                dialogue_tree_id="mira-tree",
+            )
+        )
+        game_session.commit()
+        ctx = build_persistent_context(game_session, audit_session)
+
+        parsed = ParsedCommand(
+            verb="talk", raw="talk mira", resolved_ids={"target": "npc-mira"}
+        )
+        CommandEngine(registry, RuleEngine())._execute_parsed(parsed, ctx)
+
+        events = audit_session.exec(select(AuditEvent)).all()
+
+    assert len(events) == 1
+    assert events[0].event_type == "command_executed"
+    assert events[0].target_id == "npc-mira"
+
+
+def test_engine_leaves_target_id_none_when_resolved_target_is_not_an_npc() -> None:
+    """A resolved id that doesn't name an NPC (e.g. an item) must not be
+    counted as an NPC interaction."""
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("take")
+    def take(noun, ctx):
+        ctx.say("You take the sword.")
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        game_session.add(Item(id="sword", name="Sword", description="Sharp."))
+        game_session.commit()
+        ctx = build_persistent_context(game_session, audit_session)
+
+        parsed = ParsedCommand(
+            verb="take", raw="take sword", resolved_ids={"object": "sword"}
+        )
+        CommandEngine(registry, RuleEngine())._execute_parsed(parsed, ctx)
+
+        events = audit_session.exec(select(AuditEvent)).all()
+
+    assert len(events) == 1
+    assert events[0].target_id is None
 
 
 def test_engine_rolls_back_and_records_command_failed_on_handler_crash() -> None:
