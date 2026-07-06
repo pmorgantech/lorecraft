@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.17] - 2026-07-05
+
+### Added
+
+- **Docs: session record & playback plan (`session_replay.md`) + wishlist items promoted to the roadmap.** New design doc for **Sprint 43 — session record & playback**: record real/scripted player command streams (from the audit log) and replay them across **N simulated players** for regression (golden audit-trail diff), load (p50/p95/p99), and soak/fuzz — a consolidation of pieces that already exist (audit log, the `VirtualPlayer`/`SimulationServer` harness, the Sprint 37.3 load test, and the seeded-`GameRng` audit-regression determinism). Promoted three wishlist items to the active roadmap: **43** (session record/playback, plan above; supersedes the Backlog `lorecraft.tools.simulation` note), **44** (weather-driven world effects on the Sprint 39 timed-room-effect primitive), and **45** (split the social/chat feed from the narrative feed, opt-in). Sprint-numbering guard updated (used 1–45; next new = 46).
+
 ## [0.38.16] - 2026-07-05
 
 ### Added

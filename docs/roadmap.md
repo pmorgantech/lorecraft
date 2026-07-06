@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.16)
+## Where things stand (2026-07-05, v0.38.17)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -29,9 +29,12 @@ commits) landed; scheduler-commit batching (37.1) and the concurrency gate (38.1
 [`wishlist.md`](wishlist.md)** because the evidence showed fsync (not CPU) was the wall and WAL
 removed it. **Sprint 39 — timed room effects** (the last planned Tier 1 primitive) is also **✅ complete**:
 the §3.9 design, `on_apply`/`on_expire` hooks, occupant auras (`RoomAuraModifierSource`), and the
-`passage_open` timed-gate content example all shipped. **No sprints remain on the active roadmap** —
-next work comes from the [`wishlist.md`](wishlist.md) backlog + the Backlog table below (a planning
-decision on what to promote).
+`passage_open` timed-gate content example all shipped.
+
+**Newly promoted from [`wishlist.md`](wishlist.md) (2026-07-05):** **Sprint 43** — session record &
+playback for advanced testing ([`session_replay.md`](session_replay.md)); **Sprint 44** —
+weather-driven world effects (on the Sprint 39 primitive); **Sprint 45** — split the social/chat
+feed from the narrative feed (opt-in). See the *Promoted from the wishlist* section below.
 
 **Recently completed (v0.37.0, 2026-07-05):** admin console **live-refresh** on content changes
 (Sprint 40) and **registered issue components** as a strict dropdown (Sprint 41) — both born from
@@ -127,6 +130,40 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ---
 
+# Promoted from the wishlist (2026-07-05)
+
+Newly-scheduled work drawn from [`wishlist.md`](wishlist.md) after the performance band + Sprint 39 wrapped.
+
+## Sprint 43 — Session record & playback (advanced testing)
+
+**Goal:** record real/scripted player command streams and replay them — one scenario across **N
+simulated players**, or a mix concurrently — for regression (golden audit-trail diff), load
+(p50/p95/p99), and soak/fuzz. Mostly a **consolidation** of pieces that already exist: the audit
+log (recording), the `VirtualPlayer`/`SimulationServer` harness (playback), `test_load.py` (N-player
+fan-out + metrics), and the seeded-`GameRng` audit-regression determinism. **Full plan:
+[`session_replay.md`](session_replay.md).** Supersedes the Backlog `lorecraft.tools.simulation` note.
+
+| # | Task | Status |
+|---|------|--------|
+| 43.1 | **Phase 1** — `record` from the audit log → scenario JSON; single-actor `replay` via one `VirtualPlayer`; assert the normalised audit trail against a golden (data-drives `test_audit_regression.py`). | [ ] |
+| 43.2 | **Phase 2** — N-player fan-out (`--players N`) reusing the load-test percentile report; replace the fixed `test_load.py` script with recorded traffic. | [ ] |
+| 43.3 | **Phase 3** — mixed concurrent scenarios (`--mix`), longer soak runs, and an opt-in `simulation`-marked CI job. | [ ] |
+
+## Sprint 44 — Weather-driven world effects
+
+**Goal:** the weather/season state machine exists but mostly flavors descriptions — make it drive
+real mechanics via the Sprint 39 timed-room-effect primitive (a weather hazard *is* a room effect /
+occupant aura). From [`wishlist.md`](wishlist.md) → *Weather-driven world events*. **← next after 43's plan.**
+
+## Sprint 45 — Split the social/chat feed from the narrative feed (opt-in)
+
+**Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output
+out of view. Split "world/narrative feed" from "social/channel feed" into two panes/tabs, **as a
+toggleable player option** (default preserves today's single feed). From [`wishlist.md`](wishlist.md)
+→ *Client UI · Separate the communication log from the narrative feed*.
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -134,7 +171,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | ~~Bug/todo letterbox~~ | Implemented in Sprint 10.5 as the issues tracking system (see [`roadmap_completed.md`](roadmap_completed.md)) |
 | Inventory encumbrance / wear slots | After equipment + combat |
-| `lorecraft.tools.simulation` CLI (JSON scenario files, N-bot load runs, latency/throughput reports) | Enhancement on top of the Sprint 12.1 pytest-based harness; see `tooling_infrastructure.md` §5. Overlaps Sprint 37.3's load test and the multiplayer sim-test pass in [`wishlist.md`](wishlist.md). |
+| ~~`lorecraft.tools.simulation` CLI~~ | **Promoted to [Sprint 43](#sprint-43--session-record--playback-advanced-testing)** (session record & playback) — see [`session_replay.md`](session_replay.md). |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
 | Player-facing bug reports | In-game `/report-bug` command (after core issues system stable) |
@@ -147,10 +184,10 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), and 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0).
-- **Reserved but never used:** 43–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), and 43–45 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split).
+- **Reserved but never used:** 46–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 43.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 46.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
