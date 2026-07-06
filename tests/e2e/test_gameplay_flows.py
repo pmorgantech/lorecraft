@@ -8,22 +8,14 @@ swaps, OOB updates, WebSocket-driven panels).
 
 from __future__ import annotations
 
-import re
 import uuid
 from typing import Any
 
 import pytest
 
+from tests.e2e.conftest import create_character
+
 pytestmark = pytest.mark.e2e
-
-
-def _create_character(page: Any, base_url: str, username: str) -> None:
-    page.goto(f"{base_url}/lobby")
-    page.click("text=Create New Character")
-    page.fill("#username", username)
-    page.fill("#create-password", "e2e-test-password")
-    page.click("text=Create & Enter")
-    page.wait_for_url(re.compile(r".*/game$"))
 
 
 def _send_command(page: Any, command: str) -> None:
@@ -54,7 +46,7 @@ def test_arrow_up_history_recall_then_enter_submits(
     command below must be submitted via Enter too, matching the real
     "type, Enter, arrow up, Enter" flow that surfaced the bug."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     input_box = page.locator("#command-input")
     input_box.fill("look")
@@ -75,7 +67,7 @@ def test_help_output_preserves_line_breaks(page: Any, live_server: str) -> None:
     span had no whitespace styling and browsers collapse literal newlines by
     default. The message span must preserve them (whitespace-pre-line)."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     # `help commands` is the multi-line grouped list (bare `help` is now a short
     # curated set); either way the span must preserve newlines.
@@ -91,7 +83,7 @@ def test_help_output_preserves_line_breaks(page: Any, live_server: str) -> None:
 
 def test_new_character_starts_in_village_square(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     page.locator("#room-description", has_text="Village Square of Ashmoore").wait_for()
 
@@ -100,7 +92,7 @@ def test_move_and_take_item_updates_room_and_inventory(
     page: Any, live_server: str
 ) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     _send_command(page, "go east")
     page.locator("#room-description", has_text="Market Stalls").wait_for()
@@ -111,7 +103,7 @@ def test_move_and_take_item_updates_room_and_inventory(
 
 def test_dialogue_choice_starts_quest(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     _send_command(page, "go west")
     page.locator("#room-description", has_text="Wandering Crow Inn").wait_for()

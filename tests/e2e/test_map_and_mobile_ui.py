@@ -4,27 +4,19 @@ mobile tab layout — Alpine/HTMX interactions ASGI-transport tests can't see.
 
 from __future__ import annotations
 
-import re
 import uuid
 from typing import Any
 
 import pytest
 
+from tests.e2e.conftest import create_character
+
 pytestmark = pytest.mark.e2e
-
-
-def _create_character(page: Any, base_url: str, username: str) -> None:
-    page.goto(f"{base_url}/lobby")
-    page.click("text=Create New Character")
-    page.fill("#username", username)
-    page.fill("#create-password", "e2e-test-password")
-    page.click("text=Create & Enter")
-    page.wait_for_url(re.compile(r".*/game$"))
 
 
 def test_map_modal_opens_and_renders_current_room(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     page.click('button[title="Full-screen map"]')
 
@@ -35,7 +27,7 @@ def test_map_modal_opens_and_renders_current_room(page: Any, live_server: str) -
 
 def test_map_modal_closes_on_escape(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
 
     page.click('button[title="Full-screen map"]')
     page.locator("#map-modal-content svg").wait_for()
@@ -51,7 +43,7 @@ def test_map_modal_closes_on_escape(page: Any, live_server: str) -> None:
 
 def test_mobile_tab_bar_switches_panels(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
     page.set_viewport_size({"width": 390, "height": 844})
 
     # Feed is the default active tab.

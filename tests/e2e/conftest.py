@@ -8,6 +8,7 @@ tests/integration/, which never touch a socket or render HTML/JS. Requires
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from collections.abc import Iterator
@@ -29,6 +30,26 @@ _STARTUP_TIMEOUT_SECONDS = 10.0
 # Seeded admin used by the admin-console e2e tests.
 ADMIN_USER = "e2e-admin"
 ADMIN_PASS = "e2e-admin-pass-1234"
+
+# Character-creation password for the player e2e flows. Must satisfy the default
+# lobby password policy (>=8 chars, mixed case, a number — see config.py).
+_CHARACTER_PASSWORD = "E2eTestPass1"
+
+
+def create_character(page: Any, base_url: str, username: str) -> None:
+    """Drive the lobby's new-character form through to /game.
+
+    The create form gates its submit button on `formOk` = valid username +
+    policy-compliant password + matching confirmation, so fill both password
+    inputs with a compliant value (see the lobby template).
+    """
+    page.goto(f"{base_url}/lobby")
+    page.click("text=Create New Character")
+    page.fill("#username", username)
+    page.fill("#create-password", _CHARACTER_PASSWORD)
+    page.fill("#create-password-confirm", _CHARACTER_PASSWORD)
+    page.click("text=Create & Enter")
+    page.wait_for_url(re.compile(r".*/game$"))
 
 
 class _LiveServer:

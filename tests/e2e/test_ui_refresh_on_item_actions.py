@@ -9,22 +9,14 @@ Regression tests for two related bugs found 2026-07-04:
 
 from __future__ import annotations
 
-import re
 import uuid
 from typing import Any
 
 import pytest
 
+from tests.e2e.conftest import create_character
+
 pytestmark = pytest.mark.e2e
-
-
-def _create_character(page: Any, base_url: str, username: str) -> None:
-    page.goto(f"{base_url}/lobby")
-    page.click("text=Create New Character")
-    page.fill("#username", username)
-    page.fill("#create-password", "e2e-test-password")
-    page.click("text=Create & Enter")
-    page.wait_for_url(re.compile(r".*/game$"))
 
 
 def _send_command(page: Any, command: str) -> None:
@@ -45,7 +37,7 @@ def _go_to_locksmiths_gallery(page: Any) -> None:
 def test_get_all_refreshes_room_items_pane(page: Any, live_server: str) -> None:
     """Verify that 'get all' removes items from the room display."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
     _go_to_locksmiths_gallery(page)
 
     room_pane = page.locator("#room-description")
@@ -78,7 +70,7 @@ def test_actor_only_sees_own_message_not_room_narration(
 ) -> None:
     """The actor must see only 'You take X', not the room narration too."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
-    _create_character(page, live_server, username)
+    create_character(page, live_server, username)
     _go_to_locksmiths_gallery(page)
 
     _send_command(page, "get cage key")

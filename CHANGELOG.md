@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.14] - 2026-07-05
+
+### Fixed
+
+- **CI e2e: player-flow browser tests no longer time out at character creation.** The lobby create form gained a **confirm-password field** and a **password policy** (mixed case + a number, ≥8 chars) back in v0.31.0, but the three e2e helpers still filled only the username + a policy-violating `"e2e-test-password"` and never the confirm field — so `formOk` stayed false, the "Create & Enter" button stayed `disabled`, and `test_gameplay_flows` / `test_map_and_mobile_ui` / `test_ui_refresh_on_item_actions` all timed out (10 failures). Consolidated the three byte-identical `_create_character` copies into one shared `create_character()` in `tests/e2e/conftest.py` that uses a compliant password and fills both password inputs. All 16 e2e tests pass.
+
 ## [0.38.13] - 2026-07-05
 
 ### Added
