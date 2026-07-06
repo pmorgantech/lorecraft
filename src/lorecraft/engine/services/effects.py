@@ -7,6 +7,7 @@ are stateless per-call, taking the caller's Session explicitly.
 
 from __future__ import annotations
 
+import logging
 from uuid import uuid4
 
 from sqlalchemy.engine import Engine
@@ -19,6 +20,8 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.services.scheduler import SchedulerEventContext
 from lorecraft.types import JsonObject
+
+log = logging.getLogger(__name__)
 
 
 class EffectService:
@@ -42,8 +45,14 @@ class EffectService:
         payload: JsonObject | None = None,
         clock_epoch: float,
     ) -> ActiveEffect:
-        """Apply a new active effect instance. Never commits."""
-        if effect_key not in effects_module.get_registry():
+        """Apply a new active effect instance. Never commits.
+
+        Calls the effect's `on_apply` hook (if any) after the row is flushed,
+        in the caller's transaction — so a room-state effect's gate-open write
+        and a raise from it both belong to the triggering action (§3.9).
+        """
+        effect_def = effects_module.get_registry().get(effect_key)
+        if effect_def is None:
             raise ValidationError(
                 f"Unknown effect_key {effect_key!r}", "validation_unknown_effect"
             )
@@ -60,6 +69,8 @@ class EffectService:
         )
         session.add(effect)
         session.flush()
+        if effect_def.on_apply is not None:
+            effect_def.on_apply(session, effect)
         return effect
 
     def remove(self, session: Session, effect_id: str) -> None:
@@ -85,6 +96,7 @@ class EffectService:
         # Capture plain values, not the ORM ActiveEffect rows: session.commit()
         # expires every attribute by default, and a deleted+expired row can't
         # be refreshed from a closed session.
+        registry = effects_module.get_registry()
         expired: list[tuple[str, str, str]] = []
         with Session(self._game_engine) as session:
             statement = select(ActiveEffect).where(
@@ -93,6 +105,22 @@ class EffectService:
             )
             due = list(session.exec(statement).all())
             for effect in due:
+                effect_def = registry.get(effect.effect_key)
+                if effect_def is not None and effect_def.on_expire is not None:
+                    # §3.9: restore what on_apply changed (e.g. re-close a gate).
+                    # Isolate each hook in a savepoint so one failure rolls back
+                    # only its own writes; keep the row so the sweep retries it
+                    # next tick rather than deleting an un-reverted effect.
+                    try:
+                        with session.begin_nested():
+                            effect_def.on_expire(session, effect)
+                    except Exception:
+                        log.exception(
+                            "effect_on_expire_failed effect_id=%s key=%s",
+                            effect.id,
+                            effect.effect_key,
+                        )
+                        continue
                 expired.append(
                     (effect.entity_type, effect.entity_id, effect.effect_key)
                 )

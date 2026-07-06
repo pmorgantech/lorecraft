@@ -27,11 +27,23 @@ class EffectDef:
         modifiers: (effect) -> the Modifiers this active instance contributes;
             may read `effect.payload` for magnitude.
         grants_traits: (effect) -> trait names this active instance grants.
+        on_apply: (session, effect) -> transition-in side effect, called by
+            EffectService.apply() after the row is flushed. For room-state
+            effects (engine_core.md §3.9) this *writes the authoritative state*
+            (e.g. opens an exit via RoomRepo) and stashes the prior state in
+            effect.payload; on_expire restores it. Session-scoped only — must
+            not message clients (architecture.md §26). Runs in the caller's
+            transaction, so a raise rolls the triggering action back.
+        on_expire: (session, effect) -> transition-out side effect, called by
+            the expiry sweep before the row is deleted (restores what on_apply
+            changed). The sweep isolates a failure and keeps the row for retry.
     """
 
     key: str
     modifiers: Callable[[ActiveEffect], list[Modifier]]
     grants_traits: Callable[[ActiveEffect], list[str]] = lambda effect: []  # noqa: E731
+    on_apply: Callable[[Session, ActiveEffect], None] | None = None
+    on_expire: Callable[[Session, ActiveEffect], None] | None = None
 
 
 class EffectRegistry:

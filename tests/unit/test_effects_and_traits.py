@@ -306,3 +306,138 @@ def test_active_effect_trait_source_and_modifier_source_are_registered_by_defaul
 
     assert len(traits_module.get_registry()._sources) >= 1  # type: ignore[attr-defined]
     assert len(get_modifier_registry()._sources) >= 2  # type: ignore[attr-defined]
+
+
+class TestRoomEffectHooks:
+    """§3.9 on_apply / on_expire — the room-state write/restore mechanism."""
+
+    def _register(self, key: str, **hooks: object) -> None:
+        get_effect_registry().register(
+            EffectDef(key=key, modifiers=lambda effect: [], **hooks)  # type: ignore[arg-type]
+        )
+
+    def _unregister(self, *keys: str) -> None:
+        for key in keys:
+            get_effect_registry()._defs.pop(key, None)  # type: ignore[attr-defined]
+
+    def test_on_apply_fires_after_flush_in_caller_transaction(self) -> None:
+        engine = _make_engine()
+        applied: list[str] = []
+        self._register("gate_open", on_apply=lambda s, e: applied.append(e.entity_id))
+        try:
+            with Session(engine) as session:
+                EffectService(engine, GameRng()).apply(
+                    session,
+                    "room",
+                    "vault",
+                    "gate_open",
+                    duration_ticks=10.0,
+                    clock_epoch=0.0,
+                )
+            assert applied == ["vault"]
+        finally:
+            self._unregister("gate_open")
+
+    def test_on_apply_raise_rolls_back_the_apply(self) -> None:
+        engine = _make_engine()
+
+        def boom(session: Session, effect: ActiveEffect) -> None:
+            raise RuntimeError("gate stuck")
+
+        self._register("gate_open", on_apply=boom)
+        try:
+            with pytest.raises(RuntimeError, match="gate stuck"):
+                with Session(engine) as session:
+                    EffectService(engine, GameRng()).apply(
+                        session,
+                        "room",
+                        "vault",
+                        "gate_open",
+                        duration_ticks=10.0,
+                        clock_epoch=0.0,
+                    )
+            # The uncommitted, flushed row is discarded when the session rolls back.
+            with Session(engine) as session:
+                assert (
+                    EffectService(engine, GameRng()).active_for(
+                        session, "room", "vault"
+                    )
+                    == []
+                )
+        finally:
+            self._unregister("gate_open")
+
+    def test_on_expire_fires_before_delete_during_sweep(self) -> None:
+        engine = _make_engine()
+        expired: list[str] = []
+        self._register("gate_open", on_expire=lambda s, e: expired.append(e.entity_id))
+        try:
+            bus = EventBus()
+            service = EffectService(engine, GameRng())
+            service.register(bus)
+            with Session(engine) as session:
+                effect = service.apply(
+                    session,
+                    "room",
+                    "vault",
+                    "gate_open",
+                    duration_ticks=10.0,
+                    clock_epoch=0.0,
+                )
+                effect_id = effect.id
+                session.commit()
+
+            bus.emit(Event(GameEvent.TIME_ADVANCED, {"current_epoch": 20.0}), ctx=None)
+
+            assert expired == ["vault"]
+            with Session(engine) as session:
+                assert session.get(ActiveEffect, effect_id) is None
+        finally:
+            self._unregister("gate_open")
+
+    def test_on_expire_failure_keeps_its_row_and_isolates_the_rest(self) -> None:
+        engine = _make_engine()
+        emitted: list[dict] = []
+
+        def boom(session: Session, effect: ActiveEffect) -> None:
+            raise RuntimeError("stuck")
+
+        self._register("good_gate", on_expire=lambda s, e: None)
+        self._register("bad_gate", on_expire=boom)
+        try:
+            bus = EventBus()
+            service = EffectService(engine, GameRng())
+            service.register(bus)
+            bus.on(
+                GameEvent.EFFECT_EXPIRED,
+                lambda ev, ctx: emitted.append(ev.payload),
+            )
+            with Session(engine) as session:
+                good = service.apply(
+                    session,
+                    "room",
+                    "r1",
+                    "good_gate",
+                    duration_ticks=10.0,
+                    clock_epoch=0.0,
+                )
+                bad = service.apply(
+                    session,
+                    "room",
+                    "r2",
+                    "bad_gate",
+                    duration_ticks=10.0,
+                    clock_epoch=0.0,
+                )
+                good_id, bad_id = good.id, bad.id
+                session.commit()
+
+            bus.emit(Event(GameEvent.TIME_ADVANCED, {"current_epoch": 20.0}), ctx=None)
+
+            with Session(engine) as session:
+                assert session.get(ActiveEffect, good_id) is None  # expired cleanly
+                assert session.get(ActiveEffect, bad_id) is not None  # kept for retry
+            # no EFFECT_EXPIRED for the failed one
+            assert [p["effect_key"] for p in emitted] == ["good_gate"]
+        finally:
+            self._unregister("good_gate", "bad_gate")

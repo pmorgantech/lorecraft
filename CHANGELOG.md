@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.13] - 2026-07-05
+
+### Added
+
+- **Sprint 39.2 — `on_apply`/`on_expire` hooks on the timed-effect primitive (engine_core.md §3.9).** `EffectDef` gains two optional hooks. `EffectService.apply()` fires `on_apply(session, effect)` after the row is flushed, in the caller's transaction — so a room-state effect's authoritative write (e.g. opening a gate via `RoomRepo`) and any raise from it both belong to the triggering action. The `TIME_ADVANCED` expiry sweep fires `on_expire(session, effect)` before deleting the row (to restore what `on_apply` changed), each isolated in a **`begin_nested()` savepoint**: a failing hook rolls back only its own writes, is logged, and its row is **kept for retry next tick** (no `EFFECT_EXPIRED` emitted for it) so one bad hook can't strand the rest of the tick's expirations. Backward-compatible — existing effects leave both hooks `None`. Unit-tested (fire timing, on_apply-raise rollback, on_expire failure isolation). No new model, table, or scheduler.
+
 ## [0.38.12] - 2026-07-05
 
 ### Fixed

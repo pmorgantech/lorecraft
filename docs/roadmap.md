@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.11)
+## Where things stand (2026-07-05, v0.38.13)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -116,7 +116,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | # | Task | Status |
 |---|------|--------|
 | 39.1 | **Design spec first.** A room-effect hook interface over the Sprint 19 `EffectDef`/`EffectService`: `on_apply(room)` / `on_expire(room)` for room-state, plus how occupant auras are read (movement gate + a room-scoped `ModifierRegistry` source vs. a per-tick occupant sweep). Settle the two-mechanics split, the trigger surface (a Sprint 30 mechanism/plate calling `apply(...)` with a TTL), and interaction with existing mechanism items. Write it up as a new Tier 1 primitive section in [`engine_core.md`](engine_core.md). **No implementation until this is reviewed.** | [~] **Spec written — [`engine_core.md`](engine_core.md) §3.9; awaiting review before 39.2.** Decisions (revised after a single-owner audit): room-state effects **write the one authoritative `Exit` state** via `on_apply`/`on_expire` (undo stashed in `payload`) — **movement unchanged, no `opens_exits` read-through** (that would fork exit passability into two stores); auras are a new **`RoomAuraModifierSource`** (§3.5), extending the existing multi-source resolver (no per-tick occupant sweep). The engine gains **no exit awareness** — "open the gate" is a Tier 2 `EffectDef` hook over `RoomRepo`. Each behavior keeps one owner (Exit/movement → passability, §3.4 sweep → timing, §3.5 → modifiers); no new model/table/scheduler. |
-| 39.2 | Room-effect application + expiry on the existing primitive: register room-scoped `EffectDef`s; `apply(entity_type="room", …, expires_at_epoch=now+ttl)`; `on_expire` reverses room-state (closes the gate). Reuses the existing sweep — no new scheduler, no new model. | [ ] |
+| 39.2 | Room-effect application + expiry on the existing primitive: register room-scoped `EffectDef`s; `apply(entity_type="room", …, expires_at_epoch=now+ttl)`; `on_expire` reverses room-state (closes the gate). Reuses the existing sweep — no new scheduler, no new model. | [x] Added `on_apply`/`on_expire` hooks to `EffectDef`; `EffectService.apply()` fires `on_apply` after flush (in the caller's txn); the expiry sweep fires `on_expire` before delete, each isolated in a **savepoint** (`begin_nested`) — a failing hook rolls back only its own writes and the row is **kept for retry** (no `EFFECT_EXPIRED` for it). Unit-tested (fire timing, on_apply-raise rollback, on_expire failure isolation). No new model/scheduler. |
 | 39.3 | Read/gate points: movement/exit checks and modifier resolution consult `active_for("room", room_id)`; a plate/mechanism (Sprint 30) applying a timed "gate open" room effect is the first content example. | [ ] |
 | 39.4 | Tests: expiry sweep closes a gate opened for N ticks; an occupant aura modifies a resolved value; audit-regression stays stable; content-lint validates that world-content references to room-effect keys (e.g. a plate's `passage_open`) resolve to a registered `EffectDef` and name valid exit directions. Plus (from the 39.1 review): `on_expire`-raises isolation in the sweep; aura lifts on room-leave; a normally-open exit isn't stranded when a `seals_exits` effect expires. | [ ] |
 
