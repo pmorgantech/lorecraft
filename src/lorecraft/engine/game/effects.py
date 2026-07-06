@@ -16,6 +16,7 @@ from sqlmodel import Session, select
 from lorecraft.engine.game import modifiers as modifiers_module
 from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.engine.models.meters import ActiveEffect
+from lorecraft.engine.models.player import Player
 
 
 @dataclass(frozen=True)
@@ -70,8 +71,28 @@ def get_registry() -> EffectRegistry:
     return _registry
 
 
+def _effect_modifiers(
+    session: Session, entity_type: str, entity_id: str
+) -> list[Modifier]:
+    """Every active effect's contributed modifiers for one entity (§3.5 input).
+
+    Shared by both effect modifier sources so the ActiveEffect → Modifier
+    translation lives in exactly one place.
+    """
+    statement = select(ActiveEffect).where(
+        ActiveEffect.entity_type == entity_type,
+        ActiveEffect.entity_id == entity_id,
+    )
+    modifiers: list[Modifier] = []
+    for effect in session.exec(statement).all():
+        effect_def = get_registry().get(effect.effect_key)
+        if effect_def is not None:
+            modifiers.extend(effect_def.modifiers(effect))
+    return modifiers
+
+
 class ActiveEffectModifierSource:
-    """ModifierSource that contributes every active effect's modifiers.
+    """ModifierSource contributing an entity's *own* active-effect modifiers.
 
     Registered with game/modifiers.py's ModifierRegistry at this module's
     import time — the Tier 1 "active-effect" source §3.5 calls for.
@@ -80,16 +101,29 @@ class ActiveEffectModifierSource:
     def modifiers_for(
         self, session: Session, entity_type: str, entity_id: str
     ) -> Iterable[Modifier]:
-        statement = select(ActiveEffect).where(
-            ActiveEffect.entity_type == entity_type,
-            ActiveEffect.entity_id == entity_id,
-        )
-        modifiers: list[Modifier] = []
-        for effect in session.exec(statement).all():
-            effect_def = get_registry().get(effect.effect_key)
-            if effect_def is not None:
-                modifiers.extend(effect_def.modifiers(effect))
-        return modifiers
+        return _effect_modifiers(session, entity_type, entity_id)
+
+
+class RoomAuraModifierSource:
+    """ModifierSource contributing a player's *current room's* active-effect
+    modifiers — occupant auras (engine_core.md §3.9).
+
+    Read-through and keyed on the player's `current_room_id`, so an aura applies
+    to whoever is in the room at resolution time and lifts the instant they
+    leave — no per-player stored state, no per-tick occupant sweep. Players only
+    for now; NPC occupants are a later symmetric addition.
+    """
+
+    def modifiers_for(
+        self, session: Session, entity_type: str, entity_id: str
+    ) -> Iterable[Modifier]:
+        if entity_type != "player":
+            return []
+        player = session.get(Player, entity_id)
+        if player is None:
+            return []
+        return _effect_modifiers(session, "room", player.current_room_id)
 
 
 modifiers_module.get_registry().register(ActiveEffectModifierSource())
+modifiers_module.get_registry().register(RoomAuraModifierSource())

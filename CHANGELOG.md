@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.15] - 2026-07-05
+
+### Added
+
+- **Sprint 39.3 — occupant auras + the `passage_open` timed-gate content example (engine_core.md §3.9).** Added the Tier 1 `RoomAuraModifierSource`: resolving a **player**'s modifiers now also pulls in their `current_room_id`'s active room effects, so occupant auras (a slow/chill zone) flow through the one §3.5 resolver with no call-site change and lift the instant the player leaves — no per-player state, no per-tick sweep. It shares an `_effect_modifiers` helper with `ActiveEffectModifierSource` so the ActiveEffect→Modifier translation isn't duplicated. Added the first content example in `features/exploration/room_effects.py`: a `passage_open` room `EffectDef` whose `on_apply` opens an exit (stashing its prior `locked` state) and whose `on_expire` restores it, plus an `open_timed_passage` mechanism side-effect handler so a Sprint 30 plate/lever can open a timed gate straight from world YAML (`{open_timed_passage: {direction: north, ticks: 30}}`); wired via the exploration feature's new `register_fn`. Movement is unchanged (it keeps reading the authoritative `Exit`). Integration-tested: gate opens on apply and the expiry sweep re-locks it (and leaves a normally-open exit open); an aura debuffs an in-room player's resolved skill and lifts on leave.
+
 ## [0.38.14] - 2026-07-05
 
 ### Fixed
