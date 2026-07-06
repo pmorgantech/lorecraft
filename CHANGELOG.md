@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.25] - 2026-07-06
+
+### Changed
+
+- **Sprint 50 P5 — reconnect/resync e2e deferred (docs-only), Sprint 50 marked complete.** Investigated the WS reconnect/backfill test and found it isn't achievable with the proposed harness: Playwright's `context.set_offline(True)` does **not** sever an already-open WebSocket in this Chromium — probed `window.Lorecraft.isConnected()` and it stays `true` for the entire offline window, and a supposedly "missed" message is actually delivered live over the still-open socket (a false positive). A genuine reconnect/resync e2e would need a test-only force-close hook on the client socket or a server bounce, both production/harness changes beyond a test-only sprint; the reconnect grace-period and `reconnect_sync` payload are already covered in the integration/simulation tier. The H3 `set_offline` helper and its caveat are documented for whoever revisits this. **Sprint 50 is now complete** (v0.41.0–v0.41.4): harness H1–H3 + 12 new e2e tests (P1 ×5 multiplayer/WS, P2 ×5 auth, P3 ×3 interaction, P4 ×2 panels), with P3.3 / P4.2 / P5.1 deferred behind documented findings (no locked exits, no equippable items, and the `set_offline` WebSocket caveat respectively).
+
 ## [0.40.24] - 2026-07-06
 
 ### Added
