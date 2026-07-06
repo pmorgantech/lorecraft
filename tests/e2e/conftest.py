@@ -148,3 +148,21 @@ def page(browser: Any) -> Iterator[Any]:
     new_page = context.new_page()
     yield new_page
     context.close()
+
+
+@pytest.fixture
+def second_page(browser: Any) -> Iterator[Any]:
+    """A second independent browser context for multiplayer tests.
+
+    Both the main `page` and `second_page` fixtures can be used in the same
+    test against the same `live_server`, allowing tests of WS multiplayer
+    behavior (cross-client updates, broadcast routing, etc.).
+
+    Usage: declare both fixtures in your test function:
+        def test_multiplayer_feature(page: Any, second_page: Any, live_server: str):
+            # both page and second_page are connected to the same server
+    """
+    context = browser.new_context()
+    new_page = context.new_page()
+    yield new_page
+    context.close()

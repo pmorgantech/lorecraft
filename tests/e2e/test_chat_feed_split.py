@@ -20,24 +20,13 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.conftest import create_character
+from tests.e2e._helpers import (
+    create_character,
+    enable_separate_chat,
+    send_command_via_enter,
+)
 
 pytestmark = pytest.mark.e2e
-
-
-def _send_command(page: Any, command: str) -> None:
-    page.fill("#command-input", command)
-    page.press("#command-input", "Enter")
-    page.wait_for_function("document.getElementById('command-input').value === ''")
-
-
-def _enable_separate_chat(page: Any, base_url: str) -> None:
-    page.goto(f"{base_url}/settings")
-    page.check("input[name='separate_chat']")
-    page.click("button[type='submit']")
-    page.wait_for_selector("input[name='separate_chat']:checked")
-    page.goto(f"{base_url}/game")
-    page.wait_for_selector("#chat-pane")
 
 
 def test_say_routes_to_chat_pane_only_for_opted_in_players(
@@ -53,7 +42,7 @@ def test_say_routes_to_chat_pane_only_for_opted_in_players(
         create_character(listener, live_server, "e2e_listener")
 
         # Listener opts in; speaker keeps the default single feed (no pane).
-        _enable_separate_chat(listener, live_server)
+        enable_separate_chat(listener, live_server)
         assert speaker.locator("#chat-pane").count() == 0
 
         # Give both WS connections a beat to attach before broadcasting.
@@ -62,7 +51,7 @@ def test_say_routes_to_chat_pane_only_for_opted_in_players(
 
         # NB: keep the phrase preposition-free — the parser treats "from/with/
         # to …" as command roles and would truncate the say noun.
-        _send_command(speaker, "say hello everyone")
+        send_command_via_enter(speaker, "say hello everyone")
 
         # Listener (pref on): chat lands in the chat pane, not the feed.
         listener.wait_for_selector(
@@ -74,12 +63,12 @@ def test_say_routes_to_chat_pane_only_for_opted_in_players(
         speaker.wait_for_selector("#feed :text('You say: \"hello everyone\"')")
 
         # Listener's own say echo routes to their chat pane (HTMX path).
-        _send_command(listener, "say hi back")
+        send_command_via_enter(listener, "say hi back")
         listener.wait_for_selector("#chat-feed :text('You say: \"hi back\"')")
         assert listener.locator("#feed :text('You say: \"hi back\"')").count() == 0
 
         # Movement narration stays in the narrative feed for the listener.
-        _send_command(speaker, "go east")
+        send_command_via_enter(speaker, "go east")
         listener.wait_for_selector("#feed :text('e2e_speaker')")
         assert listener.locator("#chat-feed :text('leaves')").count() == 0
     finally:
@@ -113,7 +102,7 @@ def test_muted_player_does_not_see_others_chat(browser: Any, live_server: str) -
         speaker.wait_for_timeout(300)
         muted.wait_for_timeout(300)
 
-        _send_command(speaker, "say anybody listening")
+        send_command_via_enter(speaker, "say anybody listening")
 
         # The speaker's own message went out fine (sanity: server delivered it).
         speaker.wait_for_selector("#feed :text('You say: \"anybody listening\"')")

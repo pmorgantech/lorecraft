@@ -14,37 +14,26 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.conftest import create_character
+from tests.e2e._helpers import (
+    create_character,
+    navigate_to_locksmiths_gallery,
+    send_command,
+)
 
 pytestmark = pytest.mark.e2e
-
-
-def _send_command(page: Any, command: str) -> None:
-    """Submit a command and wait for the HTMX round-trip to finish."""
-    page.fill("#command-input", command)
-    page.click("#command-form button[type=submit]")
-    page.wait_for_function("document.getElementById('command-input').value === ''")
-
-
-def _go_to_locksmiths_gallery(page: Any) -> None:
-    """village_square --north--> blacksmith_forge --north--> key_gallery."""
-    _send_command(page, "north")
-    page.locator("#room-description", has_text="Forge and Hammer").wait_for()
-    _send_command(page, "north")
-    page.locator("#room-description", has_text="Locksmith's Gallery").wait_for()
 
 
 def test_get_all_refreshes_room_items_pane(page: Any, live_server: str) -> None:
     """Verify that 'get all' removes items from the room display."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
-    _go_to_locksmiths_gallery(page)
+    navigate_to_locksmiths_gallery(page)
 
     room_pane = page.locator("#room-description")
     assert "You notice:" in room_pane.inner_text()
     assert "Key" in room_pane.inner_text()
 
-    _send_command(page, "get all")
+    send_command(page, "get all")
 
     feed = page.locator("#feed")
     assert "You take" in feed.inner_text()
@@ -71,9 +60,9 @@ def test_actor_only_sees_own_message_not_room_narration(
     """The actor must see only 'You take X', not the room narration too."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
-    _go_to_locksmiths_gallery(page)
+    navigate_to_locksmiths_gallery(page)
 
-    _send_command(page, "get cage key")
+    send_command(page, "get cage key")
 
     feed_text = page.locator("#feed").inner_text()
     assert "You take" in feed_text

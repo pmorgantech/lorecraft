@@ -13,21 +13,9 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.conftest import create_character
+from tests.e2e._helpers import create_character, send_command
 
 pytestmark = pytest.mark.e2e
-
-
-def _send_command(page: Any, command: str) -> None:
-    """Submit a command and wait for the HTMX round-trip to finish.
-
-    handleCommandSuccess() clears #command-input only after the /command
-    response has been swapped in, so polling for an empty value is a
-    reliable, app-specific "request settled" signal.
-    """
-    page.fill("#command-input", command)
-    page.click("#command-form button[type=submit]")
-    page.wait_for_function("document.getElementById('command-input').value === ''")
 
 
 def test_arrow_up_history_recall_then_enter_submits(
@@ -71,7 +59,7 @@ def test_help_output_preserves_line_breaks(page: Any, live_server: str) -> None:
 
     # `help commands` is the multi-line grouped list (bare `help` is now a short
     # curated set); either way the span must preserve newlines.
-    _send_command(page, "help commands")
+    send_command(page, "help commands")
 
     message_span = page.locator("#feed .msg", has_text="All commands").locator(
         "span.whitespace-pre-line"
@@ -94,10 +82,10 @@ def test_move_and_take_item_updates_room_and_inventory(
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
 
-    _send_command(page, "go east")
+    send_command(page, "go east")
     page.locator("#room-description", has_text="Market Stalls").wait_for()
 
-    _send_command(page, "take coin")
+    send_command(page, "take coin")
     page.locator("#inventory", has_text="Worn Copper Coin").wait_for()
 
 
@@ -105,10 +93,10 @@ def test_dialogue_choice_starts_quest(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
 
-    _send_command(page, "go west")
+    send_command(page, "go west")
     page.locator("#room-description", has_text="Wandering Crow Inn").wait_for()
 
-    _send_command(page, "talk mira")
+    send_command(page, "talk mira")
     dialogue_overlay = page.locator("#dialogue-overlay")
     dialogue_overlay.wait_for()
     assert "Any news around town?" in dialogue_overlay.inner_text()
