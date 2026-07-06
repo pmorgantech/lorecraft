@@ -758,6 +758,11 @@ class EffectDef:
   missing or failing hook can never strand room state. `EffectService.apply()` calls `on_apply`
   after the row is flushed; the expiry sweep calls `on_expire` before deleting the row — both inside
   the sweep's own session, **no new scheduler**.
+- **Hook discipline:** both are **session-scoped** — they mutate only through the passed `Session`
+  and must not message clients directly (architecture.md §26: nothing is told to a client before the
+  DB commit lands; narration goes through an event the host renders post-commit). The expiry sweep
+  **isolates each `on_expire` in its own `try/except`** so one bad hook can't strand the rest of the
+  tick's expirations — mirroring `EventBus.emit`'s handler-error isolation.
 
 **Read / gate points:**
 - **Movement / exit check** (`features/movement`): the exit resolver additionally treats a direction
@@ -767,6 +772,24 @@ class EffectDef:
   existing §3.4 `ActiveEffectModifierSource`. Acceptable; if profiling later flags it, memoize per
   command (the room can't change mid-command). *(Note the Sprint 37 finding: reads are cheap; it's
   commits that cost — this adds only a read.)*
+
+**Verified seams (2026-07-05 code review):**
+- `MovementService.move()` has a **single exit-check block** — fetch `exit_` → test
+  `condition_flags` → test `locked` — so the room-effect open/seal check slots in there and composes
+  with the existing gates (`opens_exits` overrides a `locked`/hidden exit; `seals_exits` blocks a
+  normally-open one).
+- Player modifier resolution **already** flows through `resolve_for(session, "player", …)` (movement's
+  terrain-skill gate uses it), so `RoomAuraModifierSource`, once registered, is picked up with **no
+  per-call-site change**.
+
+**Two behaviors to pin down (surfaced by the review):**
+- **Aura timing during a move.** `move()` resolves the terrain/skill check **before** it updates
+  `current_room_id`, so an aura resolves against the **departure** room while leaving. That's the
+  intended rule (a "slow to leave" zone works); an effect meant to gate *entry* on the target room's
+  aura would need resolution after the room switch. Document per effect.
+- **Occupant scope = players only, initially.** `RoomAuraModifierSource` keys on
+  `entity_type=="player"`. NPC occupants are unaffected; extending to them is a symmetric addition
+  (`NPC.current_room_id` exists) deferred until a content need appears.
 
 **Trigger surface:** any Tier 2 command or a Sprint 30 mechanism/plate calls
 `effects.apply(session, "room", room_id, "passage_open", duration_ticks=30, payload={"exits": ["north"]}, clock_epoch=now)`.
@@ -781,10 +804,13 @@ variant of the existing mechanism item state.
 - Room `EffectDef`s are validated by content-lint (39.4) like other effect keys.
 
 **Design decisions settled here (open for review before 39.2 implementation):**
-1. **Room-state = read-through, not mutate-and-reverse.** Rejected mutating the exit on apply and
-   reversing on expire: it duplicates state (an exit flag *and* the effect) and risks drift if
-   `on_expire` fails to run. Read-through keeps one source of truth and leans entirely on the
-   existing sweep.
+1. **Room-state = read-through, not mutate-and-reverse.** Rejected mutating `Exit.locked` on apply
+   and reversing on expire. `Exit` already carries `locked` / `condition_flags` gates (checked in
+   `MovementService.move()`), so mutate-and-reverse can't just force-lock on expiry — it would
+   wrongly lock a *normally-open* exit — it must **remember and restore the prior exit state**. That
+   duplicated, restorable state is the real complexity, and it strands the gate open if `on_expire`
+   never runs. Read-through keeps the row's existence as the single source of truth and leans
+   entirely on the existing sweep.
 2. **Auras = a §3.5 modifier source, not a per-tick occupant sweep.** Rejected sweeping occupants
    each tick to add/remove per-player effects: it stores derived state, needs enter/leave
    bookkeeping, and adds per-tick cost. The modifier source is read-through and self-correcting.

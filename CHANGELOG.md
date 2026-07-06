@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.10] - 2026-07-05
+
+### Changed
+
+- **Sprint 39.1 design review — hardened `engine_core.md` §3.9 against the code.** Reviewed the timed-room-effects spec and folded the findings back in. **De-risked:** `MovementService.move()` has a single exit-check block (so the read-through gate composes cleanly) and player modifier resolution already flows through `resolve_for(..., "player", …)` (so `RoomAuraModifierSource` needs no per-call-site change). **Strengthened Decision #1:** since `Exit.locked` already exists, mutate-and-reverse would have to *remember and restore* prior exit state (force-locking on expiry would wrongly lock a normally-open exit) — which reinforces read-through. **Added:** the aura-timing rule during a move (auras resolve against the departure room, before `current_room_id` updates), initial player-only occupant scope, `on_apply`/`on_expire` session-only discipline (no pre-commit client I/O, per §26) with per-effect `try/except` isolation in the sweep, and a clarified 39.4 lint (validate world-content *references* to room-effect keys, not the code `EffectDef`). Still design-only; 39.2 implementation awaits sign-off.
+
 ## [0.38.9] - 2026-07-05
 
 ### Added
