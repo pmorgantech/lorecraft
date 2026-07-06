@@ -58,6 +58,9 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
   each completed sprint is a minor bump (0.x.0); a bug fix or docs-only change is a patch
   bump (0.x.y). Update `CHANGELOG.md` in lockstep (move `[Unreleased]` content under the new
   dated version heading, per the existing changelog format).
+- Keep commit messages clean: do **not** add `Co-Authored-By:` or `Claude-Session:`
+  (or any similar agent/attribution) trailers to commit messages. Strip them if a
+  template or tool would otherwise append them.
 - Summarize changed files, risks, and verification.
 
 ## Testing

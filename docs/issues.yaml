@@ -77,6 +77,22 @@ issues:
   - player-report
   assigned_to: ''
   links: []
+- id: issue-4f170f5b
+  type: bug
+  title: map rendering
+  description: the map seems to lose shape when moving around. Also, going down or
+    up should show only the rooms on the same level
+  created_by: player-1
+  created_at: '2026-07-06T20:55:24.137440Z'
+  updated_at: '2026-07-06T20:55:24.137440Z'
+  status: open
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  - bug
+  assigned_to: ''
+  links: []
 - id: issue-7502f412
   type: bug
   title: help <command> should display help for specific command
@@ -110,8 +126,8 @@ issues:
   description: ''
   created_by: admin
   created_at: '2026-07-05T19:42:13.941016Z'
-  updated_at: '2026-07-05T19:42:13.941016Z'
-  status: open
+  updated_at: '2026-07-06T20:55:47.656663Z'
+  status: resolved
   priority: normal
   component: ''
   tags: []
