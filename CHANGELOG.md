@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.3] - 2026-07-05
+
+### Added
+
+- **Docs: reconciled the unrecorded 2026-07-03 planning list into the roadmap/wishlist.** Five planned items (follow, channel colors + mute, contextual hints, item discovery journal, scavenger hunt events) had never been written into the repo. Three are now scheduled: **Sprint 46 — item discovery journal** (extend the Sprint 25.3 `journal` with first-discovery item tracking, `Player.discovered_items` on the `met_npcs` pattern), **Sprint 47 — `follow` command** (follower auto-moves on the target's movement, re-running the standard movement gates; chains allowed, cycles rejected), and **Sprint 48 — scavenger hunt events** (design-first: a scheduled, time-boxed exploration event on existing scheduler/news/flags primitives — the non-instanced slice of the wishlist's instanced-minigames idea). **Per-channel mute** folded into Sprint 45 Phase 3 alongside the colored/prefixed channel tags (`chat_feed_split.md` updated — same rendering/preferences surface). **Contextual hints** parked in the wishlist pending a design pass (trigger rules, frequency caps, preferences off switch). Sprint-numbering guard updated (used 1–48; next new = 49).
+
 ## [0.39.2] - 2026-07-05
 
 ### Added

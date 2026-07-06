@@ -177,6 +177,8 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
   inscriptions, signs), layered `examine` targets. Cheap, high-texture content.
 - **Journal / auto-log** — the game records discovered places, met NPCs, learned lore, and
   active clues — a living quest/exploration log. Great UI panel candidate.
+  **Shipped (Sprint 25.3) minus items** — item discovery tracking promoted to roadmap
+  [Sprint 46](roadmap.md#sprint-46--item-discovery-journal) (2026-07-05).
 
 ### Trading & economy depth 💚 (core pillar — designed in `trade_economy.md`, roadmap Sprint 28)
 
@@ -319,6 +321,11 @@ layer**, persisted on the account and read by the render layer.
   key"). Builds on [Sprint 22](roadmap.md#sprint-22--standard-item-components--definition-fields) `ItemInstance` state.
 - **Clickable entity affordances** — items/NPCs/exits in the feed are clickable → examine/act.
   Browser-native; terminal clients bolt this on with plugins, we get it for free.
+- **Contextual hints 🤔** — gentle, situation-aware nudges beyond the context-aware `help`
+  fallback: an idle-in-a-puzzle-room hint, a "you could `search` here" whisper in
+  perception-worthy rooms, a first-time-verb tip. Needs a design pass first (trigger rules,
+  frequency caps, and an off switch in the preferences blob) so it never becomes nagging. From
+  the 2026-07-03 planning list; parked here 2026-07-05 pending that design.
 
 #### More exploration & world-state ideas
 
@@ -379,7 +386,8 @@ layer**, persisted on the account and read by the render layer.
   Weave: Unseelie Court, caravan defense) that repop on a timer (every 60h, _unannounced_ — players
   learn the rhythm) and restore vitals at checkpoints. Good fit for the feature-registration pattern +
   scheduler; the caravan-defense one pairs with the trade-route idea. Defer, but a strong "special
-  content" mould.
+  content" mould. The simplest *non-instanced* slice — **scavenger hunt events** — was promoted to
+  roadmap [Sprint 48](roadmap.md#sprint-48--scavenger-hunt-events-design-first) (2026-07-05).
 
 #### Smaller design details (one line each)
 
@@ -480,7 +488,10 @@ Patterns worth stealing:
   ([Sprint 25](roadmap.md#sprint-25--exploration-depth)) — consider local-inline + region-modal rather than two always-on maps (screen budget).
 - **Colour-coded, prefixed channels 💚** — each channel has a consistent colour + bracket tag
   (`(Friend)`, `[Newbie]`, `Auction:`) so the eye filters instantly. Cheap semantic styling in the
-  browser; pairs with the accessibility/palette preference above.
+  browser; pairs with the accessibility/palette preference above. **→ Promoted:** colored/prefixed
+  tags **and per-channel mute** are roadmap
+  [Sprint 45.3](roadmap.md#sprint-45--split-the-socialchat-feed-from-the-narrative-feed-opt-in)
+  (2026-07-05).
 - **Structured room header 💚** — room name + exits + "who/what is here" as a consistent styled header
   before prose. Lorecraft's room panel already does much of this; keep exits and occupant list
   _structured and clickable_, not buried in text.
@@ -721,7 +732,9 @@ doesn't have. Not now; maybe never, depending on scale.
 
 Lighter-weight than guilds: temporary parties for shared travel or content. Could pair well
 with the transit theme (board the ferry together). Worth considering _if_ co-op content
-appears, without committing to the full guild apparatus.
+appears, without committing to the full guild apparatus. The lightest slice — a **`follow`
+command** — was promoted to roadmap
+[Sprint 47](roadmap.md#sprint-47--follow-command-social-movement) (2026-07-05).
 
 ### Issue-report wizard (upgrade the shipped `report` command) 🤔
 

@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.39.2)
+## Where things stand (2026-07-05, v0.39.3)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -35,6 +35,11 @@ the §3.9 design, `on_apply`/`on_expire` hooks, occupant auras (`RoomAuraModifie
 playback for advanced testing ([`session_replay.md`](session_replay.md)); **Sprint 44** —
 weather-driven world effects (on the Sprint 39 primitive); **Sprint 45** — split the social/chat
 feed from the narrative feed (opt-in). See the *Promoted from the wishlist* section below.
+
+**Reconciled from an unrecorded 2026-07-03 planning list (2026-07-05):** **Sprint 46** — item
+discovery journal; **Sprint 47** — `follow` command; **Sprint 48** — scavenger hunt events
+(design-first). Per-channel **mute** folded into Sprint 45 Phase 3; **contextual hints** parked in
+[`wishlist.md`](wishlist.md) pending a design pass. See the *Reconciled* section below.
 
 **Recently completed (v0.37.0, 2026-07-05):** admin console **live-refresh** on content changes
 (Sprint 40) and **registered issue components** as a strict dropdown (Sprint 41) — both born from
@@ -182,7 +187,54 @@ browser to verify** (not the headless unit tests).
 |---|------|--------|
 | 45.1 | **Phase 1 (headless-testable)** — GameContext chat channel (`say_chat`/`tell_room_chat` + `chat_messages`); `say_command` switches to it; `command_result.chat_messages` + `broadcast` `message_type:"chat"`; `separate_chat` player preference. | [ ] |
 | 45.2 | **Phase 2 (browser)** — `app.js` dual-pane routing, `index.html` pane, `app.css` styling, settings toggle; verify in a real browser + a two-player e2e (A `say`s → B sees it in the chat pane with the pref on, main feed with it off; "A leaves north." always narrative). | [ ] |
-| 45.3 | **Phase 3 (later)** — future global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; mobile tab-collapse polish. | [ ] |
+| 45.3 | **Phase 3 (later)** — future global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; **per-channel mute** (a preferences-blob setting suppressing a channel's messages — folded in 2026-07-05, same rendering/preferences surface as the tags); mobile tab-collapse polish. | [ ] |
+
+---
+
+# Reconciled from the unrecorded planning list (2026-07-05)
+
+A 2026-07-03 planning session produced five items that were never written into the repo (follow,
+channel colors + mute, contextual hints, item discovery journal, scavenger hunt events). Reconciled
+2026-07-05: channel colors were already Sprint 45 Phase 3 and **mute** is now folded in beside them;
+**contextual hints** parked in [`wishlist.md`](wishlist.md) pending a design pass; the remaining
+three are scheduled below.
+
+## Sprint 46 — Item discovery journal
+
+**Goal:** the Sprint 25.3 `journal` records places visited, people met, lore learned, and active
+quests — but **not items**. Add discovered-item tracking so finding a distinct item is a recorded
+exploration payoff (pillar #1).
+
+| # | Task | Status |
+|---|------|--------|
+| 46.1 | Track first discovery per item *definition* (not per instance): `Player.discovered_items`, set on first `take`/`examine` — same pattern as `met_npcs` (set on first `talk`). | [ ] |
+| 46.2 | `journal` gains an "Items discovered" section (names, matching the journal's existing read-only style); unit tests for first-discovery tracking + journal output. | [ ] |
+
+## Sprint 47 — Follow command (social movement)
+
+**Goal:** `follow <player>` — when the target moves, followers move with them; `unfollow` stops.
+Overt, not stealthy: both sides see narration. The lightweight slice of the wishlist's *Player
+groups / parties* idea, and a natural pairing with transit (board the ferry together) without
+building parties.
+
+| # | Task | Status |
+|---|------|--------|
+| 47.1 | Follow state + movement hook: follower auto-moves on the target's movement event, re-running the standard movement gates (terrain/skill/hidden/locked exits) — a failed gate breaks the follow with a message to both sides. Chains allowed (A→B→C), cycles rejected. | [ ] |
+| 47.2 | `follow <player>`/`unfollow` commands (movement feature `commands.py`); narration both sides ("X begins following you."); bare `follow` shows current status; tests incl. a multi-room chain and a gate-failure break. | [ ] |
+
+## Sprint 48 — Scavenger hunt events (design-first)
+
+**Goal:** a scheduled, time-boxed world event: a themed set of items/clues is placed across rooms
+and players hunt them for a reward (coins, a collectible mark, lore). Exploration-pillar event
+content on existing primitives (scheduler + world clock for the window, item spawns, flags/journal
+for progress, news/feed for announcement). The simplest, *non-instanced* slice of the wishlist's
+*Instanced minigames / scenarios* idea.
+
+| # | Task | Status |
+|---|------|--------|
+| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [ ] |
+| 48.2 | Implement as a Tier 2 feature package (`features/…` + manifest, auto-discovered) per the spec; content-lint for event YAML references (item keys, room pools). | [ ] |
+| 48.3 | Ashmoore example hunt + tests: event opens/closes on schedule, item found → progress → reward, audit-regression stays stable. | [ ] |
 
 ---
 
@@ -206,10 +258,10 @@ browser to verify** (not the headless unit tests).
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), and 43–45 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split).
-- **Reserved but never used:** 46–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–45 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split), and 46–48 (reconciled from the unrecorded planning list 2026-07-05: item discovery journal, follow command, scavenger hunt events).
+- **Reserved but never used:** 49–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 46.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 49.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
