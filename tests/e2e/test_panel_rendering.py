@@ -2,15 +2,9 @@
 
 Panels that update but weren't asserted as actually re-rendered:
 - P4.1 the minimap re-centers/highlights on the current room after movement.
+- P4.2 the equipment (wear/remove) flow — equipping moves an item out of the
+  loose inventory panel; removing it brings it back.
 - P4.3 the feed's autoscroll + top/bottom scroll controls.
-
-(P4.2 — equipment/wield flow — is deferred: the Ashmoore world ships no
-equippable items. No item sets the definitional `Item.slot`, so `item_fits_slot`
-rejects every wield/wear, and the inventory panel has no equipped state to show.
-The equip-slot mechanic is unit/integration-tested; fabricating a wieldable item
-solely for one e2e test would break the repo's data-driven/no-reward-hacking
-rule and perturb the audit-regression golden. Reopen when Ashmoore ships an
-equippable item as real content — arguably a content gap worth filling.)
 """
 
 from __future__ import annotations
@@ -20,7 +14,11 @@ from typing import Any
 
 import pytest
 
-from tests.e2e._helpers import create_character, send_command
+from tests.e2e._helpers import (
+    create_character,
+    navigate_to_blacksmith_forge,
+    send_command,
+)
 
 pytestmark = pytest.mark.e2e
 
@@ -51,6 +49,36 @@ def test_minimap_updates_on_movement(page: Any, live_server: str) -> None:
     )
     # Still a rendered map (an svg), not an empty/error state.
     page.locator("#minimap svg").wait_for()
+
+
+def test_equip_and_unequip_updates_inventory_panel(page: Any, live_server: str) -> None:
+    """P4.2: wearing an item moves it out of the loose inventory panel; removing
+    it brings it back.
+
+    The blacksmith forge holds an Equippable Helmet (slot=head, wearable). The
+    inventory panel lists only loose (unequipped) stacks, so `wear` makes the
+    helmet leave `#inventory` and `remove` returns it — the OOB inventory swap
+    on the command response is what this asserts.
+    """
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+    navigate_to_blacksmith_forge(page)
+
+    # Pick it up: it appears in the inventory panel.
+    send_command(page, "take helmet")
+    page.locator("#inventory", has_text="Equippable Helmet").wait_for()
+
+    # Wear it: it leaves the loose inventory panel.
+    send_command(page, "wear helmet")
+    page.locator("#feed", has_text="You wear the Equippable Helmet").wait_for()
+    page.wait_for_function(
+        "() => !document.querySelector('#inventory')"
+        ".textContent.includes('Equippable Helmet')"
+    )
+
+    # Remove it: it returns to the inventory panel.
+    send_command(page, "remove helmet")
+    page.locator("#inventory", has_text="Equippable Helmet").wait_for()
 
 
 def test_feed_top_bottom_controls_and_autoscroll(page: Any, live_server: str) -> None:

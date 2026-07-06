@@ -128,6 +128,28 @@ def navigate_to_locksmiths_gallery(page: Any) -> None:
     page.locator("#room-description", has_text="Locksmith's Gallery").wait_for()
 
 
+def navigate_to_vault_hall(page: Any) -> None:
+    """Navigate from village_square to the vault hall (the locked-door room).
+
+    Path: village_square -N-> blacksmith_forge -N-> key_gallery -E-> vault_hall.
+    The vault hall holds the Good/Bad keys and the locked east door to the
+    inner vault (Sprint 50 P3.3).
+    """
+    navigate_to_locksmiths_gallery(page)
+    send_command(page, "east")
+    page.locator("#room-description", has_text="Vault Hall").wait_for()
+
+
+def navigate_to_blacksmith_forge(page: Any) -> None:
+    """Navigate from village_square north to the blacksmith forge.
+
+    The forge holds the Equippable Helmet used by the wear/remove flow
+    (Sprint 50 P4.2).
+    """
+    send_command(page, "north")
+    page.locator("#room-description", has_text="Forge and Hammer").wait_for()
+
+
 def wait_for_ws_connected(page: Any) -> None:
     """Wait for the WebSocket connection to become ready.
 
@@ -161,16 +183,35 @@ def wait_for_both_ws_connected(page_a: Any, page_b: Any) -> None:
     wait_for_ws_connected(page_b)
 
 
+def wait_for_ws_disconnected(page: Any) -> None:
+    """Wait for the WebSocket to be closed (isConnected() → false).
+
+    Pairs with drop_ws() to test the reconnect path: after a forced drop, the
+    flag flips false before app.js's backoff reconnects it.
+    """
+    page.wait_for_function(
+        "window.Lorecraft && window.Lorecraft.isConnected && "
+        "window.Lorecraft.isConnected() === false"
+    )
+
+
+def drop_ws(page: Any) -> None:
+    """Force-close the page's live WebSocket to exercise the reconnect path.
+
+    NB: Playwright's `context.set_offline(True)` does **not** sever an already-
+    open WebSocket in Chromium (verified: `isConnected()` stays true through the
+    whole offline window), so it can't simulate a real drop. This calls the
+    app.js debug hook `window.Lorecraft.debugDropSocket()` (which closes the
+    socket), after which app.js's onclose backoff auto-reconnects.
+    """
+    page.evaluate("window.Lorecraft.debugDropSocket()")
+
+
 def set_offline(page: Any, offline: bool) -> None:
     """Set a page's context to offline/online mode.
 
-    When offline=True, the browser disconnects from the network (simulating
-    network failure). When offline=False, it reconnects. The `app.js`
-    reconnect handler uses `app.js`'s reconnect + `reconnect_sync` backfill
-    to restore state and catch up on missed messages.
-
-    Used only in P5.1 (reconnect/resync test); kept separate because it is
-    timing-sensitive and flaky. Wait for the "Session restored." system
-    message after setting offline=False to confirm the backfill completed.
+    WARNING: `context.set_offline(True)` does not close an already-open
+    WebSocket in this Chromium, so it can't simulate a WS disconnect — use
+    drop_ws() for reconnect tests. Retained for HTTP-level offline scenarios.
     """
     page.context.set_offline(offline)

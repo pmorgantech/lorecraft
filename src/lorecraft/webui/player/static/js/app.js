@@ -503,6 +503,15 @@
     // the header status dot is server-rendered with bg-emerald-500 already and
     // so can't distinguish "connecting" from "connected".
     isConnected: () => wsReady,
+
+    // Force-close the live socket to exercise the reconnect/backoff path.
+    // A debugging aid (drop the connection and watch it come back) that also
+    // lets e2e tests trigger a genuine reconnect — Playwright's
+    // context.set_offline() does NOT sever an already-open WebSocket, so it
+    // can't stand in for a real drop.
+    debugDropSocket: () => {
+      if (ws) ws.close();
+    },
   };
 
   // === Boot ===

@@ -118,7 +118,8 @@ rooms:
     description: >-
       Pegboards and shallow trays display a confusing spread of keys, locks,
       blades, and curios — many names differ by only a word or two. The
-      blacksmith's forge lies back to the south.
+      blacksmith's forge lies back to the south, and a low stone passage opens
+      east into the vault hall.
     map_x: 4
     map_y: 10
     area_id: town
@@ -126,6 +127,40 @@ rooms:
     exits:
       - direction: south
         target_room_id: blacksmith_forge
+      - direction: east
+        target_room_id: vault_hall
+
+  - id: vault_hall
+    name: The Vault Hall
+    description: >-
+      A narrow stone antechamber. A heavy iron door fills the east wall, its
+      lock stout and cold — it needs the right key. Two keys have been left on
+      a shelf here: one plainly cut to fit, one clearly the wrong shape.
+    map_x: 5
+    map_y: 10
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: key_gallery
+      - direction: east
+        target_room_id: inner_vault
+        locked: true
+        key_item_id: good_key
+
+  - id: inner_vault
+    name: The Inner Vault
+    description: >-
+      Beyond the iron door, the vault is a bare, quiet room of close-fitted
+      stone. Whatever it once guarded is long gone. The only way out is back
+      west through the door.
+    map_x: 6
+    map_y: 10
+    area_id: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: vault_hall
 
   - id: market_stalls
     name: The Market Stalls
@@ -550,6 +585,31 @@ items:
     takeable: true
     tradeable: true
 
+  # Vault-door puzzle (Sprint 50 P3.3). The vault hall's east exit is locked
+  # with key_item_id: good_key, so only the Good Key opens it; the Bad Key is a
+  # deliberate non-matching decoy. Obvious names on purpose.
+  - id: good_key
+    name: Good Key
+    description: A sturdy iron key, freshly cut to fit the vault hall's east door.
+    takeable: true
+    tradeable: true
+
+  - id: bad_key
+    name: Bad Key
+    description: A bent, rusted key that clearly fits nothing here.
+    takeable: true
+    tradeable: true
+
+  # Equippable armor example (Sprint 50 P4.2). slot=head + wearable makes it a
+  # valid `wear`/`remove` target; equipping moves it out of the loose inventory.
+  - id: equippable_helmet
+    name: Equippable Helmet
+    description: A plain iron helmet, sized to wear on your head.
+    takeable: true
+    tradeable: true
+    slot: head
+    wearable: true
+
   - id: rusty_iron_sword
     name: Rusty Iron Sword
     description: A short sword eaten through with rust.
@@ -817,6 +877,15 @@ room_items:
     item_id: red_rose
     quantity: 1
 
+  # Vault Hall — the two keys for the locked east door (Sprint 50 P3.3).
+  # good_key matches the exit's key_item_id; bad_key is the non-matching decoy.
+  - room_id: vault_hall
+    item_id: good_key
+    quantity: 1
+  - room_id: vault_hall
+    item_id: bad_key
+    quantity: 1
+
   # Blacksmith
   - room_id: blacksmith_forge
     item_id: iron_tongs
@@ -826,6 +895,10 @@ room_items:
     quantity: 1
   - room_id: blacksmith_forge
     item_id: sharpening_stone
+    quantity: 1
+  # Equippable armor example for the wear/remove flow (Sprint 50 P4.2).
+  - room_id: blacksmith_forge
+    item_id: equippable_helmet
     quantity: 1
 
   # Market

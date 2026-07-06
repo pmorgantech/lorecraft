@@ -2,6 +2,20 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.41.0] - 2026-07-06
+
+### Added
+
+- **Sprint 50 — completed the three formerly-deferred e2e subtasks (P3.3, P4.2, P5.1) with real content/behavior.**
+  - **Locked-door area (P3.3).** New **Vault Hall** room east of the Locksmith's Gallery, with a locked east exit (`key_item_id: good_key`) into a new **Inner Vault**. The hall holds a matching **Good Key** and a deliberately non-matching **Bad Key** (obvious names). New e2e drives the full mechanic through the UI: the way is locked with no key, the Bad Key is rejected, the Good Key unlocks it, and you pass through.
+  - **Equippable item (P4.2).** New **Equippable Helmet** (`slot: head`, `wearable`) in the blacksmith forge — the demo world previously shipped *no* equippable items, so equipment couldn't be exercised at all. New e2e: `take` shows it in the inventory panel, `wear` moves it out of the loose inventory, `remove` returns it.
+  - **WS reconnect (P5.1).** New `test_reconnect.py` proves the socket **auto-reconnects and resumes live delivery** after a genuine drop. Playwright's `context.set_offline(True)` was verified *not* to sever an already-open WebSocket in this Chromium, so a clearly-named client debug hook `window.Lorecraft.debugDropSocket()` forces a real drop; `drop_ws()`/`wait_for_ws_disconnected()` helpers wrap it. Backfilling messages *missed during* the outage is intentionally out of scope — `say`/room narration are transient (not persisted to the room audit feed, verified), so replaying them would require durable chatter persistence, a separate design decision.
+  - All new world content is placed off the audit-regression golden path (village square / market / inn); the golden is unchanged, the full unit/integration suite (980) and the e2e suite (36) are green.
+
+### Note
+
+- Versioned as a **patch** (0.41.5): these complete Sprint 50's already-scoped subtasks within the sprint's 0.41.x range, consistent with how this repo versioned feature-bearing sprint phases as patches (e.g. Sprint 45.2's chat pane at 0.40.4). Sprint 50's single minor bump was 0.41.0. **Sprint 50 is now fully complete** (harness H1–H3 + 15 e2e tests, no remaining deferrals).
+
 ## [0.40.25] - 2026-07-06
 
 ### Changed
