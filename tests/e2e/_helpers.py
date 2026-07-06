@@ -2,6 +2,32 @@
 
 These utilities reduce duplication across test files and ensure consistent
 patterns for common operations (character creation, command submission, etc.).
+
+## Multiplayer Testing Pattern (WS Async Broadcast)
+
+When testing cross-client updates (one player acts, another observes a broadcast),
+remember that **WebSocket broadcasts are asynchronous**: after Player A acts,
+Player B's DOM updates on the next event loop turn, not synchronously in the same
+stack frame.
+
+**Rule: never bare-assert immediately after a cross-client action.**
+
+Always use `page.wait_for_function()` or `locator.wait_for()` on the receiver's DOM:
+
+    # ✅ CORRECT: wait for B's state to change via the broadcast
+    a_send_command(page_a, "say hello")
+    page_b.wait_for_selector("#feed :text('hello')")
+
+    # ❌ WRONG: immediate assert, B's update hasn't arrived yet
+    a_send_command(page_a, "say hello")
+    assert "hello" in page_b.locator("#feed").inner_text()  # flaky!
+
+Before testing multiplayer behavior, ensure both connections are ready:
+
+    create_character(page_a, live_server, "player_a")
+    create_character(page_b, live_server, "player_b")
+    wait_for_both_ws_connected(page_a, page_b)
+    # Now safe to test cross-client updates
 """
 
 from __future__ import annotations
@@ -76,3 +102,33 @@ def navigate_to_locksmiths_gallery(page: Any) -> None:
     page.locator("#room-description", has_text="Forge and Hammer").wait_for()
     send_command(page, "north")
     page.locator("#room-description", has_text="Locksmith's Gallery").wait_for()
+
+
+def wait_for_ws_connected(page: Any) -> None:
+    """Wait for the WebSocket connection to become ready.
+
+    The WS connection is established asynchronously after the page loads and
+    the player sends their ID through the connect form. The server responds
+    with a "connected" message, which sets `state.connected = true` in app.js
+    and changes the connection-state element to "online".
+
+    This signal is essential for multiplayer tests: both pages must be
+    connected before one acts and the other asserts on cross-client updates
+    (WS broadcasts are only sent when the receiver is ready).
+
+    Usage: after create_character(), call this before starting a multiplayer
+    test's action/assertion sequence.
+    """
+    page.wait_for_function(
+        "window.lorecraftClient && window.lorecraftClient.state.connected === true"
+    )
+
+
+def wait_for_both_ws_connected(page_a: Any, page_b: Any) -> None:
+    """Wait for both pages to have WebSocket connections ready.
+
+    Convenience helper for two-player tests: both contexts must be connected
+    before one player acts and the other observes the broadcast.
+    """
+    wait_for_ws_connected(page_a)
+    wait_for_ws_connected(page_b)
