@@ -11,7 +11,12 @@ from typing import Any
 
 import pytest
 
-from lorecraft.webui.admin.tui import app as tui_app
+# The admin TUI needs the optional `admin-tui` extra (Textual); skip this whole
+# module when it isn't installed (e.g. the default CI test job) rather than
+# erroring at import time.
+pytest.importorskip("textual")
+
+from lorecraft.webui.admin.tui import app as tui_app  # noqa: E402
 
 
 def test_saved_access_token_is_cleared_on_protected_401(

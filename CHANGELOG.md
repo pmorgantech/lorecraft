@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.12] - 2026-07-05
+
+### Fixed
+
+- **CI: `tests/unit/test_admin_tui_auth.py` no longer errors when the `admin-tui` extra is absent.** The module imported the Textual-based admin TUI at import time, so the default CI `quality` job (which installs only `.[dev]`, not `.[admin-tui]`) failed collection with `ModuleNotFoundError: No module named 'textual'`. Added `pytest.importorskip("textual")` before the TUI import so the module **skips** cleanly without the extra (mirroring how the e2e suite guards Playwright) and still runs in full where Textual is installed. Verified both paths: 3 passed with Textual present, 1 skipped when absent.
+
 ## [0.38.11] - 2026-07-05
 
 ### Changed
