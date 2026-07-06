@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.38.9] - 2026-07-05
+
+### Added
+
+- **Sprint 39.1 — timed room effects design spec (`engine_core.md` §3.9).** Wrote the design-first spec (implementation 39.2+ gated on review). A room effect reuses the Sprint 19 `ActiveEffect`/`EffectService` primitive with `entity_type="room"` — **no new model, table, or scheduler**. Decisions settled: **room-state effects** (gate opened / exit sealed) are **read-through** — movement consults `active_for("room", room_id)` plus new `EffectDef.opens_exits`/`seals_exits`, and expiry is the *existing* sweep deleting the row (no mutate-and-reverse, so state can't drift); **occupant auras** (fatigue drain / slow travel) are a new **`RoomAuraModifierSource`** (§3.5) keyed on the player's `current_room_id`, so they apply/lift on enter/leave with no per-tick occupant sweep and no stored per-player state; **`on_apply`/`on_expire`** are optional side-effect hooks (narration/spawn), not the mechanism. First content example (39.3) is a pressure-plate mechanism applying a timed `passage_open` room effect.
+
 ## [0.38.8] - 2026-07-05
 
 ### Changed
