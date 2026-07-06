@@ -238,18 +238,33 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 ---
 
+## Sprint 49 — Encumbrance & analytics dashboard (Tier 2 + observability)
+
+**Goal:** Ship inventory encumbrance (weight capacity, wear-slot gating) as a Tier 2 feature, and build an admin analytics dashboard surfacing p50/p95/p99 operation latency (Sprint 35.3 data) with player activity heatmaps and live feed. Together: player progression friction + ops visibility.
+
+| # | Task | Status |
+|---|------|--------|
+| 49.1 | **Encumbrance model:** `ItemWeight` trait on items; `Character.encumbrance` (current / max weight); `InventoryService.can_carry(item)` gate (false if would exceed max). Trait, repo, unit-tested; world-content examples (coins/weapons/armor weights in `world.yaml`). | [ ] |
+| 49.2 | **Movement gating + UI:** `move.can_move()` consults `character.encumbrance`; player sees "too heavy to move" on `go` attempt. Player UI shows current/max weight on inventory. Feature-flag or hard gate (TBD per UX). | [ ] |
+| 49.3 | **Analytics dashboard** (`/admin/dashboard`): live p50/p95/p99 latency by operation (reuses Sprint 35.3 `/admin/analytics/performance`); operation timeline (command exec history, last 100 ops with duration); player activity heatmap (login/logout/command activity over last 24h). | [ ] |
+| 49.4 | Tests: encumbrance gating (can/cannot move @ thresholds); character weight display; dashboard JSON schema + auth; heatmap aggregation (activity by hour). Audit regression (command_executed perf fields stable). | [ ] |
+
+> **Rationale:** Encumbrance ties inventory to character progression (weight limits increase with level/strength); analytics dashboard keeps ops/player-health visible post-launch. Both low-risk Tier 2 additions over stable foundations (inventory, traits, audit).
+
+---
+
 ## Backlog
 
 | Item | Notes |
 |------|-------|
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | ~~Bug/todo letterbox~~ | Implemented in Sprint 10.5 as the issues tracking system (see [`roadmap_completed.md`](roadmap_completed.md)) |
-| Inventory encumbrance / wear slots | After equipment + combat |
+| ~~Inventory encumbrance / wear slots~~ | **Promoted to [Sprint 49](#sprint-49--encumbrance--analytics-dashboard-tier-2--observability)** |
 | ~~`lorecraft.tools.simulation` CLI~~ | **Promoted to [Sprint 43](#sprint-43--session-record--playback-advanced-testing)** (session record & playback) — see [`session_replay.md`](session_replay.md). |
+| ~~Analytics dashboard & visualizations~~ | **Promoted to [Sprint 49](#sprint-49--encumbrance--analytics-dashboard-tier-2--observability)** |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
 | Player-facing bug reports | In-game `/report-bug` command (after core issues system stable) |
-| Analytics dashboard & visualizations | After the Sprint 13 observability instrumentation; overlaps Sprint 35.3 |
 | Database inspector / state editor | Admin tool for advanced troubleshooting |
 | Multiplayer trade/transit test pass | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Multiplayer sim-test coverage* (was Sprint 65) |
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
@@ -258,10 +273,10 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–45 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split), and 46–48 (reconciled from the unrecorded planning list 2026-07-05: item discovery journal, follow command, scavenger hunt events).
-- **Reserved but never used:** 49–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–45 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split), 46–48 (reconciled from the unrecorded planning list 2026-07-05: item discovery journal, follow command, scavenger hunt events), and 49 (encumbrance + analytics dashboard).
+- **Reserved but never used:** 50–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 49.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 50.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 

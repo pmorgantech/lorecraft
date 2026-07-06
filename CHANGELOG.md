@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.5] - 2026-07-05
+
+### Added
+
+- **Docs: Sprint 49 plan — encumbrance + analytics dashboard.** Promoted two backlog items into a scheduled sprint: **inventory encumbrance** (item weight trait, character weight capacity, `can_carry` inventory gating, movement gate + player weight UI) and an **admin analytics dashboard** (live p50/p95/p99 latency by operation off the Sprint 35.3 `/admin/analytics/performance` endpoint, command-execution timeline, player-activity heatmap). Both are low-risk Tier 2 additions over stable foundations (inventory, traits, audit telemetry). Sprint-numbering guard updated (used 1–49; next new = 50).
+
 ## [0.39.4] - 2026-07-05
 
 ### Added
