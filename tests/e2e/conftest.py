@@ -166,3 +166,27 @@ def second_page(browser: Any) -> Iterator[Any]:
     new_page = context.new_page()
     yield new_page
     context.close()
+
+
+@pytest.fixture
+def new_page(browser: Any) -> Iterator[Any]:
+    """Factory for extra, cookie-isolated browser pages, auto-closed at teardown.
+
+    Auth tests need a *fresh* context mid-test (e.g. a returning login, or an
+    unauthenticated request) distinct from the one that created a character.
+    Call `new_page()` to get one; every context it opens is closed when the
+    test ends, so contexts don't leak across the session-scoped `browser`.
+
+        def test_x(page, new_page, live_server):
+            returning = new_page()   # independent, no cookies from `page`
+    """
+    contexts: list[Any] = []
+
+    def _make() -> Any:
+        context = browser.new_context()
+        contexts.append(context)
+        return context.new_page()
+
+    yield _make
+    for context in contexts:
+        context.close()

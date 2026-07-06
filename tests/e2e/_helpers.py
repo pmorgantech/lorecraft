@@ -35,6 +35,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
+# Default character password for e2e flows. Satisfies the lobby password policy
+# (>=8 chars, mixed case, a digit — see config.py). Shared by create + login
+# helpers so a login test can re-authenticate a just-created character.
+CHARACTER_PASSWORD = "E2eTestPass1"
+
 
 def create_character(page: Any, base_url: str, username: str) -> None:
     """Drive the lobby's new-character form through to /game.
@@ -46,9 +51,28 @@ def create_character(page: Any, base_url: str, username: str) -> None:
     page.goto(f"{base_url}/lobby")
     page.click("text=Create New Character")
     page.fill("#username", username)
-    page.fill("#create-password", "E2eTestPass1")
-    page.fill("#create-password-confirm", "E2eTestPass1")
+    page.fill("#create-password", CHARACTER_PASSWORD)
+    page.fill("#create-password-confirm", CHARACTER_PASSWORD)
     page.click("text=Create & Enter")
+    page.wait_for_url(re.compile(r".*/game$"))
+
+
+def login_character(
+    page: Any, base_url: str, username: str, password: str = CHARACTER_PASSWORD
+) -> None:
+    """Drive the lobby's *Log In* tab (the default tab) through to /game.
+
+    Unlike create_character, this uses the existing-character login path
+    (`POST /lobby/enter`, `allow_create=False`). Selectors are the Log In tab's
+    `#enter-username` / `#enter-password` (create uses `#username` /
+    `#create-password`). Only call this for a character that already exists with
+    the given password; a bad/unknown login re-renders the lobby (see
+    `expect_login_rejected`) rather than reaching /game.
+    """
+    page.goto(f"{base_url}/lobby")
+    page.fill("#enter-username", username)
+    page.fill("#enter-password", password)
+    page.click("form[action='/lobby/enter'] button[type=submit]")
     page.wait_for_url(re.compile(r".*/game$"))
 
 

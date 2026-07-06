@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.22] - 2026-07-06
+
+### Added
+
+- **Sprint 50 P2 — auth & session-lifecycle e2e tests (`test_auth_flows.py`, 5 tests).** Cover the lobby's real security surface, previously only smoke-tested on the create happy path: logging back in to an existing character via the Log In tab; a wrong password keeping the user out of the game; an unknown username being rejected rather than silently spawning an account (guarding `enter_world`'s `allow_create=False`); the signed session cookie surviving a page reload; and an unauthenticated `/game` request being refused (401, game UI never rendered). Because the browser login form re-renders the lobby with an inline error and HTTP 400 (rather than the JSON API's 401/404), the tests assert the security-relevant *observable* outcome — the user stays on the lobby and never reaches `/game`. Added a `login_character` helper (Log In tab, `allow_create=False` path) and a `new_page` fixture that hands out cookie-isolated browser contexts and closes them at teardown (no context leaks across the session-scoped browser).
+
+### Fixed
+
+- **Version sync.** `pyproject.toml` was left at 0.40.10 during the Sprint 50 (v0.41.0) commits; re-synced with `src/lorecraft/__init__.py` per the repo's lockstep-version rule.
+
 ## [0.40.13] - 2026-07-06
 
 ### Added
