@@ -4,6 +4,13 @@
 #}
 
 <div id="inventory" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
+    {% if encumbrance %}
+    <div class="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider
+                {% if encumbrance.band == 'overloaded' %}text-red-400{% elif encumbrance.band == 'burdened' %}text-amber-400{% else %}text-text-muted{% endif %}">
+        <span>Weight</span>
+        <span title="carry band: {{ encumbrance.band }}">{{ encumbrance.current }} / {{ encumbrance.capacity }}{% if encumbrance.band != 'unburdened' %} · {{ encumbrance.band }}{% endif %}</span>
+    </div>
+    {% endif %}
     {% if inventory and inventory|length > 0 %}
         <ul class="space-y-1 text-xs">
             {% for item in inventory %}

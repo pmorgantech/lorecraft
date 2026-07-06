@@ -13,6 +13,7 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.features.encumbrance.rules import (
+    encumbrance_snapshot,
     carry_base,
     encumbrance_band,
     resolve_carry_capacity,
@@ -402,6 +403,22 @@ class TestEncumbrance:
         assert ctx.messages == ["You can't carry any more weight."]
         stacks = ctx.stack_repo.stacks_for_owner("player", ctx.player.id)
         assert not stacks
+
+    def test_encumbrance_snapshot_reports_load_capacity_and_band(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        stats = ctx.player_repo.stats(ctx.player.id)
+        strength = stats.strength if stats is not None else 10
+
+        empty = encumbrance_snapshot(session, ctx.player.id, strength)
+        assert empty["current"] == 0.0
+        assert empty["capacity"] > 0
+        assert empty["band"] == "unburdened"
+
+        _carry(ctx, "iron_helm")  # weight 2.0
+        loaded = encumbrance_snapshot(session, ctx.player.id, strength)
+        assert loaded["current"] == 2.0
 
 
 class TestBoundItemRule:

@@ -239,18 +239,20 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 ---
 
-## Sprint 49 — Encumbrance & analytics dashboard (Tier 2 + observability)
+## Sprint 49 — Encumbrance & analytics dashboard (Tier 2 + observability) — ✅ complete
 
-**Goal:** Ship inventory encumbrance (weight capacity, wear-slot gating) as a Tier 2 feature, and build an admin analytics dashboard surfacing p50/p95/p99 operation latency (Sprint 35.3 data) with player activity heatmaps and live feed. Together: player progression friction + ops visibility.
+**Goal:** Ship inventory encumbrance (weight capacity, gating) as a Tier 2 feature, and build an admin analytics dashboard surfacing p50/p95/p99 operation latency (Sprint 35.3 data) with player activity heatmaps and an operation timeline. Together: player progression friction + ops visibility.
+
+**Reconciled (2026-07-06):** the **encumbrance model already existed** as the `encumbrance` feature (`Item.weight`, `resolve_carry_capacity`/`total_carried_weight`/`encumbrance_band` composing the §3.5 modifier resolver, strength-scaled base) with `take` already gated on overload ("You can't carry any more weight.") and fatigue draining by band — so 49.1 was largely done. The design also gates **carrying** (can't pick up more than you can haul), which is kept over the roadmap's speculative "too heavy to *move*" (movement-weight gating would be punishing and duplicate the take gate). This sprint therefore delivered the genuinely-missing pieces: the **weight UI** and the **analytics dashboard**.
 
 | # | Task | Status |
 |---|------|--------|
-| 49.1 | **Encumbrance model:** `ItemWeight` trait on items; `Character.encumbrance` (current / max weight); `InventoryService.can_carry(item)` gate (false if would exceed max). Trait, repo, unit-tested; world-content examples (coins/weapons/armor weights in `world.yaml`). | [ ] |
-| 49.2 | **Movement gating + UI:** `move.can_move()` consults `character.encumbrance`; player sees "too heavy to move" on `go` attempt. Player UI shows current/max weight on inventory. Feature-flag or hard gate (TBD per UX). | [ ] |
-| 49.3 | **Analytics dashboard** (`/admin/dashboard`): live p50/p95/p99 latency by operation (reuses Sprint 35.3 `/admin/analytics/performance`); operation timeline (command exec history, last 100 ops with duration); player activity heatmap (login/logout/command activity over last 24h). | [ ] |
-| 49.4 | Tests: encumbrance gating (can/cannot move @ thresholds); character weight display; dashboard JSON schema + auth; heatmap aggregation (activity by hour). Audit regression (command_executed perf fields stable). | [ ] |
+| 49.1 | **Encumbrance model** — weight, carry capacity, bands, overload gate. | [x] **Already shipped** as the `encumbrance` feature (`rules.py`) + `Item.weight`; `take` gates on overload; fatigue drains by band. No change needed beyond the snapshot helper below. |
+| 49.2 | **Weight UI** — player sees current/max carried weight + band on the inventory panel. | [x] `encumbrance_snapshot()` (current/capacity/band) + `encumbrance_snapshot_for()` wired into all three inventory renders (game page, HTMX command OOB swap, `/partials/inventory`); weight line in `inventory.html`, colored by band (amber/red). Verified live ("WEIGHT 0.0 / 80.0"). *(The roadmap's "too heavy to move" movement gate was dropped in favour of the existing take-gate — see reconciliation note.)* |
+| 49.3 | **Analytics dashboard** (`/admin/analytics/dashboard` + admin console tab): p50/p95/p99 latency by operation, operation timeline (recent ops w/ duration), player-activity-by-hour heatmap. | [x] New `operation_timeline()` + `activity_by_hour()` analytics queries; `/admin/analytics/dashboard` one-call endpoint (Observer auth, `range`/`timeline_limit`); new **Analytics tab** in the admin console (latency table, CSS-bar heatmap, recent-ops table — no charting lib). |
+| 49.4 | Tests. | [x] Timeline (order/limit) + heatmap (24-bucket density) analytics unit tests; dashboard endpoint schema + auth integration tests; `encumbrance_snapshot` unit test; audit-regression golden unchanged. (v0.40.9) |
 
-> **Rationale:** Encumbrance ties inventory to character progression (weight limits increase with level/strength); analytics dashboard keeps ops/player-health visible post-launch. Both low-risk Tier 2 additions over stable foundations (inventory, traits, audit).
+> **Rationale:** Encumbrance ties inventory to character progression; the analytics dashboard keeps ops/player-health visible post-launch. Both low-risk over stable foundations (inventory, traits, audit).
 
 ---
 

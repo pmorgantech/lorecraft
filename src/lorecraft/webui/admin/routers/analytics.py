@@ -11,9 +11,11 @@ from sqlmodel import Session
 from lorecraft.webui.admin.auth import Observer
 from lorecraft.analytics import (
     InvalidRangeError,
+    activity_by_hour,
     command_latency_percentiles,
     npc_interaction_counts,
     operation_latency_percentiles,
+    operation_timeline,
     parse_range,
     player_hours,
     quest_completion_counts,
@@ -95,3 +97,22 @@ async def analytics_performance(
     since = _since(range)
     with Session(state.audit_engine) as session:
         return operation_latency_percentiles(session, since=since)
+
+
+@router.get("/dashboard")
+async def analytics_dashboard(
+    request: Request, _: Observer, range: str = "24h", timeline_limit: int = 100
+) -> dict[str, Any]:
+    """One-call analytics dashboard payload (Sprint 49): p50/p95/p99 latency by
+    operation, the recent operation timeline, and the activity-by-hour heatmap.
+    Backs the admin console's Analytics tab."""
+    state = _state(request)
+    since = _since(range)
+    timeline_limit = max(1, min(timeline_limit, 500))
+    with Session(state.audit_engine) as session:
+        return {
+            "range": range,
+            "latency_by_operation": operation_latency_percentiles(session, since=since),
+            "timeline": operation_timeline(session, limit=timeline_limit),
+            "heatmap": activity_by_hour(session, since=since),
+        }

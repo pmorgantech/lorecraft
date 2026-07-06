@@ -71,6 +71,7 @@ from lorecraft.webui.player.session import (
     get_meters,
     get_real_manager,
     get_rng,
+    encumbrance_snapshot_for,
     inventory_snapshot,
     players_here,
     room_panel_context,
@@ -457,6 +458,7 @@ async def game_screen(
             "current_player": player,
             "current_room": current_room,
             "inventory": inv,
+            "encumbrance": encumbrance_snapshot_for(game_db, player_repo, player.id),
             "feed_messages": feed_messages,
             "players_here": players_in_room,
             "active_quests": active_quests,
@@ -725,6 +727,9 @@ async def handle_command(
             inv_html = templates.get_template("partials/inventory.html").render(
                 inventory=result.new_inventory,
                 current_player=after_player,
+                encumbrance=encumbrance_snapshot_for(
+                    game_db, player_repo, after_player.id
+                ),
             )
             response_html += mark_oob_swap(inv_html, "inventory")
 
@@ -906,12 +911,19 @@ async def partial_inventory(
 ):
     game_engine, _ = get_engines(request)
     with DBSession(game_engine) as db:
-        player = PlayerRepo(db).get(player.id) or player
+        repo = PlayerRepo(db)
+        player = repo.get(player.id) or player
         inv = inventory_snapshot(player, ItemRepo(db))
+        encumbrance = encumbrance_snapshot_for(db, repo, player.id)
     return templates.TemplateResponse(
         request,
         "partials/inventory.html",
-        {"request": request, "inventory": inv, "current_player": player},
+        {
+            "request": request,
+            "inventory": inv,
+            "current_player": player,
+            "encumbrance": encumbrance,
+        },
     )
 
 

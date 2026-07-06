@@ -152,6 +152,7 @@
   <div id="admin-body">
     <div id="tab-bar">
       <div class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</div>
+      <div class="tab" data-tab="analytics"  onclick="showTab('analytics')">Analytics</div>
       <div class="tab" data-tab="audit"      onclick="showTab('audit')">Audit</div>
       <div class="tab" data-tab="world"      onclick="showTab('world')">World</div>
       <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
@@ -174,6 +175,39 @@
           <table>
             <thead><tr><th>Username</th><th>Room</th><th>Online</th><th>Inv</th><th>Actions</th></tr></thead>
             <tbody id="players-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Analytics (Sprint 49) -->
+      <div id="tab-analytics" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Analytics</h2>
+          <div>
+            <select id="an-range" onchange="loadAnalytics()">
+              <option value="1h">Last hour</option>
+              <option value="24h" selected>Last 24h</option>
+              <option value="7d">Last 7 days</option>
+            </select>
+            <button onclick="loadAnalytics()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Operation latency (ms)</h3>
+          <table>
+            <thead><tr><th>Operation</th><th>p50</th><th>p95</th><th>p99</th><th>count</th></tr></thead>
+            <tbody id="an-latency-tbody"></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>Player activity by hour (UTC)</h3>
+          <div id="an-heatmap" style="display:flex;align-items:flex-end;gap:2px;height:90px;"></div>
+        </div>
+        <div class="panel" style="overflow:auto;flex:1;">
+          <h3>Recent operations</h3>
+          <table>
+            <thead><tr><th>Time</th><th>Verb</th><th>Actor</th><th>Room</th><th>ms</th></tr></thead>
+            <tbody id="an-timeline-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -560,7 +594,7 @@ function showError(msg) {
 // ────────────────────────────────────────
 
 const TAB_LOADERS = {
-  dashboard: loadDashboard, audit: loadAudit, world: loadRooms,
+  dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit, world: loadRooms,
   changesets: loadChangesets, clock: loadClock, issues: loadIssues,
   news: loadNews, help: loadHelp, accounts: loadAccounts
 };
@@ -614,6 +648,55 @@ async function freezePlayer(playerId) {
   const r = await api("POST", `/admin/players/${playerId}/freeze`);
   if (r.detail) showError(r.detail);
   else loadDashboard();
+}
+
+// ────────────────────────────────────────
+// Analytics (Sprint 49)
+// ────────────────────────────────────────
+
+async function loadAnalytics() {
+  const range = document.getElementById("an-range").value;
+  const data = await api("GET", `/admin/analytics/dashboard?range=${range}`);
+  if (!data || typeof data !== "object") return;
+
+  // Operation latency table
+  const lat = document.getElementById("an-latency-tbody");
+  lat.innerHTML = "";
+  const ops = data.latency_by_operation || {};
+  const names = Object.keys(ops).sort();
+  if (names.length === 0) {
+    lat.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim)">No command activity in range.</td></tr>`;
+  }
+  for (const name of names) {
+    const s = ops[name];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><b>${esc(name)}</b></td><td>${s.p50}</td><td>${s.p95}</td><td>${s.p99}</td><td>${s.count}</td>`;
+    lat.appendChild(tr);
+  }
+
+  // Activity heatmap (bars)
+  const heat = document.getElementById("an-heatmap");
+  heat.innerHTML = "";
+  const buckets = data.heatmap || [];
+  const max = Math.max(1, ...buckets.map(b => b.count));
+  for (const b of buckets) {
+    const h = Math.round((b.count / max) * 80);
+    const bar = document.createElement("div");
+    bar.title = `${b.hour}:00 — ${b.count}`;
+    bar.style.cssText = `flex:1;background:var(--phosphor);height:${h}px;min-height:1px;opacity:${b.count ? 0.9 : 0.2};`;
+    heat.appendChild(bar);
+  }
+
+  // Recent operations timeline
+  const tl = document.getElementById("an-timeline-tbody");
+  tl.innerHTML = "";
+  for (const op of (data.timeline || [])) {
+    const t = new Date(op.real_time * 1000).toLocaleTimeString();
+    const ms = op.duration_ms == null ? "—" : op.duration_ms.toFixed(2);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${esc(t)}</td><td>${esc(op.verb || "")}</td><td style="color:var(--amber)">${esc(op.actor_id || "")}</td><td>${esc(op.room_id || "")}</td><td>${ms}</td>`;
+    tl.appendChild(tr);
+  }
 }
 
 // ────────────────────────────────────────

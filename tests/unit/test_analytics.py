@@ -5,9 +5,11 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.analytics import (
     InvalidRangeError,
+    activity_by_hour,
     command_latency_percentiles,
     npc_interaction_counts,
     operation_latency_percentiles,
+    operation_timeline,
     parse_range,
     player_hours,
     quest_completion_counts,
@@ -330,3 +332,66 @@ def test_player_hours_sums_session_duration() -> None:
     result_map = {r["player_id"]: r["hours"] for r in result}
     assert result_map["player-1"] == 1.5
     assert result_map["player-2"] == 0.25
+
+
+def test_operation_timeline_returns_recent_commands_newest_first() -> None:
+    engine = _audit_engine()
+    with Session(engine) as session:
+        for i, verb in enumerate(["look", "go", "take"]):
+            session.add(
+                _event(
+                    event_type=GameEvent.COMMAND_EXECUTED.value,
+                    real_time=100.0 + i,
+                    payload={"verb": verb, "duration_ms": 1.5 + i},
+                )
+            )
+        session.commit()
+
+        timeline = operation_timeline(session, limit=10)
+
+    assert [row["verb"] for row in timeline] == ["take", "go", "look"]  # newest first
+    assert timeline[0]["duration_ms"] == 3.5
+    assert timeline[0]["actor_id"] == "player-1"
+
+
+def test_operation_timeline_respects_limit() -> None:
+    engine = _audit_engine()
+    with Session(engine) as session:
+        for i in range(5):
+            session.add(
+                _event(
+                    event_type=GameEvent.COMMAND_EXECUTED.value,
+                    real_time=100.0 + i,
+                    payload={"verb": "look"},
+                )
+            )
+        session.commit()
+        assert len(operation_timeline(session, limit=2)) == 2
+
+
+def test_activity_by_hour_buckets_all_24_hours() -> None:
+    import time as _time
+
+    engine = _audit_engine()
+    # Two events in the same UTC hour, one in another.
+    base = _time.gmtime(0)  # hour 0
+    assert base.tm_hour == 0
+    with Session(engine) as session:
+        session.add(
+            _event(event_type=GameEvent.COMMAND_EXECUTED.value, real_time=0.0)
+        )  # hour 0
+        session.add(
+            _event(event_type=GameEvent.COMMAND_EXECUTED.value, real_time=60.0)
+        )  # hour 0
+        session.add(
+            _event(event_type=GameEvent.COMMAND_EXECUTED.value, real_time=3600.0)
+        )  # hour 1
+        session.commit()
+
+        heatmap = activity_by_hour(session, since=-1.0)
+
+    assert len(heatmap) == 24
+    by_hour = {row["hour"]: row["count"] for row in heatmap}
+    assert by_hour[0] == 2
+    assert by_hour[1] == 1
+    assert by_hour[5] == 0  # dense: idle hours present with count 0

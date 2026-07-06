@@ -54,3 +54,17 @@ def encumbrance_band(total_weight: float, capacity: float) -> EncumbranceBand:
     if total_weight <= capacity * OVERLOADED_MULTIPLIER:
         return "burdened"
     return "overloaded"
+
+
+def encumbrance_snapshot(
+    session: Session, player_id: str, strength: int
+) -> dict[str, float | str]:
+    """Player-facing carry-weight summary for the inventory UI (Sprint 49):
+    current load, capacity, and the resulting band."""
+    capacity = resolve_carry_capacity(session, player_id, strength)
+    current = total_carried_weight(session, player_id)
+    return {
+        "current": round(current, 1),
+        "capacity": round(capacity, 1),
+        "band": encumbrance_band(current, capacity),
+    }

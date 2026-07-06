@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.9] - 2026-07-06
+
+### Added
+
+- **Sprint 49 — carry-weight UI + admin analytics dashboard.** Players now see their **carried weight** (current / capacity, coloured by encumbrance band) on the inventory panel — the `encumbrance` feature's model already gated `take` on overload, so this surfaces it. Admins get a new **Analytics** tab in the console backed by a one-call `/admin/analytics/dashboard` endpoint (Observer auth): p50/p95/p99 **operation latency** by operation (reusing the Sprint 35.3 per-operation timings), a **recent-operations timeline** (last N commands with handler duration), and a **player-activity-by-hour heatmap** (a dense 24-bucket histogram, rendered as CSS bars — no charting dependency). New analytics queries `operation_timeline()` and `activity_by_hour()`. Unit + integration tested (timeline order/limit, heatmap density, dashboard schema + auth, `encumbrance_snapshot`); audit-regression golden unchanged.
+
+### Note
+
+- Sprint 49's encumbrance **model** (item weight, strength-scaled carry capacity, bands, overload gate on `take`) was **already implemented** as the `encumbrance` feature; the roadmap Sprint 49 was written before that was noticed. The roadmap entry is reconciled accordingly, and the speculative "too heavy to *move*" movement gate was dropped in favour of the existing (better) take-gate.
+
 ## [0.40.8] - 2026-07-06
 
 ### Added

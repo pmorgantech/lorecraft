@@ -281,6 +281,18 @@ def inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, An
     return items
 
 
+def encumbrance_snapshot_for(
+    session: DBSession, player_repo: PlayerRepo, player_id: str
+) -> dict[str, float | str]:
+    """Carry-weight summary for the inventory panel (Sprint 49). Reads the
+    player's strength for capacity; defaults to 10 if stats are missing."""
+    from lorecraft.features.encumbrance.rules import encumbrance_snapshot
+
+    stats = player_repo.stats(player_id)
+    strength = stats.strength if stats is not None else 10
+    return encumbrance_snapshot(session, player_id, strength)
+
+
 def room_panel_context(
     room: Room | None,
     room_repo: RoomRepo,

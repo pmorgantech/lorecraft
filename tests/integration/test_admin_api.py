@@ -1086,6 +1086,41 @@ async def _test_analytics_performance_empty() -> None:
         assert data == {}
 
 
+def test_analytics_dashboard_returns_combined_payload() -> None:
+    anyio.run(_test_analytics_dashboard)
+
+
+async def _test_analytics_dashboard() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(
+            app, "GET", "/admin/analytics/dashboard", token=token
+        )
+        assert status == 200
+        assert set(data) == {"range", "latency_by_operation", "timeline", "heatmap"}
+        # Heatmap is always a dense 24-bucket histogram.
+        assert isinstance(data["heatmap"], list) and len(data["heatmap"]) == 24
+        assert isinstance(data["timeline"], list)
+
+
+def test_analytics_dashboard_requires_auth() -> None:
+    anyio.run(_test_analytics_dashboard_unauth)
+
+
+async def _test_analytics_dashboard_unauth() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        status, _data = await _http(app, "GET", "/admin/analytics/dashboard")
+        assert status in (401, 403)
+
+
 def test_analytics_invalid_range_returns_400() -> None:
     anyio.run(_test_analytics_invalid_range)
 

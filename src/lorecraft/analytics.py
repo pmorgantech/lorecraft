@@ -168,6 +168,50 @@ def operation_latency_percentiles(
     return result
 
 
+def operation_timeline(session: Session, *, limit: int = 100) -> list[dict[str, Any]]:
+    """The most recent executed commands with their handler latency (Sprint 49).
+
+    Newest first: `real_time`, `verb`, `actor_id`, `room_id`, `duration_ms`
+    from `COMMAND_EXECUTED` payloads — the raw feed the dashboard renders as an
+    operation timeline. `duration_ms` is `None` for pre-Sprint-13 events."""
+    stmt = (
+        select(AuditEvent)
+        .where(AuditEvent.event_type == GameEvent.COMMAND_EXECUTED.value)
+        .order_by(col(AuditEvent.real_time).desc())
+        .limit(limit)
+    )
+    timeline: list[dict[str, Any]] = []
+    for event in session.exec(stmt).all():
+        duration = event.payload_json.get("duration_ms")
+        timeline.append(
+            {
+                "real_time": event.real_time,
+                "verb": event.payload_json.get("verb"),
+                "actor_id": event.actor_id,
+                "room_id": event.room_id,
+                "duration_ms": float(duration)
+                if isinstance(duration, (int, float))
+                else None,
+            }
+        )
+    return timeline
+
+
+def activity_by_hour(session: Session, *, since: float) -> list[dict[str, int]]:
+    """Command activity bucketed by clock hour (UTC 0–23) since `since` (Sprint 49).
+
+    A 24-bucket histogram — the player-activity heatmap the dashboard renders.
+    Every hour 0–23 is present (count 0 when idle) so the heatmap is dense."""
+    buckets: Counter[int] = Counter()
+    stmt = select(AuditEvent).where(
+        AuditEvent.event_type == GameEvent.COMMAND_EXECUTED.value,
+        col(AuditEvent.real_time) >= since,
+    )
+    for event in session.exec(stmt).all():
+        buckets[time.gmtime(event.real_time).tm_hour] += 1
+    return [{"hour": hour, "count": buckets.get(hour, 0)} for hour in range(24)]
+
+
 def _percentile(sorted_values: list[float], fraction: float) -> float:
     """Nearest-rank percentile; `sorted_values` must be sorted ascending."""
     if not sorted_values:

@@ -293,10 +293,12 @@ Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](too
 
 ## Analytics
 
-Query endpoints over the audit log and session data — no dashboard UI yet (planned once
-Sprint 13 instrumentation lands):
+The **Analytics tab** (Sprint 49) surfaces the ops picture at a glance: p50/p95/p99 latency by
+operation, a player-activity-by-hour heatmap, and a recent-operations timeline. It's backed by a
+one-call endpoint; the underlying query endpoints are also available directly:
 
 ```
+GET /admin/analytics/dashboard      — combined: latency_by_operation + timeline + heatmap
 GET /admin/analytics/commands       — most-used commands
 GET /admin/analytics/npcs           — NPC interaction counts
 GET /admin/analytics/quests         — quest completion counts
@@ -306,11 +308,12 @@ GET /admin/analytics/performance    — p50/p95/p99 by operation (command_parse,
                                       condition_evaluate, db_commit, command_handler)
 ```
 
-All accept a `range` query param (`24h`, `7d`, `2w`, `30m`; default varies per endpoint).
-`/performance` (Sprint 35.3) breaks latency down per operation from the `perf` field the
-engine stamps on each `COMMAND_EXECUTED` audit event, so you can see whether time is going
-to parsing, condition checks, or the DB commit. `scheduler_tick`/`broadcast_send` are timed
-in the structured logs (WARNING over 50 ms) but sit outside the per-command audit path.
+All accept a `range` query param (`24h`, `7d`, `2w`, `30m`; default varies per endpoint);
+`/dashboard` also takes `timeline_limit` (default 100, capped at 500). `/performance` (Sprint
+35.3) breaks latency down per operation from the `perf` field the engine stamps on each
+`COMMAND_EXECUTED` audit event, so you can see whether time is going to parsing, condition checks,
+or the DB commit. `scheduler_tick`/`broadcast_send` are timed in the structured logs (WARNING over
+50 ms) but sit outside the per-command audit path.
 
 ## Extending the UI: Feature Panels
 
