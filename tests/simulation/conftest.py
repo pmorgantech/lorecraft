@@ -131,7 +131,7 @@ class SimulationServer:
 @pytest.fixture
 def simulation_server_factory(
     tmp_path_factory: pytest.TempPathFactory,
-) -> Iterator[Callable[[], SimulationServer]]:
+) -> Iterator[Callable[..., SimulationServer]]:
     """Boot fresh, disposable, real live servers on demand.
 
     Yields a factory instead of a single server so tests that need more than
@@ -141,7 +141,7 @@ def simulation_server_factory(
     """
     live_servers: list[_LiveServer] = []
 
-    def _make() -> SimulationServer:
+    def _make(rng_seed: int | None = None) -> SimulationServer:
         db_dir = tmp_path_factory.mktemp("sim")
         game_db_path = db_dir / "sim-game.db"
         audit_db_path = db_dir / "sim-audit.db"
@@ -149,6 +149,9 @@ def simulation_server_factory(
             database_path=str(game_db_path),
             audit_database_path=str(audit_db_path),
             world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
+            # Scenario replay (Sprint 43) pins this to the scenario's recorded
+            # seed so golden audit diffs stay deterministic.
+            rng_seed=rng_seed,
             seed_player_id="",
             seed_player_username="",
             # VirtualPlayer connects directly with ?player_id= to exercise
@@ -176,7 +179,7 @@ def simulation_server_factory(
 
 @pytest.fixture
 def simulation_server(
-    simulation_server_factory: Callable[[], SimulationServer],
+    simulation_server_factory: Callable[..., SimulationServer],
 ) -> SimulationServer:
     """A single fresh, disposable, real live server — the common case."""
     return simulation_server_factory()

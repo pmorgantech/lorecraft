@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "description": "Golden-path Ashmoore session: look around, grab the coin at the market, take Mira's quest at the Wandering Crow (the audit-regression script from Sprint 12, now data-driven).",
+  "world_yaml": "world_content/world.yaml",
+  "rng_seed": 1,
+  "actors": [
+    "player-1"
+  ],
+  "commands": [
+    {"t": 0.0, "actor": "player-1", "raw": "look"},
+    {"t": 1.0, "actor": "player-1", "raw": "go east"},
+    {"t": 2.0, "actor": "player-1", "raw": "take coin"},
+    {"t": 3.0, "actor": "player-1", "raw": "go west"},
+    {"t": 4.0, "actor": "player-1", "raw": "talk mira"},
+    {"t": 5.0, "actor": "player-1", "raw": "choice 1"},
+    {"t": 6.0, "actor": "player-1", "raw": "bye"}
+  ]
+}

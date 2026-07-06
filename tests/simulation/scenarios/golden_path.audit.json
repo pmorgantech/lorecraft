@@ -1,0 +1,51 @@
+[
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: look",
+    "target_id": null,
+    "room_id": "village_square",
+    "severity": "INFO"
+  },
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: move",
+    "target_id": null,
+    "room_id": "market_stalls",
+    "severity": "INFO"
+  },
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: take",
+    "target_id": null,
+    "room_id": "market_stalls",
+    "severity": "INFO"
+  },
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: move",
+    "target_id": null,
+    "room_id": "village_square",
+    "severity": "INFO"
+  },
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: talk",
+    "target_id": null,
+    "room_id": "village_square",
+    "severity": "INFO"
+  },
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: choice",
+    "target_id": null,
+    "room_id": "village_square",
+    "severity": "INFO"
+  },
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: bye",
+    "target_id": null,
+    "room_id": "village_square",
+    "severity": "INFO"
+  }
+]

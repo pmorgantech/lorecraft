@@ -150,7 +150,7 @@ fan-out + metrics), and the seeded-`GameRng` audit-regression determinism. **Ful
 
 | # | Task | Status |
 |---|------|--------|
-| 43.1 | **Phase 1** — `record` from the audit log → scenario JSON; single-actor `replay` via one `VirtualPlayer`; assert the normalised audit trail against a golden (data-drives `test_audit_regression.py`). | [ ] |
+| 43.1 | **Phase 1** — `record` from the audit log → scenario JSON; single-actor `replay` via one `VirtualPlayer`; assert the normalised audit trail against a golden (data-drives `test_audit_regression.py`). | [x] `lorecraft.tools.session_replay`: versioned scenario JSON (logical actors, `{t, actor, raw}`, `world_yaml`/`rng_seed` stamps), `record_scenario()` + `record` CLI off any audit DB, shared `normalize_events()`. Replay: `tests/simulation/replay.py` (fresh `VirtualPlayer`, fast timing); `test_audit_regression.py` now data-driven off checked-in `scenarios/golden_path.json` with a **checked-in golden trail** (`golden_path.audit.json`; regen via `LORECRAFT_UPDATE_GOLDENS=1`). Sim-server factory takes `rng_seed`. Unit + sim suites green. (v0.39.4) |
 | 43.2 | **Phase 2** — N-player fan-out (`--players N`) reusing the load-test percentile report; replace the fixed `test_load.py` script with recorded traffic. | [ ] |
 | 43.3 | **Phase 3** — mixed concurrent scenarios (`--mix`), longer soak runs, and an opt-in `simulation`-marked CI job. | [ ] |
 

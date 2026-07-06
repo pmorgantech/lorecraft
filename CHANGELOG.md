@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.4] - 2026-07-05
+
+### Added
+
+- **Sprint 43.1 — session record & single-actor replay with a golden audit diff** (Phase 1 of [`session_replay.md`](docs/session_replay.md)). New `lorecraft.tools.session_replay` module: a versioned **scenario JSON format** (logical actors + `{t, actor, raw}` command stream + `world_yaml`/`rng_seed` stamps), `record_scenario()` + a `record` CLI (`python -m lorecraft.tools.session_replay record --audit-db … --actor … -o scenario.json`) that projects one actor's `command_executed`/`_blocked`/`_failed` events out of any audit DB into a replayable scenario, and the shared `normalize_events()` audit-trail normaliser. Playback side: `tests/simulation/replay.py` `replay_scenario()` drives a scenario through a fresh `VirtualPlayer` against a live server; `test_audit_regression.py` is now **data-driven** — the old hard-coded script became the checked-in `tests/simulation/scenarios/golden_path.json`, replayed for both the run-vs-run determinism guard and a new **checked-in golden diff** (`golden_path.audit.json`, regenerate intentionally with `LORECRAFT_UPDATE_GOLDENS=1 make test-simulation`). The simulation-server factory now accepts an `rng_seed` so replays pin the scenario's recorded seed. Unit-tested (record filtering/ordering/`t` deltas, JSON round-trip, version guard, normaliser, CLI); full default + simulation suites green.
+
 ## [0.39.3] - 2026-07-05
 
 ### Added

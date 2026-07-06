@@ -1,78 +1,86 @@
-"""Audit log regression testing (Sprint 12 / architecture.md §25).
+"""Audit log regression testing (Sprint 12 / architecture.md §25; data-driven
+by scenario replay since Sprint 43.1).
 
-Runs the same scripted command sequence for one virtual player against two
-independent, freshly-bootstrapped servers and asserts the *shape* of the
-resulting audit trail is identical: same event types, summaries, targets,
-rooms, and severities, in the same order. Real IDs (transaction/correlation
-IDs, timestamps, the player's own generated UUID) legitimately differ between
-runs and are excluded from the comparison.
+The golden-path command script now lives in a checked-in scenario file
+(`scenarios/golden_path.json`, the Sprint 43 record/playback format) instead
+of a hard-coded list, and is replayed through
+`tests.simulation.replay.replay_scenario`. Two guards:
 
-This is the harness described for "audit log regression testing: run a known
-script, capture the audit log, run it again after code changes, diff the
-logs" — used here as a determinism check today, and as the scaffold future
-sprints can point a second (pre-change) capture at.
+1. **Determinism** — the same scenario against two independent fresh servers
+   must produce the same normalised audit trail (same event types, summaries,
+   targets, rooms, severities, in order; run-specific IDs/timestamps
+   excluded).
+2. **Golden diff** — the trail must match the checked-in
+   `scenarios/golden_path.audit.json`. A diff here means a code or world
+   change altered what the golden-path session records — either a regression,
+   or an intentional change: regenerate with
+
+       LORECRAFT_UPDATE_GOLDENS=1 make test-simulation
+
+   and review the golden's diff in the commit.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
-from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.tools.session_replay import load_scenario
 from tests.simulation.conftest import SimulationServer
-from tests.simulation.virtual_player import VirtualPlayer
+from tests.simulation.replay import replay_scenario
 
 pytestmark = pytest.mark.simulation
 
-_USERNAME = "regression_bot"
-_SCRIPT = [
-    "look",
-    "go east",
-    "take coin",
-    "go west",
-    "talk mira",
-    "choice 1",
-    "bye",
-]
-
-NormalizedEvent = tuple[str, str, str | None, str, str]
+_SCENARIOS_DIR = Path(__file__).parent / "scenarios"
+_SCENARIO_PATH = _SCENARIOS_DIR / "golden_path.json"
+_GOLDEN_AUDIT_PATH = _SCENARIOS_DIR / "golden_path.audit.json"
 
 
-def _normalize(events: list[AuditEvent]) -> list[NormalizedEvent]:
-    return [
-        (
-            event.event_type,
-            event.summary,
-            event.target_id,
-            event.room_id,
-            event.severity,
-        )
-        for event in events
-    ]
-
-
-async def _run_script(server: SimulationServer) -> list[NormalizedEvent]:
-    player_id = server.create_player(_USERNAME)
-    player = await VirtualPlayer.connect(server.ws_url, player_id, _USERNAME)
-    try:
-        await player.run_script(_SCRIPT)
-    finally:
-        await player.close()
-    return _normalize(server.audit_trail_for(player_id))
-
-
-def test_same_script_produces_the_same_normalized_audit_trail(
-    simulation_server_factory: Callable[[], SimulationServer],
+def test_same_scenario_produces_the_same_normalized_audit_trail(
+    simulation_server_factory: Callable[..., SimulationServer],
 ) -> None:
-    """Regression guard: replaying the golden-path script twice, against two
+    """Regression guard: replaying the golden-path scenario twice, against two
     independent fresh servers, should record the same sequence of audit
     events (modulo run-specific IDs/timestamps). A divergence here means a
     code change made command handling non-deterministic for an identical
     script — worth investigating before merging."""
-    first_run = asyncio.run(_run_script(simulation_server_factory()))
-    second_run = asyncio.run(_run_script(simulation_server_factory()))
+    scenario = load_scenario(_SCENARIO_PATH)
+    first_run = asyncio.run(
+        replay_scenario(simulation_server_factory(rng_seed=scenario.rng_seed), scenario)
+    )
+    second_run = asyncio.run(
+        replay_scenario(simulation_server_factory(rng_seed=scenario.rng_seed), scenario)
+    )
 
     assert first_run == second_run
     assert len(first_run) > 0
+
+
+def test_scenario_replay_matches_checked_in_golden(
+    simulation_server_factory: Callable[..., SimulationServer],
+) -> None:
+    """Golden diff: the normalised trail must match the checked-in capture.
+
+    Unlike the run-vs-run determinism guard above, this catches changes
+    *between code versions* — the point of record/playback regression. On an
+    intentional behavior/world change, regenerate with
+    LORECRAFT_UPDATE_GOLDENS=1 and review the golden's diff."""
+    scenario = load_scenario(_SCENARIO_PATH)
+    trail = asyncio.run(
+        replay_scenario(simulation_server_factory(rng_seed=scenario.rng_seed), scenario)
+    )
+
+    if os.getenv("LORECRAFT_UPDATE_GOLDENS") == "1":
+        _GOLDEN_AUDIT_PATH.write_text(json.dumps(trail, indent=2) + "\n")
+
+    assert _GOLDEN_AUDIT_PATH.exists(), (
+        "no golden audit trail checked in — generate one with "
+        "LORECRAFT_UPDATE_GOLDENS=1 make test-simulation"
+    )
+    golden = json.loads(_GOLDEN_AUDIT_PATH.read_text())
+    assert trail == golden

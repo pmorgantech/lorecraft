@@ -94,6 +94,10 @@ report shape so before/after diffs are scriptable.
 1. **Phase 1 — record + single-actor replay + golden diff.** `record` from the audit log; `replay`
    one scenario through one `VirtualPlayer`; assert the normalised audit trail matches a golden.
    (Turns `test_audit_regression.py` from a hard-coded script into a data-driven one.)
+   **✅ Shipped (43.1, v0.39.4):** scenario format + `record` CLI + `normalize_events()` in
+   `lorecraft.tools.session_replay`; `replay_scenario()` in `tests/simulation/replay.py`
+   (test-side because it drives the live-server harness); golden-path scenario + checked-in
+   golden trail under `tests/simulation/scenarios/` (`LORECRAFT_UPDATE_GOLDENS=1` regenerates).
 2. **Phase 2 — N-player fan-out + metrics.** `--players N`, reuse the load-test percentile report.
    Replaces the fixed `test_load.py` script with recorded traffic.
 3. **Phase 3 — mixed scenarios + soak + CI.** `--mix`, longer runs, an opt-in CI job (marked
