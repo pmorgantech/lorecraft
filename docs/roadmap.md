@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.39.0)
+## Where things stand (2026-07-05, v0.39.1)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -169,7 +169,20 @@ owner: the clock owns weather, terrain defs own terrain, the resolver composes t
 **Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output
 out of view. Split "world/narrative feed" from "social/channel feed" into two panes/tabs, **as a
 toggleable player option** (default preserves today's single feed). From [`wishlist.md`](wishlist.md)
-→ *Client UI · Separate the communication log from the narrative feed*.
+→ *Client UI · Separate the communication log from the narrative feed*. **Full plan:
+[`chat_feed_split.md`](chat_feed_split.md).**
+
+Key finding (from planning): chat (only `say` today) and ordinary room narration ("X leaves north.")
+share **one channel end to end** (`tell_room` → `feed_append`/`room_event`), so there is no
+chat-vs-narrative signal — the split must thread a new `chat` category through GameContext → the
+broadcast protocol → `command_result` → `app.js`. It's browser-rendered, so **Phase 2 needs a real
+browser to verify** (not the headless unit tests).
+
+| # | Task | Status |
+|---|------|--------|
+| 45.1 | **Phase 1 (headless-testable)** — GameContext chat channel (`say_chat`/`tell_room_chat` + `chat_messages`); `say_command` switches to it; `command_result.chat_messages` + `broadcast` `message_type:"chat"`; `separate_chat` player preference. | [ ] |
+| 45.2 | **Phase 2 (browser)** — `app.js` dual-pane routing, `index.html` pane, `app.css` styling, settings toggle; verify in a real browser + a two-player e2e (A `say`s → B sees it in the chat pane with the pref on, main feed with it off; "A leaves north." always narrative). | [ ] |
+| 45.3 | **Phase 3 (later)** — future global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; mobile tab-collapse polish. | [ ] |
 
 ---
 

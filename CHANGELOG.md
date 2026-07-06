@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.1] - 2026-07-05
+
+### Added
+
+- **Docs: chat/feed split plan (`chat_feed_split.md`) for Sprint 45.** Planned the opt-in split of the social/chat feed from the narrative feed. Key finding: chat (only `say` today; shout/whisper/tell are still Backlog) and ordinary room narration ("X leaves north.") share **one channel end to end** (`tell_room` → `feed_append`/`room_event`), so there's no chat-vs-narrative signal — the split threads a new `chat` category through GameContext (`say_chat`/`tell_room_chat` + `chat_messages`) → the broadcast protocol (`message_type:"chat"`) → `command_result` → `app.js` dual-pane, gated by a `separate_chat` player preference (default off = today's single feed). Phased so Phase 1 (server channel + preference) is headless-testable and **Phase 2 (client dual-pane) needs a real browser to verify** — hence deferred to a focused follow-up. Linked into the roadmap Sprint 45 (43-plan → 44-built → 45-planned).
+
 ## [0.39.0] - 2026-07-05
 
 ### Added
