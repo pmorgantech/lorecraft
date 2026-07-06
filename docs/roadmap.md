@@ -233,7 +233,7 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 | # | Task | Status |
 |---|------|--------|
-| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [ ] |
+| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [x] Spec: [`scavenger_hunt.md`](scavenger_hunt.md). Decisions: **flags** for per-player progress (persist via SaveSlot, journal-visible, no new table); **news items** for announcements (synchronous DB — sidesteps the async-from-scheduler broadcast problem, no live feed ping in v1); YAML defs loaded into an in-memory registry (weather/terrain pattern); completion = "find all" (count variant deferred); reuses scheduler / `ItemLocationService.spawn` / `ITEM_TAKEN` / `LedgerService` / `GameRng` — no new Tier 1 mechanism. (v0.40.7) |
 | 48.2 | Implement as a Tier 2 feature package (`features/…` + manifest, auto-discovered) per the spec; content-lint for event YAML references (item keys, room pools). | [ ] |
 | 48.3 | Ashmoore example hunt + tests: event opens/closes on schedule, item found → progress → reward, audit-regression stays stable. | [ ] |
 

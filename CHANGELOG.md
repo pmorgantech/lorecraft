@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.7] - 2026-07-06
+
+### Added
+
+- **Docs: scavenger-hunt design spec (`scavenger_hunt.md`, Sprint 48.1).** Design-first plan for time-boxed scavenger-hunt events built entirely on existing primitives (scheduler, `ItemLocationService.spawn`, the `ITEM_TAKEN` event, `LedgerService`, `GameRng`) — no new Tier 1 mechanism. Key decisions: per-player progress lives in **player flags** (persist through save/load, journal-visible, no new table); announcements are **news items** (synchronous DB writes, which sidestep the async-from-scheduler broadcast problem — no live feed ping in v1); hunt definitions load from `world_content/hunts.yaml` into an in-memory registry (the weather/terrain-def pattern); completion is "find all" (a count variant is a trivial later extension). Implementation (48.2/48.3) follows.
+
 ## [0.40.6] - 2026-07-06
 
 ### Added
