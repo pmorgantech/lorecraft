@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.24] - 2026-07-06
+
+### Added
+
+- **Sprint 50 P4 — panel-rendering e2e tests (`test_panel_rendering.py`, 2 tests).** Assert panels that update but weren't previously verified as re-rendered: the **minimap re-renders (recentered on the new current room) after movement** — distinct from the existing modal-open test, which only proves the full-screen map renders — and the **feed's "↑ top" / "↓ bottom" scroll controls** move the scroll position, with a new message re-pinning the feed to the bottom (handleCommandSuccess scrolls to bottom after every command, even if the player had scrolled up).
+
+### Note
+
+- **P4.2 (equipment/wield flow) deferred.** The Ashmoore world ships **no equippable items** — no item sets the definitional `Item.slot`, so `item_fits_slot` rejects every `wield`/`wear`, and the inventory panel has no equipped state to show. The equip-slot mechanic (`features/equipment`) is unit/integration-tested; fabricating a wieldable item solely for one e2e test would break the repo's data-driven/no-reward-hacking rule and perturb the audit-regression golden. This is arguably a real content gap (the shipped demo world can't exercise equipment at all) worth filling as deliberate content work later; the e2e can follow.
+
 ## [0.40.23] - 2026-07-06
 
 ### Added
