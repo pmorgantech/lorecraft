@@ -56,9 +56,16 @@ async def replay_scenario(
     try:
         for command in scenario.commands_for(actor):
             await player.send_command(command.raw)
+        # Capture the trail *before* closing the socket: the server records a
+        # `player_disconnected` lifecycle event on close, and whether it lands
+        # before the query is a race (it did on CI, failing the golden diff).
+        # The trail should be the gameplay the scenario drove — every
+        # command's audit writes are committed before its `command_result` is
+        # sent, so after the last reply the capture is stable — never
+        # transport teardown.
+        return normalize_events(server.audit_trail_for(player_id))
     finally:
         await player.close()
-    return normalize_events(server.audit_trail_for(player_id))
 
 
 def fan_out_scenario(

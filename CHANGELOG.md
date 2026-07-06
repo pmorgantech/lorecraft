@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.1] - 2026-07-05
+
+### Fixed
+
+- **Flaky golden audit diff on CI (Sprint 43.1 follow-up).** `replay_scenario` read the audit trail *after* closing the player's WebSocket, racing the server's `player_disconnected` lifecycle event — on the CI runner the disconnect landed first and the golden diff failed with one extra event. The trail is now captured **before** the socket closes (every command's audit writes are committed before its `command_result` is sent, so the capture is stable after the last reply), keeping the golden exactly the gameplay the scenario drove, never transport teardown. Verified stable across repeated local runs; no golden regeneration needed.
+
 ## [0.40.0] - 2026-07-05
 
 ### Added
