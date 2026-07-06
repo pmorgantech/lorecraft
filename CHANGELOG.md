@@ -2,6 +2,20 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.12] - 2026-07-06
+
+### Added
+
+- **Admin console — live audit feed.** The **Audit** tab now updates in real time as players act: every executed command emits a `COMMAND_EXECUTED` bus event that the composition layer forwards to connected admin clients as an `audit_appended` push over `/admin/ws`, and the tab re-queries with your current filters (debounced so a burst of commands coalesces into one refetch). A **Live** checkbox toggles the auto-refresh, and a new **↻ Refresh** button reloads on demand — previously the only way to see new rows was the Search button.
+
+### Changed
+
+- **Audit command summaries show the full command.** `command_executed`/`command_failed` audit summaries now read `Command executed: go east` / `Command executed: take coin` (the command as typed, verb + arguments) instead of the bare verb (`Command executed: move`). Capped at 120 chars. The golden-path audit regression fixture was regenerated to match.
+
+### Fixed
+
+- **Version desync.** `src/lorecraft/__init__.py` was left at `0.40.10` when `pyproject.toml` moved to `0.40.11`; both are now synced at `0.40.12`.
+
 ## [0.40.11] - 2026-07-06
 
 ### Added

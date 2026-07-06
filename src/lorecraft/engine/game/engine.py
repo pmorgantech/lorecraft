@@ -18,6 +18,17 @@ from lorecraft.types import JsonObject, JsonValue
 log = logging.getLogger(__name__)
 
 
+def _command_summary_text(parsed: ParsedCommand) -> str:
+    """Full command text for an audit summary — the verb plus its arguments as
+    the player typed them (e.g. "move south", "get all"), so the audit log reads
+    at a glance instead of showing the bare verb. Falls back to the verb when no
+    raw text is available, and caps length to keep summaries tidy."""
+    text = (parsed.raw or "").strip()
+    if not text:
+        return parsed.verb
+    return text if len(text) <= 120 else text[:117] + "..."
+
+
 def _command_audit_payload(parsed: ParsedCommand, **extra: str) -> JsonObject:
     payload: JsonObject = {
         "verb": parsed.verb,
@@ -129,6 +140,18 @@ class CommandEngine:
         }
         self._record_success(ctx, parsed, duration_ms, perf=perf)
         log.info("command_executed verb=%s duration_ms=%.2f", parsed.verb, duration_ms)
+        # Announce the executed command on the bus so composition-layer
+        # observers (e.g. the admin console's live audit feed) can react
+        # without the engine knowing about them. The audit row is already
+        # recorded and committed above, so a listener that re-reads the audit
+        # log will see this command. Handler exceptions are isolated by the bus.
+        ctx.emit(
+            GameEvent.COMMAND_EXECUTED,
+            actor_id=ctx.player.id,
+            verb=parsed.verb,
+            summary=_command_summary_text(parsed),
+            room_id=ctx.room.id,
+        )
         return parsed
 
     def _rollback(
@@ -164,7 +187,7 @@ class CommandEngine:
             ctx,
             GameEvent.COMMAND_FAILED,
             severity="ERROR",
-            summary=f"Command handler crashed: {parsed.verb}",
+            summary=f"Command handler crashed: {_command_summary_text(parsed)}",
             payload=payload,
         )
         ctx.commit_audit_events()
@@ -204,7 +227,7 @@ class CommandEngine:
             ctx,
             GameEvent.COMMAND_EXECUTED,
             severity="INFO",
-            summary=f"Command executed: {parsed.verb}",
+            summary=f"Command executed: {_command_summary_text(parsed)}",
             payload=payload,
         )
         ctx.commit_audit_events()

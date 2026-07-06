@@ -138,6 +138,64 @@ def test_engine_records_duration_ms_on_successful_command_audit_event() -> None:
     assert duration_ms >= 0.0
 
 
+def test_engine_summary_includes_full_command_text() -> None:
+    """The audit summary should show the whole command as typed (verb +
+    arguments), not just the bare verb — e.g. "look tavern", not "look"."""
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("look")
+    def look(noun, ctx):
+        ctx.say("You look around.")
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        ctx = build_persistent_context(game_session, audit_session)
+
+        CommandEngine(registry, RuleEngine()).handle_command("look tavern", ctx)
+
+        events = audit_session.exec(select(AuditEvent)).all()
+
+    assert len(events) == 1
+    assert events[0].event_type == "command_executed"
+    assert events[0].summary == "Command executed: look tavern"
+
+
+def test_engine_emits_command_executed_event_on_bus() -> None:
+    """A successful command emits COMMAND_EXECUTED on the bus so composition-
+    layer observers (e.g. the admin live audit feed) can react."""
+    from lorecraft.engine.game.events import GameEvent
+
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+
+    registry = CommandRegistry()
+
+    @registry.register("look")
+    def look(noun, ctx):
+        ctx.say("You look around.")
+
+    captured: list[dict] = []
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        ctx = build_persistent_context(game_session, audit_session)
+        ctx.bus.on(
+            GameEvent.COMMAND_EXECUTED,
+            lambda event, ctx: captured.append(dict(event.payload)),
+        )
+
+        CommandEngine(registry, RuleEngine()).handle_command("look tavern", ctx)
+
+    assert len(captured) == 1
+    assert captured[0]["verb"] == "look"
+    assert captured[0]["summary"] == "look tavern"
+    assert captured[0]["actor_id"] == "player-1"
+    assert captured[0]["room_id"] == "tavern"
+
+
 def test_engine_rolls_back_and_records_command_failed_on_handler_crash() -> None:
     game_engine = create_engine("sqlite://")
     audit_engine = create_engine("sqlite://")

@@ -8,35 +8,35 @@
   },
   {
     "event_type": "command_executed",
-    "summary": "Command executed: move",
+    "summary": "Command executed: go east",
     "target_id": null,
     "room_id": "market_stalls",
     "severity": "INFO"
   },
   {
     "event_type": "command_executed",
-    "summary": "Command executed: take",
+    "summary": "Command executed: take coin",
     "target_id": null,
     "room_id": "market_stalls",
     "severity": "INFO"
   },
   {
     "event_type": "command_executed",
-    "summary": "Command executed: move",
+    "summary": "Command executed: go west",
     "target_id": null,
     "room_id": "village_square",
     "severity": "INFO"
   },
   {
     "event_type": "command_executed",
-    "summary": "Command executed: talk",
+    "summary": "Command executed: talk mira",
     "target_id": null,
     "room_id": "village_square",
     "severity": "INFO"
   },
   {
     "event_type": "command_executed",
-    "summary": "Command executed: choice",
+    "summary": "Command executed: choice 1",
     "target_id": null,
     "room_id": "village_square",
     "severity": "INFO"

@@ -220,6 +220,10 @@
           <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">TYPE</label><input id="f-type" placeholder="command_executed" /></div>
           <div><label style="color:var(--text-dim);font-size:0.75rem;">LIMIT</label><input id="f-limit" value="100" style="width:70px;" /></div>
           <button onclick="loadAudit()">Search</button>
+          <button onclick="loadAudit()" title="Refresh">↻ Refresh</button>
+          <label style="display:flex;align-items:center;gap:0.3rem;color:var(--text-dim);font-size:0.75rem;white-space:nowrap;" title="Automatically refresh as players act">
+            <input type="checkbox" id="f-live" checked style="width:auto;" /> Live
+          </label>
         </div>
         <div class="panel" style="overflow-x:auto;flex:1;">
           <table>
@@ -702,6 +706,19 @@ async function loadAnalytics() {
 // ────────────────────────────────────────
 // Audit
 // ────────────────────────────────────────
+
+// Coalesce bursts of audit_appended pushes into a single refetch, and honour
+// the "Live" toggle + only refetch when the Audit tab is actually visible.
+let _auditRefreshTimer = null;
+function scheduleAuditRefresh() {
+  const live = document.getElementById("f-live");
+  if (live && !live.checked) return;
+  if (_auditRefreshTimer) return;
+  _auditRefreshTimer = setTimeout(() => {
+    _auditRefreshTimer = null;
+    refreshIfActive("audit");
+  }, 400);
+}
 
 async function loadAudit() {
   const params = new URLSearchParams();
@@ -1306,6 +1323,12 @@ function connectAdminWs() {
       }
       if (msg.type === "changeset_scan_done") {
         refreshIfActive("changesets");
+      }
+      // A player command recorded an audit row — live-refresh the Audit tab
+      // (debounced so a burst of commands coalesces into one refetch), unless
+      // the admin turned "Live" off.
+      if (msg.type === "audit_appended") {
+        scheduleAuditRefresh();
       }
       // Content mutated by another admin (or out-of-band) — reload that tab if open.
       if (msg.type === "content_changed" && typeof msg.resource === "string") {

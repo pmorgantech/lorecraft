@@ -307,6 +307,59 @@ async def _test_admin_ws_multiple_clients() -> None:
 
 
 # =============================================================================
+# LIVE AUDIT FEED TESTS
+# =============================================================================
+
+
+def test_command_executed_pushes_audit_appended_to_admins() -> None:
+    anyio.run(_test_command_executed_pushes_audit_appended)
+
+
+async def _test_command_executed_pushes_audit_appended() -> None:
+    """A COMMAND_EXECUTED bus event (emitted by the engine after each command)
+    should be forwarded to connected admin clients as an `audit_appended`
+    message so the Audit tab can live-refresh."""
+    import asyncio
+
+    from lorecraft.engine.game.events import Event, GameEvent
+    from lorecraft.state import AppState
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    _seed_admin(game_engine)
+
+    async with _lifespan(app):
+        state = app.state.lorecraft
+        assert isinstance(state, AppState)
+
+        # Stand in for a connected admin WS client's queue.
+        q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=200)
+        state.admin_broadcaster.add(q)
+
+        state.bus.emit(
+            Event(
+                GameEvent.COMMAND_EXECUTED,
+                {
+                    "actor_id": "player-1",
+                    "verb": "move",
+                    "summary": "move south",
+                    "room_id": "village_square",
+                },
+            ),
+            None,
+        )
+
+        msg = q.get_nowait()
+
+    assert msg["type"] == "audit_appended"
+    assert msg["actor_id"] == "player-1"
+    assert msg["summary"] == "move south"
+    assert msg["room_id"] == "village_square"
+
+
+# =============================================================================
 # CONNECTION MANAGEMENT TESTS
 # =============================================================================
 

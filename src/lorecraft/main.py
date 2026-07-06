@@ -274,12 +274,28 @@ def create_app(
             # emit via notify_content_changed.
             admin_broadcaster.push({"type": "content_changed", "resource": "issues"})
 
+        def _push_command_executed(event: Event, ctx: object) -> None:
+            # Live audit feed: every executed command records an audit row, so
+            # nudge admin clients to refresh the Audit tab in real time (they
+            # re-query with their current filters). The engine emits
+            # COMMAND_EXECUTED on the bus after committing the audit row.
+            payload = event.payload
+            admin_broadcaster.push(
+                {
+                    "type": "audit_appended",
+                    "actor_id": str(payload.get("actor_id", "")),
+                    "summary": str(payload.get("summary", "")),
+                    "room_id": str(payload.get("room_id", "")),
+                }
+            )
+
         bus.on(GameEvent.PLAYER_MOVED, _push_player_moved)
         bus.on(GameEvent.PLAYER_DISCONNECTED, _push_player_disconnected)
         bus.on(GameEvent.PLAYER_RECONNECTED, _push_player_reconnected)
         bus.on(GameEvent.TIME_ADVANCED, _push_clock_tick)
         bus.on(GameEvent.TIME_ADVANCED, _schedule_clock_broadcast)
         bus.on(GameEvent.ISSUE_FILED, _push_issue_filed)
+        bus.on(GameEvent.COMMAND_EXECUTED, _push_command_executed)
 
         # Initialize WebHost and load feature presentations (step 11 of tier-split
         # refactor). Features with optional presentation.py modules can contribute

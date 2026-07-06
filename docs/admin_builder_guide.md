@@ -130,7 +130,7 @@ Nine tabs, each backed by REST endpoints under `/admin/*`:
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
 | **Dashboard** | Live player table, auto-refreshed over `/admin/ws` | `GET /admin/players` |
-| **Audit** | Paginated, filterable audit log; row-expand payload; correlation-ID session replay | `GET /admin/audit`, `GET /admin/audit/session/{correlation_id}` |
+| **Audit** | Paginated, filterable audit log; row-expand payload; correlation-ID session replay. **Live-updates** as players act (each executed command pushes over `/admin/ws`) — toggle with the **Live** checkbox, or use the **↻ Refresh** button to reload on demand. Command summaries show the full command as typed (e.g. `Command executed: go east`, not just the verb) | `GET /admin/audit`, `GET /admin/audit/session/{correlation_id}` |
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
@@ -147,7 +147,11 @@ player detail view reached from the Dashboard — see
 Beyond the Dashboard's live player table, the **Issues**, **News**, and **Help** tabs auto-reload
 when their content changes — including edits made by *another* admin, an out-of-band change, or an
 in-game player `report` filing a new issue — but only for whichever tab you're currently viewing.
-No manual Search/Refresh needed to see a fresh issue, announcement, or help topic.
+The **Audit** tab likewise live-appends as players run commands (each `command_executed` audit row
+pushes an `audit_appended` nudge; the tab re-queries with your current filters, debounced so a burst
+of commands coalesces into one refetch). Turn this off with the tab's **Live** checkbox, and reload
+by hand with **↻ Refresh**. No manual Search/Refresh needed to see a fresh issue, announcement, help
+topic, or player command.
 
 **Session expiry:** access tokens are short-lived (`LORECRAFT_ADMIN_JWT_ACCESS_TTL`, default 900 s / 15 min) and the
 console holds no refresh token. When the token expires, the next authenticated action (or the admin
