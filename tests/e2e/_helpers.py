@@ -132,3 +132,18 @@ def wait_for_both_ws_connected(page_a: Any, page_b: Any) -> None:
     """
     wait_for_ws_connected(page_a)
     wait_for_ws_connected(page_b)
+
+
+def set_offline(page: Any, offline: bool) -> None:
+    """Set a page's context to offline/online mode.
+
+    When offline=True, the browser disconnects from the network (simulating
+    network failure). When offline=False, it reconnects. The `app.js`
+    reconnect handler uses `app.js`'s reconnect + `reconnect_sync` backfill
+    to restore state and catch up on missed messages.
+
+    Used only in P5.1 (reconnect/resync test); kept separate because it is
+    timing-sensitive and flaky. Wait for the "Session restored." system
+    message after setting offline=False to confirm the backfill completed.
+    """
+    page.context.set_offline(offline)
