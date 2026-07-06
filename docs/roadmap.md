@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.38.17)
+## Where things stand (2026-07-05, v0.39.0)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -149,11 +149,20 @@ fan-out + metrics), and the seeded-`GameRng` audit-regression determinism. **Ful
 | 43.2 | **Phase 2** — N-player fan-out (`--players N`) reusing the load-test percentile report; replace the fixed `test_load.py` script with recorded traffic. | [ ] |
 | 43.3 | **Phase 3** — mixed concurrent scenarios (`--mix`), longer soak runs, and an opt-in `simulation`-marked CI job. | [ ] |
 
-## Sprint 44 — Weather-driven world effects
+## Sprint 44 — Weather-driven world effects — ✅ complete
 
-**Goal:** the weather/season state machine exists but mostly flavors descriptions — make it drive
-real mechanics via the Sprint 39 timed-room-effect primitive (a weather hazard *is* a room effect /
-occupant aura). From [`wishlist.md`](wishlist.md) → *Weather-driven world events*. **← next after 43's plan.**
+**Goal:** the weather/season state machine mostly flavored descriptions — make it drive a real
+mechanic. From [`wishlist.md`](wishlist.md) → *Weather-driven world events*.
+
+**Design note (corrected during build):** weather is **global clock state affecting rooms by terrain**,
+a natural fit for the **§3.5 modifier resolver** (read-through, like room auras / terrain gating) —
+*not* the Sprint 39 timed-room-effect primitive (that is for *localized, TTL* effects, and would mean
+materializing a redundant effect row per outdoor room on every weather change). Each behavior keeps one
+owner: the clock owns weather, terrain defs own terrain, the resolver composes them.
+
+| # | Task | Status |
+|---|------|--------|
+| 44.1 | `WeatherTerrainModifierSource` (`features/weather/modifiers.py`): harsh weather (`COLD_WEATHERS` + thunderstorm/heavy_rain) subtracts a penalty from a skill-gated terrain's `required_skill`, read through `resolve_for`. So a **blizzard can push a marginal traveller below a mountain pass's survival requirement** via the *existing* movement terrain gate — no new movement code, no materialized room effects. Registered at module import; unit-tested (penalty in harsh weather on skill-gated terrain, none in clear weather or on sheltered terrain). | [x] |
 
 ## Sprint 45 — Split the social/chat feed from the narrative feed (opt-in)
 

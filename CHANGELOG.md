@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.39.0] - 2026-07-05
+
+### Added
+
+- **Sprint 44 — weather-driven world effects.** Weather now *does* something beyond flavoring room text: a new `WeatherTerrainModifierSource` (`features/weather/modifiers.py`) means **harsh weather makes skill-gated wilderness terrain harder to cross**. During harsh weather (`COLD_WEATHERS` snow/blizzard/fog + thunderstorm/heavy_rain), a player standing on a terrain that has a `required_skill` (mountain/swamp/water need `survival`) gets a flat penalty subtracted from that skill, read through the **§3.5 modifier resolver** — the same one movement's terrain gate already uses. So a blizzard can push a marginal traveller below a mountain pass's survival requirement and block the crossing, with **no new movement code and no materialized per-room effects**. Design note: weather is *global clock state affecting rooms by terrain*, so it's a read-through modifier source (like room auras / terrain gating), **not** the Sprint 39 timed-room-effect primitive (which is for localized, TTL effects) — keeping one owner per behavior (clock → weather, terrain defs → terrain, resolver → composition). Unit-tested (penalty applies in harsh weather on skill-gated terrain; none in clear weather or on sheltered terrain).
+
 ## [0.38.17] - 2026-07-05
 
 ### Added
