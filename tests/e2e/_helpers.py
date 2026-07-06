@@ -107,20 +107,23 @@ def navigate_to_locksmiths_gallery(page: Any) -> None:
 def wait_for_ws_connected(page: Any) -> None:
     """Wait for the WebSocket connection to become ready.
 
-    The WS connection is established asynchronously after the page loads and
-    the player sends their ID through the connect form. The server responds
-    with a "connected" message, which sets `state.connected = true` in app.js
-    and changes the connection-state element to "online".
+    The WS connection is established asynchronously on /game load: app.js
+    fetches a single-use ticket (POST /auth/ws-ticket) and opens /ws. On
+    ws.onopen it sets an internal flag exposed as `window.Lorecraft.isConnected()`.
 
-    This signal is essential for multiplayer tests: both pages must be
-    connected before one acts and the other asserts on cross-client updates
-    (WS broadcasts are only sent when the receiver is ready).
+    We can't use the header status dot (`.w-2.h-2.rounded-full`) as the signal
+    because it is server-rendered already carrying `bg-emerald-500`, so it can't
+    distinguish "connecting" from "connected".
 
-    Usage: after create_character(), call this before starting a multiplayer
-    test's action/assertion sequence.
+    This signal is essential for multiplayer tests: the receiving player must be
+    connected *before* the acting player triggers a room broadcast, or the push
+    is sent to nobody. Broadcasts are only delivered to currently-open sockets.
+
+    Usage: after create_character(), call this before another player acts.
     """
     page.wait_for_function(
-        "window.lorecraftClient && window.lorecraftClient.state.connected === true"
+        "window.Lorecraft && window.Lorecraft.isConnected && "
+        "window.Lorecraft.isConnected() === true"
     )
 
 

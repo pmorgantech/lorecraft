@@ -13,6 +13,7 @@
   "use strict";
 
   let ws = null;
+  let wsReady = false;
   let reconnectAttempts = 0;
   const MAX_RECONNECT = 10;
   let commandHistory = [];
@@ -61,6 +62,7 @@
     ws.onopen = function () {
       console.log("[Lorecraft] WebSocket connected");
       reconnectAttempts = 0;
+      wsReady = true;
 
       // Optional: send auth/identify message if your backend expects it
       // ws.send(JSON.stringify({ type: 'identify', player_id: CURRENT_PLAYER_ID }));
@@ -84,6 +86,7 @@
 
     ws.onclose = function () {
       console.log("[Lorecraft] WebSocket disconnected");
+      wsReady = false;
       const statusDot = document.querySelector(".w-2.h-2.rounded-full");
       if (statusDot) statusDot.classList.remove("bg-emerald-500");
 
@@ -494,6 +497,12 @@
 
     // For backend to push HTML directly if desired
     handlePushHTML: appendToFeed,
+
+    // True once the WS handshake completes (ws.onopen), false after close.
+    // Exposed for console debugging and as the e2e "WS-settled" signal, since
+    // the header status dot is server-rendered with bg-emerald-500 already and
+    // so can't distinguish "connecting" from "connected".
+    isConnected: () => wsReady,
   };
 
   // === Boot ===
