@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.41.1] - 2026-07-06
+
+### Changed
+
+- **Use uvicorn's `websockets-sansio` WebSocket implementation** everywhere we launch uvicorn (`tests/e2e/conftest.py`, `tests/simulation/conftest.py`, and `start.sh`). uvicorn's default (`--ws auto`) resolves to the legacy `websockets_impl`, which relies on the `websockets.legacy` API that `websockets>=14` deprecates and will eventually remove — so it emitted `DeprecationWarning`s in the test output and is latent startup breakage on a future `websockets` bump. The sansio impl uses the modern API. Note: this is **not** fixed by upgrading uvicorn alone (verified — `auto` still selects the legacy impl in current uvicorn; sansio is opt-in). Verified: the full e2e (36) and simulation suites pass with the warnings gone, and the dev server boots and serves under `--ws websockets-sansio`.
+
 ## [0.41.0] - 2026-07-06
 
 ### Added

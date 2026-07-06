@@ -155,6 +155,9 @@ fi
 cp "${SEED_GAME_DB}" "${RUNTIME_GAME_DB}"
 cp "${SEED_AUDIT_DB}" "${RUNTIME_AUDIT_DB}"
 
+# --ws websockets-sansio: modern websockets API. uvicorn's default (auto) uses
+# the legacy API that websockets>=14 deprecates and will remove, which would
+# otherwise break server startup on a future websockets bump.
 LORECRAFT_DB_PATH="${RUNTIME_GAME_DB}" \
 LORECRAFT_AUDIT_DB_PATH="${RUNTIME_AUDIT_DB}" \
-"${SCRIPT_DIR}/.venv/bin/uvicorn" lorecraft.main:app --host 127.0.0.1 --port 8000
+"${SCRIPT_DIR}/.venv/bin/uvicorn" lorecraft.main:app --host 127.0.0.1 --port 8000 --ws websockets-sansio

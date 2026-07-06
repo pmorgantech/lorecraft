@@ -40,7 +40,15 @@ class _LiveServer:
     """Runs the real FastAPI app under uvicorn on a background thread."""
 
     def __init__(self, app: Any) -> None:
-        config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning")
+        # ws="websockets-sansio": avoid uvicorn's default legacy-websockets impl,
+        # which websockets>=14 deprecates (see tests/e2e/conftest.py).
+        config = uvicorn.Config(
+            app,
+            host="127.0.0.1",
+            port=0,
+            log_level="warning",
+            ws="websockets-sansio",
+        )
         self._server = uvicorn.Server(config)
         self._thread = threading.Thread(target=self._server.run, daemon=True)
 
