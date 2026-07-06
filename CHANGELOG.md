@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.1] - 2026-07-06
+
+### Changed
+
+- **Docs: archived completed sprints.** Moved the fully-complete Sprints 43, 44, 46, 47, 48, 49, 50, and 51 out of the active `docs/roadmap.md` into `docs/roadmap_completed.md`, keeping the active roadmap focused on remaining work. Partially-done items stay: Sprint 45 (45.3 per-channel mute shipped, rest deferred) and the performance band (Sprints 35–39: 37 has a deferred 37.1, 38 is a deferred decision gate, 39.1 is still marked in-review). Also removed the now-empty "Reconciled from the unrecorded planning list" band header and repointed the affected backlog links to the archive. No code change.
+
 ## [0.42.0] - 2026-07-06
 
 ### Added
