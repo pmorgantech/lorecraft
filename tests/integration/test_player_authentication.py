@@ -602,6 +602,70 @@ async def _test_ws_ticket_via_session_cookie() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Session enforcement: prevent concurrent logins
+# ---------------------------------------------------------------------------
+
+
+def test_concurrent_session_boots_old_session() -> None:
+    """When a player connects while already having an active session,
+    the old session is booted (status set to 'booted')."""
+    from uuid import uuid4
+    from lorecraft.engine.models.session import PlayerSession
+    from lorecraft.engine.repos.player_repo import PlayerRepo
+    from lorecraft.engine.services.save import SessionSafetyService
+    from lorecraft.engine.game.events import EventBus
+
+    game_engine, audit_engine = _make_engines()
+    with Session(game_engine) as db, Session(audit_engine) as audit_db:
+        # Create a player
+        player_repo = PlayerRepo(db)
+        from lorecraft.engine.models.player import Player
+
+        player = Player(
+            id="test_player",
+            username="test_concurrent",
+            current_room_id="village_square",
+            respawn_room_id="village_square",
+            visited_rooms=["village_square"],
+        )
+        player_repo.add(player)
+
+        # Create an active session
+        old_session = PlayerSession(
+            id=str(uuid4()),
+            player_id=player.id,
+            connected_at=1000.0,
+            status="active",
+        )
+        player_repo.add_session(old_session)
+        db.commit()
+
+        # Verify it's active
+        assert player_repo.active_session(player.id) is not None
+        assert player_repo.active_session(player.id).id == old_session.id
+
+        # Boot the active session
+        service = SessionSafetyService(
+            game_session=db,
+            audit_session=audit_db,
+            bus=EventBus(),
+            grace_seconds=300.0,
+            now=1500.0,
+        )
+        service.boot_active_session(player.id)
+        db.commit()
+
+        # Verify it's now booted
+        booted_session = player_repo.player_session(old_session.id)
+        assert booted_session is not None
+        assert booted_session.status == "booted"
+        assert booted_session.disconnected_at == 1500.0
+
+        # Verify there's no more active session
+        assert player_repo.active_session(player.id) is None
+
+
+# ---------------------------------------------------------------------------
 # POST /auth/oauth/{provider}/callback (Sprint 4.7 extensibility stub)
 # ---------------------------------------------------------------------------
 

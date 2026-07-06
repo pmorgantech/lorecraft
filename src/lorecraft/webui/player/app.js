@@ -44,11 +44,31 @@ const elements = {
   exitCompass: document.querySelector("#exit-compass"),
 };
 
-function websocketUrl(playerId) {
+function websocketUrl(ticket) {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const url = new URL("/ws", `${protocol}//${window.location.host}`);
-  url.searchParams.set("player_id", playerId);
+  url.searchParams.set("ticket", ticket);
   return url.toString();
+}
+
+async function getWsTicket() {
+  try {
+    const response = await fetch("/auth/ws-ticket", { method: "POST" });
+    if (response.status === 401) {
+      // Token expired or invalid, redirect to lobby to re-authenticate
+      window.location.href = "/";
+      return null;
+    }
+    if (!response.ok) {
+      console.error(`Failed to get WS ticket: ${response.status}`);
+      return null;
+    }
+    const data = await response.json();
+    return data.ws_ticket;
+  } catch (error) {
+    console.error("Error getting WS ticket:", error);
+    return null;
+  }
 }
 
 function setConnection(status, className = "") {
@@ -531,7 +551,7 @@ function routeMessage(message) {
   appendMessage("system", JSON.stringify(message));
 }
 
-function connect(playerId) {
+async function connect(playerId) {
   if (state.socket) {
     state.socket.close();
   }
@@ -547,7 +567,15 @@ function connect(playerId) {
   setCommandEnabled(false);
   applyUpdates({});
 
-  const socket = new WebSocket(websocketUrl(playerId));
+  const ticket = await getWsTicket();
+  if (!ticket) {
+    setConnection("error", "is-error");
+    appendMessage("error", "Failed to authenticate. Please log in again.");
+    setCommandEnabled(false);
+    return;
+  }
+
+  const socket = new WebSocket(websocketUrl(ticket));
   state.socket = socket;
 
   socket.addEventListener("message", (event) => {
@@ -575,9 +603,9 @@ function sendCommand(command) {
   state.socket.send(command);
 }
 
-elements.connectForm.addEventListener("submit", (event) => {
+elements.connectForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  connect(elements.playerId.value.trim());
+  await connect(elements.playerId.value.trim());
 });
 
 elements.disconnectBtn?.addEventListener("click", () => {

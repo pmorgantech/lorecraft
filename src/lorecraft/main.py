@@ -388,12 +388,14 @@ def create_app(
             if room is None:
                 await websocket.close(code=1011, reason="player room not found")
                 return
-            session_result = SessionSafetyService(
+            safety_service = SessionSafetyService(
                 game_session=game_session,
                 audit_session=audit_session,
                 bus=state.bus,
                 grace_seconds=state.settings.disconnect_grace_seconds,
-            ).start_or_resume_session(player)
+            )
+            safety_service.boot_active_session(player_id)
+            session_result = safety_service.start_or_resume_session(player)
             session_id = session_result.player_session.id
             updates = _player_ui_updates(player, room, room_repo, item_repo)
             connected_payload: JsonObject = {

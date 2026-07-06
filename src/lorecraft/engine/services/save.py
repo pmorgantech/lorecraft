@@ -127,6 +127,24 @@ class SessionSafetyService:
         self.grace_seconds = grace_seconds
         self.now = time.time() if now is None else now
 
+    def boot_active_session(self, player_id: str) -> None:
+        """Boot any active session for a player (enforce single concurrent login)."""
+        active = self.player_repo.active_session(player_id)
+        if active is not None:
+            active.status = "booted"
+            active.disconnected_at = self.now
+            self.bus.emit(
+                Event(
+                    GameEvent.PLAYER_DISCONNECTED,
+                    {
+                        "player_id": player_id,
+                        "session_id": active.id,
+                        "reason": "booted",
+                    },
+                ),
+                SessionEventContext(player_id=player_id, session_id=active.id),
+            )
+
     def start_or_resume_session(self, player: Player) -> SessionStartResult:
         self.expire_due_grace_periods(player_id=player.id)
         grace_session = self.player_repo.reconnectable_session(player.id, self.now)

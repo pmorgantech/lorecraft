@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.11] - 2026-07-06
+
+### Added
+
+- **Session enforcement: single concurrent login per player.** Players can now only have one active WebSocket connection at a time. When a player connects while already having an active session, the old session is automatically booted (status set to "booted") and a `PLAYER_DISCONNECTED` event is emitted. The `SessionSafetyService.boot_active_session()` method enforces this at the WebSocket handshake layer.
+
+### Changed
+
+- **Client-side auth flow (legacy WebSocket client).** The old `app.js` WebSocket client now fetches a single-use ticket from `/auth/ws-ticket` before connecting, instead of passing `player_id` directly. When the server returns 401 (invalid/expired access token), the client redirects to the lobby to re-authenticate. This enables proper auth-state recovery on server restart.
+
 ## [0.40.10] - 2026-07-06
 
 ### Added
