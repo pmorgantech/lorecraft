@@ -134,7 +134,7 @@ data controls this. If a room is dark, bring a light source.
 
 ```
 search          — look for hidden exits and secrets in the room
-journal         — review places visited, people met, lore learned, and active quests
+journal         — review places visited, people met, items discovered, lore learned, and active quests
 ```
 
 Not every exit shows up in a room's description — `search` rolls your perception skill
@@ -347,7 +347,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `skills` | | List your skills and their levels |
 | `reputation` | `rep` | List your standing with NPCs and factions |
 | `search` | | Look for hidden exits and secrets in the room |
-| `journal` | | Review places visited, people met, lore learned, and active quests |
+| `journal` | | Review places visited, people met, items discovered, lore learned, and active quests |
 | `rest` | | Catch your breath and recover a little stamina |
 | `camp` | | Make camp and recover a good deal of stamina |
 | `sleep` | | Sleep deeply and recover all your stamina |

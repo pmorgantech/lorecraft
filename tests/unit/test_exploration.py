@@ -18,7 +18,7 @@ from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.engine.models.world import Exit, Room
+from lorecraft.engine.models.world import Exit, Item, Room
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
@@ -264,3 +264,26 @@ class TestJournal:
         cmd_engine.handle_command("journal", ctx)
 
         assert any("none yet" in m for m in ctx.messages)
+
+    def test_journal_shows_discovered_items(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, session = built
+        session.add(
+            Item(id="lantern", name="Brass Lantern", description="It flickers.")
+        )
+        session.commit()
+        ctx.player.discovered_items = ["lantern"]
+
+        cmd_engine.handle_command("journal", ctx)
+
+        assert any("Items discovered: Brass Lantern." in m for m in ctx.messages)
+
+    def test_journal_items_empty_state(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+
+        cmd_engine.handle_command("journal", ctx)
+
+        assert any("Items discovered: none yet." in m for m in ctx.messages)

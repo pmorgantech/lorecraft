@@ -16,6 +16,10 @@ class Player(SQLModel, table=True):
     current_room_id: str
     visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     met_npcs: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # First-discovered item *definitions* (Sprint 46): set on first take/examine,
+    # same pattern as met_npcs. Per-definition, not per-instance — finding a
+    # second copper coin doesn't re-record. Surfaced by the journal.
+    discovered_items: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     respawn_room_id: str
     pvp_consent: bool = False
@@ -64,6 +68,7 @@ class SaveSlot(SQLModel, table=True):
     inventory: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     visited_rooms: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     met_npcs: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    discovered_items: list[str] = Field(default_factory=list, sa_column=Column(JSON))
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     stats_snapshot: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     quest_progress: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

@@ -21,6 +21,7 @@ class JournalService:
 
         self._show_places(ctx)
         self._show_npcs(ctx)
+        self._show_items(ctx)
         self._show_lore(ctx)
         self._show_quests(ctx)
 
@@ -47,6 +48,18 @@ class JournalService:
             if (npc := ctx.npc_repo.get(npc_id)) is not None
         )
         ctx.say(f"People met: {', '.join(names)}.")
+
+    def _show_items(self, ctx: GameContext) -> None:
+        item_ids = ctx.player.discovered_items
+        if not item_ids:
+            ctx.say("Items discovered: none yet.")
+            return
+        names = sorted(
+            item.name
+            for item_id in item_ids
+            if (item := ctx.item_repo.get(item_id)) is not None
+        )
+        ctx.say(f"Items discovered: {', '.join(names)}.")
 
     def _show_lore(self, ctx: GameContext) -> None:
         lore_topics = sorted(

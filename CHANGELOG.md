@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.5] - 2026-07-06
+
+### Added
+
+- **Sprint 46 — item discovery journal.** The `journal` now records **items discovered**, alongside places visited, people met, lore learned, and active quests. First `take` or `examine` of a distinct item *definition* records it on `Player.discovered_items` (per-definition, not per-instance — a second copper coin doesn't re-record), mirroring the `met_npcs` pattern; the discovery hook lives in `inventory/service.py` (`_record_item_discovery`, fired from `_emit_item_taken` for every take path and from `examine`). Discoveries persist through save/load (`SaveSlot.discovered_items`) and existing sqlite DBs get additive `discovered_items` columns on both `player` and `saveslot`. `JournalService` gains an "Items discovered" section in the same read-only style. Unit-tested (take-once idempotency, examine-without-take, journal name output + empty state).
+
 ## [0.40.4] - 2026-07-06
 
 ### Added

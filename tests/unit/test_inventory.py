@@ -587,3 +587,44 @@ def _build_context(session: Session, player: Player, bus: EventBus) -> GameConte
         ),
         session_id="session-1",
     )
+
+
+def test_taking_an_item_records_first_discovery() -> None:
+    """Sprint 46: `take` records the item *definition* in discovered_items,
+    once — a repeat find doesn't duplicate it."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        player = _seed_inventory_world(session, sword_in_room=True)
+        session.commit()
+        ctx = _build_context(session, player, EventBus())
+
+        InventoryService().take_item("old sword", ctx)
+        session.commit()
+
+        assert ctx.player.discovered_items == ["old_sword"]
+
+        # Drop and retake: still a single discovery entry.
+        InventoryService().drop_item("old sword", ctx)
+        InventoryService().take_item("old sword", ctx)
+        session.commit()
+        assert ctx.player.discovered_items == ["old_sword"]
+
+
+def test_examining_an_item_records_discovery_without_taking() -> None:
+    """Sprint 46: `examine` alone records discovery (an item seen but left)."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        player = _seed_inventory_world(session, sword_in_room=True)
+        session.commit()
+        ctx = _build_context(session, player, EventBus())
+
+        InventoryService().examine("old sword", ctx)
+        session.commit()
+
+        assert ctx.player.discovered_items == ["old_sword"]
+        # It was only examined, not taken.
+        assert _carried_item_ids(session, "player-1") == []

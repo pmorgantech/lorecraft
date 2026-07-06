@@ -231,6 +231,7 @@ class InventoryService:
         if match is None:
             return
         ctx.say(match.description)
+        _record_item_discovery(ctx, match.id)
 
     def take_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
@@ -1066,6 +1067,7 @@ class InventoryService:
         ctx.queue_event(GameEvent.ITEM_USED, **payload)
 
     def _emit_item_taken(self, ctx: GameContext, item_id: str, *, count: int) -> None:
+        _record_item_discovery(ctx, item_id)
         for _ in range(count):
             ctx.queue_event(
                 GameEvent.ITEM_TAKEN,
@@ -1082,6 +1084,15 @@ class InventoryService:
                 room_id=ctx.room.id,
                 item_id=item_id,
             )
+
+
+def _record_item_discovery(ctx: GameContext, item_id: str) -> None:
+    """Record the first time a player takes or examines an item *definition*
+    (Sprint 46), mirroring `met_npcs`. Reassign (not append) so SQLModel flags
+    the JSON column dirty; a repeat find is a no-op."""
+    if item_id in ctx.player.discovered_items:
+        return
+    ctx.player.discovered_items = [*ctx.player.discovered_items, item_id]
 
 
 def inventory_update_entries(stacks: Sequence[tuple[ItemStack, Item]]) -> JsonValue:

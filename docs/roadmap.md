@@ -200,7 +200,7 @@ channel colors + mute, contextual hints, item discovery journal, scavenger hunt 
 **contextual hints** parked in [`wishlist.md`](wishlist.md) pending a design pass; the remaining
 three are scheduled below.
 
-## Sprint 46 — Item discovery journal
+## Sprint 46 — Item discovery journal — ✅ complete
 
 **Goal:** the Sprint 25.3 `journal` records places visited, people met, lore learned, and active
 quests — but **not items**. Add discovered-item tracking so finding a distinct item is a recorded
@@ -208,8 +208,8 @@ exploration payoff (pillar #1).
 
 | # | Task | Status |
 |---|------|--------|
-| 46.1 | Track first discovery per item *definition* (not per instance): `Player.discovered_items`, set on first `take`/`examine` — same pattern as `met_npcs` (set on first `talk`). | [ ] |
-| 46.2 | `journal` gains an "Items discovered" section (names, matching the journal's existing read-only style); unit tests for first-discovery tracking + journal output. | [ ] |
+| 46.1 | Track first discovery per item *definition* (not per instance): `Player.discovered_items`, set on first `take`/`examine` — same pattern as `met_npcs` (set on first `talk`). | [x] `Player.discovered_items` + `SaveSlot.discovered_items` (save/load parity); `_record_item_discovery()` in `inventory/service.py`, hooked from `_emit_item_taken` (all take paths) and `examine` — per-definition (`item.id`), idempotent. Additive sqlite migrations for both tables. (v0.40.5) |
+| 46.2 | `journal` gains an "Items discovered" section (names, matching the journal's existing read-only style); unit tests for first-discovery tracking + journal output. | [x] `JournalService._show_items` between people-met and lore, same read-only style ("Items discovered: …" / "none yet."). 4 new unit tests (take-once idempotent, examine-without-take, journal shows names, empty state). |
 
 ## Sprint 47 — Follow command (social movement)
 

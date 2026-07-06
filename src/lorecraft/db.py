@@ -224,6 +224,28 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                     "ADD COLUMN visited_rooms JSON NOT NULL DEFAULT '[]'"
                 )
             )
+    if "discovered_items" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE saveslot "
+                    "ADD COLUMN discovered_items JSON NOT NULL DEFAULT '[]'"
+                )
+            )
+
+    # Player.discovered_items (Sprint 46) — additive; existing player rows
+    # default to an empty discovery list rather than erroring on SELECT.
+    player_columns = {
+        column["name"] for column in inspect(engine).get_columns("player")
+    }
+    if "discovered_items" not in player_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE player "
+                    "ADD COLUMN discovered_items JSON NOT NULL DEFAULT '[]'"
+                )
+            )
 
     item_columns = {column["name"] for column in inspect(engine).get_columns("item")}
     if "aliases" not in item_columns:
