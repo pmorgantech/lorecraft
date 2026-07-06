@@ -2,6 +2,15 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.13] - 2026-07-06
+
+### Added
+
+- **Sprint 50 — E2E browser test coverage (roadmap integration + harness + Priority 1).** E2E test plan for multiplayer/WebSocket paths, auth flows, and interaction seams integrated into the active roadmap, plus the first two bands of work delivered:
+  - **Harness (H1–H3):** shared `tests/e2e/_helpers.py` (character creation, command submission, chat-pref toggle, navigation) removing three-way duplication; a `second_page` fixture for a second independent browser context on the same live server; a documented WS-settled pattern (never bare-assert after a cross-client action — wait on the receiver's DOM); and a `set_offline()` toggle for the reconnect test. Added a minimal `window.Lorecraft.isConnected()` accessor (a real WS-open flag) since the header status dot is server-rendered already carrying `bg-emerald-500` and so can't distinguish "connecting" from "connected".
+  - **Priority 1 — multiplayer/WebSocket (`test_multiplayer_realtime.py`, 5 tests):** `say` propagation to another player's feed; `player_joined` adding a player to "Here Now"; `player_left` removing them on movement; a dropped/taken item updating another player's room pane; and the observer seeing the third-person take narration while the actor does not (closing the other half of the 2026-07-04 actor-only split bug). Each waits for the receiver's WS to be connected before the actor broadcasts, then asserts on the receiver's DOM; roster checks are username-based on `#players-online` (the `#player-count` is server-rendered and not WS-refreshed).
+  - Full details: [`e2e_test_plan.md`](docs/e2e_test_plan.md). Still to come: P2 (auth), P3–P4 (interactions/panels), P5 (reconnect).
+
 ## [0.40.12] - 2026-07-06
 
 ### Added

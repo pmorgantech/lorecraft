@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-05, v0.39.3)
+## Where things stand (2026-07-06, v0.41.0)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -256,6 +256,37 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 ---
 
+## Sprint 50 — E2E browser test coverage (multiplayer & UX layers)
+
+**Goal:** Expand `tests/e2e/` coverage from single-player smoke tests to **multiplayer/WebSocket paths**,
+**auth flows**, and **interaction seams** (Alpine/HTMX). Existing e2e tests cover the happy path
+(create→move→take) and basic UI (map modal, mobile tab bar). The gaps: **zero coverage of the WS
+multiplayer layer** (`broadcast_to_room`, `feed_append`, `player_joined`/`player_left`, cross-client
+state updates) and **auth edge cases** (wrong password, unknown username, session reload). These are
+high-risk, expensive to verify manually, and only testable end-to-end.
+
+**Guiding principle:** a test belongs in e2e *only if* it depends on real **DOM / HTMX swaps**, **Alpine
+reactive state**, or **WebSocket-driven cross-client updates**. Pure command→response correctness
+(economy math, parser edge cases) stays in `tests/integration/` — e2e is expensive (real Chromium +
+real uvicorn socket, serial). **Full plan: [`e2e_test_plan.md`](e2e_test_plan.md).**
+
+Rollout order: harness prerequisites first (H1–H3), then Priority 1 (multiplayer, the marquee gap),
+then P2 (auth), then P3–P4 (interaction + panels), finally P5 (flaky reconnect tests, last with
+generous timeouts).
+
+| # | Task | Status |
+|---|------|--------|
+| 50.1 | **Harness H1: two-player fixture & shared helpers.** New `second_page` fixture yielding an independent browser context in the same live server; extract duplicated `_create_character` / `_send_command` helpers from the three existing e2e test files into a centralized `tests/e2e/_helpers.py` (precondition: rotten duplication will diverge otherwise). | [ ] |
+| 50.2 | **Harness H2: WS-settled signal.** Document and implement a pattern for multiplayer assertions: `page.wait_for_function(...)` on the receiver's DOM, never synchronous asserts after a cross-client action (WS pushes are async; the next event loop turn is when B's panel updates after A acts). Candidate signal: status dot gaining `bg-emerald-500` in `ws.onopen`, or `page.wait_for_function` on `window`-exposed WS state. | [ ] |
+| 50.3 | **Harness H3: offline toggle** (only for P5.1 reconnect test). Playwright `context.set_offline(True/False)` to exercise `app.js` reconnect + `reconnect_sync` backfill. Kept separate because it is timing-sensitive. | [ ] |
+| 50.4 | **Priority 1 — Multiplayer / WebSocket (`test_multiplayer_realtime.py`):** P1.1 `say` propagates to another player; P1.2 `player_joined` increments "Here Now"; P1.3 `player_left` decrements; P1.4 dropped item becomes visible; P1.5 observer sees third-person narration form (closes the 2026-07-04 actor-only test's other half). | [ ] |
+| 50.5 | **Priority 2 — Auth & session lifecycle (`test_auth_flows.py`):** P2.1 log in via the Log In tab (existing char); P2.2 wrong password rejected (401); P2.3 unknown username doesn't silently create an account (404); P2.4 session persists across reload (cookie); P2.5 unauthenticated `/game` redirects to `/lobby`. | [ ] |
+| 50.6 | **Priority 3 — Interaction flows (extend `test_gameplay_flows.py`):** P3.1 command history ArrowUp/ArrowDown multi-entry + index reset; P3.2 full dialogue traversal + dismiss; P3.3 locked door → key golden path (multi-step regression anchor); P3.4 invalid command robustness. | [ ] |
+| 50.7 | **Priority 4 — Panel rendering (extend `test_gameplay_flows.py`):** P4.1 minimap current-room highlight moves on movement; P4.2 equipment/wield/wear/unwield flow; P4.3 feed autoscroll + top/bottom controls. | [ ] |
+| 50.8 | **Priority 5 — High-value but flaky (P5.1 reconnect test).** WS reconnect / resync backfill: A and B connected; set B offline; A acts (missed); set B online; `app.js` reconnect + `reconnect_sync` / `feed?since=` should backfill. Assert (with generous polling) B's feed eventually contains the missed line. Implement last with long `wait_for_function` timeouts. | [ ] |
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -276,10 +307,10 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–45 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split), 46–48 (reconciled from the unrecorded planning list 2026-07-05: item discovery journal, follow command, scavenger hunt events), and 49 (encumbrance + analytics dashboard).
-- **Reserved but never used:** 50–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), and 50 (e2e browser test coverage — multiplayer/UX layers).
+- **Reserved but never used:** 51–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 50.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 51.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
