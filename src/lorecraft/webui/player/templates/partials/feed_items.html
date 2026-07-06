@@ -7,7 +7,7 @@
 #}
 
 {% for msg in feed_messages %}
-    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% else %}narrative{% endif %}"
+    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat{% else %}narrative{% endif %}"
          data-msg-id="{{ msg.id }}">
 
         {% if msg.timestamp %}
@@ -41,4 +41,7 @@
     #feed .msg.system, .msg.system { border-left-color: #64748b; font-style: italic; }
     #feed .msg.dialogue, .msg.dialogue { border-left-color: #f59e0b; }
     #feed .msg.narrative, .msg.narrative { border-left-color: #3b82f6; }
+    /* Chat (Sprint 45): conversation — routed to #chat-feed when the
+       separate_chat preference is on, styled distinctly either way. */
+    .msg.chat { border-left-color: #22d3ee; }
 </style>

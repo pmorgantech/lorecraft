@@ -82,6 +82,25 @@
                 {% include "partials/feed_items.html" %}
             </div>
 
+            {% if prefs.separate_chat %}
+            <!-- Chat pane (Sprint 45): conversation split from the narrative
+                 feed so chatter never scrolls room/quest/action output out of
+                 view. Rendered only when the separate_chat preference is on;
+                 its presence is what routeChatMessages()/the WS handler key on. -->
+            <div id="chat-pane" class="h-1/3 min-h-28 flex flex-col border-t border-border">
+                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                    <span>Chat</span>
+                    <button
+                        @click="document.getElementById('chat-feed').scrollTop = document.getElementById('chat-feed').scrollHeight"
+                        class="hover:text-emerald-400 transition-colors px-1 text-[10px]">↓ bottom</button>
+                </div>
+                <div id="chat-feed"
+                     role="log" aria-live="polite" aria-label="Chat log"
+                     class="flex-1 overflow-y-auto p-4 space-y-2 text-sm leading-relaxed bg-feed-bg font-serif scroll-smooth">
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Subtle status line -->
             <div class="px-3 py-1 border-t border-border bg-panel-light text-[10px] text-text-muted flex items-center justify-between">
                 <span>Press <kbd class="px-1 py-px bg-zinc-800 rounded text-emerald-500">/</kbd> to focus command</span>
@@ -346,5 +365,20 @@
             setTimeout(() => feed.classList.remove('!border-emerald-900'), 500);
         }
     }
+
+    // Chat/feed split (Sprint 45): when the separate_chat preference rendered
+    // the #chat-pane, move any chat-typed messages the HTMX command response
+    // appended into #feed over to #chat-feed. With the pane absent (preference
+    // off) this is a no-op and chat stays in the single feed.
+    function routeChatMessages() {
+        const chatFeed = document.getElementById('chat-feed');
+        if (!chatFeed) return;
+        document.querySelectorAll('#feed .msg.chat').forEach((node) => {
+            chatFeed.appendChild(node);
+        });
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+    document.body.addEventListener('htmx:afterSwap', routeChatMessages);
+    document.addEventListener('DOMContentLoaded', routeChatMessages);
 </script>
 {% endblock %}

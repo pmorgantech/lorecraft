@@ -129,7 +129,14 @@
               feedEl.scrollTop = feedEl.scrollHeight;
             });
         } else if (data.html || data.content || data.text) {
-          appendToFeed(data.html || data.content || data.text);
+          // Chat/feed split (Sprint 45): chat-tagged broadcasts go to the
+          // chat pane when the separate_chat preference rendered one;
+          // otherwise they fall into the single feed like before.
+          if (data.message_type === "chat") {
+            appendToChat(data.html || data.content || data.text);
+          } else {
+            appendToFeed(data.html || data.content || data.text);
+          }
         }
         break;
 
@@ -348,6 +355,28 @@
     if (isNearBottom) {
       feed.scrollTop = feed.scrollHeight;
     }
+  }
+
+  function appendToChat(htmlOrText) {
+    // Chat/feed split (Sprint 45): target the chat pane; without one
+    // (separate_chat preference off) chat degrades into the single feed.
+    const chatFeed = document.getElementById("chat-feed");
+    if (!chatFeed) {
+      appendToFeed(htmlOrText);
+      return;
+    }
+
+    if (typeof htmlOrText === "string" && htmlOrText.trim().startsWith("<")) {
+      chatFeed.insertAdjacentHTML("beforeend", htmlOrText);
+      const lastChild = chatFeed.lastElementChild;
+      if (lastChild && window.htmx) htmx.process(lastChild);
+    } else {
+      const div = document.createElement("div");
+      div.className = "msg chat text-zinc-200";
+      div.innerHTML = `<span>${htmlOrText}</span>`;
+      chatFeed.appendChild(div);
+    }
+    chatFeed.scrollTop = chatFeed.scrollHeight;
   }
 
   // === Command History (works with or without Alpine x-model) ===

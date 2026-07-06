@@ -68,6 +68,16 @@ B sees it — in the **chat pane** with the preference on, in the **main feed** 
    client got an explicit `chat_messages` loop), so default UX is byte-identical until Phase 2 routes
    by the preference.
 2. **Phase 2 (browser)** — `app.js` dual-pane routing, `index.html` pane, `app.css` styling, settings toggle; verify in a real browser + a two-player e2e.
+   **✅ Shipped (45.2, v0.40.4).** The pane (`#chat-pane` in `game.html`) renders only when
+   `separate_chat` is on, and **its presence is the routing signal** — both routing points
+   (`appendToChat()` for WS broadcasts, `routeChatMessages()` on `htmx:afterSwap` for the actor's
+   own HTMX-swapped echo) fall back to the single feed when the pane is absent, so the server
+   stays preference-agnostic for message delivery. Styling landed in `feed_items.html`'s scoped
+   styles (a cyan `chat` class) rather than `app.css`. Verified by a two-player e2e
+   (`tests/e2e/test_chat_feed_split.py`) covering the full acceptance scenario. **Parser gotcha
+   surfaced by the e2e:** a say phrase containing "from/with/to …" loses its tail to role parsing
+   (`say hello from the square` → noun "hello") — pre-existing behavior, worth a look when global
+   channels land (Phase 3).
 3. **Phase 3 (later)** — global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; **per-channel mute** (a preferences-blob setting suppressing a channel's messages — folded in 2026-07-05, same rendering/preferences surface as the tags); mobile tab collapse polish.
 
 ## Non-goals (initially)

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.4] - 2026-07-06
+
+### Added
+
+- **Sprint 45.2 — the chat pane (Phase 2 of the chat/feed split,** [`chat_feed_split.md`](docs/chat_feed_split.md)**).** Players who turn on the new **"Separate chat pane"** setting get a dedicated chat log under the narrative feed — conversation (`say`, and future channels) no longer scrolls room/quest/action output out of view. The pane (`#chat-pane` in `game.html`) renders only when `separate_chat` is on, and **its presence is the routing signal**: WS chat broadcasts route via `appendToChat()` (`static/js/app.js`) and the actor's own HTMX-swapped echo via `routeChatMessages()` on `htmx:afterSwap` — both fall back to the single feed when the pane is absent, so the server stays preference-agnostic and default UX is unchanged. Chat messages get a distinct cyan-tagged `chat` style either way. Verified end to end by a **two-player browser e2e** (`tests/e2e/test_chat_feed_split.py`): A's `say` lands in B's chat pane (pref on) and nowhere in B's narrative feed; A (pref off) sees their echo in the single feed; movement narration stays narrative for everyone. *Surfaced along the way:* say phrases containing "from/with/to …" lose their tail to the parser's role extraction (pre-existing; noted in the plan for the Phase 3 channels pass).
+
 ## [0.40.3] - 2026-07-05
 
 ### Added
