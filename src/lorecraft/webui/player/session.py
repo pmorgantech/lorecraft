@@ -245,6 +245,15 @@ def set_player_session_cookie(
     )
 
 
+def clear_player_session_cookie(resp: Any) -> None:
+    """Clear the player session cookie from the response."""
+    resp.delete_cookie(
+        key=PLAYER_SESSION_COOKIE,
+        httponly=True,
+        samesite="lax",
+    )
+
+
 def ensure_player_session(player: Player, db: DBSession) -> str:
     """Ensure there's an active PlayerSession row for the player."""
     from lorecraft.engine.models.session import PlayerSession

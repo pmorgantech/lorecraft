@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.4] - 2026-07-08
+
+### Fixed
+
+- **Player session cookie now cleared on disconnect.** When a player disconnected from the
+  HTMX web UI, the session cookie was not cleared, causing authentication confusion when
+  logging in as a different player immediately after. The browser would retain the old
+  player's session cookie, leading to incorrect player identification or "already logged in"
+  errors. Now `clear_player_session_cookie()` is called when a player disconnects via the
+  `/command` endpoint, ensuring a clean logout experience.
+
 ## [0.46.3] - 2026-07-08
 
 ### Docs

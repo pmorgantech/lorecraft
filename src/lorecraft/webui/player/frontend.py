@@ -77,6 +77,7 @@ from lorecraft.webui.player.session import (
     players_here,
     room_panel_context,
     set_player_session_cookie,
+    clear_player_session_cookie,
     active_quests_snapshot,
     world_time_snapshot,
 )
@@ -874,6 +875,7 @@ async def handle_command(
                 except Exception as e:
                     log.debug("manager_disconnect_failed: %s", str(e))
 
+            clear_player_session_cookie(final_resp)
             final_resp.headers["HX-Redirect"] = "/lobby"
         return final_resp
 
