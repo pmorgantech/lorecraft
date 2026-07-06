@@ -180,3 +180,25 @@ class TestSeparateChat:
     def test_present_in_template_context(self) -> None:
         context = resolve_preferences({"separate_chat": True}).to_context()
         assert context["prefs"]["separate_chat"] is True
+
+
+class TestMuteChat:
+    """Per-channel chat mute (Sprint 45.3)."""
+
+    def test_defaults_off(self) -> None:
+        assert PlayerPreferences().mute_chat is False
+        assert resolve_preferences({}).mute_chat is False
+
+    def test_resolves_and_round_trips(self) -> None:
+        prefs = resolve_preferences({"mute_chat": True})
+        assert prefs.mute_chat is True
+        assert prefs.to_stored() == {"mute_chat": True}
+        assert resolve_preferences(prefs.to_stored()) == prefs
+
+    def test_default_not_written_to_stored_blob(self) -> None:
+        assert "mute_chat" not in PlayerPreferences().to_stored()
+
+    def test_independent_of_separate_chat(self) -> None:
+        prefs = resolve_preferences({"mute_chat": True, "separate_chat": True})
+        assert prefs.mute_chat is True and prefs.separate_chat is True
+        assert prefs.to_stored() == {"separate_chat": True, "mute_chat": True}

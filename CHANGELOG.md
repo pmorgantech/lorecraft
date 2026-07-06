@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.40.10] - 2026-07-06
+
+### Added
+
+- **Sprint 45.3 (partial) — per-channel chat mute.** A new **"Mute chat"** player setting hides other players' chat client-side (your own messages still show). `PlayerPreferences.mute_chat` (default off) is stored/resolved/round-tripped and rendered into the game client as `window.LORECRAFT_MUTE_CHAT`; the WS handler drops incoming `feed_append`/`message_type:"chat"` broadcasts when it's set. Preference unit tests + a two-player browser e2e (a muted listener never renders a speaker's `say`). The rest of Sprint 45.3 — multi-channel colored/prefixed tags and channel reuse — stays deferred because the global channels (shout/tell) it depends on are still Backlog; mobile tab-collapse is cosmetic polish left for later.
+
 ## [0.40.9] - 2026-07-06
 
 ### Added

@@ -85,3 +85,42 @@ def test_say_routes_to_chat_pane_only_for_opted_in_players(
     finally:
         speaker_context.close()
         listener_context.close()
+
+
+def _enable_mute_chat(page: Any, base_url: str) -> None:
+    page.goto(f"{base_url}/settings")
+    page.check("input[name='mute_chat']")
+    page.click("button[type='submit']")
+    page.wait_for_selector("input[name='mute_chat']:checked")
+    page.goto(f"{base_url}/game")
+    page.wait_for_function("window.LORECRAFT_MUTE_CHAT === true")
+
+
+def test_muted_player_does_not_see_others_chat(browser: Any, live_server: str) -> None:
+    """Sprint 45.3: with mute_chat on, a listener never renders another
+    player's chat (the broadcast is dropped client-side)."""
+    speaker_context = browser.new_context()
+    muted_context = browser.new_context()
+    try:
+        speaker = speaker_context.new_page()
+        muted = muted_context.new_page()
+
+        create_character(speaker, live_server, "e2e_talker")
+        create_character(muted, live_server, "e2e_muted")
+
+        _enable_mute_chat(muted, live_server)
+
+        speaker.wait_for_timeout(300)
+        muted.wait_for_timeout(300)
+
+        _send_command(speaker, "say anybody listening")
+
+        # The speaker's own message went out fine (sanity: server delivered it).
+        speaker.wait_for_selector("#feed :text('You say: \"anybody listening\"')")
+
+        # Give the muted client a moment; it must NOT render the chat.
+        muted.wait_for_timeout(600)
+        assert muted.locator(":text('anybody listening')").count() == 0
+    finally:
+        speaker_context.close()
+        muted_context.close()

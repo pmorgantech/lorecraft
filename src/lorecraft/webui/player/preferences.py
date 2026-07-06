@@ -52,6 +52,9 @@ class PlayerPreferences:
     # Chat/feed split (Sprint 45): route chat messages to their own pane
     # instead of the narrative feed. Off = today's single feed.
     separate_chat: bool = False
+    # Per-channel mute (Sprint 45.3): suppress other players' chat client-side
+    # (your own echo still shows). Off = see all chat.
+    mute_chat: bool = False
     # Panel id -> visible. Absent panels default to visible.
     hidden_panels: tuple[str, ...] = ()
 
@@ -103,6 +106,8 @@ class PlayerPreferences:
             out["feed_page_length"] = self.feed_page_length
         if self.separate_chat != default.separate_chat:
             out["separate_chat"] = self.separate_chat
+        if self.mute_chat != default.mute_chat:
+            out["mute_chat"] = self.mute_chat
         if self.hidden_panels:
             out["hidden_panels"] = list(self.hidden_panels)
         return out
@@ -151,6 +156,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         font_scale=_clean_enum(raw.get("font_scale"), FONT_SCALES, "normal"),
         feed_page_length=_clean_int(raw.get("feed_page_length"), FEED_PAGE_LENGTHS, 40),
         separate_chat=bool(raw.get("separate_chat", False)),
+        mute_chat=bool(raw.get("mute_chat", False)),
         hidden_panels=hidden,
     )
 
