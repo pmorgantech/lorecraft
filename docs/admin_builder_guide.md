@@ -213,6 +213,36 @@ workflow:
    `docs/roadmap.md`'s Playtesting section) or run the E2E harness (`make test-e2e`,
    see the Sprint 11 entry in `docs/roadmap.md`).
 
+### Authoring marks (`world_content/marks.yaml`)
+
+Marks (Sprint 53) are discovery badges defined in their own content file, loaded into an
+in-memory registry at startup (`LORECRAFT_MARKS_YAML_PATH` overrides the path — the
+`hunts.yaml` pattern). Each mark declares **criteria** over the player's journal state
+(all populated criteria must hold) and optional **boons** (modest §3.5 modifiers,
+active once earned):
+
+```yaml
+version: 1
+marks:
+  - id: far_strider
+    name: Mark of the Far Strider
+    description: Twelve places known; the road knows you now.
+    criteria:              # any of: rooms_visited, rooms_visited_count,
+      rooms_visited_count: 12    # npcs_met, items_discovered, flags_set
+    boons:                 # optional; key/kind/amount per engine modifier
+      - {key: carry_capacity, kind: add, amount: 5}
+    # hidden: true         # omit from "???" teasers until earned
+```
+
+- Earned state is the `mark:<id>` player flag — no separate table; awards announce in
+  the feed and are idempotent. A mark's `flags_set` may reference another mark's
+  `mark:<id>` flag to build chains.
+- Content-lint (`lint_marks`, enforced by
+  `tests/unit/test_marks_models.py::test_shipped_ashmoore_marks_lint_clean_against_world`)
+  requires every referenced room/NPC/item to exist in `world.yaml`; flags are free-form.
+- Keep boons small and flat (soft-cap principle); useful keys today:
+  `carry_capacity`, `skill.<name>`, `warmth`, `meter.<key>.max`.
+
 ## The World CLI
 
 `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}` — the

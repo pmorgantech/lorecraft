@@ -180,3 +180,29 @@ class TestRegistry:
 
 def test_earned_flag_convention() -> None:
     assert earned_flag("wanderer") == "mark:wanderer"
+
+
+def test_shipped_ashmoore_marks_lint_clean_against_world() -> None:
+    """The checked-in world_content/marks.yaml must reference only real rooms,
+    NPCs, and items in world_content/world.yaml — the content-lint contract."""
+    from pathlib import Path
+
+    import yaml
+
+    repo_root = Path(__file__).resolve().parents[2]
+    world = yaml.safe_load((repo_root / "world_content" / "world.yaml").read_text())
+    room_ids = [r["id"] for r in world.get("rooms", [])]
+    npc_ids = [n["id"] for n in world.get("npcs", [])]
+    item_ids = [i["id"] for i in world.get("items", [])]
+
+    doc = load_marks_yaml(repo_root / "world_content" / "marks.yaml")
+    assert doc.marks, "expected at least one shipped mark"
+    assert (
+        lint_marks(
+            doc,
+            known_room_ids=room_ids,
+            known_npc_ids=npc_ids,
+            known_item_ids=item_ids,
+        )
+        == []
+    )

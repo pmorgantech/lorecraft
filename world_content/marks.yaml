@@ -1,0 +1,55 @@
+# Mark definitions (Sprint 53). Marks are named badges earned by discovery —
+# criteria read the player's journal state (places visited, people met, items
+# discovered, flags); earned state is the mark:<id> player flag. Boons feed the
+# §3.5 modifier resolver and should stay modest (soft-cap principle).
+version: 1
+marks:
+  - id: village_wanderer
+    name: Mark of the Village Wanderer
+    description: >-
+      You have walked every corner of Ashmoore's heart — square, inn, forge,
+      market, and the alchemist's shelves.
+    criteria:
+      rooms_visited:
+        - village_square
+        - wandering_crow_inn
+        - blacksmith_forge
+        - market_stalls
+        - alchemist_shop
+
+  - id: friend_of_the_crow
+    name: Mark of the Crow's Friend
+    description: Mira of the Wandering Crow remembers your face.
+    criteria:
+      npcs_met:
+        - innkeeper
+
+  - id: far_strider
+    name: Mark of the Far Strider
+    description: >-
+      Twelve places known. The road knows you now, and your pack sits easier
+      on your shoulders.
+    criteria:
+      rooms_visited_count: 12
+    boons:
+      - key: carry_capacity
+        kind: add
+        amount: 5
+
+  - id: deep_delver
+    name: Mark of the Deep Delver
+    description: >-
+      You charted the dark below Ashmoore — every tunnel, chamber, and
+      still black pool. Maps come easier to your hand.
+    hidden: true
+    criteria:
+      rooms_visited:
+        - cave_entrance
+        - cave_tunnel
+        - cave_chamber
+        - cave_pool
+        - cave_alcove
+    boons:
+      - key: skill.cartography
+        kind: add
+        amount: 5

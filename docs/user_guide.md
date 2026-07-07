@@ -153,11 +153,18 @@ data controls this. If a room is dark, bring a light source.
 search          — look for hidden exits and secrets in the room
 journal         — review places visited, people met, items discovered, lore learned, and active quests
 hunts           — list any scavenger hunts running now and your progress
+marks           — list the marks you have earned by discovery
 ```
 
 Every so often a **scavenger hunt** runs: a themed set of items is scattered across a handful
 of rooms, and finding all of them earns a reward. `hunts` shows what's active and how many
 you've found; just `take` the hunt items you come across — the last one completes the hunt.
+
+**Marks** are badges earned by discovery — visiting places, meeting people, finding items,
+learning lore. They award themselves the moment you complete one's criteria ("You have earned
+Mark of the Village Wanderer!"), and some carry a small passive boon (a lighter pack, a keener
+map hand). `marks` lists what you've earned; a `??? — undiscovered` line hints at marks still
+out there. A few are entirely hidden until the moment you earn them.
 
 Not every exit shows up in a room's description — `search` rolls your perception skill
 (better with practice, traits, and equipment) to find hidden passages. Once you've found
@@ -372,6 +379,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `reputation` | `rep` | List your standing with NPCs and factions |
 | `search` | | Look for hidden exits and secrets in the room |
 | `journal` | | Review places visited, people met, items discovered, lore learned, and active quests |
+| `marks` | | List the marks you have earned by discovery |
 | `rest` | | Catch your breath and recover a little stamina |
 | `camp` | | Make camp and recover a good deal of stamina |
 | `sleep` | | Sleep deeply and recover all your stamina |

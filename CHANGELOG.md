@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.43.0] - 2026-07-06
+
+### Added
+
+- **Sprint 53 complete — collectible marks (discovery-fed progression).** Four marks ship with Ashmoore in the new `world_content/marks.yaml`: **Mark of the Village Wanderer** (walk the five village rooms), **Mark of the Crow's Friend** (meet Mira), **Mark of the Far Strider** (twelve places known — +5 carry capacity), and the hidden **Mark of the Deep Delver** (chart all five cave rooms — +5 cartography). Marks award themselves mid-play the moment their criteria complete, announce in the feed, and appear under the new `marks` command. Integration test drives the real Ashmoore walk end-to-end (movement → `PLAYER_MOVED` → evaluation → award); a shipped-content lint test keeps `marks.yaml` references honest against `world.yaml`. Player and builder guides updated (marks section + authoring reference).
+
 ## [0.42.8] - 2026-07-06
 
 ### Added
