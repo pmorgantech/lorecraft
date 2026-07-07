@@ -605,7 +605,11 @@ async def _handle_websocket_command(
         await broadcast_command_effects(state.manager, ctx, pre_room_id=pre_room_id)
         messages: list[JsonValue] = list(ctx.messages)
         room_messages: list[JsonValue] = list(ctx.room_messages)
-        chat_messages: list[JsonValue] = list(ctx.chat_messages)
+        # Chat echoes carry their channel (Sprint 52) so clients can tag/color
+        # per channel; older clients reading only `text` degrade gracefully.
+        chat_messages: list[JsonValue] = [
+            {"text": echo.text, "channel": echo.channel} for echo in ctx.chat_echoes
+        ]
 
         # Capture and store any pending disambiguation; don't send to client.
         disambig = ctx.updates.pop("disambig_pending", None)

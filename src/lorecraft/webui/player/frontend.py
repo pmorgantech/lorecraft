@@ -687,17 +687,19 @@ async def handle_command(
                 }
             )
 
-        # Chat channel (Sprint 45): the actor's own chat echo, tagged so the
-        # client can route it to the chat pane when separate_chat is on. With
-        # the preference off it renders in the single feed like before.
-        for m in ctx.chat_messages:
+        # Chat channel (Sprint 45 split, Sprint 52 channels): the actor's own
+        # chat echo, tagged so the client can route it to the chat pane when
+        # separate_chat is on and style it per channel. With the preference
+        # off it renders in the single feed like before.
+        for echo in ctx.chat_echoes:
             feed_msgs.append(
                 {
                     "id": f"msg-{session_id}-{len(feed_msgs)}",
                     "timestamp": ts,
                     "actor": None,
-                    "text": m,
+                    "text": echo.text,
                     "type": "chat",
+                    "channel": echo.channel,
                 }
             )
 

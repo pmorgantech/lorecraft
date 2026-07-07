@@ -359,15 +359,17 @@ def test_say_routes_to_the_chat_channel_not_narrative() -> None:
         ctx = _build_context(session)
         registry.get("say").handler("hello there", ctx)
 
-        assert ctx.chat_messages == ['You say: "hello there"']
-        assert ctx.room_chat_messages == ['petem says: "hello there"']
+        assert [m.text for m in ctx.chat_echoes] == ['You say: "hello there"']
+        assert [m.text for m in ctx.chat_outbox] == ['petem says: "hello there"']
+        # Sprint 52: say chat is channel-tagged and room-scoped.
+        assert all(m.channel == "say" for m in ctx.chat_echoes + ctx.chat_outbox)
         assert ctx.messages == []
         assert ctx.room_messages == []
 
         prompt_ctx = _build_context(session)
         registry.get("say").handler(None, prompt_ctx)
         assert prompt_ctx.messages == ["Say what?"]
-        assert prompt_ctx.chat_messages == []
+        assert prompt_ctx.chat_echoes == []
 
 
 def test_room_chat_broadcasts_with_chat_message_type() -> None:

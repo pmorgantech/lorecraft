@@ -88,3 +88,10 @@ class ConnectionManager:
 
     def players_in_room(self, room_id: str) -> list[str]:
         return sorted(self._room_players.get(room_id, set()))
+
+    def connected_player_ids(self) -> list[str]:
+        """Every currently-connected player — the P2ALL chat recipient set
+        (Sprint 52.3), letting the broadcast step filter per-recipient
+        (channel subscriptions) instead of using the all-or-nothing
+        `broadcast_global`."""
+        return sorted(self._connections.keys())

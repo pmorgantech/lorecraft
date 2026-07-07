@@ -526,8 +526,9 @@ function routeMessage(message) {
     for (const text of message.room_messages || []) {
       appendMessage("room_event", text);
     }
-    for (const text of message.chat_messages || []) {
-      appendMessage("chat", text);
+    for (const entry of message.chat_messages || []) {
+      // Sprint 52: entries are {text, channel} objects (plain strings before).
+      appendMessage("chat", typeof entry === "string" ? entry : entry.text);
     }
     applyUpdates(message.updates || {});
     if (message.updates?.disconnect) {

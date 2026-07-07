@@ -14,9 +14,12 @@ from __future__ import annotations
 
 import logging
 
+from lorecraft.engine.game.channels import Channel, ChatScope
+from lorecraft.engine.game.channels import get_registry as get_channel_registry
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
-from lorecraft.types import JsonValue
+from lorecraft.engine.models.player import Player
+from lorecraft.types import JsonObject, JsonValue
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +29,29 @@ _AFFECTED_PANELS: list[JsonValue] = [
     "minimap",
     "players-online",
 ]
+
+
+def _subscribed(ctx: GameContext, player_id: str, channel: Channel | None) -> bool:
+    """Whether a P2ALL recipient should get this channel's chat (Sprint 52.5).
+
+    Non-muteable (or unregistered) channels always deliver. For muteable topic
+    channels, the player's raw `preferences["channel_subscriptions"]` blob is
+    consulted (the engine reads the model field directly — resolving the full
+    preferences object is a webui concern); absent means the channel's
+    `default_subscribed`.
+    """
+    if channel is None or not channel.muteable:
+        return True
+    player = ctx.session.get(Player, player_id)
+    if player is None:
+        return channel.default_subscribed
+    subscriptions = player.preferences.get("channel_subscriptions")
+    if not isinstance(subscriptions, dict):
+        return channel.default_subscribed
+    value = subscriptions.get(channel.id)
+    if isinstance(value, bool):
+        return value
+    return channel.default_subscribed
 
 
 async def broadcast_command_effects(
@@ -65,23 +91,36 @@ async def broadcast_command_effects(
         except Exception as exc:
             log.debug("room_feed_broadcast_failed: %s", exc)
 
-    # Chat (Sprint 45): same feed_append shape, but tagged "chat" so clients
-    # with the separate_chat preference route conversation to its own pane
-    # instead of the narrative feed. Chat never moves the player, so the
-    # narration room is the actor's current room in practice.
-    for chat_msg in ctx.room_chat_messages:
-        if not narration_room:
-            continue
+    # Chat (Sprint 45 split, Sprint 52 channels): same feed_append shape but
+    # tagged "chat" + the channel id, routed by each entry's delivery scope —
+    # P2ROOM to the actor's room, P2ALL to every connected player subscribed
+    # to the channel, P2P to exactly one target. Chat never moves the player,
+    # so the narration room is the actor's current room in practice.
+    channel_registry = get_channel_registry()
+    for chat in ctx.chat_outbox:
+        payload: JsonObject = {
+            "type": "feed_append",
+            "content": chat.text,
+            "message_type": "chat",
+            "channel": chat.channel,
+        }
         try:
-            await manager.broadcast_to_room(
-                narration_room,
-                {
-                    "type": "feed_append",
-                    "content": str(chat_msg),
-                    "message_type": "chat",
-                },
-                exclude=actor_id,
-            )
+            if chat.scope is ChatScope.P2P:
+                if chat.target_player_id:
+                    await manager.send_to_player(chat.target_player_id, payload)
+            elif chat.scope is ChatScope.P2ALL:
+                channel = channel_registry.get(chat.channel)
+                for player_id in manager.connected_player_ids():
+                    if player_id == actor_id:
+                        continue
+                    if not _subscribed(ctx, player_id, channel):
+                        continue
+                    await manager.send_to_player(player_id, payload)
+            else:  # P2ROOM
+                if narration_room:
+                    await manager.broadcast_to_room(
+                        narration_room, payload, exclude=actor_id
+                    )
         except Exception as exc:
             log.debug("chat_feed_broadcast_failed: %s", exc)
 

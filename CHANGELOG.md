@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.44.2] - 2026-07-06
+
+### Changed
+
+- **Sprint 52.2/52.3 — channel-aware chat outbox + scope-routed broadcast.** `GameContext`'s two ad-hoc Sprint 45 chat lists (`chat_messages`/`room_chat_messages`) are replaced by channel-tagged `chat_echoes` (the actor's own rendering) and `chat_outbox` (bound for others), emitted via `chat_echo`/`chat_out` with the scope resolved from the channel registry (unknown channels fall back to P2ROOM — never accidentally global; `say_chat`/`tell_room_chat` remain as `say`-channel wrappers). `broadcast_command_effects` now routes each outbox entry by scope — P2ROOM → the actor's room, P2P → exactly the target, P2ALL → every connected player *subscribed* to the channel (per-recipient `channel_subscriptions` preference check; non-muteable channels always deliver) — and stamps `channel` alongside `message_type:"chat"`. WS `command_result.chat_messages` entries are now `{text, channel}` objects; the dev clients degrade gracefully. New `ConnectionManager.connected_player_ids()`.
+
 ## [0.44.1] - 2026-07-06
 
 ### Added

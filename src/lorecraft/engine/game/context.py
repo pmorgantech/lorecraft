@@ -8,6 +8,14 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Session
 
+from lorecraft.engine.game.channels import (
+    SAY_CHANNEL,
+    ChatMessage,
+    ChatScope,
+)
+from lorecraft.engine.game.channels import (
+    get_registry as get_channel_registry,
+)
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.engine.game.holders import Location
@@ -62,8 +70,12 @@ class GameContext:
     messages: list[str] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     arrival_messages: list[str] = field(default_factory=list)
-    chat_messages: list[str] = field(default_factory=list)
-    room_chat_messages: list[str] = field(default_factory=list)
+    # Chat (Sprint 45 split, Sprint 52 channels): `chat_echoes` is the actor's
+    # own rendering (delivered on their command result); `chat_outbox` is
+    # everything bound for other players, routed by each entry's scope in
+    # `broadcast_command_effects`.
+    chat_echoes: list[ChatMessage] = field(default_factory=list)
+    chat_outbox: list[ChatMessage] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
     parsed_command: ParsedCommand | None = None
@@ -93,21 +105,49 @@ class GameContext:
         case of narrating to the room the actor is entering."""
         self.room_messages.append(text)
 
-    def say_chat(self, text: str) -> None:
-        """The actor's own echo of a chat message (e.g. 'You say: "hi"').
+    def _channel_scope(self, channel_id: str) -> ChatScope:
+        """Resolve a channel's delivery scope from the registry. Unknown
+        channels fall back to P2ROOM — the narrowest broadcast scope, so a
+        typo'd channel can never accidentally go global."""
+        channel = get_channel_registry().get(channel_id)
+        return channel.scope if channel is not None else ChatScope.P2ROOM
 
-        Chat is player-to-player conversation (`say` today; future
-        shout/whisper/tell reuse this channel) — kept separate from `say`'s
-        narrative `messages` so clients can route conversation to its own
-        pane (Sprint 45) instead of letting chatter scroll room/quest/action
-        output out of view."""
-        self.chat_messages.append(text)
+    def chat_echo(self, channel_id: str, text: str) -> None:
+        """The actor's own rendering of their chat (e.g. 'You say: "hi"') —
+        delivered on their command result, tagged with the channel so clients
+        can route/style it (chat pane, per-channel color)."""
+        self.chat_echoes.append(
+            ChatMessage(
+                channel=channel_id, scope=self._channel_scope(channel_id), text=text
+            )
+        )
+
+    def chat_out(
+        self, channel_id: str, text: str, *, target_player_id: str | None = None
+    ) -> None:
+        """Chat bound for other players, routed by the channel's scope in
+        `broadcast_command_effects` (Sprint 52.3): P2ROOM → the actor's room,
+        P2ALL → everyone online (respecting subscriptions), P2P → exactly
+        `target_player_id`."""
+        self.chat_outbox.append(
+            ChatMessage(
+                channel=channel_id,
+                scope=self._channel_scope(channel_id),
+                text=text,
+                target_player_id=target_player_id,
+            )
+        )
+
+    def say_chat(self, text: str) -> None:
+        """The actor's own echo on the `say` channel (Sprint 45 wrapper —
+        kept separate from `say`'s narrative `messages` so clients can route
+        conversation to its own pane)."""
+        self.chat_echo(SAY_CHANNEL, text)
 
     def tell_room_chat(self, text: str) -> None:
-        """Chat heard by the rest of the room (e.g. 'X says: "hi"') —
-        broadcast with `message_type: "chat"` rather than `room_event`, so
-        receiving clients can tell conversation from narration."""
-        self.room_chat_messages.append(text)
+        """`say`-channel chat heard by the rest of the room (Sprint 45
+        wrapper) — broadcast as `message_type: "chat"`, never `room_event`."""
+        self.chat_out(SAY_CHANNEL, text)
 
     def tell_arrival(self, text: str) -> None:
         """Narrate to the room the actor is entering (e.g. "X arrives from

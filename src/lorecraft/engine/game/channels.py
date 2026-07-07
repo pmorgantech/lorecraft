@@ -35,6 +35,21 @@ class ChatScope(str, Enum):
 
 
 @dataclass(frozen=True)
+class ChatMessage:
+    """One chat emission in a GameContext outbox/echo list (Sprint 52.2).
+
+    `scope` is resolved from the channel registry at emit time so the
+    broadcast step routes without a second lookup. `target_player_id` is only
+    meaningful for P2P.
+    """
+
+    channel: str
+    scope: ChatScope
+    text: str
+    target_player_id: str | None = None
+
+
+@dataclass(frozen=True)
 class Channel:
     """One named chat channel.
 
