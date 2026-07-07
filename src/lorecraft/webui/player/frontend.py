@@ -36,6 +36,7 @@ from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
     InvalidPasswordError,
     InvalidUsernameError,
+    PlayerAlreadyLoggedInError,
     PlayerNotFoundError,
     StartRoomNotConfiguredError,
     login_or_register,
@@ -278,6 +279,19 @@ async def enter_world(
                 start_room=start_room,
                 allow_create=False,
             )
+        except PlayerAlreadyLoggedInError as e:
+            return templates.TemplateResponse(
+                request,
+                "lobby.html",
+                _lobby_context(
+                    request,
+                    app_state,
+                    error=str(e),
+                    active_tab="join",
+                    form_username=username,
+                ),
+                status_code=400,
+            )
         except (
             InvalidUsernameError,
             PlayerNotFoundError,
@@ -362,6 +376,8 @@ async def create_character(
                 start_room=start_room,
                 password_policy=policy,
             )
+        except PlayerAlreadyLoggedInError as e:
+            return _create_error(str(e))
         except (
             InvalidUsernameError,
             InvalidPasswordError,

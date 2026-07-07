@@ -38,13 +38,14 @@
         </div>
 
         <!-- LOG IN -->
-        <div class="space-y-4 max-w-md" x-show="tab === 'join'">
+        <div class="space-y-4 max-w-md" x-show="tab === 'join'" @show.window="$nextTick(() => document.getElementById('enter-username')?.focus())">
             <h2 class="text-xl font-semibold mb-4">Log In</h2>
             <form method="post" action="/lobby/enter" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
                 <div>
                     <label for="enter-username" class="block text-sm text-zinc-400 mb-1">Character name</label>
                     <input type="text" id="enter-username" name="username" required minlength="3" maxlength="30"
                            value="{{ form_username if active_tab == 'join' else '' }}"
+                           autofocus
                            class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-emerald-600"
                            placeholder="Your character name">
                 </div>
@@ -62,7 +63,7 @@
         </div>
 
         <!-- CREATE CHARACTER -->
-        <div class="space-y-4 max-w-md" x-show="tab === 'create'"
+        <div class="space-y-4 max-w-md" x-show="tab === 'create'" @show.window="$nextTick(() => document.getElementById('username')?.focus())"
              x-data="{
                 uname: '{{ form_username | e }}',
                 pw: '',
@@ -89,6 +90,7 @@
                            pattern="{{ username_pattern }}"
                            title="3–30 characters: letters, numbers, - or _ only"
                            x-model="uname"
+                           autofocus
                            :class="uname.length === 0 ? 'border-zinc-800' : (unameOk ? 'border-emerald-600' : 'border-red-600')"
                            class="w-full bg-zinc-950 border rounded-lg px-3 py-2 text-zinc-200 focus:outline-none"
                            placeholder="e.g. Ashen_Wanderer">

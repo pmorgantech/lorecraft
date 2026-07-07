@@ -565,15 +565,21 @@ async function doLogin() {
   }
 }
 
+function showLoginScreen() {
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("admin-screen").style.display  = "none";
+  document.getElementById("l-password").value = "";
+  document.getElementById("l-error").textContent = "";
+  document.getElementById("l-username").value = "";
+  document.getElementById("l-username").focus();
+}
+
 function logout() {
   sessionStorage.removeItem("lc_admin_token");
   sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
   if (state.ws) { state.ws.close(); state.ws = null; }
-  document.getElementById("login-screen").style.display = "flex";
-  document.getElementById("admin-screen").style.display  = "none";
-  document.getElementById("l-password").value = "";
-  document.getElementById("l-error").textContent = "";
+  showLoginScreen();
 }
 
 // A stale/invalid session was detected (HTTP 401 on an authed request, or the
@@ -582,7 +588,9 @@ function logout() {
 // concurrent 401s (a tab firing several requests at once) only log out once.
 function sessionExpired() {
   if (!state.accessToken) return;  // already logged out
-  logout();  // clears token, closes WS, shows login screen, blanks l-error
+  state.accessToken = "";
+  if (state.ws) { state.ws.close(); state.ws = null; }
+  showLoginScreen();
   document.getElementById("l-error").textContent =
     "Your session expired — please log in again.";
 }

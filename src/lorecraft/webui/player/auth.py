@@ -81,6 +81,10 @@ class PlayerNotFoundError(ValueError):
     """`allow_create=False` and no account exists for this username."""
 
 
+class PlayerAlreadyLoggedInError(ValueError):
+    """Player is already logged in with an active session."""
+
+
 class LoginResult:
     __slots__ = ("player", "created")
 
@@ -143,6 +147,11 @@ def login_or_register(
         player = player_repo.get(existing_auth.player_id)
         if player is None:
             raise InvalidCredentialsError("Invalid username or password.")
+        active_session = player_repo.active_session(player.id)
+        if active_session is not None:
+            raise PlayerAlreadyLoggedInError(
+                "This character is already logged in. Please try again in a few moments."
+            )
         existing_auth.last_login_at = now
         return LoginResult(player=player, created=False)
 
@@ -314,6 +323,8 @@ async def login(body: LoginBody, request: Request) -> dict[str, object]:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except InvalidCredentialsError as e:
             raise HTTPException(status_code=401, detail=str(e)) from e
+        except PlayerAlreadyLoggedInError as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
         except StartRoomNotConfiguredError as e:
             raise HTTPException(status_code=500, detail=str(e)) from e
         db.commit()

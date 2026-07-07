@@ -2,6 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.2] - 2026-07-06
+
+### Added
+
+- **Player login UX improvements.** Username field now gets automatic focus when the lobby's Log In or Create Character tabs are opened, reducing friction on initial interaction.
+- **Single concurrent session enforcement for players.** The server now checks if a player is already logged in with an active session and rejects duplicate login attempts, preventing the same character from being logged in twice simultaneously.
+
+### Changed
+
+- **Login error differentiation.** The server now distinguishes between authentication failures ("Invalid username or password") and existing sessions ("This character is already logged in"). The player lobby displays these errors inline on the form, and the JSON API returns HTTP 409 (Conflict) for duplicate sessions vs. 401 (Unauthorized) for auth failures, enabling clients to show appropriate guidance.
+- **Admin login UX.** Admin console now shows the login screen with the username field focused when needed (logout or session expiry).
+
+### Fixed
+
+- **Lobby username autofocus didn't fire on tab switch.** The `x-show` tab panels initially used a `@show.window` Alpine listener for autofocus, but `x-show` never dispatches a `show` event — so switching tabs never actually moved focus (only the initial page load worked, coincidentally, via the HTML `autofocus` attribute). Replaced with an `x-init` check for the tab active on page load, plus an explicit focus call in each tab button's `@click` handler for the switch case. Verified end-to-end with a Playwright driver against a live dev server: focus lands correctly on `#enter-username` / `#username` both on initial load and after clicking between tabs, and the "already logged in" rejection (409) is visually confirmed distinct from a wrong-password rejection (401).
+
 ## [0.42.1] - 2026-07-06
 
 ### Changed
