@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.44.3] - 2026-07-06
+
+### Added
+
+- **Sprint 52.4 — `tell` verb + verb-per-channel topic speaking.** `tell <player> <message>` (alias `whisper`) sends a private P2P message to an online player — the target's echo lands only on their socket; offline targets are rejected in-fiction ("X isn't online right now." — no store-and-forward, by decision), as are unknown names and self-tells. Topic channels auto-register a speaking verb named after the channel: the seeded **`newbie`** channel (P2ALL, on by default, muteable) speaks via `newbie <message>`, rendered as `(Newbie) Speaker: "…"` on every path. Topic channels are composition-layer content (`commands/social.py`); the engine holds only the registry.
+
 ## [0.44.2] - 2026-07-06
 
 ### Changed
