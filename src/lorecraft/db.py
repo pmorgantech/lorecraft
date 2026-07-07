@@ -278,6 +278,25 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                     "ADD COLUMN combination_side_effects JSON NOT NULL DEFAULT '{}'"
                 )
             )
+    if "context_commands" not in item_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE item "
+                    "ADD COLUMN context_commands JSON NOT NULL DEFAULT '{}'"
+                )
+            )
+
+    if "npc" in inspect(engine).get_table_names():
+        npc_columns = {column["name"] for column in inspect(engine).get_columns("npc")}
+        if "context_commands" not in npc_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "ALTER TABLE npc "
+                        "ADD COLUMN context_commands JSON NOT NULL DEFAULT '{}'"
+                    )
+                )
 
     if "playerquestprogress" in inspect(engine).get_table_names():
         quest_columns = {

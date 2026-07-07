@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.5] - 2026-07-07
+
+### Added
+
+- **Sprint 55.2 — context-command content schema + registry.** Items and NPCs gain a `context_commands` map (`verb → {aliases, help, say, side_effects, requires?}`) — a new `ContextCommandData` validator model (rejects a verb that neither says nor does anything, and unknown keys), a `context_commands` JSON column on the `item`/`npc` tables (with SQLite ADD-COLUMN migrations), and full world-YAML import/export round-trip. New `features/context_commands/` package: `ContextBinding` (carries its `object_present`/`npc_present` gate), `ContextCommandRegistry.load_from_session()` scanning every item + NPC, and `lint_context_commands` (side-effect keys must resolve to a registered handler). The dispatcher that turns these into live verbs lands in 55.3.
+
 ## [0.45.4] - 2026-07-07
 
 ### Added

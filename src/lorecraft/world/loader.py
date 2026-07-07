@@ -21,6 +21,7 @@ from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.types import JsonObject
 from lorecraft.world.validator import (
+    ContextCommandData,
     BankBranchData,
     DialogueChoiceData,
     DialogueNodeData,
@@ -101,6 +102,10 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 combination_side_effects=cast(
                     JsonObject, item.combination_side_effects
                 ),
+                context_commands={
+                    verb: spec.model_dump()
+                    for verb, spec in item.context_commands.items()
+                },
             )
         )
 
@@ -169,6 +174,10 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 max_hp=npc.max_hp,
                 schedule=[e.model_dump() for e in npc.schedule],
                 loot_table=cast(JsonObject, npc.loot_table),
+                context_commands={
+                    verb: spec.model_dump()
+                    for verb, spec in npc.context_commands.items()
+                },
             )
         )
         if npc.shop is not None:
@@ -385,6 +394,10 @@ def export_world_document(session: Session) -> WorldDocument:
             combination_side_effects=cast(
                 dict[str, dict[str, object]], item.combination_side_effects
             ),
+            context_commands={
+                verb: ContextCommandData.model_validate(spec)
+                for verb, spec in item.context_commands.items()
+            },
         )
         for item in session.exec(select(Item)).all()
     ]
@@ -416,6 +429,10 @@ def export_world_document(session: Session) -> WorldDocument:
             loot_table=cast(dict[str, object], npc.loot_table),
             shop=_export_shop(session, npc.id),
             bank=_export_bank(session, npc.id),
+            context_commands={
+                verb: ContextCommandData.model_validate(spec)
+                for verb, spec in npc.context_commands.items()
+            },
         )
         for npc in session.exec(select(NPC)).all()
     ]
