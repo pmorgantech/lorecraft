@@ -243,6 +243,42 @@ marks:
 - Keep boons small and flat (soft-cap principle); useful keys today:
   `carry_capacity`, `skill.<name>`, `warmth`, `meter.<key>.max`.
 
+### Authoring celestial content (`world_content/celestial.yaml`)
+
+Celestial cycles (Sprint 54) derive **moon phase** (8 phases, 16-day month) and **tide**
+(low/high, two cycles a day) from the world clock — no new state to author. Content hooks
+onto them three ways:
+
+1. **Tide-gated exits** — declare them in `world_content/celestial.yaml`
+   (`LORECRAFT_CELESTIAL_YAML_PATH` overrides). The feature locks/unlocks the named exit
+   as the tide turns; author the exit's `locked:` in `world.yaml` to match the tide at
+   `START_HOUR` (8 → high water):
+
+   ```yaml
+   version: 1
+   tide_gates:
+     - room: creek_crossing
+       direction: south
+       open_at: low     # exit is unlocked only at this tide
+   ```
+
+   Content-lint (`lint_celestial`) requires the room/direction pair to be a real exit.
+   Make the *return* exit ungated so a turning tide can't strand a player.
+
+2. **Command conditions** — gate any verb with `conditions: ["moon_phase_is:full"]` or
+   `["tide_is:low"]` (fails closed, with an in-fiction reason).
+
+3. **Dialogue conditions** — put the key directly on a choice, like `required_flags`:
+
+   ```yaml
+   - label: The moon is full tonight. Does the creek change with it?
+     moon_phase_is: full
+     next_node: moon_lore
+   ```
+
+   Valid phases: `new`, `waxing_crescent`, `first_quarter`, `waxing_gibbous`, `full`,
+   `waning_gibbous`, `last_quarter`, `waning_crescent`. Tides: `low`, `high`.
+
 ## The World CLI
 
 `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}` — the

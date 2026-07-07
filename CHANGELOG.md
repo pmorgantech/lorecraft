@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.44.0] - 2026-07-06
+
+### Added
+
+- **Sprint 54 complete — celestial cycles: moons & tides.** Ashmoore gains a **tide-gated causeway**: at low water, stepping stones below the Mossy Creek Crossing lead south to the new **Tidal Islet** (and its sea-glass pendant); when the tide turns, the causeway drowns and the exit re-locks — the return exit is never gated, so the rising water can't strand you. Gates are declared in the new `world_content/celestial.yaml` (`tide_gates` — the hunts/marks content-file pattern, no room ids in code) and the feature writes the one authoritative `Exit` per the §3.9 one-owner rule, with a startup sync matching the wake-up tide. Under a **full moon**, Mira offers a new dialogue beat pointing at the islet (`lore:moonlit_tides`). Integration tests cover the full open→cross→drown→wade-back loop and the moon-gated choice against the real world content.
+
+### Fixed
+
+- **World validator rejected registry-condition keys on dialogue choices.** The dialogue engine's choice-visibility contract is open-keyed (any registered dialogue-condition predicate — `moon_phase_is`, `tide_is`, future feature conditions — can sit directly on a choice), but `DialogueChoiceData` used `extra="forbid"` and rejected exactly that content. Now `extra="allow"`, matching the runtime contract the feature-registration pattern invites.
+
 ## [0.43.2] - 2026-07-06
 
 ### Added

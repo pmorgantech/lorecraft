@@ -279,9 +279,11 @@ WS status push.
 
 | # | Task | Status |
 |---|------|--------|
-| 54.1 | **Tier 1 calendar functions:** `moon_phase_for_day` / `tide_for_hour` (+ cycle constants beside `DAYS_PER_SEASON`) in `engine/clock/`; `MOON_PHASE_CHANGED` / `TIDE_CHANGED` `GameEvent`s; unit tests over cycle boundaries. | [ ] |
-| 54.2 | **`features/celestial/` package:** `HOUR_CHANGED`/`DAY_CHANGED` handlers detecting phase/tide transitions and emitting the celestial events; `moon_phase_is` / `tide_is` condition handlers (command + dialogue registries); moon/tide in the status-bar WS push + `time`/`look` surfacing. | [ ] |
-| 54.3 | **Content + tests + docs:** Ashmoore tide-gated causeway (handler writes `Exit` state on tide change) + a moon-gated dialogue/lore beat; content-lint for celestial condition keys; integration tests (tide opens/closes the causeway across clock advance; moon condition gates dialogue); user/admin guide sections. | [ ] |
+| 54.1 | **Tier 1 calendar functions:** `moon_phase_for_day` / `tide_for_hour` (+ cycle constants beside `DAYS_PER_SEASON`) in `engine/clock/`; `MOON_PHASE_CHANGED` / `TIDE_CHANGED` `GameEvent`s; unit tests over cycle boundaries. | [x] Landed v0.43.1 — `engine/clock/celestial.py`: 8-phase 16-day lunar month (deliberately drifts against the 30-day season), semi-diurnal tide (6h per state). |
+| 54.2 | **`features/celestial/` package:** `HOUR_CHANGED`/`DAY_CHANGED` handlers detecting phase/tide transitions and emitting the celestial events; `moon_phase_is` / `tide_is` condition handlers (command + dialogue registries); moon/tide in the status-bar WS push + `time`/`look` surfacing. | [x] Landed v0.43.2 — transition handlers compare event endpoints (fast-forwards don't replay skipped states); gates fail closed with in-fiction reasons; moon/tide in `time_update` + initial render + status bar (no `time` verb exists — the status bar *is* the clock surface). |
+| 54.3 | **Content + tests + docs:** Ashmoore tide-gated causeway (handler writes `Exit` state on tide change) + a moon-gated dialogue/lore beat; content-lint for celestial condition keys; integration tests (tide opens/closes the causeway across clock advance; moon condition gates dialogue); user/admin guide sections. | [x] Landed v0.44.0 — data-driven `world_content/celestial.yaml` (`tide_gates`, the hunts/marks content-file pattern; no room ids in code) drives the new `creek_crossing → tidal_islet` causeway via authoritative-`Exit` writes (§3.9 one-owner; startup sync matches the wake-up tide; the return exit is ungated so the tide never strands anyone). Moon beat: full-moon-only innkeeper choice → `lore:moonlit_tides` — which required aligning the world validator with the dialogue engine's open-keyed choice contract (`DialogueChoiceData` now `extra="allow"` so registry-condition keys validate). Full lint + integration coverage; guides updated. |
+
+**✅ Sprint 54 complete (v0.44.0).**
 
 ---
 

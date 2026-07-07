@@ -173,6 +173,12 @@ event, an NPC's trust, a quest step) before they'll let you through, whether or 
 found them. Rooms can also have terrain (forest, mountain, swamp, water...) that requires
 a minimum survival skill to enter safely.
 
+The world also keeps **celestial time**: the status bar shows the current **moon phase**
+and **tide** beside the clock. Some paths only open when the water is low (a drowned
+causeway, say), and some things — a dialogue option, a ritual, a door — answer only to a
+particular moon. If a way is shut, the heavens may simply not be right yet; note the moon
+and tide and come back.
+
 ## Stamina: Rest, Sleep, and Camp
 
 ```

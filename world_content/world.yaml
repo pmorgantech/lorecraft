@@ -291,7 +291,8 @@ rooms:
       surprising purpose. A rope, perhaps once a handrail, sags between two
       alder trees. On the far eastern bank the ground rises toward the outline
       of a stone ruin half-smothered in ivy. North lies the open meadow; the
-      forest continues south.
+      forest continues south. Downstream, a line of flat stones runs out to a
+      small islet — passable only when the water is low.
     map_x: 5
     map_y: 5
     area_id: wilderness
@@ -301,6 +302,30 @@ rooms:
         target_room_id: meadow_clearing
       - direction: east
         target_room_id: ruined_chapel
+      # Tide-gated causeway (Sprint 54): opened/locked by the tide via
+      # world_content/celestial.yaml — starts locked (world wakes at high water).
+      - direction: south
+        target_room_id: tidal_islet
+        locked: true
+
+  - id: tidal_islet
+    name: The Tidal Islet
+    description: >-
+      A hump of grass and gullweed barely above the waterline, ringed by
+      stones the creek has worn round. Debris collects here — driftwood,
+      knotted line, the occasional bottle — as if the water tithes a little
+      of everything it carries. When the water rises, the stepping stones
+      back north drown one by one; wading the cold channel is always
+      possible, if unpleasant.
+    map_x: 5
+    map_y: 4
+    area_id: wilderness
+    light_level: 1
+    exits:
+      # Wading back is always possible — the gate is one-way by design so the
+      # rising tide never strands a player here.
+      - direction: north
+        target_room_id: creek_crossing
 
   - id: ruined_chapel
     name: The Ruined Chapel
@@ -456,6 +481,17 @@ items:
     takeable: true
     tradeable: true
     value: 8
+    category: trade_good
+
+  - id: sea_glass_pendant
+    name: Sea-Glass Pendant
+    description: >-
+      A thumb-sized shard of green glass, tumbled smooth by years in the
+      creek and knotted into a loop of tarred cord. Held to the light, a
+      faint crescent flaw floats in the glass like a moon behind cloud.
+    takeable: true
+    tradeable: true
+    value: 12
     category: trade_good
 
   - id: tallow_candle
@@ -832,6 +868,10 @@ items:
 # ---------------------------------------------------------------------------
 
 room_items:
+  # Tidal islet (Sprint 54) — reachable only at low tide
+  - room_id: tidal_islet
+    item_id: sea_glass_pendant
+    quantity: 1
   # Inn
   - room_id: wandering_crow_inn
     item_id: carved_mug
@@ -1004,7 +1044,25 @@ dialogue_trees:
         choices:
           - label: Any news around town?
             next_node: town_news
+          # Moon-gated lore beat (Sprint 54): visible only under a full moon
+          # via the celestial feature's moon_phase_is dialogue condition.
+          - label: The moon is full tonight. Does the creek really change with it?
+            moon_phase_is: full
+            next_node: moon_lore
           - label: Nothing, thanks.
+            side_effects:
+              end_dialogue: true
+      moon_lore:
+        text: >-
+          Mira lowers her voice. "Full moon pulls the water hard. At low
+          water there's a path of stones below the creek crossing — leads
+          out to a little islet. The creek leaves things there. Mind the
+          rise coming back; the stones drown quick."
+        side_effects:
+          set_flags:
+            - lore:moonlit_tides
+        choices:
+          - label: I'll have a look. Thank you, Mira.
             side_effects:
               end_dialogue: true
       town_news:

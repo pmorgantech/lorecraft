@@ -1,0 +1,9 @@
+# Celestial content (Sprint 54). Tide gates name an existing exit in
+# world.yaml; the celestial feature locks/unlocks that exit as the tide turns
+# (open only at `open_at`). The exit's authored `locked:` state should match
+# the tide at the world's START_HOUR (8 → high) so startup sync is a no-op.
+version: 1
+tide_gates:
+  - room: creek_crossing
+    direction: south
+    open_at: low

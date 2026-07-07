@@ -130,7 +130,13 @@ class NpcData(BaseModel):
 
 
 class DialogueChoiceData(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # extra="allow", unlike the rest of the world schema: the dialogue engine's
+    # choice-visibility contract is *open-keyed* — any extra key naming a
+    # registered dialogue-condition predicate (features/npc/dialogue_conditions,
+    # e.g. Sprint 54's `moon_phase_is`/`tide_is`) gates the choice, and unknown
+    # keys are ignored at runtime. Forbidding extras here would reject exactly
+    # the content the feature-registration pattern invites.
+    model_config = ConfigDict(extra="allow")
 
     label: str
     next_node: str | None = None

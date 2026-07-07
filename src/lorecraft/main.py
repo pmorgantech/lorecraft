@@ -24,6 +24,10 @@ from lorecraft.webui.admin.broadcaster import AdminBroadcaster
 from lorecraft.webui.admin.websocket import admin_ws_endpoint
 from lorecraft.webui.player import create_web_host, load_feature_presentations
 from lorecraft.features.weather.handlers import register_weather_handlers
+from lorecraft.features.celestial.content import (
+    register_tide_gate_handlers,
+    sync_tide_gates,
+)
 from lorecraft.features.celestial.handlers import register_celestial_handlers
 from lorecraft.engine.clock.celestial import moon_phase_for_day, tide_for_hour
 from lorecraft.engine.clock.world_clock import WorldClockRunner
@@ -148,6 +152,8 @@ def create_app(
         )
         register_weather_handlers(bus, resolved_game_engine, rng=app_rng)
         register_celestial_handlers(bus)
+        _load_celestial_content(resolved_settings.celestial_yaml_path)
+        register_tide_gate_handlers(bus, resolved_game_engine)
         NpcScheduler(resolved_game_engine).register(bus)
         scheduler = SchedulerService(resolved_game_engine, app_rng)
         scheduler.register(bus)
@@ -340,6 +346,14 @@ def create_app(
         wire_features(state, loaded_features)
 
         state.clock_runner.initialize()
+        # Tide gates must match the tide the world wakes to, not the last
+        # transition (Sprint 54.3) — one sync now the clock row exists.
+        with Session(resolved_game_engine) as _sync_session:
+            _clock = RoomRepo(_sync_session).world_clock()
+            if _clock is not None and sync_tide_gates(
+                _sync_session, _clock.current_hour
+            ):
+                _sync_session.commit()
         state.clock_runner.start()
         app.state.lorecraft = state
         try:
@@ -630,6 +644,26 @@ def _load_hunt_definitions(hunts_yaml_path: str) -> None:
         registry.load_document(load_hunts_yaml(hunts_yaml_path))
     except Exception as exc:  # malformed hunt content shouldn't crash boot
         log.warning("failed to load hunts from %s: %s", hunts_yaml_path, exc)
+
+
+def _load_celestial_content(celestial_yaml_path: str) -> None:
+    """Load celestial content (Sprint 54: tide gates) into the in-memory
+    registry at startup. A missing file is fine — no tide-gated exits."""
+    from pathlib import Path
+
+    from lorecraft.features.celestial.content import (
+        get_content_registry,
+        load_celestial_yaml,
+    )
+
+    registry = get_content_registry()
+    registry.clear()
+    if not Path(celestial_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_celestial_yaml(celestial_yaml_path))
+    except Exception as exc:  # malformed content shouldn't crash boot
+        log.warning("failed to load celestial from %s: %s", celestial_yaml_path, exc)
 
 
 def _load_mark_definitions(marks_yaml_path: str) -> None:
