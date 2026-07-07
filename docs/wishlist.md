@@ -562,6 +562,12 @@ time comes:
 
 ### Context-attached commands 🤔 (distilled from Evennia cmdsets, 2026-07-03)
 
+**→ Promoted to roadmap [Sprint 55](roadmap.md#sprint-55--context-attached-commands-object-scoped-verbs)**
+(2026-07-07): items *and* NPCs declare a `context_commands` map; verbs register into the flat
+`CommandRegistry` gated by new `object_present`/`npc_present` conditions (help already hides
+out-of-context verbs), firing the existing shared side-effect registry. The design notes below are
+the source for that sprint.
+
 Evennia attaches command _sets_ to objects — a Tree carries `climb`/`chop`, a Clock carries
 `check time` — so verbs appear only when the relevant object is present or held. That
 object-scoped-verb idea is a strong fit for the exploration/puzzle pillars (a `pull` lever that

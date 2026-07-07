@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.3] - 2026-07-07
+
+### Changed
+
+- **Docs: scheduled Sprint 55 — context-attached commands (object-scoped verbs).** Items *and* NPCs will declare a `context_commands` map so a `pull` lever / `read` inscription / `ring` bell / `pet` dog appears and works only when its object is present. Scoping found most machinery already exists: help already filters commands by condition (so out-of-context verbs auto-hide), the shared side-effect registry already provides the actions, and `CommandRegistry` already supports per-command conditions — so the new work is just an `object_present`/`npc_present` gate, the content schema, and a loader/dispatcher. Evennia's cmdset merge algebra is explicitly out of scope. Roadmap section + `wishlist.md` promotion note added; sprint numbering advanced (next new sprint 56). No code change.
+
 ## [0.45.2] - 2026-07-07
 
 ### Changed

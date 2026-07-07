@@ -66,9 +66,9 @@ parallelization via pytest-xdist (~2.56×, v0.42.3).
 
 **Active work:** every numbered sprint through **54** is complete (2026-07-07): Sprint 52 — global
 channels & the channel framework (v0.45.0, finishing chat Phase 3 / Sprint 45.3), Sprint 53 —
-collectible marks (v0.43.0), Sprint 54 — celestial cycles (v0.44.0). The numbered roadmap is clear
-again; candidate work lives in the *Backlog* table and [`wishlist.md`](wishlist.md). Next new
-sprint: **55**.
+collectible marks (v0.43.0), Sprint 54 — celestial cycles (v0.44.0). **Scheduled: Sprint 55 —
+context-attached commands** (object-scoped verbs; see its section below). Further candidate work
+lives in the *Backlog* table and [`wishlist.md`](wishlist.md). Next new sprint after 55: **56**.
 
 **Fixed (v0.45.1, 2026-07-07):** the two pre-existing e2e failures turned out to be two real bugs —
 `app.js` connected the game WebSocket from *every* page (base.html loads it), so a lobby tab after
@@ -305,6 +305,54 @@ WS status push.
 
 ---
 
+## Sprint 55 — Context-attached commands (object-scoped verbs)
+
+**Goal:** let world content give an **item or NPC its own verbs** that appear and work only when
+that object is present (held, or in the room) — a `pull` lever, a `read` inscription, a `ring`
+bell, `pet` the dog, `bribe` the guard — without bloating the global command list. Adopt Evennia's
+object-scoped-verb *concept*; **explicitly skip** its cmdset merge algebra (priorities /
+Union/Replace/Remove). From [`wishlist.md`](wishlist.md) → *Context-attached commands*.
+
+**Key finding (scoping):** Lorecraft already has most of the machinery, so this is small.
+① The help/availability layer already filters by conditions (`commands/meta.py` `_is_available` →
+`evaluate_conditions`), so a verb carrying a gating condition **automatically** shows in
+`help`/`help commands` only when in context — the "appears only when relevant" half needs **no new
+code**. ② The shared side-effect registry (`features/npc/side_effects.py`, used by dialogue +
+Sprint 30 mechanisms) already does `set_flags`/`start_quest`/`open_timed_passage`/… — a context
+verb's action **reuses it**, no new effect machinery. ③ The `CommandRegistry` already supports
+per-command `conditions`. So the only genuinely new parts are a presence **gate**, a content
+**schema**, and a **loader/dispatcher**.
+
+**Design (decided 2026-07-07):**
+- **Carriers:** **items *and* NPCs** (MVP). Room-fixed puzzles need no separate path — a lever is
+  a non-takeable item (`takeable: false`), already supported.
+- **Gate primitives:** new `object_present:<item_id>` + `npc_present:<npc_id>` command-condition
+  handlers, joining the existing `item_in_inventory` (`engine/game/command_conditions.py`).
+  Reusable well beyond this feature.
+- **Content schema:** items/NPCs gain a `context_commands` map —
+  `{verb: {aliases, help, say, side_effects, requires?}}` — whose `side_effects` dispatch through
+  the existing shared side-effect registry (`requires` is an optional extra condition, e.g. a flag).
+- **Registration + dispatch:** a composition-layer loader registers **one** gated command per
+  distinct verb into the flat `CommandRegistry` (gated on "a declaring object is present/held"); the
+  handler resolves *which* present object declares the verb (reusing the parser's entity
+  resolution/disambiguation when several do) and fires that object's `side_effects`. One registry
+  entry per verb; many objects may share `pull`.
+- **Collision hygiene (paired win):** a dev-time warning when a context verb shadows a built-in
+  verb/alias (last-wins, but logged) — the wishlist's "avoid duplicate aliases" lesson.
+
+| # | Task | Status |
+|---|------|--------|
+| 55.1 | **Gate primitives:** `object_present:<id>` / `npc_present:<id>` command-condition handlers in `engine/game/command_conditions.py`; unit tests (present/absent, unknown id). | [ ] |
+| 55.2 | **Content schema + lint:** `context_commands` on `ItemData`/`NpcData` in the world validator; content-lint (declared `side_effects` resolve to registered handlers; a `requires` flag/id is well-formed); loader parses it into an in-memory registry. | [ ] |
+| 55.3 | **Loader + dispatcher:** composition-layer registration of one gated command per distinct context verb; handler resolves the present/held declaring object (parser entity resolution) and fires its `side_effects`; empty/absent-object cases stay narrative; collision-warning on verb/alias clash with a built-in. | [ ] |
+| 55.4 | **Content + tests + docs:** an Ashmoore example (e.g. a `pull` lever or `ring` bell wired to a side effect) + one NPC-carried verb; integration tests (verb absent from `help` out of context, present + fires its effect in context; two objects sharing a verb disambiguate by noun); user/admin guide sections. | [ ] |
+
+**Deferred to a follow-on:** Evennia's cmdset merge algebra (priorities/merge types) — deliberately
+out of scope; optional-prefix matching (`@look`) and per-command permission locks (the wishlist's
+other "cheap wins," which pair better with the backlog's in-game admin/OOC commands).
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -325,10 +373,10 @@ WS status push.
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), 51 (four more analytics widgets + the `target_id` audit fix), 52 (global channels & the channel framework — **scheduled**, finishing chat Phase 3 / Sprint 45.3), 53 (collectible marks / attunements — **scheduled**), and 54 (celestial cycles: moons & tides — **scheduled**).
-- **Reserved but never used:** 55–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), 51 (four more analytics widgets + the `target_id` audit fix), 52 (global channels & the channel framework — **scheduled**, finishing chat Phase 3 / Sprint 45.3), 53 (collectible marks / attunements — **done**, v0.43.0), 54 (celestial cycles: moons & tides — **done**, v0.44.0), and 55 (context-attached commands — **scheduled**).
+- **Reserved but never used:** 56–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 55.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 56.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
