@@ -173,6 +173,11 @@ event, an NPC's trust, a quest step) before they'll let you through, whether or 
 found them. Rooms can also have terrain (forest, mountain, swamp, water...) that requires
 a minimum survival skill to enter safely.
 
+Some **objects carry their own verbs**. An altar might let you `read` its inscription, a
+lever might `pull`, an innkeeper might accept a `tip` — but only while that object is with
+you (in the room, or in your pack). These verbs show up in `help` only when they're usable,
+so if you're stuck, `look` around and try the obvious action on what you see.
+
 The world also keeps **celestial time**: the status bar shows the current **moon phase**
 and **tide** beside the clock. Some paths only open when the water is low (a drowned
 causeway, say), and some things — a dialogue option, a ritual, a door — answer only to a
