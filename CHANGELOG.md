@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.7] - 2026-07-06
+
+### Added
+
+- **Sprint 53.2 — MarkService: criteria evaluation + award.** Marks are evaluated over the player's existing journal state (`visited_rooms`, `met_npcs`, `discovered_items`, `flags`) on the same queued pre-commit events quest progression rides (`PLAYER_MOVED`/`ITEM_TAKEN`/`QUEST_COMPLETED`), so award writes land inside the command's transaction. Award sets the `mark:<id>` flag, announces in the feed, and is idempotent; evaluation runs to a fixpoint so a mark keyed on another mark's flag chains in one pass. Wired through `ServiceContainer` (feature-gated), `Settings.marks_yaml_path` (`LORECRAFT_MARKS_YAML_PATH`), and startup loading in `main.py` — the hunts wiring pattern throughout.
+
 ## [0.42.6] - 2026-07-06
 
 ### Added

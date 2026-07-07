@@ -15,6 +15,7 @@ from lorecraft.features.follow.service import FollowService
 from lorecraft.features.hunts.service import HuntService
 from lorecraft.features.inventory.service import InventoryService
 from lorecraft.features.exploration.journal import JournalService
+from lorecraft.features.marks.service import MarkService
 from lorecraft.features.movement.service import MovementService
 from lorecraft.features.quests.service import QuestService
 from lorecraft.engine.services.save import SaveSlotService
@@ -44,6 +45,7 @@ _FEATURE_GATED_SERVICES: dict[str, tuple[str, type]] = {
     "bank": ("bank", BankService),
     "follow": ("follow", FollowService),
     "hunts": ("hunts", HuntService),
+    "marks": ("marks", MarkService),
 }
 
 
@@ -79,6 +81,7 @@ class ServiceContainer:
     trade: TradeService | None = field(default_factory=TradeService)
     follow: FollowService | None = field(default_factory=FollowService)
     hunts: HuntService | None = field(default_factory=HuntService)
+    marks: MarkService | None = field(default_factory=MarkService)
 
     @classmethod
     def build(cls, enabled: Collection[str] | None = None) -> ServiceContainer:

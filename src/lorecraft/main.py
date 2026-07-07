@@ -204,6 +204,9 @@ def create_app(
         if services.hunts is not None:
             _load_hunt_definitions(resolved_settings.hunts_yaml_path)
             services.hunts.register(bus)
+        if services.marks is not None:
+            _load_mark_definitions(resolved_settings.marks_yaml_path)
+            services.marks.register(bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
@@ -622,6 +625,23 @@ def _load_hunt_definitions(hunts_yaml_path: str) -> None:
         registry.load_document(load_hunts_yaml(hunts_yaml_path))
     except Exception as exc:  # malformed hunt content shouldn't crash boot
         log.warning("failed to load hunts from %s: %s", hunts_yaml_path, exc)
+
+
+def _load_mark_definitions(marks_yaml_path: str) -> None:
+    """Load mark definitions (Sprint 53) into the in-memory registry at
+    startup. A missing file is fine — it just means no marks are defined."""
+    from pathlib import Path
+
+    from lorecraft.features.marks.models import get_registry, load_marks_yaml
+
+    registry = get_registry()
+    registry.clear()
+    if not Path(marks_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_marks_yaml(marks_yaml_path))
+    except Exception as exc:  # malformed mark content shouldn't crash boot
+        log.warning("failed to load marks from %s: %s", marks_yaml_path, exc)
 
 
 def _get_state(app: FastAPI) -> AppState:
