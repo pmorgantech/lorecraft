@@ -588,6 +588,11 @@ function logout() {
 // concurrent 401s (a tab firing several requests at once) only log out once.
 function sessionExpired() {
   if (!state.accessToken) return;  // already logged out
+  // Wipe the *stored* credentials too — leaving a dead token in
+  // sessionStorage would resurrect it as state.accessToken on the next page
+  // load and immediately 401 again (the bug the stale-token e2e guards).
+  sessionStorage.removeItem("lc_admin_token");
+  sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
   if (state.ws) { state.ws.close(); state.ws = null; }
   showLoginScreen();

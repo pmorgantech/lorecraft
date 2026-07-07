@@ -26,6 +26,14 @@
   // a WebSocket upgrade, hence the ticket exchange instead of connecting
   // with the session directly.
   async function connectWebSocket() {
+    // Only the game screen may hold the game WebSocket. This script is loaded
+    // by base.html on every page (lobby, settings, ...), and connecting from
+    // a non-game page is actively harmful: the /ws handshake runs
+    // start_or_resume_session, so a lobby tab with a still-valid session
+    // cookie silently *resumes* the session the player just quit — leaving
+    // them "already logged in" and unable to log back in (the bug the
+    // login-tab e2e guards). #command-input exists only on game.html.
+    if (!document.getElementById("command-input")) return;
     const wsPath = window.LORECRAFT_WS_PATH || "/ws";
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const base =

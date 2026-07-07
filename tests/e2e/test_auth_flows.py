@@ -24,7 +24,11 @@ from typing import Any
 
 import pytest
 
-from tests.e2e._helpers import CHARACTER_PASSWORD, create_character, login_character
+from tests.e2e._helpers import (
+    CHARACTER_PASSWORD,
+    create_character,
+    login_character,
+)
 
 pytestmark = pytest.mark.e2e
 
@@ -34,13 +38,22 @@ def test_login_to_existing_character_via_login_tab(
 ) -> None:
     """P2.1: an existing character can log back in through the Log In tab.
 
-    Create a character (which also logs in), then in a *fresh* context use the
-    default Log In tab to re-authenticate and land back in /game as the same
-    character (same start room, same name).
+    Create a character (which also logs in), `quit` to leave the game — since
+    v0.42.2 a character may hold only one active session, so "log back in"
+    requires the first session to be over (quit moves it to grace, which does
+    not block a fresh login) — then in a *fresh* context use the default Log
+    In tab to re-authenticate and land back in /game as the same character.
     """
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
     page.locator("#room-description", has_text="Village Square of Ashmoore").wait_for()
+
+    # Leave the game: ends the active session (status → grace server-side)
+    # and HX-Redirects to /lobby — so don't use send_command_via_enter, whose
+    # input-cleared wait explodes when #command-input leaves the DOM.
+    page.fill("#command-input", "quit")
+    page.press("#command-input", "Enter")
+    page.wait_for_url(re.compile(r".*/lobby$"))
 
     # Fresh context: no session cookie carried over from the create flow.
     returning = new_page()
@@ -51,6 +64,28 @@ def test_login_to_existing_character_via_login_tab(
         "#room-description", has_text="Village Square of Ashmoore"
     ).wait_for()
     assert username in returning.locator("body").inner_text()
+
+
+def test_second_login_while_session_active_is_rejected(
+    page: Any, new_page: Any, live_server: str
+) -> None:
+    """v0.42.2: a character may hold only one active session — logging in from
+    a second browser while the first is still in-game is rejected with an
+    inline error, and the intruder never reaches /game."""
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+    page.locator("#room-description", has_text="Village Square of Ashmoore").wait_for()
+
+    second = new_page()
+    second.goto(f"{live_server}/lobby")
+    second.fill("#enter-username", username)
+    second.fill("#enter-password", CHARACTER_PASSWORD)
+    second.click("form[action='/lobby/enter'] button[type=submit]")
+
+    second.locator("[role=alert]").wait_for()
+    assert "already logged in" in second.locator("[role=alert]").inner_text().lower()
+    assert not re.search(r"/game$", second.url)
+    assert second.locator("#command-input").count() == 0
 
 
 def test_wrong_password_is_rejected(page: Any, new_page: Any, live_server: str) -> None:

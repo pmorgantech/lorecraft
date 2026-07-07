@@ -2,6 +2,13 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.1] - 2026-07-07
+
+### Fixed
+
+- **Quitting could permanently lock a character out of logging back in.** `base.html` loads `app.js` on every page and `boot()` connected the game WebSocket unconditionally — so after `quit` redirected to `/lobby`, the lobby tab (session cookie still valid) minted a fresh WS ticket, reconnected, and `start_or_resume_session` silently **resumed the just-graced session back to active**. Every subsequent login was then rejected with "This character is already logged in" for as long as the lobby tab stayed open. The game WebSocket now connects only on the game screen (`#command-input` present). Diagnosed via the "pre-existing" `test_login_to_existing_character_via_login_tab` failure noted in 0.45.0 — the test's premise was also updated for v0.42.2 semantics (quit first, then log back in), and a new e2e pins the second-login-while-active rejection itself.
+- **Admin console left a dead bearer token in sessionStorage on forced logout.** `sessionExpired()` (the 401/WS-auth logout path) cleared `state.accessToken` but — unlike `logout()` — never removed `lc_admin_token`/`lc_admin_user` from sessionStorage, so a reload resurrected the stale token and immediately 401'd again. Now wiped, as the function's own comment always promised. The full e2e suite is green (38/38) for the first time since v0.42.2.
+
 ## [0.45.0] - 2026-07-07
 
 ### Added

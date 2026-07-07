@@ -60,11 +60,12 @@ collectible marks (v0.43.0), Sprint 54 — celestial cycles (v0.44.0). The numbe
 again; candidate work lives in the *Backlog* table and [`wishlist.md`](wishlist.md). Next new
 sprint: **55**.
 
-**Known pre-existing e2e failures (2026-07-07, not Sprint 52 fallout — they fail on v0.44.0 too):**
-`test_admin_session.py::test_stale_token_http_401_forces_logout` and
-`test_auth_flows.py::test_login_to_existing_character_via_login_tab` (timeout waiting for the
-post-login `/game` navigation) — likely interaction with the v0.42.2 single-concurrent-session
-enforcement. Needs a dedicated fix pass.
+**Fixed (v0.45.1, 2026-07-07):** the two pre-existing e2e failures turned out to be two real bugs —
+`app.js` connected the game WebSocket from *every* page (base.html loads it), so a lobby tab after
+`quit` silently **resumed the just-graced session** and blocked all further logins ("already logged
+in"); and the admin console's `sessionExpired()` never wiped the stored bearer token, resurrecting a
+dead token on reload. Both fixed; the full e2e suite is green (38/38) for the first time since
+v0.42.2 landed.
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
