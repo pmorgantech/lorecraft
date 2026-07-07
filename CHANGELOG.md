@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.6] - 2026-07-07
+
+### Added
+
+- **Sprint 55.3 — context-command dispatcher.** `features/context_commands/commands.py` registers one command per distinct context verb into the flat `CommandRegistry`, gated by a new `context_verb:<verb>` availability condition (true when some declaring object is present and its `requires` passes). The handler resolves which present object the verb applies to — the noun disambiguates when several share a verb (`pull rusty` vs `pull brass`) — and fires that object's `side_effects` through the shared side-effect registry, plus any `say`. A verb/alias that would shadow an already-registered command is skipped with a dev-time warning (never clobbers a built-in). Wired: `main.py` scans items+NPCs into the registry at startup (gated on the `context_commands` feature), and `register_all_commands` registers the verbs last so the collision check sees every built-in.
+
 ## [0.45.5] - 2026-07-07
 
 ### Added
