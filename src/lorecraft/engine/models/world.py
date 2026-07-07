@@ -88,6 +88,10 @@ class Item(SQLModel, table=True):
     combination_side_effects: JsonObject = Field(
         default_factory=dict, sa_column=Column(JSON)
     )
+    # Context-attached verbs (Sprint 55): verb -> {aliases, help, say,
+    # side_effects, requires?}. Each becomes a command available only when this
+    # item is present/held (gated object_present:<id>); see features/context_commands.
+    context_commands: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
 
 
 class WorldMeta(SQLModel, table=True):
@@ -123,3 +127,7 @@ class NPC(SQLModel, table=True):
     loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     respawn_seconds: int | None = 300
     schedule: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))
+    # Context-attached verbs (Sprint 55): verb -> {aliases, help, say,
+    # side_effects, requires?}, available only when this NPC is in the room
+    # (gated npc_present:<id>); see features/context_commands.
+    context_commands: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

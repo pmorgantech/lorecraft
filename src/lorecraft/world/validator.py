@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from lorecraft.features.weather.handlers import WEATHER_TABLE
 
@@ -44,6 +44,26 @@ class RoomData(BaseModel):
     exits: list[ExitData] = Field(default_factory=list)
 
 
+class ContextCommandData(BaseModel):
+    """One object-scoped verb (Sprint 55). Declared on an item or NPC; becomes
+    a command available only when that object is present, firing `side_effects`
+    through the shared side-effect registry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    aliases: list[str] = Field(default_factory=list)
+    help: str = ""
+    say: str = ""  # message shown to the actor when the verb fires
+    side_effects: dict[str, object] = Field(default_factory=dict)
+    requires: str | None = None  # optional extra condition string, e.g. "flag_set:x"
+
+    @model_validator(mode="after")
+    def _does_something(self) -> "ContextCommandData":
+        if not self.side_effects and not self.say:
+            raise ValueError("a context command must set `say` and/or `side_effects`")
+        return self
+
+
 class ItemData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -69,6 +89,7 @@ class ItemData(BaseModel):
     mechanism_states: list[str] = Field(default_factory=list)
     mechanism_side_effects: dict[str, dict[str, object]] = Field(default_factory=dict)
     combination_side_effects: dict[str, dict[str, object]] = Field(default_factory=dict)
+    context_commands: dict[str, ContextCommandData] = Field(default_factory=dict)
 
 
 class RoomItemData(BaseModel):
@@ -127,6 +148,7 @@ class NpcData(BaseModel):
     loot_table: dict[str, object] = Field(default_factory=dict)
     shop: ShopData | None = None
     bank: BankBranchData | None = None
+    context_commands: dict[str, ContextCommandData] = Field(default_factory=dict)
 
 
 class DialogueChoiceData(BaseModel):
