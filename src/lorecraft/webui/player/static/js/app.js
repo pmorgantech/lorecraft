@@ -136,10 +136,10 @@
           // chat pane when the separate_chat preference rendered one;
           // otherwise they fall into the single feed like before.
           if (data.message_type === "chat") {
-            // Per-channel mute (Sprint 45.3): drop other players' chat
-            // client-side when muted (own echo arrives via command_result).
-            if (window.LORECRAFT_MUTE_CHAT) break;
-            appendToChat(data.html || data.content || data.text);
+            // Per-channel mute moved server-side (Sprint 52.5): unsubscribed
+            // P2ALL chat is dropped at broadcast time, so anything arriving
+            // here should render.
+            appendToChat(data.html || data.content || data.text, data.channel);
           } else {
             appendToFeed(data.html || data.content || data.text);
           }

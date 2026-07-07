@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.44.4] - 2026-07-06
+
+### Changed
+
+- **Sprint 52.5 — per-channel subscriptions replace the blanket `mute_chat`.** `PlayerPreferences.channel_subscriptions` (channel id → on/off, round-trips, invalid entries dropped) is the preference the server's broadcast-time drop reads for muteable P2ALL topic channels; a channel absent from the map uses its `default_subscribed`. The Sprint 45.3 `mute_chat` boolean — a client-side blanket drop of room `say` — is retired (say/tell are not muteable by design: you can't tune out the room you're standing in or a direct tell); legacy `mute_chat` keys in stored blobs are ignored. The `LORECRAFT_MUTE_CHAT` client gate and the settings checkbox are removed (a per-channel toggle list arrives with 52.8).
+
 ## [0.44.3] - 2026-07-06
 
 ### Added

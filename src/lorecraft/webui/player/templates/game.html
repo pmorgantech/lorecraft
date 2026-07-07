@@ -366,10 +366,6 @@
         }
     }
 
-    // Per-channel mute (Sprint 45.3): the WS client reads this to suppress
-    // other players' chat broadcasts client-side (own echo still renders).
-    window.LORECRAFT_MUTE_CHAT = {{ 'true' if prefs.mute_chat else 'false' }};
-
     // Chat/feed split (Sprint 45): when the separate_chat preference rendered
     // the #chat-pane, move any chat-typed messages the HTMX command response
     // appended into #feed over to #chat-feed. With the pane absent (preference

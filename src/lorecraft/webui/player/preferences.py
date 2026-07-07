@@ -16,7 +16,7 @@ account never renders broken.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 
 from lorecraft.types import JsonObject
@@ -52,9 +52,13 @@ class PlayerPreferences:
     # Chat/feed split (Sprint 45): route chat messages to their own pane
     # instead of the narrative feed. Off = today's single feed.
     separate_chat: bool = False
-    # Per-channel mute (Sprint 45.3): suppress other players' chat client-side
-    # (your own echo still shows). Off = see all chat.
-    mute_chat: bool = False
+    # Per-channel subscriptions (Sprint 52.5, generalizing 45.3's mute_chat):
+    # channel id -> on/off for *muteable* P2ALL topic channels. A channel
+    # absent from the map uses its Channel.default_subscribed; the server
+    # drops unsubscribed recipients at broadcast time (engine reads this key
+    # from the raw blob — keep the key name in sync with
+    # engine/game/broadcast.py's _subscribed).
+    channel_subscriptions: dict[str, bool] = field(default_factory=dict)
     # Panel id -> visible. Absent panels default to visible.
     hidden_panels: tuple[str, ...] = ()
 
@@ -106,8 +110,8 @@ class PlayerPreferences:
             out["feed_page_length"] = self.feed_page_length
         if self.separate_chat != default.separate_chat:
             out["separate_chat"] = self.separate_chat
-        if self.mute_chat != default.mute_chat:
-            out["mute_chat"] = self.mute_chat
+        if self.channel_subscriptions:
+            out["channel_subscriptions"] = dict(self.channel_subscriptions)
         if self.hidden_panels:
             out["hidden_panels"] = list(self.hidden_panels)
         return out
@@ -141,6 +145,16 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         if isinstance(hidden_raw, list)
         else ()
     )
+    subscriptions_raw = raw.get("channel_subscriptions", {})
+    subscriptions = (
+        {
+            key: value
+            for key, value in subscriptions_raw.items()
+            if isinstance(key, str) and isinstance(value, bool)
+        }
+        if isinstance(subscriptions_raw, dict)
+        else {}
+    )
     return PlayerPreferences(
         display_density=_clean_enum(
             raw.get("display_density"), DISPLAY_DENSITIES, "comfortable"
@@ -156,7 +170,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         font_scale=_clean_enum(raw.get("font_scale"), FONT_SCALES, "normal"),
         feed_page_length=_clean_int(raw.get("feed_page_length"), FEED_PAGE_LENGTHS, 40),
         separate_chat=bool(raw.get("separate_chat", False)),
-        mute_chat=bool(raw.get("mute_chat", False)),
+        channel_subscriptions=subscriptions,
         hidden_panels=hidden,
     )
 

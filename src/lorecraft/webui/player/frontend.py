@@ -544,7 +544,6 @@ async def update_settings(
         "reduced_motion": "reduced_motion" in form,
         "high_contrast": "high_contrast" in form,
         "separate_chat": "separate_chat" in form,
-        "mute_chat": "mute_chat" in form,
         "hidden_panels": [
             v for v in form.getlist("hidden_panels") if isinstance(v, str)
         ],

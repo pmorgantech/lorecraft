@@ -182,23 +182,45 @@ class TestSeparateChat:
         assert context["prefs"]["separate_chat"] is True
 
 
-class TestMuteChat:
-    """Per-channel chat mute (Sprint 45.3)."""
+class TestChannelSubscriptions:
+    """Per-channel subscriptions (Sprint 52.5, generalizing 45.3's mute_chat)."""
 
-    def test_defaults_off(self) -> None:
-        assert PlayerPreferences().mute_chat is False
-        assert resolve_preferences({}).mute_chat is False
+    def test_defaults_empty(self) -> None:
+        assert PlayerPreferences().channel_subscriptions == {}
+        assert resolve_preferences({}).channel_subscriptions == {}
 
     def test_resolves_and_round_trips(self) -> None:
-        prefs = resolve_preferences({"mute_chat": True})
-        assert prefs.mute_chat is True
-        assert prefs.to_stored() == {"mute_chat": True}
+        prefs = resolve_preferences({"channel_subscriptions": {"newbie": False}})
+        assert prefs.channel_subscriptions == {"newbie": False}
+        assert prefs.to_stored() == {"channel_subscriptions": {"newbie": False}}
         assert resolve_preferences(prefs.to_stored()) == prefs
 
-    def test_default_not_written_to_stored_blob(self) -> None:
-        assert "mute_chat" not in PlayerPreferences().to_stored()
+    def test_empty_map_not_written_to_stored_blob(self) -> None:
+        assert "channel_subscriptions" not in PlayerPreferences().to_stored()
 
-    def test_independent_of_separate_chat(self) -> None:
+    def test_invalid_entries_dropped(self) -> None:
+        prefs = resolve_preferences(
+            {
+                "channel_subscriptions": {
+                    "newbie": False,
+                    "auction": "yes",  # non-bool value dropped
+                    3: True,  # non-str key dropped
+                }
+            }
+        )
+        assert prefs.channel_subscriptions == {"newbie": False}
+
+    def test_non_dict_blob_falls_back_to_empty(self) -> None:
+        assert (
+            resolve_preferences(
+                {"channel_subscriptions": ["newbie"]}
+            ).channel_subscriptions
+            == {}
+        )
+
+    def test_legacy_mute_chat_key_is_ignored(self) -> None:
+        # Pre-52.5 blobs may still carry mute_chat; unknown keys are dropped
+        # (the blanket say-mute is superseded by channel subscriptions).
         prefs = resolve_preferences({"mute_chat": True, "separate_chat": True})
-        assert prefs.mute_chat is True and prefs.separate_chat is True
-        assert prefs.to_stored() == {"separate_chat": True, "mute_chat": True}
+        assert prefs.separate_chat is True
+        assert "mute_chat" not in prefs.to_stored()
