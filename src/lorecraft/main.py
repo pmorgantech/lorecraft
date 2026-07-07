@@ -24,6 +24,8 @@ from lorecraft.webui.admin.broadcaster import AdminBroadcaster
 from lorecraft.webui.admin.websocket import admin_ws_endpoint
 from lorecraft.webui.player import create_web_host, load_feature_presentations
 from lorecraft.features.weather.handlers import register_weather_handlers
+from lorecraft.features.celestial.handlers import register_celestial_handlers
+from lorecraft.engine.clock.celestial import moon_phase_for_day, tide_for_hour
 from lorecraft.engine.clock.world_clock import WorldClockRunner
 from lorecraft.commands import register_all_commands
 from lorecraft.features import (
@@ -145,6 +147,7 @@ def create_app(
             time_ratio=resolved_settings.world_time_ratio,
         )
         register_weather_handlers(bus, resolved_game_engine, rng=app_rng)
+        register_celestial_handlers(bus)
         NpcScheduler(resolved_game_engine).register(bus)
         scheduler = SchedulerService(resolved_game_engine, app_rng)
         scheduler.register(bus)
@@ -262,6 +265,8 @@ def create_app(
                                 "day": clock.current_day,
                                 "season": clock.current_season,
                                 "weather": clock.weather,
+                                "moon": moon_phase_for_day(clock.current_day),
+                                "tide": tide_for_hour(clock.current_hour),
                             }
                         )
 
@@ -774,6 +779,8 @@ def _time_snapshot(room_repo: RoomRepo) -> JsonObject:
         "day": clock.current_day,
         "season": clock.current_season,
         "weather": clock.weather,
+        "moon": moon_phase_for_day(clock.current_day),
+        "tide": tide_for_hour(clock.current_hour),
     }
 
 

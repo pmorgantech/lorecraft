@@ -263,6 +263,12 @@
     const hour = time.hour ?? 0;
     const minute = time.minute ?? 0;
     el.textContent = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    // Celestial cycles (Sprint 54): moon phase + tide ride the same push.
+    const moonEl = document.getElementById("world-moon");
+    if (moonEl && time.moon)
+      moonEl.textContent = String(time.moon).replace(/_/g, " ");
+    const tideEl = document.getElementById("world-tide");
+    if (tideEl && time.tide) tideEl.textContent = String(time.tide);
   }
 
   function updateTransitMarker(data) {

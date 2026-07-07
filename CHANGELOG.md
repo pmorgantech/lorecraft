@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.43.2] - 2026-07-06
+
+### Added
+
+- **Sprint 54.2 — celestial feature (Tier 2).** New `features/celestial/` package: transition handlers ride the existing `DAY_CHANGED`/`HOUR_CHANGED` clock events and emit `MOON_PHASE_CHANGED`/`TIDE_CHANGED` when the derived state turns (the weather-handler pattern — no session, no scheduler; fast-forwards compare endpoints). `moon_phase_is:<phase>` / `tide_is:<state>` gates registered with **both** the command and dialogue condition registries (fail closed on unknown states or a missing clock, with in-fiction reasons — "That waits for the full moon."). Moon phase + tide now ride the `time_update` WS push and the initial render context, and display in the status bar beside Time.
+
 ## [0.43.1] - 2026-07-06
 
 ### Added

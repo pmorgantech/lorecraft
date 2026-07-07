@@ -99,6 +99,10 @@
                 <span>World: <span class="text-zinc-400">Eldoria</span></span>
                 <span>|</span>
                 <span>Time: <span id="world-clock" class="text-emerald-400 font-mono">{% if world_time %}{{ '%02d:%02d'|format(world_time.hour, world_time.minute) }}{% else %}08:00{% endif %}</span></span>
+                <span>|</span>
+                <span>Moon: <span id="world-moon" class="text-zinc-400">{% if world_time and world_time.get('moon') %}{{ world_time.get('moon') | replace('_', ' ') }}{% else %}&mdash;{% endif %}</span></span>
+                <span>|</span>
+                <span>Tide: <span id="world-tide" class="text-zinc-400">{% if world_time and world_time.get('tide') %}{{ world_time.get('tide') }}{% else %}&mdash;{% endif %}</span></span>
             </div>
         </div>
 
