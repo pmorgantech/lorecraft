@@ -54,7 +54,7 @@ class TestSchema:
         assert doc.marks[0].criteria.rooms_visited_count == 5
 
     def test_bad_boon_kind_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="boon.kind"):
+        with pytest.raises(ValidationError, match="add"):
             validate_marks_document(
                 {
                     "marks": [

@@ -16,6 +16,7 @@ from lorecraft.features.character.commands import register_character_commands
 from lorecraft.features.fatigue.commands import register_condition_commands
 from lorecraft.features.follow.commands import register_follow_commands
 from lorecraft.features.hunts.commands import register_hunt_commands
+from lorecraft.features.marks.commands import register_mark_commands
 from lorecraft.features.economy.commands import register_economy_commands
 from lorecraft.features.exploration.commands import register_exploration_commands
 from lorecraft.features.inventory.commands import register_inventory_commands
@@ -93,6 +94,9 @@ def register_all_commands(
     if services.hunts is not None:
         with registry.category("exploration"):
             register_hunt_commands(registry, services.hunts)
+    if services.marks is not None:
+        with registry.category("exploration"):
+            register_mark_commands(registry, services.marks)
     if transit is not None:
         with registry.category("transit"):
             register_transit_commands(registry, transit)

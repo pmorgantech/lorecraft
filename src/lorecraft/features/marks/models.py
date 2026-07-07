@@ -18,6 +18,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from lorecraft.engine.game.modifiers import ModifierKind
+
 MARKS_SCHEMA_VERSION = 1
 
 EARNED_FLAG_PREFIX = "mark:"
@@ -36,7 +38,7 @@ class MarkBoon(BaseModel):
     """
 
     key: str
-    kind: str = "add"
+    kind: ModifierKind = "add"
     amount: float
 
     @field_validator("key")
@@ -44,15 +46,6 @@ class MarkBoon(BaseModel):
     def _key_non_empty(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("boon.key must be non-empty")
-        return value
-
-    @field_validator("kind")
-    @classmethod
-    def _kind_known(cls, value: str) -> str:
-        if value not in ("add", "mult", "clamp_min", "clamp_max"):
-            raise ValueError(
-                f"boon.kind must be add/mult/clamp_min/clamp_max, got {value!r}"
-            )
         return value
 
     @field_validator("amount")

@@ -71,6 +71,14 @@ class MarkService:
             if player.flags.get(earned_flag(mark.id))
         ]
 
+    def unearned_visible(self, player: Player) -> list[MarkDef]:
+        """Unearned marks that may tease as "???" — hidden marks excluded."""
+        return [
+            mark
+            for mark in self._registry.all()
+            if not mark.hidden and not player.flags.get(earned_flag(mark.id))
+        ]
+
     @staticmethod
     def _met(criteria: MarkCriteria, player: Player) -> bool:
         if criteria.rooms_visited and not set(criteria.rooms_visited) <= set(

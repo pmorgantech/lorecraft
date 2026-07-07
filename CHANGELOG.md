@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.8] - 2026-07-06
+
+### Added
+
+- **Sprint 53.3 — mark boons + the `marks` command.** Earned marks with boons now contribute to resolved values through `MarkBoonModifierSource` — a read-through §3.5 modifier source over the player's `mark:<id>` flags (the traits `sources.py` pattern: no stored modifier state, idempotent registration via the feature manifest). `MarkBoon.kind` is typed as the engine's `ModifierKind` literal, so malformed kinds fail at content load. New read-only `marks` verb (exploration category) lists earned marks with descriptions and teases unearned visible ones as `??? — undiscovered`; hidden marks stay omitted until earned.
+
 ## [0.42.7] - 2026-07-06
 
 ### Added
