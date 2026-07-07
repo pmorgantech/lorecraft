@@ -129,12 +129,39 @@ def _item_in_inventory_check(parameter: str, ctx: "GameContext") -> ConditionRes
     return ConditionResult(True)
 
 
+def _object_present_check(parameter: str, ctx: "GameContext") -> ConditionResult:
+    """`object_present:<item_id>` — the item is in the current room *or* held by
+    the player. The presence gate for Sprint 55 context-attached commands (a
+    `pull` lever, a `read` inscription): a context verb carries this so it is
+    available — and, via the help-availability filter, only *listed* — when its
+    object is at hand."""
+    if not parameter:
+        return ConditionResult(False, "There's nothing like that here.")
+    in_room = ctx.stack_repo.quantity_of(Location("room", ctx.room.id), parameter) > 0
+    held = ctx.stack_repo.quantity_of(Location("player", ctx.player.id), parameter) > 0
+    if in_room or held:
+        return ConditionResult(True)
+    return ConditionResult(False, "There's nothing like that here.")
+
+
+def _npc_present_check(parameter: str, ctx: "GameContext") -> ConditionResult:
+    """`npc_present:<npc_id>` — the NPC is in the current room. The NPC-carrier
+    half of the Sprint 55 presence gate (`pet` the dog, `bribe` the guard)."""
+    if not parameter:
+        return ConditionResult(False, "They aren't here.")
+    if any(npc.id == parameter for npc in ctx.npc_repo.in_room(ctx.room.id)):
+        return ConditionResult(True)
+    return ConditionResult(False, "They aren't here.")
+
+
 _registry.register("requires_light", _light_check)
 _registry.register("not_in_combat", _not_in_combat_check)
 _registry.register("in_combat", _in_combat_check)
 _registry.register("flag_set", _flag_set_check)
 _registry.register("flag_not_set", _flag_not_set_check)
 _registry.register("item_in_inventory", _item_in_inventory_check)
+_registry.register("object_present", _object_present_check)
+_registry.register("npc_present", _npc_present_check)
 
 
 def get_registry() -> CommandConditionRegistry:

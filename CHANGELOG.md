@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.4] - 2026-07-07
+
+### Added
+
+- **Sprint 55.1 — presence gate conditions.** `object_present:<item_id>` (item in the current room *or* held) and `npc_present:<npc_id>` (NPC in the current room) join the built-in command conditions in `engine/game/command_conditions.py`. These gate the Sprint 55 context-attached verbs — and, because the help layer already filters commands by their conditions, a context verb carrying one is automatically *listed* only when its object is at hand. Reusable well beyond context verbs. Unit-tested.
+
 ## [0.45.3] - 2026-07-07
 
 ### Changed
