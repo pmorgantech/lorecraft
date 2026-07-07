@@ -41,6 +41,8 @@ class GameEvent(StrEnum):
     DAY_CHANGED = "day_changed"
     SEASON_CHANGED = "season_changed"
     WEATHER_CHANGED = "weather_changed"
+    MOON_PHASE_CHANGED = "moon_phase_changed"
+    TIDE_CHANGED = "tide_changed"
     TRADE_COMPLETED = "trade_completed"
     PLAYER_DISCONNECTED = "player_disconnected"
     PLAYER_RECONNECTED = "player_reconnected"

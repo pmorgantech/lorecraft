@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.43.1] - 2026-07-06
+
+### Added
+
+- **Sprint 54.1 — celestial calendar (Tier 1).** `engine/clock/celestial.py`: `moon_phase_for_day` (an 8-phase, 16-day lunar month that deliberately drifts against the 30-day season) and `tide_for_hour` (semi-diurnal — two low/high cycles per day), pure functions of `WorldClock` fields beside `season_for_day` — no persisted state, no new scheduler. New `MOON_PHASE_CHANGED`/`TIDE_CHANGED` `GameEvent`s for the Tier 2 transition handlers (54.2). Cycle-boundary unit tests.
+
 ## [0.43.0] - 2026-07-06
 
 ### Added
