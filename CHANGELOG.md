@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.2] - 2026-07-07
+
+### Changed
+
+- **Docs: reconciled `wishlist.md`/roadmap backlog against the codebase.** A full audit found several backlog entries that pre-dated their own implementation and read as "wanted" despite being shipped. Annotated inline (the wishlist's Shipped/Partly-shipped convention): **timed/scheduled quests** (Sprint 30.2 `QuestTimerService` — `timeout_ticks`/`on_timeout`), **attributes** (`PlayerStats` STR/AGI/VIT/INT/presence/fortitude), **item quality/rarity** (`Item.quality`), **item durability** (`Item.max_durability` + component), **bound items** (`Item.bound`), **NPC memory** (`npc_memory` feature), **shop restock** (`economy/restock.py`), the **soft-cap primitive** (`clamp_min`/`clamp_max` in the §3.5 resolver), searchable **help topics**, and the **guided `report` wizard** (Sprint 33.1). The roadmap backlog's "player-facing bug reports" line is marked done; the "issue-report wizard" is narrowed to its only remaining piece — the `report player <name>` moderation branch + an `Issue.target_player_id` field. Genuinely-open items keep their status. No code change.
+
 ## [0.45.1] - 2026-07-07
 
 ### Fixed

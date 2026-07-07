@@ -10,7 +10,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-06, v0.42.3)
+## Where things stand (2026-07-07, v0.45.2)
+
+**Wishlist ↔ codebase reconciliation (2026-07-07):** [`wishlist.md`](wishlist.md) was audited
+against the code and annotated. Found already-shipped (docs were stale): **timed/scheduled quests**
+(Sprint 30.2 `QuestTimerService`), **attributes** (`PlayerStats`), **item quality/rarity**, **item
+durability**, **bound items**, **NPC memory**, **shop restock**, the **soft-cap primitive**, and the
+**guided `report` flow** (Sprint 33.1). The next Sprint-55 candidate — the "issue-report wizard" — is
+therefore just the `report player <name>` moderation branch + an `Issue.target_player_id` field.
+Genuinely-open items keep their 💚/🤔 status.
+
+## Where things stand — historical (2026-07-06, v0.42.3)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -306,7 +316,7 @@ WS status push.
 | ~~Analytics dashboard & visualizations~~ | **Promoted to [Sprint 49](roadmap_completed.md)** |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
 | Sounds, GPT descriptions, online world-building | Wishlist |
-| Player-facing bug reports | In-game `/report-bug` command (after core issues system stable) |
+| ~~Player-facing bug reports~~ | **Done** — `report` one-liner (v0.12.0) + guided category→title→detail wizard (Sprint 33.1). Only the `report player <name>` moderation branch + an `Issue.target_player_id` field remain — see [`wishlist.md`](wishlist.md) → *Issue-report wizard*. |
 | Database inspector / state editor | Admin tool for advanced troubleshooting |
 | Multiplayer trade/transit test pass | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Multiplayer sim-test coverage* (was Sprint 65) |
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
