@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.5] - 2026-07-06
+
+### Changed
+
+- **Docs: scheduled Sprints 52–54 on the roadmap.** Sprint 52 — global channels & the channel framework (`ChatScope` p2p/p2room/p2all delivery topology × a `ChannelRegistry` of named channels seeded with `newbie`; verb-per-channel; per-channel subscription generalizing `mute_chat`; finishes chat Phase 3 / Sprint 45.3). Sprint 53 — collectible marks/attunements (discovery-fed progression on the hunts-feature template: `marks.yaml` defs, `mark:<id>` flags, criteria over existing `Player` journal state, boons via a `MarkModifierSource`). Sprint 54 — celestial cycles (moon phase + tide as pure functions of the world clock beside `season_for_day`; `MOON_PHASE_CHANGED`/`TIDE_CHANGED` off the existing hour/day events; condition-registry gates and a tide-written `Exit` per the §3.9 one-owner rule). Sprint numbering updated (used through 54; next new sprint 55). No code change.
+
 ## [0.42.4] - 2026-07-06
 
 ### Changed

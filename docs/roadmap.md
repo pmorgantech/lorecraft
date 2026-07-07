@@ -54,10 +54,12 @@ always empty against real data — **merged (v0.42.0)**. Follow-ons since: roadm
 sprints (v0.42.1), single-concurrent-session auth enforcement + login UX (v0.42.2), and e2e test
 parallelization via pytest-xdist (~2.56×, v0.42.3).
 
-**The active roadmap is now empty.** Every numbered sprint through 51 is merged to `main`. All
-remaining candidate work lives in the *Backlog* table below and [`wishlist.md`](wishlist.md); nothing
-is scheduled. The next new sprint number is **52** — pick the next item deliberately from the
-backlog/wishlist before opening it.
+**Active work:** every numbered sprint through 51 is merged to `main`. Scheduled (2026-07-06, in
+order): **Sprint 52 — global channels & the channel framework** (finishes the last half-done seam,
+chat Phase 3 / Sprint 45.3), **Sprint 53 — collectible marks / attunements** (discovery-fed
+progression), and **Sprint 54 — celestial cycles: moons & tides** (clock-derived world state gating
+content). See their sections below. Everything else lives in the *Backlog* table and
+[`wishlist.md`](wishlist.md).
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
@@ -174,6 +176,113 @@ browser to verify** (not the headless unit tests).
 
 ---
 
+## Sprint 52 — Global channels & the channel framework (finish chat Phase 3)
+
+**Goal:** Add the global chat channels the Sprint 45 chat/feed split was built to carry, and use them
+to unblock the deferred **Sprint 45.3** work (colored/prefixed per-channel tags, real per-channel
+mute). This finishes the last half-done seam. From [`wishlist.md`](wishlist.md) → *Client UI ·
+Colour-coded, prefixed channels* + *Separate the communication log from the narrative feed*.
+
+**Design (decided 2026-07-06).** Two orthogonal axes, deliberately separated:
+
+- **Delivery scope** — a fixed `ChatScope` enum: `P2P` (one player), `P2ROOM` (room occupants),
+  `P2ALL` (all online). Maps 1:1 onto the existing `ConnectionManager.send_to_player` /
+  `broadcast_to_room` / `broadcast_global`. This is the only hardcoded part — pure topology.
+- **Named channels** — identities layered on a scope, held in a **`ChannelRegistry`** (the engine
+  owns the *mechanism*, mirroring `CommandRegistry`). A channel declares
+  `{ id, scope, tag, color, muteable, default_subscribed }`. `newbie` (P2ALL, default-subscribed,
+  muteable) is the seed proving capacity; `auction`/`ooc`/… are later rows, no new code.
+
+**Decisions:** ① `tell` to an **offline** player is **rejected** ("X isn't online right now") — no
+store-and-forward (that's a future *mail* feature). ② channels are registered as **engine/code
+built-ins for now**; the registry is the seam so **data-driven channel definitions in world YAML**
+are an additive follow-on, not a retrofit. ③ **per-channel subscription** generalizes the Sprint 45.3
+`mute_chat` boolean (P2P/P2ROOM aren't muteable; P2ALL topic channels are). ④ **rate-limiting/spam
+control deferred** (note only). ⑤ named channels are spoken by a **verb per channel** — the registry
+auto-registers `newbie <msg>` etc. (registry already warns on verb/alias collisions).
+
+**Phasing follows Sprint 45:** Phase 1 is headless-testable; Phase 2 is browser-rendered and needs a
+real browser + two-player e2e to verify.
+
+### Phase 1 — channel framework + engine (headless-testable)
+
+| # | Task | Status |
+|---|------|--------|
+| 52.1 | `ChatScope` enum + `Channel` descriptor + `ChannelRegistry` (engine mechanism); register built-in `say`/`tell` + seed `newbie`. Registry designed so world-YAML channel defs can be added later without a retrofit. | [ ] |
+| 52.2 | Channel-aware chat outbox on `GameContext` tagged `(channel, scope, target?)` — replaces the two ad-hoc Sprint 45 lists (`chat_messages`/`room_chat_messages`) with one channel-keyed buffer; `say`/`tell_room` chat routes through it. | [ ] |
+| 52.3 | `broadcast.py` routes each outbox entry by scope → `send_to_player` / `broadcast_to_room` / `broadcast_global`; stamps `"channel":"<id>"` alongside `message_type:"chat"`. | [ ] |
+| 52.4 | Verbs in `commands/social.py`: `tell <player> <msg>` (P2P, offline-reject, actor echo); keep `say`; the registry auto-registers a verb per named channel (`newbie <msg>`). Empty-arg errors stay narrative. | [ ] |
+| 52.5 | Per-channel subscription in `webui/player/preferences.py` (generalize `mute_chat` → a channel→on/off map, round-trips); server-side drop for muted P2ALL channels. | [ ] |
+| 52.6 | Unit tests: scope routing, offline-tell rejection, verb-per-channel dispatch, subscription drop, channel tag on payload, actor-echo vs recipient. | [ ] |
+
+### Phase 2 — browser (finishes Sprint 45.3)
+
+| # | Task | Status |
+|---|------|--------|
+| 52.7 | Colored/prefixed per-channel tags: `appendToChat(channel, …)` in `static/js/app.js` prepends the channel tag + color class; `feed_items.html` per-channel styling (extends the existing cyan `chat` class). | [ ] |
+| 52.8 | Settings UI: per-channel toggle list replacing the single mute checkbox; wire to the subscription prefs from 52.5. | [ ] |
+| 52.9 | Two-player e2e (extends `test_chat_feed_split.py`): A on `newbie` → subscribed B sees it tagged, muted B doesn't; `tell` reaches only its target; `say` stays room-scoped. | [ ] |
+
+**Deferred to a follow-on:** data-driven channel defs in world YAML; a distinct `shout` verb (folded
+into named P2ALL channels instead); channel scrollback/history; mobile tab-collapse polish;
+rate-limiting/spam control.
+
+---
+
+## Sprint 53 — Collectible marks / attunements (discovery-fed progression)
+
+**Goal:** Named passive badges earned by *discovering* things ("Mark of the Wanderer — visit every
+district of Ashmoore") — a progression track parallel to leveling, fed by exploration, not combat.
+Some cosmetic/lore, some carrying small mechanical boons. Pillar #1 (exploration is progression).
+From [`wishlist.md`](wishlist.md) → *Collectible "marks" / attunements*.
+
+**Design (decided 2026-07-06): the hunts feature (Sprint 48) is the template — no new table.**
+Mark definitions are **world content** (`world_content/marks.yaml`), loaded into an in-memory
+registry at startup with fail-fast validation, exactly like `hunts.yaml`. Earned state is a player
+flag (`mark:<id>`), following the hunts `hunt:*` / journal `lore:*` flag conventions. Criteria read
+the **journal state that already exists on `Player`** (`visited_rooms`, `met_npcs`,
+`discovered_items`, `flags`) — the marks service just evaluates criteria when that state changes
+(subscribed via the standard `register(bus)` convention to the same events the journal writers
+ride: movement, dialogue, item-take, flag-set). Boons are a **`MarkModifierSource`** feeding the
+existing `ModifierRegistry` multi-source resolver (the `RoomAuraModifierSource` pattern) — modest,
+flat modifiers per the wishlist's soft-cap principle; no new stacking mechanism.
+
+| # | Task | Status |
+|---|------|--------|
+| 53.1 | **`features/marks/` package + content pipeline:** `MarkDef` (id, name, description, criteria, optional modifier boons, `hidden` teaser flag), `world_content/marks.yaml` loader + fail-fast validation + content-lint (criteria reference real rooms/items/NPCs), in-memory registry, `FeatureManifest`. | [ ] |
+| 53.2 | **`MarkService`:** criteria evaluation over `Player` journal state; award = set `mark:<id>` flag + feed announcement + audit event; `register(bus)` subscriptions on the discovery-driving events; idempotent (never re-awards). | [ ] |
+| 53.3 | **Boons + `marks` command:** `MarkModifierSource` over earned marks wired into the modifier resolver; `marks` verb lists earned marks with descriptions and unearned ones as "???" teasers (hidden marks omitted until earned). | [ ] |
+| 53.4 | **Content + tests + docs:** 3–4 Ashmoore marks in `marks.yaml` (at least one with a boon, one hidden); unit tests (criteria eval, idempotent award, modifier resolution, lint) + an integration test (walk Ashmoore → mark awarded); user/admin guide sections. | [ ] |
+
+---
+
+## Sprint 54 — Celestial cycles: moons & tides (clock-derived world state)
+
+**Goal:** Lunar phase and tide as world state derived from the existing world clock, gating content
+across three pillars: moon-keyed doors/dialogue/rituals (puzzles), tides that reveal a causeway or
+shift schedules (transit + exploration), night/phase-only encounters. From
+[`wishlist.md`](wishlist.md) → *Celestial cycles — moons & tides*.
+
+**Design (decided 2026-07-06): pure derivation, no new persisted state, no new scheduler.**
+`season_for_day(day)` is the precedent — moon phase and tide are **pure functions of the clock**
+(`moon_phase_for_day(day)`: an 8-phase cycle; `tide_for_hour(hour)`: high/low on a configurable
+period), living beside the season calendar as Tier 1 clock concerns. Change detection rides the
+**existing** `HOUR_CHANGED`/`DAY_CHANGED` events (the weather feature's `apply_daily_weather`
+pattern); `MOON_PHASE_CHANGED`/`TIDE_CHANGED` are emitted from those handlers. Content gating keeps
+each behavior's single owner: **moon-keyed doors/dialogue** are condition-registry entries
+(`moon_phase_is:<phase>`, `tide_is:<state>`) for command/dialogue conditions; a **tide-gated
+causeway** is a `TIDE_CHANGED` handler writing the one authoritative `Exit` state (the §3.9
+one-owner rule — movement unchanged). Status surface extends the Sprint 15.1 world-clock/weather
+WS status push.
+
+| # | Task | Status |
+|---|------|--------|
+| 54.1 | **Tier 1 calendar functions:** `moon_phase_for_day` / `tide_for_hour` (+ cycle constants beside `DAYS_PER_SEASON`) in `engine/clock/`; `MOON_PHASE_CHANGED` / `TIDE_CHANGED` `GameEvent`s; unit tests over cycle boundaries. | [ ] |
+| 54.2 | **`features/celestial/` package:** `HOUR_CHANGED`/`DAY_CHANGED` handlers detecting phase/tide transitions and emitting the celestial events; `moon_phase_is` / `tide_is` condition handlers (command + dialogue registries); moon/tide in the status-bar WS push + `time`/`look` surfacing. | [ ] |
+| 54.3 | **Content + tests + docs:** Ashmoore tide-gated causeway (handler writes `Exit` state on tide change) + a moon-gated dialogue/lore beat; content-lint for celestial condition keys; integration tests (tide opens/closes the causeway across clock advance; moon condition gates dialogue); user/admin guide sections. | [ ] |
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -194,10 +303,10 @@ browser to verify** (not the headless unit tests).
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), and 51 (four more analytics widgets + the `target_id` audit fix).
-- **Reserved but never used:** 52–60 (left as a gap from an earlier combat renumber).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), 51 (four more analytics widgets + the `target_id` audit fix), 52 (global channels & the channel framework — **scheduled**, finishing chat Phase 3 / Sprint 45.3), 53 (collectible marks / attunements — **scheduled**), and 54 (celestial cycles: moons & tides — **scheduled**).
+- **Reserved but never used:** 55–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
-- **Next new sprint: 52.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Next new sprint: 55.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
