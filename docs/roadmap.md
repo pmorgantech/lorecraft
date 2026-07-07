@@ -10,7 +10,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-06, v0.42.0)
+## Where things stand (2026-07-06, v0.42.3)
 
 Foundation, the Tier 1 engine-core primitives, the entire pillar-driven Tier 2 feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
@@ -47,11 +47,17 @@ discovery journal; **Sprint 47** — `follow` command; **Sprint 48** — scaveng
 admin-console issues raised during dogfooding. Detail in [`roadmap_completed.md`](roadmap_completed.md)
 and [`../CHANGELOG.md`](../CHANGELOG.md).
 
-**Recently completed (v0.42.0, 2026-07-06):** **Sprint 51** — four more Analytics-tab widgets
+**Recently completed (v0.42.0–v0.42.3, 2026-07-06):** **Sprint 51** — four more Analytics-tab widgets
 (timeline chart, top commands, NPC interaction stats, quest completion funnel), plus a real bug fix
 found along the way: `AuditEvent.target_id` was never populated, so `npc_interaction_counts` was
-always empty against real data. On a `webui`-scoped branch, held for merge pending other in-flight
-agent work.
+always empty against real data — **merged (v0.42.0)**. Follow-ons since: roadmap archive of completed
+sprints (v0.42.1), single-concurrent-session auth enforcement + login UX (v0.42.2), and e2e test
+parallelization via pytest-xdist (~2.56×, v0.42.3).
+
+**The active roadmap is now empty.** Every numbered sprint through 51 is merged to `main`. All
+remaining candidate work lives in the *Backlog* table below and [`wishlist.md`](wishlist.md); nothing
+is scheduled. The next new sprint number is **52** — pick the next item deliberately from the
+backlog/wishlist before opening it.
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).

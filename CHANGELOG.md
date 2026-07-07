@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.4] - 2026-07-06
+
+### Changed
+
+- **Docs: reconciled the roadmap's "Where things stand" with `main`.** The stale heading and Sprint 51 paragraph still described v0.42.0 with Sprint 51 "held for merge pending other in-flight agent work"; it is merged (v0.42.0), so the section now reads v0.42.3, records the follow-ons (v0.42.1 roadmap archive, v0.42.2 concurrent-session auth, v0.42.3 e2e parallelization), and states explicitly that the numbered roadmap is empty through Sprint 51 with 52 as the next number. No code change.
+
 ## [0.42.3] - 2026-07-06
 
 ### Changed
