@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.44.1] - 2026-07-06
+
+### Added
+
+- **Sprint 52.1 — chat channel framework (engine mechanism).** New `engine/game/channels.py`: `ChatScope` (`p2p`/`p2room`/`p2all` — maps 1:1 onto `send_to_player`/`broadcast_to_room`/`broadcast_global`), a frozen `Channel` descriptor (`id`/`scope`/`tag`/`color`/`muteable`/`default_subscribed`; only P2ALL topic channels may be muteable — enforced), and a name-keyed `ChannelRegistry` (the `CommandRegistry`-mechanism pattern; a future world-YAML channel loader plugs in here). Mechanism built-ins `say` (P2ROOM) and `tell` (P2P) register at module load, the `command_conditions` precedent; topic channels are composition-layer content.
+
 ## [0.44.0] - 2026-07-06
 
 ### Added
