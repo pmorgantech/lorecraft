@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.3] - 2026-07-06
+
+### Changed
+
+- **E2E tests parallelized via pytest-xdist.** `make test-e2e` now runs with `-n auto --dist=loadfile`, reducing wall time from 31.93s to 12.44s (~2.56× faster). Each test runs in isolation (unique database, random ports), so parallel execution is safe. Use `PYTEST_WORKERS=N make test-e2e` to control worker count.
+
 ## [0.42.2] - 2026-07-06
 
 ### Added

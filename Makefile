@@ -28,10 +28,13 @@ typecheck:
 
 # Browser end-to-end tests (Sprint 11). Requires the e2e extra + browser binaries;
 # excluded from `make test` / plain `pytest` by the default "-m not e2e" addopts.
+# Parallelized via pytest-xdist: each worker gets its own browser and server instance.
+# Tests are fully isolated (unique tmp_path databases, random ports), so parallel
+# execution is safe and ~2.5× faster than serial (31.93s → 12.44s).
 test-e2e:
 	$(PYTHON) -m pip install -e ".[e2e]"
 	$(PYTHON) -m playwright install chromium
-	$(PYTEST) tests/e2e -m e2e -v
+	$(PYTEST) tests/e2e -m e2e $(PYTEST_PARALLEL_ARGS) -v
 
 # Multi-player simulation harness (Sprint 12): real WebSocket clients against a
 # live server. No extra install needed (websockets ships with fastapi[standard]);
