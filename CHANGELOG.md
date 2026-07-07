@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.42.6] - 2026-07-06
+
+### Added
+
+- **Sprint 53.1 — marks content pipeline.** New `features/marks/` Tier 2 package: `MarkDef` schema (id/name/description/criteria/boons/hidden) with fail-fast validation (empty criteria, duplicate ids, malformed boons all rejected), `world_content/marks.yaml` loader, in-memory `MarkRegistry`, and `lint_marks` content-lint (criteria room/NPC/item references must resolve to real world content; flags stay free-form). Earned state will be the `mark:<id>` player flag (`earned_flag`), following the `hunt:*`/`lore:*` conventions. Service, boons, and the `marks` command land in 53.2–53.3.
+
 ## [0.42.5] - 2026-07-06
 
 ### Changed
