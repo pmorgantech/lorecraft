@@ -283,8 +283,20 @@ panel in the right sidebar to see what you're currently tracking and what to do 
 ## Chat & Social
 
 ```
-say hello         — speak aloud; everyone in the room sees it
+say hello           — speak aloud; everyone in the room sees it
+tell <player> <msg> — private message to an online player (alias: whisper)
+newbie <msg>        — speak on the world-wide Newbie channel
 ```
+
+Chat travels on **channels** with different reach: `say` stays in your room, `tell` goes
+to exactly one online player (offline players can't receive tells — there's no in-game
+mail yet), and topic channels like **Newbie** reach everyone online. Each channel gets its
+own color in the feed, and topic messages carry a `(Newbie)`-style prefix.
+
+You can tune out topic channels on the **Settings** page ("Chat channels") — untick one
+and its chatter stops reaching you entirely. Room talk and private tells always reach you;
+they can't be muted. Pair this with the *separate chat pane* setting to keep all
+conversation out of your narrative feed.
 
 ## Saving, Quitting, and Reconnecting
 
@@ -406,6 +418,8 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `choice <number>` | `choose` | Pick a dialogue reply |
 | `bye` | `farewell`, `goodbye` | End the current conversation |
 | `say <message>` | | Speak aloud to the room |
+| `tell <player> <message>` | `whisper` | Private message to an online player |
+| `newbie <message>` | | Speak on the world-wide Newbie channel |
 | `news` | `/news` | Show current announcements |
 | `report <description>` | `/report <description>` | Report a bug or issue to the developers |
 | `save [slot]` | | Save your progress |

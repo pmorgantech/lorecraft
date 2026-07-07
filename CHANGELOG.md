@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.45.0] - 2026-07-07
+
+### Added
+
+- **Sprint 52 complete — global chat channels.** Chat now travels on named **channels** over three delivery scopes: `say` stays room-scoped, the new **`tell <player> <message>`** (alias `whisper`) is a private line to one online player (offline targets rejected — no store-and-forward), and the new world-wide **Newbie** topic channel speaks via `newbie <message>`, prefixed `(Newbie)` and colored per channel in the feed. Topic channels can be tuned out per-channel on the settings page (dropped server-side at broadcast time); room talk and tells always reach you. Three-context browser e2e covers the full matrix: a newbie message reaches a subscribed player in another room (tagged `chat-newbie`), is never sent to an unsubscribed one, and a tell reaches exactly its target. Finishes the Sprint 45.3 chat Phase 3 items (channels, colored/prefixed tags, real per-channel mute); only mobile tab-collapse polish remains.
+
+### Known issues
+
+- Two **pre-existing** e2e failures (also failing on v0.44.0, unrelated to this sprint): `test_stale_token_http_401_forces_logout` and `test_login_to_existing_character_via_login_tab` time out waiting for the post-login `/game` navigation — likely the v0.42.2 single-concurrent-session enforcement interacting with the test flow. Recorded on the roadmap for a dedicated fix pass.
+
 ## [0.44.5] - 2026-07-06
 
 ### Added

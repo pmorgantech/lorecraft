@@ -54,12 +54,17 @@ always empty against real data — **merged (v0.42.0)**. Follow-ons since: roadm
 sprints (v0.42.1), single-concurrent-session auth enforcement + login UX (v0.42.2), and e2e test
 parallelization via pytest-xdist (~2.56×, v0.42.3).
 
-**Active work:** every numbered sprint through 51 is merged to `main`. Scheduled (2026-07-06, in
-order): **Sprint 52 — global channels & the channel framework** (finishes the last half-done seam,
-chat Phase 3 / Sprint 45.3), **Sprint 53 — collectible marks / attunements** (discovery-fed
-progression), and **Sprint 54 — celestial cycles: moons & tides** (clock-derived world state gating
-content). See their sections below. Everything else lives in the *Backlog* table and
-[`wishlist.md`](wishlist.md).
+**Active work:** every numbered sprint through **54** is complete (2026-07-07): Sprint 52 — global
+channels & the channel framework (v0.45.0, finishing chat Phase 3 / Sprint 45.3), Sprint 53 —
+collectible marks (v0.43.0), Sprint 54 — celestial cycles (v0.44.0). The numbered roadmap is clear
+again; candidate work lives in the *Backlog* table and [`wishlist.md`](wishlist.md). Next new
+sprint: **55**.
+
+**Known pre-existing e2e failures (2026-07-07, not Sprint 52 fallout — they fail on v0.44.0 too):**
+`test_admin_session.py::test_stale_token_http_401_forces_logout` and
+`test_auth_flows.py::test_login_to_existing_character_via_login_tab` (timeout waiting for the
+post-login `/game` navigation) — likely interaction with the v0.42.2 single-concurrent-session
+enforcement. Needs a dedicated fix pass.
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
@@ -172,7 +177,7 @@ browser to verify** (not the headless unit tests).
 |---|------|--------|
 | 45.1 | **Phase 1 (headless-testable)** — GameContext chat channel (`say_chat`/`tell_room_chat` + `chat_messages`); `say_command` switches to it; `command_result.chat_messages` + `broadcast` `message_type:"chat"`; `separate_chat` player preference. | [x] `GameContext.say_chat`/`tell_room_chat` (+ `chat_messages`/`room_chat_messages`); `say` switched ("Say what?" stays narrative); `broadcast_command_effects` emits `message_type:"chat"`; `command_result.chat_messages` on the WS path, `type:"chat"` feed items on the HTMX path, dev-client fallback loop; `PlayerPreferences.separate_chat` (default off, round-trips). Default UX unchanged — both render paths degrade the new type into the single feed until Phase 2. 7 new unit tests. (v0.40.3) |
 | 45.2 | **Phase 2 (browser)** — `app.js` dual-pane routing, `index.html` pane, `app.css` styling, settings toggle; verify in a real browser + a two-player e2e (A `say`s → B sees it in the chat pane with the pref on, main feed with it off; "A leaves north." always narrative). | [x] `#chat-pane`/`#chat-feed` in `game.html` (rendered only when `separate_chat` is on — the pane's presence is the routing signal); WS `feed_append`/`message_type:"chat"` → `appendToChat()` in `static/js/app.js` (falls back to the feed without a pane); HTMX command responses routed by `routeChatMessages()` on `htmx:afterSwap`; `chat` msg class + cyan style in `feed_items.html`; settings checkbox + form field. Two-player e2e (`test_chat_feed_split.py`) verifies the full plan scenario in a real browser. Parser note: say phrases with "from/with/to" lose the tail to role parsing — pre-existing, surfaced by the e2e. (v0.40.4) |
-| 45.3 | **Phase 3 (later)** — future global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; **per-channel mute** (a preferences-blob setting suppressing a channel's messages — folded in 2026-07-05, same rendering/preferences surface as the tags); mobile tab-collapse polish. | [~] **Per-channel mute shipped (v0.40.10):** `PlayerPreferences.mute_chat` (default off, round-trips) + settings checkbox; the game client reads `window.LORECRAFT_MUTE_CHAT` and drops other players' chat broadcasts client-side (own echo still renders). Preference unit tests + a two-player mute e2e. **Deferred (blocked on backlog):** global channels (shout/tell) don't exist yet, so multi-channel colored/prefixed tags and channel-reuse wait on those; mobile tab-collapse is cosmetic polish. Reopen when shout/tell land. |
+| 45.3 | **Phase 3 (later)** — future global channels (shout/tell) reuse the channel; colored/prefixed per-channel tags; **per-channel mute** (a preferences-blob setting suppressing a channel's messages — folded in 2026-07-05, same rendering/preferences surface as the tags); mobile tab-collapse polish. | [x] **Completed by Sprint 52 (v0.45.0):** global channels landed (`tell` P2P + the `newbie` P2ALL topic channel; a distinct `shout` verb was folded into named P2ALL channels by design), colored/prefixed per-channel tags shipped (52.7), and the interim v0.40.10 blanket `mute_chat` was superseded by real **per-channel subscriptions** with a server-side drop (52.5/52.8). Only the cosmetic mobile tab-collapse polish remains unscheduled. |
 
 ---
 
@@ -208,20 +213,22 @@ real browser + two-player e2e to verify.
 
 | # | Task | Status |
 |---|------|--------|
-| 52.1 | `ChatScope` enum + `Channel` descriptor + `ChannelRegistry` (engine mechanism); register built-in `say`/`tell` + seed `newbie`. Registry designed so world-YAML channel defs can be added later without a retrofit. | [ ] |
-| 52.2 | Channel-aware chat outbox on `GameContext` tagged `(channel, scope, target?)` — replaces the two ad-hoc Sprint 45 lists (`chat_messages`/`room_chat_messages`) with one channel-keyed buffer; `say`/`tell_room` chat routes through it. | [ ] |
-| 52.3 | `broadcast.py` routes each outbox entry by scope → `send_to_player` / `broadcast_to_room` / `broadcast_global`; stamps `"channel":"<id>"` alongside `message_type:"chat"`. | [ ] |
-| 52.4 | Verbs in `commands/social.py`: `tell <player> <msg>` (P2P, offline-reject, actor echo); keep `say`; the registry auto-registers a verb per named channel (`newbie <msg>`). Empty-arg errors stay narrative. | [ ] |
-| 52.5 | Per-channel subscription in `webui/player/preferences.py` (generalize `mute_chat` → a channel→on/off map, round-trips); server-side drop for muted P2ALL channels. | [ ] |
-| 52.6 | Unit tests: scope routing, offline-tell rejection, verb-per-channel dispatch, subscription drop, channel tag on payload, actor-echo vs recipient. | [ ] |
+| 52.1 | `ChatScope` enum + `Channel` descriptor + `ChannelRegistry` (engine mechanism); register built-in `say`/`tell` + seed `newbie`. Registry designed so world-YAML channel defs can be added later without a retrofit. | [x] Landed v0.44.1 — `engine/game/channels.py`; muteable-only-P2ALL enforced in the descriptor; `say`/`tell` register at engine module load (the `command_conditions` precedent), `newbie` from composition (52.4). |
+| 52.2 | Channel-aware chat outbox on `GameContext` tagged `(channel, scope, target?)` — replaces the two ad-hoc Sprint 45 lists (`chat_messages`/`room_chat_messages`) with one channel-keyed buffer; `say`/`tell_room` chat routes through it. | [x] Landed v0.44.2 — `chat_echoes` + `chat_outbox` (`ChatMessage` entries); `chat_echo`/`chat_out` resolve scope at emit; unknown channels fall back to P2ROOM (never accidentally global); Sprint 45 wrappers kept. |
+| 52.3 | `broadcast.py` routes each outbox entry by scope → `send_to_player` / `broadcast_to_room` / `broadcast_global`; stamps `"channel":"<id>"` alongside `message_type:"chat"`. | [x] Landed v0.44.2 — P2ALL delivery iterates `connected_player_ids()` per-recipient (so 52.5's subscription drop happens server-side) instead of `broadcast_global`; WS `command_result.chat_messages` entries became `{text, channel}` objects (dev clients degrade). |
+| 52.4 | Verbs in `commands/social.py`: `tell <player> <msg>` (P2P, offline-reject, actor echo); keep `say`; the registry auto-registers a verb per named channel (`newbie <msg>`). Empty-arg errors stay narrative. | [x] Landed v0.44.3 — `tell`/`whisper` with offline/unknown/self rejection; topic verbs auto-register per channel; `(Tag)` prefix baked into server text so every render path shows it. |
+| 52.5 | Per-channel subscription in `webui/player/preferences.py` (generalize `mute_chat` → a channel→on/off map, round-trips); server-side drop for muted P2ALL channels. | [x] Landed v0.44.4 — `channel_subscriptions` map (round-trips, invalid entries dropped, absent = channel default). `mute_chat` retired (say/tell aren't muteable by design; legacy blob keys ignored); the client-side drop gate removed — muting is now entirely server-side. |
+| 52.6 | Unit tests: scope routing, offline-tell rejection, verb-per-channel dispatch, subscription drop, channel tag on payload, actor-echo vs recipient. | [x] Folded into each subtask's commit — 24 new unit tests across `test_channels` / `test_chat_broadcast` / `test_chat_verbs` / preference tests. |
 
 ### Phase 2 — browser (finishes Sprint 45.3)
 
 | # | Task | Status |
 |---|------|--------|
-| 52.7 | Colored/prefixed per-channel tags: `appendToChat(channel, …)` in `static/js/app.js` prepends the channel tag + color class; `feed_items.html` per-channel styling (extends the existing cyan `chat` class). | [ ] |
-| 52.8 | Settings UI: per-channel toggle list replacing the single mute checkbox; wire to the subscription prefs from 52.5. | [ ] |
-| 52.9 | Two-player e2e (extends `test_chat_feed_split.py`): A on `newbie` → subscribed B sees it tagged, muted B doesn't; `tell` reaches only its target; `say` stays room-scoped. | [ ] |
+| 52.7 | Colored/prefixed per-channel tags: `appendToChat(channel, …)` in `static/js/app.js` prepends the channel tag + color class; `feed_items.html` per-channel styling (extends the existing cyan `chat` class). | [x] Landed v0.44.5 — `chat-<channel>` class on both render paths; say cyan / tell violet / newbie amber, unknown falls back; the textual `(Tag)` prefix is server-side (52.4), the color client-side. |
+| 52.8 | Settings UI: per-channel toggle list replacing the single mute checkbox; wire to the subscription prefs from 52.5. | [x] Landed v0.44.5 — one subscribe checkbox per muteable topic channel (sourced from the engine registry), posting the full map through `apply_updates`. |
+| 52.9 | Two-player e2e (extends `test_chat_feed_split.py`): A on `newbie` → subscribed B sees it tagged, muted B doesn't; `tell` reaches only its target; `say` stays room-scoped. | [x] Landed v0.45.0 — three-context e2e: newbie reaches a subscribed player *in another room* with the `chat-newbie` class, is server-dropped for an unsubscribed one; `tell` reaches only its target (+ offline rejection); the Sprint 45 say-routing e2e still passes unchanged. |
+
+**✅ Sprint 52 complete (v0.45.0).**
 
 **Deferred to a follow-on:** data-driven channel defs in world YAML; a distinct `shout` verb (folded
 into named P2ALL channels instead); channel scrollback/history; mobile tab-collapse polish;

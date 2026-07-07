@@ -279,6 +279,16 @@ onto them three ways:
    Valid phases: `new`, `waxing_crescent`, `first_quarter`, `waxing_gibbous`, `full`,
    `waning_gibbous`, `last_quarter`, `waning_crescent`. Tides: `low`, `high`.
 
+### Chat channels (Sprint 52 — code-registered for now)
+
+Chat travels on **channels** with a delivery scope: `say` (room), `tell` (one player), and
+P2ALL **topic channels** like `newbie` that reach everyone online, auto-register a speaking
+verb named after the channel, get their own feed color, and appear as subscribe toggles on
+the player settings page (unless `default_subscribed` opts them out). Adding a channel is
+currently a one-line `Channel(...)` registration in `commands/social.py` (see
+`NEWBIE_CHANNEL`); world-YAML channel definitions are a planned additive follow-on — the
+engine's `ChannelRegistry` is the seam.
+
 ## The World CLI
 
 `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}` — the

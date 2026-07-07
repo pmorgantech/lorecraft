@@ -76,40 +76,103 @@ def test_say_routes_to_chat_pane_only_for_opted_in_players(
         listener_context.close()
 
 
-def _enable_mute_chat(page: Any, base_url: str) -> None:
+def _unsubscribe_newbie(page: Any, base_url: str) -> None:
+    """Untick the Newbie channel subscription on the settings page (Sprint
+    52.8's per-channel toggle list) and return to /game."""
     page.goto(f"{base_url}/settings")
-    page.check("input[name='mute_chat']")
+    page.uncheck("input[name='channel_sub_newbie']")
     page.click("button[type='submit']")
-    page.wait_for_selector("input[name='mute_chat']:checked")
+    page.wait_for_selector("input[name='channel_sub_newbie']:not(:checked)")
     page.goto(f"{base_url}/game")
-    page.wait_for_function("window.LORECRAFT_MUTE_CHAT === true")
+    page.wait_for_selector("#command-input")
 
 
-def test_muted_player_does_not_see_others_chat(browser: Any, live_server: str) -> None:
-    """Sprint 45.3: with mute_chat on, a listener never renders another
-    player's chat (the broadcast is dropped client-side)."""
+def test_newbie_channel_reaches_subscribers_and_skips_the_muted(
+    browser: Any, live_server: str
+) -> None:
+    """Sprint 52: a P2ALL topic message reaches a subscribed player anywhere
+    in the world, styled with its channel class — and is dropped server-side
+    for a player who unsubscribed via the settings channel list."""
     speaker_context = browser.new_context()
+    subscribed_context = browser.new_context()
     muted_context = browser.new_context()
     try:
         speaker = speaker_context.new_page()
+        subscribed = subscribed_context.new_page()
         muted = muted_context.new_page()
 
         create_character(speaker, live_server, "e2e_talker")
+        create_character(subscribed, live_server, "e2e_hearer")
         create_character(muted, live_server, "e2e_muted")
 
-        _enable_mute_chat(muted, live_server)
+        # The subscribed listener uses the chat pane so the per-channel class
+        # path is exercised; subscription itself is the default (on).
+        enable_separate_chat(subscribed, live_server)
+        _unsubscribe_newbie(muted, live_server)
+
+        # Put the subscribed listener in another room — P2ALL must still reach
+        # them (unlike room-scoped say).
+        send_command_via_enter(subscribed, "go east")
 
         speaker.wait_for_timeout(300)
+        subscribed.wait_for_timeout(300)
         muted.wait_for_timeout(300)
 
-        send_command_via_enter(speaker, "say anybody listening")
+        send_command_via_enter(speaker, "newbie anybody around")
 
-        # The speaker's own message went out fine (sanity: server delivered it).
-        speaker.wait_for_selector("#feed :text('You say: \"anybody listening\"')")
+        # Speaker's own echo, prefixed.
+        speaker.wait_for_selector("#feed :text('(Newbie) You: \"anybody around\"')")
 
-        # Give the muted client a moment; it must NOT render the chat.
+        # Subscribed listener in another room: tagged, in the chat pane, with
+        # the per-channel class (Sprint 52.7).
+        subscribed.wait_for_selector(
+            "#chat-feed :text('(Newbie) e2e_talker: \"anybody around\"')"
+        )
+        assert subscribed.locator("#chat-feed .msg.chat-newbie").count() >= 1
+
+        # Muted listener: the server never sent it.
         muted.wait_for_timeout(600)
-        assert muted.locator(":text('anybody listening')").count() == 0
+        assert muted.locator(":text('anybody around')").count() == 0
     finally:
         speaker_context.close()
+        subscribed_context.close()
         muted_context.close()
+
+
+def test_tell_reaches_only_its_target(browser: Any, live_server: str) -> None:
+    """Sprint 52: `tell` is P2P — the target sees it (tagged tell), a
+    bystander in the same room never does, and the sender gets an echo."""
+    sender_context = browser.new_context()
+    target_context = browser.new_context()
+    bystander_context = browser.new_context()
+    try:
+        sender = sender_context.new_page()
+        target = target_context.new_page()
+        bystander = bystander_context.new_page()
+
+        create_character(sender, live_server, "e2e_sender")
+        create_character(target, live_server, "e2e_target")
+        create_character(bystander, live_server, "e2e_bystander")
+
+        sender.wait_for_timeout(300)
+        target.wait_for_timeout(300)
+        bystander.wait_for_timeout(300)
+
+        send_command_via_enter(sender, "tell e2e_target meet me later")
+
+        sender.wait_for_selector(
+            "#feed :text('You tell e2e_target: \"meet me later\"')"
+        )
+        target.wait_for_selector(
+            "#feed :text('e2e_sender tells you: \"meet me later\"')"
+        )
+        bystander.wait_for_timeout(600)
+        assert bystander.locator(":text('meet me later')").count() == 0
+
+        # Offline rejection: nobody by that name is connected.
+        send_command_via_enter(sender, "tell e2e_nobody hello")
+        sender.wait_for_selector('#feed :text("There\'s no one called")')
+    finally:
+        sender_context.close()
+        target_context.close()
+        bystander_context.close()
