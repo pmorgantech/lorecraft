@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.44.5] - 2026-07-06
+
+### Added
+
+- **Sprint 52.7/52.8 — per-channel chat styling + settings channel toggles.** Chat feed items carry a `chat-<channel>` class on both render paths (HTMX via `feed_items.html`, WS via `appendToChat`) with per-channel accent colors — say stays cyan, tell is violet, newbie amber; unknown channels fall back to the base chat style (the "(Tag)" prefix is baked into the server text, so every client shows it). The settings page's single mute checkbox is replaced by a **channel list**: one subscribe toggle per muteable topic channel (sourced from the engine channel registry; room talk and private tells are always-on and say so), posting the full map through the validated `apply_updates` path.
+
 ## [0.44.4] - 2026-07-06
 
 ### Changed

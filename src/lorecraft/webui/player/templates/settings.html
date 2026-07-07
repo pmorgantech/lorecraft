@@ -69,6 +69,20 @@
                  class="rounded border-zinc-600 bg-zinc-800">
           Separate chat pane (keep conversation out of the narrative feed)
         </label>
+        {% if topic_channels %}
+        <div class="pt-2 border-t border-zinc-800 space-y-2">
+          <p class="text-xs text-zinc-500">Chat channels — untick to stop hearing a channel
+            (room talk and private tells always reach you):</p>
+          {% for channel in topic_channels %}
+          <label class="flex items-center gap-2 text-sm text-zinc-300">
+            <input type="checkbox" name="channel_sub_{{ channel.id }}" value="on"
+                   {% if channel.subscribed %}checked{% endif %}
+                   class="rounded border-zinc-600 bg-zinc-800">
+            {{ channel.tag }} channel
+          </label>
+          {% endfor %}
+        </div>
+        {% endif %}
       </fieldset>
 
       <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4 space-y-4">

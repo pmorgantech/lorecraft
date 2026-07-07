@@ -495,6 +495,14 @@ async def game_screen(
 # =============================================================================
 
 
+def _muteable_topic_channels() -> list:
+    """The subscribable chat channels (Sprint 52.8) — muteable P2ALL topics
+    from the engine's channel registry."""
+    from lorecraft.engine.game.channels import get_registry as get_channel_registry
+
+    return [c for c in get_channel_registry().topic_channels() if c.muteable]
+
+
 def _settings_context(request: Request, player: Player, *, saved: bool = False) -> dict:
     """Build the settings-form context from the account's resolved preferences."""
     prefs = resolve_preferences(player.preferences)
@@ -508,6 +516,18 @@ def _settings_context(request: Request, player: Player, *, saved: bool = False) 
         "font_scale_options": FONT_SCALES,
         "feed_page_length_options": FEED_PAGE_LENGTHS,
         "toggleable_panels": TOGGLEABLE_PANELS,
+        # Chat channel subscriptions (Sprint 52.8): one toggle per muteable
+        # topic channel; absent from the stored map = the channel default.
+        "topic_channels": [
+            {
+                "id": channel.id,
+                "tag": channel.tag,
+                "subscribed": prefs.channel_subscriptions.get(
+                    channel.id, channel.default_subscribed
+                ),
+            }
+            for channel in _muteable_topic_channels()
+        ],
         **prefs.to_context(),
     }
 
@@ -544,6 +564,11 @@ async def update_settings(
         "reduced_motion": "reduced_motion" in form,
         "high_contrast": "high_contrast" in form,
         "separate_chat": "separate_chat" in form,
+        # One checkbox per muteable topic channel (unchecked = absent = off).
+        "channel_subscriptions": {
+            channel.id: f"channel_sub_{channel.id}" in form
+            for channel in _muteable_topic_channels()
+        },
         "hidden_panels": [
             v for v in form.getlist("hidden_panels") if isinstance(v, str)
         ],

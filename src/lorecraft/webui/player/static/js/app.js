@@ -369,7 +369,7 @@
     }
   }
 
-  function appendToChat(htmlOrText) {
+  function appendToChat(htmlOrText, channel) {
     // Chat/feed split (Sprint 45): target the chat pane; without one
     // (separate_chat preference off) chat degrades into the single feed.
     const chatFeed = document.getElementById("chat-feed");
@@ -384,7 +384,9 @@
       if (lastChild && window.htmx) htmx.process(lastChild);
     } else {
       const div = document.createElement("div");
-      div.className = "msg chat text-zinc-200";
+      // Per-channel color class (Sprint 52.7) — matches feed_items.html.
+      const channelClass = channel ? ` chat-${channel}` : "";
+      div.className = `msg chat${channelClass} text-zinc-200`;
       div.innerHTML = `<span>${htmlOrText}</span>`;
       chatFeed.appendChild(div);
     }

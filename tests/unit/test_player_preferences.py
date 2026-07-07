@@ -218,6 +218,13 @@ class TestChannelSubscriptions:
             == {}
         )
 
+    def test_apply_updates_replaces_the_map(self) -> None:
+        # The settings form posts the full map (unchecked = False), so an
+        # update replaces rather than merges per-key.
+        current = resolve_preferences({"channel_subscriptions": {"newbie": False}})
+        updated = apply_updates(current, {"channel_subscriptions": {"newbie": True}})
+        assert updated.channel_subscriptions == {"newbie": True}
+
     def test_legacy_mute_chat_key_is_ignored(self) -> None:
         # Pre-52.5 blobs may still carry mute_chat; unknown keys are dropped
         # (the blanket say-mute is superseded by channel subscriptions).

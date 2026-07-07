@@ -7,7 +7,7 @@
 #}
 
 {% for msg in feed_messages %}
-    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat{% else %}narrative{% endif %}"
+    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat{% if msg.channel %} chat-{{ msg.channel }}{% endif %}{% else %}narrative{% endif %}"
          data-msg-id="{{ msg.id }}">
 
         {% if msg.timestamp %}
@@ -42,6 +42,11 @@
     #feed .msg.dialogue, .msg.dialogue { border-left-color: #f59e0b; }
     #feed .msg.narrative, .msg.narrative { border-left-color: #3b82f6; }
     /* Chat (Sprint 45): conversation — routed to #chat-feed when the
-       separate_chat preference is on, styled distinctly either way. */
+       separate_chat preference is on, styled distinctly either way.
+       Per-channel colors (Sprint 52.7): say keeps the base cyan; tell and
+       topic channels get their own accent. Unknown channels fall back to
+       the base chat style. */
     .msg.chat { border-left-color: #22d3ee; }
+    .msg.chat.chat-tell { border-left-color: #8b5cf6; }
+    .msg.chat.chat-newbie { border-left-color: #f59e0b; }
 </style>
