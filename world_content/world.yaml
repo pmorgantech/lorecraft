@@ -743,6 +743,26 @@ items:
     takeable: true
     tradeable: true
 
+  # Sprint 55 context-attached commands: a non-takeable altar carries a `read`
+  # verb, available only in the Ruined Chapel where the altar stands.
+  - id: chapel_altar
+    name: Altar Stone
+    aliases: [altar, relief, inscription, carving]
+    description: >-
+      The upright altar stone, its carved relief of a wheel-within-a-wheel
+      worn smooth but legible. Eroded letters ring the base.
+    takeable: false
+    tradeable: false
+    context_commands:
+      read:
+        aliases: [study]
+        help: read the altar's worn inscription
+        say: >-
+          You trace the wheel-within-a-wheel and piece out the eroded words:
+          "...remembrance and fire... the tide remembers what the moon forgets."
+        side_effects:
+          set_flags: ["lore:chapel_wheel"]
+
   - id: millstone_shard
     name: Millstone Shard
     description: >-
@@ -984,6 +1004,9 @@ room_items:
 
   # Chapel
   - room_id: ruined_chapel
+    item_id: chapel_altar
+    quantity: 1
+  - room_id: ruined_chapel
     item_id: torn_page
     quantity: 1
   - room_id: ruined_chapel
@@ -1094,6 +1117,15 @@ npcs:
     current_room_id: wandering_crow_inn
     dialogue_tree_id: innkeeper_dialogue
     behavior: defensive
+    # Sprint 55: an NPC-carried context verb — available only where Mira is.
+    context_commands:
+      tip:
+        help: leave Mira a small tip at the counter
+        say: >-
+          You leave a few coins on the counter. Mira pockets them with a
+          nod and a knowing half-smile.
+        side_effects:
+          set_flags: [tipped_mira]
     shop:
       name: The Wandering Crow's Counter
       buys_categories: [trade_good]

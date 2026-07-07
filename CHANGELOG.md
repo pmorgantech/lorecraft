@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.0] - 2026-07-07
+
+### Added
+
+- **Sprint 55 complete — context-attached commands (object-scoped verbs).** Items and NPCs can declare a `context_commands` map in world content, giving them verbs that appear and work only when the object is present. Ashmoore ships two: the non-takeable **Altar Stone** in the Ruined Chapel carries `read`/`study` (revealing a lore line and setting `lore:chapel_wheel`), and **Mira the Innkeeper** carries `tip` (leave a few coins → `tipped_mira`). A context verb is listed by `help` only where it's usable, fires the shared side-effect registry (`set_flags`, `start_quest`, …), and — when several objects share a verb — resolves by the player's noun. Built almost entirely on existing machinery (the help-availability filter, the side-effect registry, per-command conditions); the only new engine surface is the `object_present`/`npc_present` gates and a `context_verb` availability condition. Evennia's cmdset merge algebra is deliberately out of scope. Full unit + integration coverage (gating, firing, disambiguation, help-hiding, shipped-content lint); guides updated.
+
 ## [0.45.6] - 2026-07-07
 
 ### Added

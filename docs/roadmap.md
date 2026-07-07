@@ -66,9 +66,8 @@ parallelization via pytest-xdist (~2.56×, v0.42.3).
 
 **Active work:** every numbered sprint through **54** is complete (2026-07-07): Sprint 52 — global
 channels & the channel framework (v0.45.0, finishing chat Phase 3 / Sprint 45.3), Sprint 53 —
-collectible marks (v0.43.0), Sprint 54 — celestial cycles (v0.44.0). **Scheduled: Sprint 55 —
-context-attached commands** (object-scoped verbs; see its section below). Further candidate work
-lives in the *Backlog* table and [`wishlist.md`](wishlist.md). Next new sprint after 55: **56**.
+collectible marks (v0.43.0), Sprint 54 — celestial cycles (v0.44.0). **Sprint 55 — context-attached commands** (object-scoped verbs) is **complete (v0.46.0)**. Further
+candidate work lives in the *Backlog* table and [`wishlist.md`](wishlist.md). Next new sprint: **56**.
 
 **Fixed (v0.45.1, 2026-07-07):** the two pre-existing e2e failures turned out to be two real bugs —
 `app.js` connected the game WebSocket from *every* page (base.html loads it), so a lobby tab after
@@ -342,10 +341,12 @@ per-command `conditions`. So the only genuinely new parts are a presence **gate*
 
 | # | Task | Status |
 |---|------|--------|
-| 55.1 | **Gate primitives:** `object_present:<id>` / `npc_present:<id>` command-condition handlers in `engine/game/command_conditions.py`; unit tests (present/absent, unknown id). | [ ] |
-| 55.2 | **Content schema + lint:** `context_commands` on `ItemData`/`NpcData` in the world validator; content-lint (declared `side_effects` resolve to registered handlers; a `requires` flag/id is well-formed); loader parses it into an in-memory registry. | [ ] |
-| 55.3 | **Loader + dispatcher:** composition-layer registration of one gated command per distinct context verb; handler resolves the present/held declaring object (parser entity resolution) and fires its `side_effects`; empty/absent-object cases stay narrative; collision-warning on verb/alias clash with a built-in. | [ ] |
-| 55.4 | **Content + tests + docs:** an Ashmoore example (e.g. a `pull` lever or `ring` bell wired to a side effect) + one NPC-carried verb; integration tests (verb absent from `help` out of context, present + fires its effect in context; two objects sharing a verb disambiguate by noun); user/admin guide sections. | [ ] |
+| 55.1 | **Gate primitives:** `object_present:<id>` / `npc_present:<id>` command-condition handlers in `engine/game/command_conditions.py`; unit tests (present/absent, unknown id). | [x] Landed v0.45.4. |
+| 55.2 | **Content schema + lint:** `context_commands` on `ItemData`/`NpcData` in the world validator; content-lint (declared `side_effects` resolve to registered handlers; a `requires` flag/id is well-formed); loader parses it into an in-memory registry. | [x] Landed v0.45.5 — `ContextCommandData` schema, `context_commands` JSON columns (+ SQLite ADD-COLUMN migrations), YAML import/export round-trip, `features/context_commands` registry + `load_from_session` + `lint_context_commands`. |
+| 55.3 | **Loader + dispatcher:** composition-layer registration of one gated command per distinct context verb; handler resolves the present/held declaring object (parser entity resolution) and fires its `side_effects`; empty/absent-object cases stay narrative; collision-warning on verb/alias clash with a built-in. | [x] Landed v0.45.6 — one command per verb gated by a `context_verb:<verb>` availability condition; noun disambiguates shared verbs; fires via the shared side-effect registry; verb/alias shadowing a built-in is skipped with a warning. Wired through `main.py` (startup scan, feature-gated) + `register_all_commands` (registered last). |
+| 55.4 | **Content + tests + docs:** an Ashmoore example (e.g. a `pull` lever or `ring` bell wired to a side effect) + one NPC-carried verb; integration tests (verb absent from `help` out of context, present + fires its effect in context; two objects sharing a verb disambiguate by noun); user/admin guide sections. | [x] Landed v0.46.0 — a non-takeable **altar** in the Ruined Chapel carries `read`/`study` (→ `lore:chapel_wheel`), and **Mira** carries `tip` (→ `tipped_mira`). Integration tests: both gated to their room, fire in context, hidden from the `help` filter out of context, shipped content lints clean. Noun-disambiguation covered by the 55.3 unit tests. Guides updated. |
+
+**✅ Sprint 55 complete (v0.46.0).**
 
 **Deferred to a follow-on:** Evennia's cmdset merge algebra (priorities/merge types) — deliberately
 out of scope; optional-prefix matching (`@look`) and per-command permission locks (the wishlist's
@@ -373,7 +374,7 @@ other "cheap wins," which pair better with the backlog's in-game admin/OOC comma
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), 51 (four more analytics widgets + the `target_id` audit fix), 52 (global channels & the channel framework — **scheduled**, finishing chat Phase 3 / Sprint 45.3), 53 (collectible marks / attunements — **done**, v0.43.0), 54 (celestial cycles: moons & tides — **done**, v0.44.0), and 55 (context-attached commands — **scheduled**).
+- **Used:** 1–34 (incl. 10.5), 35–38 (performance band), 39 (timed room effects), 40–41 (admin console: live-refresh + registered issue components — **done**, v0.37.0), 42 (Issues tab filter/sort + player-report live-refresh — **done**, v0.38.0), 43–49 (promoted from the wishlist 2026-07-05: session record/playback, weather-driven effects, chat/feed split, item discovery journal, follow command, scavenger hunt events, encumbrance + analytics dashboard), 50 (e2e browser test coverage — multiplayer/UX layers), 51 (four more analytics widgets + the `target_id` audit fix), 52 (global channels & the channel framework — **scheduled**, finishing chat Phase 3 / Sprint 45.3), 53 (collectible marks / attunements — **done**, v0.43.0), 54 (celestial cycles: moons & tides — **done**, v0.44.0), and 55 (context-attached commands — **done**, v0.46.0).
 - **Reserved but never used:** 56–60 (left as a gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat testing, PvP consent), and 65 (multiplayer trade/transit tests). Don't reuse these numbers for unrelated work — if that work returns, restore it under fresh numbers.
 - **Next new sprint: 56.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).

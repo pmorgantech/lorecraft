@@ -289,6 +289,39 @@ currently a one-line `Channel(...)` registration in `commands/social.py` (see
 `NEWBIE_CHANNEL`); world-YAML channel definitions are a planned additive follow-on — the
 engine's `ChannelRegistry` is the seam.
 
+### Context-attached commands (object-scoped verbs, Sprint 55)
+
+Give an **item or NPC its own verbs** that appear and work only when that object is present
+(held, or in the room) — a `pull` lever, a `read` inscription, `pet` the dog. Declare a
+`context_commands` map on the item or NPC in `world.yaml`:
+
+```yaml
+# on an item (available where the item is; use takeable:false for a room fixture)
+  - id: chapel_altar
+    takeable: false
+    context_commands:
+      read:                       # the verb players type
+        aliases: [study]
+        help: read the altar's worn inscription
+        say: You trace the worn relief and piece out the eroded words...
+        side_effects:             # any handler on the shared side-effect registry
+          set_flags: [lore:chapel_wheel]
+        # requires: flag_set:some_flag   # optional extra gate
+```
+
+- Verbs on an **item** are gated `object_present:<id>` (room or inventory); on an **NPC**,
+  `npc_present:<id>`. Availability rides the help filter, so the verb is *listed* only in
+  context.
+- The action reuses the **shared side-effect registry** (`set_flags`, `clear_flags`,
+  `give_item`, `start_quest`, …) — the same effects dialogue and mechanisms use. A command
+  must set `say` and/or `side_effects` (a no-op verb is rejected at load).
+- Several objects may share a verb (`pull` on two levers); the player's noun disambiguates
+  (`pull rusty`). Content-lint (`lint_context_commands`, enforced by
+  `tests/integration/test_context_commands_integration.py::test_shipped_context_commands_lint_clean`)
+  requires every `side_effects` key to resolve to a registered handler.
+- A context verb that would **shadow a built-in** verb/alias (e.g. `look`, `take`) is skipped
+  with a startup warning — pick a name that isn't already a command.
+
 ## The World CLI
 
 `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}` — the
