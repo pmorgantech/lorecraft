@@ -23,6 +23,17 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
 - **Composition layers** (may import both engine and features): `main.py`, `commands/` (shell verbs `meta`/`social`/`news`/`report` + `register_all_commands`), `services/container.py` (`ServiceContainer`).
 - Feature verbs live in `features/<x>/commands.py`; the engine owns the `CommandRegistry` mechanism but provides no verbs. See [`docs/tier_split_refactor.md`](docs/tier_split_refactor.md) — the single source of truth — for the remaining (additive, deliberately deferred) work: the `WebHost`/`presentation.py` feature-UI seam and feature enable/disable tests.
 
+## Multi-agent scaffolding (2026-07-06)
+
+For parallel agent work:
+
+- **Worktree isolation:** Each agent gets its own `.venv`, `var/app.sqlite`, and docs copy via `make bootstrap` (first-time setup).
+- **Testing:** After `make bootstrap`, activate the worktree's own `.venv` and plain `make test` runs against the worktree's code — no `PYTHONPATH` needed. (The `PYTHONPATH="$PWD/src"` recipe below remains the fallback for un-bootstrapped worktrees.)
+- **Commits:** Use conventional-commits (`feat:`, `fix:`, `docs:`) — they will feed the automated release workflow.
+- **Version coordination (planned):** A GitHub Action will handle version bumps + CHANGELOG updates on merge to `main`; once it lands, agents stop touching version files. **Until then the manual rule below still applies.**
+
+See [`docs/multi-agent-workflow.md`](docs/multi-agent-workflow.md) for the full design and workflow examples.
+
 ## Context strategy
 
 - Start with local files and tests.
@@ -52,7 +63,6 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
 - Write unit tests for all new features.
 - After new code, run focused verification on modified or new files (see **Testing**).
 - Keep `docs/roadmap.md` updated with current implementation progress (it is the single source of truth for what's done and what's next — mark sprint/task checkboxes and update its "Current position" section rather than a separate status doc).
-- Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
 - Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
 - After changing any scripting-vocabulary registration (a `register_spec(...)` call — a new or
   edited condition/effect/behavior-mode descriptor), regenerate the builder-guide reference in
@@ -64,6 +74,9 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
   each completed sprint is a minor bump (0.x.0); a bug fix or docs-only change is a patch
   bump (0.x.y). Update `CHANGELOG.md` in lockstep (move `[Unreleased]` content under the new
   dated version heading, per the existing changelog format).
+  *(Planned: once the release GitHub Action from `docs/multi-agent-workflow.md` lands, version
+  bumping + CHANGELOG move to merge time and this manual rule is retired. Conventional-commit
+  titles — `feat:`/`fix:`/`docs:` — are what the action will read, so use them now.)*
 - Keep commit messages clean: do **not** add `Co-Authored-By:` or `Claude-Session:`
   (or any similar agent/attribution) trailers to commit messages. Strip them if a
   template or tool would otherwise append them.

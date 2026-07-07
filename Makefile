@@ -6,7 +6,13 @@ BASEDPYRIGHT ?= $(PYTHON) -m basedpyright
 PYTEST_WORKERS ?= auto
 PYTEST_PARALLEL_ARGS ?= -n $(PYTEST_WORKERS) --dist=loadfile
 
-.PHONY: test test-cov test-e2e test-simulation lint typecheck scripting-docs
+.PHONY: test test-cov test-e2e test-simulation lint typecheck scripting-docs bootstrap bootstrap-worktree ai-graph
+
+# Bootstrap worktree: isolated venv, database, docs (run once per worktree).
+# Agents: create via EnterWorktree, then run make bootstrap from the worktree.
+bootstrap bootstrap-worktree:
+	@bash scripts/bootstrap-worktree.sh
+
 ai-graph:
 	./scripts/graphify-refresh.sh
 
@@ -37,7 +43,13 @@ typecheck:
 # Parallelized via pytest-xdist: each worker gets its own browser and server instance.
 # Tests are fully isolated (unique tmp_path databases, random ports), so parallel
 # execution is safe and ~2.5× faster than serial (31.93s → 12.44s).
+# Worktrees: syncs docs/*.yaml from primary tree before running.
 test-e2e:
+	@MAIN=$$(dirname "$$(git rev-parse --git-common-dir)"); \
+	if [ "$$MAIN" != "$$PWD" ]; then \
+		echo "Worktree detected: syncing docs/*.yaml from $$MAIN"; \
+		cp "$$MAIN"/docs/*.yaml docs/ 2>/dev/null || true; \
+	fi
 	$(PYTHON) -m pip install -e ".[e2e]"
 	$(PYTHON) -m playwright install chromium
 	$(PYTEST) tests/e2e -m e2e $(PYTEST_PARALLEL_ARGS) -v
