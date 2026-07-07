@@ -216,6 +216,8 @@ def create_app(
         if services.marks is not None:
             _load_mark_definitions(resolved_settings.marks_yaml_path)
             services.marks.register(bus)
+        if "context_commands" in enabled_set:
+            _load_context_commands(resolved_game_engine)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
@@ -685,6 +687,18 @@ def _load_mark_definitions(marks_yaml_path: str) -> None:
         registry.load_document(load_marks_yaml(marks_yaml_path))
     except Exception as exc:  # malformed mark content shouldn't crash boot
         log.warning("failed to load marks from %s: %s", marks_yaml_path, exc)
+
+
+def _load_context_commands(game_engine: Engine) -> None:
+    """Scan every item + NPC for `context_commands` (Sprint 55) into the
+    in-memory registry at startup, after the world is bootstrapped. Runs before
+    `register_all_commands` so the dispatcher sees the loaded verbs."""
+    from lorecraft.features.context_commands.models import get_registry
+
+    registry = get_registry()
+    registry.clear()
+    with Session(game_engine) as session:
+        registry.load_from_session(session)
 
 
 def _get_state(app: FastAPI) -> AppState:

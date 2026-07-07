@@ -15,6 +15,7 @@ from lorecraft.features.bank.commands import register_bank_commands
 from lorecraft.features.character.commands import register_character_commands
 from lorecraft.features.fatigue.commands import register_condition_commands
 from lorecraft.features.follow.commands import register_follow_commands
+from lorecraft.features.context_commands.commands import register_context_commands
 from lorecraft.features.hunts.commands import register_hunt_commands
 from lorecraft.features.marks.commands import register_mark_commands
 from lorecraft.features.economy.commands import register_economy_commands
@@ -100,3 +101,7 @@ def register_all_commands(
     if transit is not None:
         with registry.category("transit"):
             register_transit_commands(registry, transit)
+    # Context-attached verbs (Sprint 55) last, so their collision check sees
+    # every built-in verb already registered. The context registry is empty
+    # unless the feature loaded world content, so this is a no-op otherwise.
+    register_context_commands(registry)
