@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.exploration.rules import (
     is_exit_discovered,
     mark_exit_discovered,
@@ -53,7 +54,10 @@ class ExplorationService:
 
         for exit_ in hidden_exits:
             mark_exit_discovered(ctx, ctx.room.id, exit_.direction)
-            ctx.say(f"You discover a hidden passage to the {exit_.direction}!")
+            ctx.say(
+                f"You discover a hidden passage to the {exit_.direction}!",
+                MessageType.HINT,
+            )
 
         stats = ctx.player_repo.stats(ctx.player.id)
         if stats is not None:

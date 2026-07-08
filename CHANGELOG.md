@@ -2,7 +2,27 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
-## [0.47.1] - 2026-07-08 (local `develop` branch, not on `main`)
+## [0.48.0] - 2026-07-08 — Sprint 56 complete
+
+### Changed
+
+- **Sprint 56.5 complete: full output-type sweep across all 28 files with `ctx.say()` calls**
+  (283 call sites). 171 retyped (162 `WARNING`, 7 `QUEST`, 1 `TELL`, 1 `HINT` — the taxonomy's
+  first `HINT` usage, on `exploration/service.py`'s hidden-passage discovery message), 112
+  deliberately left on `SYSTEM`: successful-action confirmations, whole read-only report/display
+  commands (`character/service.py`, `exploration/journal.py`, `marks/commands.py`,
+  `hunts/commands.py`), `fatigue/service.py` (no clean fit), and `context_commands/commands.py`'s
+  `binding.say` (arbitrary world-content text — no single type fits data-driven strings).
+  `engine/game/engine.py`'s core parser/dispatch error messages (all 8) → `WARNING`.
+  `follow/service.py`'s `_notify()` helper gained an optional `msg_type` passthrough so its two
+  involuntary-disconnect notifications could be tagged `WARNING` without affecting its other
+  (voluntary-action) callers. Caught and fixed one over-eager `replace_all` along the way: an
+  identical string ("You aren't following anyone.") meant two different things depending on
+  which function used it — a genuine failure in `unfollow()` vs. a status check in
+  `_show_status()` — only the former is a warning. No behavior change — verified against the
+  full test suite (1116 passed) after every file.
+
+## [0.47.1] - 2026-07-08
 
 ### Changed
 
@@ -13,7 +33,7 @@ All notable changes to Lorecraft will be documented in this file.
   sword.", and `look`/`examine`/inventory-listing output) stay on the `SYSTEM` default —
   they're not warnings and don't fit any other taxonomy entry cleanly. No behavior change.
 
-## [0.47.0] - 2026-07-08 (local `develop` branch, not on `main`)
+## [0.47.0] - 2026-07-08
 
 ### Added
 
@@ -45,7 +65,7 @@ All notable changes to Lorecraft will be documented in this file.
   subclass) where a `list[str]` was expected failed strict type-checking even though it's
   behaviorally a `list[str]`. No behavior change, just a type-checker fix surfaced by 56.2.
 
-## [0.46.7] - 2026-07-08 (local `develop` branch, not on `main`)
+## [0.46.7] - 2026-07-08
 
 ### Added
 

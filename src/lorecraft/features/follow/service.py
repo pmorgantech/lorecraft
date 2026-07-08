@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -57,16 +58,18 @@ class FollowService:
 
         target = ctx.player_repo.by_username(target_name)
         if target is None or target.current_room_id != ctx.room.id:
-            ctx.say(f"There's no one here called {target_name}.")
+            ctx.say(f"There's no one here called {target_name}.", MessageType.WARNING)
             return
         if target.id == ctx.player.id:
-            ctx.say("You can't follow yourself.")
+            ctx.say("You can't follow yourself.", MessageType.WARNING)
             return
         if self._following.get(ctx.player.id) == target.id:
-            ctx.say(f"You are already following {target.username}.")
+            ctx.say(
+                f"You are already following {target.username}.", MessageType.WARNING
+            )
             return
         if self._would_cycle(follower_id=ctx.player.id, target_id=target.id):
-            ctx.say(f"{target.username} is already following you.")
+            ctx.say(f"{target.username} is already following you.", MessageType.WARNING)
             return
 
         self._following[ctx.player.id] = target.id
@@ -78,7 +81,7 @@ class FollowService:
     def unfollow(self, ctx: GameContext) -> None:
         target_id = self._following.pop(ctx.player.id, None)
         if target_id is None:
-            ctx.say("You aren't following anyone.")
+            ctx.say("You aren't following anyone.", MessageType.WARNING)
             return
         target = ctx.player_repo.get(target_id)
         name = target.username if target is not None else "them"
@@ -246,12 +249,14 @@ class FollowService:
             follower.id,
             f"You lose sight of {ctx.player.username}. {detail}",
             chat=False,
+            msg_type=MessageType.WARNING,
         )
         self._notify(
             ctx,
             ctx.player.id,
             f"{follower.username} can no longer follow you.",
             chat=False,
+            msg_type=MessageType.WARNING,
         )
 
     def _deliver_follow_move(
@@ -285,11 +290,17 @@ class FollowService:
         return False
 
     def _notify(
-        self, ctx: GameContext, player_id: str, text: str, *, chat: bool
+        self,
+        ctx: GameContext,
+        player_id: str,
+        text: str,
+        *,
+        chat: bool,
+        msg_type: MessageType = MessageType.SYSTEM,
     ) -> None:
         """Say to `player_id`: directly if it's the actor, else a deferred push."""
         if player_id == ctx.player.id:
-            ctx.say(text)
+            ctx.say(text, msg_type)
             return
         self._defer_push(
             ctx,

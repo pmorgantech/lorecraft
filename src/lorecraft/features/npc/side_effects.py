@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.quests.models import PlayerQuestProgress
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.types import JsonObject, JsonValue
@@ -100,7 +101,7 @@ def _handle_start_quest(data: JsonValue, ctx: "GameContext") -> None:  # type: i
             stage_started_epoch=ctx.clock.game_epoch if ctx.clock is not None else 0.0,
         )
     )
-    ctx.say(f"Quest started: {quest.title}.")
+    ctx.say(f"Quest started: {quest.title}.", MessageType.QUEST)
     ctx.push_update(
         "quest_update",
         {

@@ -25,6 +25,7 @@ from lorecraft.engine.game.command_patterns import (
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.trading.repo import TradeRepo
 from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 
@@ -46,12 +47,14 @@ class TradeService:
         object_phrase = role_str(parsed, ROLE_OBJECT) if parsed else None
         recipient_phrase = role_str(parsed, ROLE_RECIPIENT) if parsed else None
         if not object_phrase or not recipient_phrase:
-            ctx.say("Offer what to whom? (e.g. offer sword to Bob)")
+            ctx.say(
+                "Offer what to whom? (e.g. offer sword to Bob)", MessageType.WARNING
+            )
             return
 
         recipient = self._find_recipient(ctx, recipient_phrase)
         if recipient is None:
-            ctx.say(f"There is no {recipient_phrase} here.")
+            ctx.say(f"There is no {recipient_phrase} here.", MessageType.WARNING)
             return
 
         repo = TradeRepo(ctx.session)
@@ -62,7 +65,8 @@ class TradeService:
             and existing.initiator_id != recipient.id
         ):
             ctx.say(
-                "You already have a pending trade with someone else. Decline it first."
+                "You already have a pending trade with someone else. Decline it first.",
+                MessageType.WARNING,
             )
             return
         offer_row = (
@@ -77,7 +81,7 @@ class TradeService:
         if object_phrase.strip().lower() in {"coin", "coins"}:
             amount = role_int(parsed, ROLE_QUANTITY) if parsed else None
             if not amount or amount <= 0:
-                ctx.say("Offer how many coins?")
+                ctx.say("Offer how many coins?", MessageType.WARNING)
                 return
             if ctx.player.id == offer_row.initiator_id:
                 offer_row.initiator_coins = amount
@@ -89,11 +93,11 @@ class TradeService:
 
         stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, object_phrase)
         if not stacks:
-            ctx.say("You don't have that.")
+            ctx.say("You don't have that.", MessageType.WARNING)
             return
         stack, item = stacks[0]
         if not item.tradeable or item.bound:
-            ctx.say(f"You can't trade {item.name}.")
+            ctx.say(f"You can't trade {item.name}.", MessageType.WARNING)
             return
         requested_quantity = role_int(parsed, ROLE_QUANTITY) if parsed else None
         quantity = min(requested_quantity or 1, stack.quantity)
@@ -119,12 +123,12 @@ class TradeService:
         del noun
         offer_row = TradeRepo(ctx.session).find_open_for_player(ctx.player.id)
         if offer_row is None:
-            ctx.say("You have no pending trade offer.")
+            ctx.say("You have no pending trade offer.", MessageType.WARNING)
             return
         if time.time() > offer_row.expires_at:
             offer_row.status = "expired"
             TradeRepo(ctx.session).save(offer_row)
-            ctx.say("That trade offer has expired.")
+            ctx.say("That trade offer has expired.", MessageType.WARNING)
             return
 
         other_id = (
@@ -135,7 +139,8 @@ class TradeService:
         other = ctx.player_repo.get(other_id)
         if other is None or other.current_room_id != ctx.player.current_room_id:
             ctx.say(
-                f"{'They' if other is None else other.username} are no longer here."
+                f"{'They' if other is None else other.username} are no longer here.",
+                MessageType.WARNING,
             )
             return
 
@@ -144,7 +149,8 @@ class TradeService:
             item = self._item_for_stack(ctx, stack_id)
             if item is None or not item.tradeable or item.bound:
                 ctx.say(
-                    "The trade fell through — one side's item is no longer tradeable."
+                    "The trade fell through — one side's item is no longer tradeable.",
+                    MessageType.WARNING,
                 )
                 return
             legs.append(
@@ -158,7 +164,8 @@ class TradeService:
             item = self._item_for_stack(ctx, stack_id)
             if item is None or not item.tradeable or item.bound:
                 ctx.say(
-                    "The trade fell through — one side's item is no longer tradeable."
+                    "The trade fell through — one side's item is no longer tradeable.",
+                    MessageType.WARNING,
                 )
                 return
             legs.append(
@@ -186,7 +193,7 @@ class TradeService:
             )
 
         if not legs:
-            ctx.say("There's nothing pledged to that trade yet.")
+            ctx.say("There's nothing pledged to that trade yet.", MessageType.WARNING)
             return
 
         try:
@@ -194,7 +201,10 @@ class TradeService:
         except (ConflictError, NotFoundError):
             offer_row.status = "declined"
             TradeRepo(ctx.session).save(offer_row)
-            ctx.say("The trade fell through — one side no longer has what was pledged.")
+            ctx.say(
+                "The trade fell through — one side no longer has what was pledged.",
+                MessageType.WARNING,
+            )
             return
 
         offer_row.status = "accepted"
@@ -212,7 +222,7 @@ class TradeService:
         del noun
         offer_row = TradeRepo(ctx.session).find_open_for_player(ctx.player.id)
         if offer_row is None:
-            ctx.say("You have no pending trade offer.")
+            ctx.say("You have no pending trade offer.", MessageType.WARNING)
             return
         offer_row.status = "declined"
         TradeRepo(ctx.session).save(offer_row)

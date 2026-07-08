@@ -18,6 +18,7 @@ import logging
 from lorecraft.engine.game import command_conditions
 from lorecraft.engine.game.command_conditions import ConditionResult
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.models.world import NPC
 from lorecraft.features.context_commands.models import (
@@ -67,7 +68,7 @@ def _make_handler(verb: str, registry: ContextCommandRegistry):
         candidates = _available_bindings(verb, ctx, registry)
         if not candidates:
             # Defensive: the gating condition normally blocks this first.
-            ctx.say("You can't do that here.")
+            ctx.say("You can't do that here.", MessageType.WARNING)
             return
         needle = (noun or "").strip().lower()
         if needle:

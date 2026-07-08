@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import (
     CommandDefinition,
     CommandRegistry,
@@ -249,7 +250,8 @@ def register_meta_commands(
                 ctx.say("\n".join(_render_topic(topic)))
             else:
                 ctx.say(
-                    f"No help topic with id {first}. Type 'help topics' to list them."
+                    f"No help topic with id {first}. Type 'help topics' to list them.",
+                    MessageType.WARNING,
                 )
         elif registry.get(first) is not None:
             # `help <command>` — detail; note a same-named topic if one exists.

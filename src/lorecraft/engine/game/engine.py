@@ -13,6 +13,7 @@ from lorecraft.engine.game.command_patterns import (
 )
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_verb
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rules import RuleEngine
@@ -79,9 +80,12 @@ class CommandEngine:
         with time_operation("command_parse") as parse_timing:
             result = parse_command(raw, context=ctx)
         if result.error_message:
-            ctx.say(result.error_message)
+            ctx.say(result.error_message, MessageType.WARNING)
             if result.suggestions:
-                ctx.say("Perhaps you meant: " + ", ".join(result.suggestions))
+                ctx.say(
+                    "Perhaps you meant: " + ", ".join(result.suggestions),
+                    MessageType.WARNING,
+                )
             blocked = ParsedCommand(verb="", raw=raw)
             self._record_blocked(
                 ctx,
@@ -92,7 +96,7 @@ class CommandEngine:
             return blocked
 
         if not result.commands:
-            ctx.say("Enter a command.")
+            ctx.say("Enter a command.", MessageType.WARNING)
             blocked = ParsedCommand(verb="", raw=raw)
             self._record_blocked(ctx, blocked, "empty_command", "No command entered.")
             return blocked
@@ -111,13 +115,13 @@ class CommandEngine:
     ) -> ParsedCommand | None:
         lookup_verb = registry_verb(parsed.verb)
         if not lookup_verb:
-            ctx.say("Enter a command.")
+            ctx.say("Enter a command.", MessageType.WARNING)
             self._record_blocked(ctx, parsed, "empty_command", "No command entered.")
             return None
 
         command = self.registry.get(lookup_verb)
         if command is None:
-            ctx.say("I don't understand that command.")
+            ctx.say("I don't understand that command.", MessageType.WARNING)
             self._record_blocked(ctx, parsed, "unknown_command", "Unknown command.")
             return None
 
@@ -125,7 +129,7 @@ class CommandEngine:
             condition = self.registry.evaluate_conditions(command, ctx)
         if not condition.allowed:
             reason = condition.reason or "You can't do that."
-            ctx.say(reason)
+            ctx.say(reason, MessageType.WARNING)
             self._record_blocked(ctx, parsed, "condition_blocked", reason)
             return None
 
@@ -133,7 +137,7 @@ class CommandEngine:
         rule_result = self.rules.check(parsed.verb, ctx, rule_payload)
         if not rule_result.allowed:
             reason = rule_result.reason or "You can't do that."
-            ctx.say(reason)
+            ctx.say(reason, MessageType.WARNING)
             self._record_blocked(ctx, parsed, "rule_blocked", reason)
             return None
 
@@ -200,7 +204,7 @@ class CommandEngine:
         ctx.room_messages.clear()
         ctx.updates.clear()
         ctx.pending_events.clear()
-        ctx.say("Something went wrong processing that command.")
+        ctx.say("Something went wrong processing that command.", MessageType.WARNING)
         payload = _command_audit_payload(
             parsed,
             reason_type="handler_exception",

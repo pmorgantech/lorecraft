@@ -11,6 +11,7 @@ from sqlmodel import Session
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
@@ -39,7 +40,10 @@ class SaveSlotService:
     def save(self, slot_name: str | None, ctx: GameContext) -> None:
         slot = normalize_save_slot(slot_name)
         if slot is None:
-            ctx.say("Use save auto, save slot1, save slot2, or save slot3.")
+            ctx.say(
+                "Use save auto, save slot1, save slot2, or save slot3.",
+                MessageType.WARNING,
+            )
             return
 
         save_slot = ctx.player_repo.save_slot(ctx.player.id, slot)
@@ -70,17 +74,23 @@ class SaveSlotService:
     def load(self, slot_name: str | None, ctx: GameContext) -> None:
         slot = normalize_save_slot(slot_name)
         if slot is None:
-            ctx.say("Use load auto, load slot1, load slot2, or load slot3.")
+            ctx.say(
+                "Use load auto, load slot1, load slot2, or load slot3.",
+                MessageType.WARNING,
+            )
             return
 
         save_slot = ctx.player_repo.save_slot(ctx.player.id, slot)
         if save_slot is None:
-            ctx.say(f"No save found in {slot}.")
+            ctx.say(f"No save found in {slot}.", MessageType.WARNING)
             return
 
         target_room = ctx.room_repo.active(save_slot.room_id)
         if target_room is None:
-            ctx.say("That save points to a room that no longer exists.")
+            ctx.say(
+                "That save points to a room that no longer exists.",
+                MessageType.WARNING,
+            )
             return
 
         previous_room_id = ctx.room.id

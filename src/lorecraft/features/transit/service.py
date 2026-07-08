@@ -20,6 +20,7 @@ from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Room
@@ -189,34 +190,38 @@ class TransitService:
         repo = TransitRepo(ctx.session)
         candidates = repo.lines_at_station(ctx.room.id)
         if not candidates:
-            ctx.say("There's nothing to board here.")
+            ctx.say("There's nothing to board here.", MessageType.WARNING)
             return
 
         line = self._match_line(candidates, noun)
         if line is None:
             if len(candidates) > 1:
                 names = ", ".join(c.name for c in candidates)
-                ctx.say(f"Board which line? ({names})")
+                ctx.say(f"Board which line? ({names})", MessageType.WARNING)
             else:
-                ctx.say(f"There's no {noun} here to board.")
+                ctx.say(f"There's no {noun} here to board.", MessageType.WARNING)
             return
 
         state = ctx.session.get(MobileRouteState, route_id_for_line(line.id))
         if state is None or state.status != "at_stop":
-            ctx.say(f"The {line.name} has already departed.")
+            ctx.say(f"The {line.name} has already departed.", MessageType.WARNING)
             return
         stops = repo.stops_for_line(line.id)
         if stops[state.current_index].room_id != ctx.room.id:
-            ctx.say(f"The {line.name} isn't here right now.")
+            ctx.say(f"The {line.name} isn't here right now.", MessageType.WARNING)
             return
         if not stops[state.current_index].boarding:
-            ctx.say(f"The {line.name} doesn't board passengers here.")
+            ctx.say(
+                f"The {line.name} doesn't board passengers here.", MessageType.WARNING
+            )
             return
 
         if line.ticket_item_id is not None:
             loc = Location("player", ctx.player.id)
             if ctx.stack_repo.quantity_of(loc, line.ticket_item_id) < 1:
-                ctx.say(f"You need a ticket to board the {line.name}.")
+                ctx.say(
+                    f"You need a ticket to board the {line.name}.", MessageType.WARNING
+                )
                 return
             if line.ticket_consumed:
                 stack = ctx.stack_repo.find_fungible_stack(loc, line.ticket_item_id)
@@ -227,7 +232,7 @@ class TransitService:
             ctx.room_repo.get(line.vehicle_room_id) if line.vehicle_room_id else None
         )
         if vehicle_room is None:
-            ctx.say("Something is wrong with that vehicle.")
+            ctx.say("Something is wrong with that vehicle.", MessageType.WARNING)
             return
 
         previous_room_id = ctx.room.id
@@ -249,22 +254,27 @@ class TransitService:
         del noun
         line = TransitRepo(ctx.session).line_for_vehicle_room(ctx.room.id)
         if line is None:
-            ctx.say("You're not aboard anything.")
+            ctx.say("You're not aboard anything.", MessageType.WARNING)
             return
 
         state = ctx.session.get(MobileRouteState, route_id_for_line(line.id))
         if state is None or state.status != "at_stop":
-            ctx.say(f"You can't disembark the {line.name} while it's moving.")
+            ctx.say(
+                f"You can't disembark the {line.name} while it's moving.",
+                MessageType.WARNING,
+            )
             return
         stops = TransitRepo(ctx.session).stops_for_line(line.id)
         current_stop = stops[state.current_index]
         if not current_stop.boarding:
-            ctx.say(f"The {line.name} doesn't open its doors here.")
+            ctx.say(
+                f"The {line.name} doesn't open its doors here.", MessageType.WARNING
+            )
             return
 
         station = ctx.room_repo.get(current_stop.room_id)
         if station is None:
-            ctx.say("Something is wrong with that station.")
+            ctx.say("Something is wrong with that station.", MessageType.WARNING)
             return
 
         previous_room_id = ctx.room.id
@@ -288,7 +298,7 @@ class TransitService:
         if line is None:
             line = self._match_line(repo.lines_at_station(ctx.room.id), noun)
         if line is None:
-            ctx.say("No transit line schedule available here.")
+            ctx.say("No transit line schedule available here.", MessageType.WARNING)
             return
 
         state = ctx.session.get(MobileRouteState, route_id_for_line(line.id))

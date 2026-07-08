@@ -20,6 +20,7 @@ from typing import cast
 from lorecraft.content.issues import create_issue
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 from lorecraft.types import JsonObject
 
@@ -111,7 +112,8 @@ def _advance_wizard(ctx: GameContext, answer: str) -> None:
         if category not in _CATEGORIES:
             ctx.say(
                 "Please choose a category: bug, feedback, or idea "
-                "(or 'cancel' to stop)."
+                "(or 'cancel' to stop).",
+                MessageType.WARNING,
             )
             return
         draft["category"] = category
@@ -121,7 +123,10 @@ def _advance_wizard(ctx: GameContext, answer: str) -> None:
 
     if step == "title":
         if not answer.strip():
-            ctx.say("A title can't be empty. Enter a short title (or 'cancel').")
+            ctx.say(
+                "A title can't be empty. Enter a short title (or 'cancel').",
+                MessageType.WARNING,
+            )
             return
         draft["title"] = answer.strip()
         _set_wizard(ctx, "detail", draft)
@@ -141,7 +146,10 @@ def _advance_wizard(ctx: GameContext, answer: str) -> None:
 
     # Unknown/stale step — reset defensively.
     _clear_wizard(ctx)
-    ctx.say("Sorry, your report session expired. Type 'report' to start again.")
+    ctx.say(
+        "Sorry, your report session expired. Type 'report' to start again.",
+        MessageType.WARNING,
+    )
 
 
 def register_report_commands(registry: CommandRegistry) -> None:

@@ -12,6 +12,7 @@ from __future__ import annotations
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.bank.repo import BankRepo
 from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 
@@ -38,14 +39,14 @@ class BankService:
 
     def deposit(self, noun: str | None, ctx: GameContext) -> None:
         if not self._branch_here(ctx):
-            ctx.say("There's no bank here.")
+            ctx.say("There's no bank here.", MessageType.WARNING)
             return
         amount = self._parse_amount(noun)
         if amount is None:
-            ctx.say("Deposit how much?")
+            ctx.say("Deposit how much?", MessageType.WARNING)
             return
         if self.ledger.balance_of(ctx.session, "player", ctx.player.id) < amount:
-            ctx.say(f"You don't have {amount} coins to deposit.")
+            ctx.say(f"You don't have {amount} coins to deposit.", MessageType.WARNING)
             return
 
         account = BankRepo(ctx.session).get_or_create_account(ctx.player.id)
@@ -69,16 +70,16 @@ class BankService:
 
     def withdraw(self, noun: str | None, ctx: GameContext) -> None:
         if not self._branch_here(ctx):
-            ctx.say("There's no bank here.")
+            ctx.say("There's no bank here.", MessageType.WARNING)
             return
         amount = self._parse_amount(noun)
         if amount is None:
-            ctx.say("Withdraw how much?")
+            ctx.say("Withdraw how much?", MessageType.WARNING)
             return
 
         account = BankRepo(ctx.session).get_or_create_account(ctx.player.id)
         if self.ledger.balance_of(ctx.session, "bank_account", account.id) < amount:
-            ctx.say(f"Your account doesn't have {amount} coins.")
+            ctx.say(f"Your account doesn't have {amount} coins.", MessageType.WARNING)
             return
 
         self.ledger.execute_exchange(

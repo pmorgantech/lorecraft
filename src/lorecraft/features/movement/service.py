@@ -7,6 +7,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.grammar import OPPOSITE_DIRECTIONS
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.parser import DIRECTION_ALIASES
 from lorecraft.features.skills.service import SkillService
@@ -29,23 +30,23 @@ class MovementService:
         self, direction: str | None, ctx: GameContext, *, locked: bool, verb: str
     ) -> None:
         if direction is None:
-            ctx.say(f"{verb.capitalize()} which way?")
+            ctx.say(f"{verb.capitalize()} which way?", MessageType.WARNING)
             return
 
         normalized = DIRECTION_ALIASES.get(direction.lower(), direction.lower())
         exit_ = ctx.room_repo.exit(ctx.room.id, normalized)
         if exit_ is None:
-            ctx.say("There is no exit that way.")
+            ctx.say("There is no exit that way.", MessageType.WARNING)
             return
         if exit_.key_item_id is None:
-            ctx.say("That doesn't need a key.")
+            ctx.say("That doesn't need a key.", MessageType.WARNING)
             return
         if not _carries(ctx, exit_.key_item_id):
-            ctx.say("You don't have the right key.")
+            ctx.say("You don't have the right key.", MessageType.WARNING)
             return
         if exit_.locked == locked:
             state = "locked" if locked else "unlocked"
-            ctx.say(f"The way {normalized} is already {state}.")
+            ctx.say(f"The way {normalized} is already {state}.", MessageType.WARNING)
             return
 
         exit_.locked = locked
@@ -60,22 +61,22 @@ class MovementService:
         # `search` (Sprint 25.1) reveals them there. Docs: world_building.md
         # "Hidden Exits" — "the player must try the command directly".
         if exit_ is None:
-            ctx.say("You can't go that way.")
+            ctx.say("You can't go that way.", MessageType.WARNING)
             return
         if exit_.condition_flags and not all(
             ctx.player.flags.get(flag) for flag in exit_.condition_flags
         ):
-            ctx.say("Something prevents you from going that way.")
+            ctx.say("Something prevents you from going that way.", MessageType.WARNING)
             return
         if exit_.locked and (
             exit_.key_item_id is None or not _carries(ctx, exit_.key_item_id)
         ):
-            ctx.say("The way is locked.")
+            ctx.say("The way is locked.", MessageType.WARNING)
             return
 
         target_room = ctx.room_repo.active(exit_.target_room_id)
         if target_room is None:
-            ctx.say("You can't go that way.")
+            ctx.say("You can't go that way.", MessageType.WARNING)
             return
 
         terrain_def = terrain_module.get_registry().get(target_room.terrain)
@@ -93,7 +94,8 @@ class MovementService:
             if effective < terrain_def.required_skill_min:
                 ctx.say(
                     f"You aren't skilled enough to venture into the "
-                    f"{target_room.terrain} safely."
+                    f"{target_room.terrain} safely.",
+                    MessageType.WARNING,
                 )
                 return
             if ctx.player_repo.stats(ctx.player.id) is not None:

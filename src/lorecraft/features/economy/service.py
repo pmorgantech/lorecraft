@@ -25,6 +25,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.grammar import score_match
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.economy.models import Shop, ShopStock
 from lorecraft.engine.models.world import Item, NPC
 from lorecraft.features.economy.repo import EconomyRepo
@@ -148,7 +149,7 @@ class EconomyService:
     def list_shop(self, ctx: GameContext) -> None:
         found = self._shop_here(ctx)
         if found is None:
-            ctx.say("There's no shop here.")
+            ctx.say("There's no shop here.", MessageType.WARNING)
             return
         shop, npc = found
         stock_rows = [
@@ -157,7 +158,7 @@ class EconomyService:
             if stock.quantity != 0
         ]
         if not stock_rows:
-            ctx.say(f"{shop.name} has nothing for sale right now.")
+            ctx.say(f"{shop.name} has nothing for sale right now.", MessageType.WARNING)
             return
         lines = [f"{shop.name}:"]
         for stock in stock_rows:
@@ -171,11 +172,11 @@ class EconomyService:
 
     def buy(self, noun: str | None, ctx: GameContext) -> None:
         if not noun:
-            ctx.say("Buy what?")
+            ctx.say("Buy what?", MessageType.WARNING)
             return
         found = self._shop_here(ctx)
         if found is None:
-            ctx.say("There's no shop here.")
+            ctx.say("There's no shop here.", MessageType.WARNING)
             return
         shop, npc = found
         target = parse_item_target(noun)
@@ -190,20 +191,24 @@ class EconomyService:
                 candidates[item.id] = item
         item = self._best_match(target.query, list(candidates.values()))
         if item is None:
-            ctx.say(f"{shop.name} doesn't have that.")
+            ctx.say(f"{shop.name} doesn't have that.", MessageType.WARNING)
             return
         stock = repo.find_stock(shop.id, item.id)
         assert stock is not None
 
         quantity = target.quantity
         if stock.quantity >= 0 and stock.quantity < quantity:
-            ctx.say(f"{shop.name} doesn't have {quantity} of that.")
+            ctx.say(
+                f"{shop.name} doesn't have {quantity} of that.", MessageType.WARNING
+            )
             return
 
         price_each = self.buy_price(ctx, shop, npc.id, item, stock=stock)
         total_price = price_each * quantity
         if self.ledger.balance_of(ctx.session, "player", ctx.player.id) < total_price:
-            ctx.say(f"You can't afford that ({total_price} coins).")
+            ctx.say(
+                f"You can't afford that ({total_price} coins).", MessageType.WARNING
+            )
             return
 
         try:
@@ -218,7 +223,9 @@ class EconomyService:
                 ],
             )
         except ConflictError:
-            ctx.say(f"You can't afford that ({total_price} coins).")
+            ctx.say(
+                f"You can't afford that ({total_price} coins).", MessageType.WARNING
+            )
             return
 
         ctx.item_location.spawn(item.id, Location("player", ctx.player.id), quantity)
@@ -239,11 +246,11 @@ class EconomyService:
 
     def sell(self, noun: str | None, ctx: GameContext) -> None:
         if not noun:
-            ctx.say("Sell what?")
+            ctx.say("Sell what?", MessageType.WARNING)
             return
         found = self._shop_here(ctx)
         if found is None:
-            ctx.say("There's no shop here.")
+            ctx.say("There's no shop here.", MessageType.WARNING)
             return
         shop, npc = found
         target = parse_item_target(noun)
@@ -255,14 +262,14 @@ class EconomyService:
                 owned[item.id] = item
         item = self._best_match(target.query, list(owned.values()))
         if item is None:
-            ctx.say("You don't have that.")
+            ctx.say("You don't have that.", MessageType.WARNING)
             return
 
         if not item.tradeable or item.bound:
-            ctx.say(f"{shop.name} won't buy that.")
+            ctx.say(f"{shop.name} won't buy that.", MessageType.WARNING)
             return
         if not shop.buys_categories or item.category not in shop.buys_categories:
-            ctx.say(f"{shop.name} isn't interested in that.")
+            ctx.say(f"{shop.name} isn't interested in that.", MessageType.WARNING)
             return
 
         stack = next(
@@ -278,7 +285,9 @@ class EconomyService:
         total_price = price_each * quantity
 
         if self.ledger.balance_of(ctx.session, "shop", shop.id) < total_price:
-            ctx.say(f"{shop.name} can't afford to buy that right now.")
+            ctx.say(
+                f"{shop.name} can't afford to buy that right now.", MessageType.WARNING
+            )
             return
 
         assert stack.id is not None
@@ -314,7 +323,7 @@ class EconomyService:
 
     def appraise(self, noun: str | None, ctx: GameContext) -> None:
         if not noun:
-            ctx.say("Appraise what?")
+            ctx.say("Appraise what?", MessageType.WARNING)
             return
         candidates: dict[str, Item] = {}
         for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
@@ -325,7 +334,7 @@ class EconomyService:
             candidates[item.id] = item
         item = self._best_match(noun, list(candidates.values()))
         if item is None:
-            ctx.say("You don't see that.")
+            ctx.say("You don't see that.", MessageType.WARNING)
             return
         quality_mult = QUALITY_MULTIPLIERS.get(item.quality, 1.0)
         estimated = round(item.value * quality_mult)
