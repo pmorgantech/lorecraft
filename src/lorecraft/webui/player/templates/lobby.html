@@ -29,16 +29,17 @@
 
         <!-- Tabs -->
         <div class="flex border-b border-zinc-800 mb-6">
-            <button @click="tab = 'join'"
+            <button @click="tab = 'join'; $nextTick(() => document.getElementById('enter-username')?.focus())"
                     :class="tab === 'join' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-zinc-500'"
                     class="px-6 py-3 text-sm font-medium transition-colors">Log In</button>
-            <button @click="tab = 'create'"
+            <button @click="tab = 'create'; $nextTick(() => document.getElementById('username')?.focus())"
                     :class="tab === 'create' ? 'border-b-2 border-emerald-500 text-emerald-400' : 'text-zinc-500'"
                     class="px-6 py-3 text-sm font-medium transition-colors">Create New Character</button>
         </div>
 
         <!-- LOG IN -->
-        <div class="space-y-4 max-w-md" x-show="tab === 'join'" @show.window="$nextTick(() => document.getElementById('enter-username')?.focus())">
+        <div class="space-y-4 max-w-md" x-show="tab === 'join'"
+             x-init="if (tab === 'join') $nextTick(() => document.getElementById('enter-username')?.focus())">
             <h2 class="text-xl font-semibold mb-4">Log In</h2>
             <form method="post" action="/lobby/enter" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
                 <div>
@@ -63,7 +64,8 @@
         </div>
 
         <!-- CREATE CHARACTER -->
-        <div class="space-y-4 max-w-md" x-show="tab === 'create'" @show.window="$nextTick(() => document.getElementById('username')?.focus())"
+        <div class="space-y-4 max-w-md" x-show="tab === 'create'"
+             x-init="if (tab === 'create') $nextTick(() => document.getElementById('username')?.focus())"
              x-data="{
                 uname: '{{ form_username | e }}',
                 pw: '',

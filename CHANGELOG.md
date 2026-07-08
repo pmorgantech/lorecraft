@@ -2,6 +2,15 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.48.2] - 2026-07-08
+
+### Fixed
+
+- **Lobby autofocus on tab switch.** Alpine's `x-show` does not dispatch a `show` event, so the
+  previous `@show.window` focus listeners never ran after clicking Log In / Create New Character
+  (focus stayed on `<body>`). Focus is now triggered from each tab button's `@click` via
+  `$nextTick`, with `x-init` covering the initial server-rendered tab.
+
 ## [0.48.1] - 2026-07-08
 
 ### Fixed
