@@ -1256,3 +1256,71 @@ async def _test_minimap_partial_with_visited_rooms() -> None:
 
     assert status == 200
     # Should render minimap with map data
+
+
+def test_quest_tracker_partial_renders_for_valid_player() -> None:
+    anyio.run(_test_quest_tracker_partial_renders_for_valid_player)
+
+
+async def _test_quest_tracker_partial_renders_for_valid_player() -> None:
+    """Verify /partials/quest-tracker renders (empty tracker is a valid state).
+
+    This route is only driven by a scheduler-side QuestTimerService push, so it
+    had no integration coverage — only an e2e browser assertion. Pin that it
+    resolves the player and renders 200 even with no active quests.
+    """
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        status, html = await _http_get(
+            app, "/partials/quest-tracker", cookies={"player_id": "player-1"}
+        )
+
+    assert status == 200
+
+
+def test_map_full_partial_with_visited_rooms() -> None:
+    anyio.run(_test_map_full_partial_with_visited_rooms)
+
+
+async def _test_map_full_partial_with_visited_rooms() -> None:
+    """Verify /partials/map-full renders the full-screen map modal.
+
+    The full-map modal route (cartography-gated reveal of known-but-unvisited
+    rooms) had no integration coverage. Mirror the minimap test: seed visited
+    rooms and assert the modal renders.
+    """
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            if player:
+                player.visited_rooms = ["village_square", "market_stalls"]
+                db.add(player)
+                db.commit()
+
+        status, html = await _http_get(
+            app, "/partials/map-full", cookies={"player_id": "player-1"}
+        )
+
+    assert status == 200
+    # Should render the full-screen map modal with map data

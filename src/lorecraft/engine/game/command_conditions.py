@@ -7,6 +7,7 @@ without touching core engine code.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -15,6 +16,8 @@ from lorecraft.engine.game.holders import Location
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,10 @@ class CommandConditionRegistry:
         try:
             return handler(parameter, ctx)
         except Exception:
+            # A buggy predicate must not crash command dispatch, but the
+            # failure has to leave a trace — otherwise the command silently
+            # becomes unavailable with a generic message and no diagnostics.
+            log.exception("command_condition_failed condition=%s", name)
             return ConditionResult(False, "Condition evaluation error.")
 
     def __contains__(self, condition_name: str) -> bool:

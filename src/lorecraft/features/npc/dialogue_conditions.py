@@ -7,6 +7,7 @@ dialogue conditions without touching dialogue.py.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,8 @@ from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
+
+log = logging.getLogger(__name__)
 
 ConditionPredicate = Callable[[JsonObject, "GameContext"], bool]
 
@@ -50,6 +53,10 @@ class ConditionRegistry:
                 if not predicate(condition_data, ctx):  # type: ignore[arg-type]
                     return False
             except Exception:
+                # Degrade to "hidden" so a buggy predicate can't expose a
+                # choice/exit it shouldn't — but log it, otherwise the option
+                # silently vanishes from the dialogue with no way to diagnose.
+                log.exception("dialogue_condition_failed condition=%s", condition_name)
                 return False
         return True
 
