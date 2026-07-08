@@ -413,6 +413,21 @@ def create_app(
             await websocket.close(code=1008, reason="Invalid or expired ticket")
             return
 
+        # Enforce a single live connection per player. A second browser/tab
+        # logging in as an already-connected player is rejected here rather
+        # than silently booting the first: the old behaviour (boot the DB
+        # session + overwrite the connection slot) left the first tab's socket
+        # orphaned but open, and the client's auto-reconnect turned it into a
+        # boot war between the two tabs — the "HERE NOW out of sync" symptom.
+        # Legitimate reconnection after a real drop is unaffected: the dropped
+        # socket is already gone from the manager (see the WebSocketDisconnect
+        # handler's manager.disconnect), so is_connected is False and the grace
+        # period resume path below runs instead.
+        if state.manager.is_connected(player_id):
+            await websocket.accept()
+            await websocket.close(code=1008, reason="already_connected")
+            return
+
         with (
             Session(state.game_engine) as game_session,
             Session(state.audit_engine) as audit_session,

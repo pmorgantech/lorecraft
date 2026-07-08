@@ -2,6 +2,23 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.5] - 2026-07-08
+
+### Fixed
+
+- **A second live connection for an already-connected player is now rejected instead of
+  silently booting the first.** The `/ws` handshake used to call `boot_active_session` +
+  overwrite the connection slot when a player who was already connected opened a second
+  browser/tab. That left the first tab's socket orphaned but open, and the client's
+  auto-reconnect turned it into a boot war between the two tabs — the "HERE NOW out of sync"
+  symptom where two browsers were both logged in as the same player. Now the handshake
+  checks the live `ConnectionManager`: if the player already has a live socket, the new
+  connection is closed with code `1008 ("already_connected")` and left untouched. Legitimate
+  reconnection after a real drop is unaffected (the dropped socket is already gone from the
+  manager, so the grace-period resume path runs). The client (`static/js/app.js`) now treats
+  a `1008` close as terminal — it stops reconnecting and returns to `/lobby` rather than
+  flapping. Regression test in `tests/integration/test_player_authentication.py`.
+
 ## [0.46.4] - 2026-07-08
 
 ### Fixed

@@ -92,11 +92,30 @@
       handleWebSocketMessage(data);
     };
 
-    ws.onclose = function () {
-      console.log("[Lorecraft] WebSocket disconnected");
+    ws.onclose = function (event) {
+      console.log(
+        "[Lorecraft] WebSocket disconnected",
+        event.code,
+        event.reason,
+      );
       wsReady = false;
       const statusDot = document.querySelector(".w-2.h-2.rounded-full");
       if (statusDot) statusDot.classList.remove("bg-emerald-500");
+
+      // 1008 (policy violation) is the server rejecting this session outright:
+      // an invalid/expired ticket, an unknown player, or — the case this
+      // guards — this player is already connected in another tab/browser.
+      // Reconnecting would just flap (and, for a duplicate login, fight the
+      // other tab), so stop and send the user back to the lobby instead.
+      if (event.code === 1008) {
+        console.log(
+          "[Lorecraft] Session rejected (",
+          event.reason,
+          "); returning to lobby",
+        );
+        window.location.href = "/lobby";
+        return;
+      }
 
       // Reconnect with backoff
       if (reconnectAttempts < MAX_RECONNECT) {

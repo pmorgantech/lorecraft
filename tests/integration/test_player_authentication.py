@@ -665,6 +665,90 @@ def test_concurrent_session_boots_old_session() -> None:
         assert player_repo.active_session(player.id) is None
 
 
+def _ws_scope(ticket: str) -> dict[str, Any]:
+    return {
+        "type": "websocket",
+        "asgi": {"version": "3.0", "spec_version": "2.4"},
+        "scheme": "ws",
+        "path": "/ws",
+        "raw_path": b"/ws",
+        "query_string": f"ticket={ticket}".encode(),
+        "headers": [],
+        "client": ("testclient", 50000),
+        "server": ("testserver", 80),
+        "subprotocols": [],
+        "state": {},
+    }
+
+
+def test_second_live_connection_for_same_player_is_rejected() -> None:
+    """A second browser/tab connecting as an already-live player is rejected
+    with close code 1008 ('already_connected') rather than booting the first
+    (which used to orphan the first tab's socket and start a reconnect war —
+    the 'HERE NOW out of sync' bug)."""
+    anyio.run(_test_second_live_connection_for_same_player_is_rejected)
+
+
+async def _test_second_live_connection_for_same_player_is_rejected() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_NO_LEGACY_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        _, login_data = await _http(
+            app,
+            "POST",
+            "/auth/login",
+            body={"username": "twobrowsers", "password": "Hunter2pw"},
+        )
+
+        async def mint_ticket() -> str:
+            _, ticket_data = await _http(
+                app, "POST", "/auth/ws-ticket", token=login_data["access_token"]
+            )
+            return ticket_data["ws_ticket"]
+
+        ticket_first = await mint_ticket()
+        ticket_second = await mint_ticket()
+
+        # First connection: kept live via a receive stream we control, so it is
+        # still registered in the ConnectionManager when the second connects.
+        first_messages: list[AsgiMessage] = []
+        recv_tx, recv_rx = anyio.create_memory_object_stream[AsgiMessage](16)
+        connected = anyio.Event()
+
+        async def first_receive() -> AsgiMessage:
+            return await recv_rx.receive()
+
+        async def first_send(message: AsgiMessage) -> None:
+            first_messages.append(message)
+            if message["type"] == "websocket.send":
+                if json.loads(message["text"]).get("type") == "connected":
+                    connected.set()
+
+        second_messages: list[AsgiMessage] = []
+        async with anyio.create_task_group() as tg, recv_tx, recv_rx:
+            tg.start_soon(app, _ws_scope(ticket_first), first_receive, first_send)
+            await recv_tx.send({"type": "websocket.connect"})
+            with anyio.fail_after(5):
+                await connected.wait()
+
+            # Second connection while the first is still live → rejected.
+            second_messages = await _run_websocket(
+                app,
+                query_string=f"ticket={ticket_second}".encode(),
+                incoming=[{"type": "websocket.connect"}],
+            )
+
+            # Tear the first connection down so the task group can exit.
+            await recv_tx.send({"type": "websocket.disconnect", "code": 1000})
+
+    closes = [m for m in second_messages if m["type"] == "websocket.close"]
+    assert len(closes) == 1
+    assert closes[0]["code"] == 1008
+    assert closes[0].get("reason") == "already_connected"
+
+
 # ---------------------------------------------------------------------------
 # POST /auth/oauth/{provider}/callback (Sprint 4.7 extensibility stub)
 # ---------------------------------------------------------------------------
