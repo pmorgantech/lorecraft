@@ -226,6 +226,13 @@ graphify-out/
 
 # Do not commit the test dbs for now - these are seeded from import scripts
 test_dbs/
+
+# Runtime SQLite databases + WAL/SHM sidecars. The default config paths
+# (LORECRAFT_DB_PATH=game.db, LORECRAFT_AUDIT_DB_PATH=audit.db) drop these in
+# the repo root on any run; they are runtime state, never source.
+*.db
+*.db-wal
+*.db-shm
 .claude
 !.claude/
 !.claude/skills/

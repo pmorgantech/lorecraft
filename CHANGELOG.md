@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.48.1] - 2026-07-08
+
+### Fixed
+
+- **Stop tracking runtime SQLite databases.** `game.db` and `audit.db` (the default
+  `LORECRAFT_DB_PATH` / `LORECRAFT_AUDIT_DB_PATH` paths, created in the repo root on any run) had
+  been committed and were churning on every server start. Untracked via `git rm --cached` (working
+  copies left in place) and `.gitignore` now ignores `*.db` plus the `*.db-wal` / `*.db-shm` WAL
+  sidecars.
+
 ## [0.48.0] - 2026-07-08 — Sprint 56 complete
 
 ### Changed
