@@ -17,7 +17,7 @@ from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.services.audit import AuditService
-from lorecraft.observability import time_operation
+from lorecraft.observability import record_span, time_operation
 from lorecraft.types import JsonObject, JsonValue
 
 log = logging.getLogger(__name__)
@@ -143,10 +143,12 @@ class CommandEngine:
             command.handler(parsed.noun, ctx)
         except Exception as exc:
             duration_ms = (time.perf_counter() - start) * 1000
+            record_span("command_handler", duration_ms)
             log.exception("command_handler_crashed verb=%s", parsed.verb)
             self._rollback(ctx, parsed, exc, duration_ms)
             return None
         duration_ms = (time.perf_counter() - start) * 1000
+        record_span("command_handler", duration_ms)
         # flush_events() runs handlers (e.g. QuestService.check_progression) that
         # mutate ctx.session further — it must run before the one commit, or those
         # mutations are silently discarded when the request's session closes

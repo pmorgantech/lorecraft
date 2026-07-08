@@ -8,9 +8,12 @@ import time
 import pytest
 
 from lorecraft.observability import (
+    _TRACE_BUFFER_MAX,
     _TransactionLogFilter,
     bind_transaction_context,
     configure_logging,
+    get_trace,
+    record_span,
     time_operation,
 )
 
@@ -107,6 +110,42 @@ def test_time_operation_reraises_and_still_logs_on_exception(
     records = _perf_records(caplog)
     assert len(records) == 1
     assert "name=boom" in records[0].getMessage()
+
+
+def test_record_span_is_noop_outside_bound_context() -> None:
+    """Nothing to key the span to without a bound transaction — must not raise."""
+    record_span("orphan", 1.0)
+
+
+def test_record_span_and_get_trace_round_trip() -> None:
+    with bind_transaction_context("txn-trace-1", "corr-trace-1"):
+        record_span("step_a", 1.5)
+        record_span("step_b", 2.5)
+    spans = get_trace("txn-trace-1")
+    assert spans is not None
+    assert [s.name for s in spans] == ["step_a", "step_b"]
+    assert spans[0].duration_ms == 1.5
+
+
+def test_time_operation_records_a_span_automatically() -> None:
+    with bind_transaction_context("txn-trace-2", "corr-trace-2"):
+        with time_operation("op", warn_ms=1000.0):
+            pass
+    spans = get_trace("txn-trace-2")
+    assert spans is not None
+    assert spans[-1].name == "op"
+
+
+def test_get_trace_returns_none_for_unknown_transaction() -> None:
+    assert get_trace("never-seen-txn-id") is None
+
+
+def test_trace_buffer_evicts_oldest_transaction_past_capacity() -> None:
+    for i in range(_TRACE_BUFFER_MAX + 5):
+        with bind_transaction_context(f"txn-evict-{i}", "corr"):
+            record_span("op", 0.1)
+    assert get_trace("txn-evict-0") is None
+    assert get_trace(f"txn-evict-{_TRACE_BUFFER_MAX + 4}") is not None
 
 
 def test_configure_logging_is_idempotent() -> None:

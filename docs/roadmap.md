@@ -11,15 +11,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-08, v0.46.3)
+## Where things stand (2026-07-08, v0.47.0, local `develop` branch)
 
-**Sprint 56 (56.1–56.4 done, 56.5 partial) is implemented; Sprint 57 is drafted, not started.**
-Everything through **Sprint 55** is complete and merged to local `main`. Foundation, the Tier 1
-engine-core primitives, the full Tier 2 pillar feature band (exploration · trading · questing ·
-puzzles, plus inventory/equipment, traits/skills, character condition, transit), the tier-split
-refactor, the performance/WAL band, and the recent content/UX band (timed room effects, chat/feed
-split → global channels, marks, celestial cycles, context-attached commands) have all shipped. See
-[`roadmap_completed.md`](roadmap_completed.md).
+**Sprint 56 (56.1–56.4 done, 56.5 partial) and Sprint 57 (all tasks, complete) are implemented on
+`develop`, not yet merged to `main`.** Everything through **Sprint 55** is complete and merged to
+local `main`. Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar feature band
+(exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
+condition, transit), the tier-split refactor, the performance/WAL band, and the recent content/UX
+band (timed room effects, chat/feed split → global channels, marks, celestial cycles, context-attached
+commands) have all shipped. See [`roadmap_completed.md`](roadmap_completed.md).
 
 **Sprint 56** (structured output-type tagging) and **Sprint 57** (request tracing & crash reports)
 are scoped below — an observability/output-infra pair identified 2026-07-08 comparing Lorecraft
@@ -77,11 +77,11 @@ whatever hits stdout.
 
 | # | Task | Status |
 |---|------|--------|
-| 57.1 | Trace buffer: within `bind_transaction_context()`'s scope, collect an ordered list of trace spans (condition evaluations, event dispatches, DB commits — reusing `time_operation`'s existing timing) keyed by `transaction_id`. In-memory ring buffer over the last N commands — not persisted, matching the "measure, don't over-build" caution already applied to the deferred concurrency work. | [ ] |
-| 57.2 | `GET /admin/trace/<transaction_id>` — returns the captured spans for one recent command (404 once it's aged out of the ring buffer). | [ ] |
-| 57.3 | Crash capture: a handler at both command entry points (`main.py`'s `/ws` loop, `web/frontend.py`'s `POST /command`) that, on an unhandled exception, persists a `CrashReport` row (transaction_id, correlation_id, player_id, command text, stack trace, timestamp) to the audit DB and returns a friendly in-game error instead of a raw disconnect/500. | [ ] |
-| 57.4 | `GET /admin/crashes` (list) + `GET /admin/crashes/<id>` (detail) endpoints and a Crash Reports tab in the admin console, reusing the Audit tab's table/detail pattern. | [ ] |
-| 57.5 | Document both features (usage, endpoints, retention) in [`observability.md`](observability.md) and cross-link from the admin guide's Troubleshooting section. | [ ] |
+| 57.1 | Trace buffer: within `bind_transaction_context()`'s scope, collect an ordered list of trace spans (condition evaluations, event dispatches, DB commits — reusing `time_operation`'s existing timing) keyed by `transaction_id`. In-memory ring buffer over the last N commands — not persisted, matching the "measure, don't over-build" caution already applied to the deferred concurrency work. | [x] `observability.py`'s `TraceSpan`/`record_span`/`get_trace` + a 200-entry `OrderedDict` ring buffer; `time_operation()` records automatically, `EventBus.emit()` and the command-handler dispatch call `record_span()` directly since they already compute their own timing. |
+| 57.2 | `GET /admin/trace/<transaction_id>` — returns the captured spans for one recent command (404 once it's aged out of the ring buffer). | [x] `webui/admin/routers/observability.py`. |
+| 57.3 | Crash capture: a handler at both command entry points (`main.py`'s `/ws` loop, `web/frontend.py`'s `POST /command`) that, on an unhandled exception, persists a `CrashReport` row (transaction_id, correlation_id, player_id, command text, stack trace, timestamp) to the audit DB and returns a friendly in-game error instead of a raw disconnect/500. | [x] New `CrashReport` model (`engine/models/audit.py`) + `engine/services/crash_reports.record_crash()` (rolls back both sessions first so a crash report never smuggles in unrelated pending writes); both entry points wrap their command-processing body in try/except. |
+| 57.4 | `GET /admin/crashes` (list) + `GET /admin/crashes/<id>` (detail) endpoints and a Crash Reports tab in the admin console, reusing the Audit tab's table/detail pattern. | [x] Endpoints in `observability.py`; admin console gets a list-table + detail-panel layout (mirrors the World tab's room-list/room-editor split) wired into `TAB_LOADERS`. |
+| 57.5 | Document both features (usage, endpoints, retention) in [`observability.md`](observability.md) and cross-link from the admin guide's Troubleshooting section. | [x] |
 
 ---
 

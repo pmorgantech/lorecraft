@@ -1149,3 +1149,172 @@ async def _test_analytics_invalid_range() -> None:
         )
         assert status == 400
         assert "detail" in data
+
+
+# ---------------------------------------------------------------------------
+# Request tracing (Sprint 57.2)
+# ---------------------------------------------------------------------------
+
+
+def test_trace_endpoint_returns_404_for_unknown_transaction() -> None:
+    anyio.run(_test_trace_unknown)
+
+
+async def _test_trace_unknown() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, _data = await _http(
+            app, "GET", "/admin/trace/never-seen-txn-id", token=token
+        )
+        assert status == 404
+
+
+def test_trace_endpoint_returns_captured_spans() -> None:
+    anyio.run(_test_trace_returns_spans)
+
+
+async def _test_trace_returns_spans() -> None:
+    from lorecraft.observability import bind_transaction_context, record_span
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    with bind_transaction_context("txn-admin-trace-1", "corr-admin-trace-1"):
+        record_span("command_parse", 1.25)
+        record_span("db_commit", 2.5)
+    async with _lifespan(app):
+        status, data = await _http(
+            app, "GET", "/admin/trace/txn-admin-trace-1", token=token
+        )
+        assert status == 200
+        assert [span["name"] for span in data] == ["command_parse", "db_commit"]
+        assert data[0]["duration_ms"] == 1.25
+
+
+def test_trace_endpoint_requires_auth() -> None:
+    anyio.run(_test_trace_requires_auth)
+
+
+async def _test_trace_requires_auth() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        status, _data = await _http(app, "GET", "/admin/trace/anything")
+        assert status in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# Crash reports (Sprint 57.4)
+# ---------------------------------------------------------------------------
+
+
+def _seed_crash(audit_engine: Any, **overrides: Any) -> None:
+    from lorecraft.engine.models.audit import CrashReport
+
+    defaults: dict[str, Any] = {
+        "transaction_id": "txn-crash-1",
+        "correlation_id": "corr-crash-1",
+        "player_id": "player-1",
+        "command_text": "go north",
+        "stack_trace": "Traceback (most recent call last):\nRuntimeError: boom",
+        "real_time": time.time(),
+    }
+    defaults.update(overrides)
+    with Session(audit_engine) as session:
+        session.add(CrashReport(**defaults))
+        session.commit()
+
+
+def test_list_crashes_returns_empty_with_no_data() -> None:
+    anyio.run(_test_list_crashes_empty)
+
+
+async def _test_list_crashes_empty() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/crashes", token=token)
+        assert status == 200
+        assert data == []
+
+
+def test_list_crashes_returns_seeded_summary() -> None:
+    anyio.run(_test_list_crashes_seeded)
+
+
+async def _test_list_crashes_seeded() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    _seed_crash(audit_engine)
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/crashes", token=token)
+        assert status == 200
+        assert len(data) == 1
+        assert data[0]["player_id"] == "player-1"
+        assert data[0]["command_text"] == "go north"
+        # List view is a summary — stack_trace is only on the detail endpoint.
+        assert "stack_trace" not in data[0]
+
+
+def test_get_crash_returns_full_detail() -> None:
+    anyio.run(_test_get_crash_detail)
+
+
+async def _test_get_crash_detail() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    _seed_crash(audit_engine)
+    token = _access_token()
+    async with _lifespan(app):
+        status, listed = await _http(app, "GET", "/admin/crashes", token=token)
+        crash_id = listed[0]["id"]
+        status, data = await _http(
+            app, "GET", f"/admin/crashes/{crash_id}", token=token
+        )
+        assert status == 200
+        assert "RuntimeError: boom" in data["stack_trace"]
+
+
+def test_get_crash_returns_404_for_unknown_id() -> None:
+    anyio.run(_test_get_crash_unknown)
+
+
+async def _test_get_crash_unknown() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, _data = await _http(app, "GET", "/admin/crashes/999999", token=token)
+        assert status == 404
+
+
+def test_crashes_endpoint_requires_auth() -> None:
+    anyio.run(_test_crashes_requires_auth)
+
+
+async def _test_crashes_requires_auth() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        status, _data = await _http(app, "GET", "/admin/crashes")
+        assert status in (401, 403)

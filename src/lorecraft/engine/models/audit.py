@@ -25,3 +25,22 @@ class AuditEvent(SQLModel, table=True):
     severity: str = "INFO"
     summary: str
     payload_json: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+
+
+class CrashReport(SQLModel, table=True):
+    """An unhandled exception from either command entry point (Sprint 57.3).
+
+    Distinct from `AuditEvent`'s `COMMAND_FAILED`-style rows: those cover
+    *expected* failures a handler reports on purpose (a blocked command, a
+    rule violation); this covers the command pipeline itself blowing up —
+    a bug, not a game-rule outcome — captured with enough to reproduce it
+    (`command_text`, full `stack_trace`) without grepping server logs.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    transaction_id: str = Field(index=True)
+    correlation_id: str = Field(index=True)
+    player_id: str = Field(index=True)
+    command_text: str
+    stack_trace: str
+    real_time: float = Field(index=True)

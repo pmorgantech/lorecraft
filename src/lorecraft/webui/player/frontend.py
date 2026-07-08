@@ -20,6 +20,7 @@ from sqlmodel import Session as DBSession
 
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
+from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
 from lorecraft.features.npc.dialogue import _NPC_KEY, dialogue_panel_state
@@ -635,259 +636,286 @@ async def handle_command(
         transaction = TransactionContext.create(
             actor_id=player.id, correlation_id=session_id
         )
-        ctx = build_game_context(
-            game_db,
-            player,
-            room,
-            bus=get_bus(request),
-            manager=get_real_manager(request) or get_manager(),
-            transaction=transaction,
-            session_id=session_id,
-            rng=get_rng(request),
-            meters=get_meters(request),
-            effects=get_effects(request),
-            clock=room_repo.world_clock(),
-            audit_session=audit_db,
-            commit_state=game_db.commit,
-            commit_audit=audit_db.commit,
-            rollback_state=game_db.rollback,
-        )
-
-        command_text = resolve_command_text(raw, player.id, app_state, player.flags)
-        with bind_transaction_context(
-            transaction.transaction_id, transaction.correlation_id
-        ):
-            get_command_engine(request).handle_command(command_text, ctx)
-
-        disambig = ctx.updates.pop("disambig_pending", None)
-        if (
-            disambig is not None
-            and isinstance(disambig, dict)
-            and app_state is not None
-        ):
-            app_state.pending_disambig[player.id] = disambig
-
-        quest_changed = "quest_update" in ctx.updates
-
-        after_player = player_repo.get(player.id) or player
-        npc_repo = NpcRepo(game_db)
-        dialogue_repo = DialogueRepo(game_db)
-        dialogue_snapshot = dialogue_panel_state(
-            after_player.flags, npc_repo, dialogue_repo
-        )
-        had_dialogue = bool(player.flags.get(_NPC_KEY))
-        has_dialogue = dialogue_snapshot is not None
-        dialogue_changed = "dialogue" in ctx.updates or had_dialogue or has_dialogue
-        after_room = room_repo.get(after_player.current_room_id) or ctx.room
-        after_inv = _carried_snapshot(item_repo, after_player.id)
-
-        room_changed = after_player.current_room_id != pre_room_id
-        inv_changed = after_inv != pre_inv or "inventory" in ctx.updates
-        # Refresh room pane if items were taken/dropped/used (room_messages) or if the player moved
-        room_state_changed = bool(ctx.room_messages) or room_changed
-
-        room_panel = room_panel_context(
-            after_room,
-            room_repo,
-            item_repo,
-            after_player,
-            npc_repo=npc_repo,
-        )
-        map_data = build_map_data(room_repo, after_player, after_room)
-
-        # Only emit what this command produced this turn.
-        # No manual raw-echo + no re-pulling old audits here (prevents duplicate
-        # "player-1 : xxx" and history leaking into the current feed append).
-        feed_msgs: list[dict] = []
-        ts = time.strftime("%H:%M", time.localtime())
-
-        for m in ctx.messages:
-            feed_msgs.append(
-                {
-                    "id": f"msg-{session_id}-{len(feed_msgs)}",
-                    "timestamp": ts,
-                    "actor": None,
-                    "text": m,
-                    "type": "narrative",
-                    # Sprint 56: the semantic type from ctx.say(), kept as a
-                    # separate field from `type` above (which drives the
-                    # pre-existing player_action/system/dialogue/narrative
-                    # styling) so existing rendering is unchanged; templates
-                    # add an additional msg-<msg_type> class opt-in.
-                    "msg_type": m.type.value,
-                }
-            )
-
-        # Chat channel (Sprint 45 split, Sprint 52 channels): the actor's own
-        # chat echo, tagged so the client can route it to the chat pane when
-        # separate_chat is on and style it per channel. With the preference
-        # off it renders in the single feed like before.
-        for echo in ctx.chat_echoes:
-            feed_msgs.append(
-                {
-                    "id": f"msg-{session_id}-{len(feed_msgs)}",
-                    "timestamp": ts,
-                    "actor": None,
-                    "text": echo.text,
-                    "type": "chat",
-                    "channel": echo.channel,
-                }
-            )
-
-        disconnect_requested = bool(getattr(ctx, "updates", {}).get("disconnect"))
-
-        new_inv = inventory_snapshot(after_player, item_repo)
-
-        result = CommandResult(
-            new_feed_messages=feed_msgs,
-            room_changed=room_state_changed,
-            new_room=after_room,
-            inventory_changed=inv_changed,
-            new_inventory=new_inv,
-            minimap_changed=room_changed,
-            exits=room_panel["exits"],
-            player_id=after_player.id,
-            dialogue=dialogue_snapshot,
-            dialogue_changed=dialogue_changed,
-            quest_changed=quest_changed,
-        )
-
-        feed_html = templates.get_template("partials/feed_items.html").render(
-            feed_messages=result.new_feed_messages,
-            current_player=after_player,
-        )
-
-        response_html = feed_html
-
-        if room_state_changed and result.new_room:
-            room_html = templates.get_template("partials/room_description.html").render(
-                current_room=result.new_room,
-                current_player=after_player,
-                **room_panel_context(
-                    result.new_room,
-                    room_repo,
-                    item_repo,
-                    after_player,
-                    npc_repo=NpcRepo(game_db),
-                ),
-            )
-            response_html += mark_oob_swap(room_html, "room-description")
-
-        if result.inventory_changed:
-            inv_html = templates.get_template("partials/inventory.html").render(
-                inventory=result.new_inventory,
-                current_player=after_player,
-                encumbrance=encumbrance_snapshot_for(
-                    game_db, player_repo, after_player.id
-                ),
-            )
-            response_html += mark_oob_swap(inv_html, "inventory")
-
-        if result.minimap_changed:
-            map_html = templates.get_template("partials/minimap.html").render(
-                current_room=after_room,
-                current_player=after_player,
-                **room_panel,
-                **map_data,
-            )
-            response_html += f'<div id="minimap" hx-swap-oob="true">{map_html}</div>'
-
-        if result.dialogue_changed:
-            dialogue_html = templates.get_template("partials/dialogue.html").render(
-                dialogue=result.dialogue,
-                request=request,
-            )
-            response_html += mark_oob_swap(dialogue_html, "dialogue-overlay")
-
-        if result.quest_changed:
-            quest_repo = QuestRepo(game_db)
-            quest_html = templates.get_template("partials/quest_tracker.html").render(
-                active_quests=active_quests_snapshot(after_player, quest_repo),
-            )
-            response_html += mark_oob_swap(quest_html, "quest-tracker")
-
         try:
-            players_html = templates.get_template(
-                "partials/players_online.html"
-            ).render(
-                players_here=players_here(
-                    after_player,
-                    after_player.current_room_id,
-                    get_real_manager(request),
-                    player_repo,
-                ),
+            ctx = build_game_context(
+                game_db,
+                player,
+                room,
+                bus=get_bus(request),
+                manager=get_real_manager(request) or get_manager(),
+                transaction=transaction,
+                session_id=session_id,
+                rng=get_rng(request),
+                meters=get_meters(request),
+                effects=get_effects(request),
+                clock=room_repo.world_clock(),
+                audit_session=audit_db,
+                commit_state=game_db.commit,
+                commit_audit=audit_db.commit,
+                rollback_state=game_db.rollback,
+            )
+
+            command_text = resolve_command_text(raw, player.id, app_state, player.flags)
+            with bind_transaction_context(
+                transaction.transaction_id, transaction.correlation_id
+            ):
+                get_command_engine(request).handle_command(command_text, ctx)
+
+            disambig = ctx.updates.pop("disambig_pending", None)
+            if (
+                disambig is not None
+                and isinstance(disambig, dict)
+                and app_state is not None
+            ):
+                app_state.pending_disambig[player.id] = disambig
+
+            quest_changed = "quest_update" in ctx.updates
+
+            after_player = player_repo.get(player.id) or player
+            npc_repo = NpcRepo(game_db)
+            dialogue_repo = DialogueRepo(game_db)
+            dialogue_snapshot = dialogue_panel_state(
+                after_player.flags, npc_repo, dialogue_repo
+            )
+            had_dialogue = bool(player.flags.get(_NPC_KEY))
+            has_dialogue = dialogue_snapshot is not None
+            dialogue_changed = "dialogue" in ctx.updates or had_dialogue or has_dialogue
+            after_room = room_repo.get(after_player.current_room_id) or ctx.room
+            after_inv = _carried_snapshot(item_repo, after_player.id)
+
+            room_changed = after_player.current_room_id != pre_room_id
+            inv_changed = after_inv != pre_inv or "inventory" in ctx.updates
+            # Refresh room pane if items were taken/dropped/used (room_messages) or if the player moved
+            room_state_changed = bool(ctx.room_messages) or room_changed
+
+            room_panel = room_panel_context(
+                after_room,
+                room_repo,
+                item_repo,
+                after_player,
+                npc_repo=npc_repo,
+            )
+            map_data = build_map_data(room_repo, after_player, after_room)
+
+            # Only emit what this command produced this turn.
+            # No manual raw-echo + no re-pulling old audits here (prevents duplicate
+            # "player-1 : xxx" and history leaking into the current feed append).
+            feed_msgs: list[dict] = []
+            ts = time.strftime("%H:%M", time.localtime())
+
+            for m in ctx.messages:
+                feed_msgs.append(
+                    {
+                        "id": f"msg-{session_id}-{len(feed_msgs)}",
+                        "timestamp": ts,
+                        "actor": None,
+                        "text": m,
+                        "type": "narrative",
+                        # Sprint 56: the semantic type from ctx.say(), kept as a
+                        # separate field from `type` above (which drives the
+                        # pre-existing player_action/system/dialogue/narrative
+                        # styling) so existing rendering is unchanged; templates
+                        # add an additional msg-<msg_type> class opt-in.
+                        "msg_type": m.type.value,
+                    }
+                )
+
+            # Chat channel (Sprint 45 split, Sprint 52 channels): the actor's own
+            # chat echo, tagged so the client can route it to the chat pane when
+            # separate_chat is on and style it per channel. With the preference
+            # off it renders in the single feed like before.
+            for echo in ctx.chat_echoes:
+                feed_msgs.append(
+                    {
+                        "id": f"msg-{session_id}-{len(feed_msgs)}",
+                        "timestamp": ts,
+                        "actor": None,
+                        "text": echo.text,
+                        "type": "chat",
+                        "channel": echo.channel,
+                    }
+                )
+
+            disconnect_requested = bool(getattr(ctx, "updates", {}).get("disconnect"))
+
+            new_inv = inventory_snapshot(after_player, item_repo)
+
+            result = CommandResult(
+                new_feed_messages=feed_msgs,
+                room_changed=room_state_changed,
+                new_room=after_room,
+                inventory_changed=inv_changed,
+                new_inventory=new_inv,
+                minimap_changed=room_changed,
+                exits=room_panel["exits"],
+                player_id=after_player.id,
+                dialogue=dialogue_snapshot,
+                dialogue_changed=dialogue_changed,
+                quest_changed=quest_changed,
+            )
+
+            feed_html = templates.get_template("partials/feed_items.html").render(
+                feed_messages=result.new_feed_messages,
                 current_player=after_player,
             )
-            response_html += mark_oob_swap(players_html, "players-online")
-        except Exception as e:
-            log.debug("players_template_render_failed: %s", str(e))
 
-        mgr = get_real_manager(request)
-        if mgr:
-            await broadcast_command_effects(mgr, ctx, pre_room_id=pre_room_id)
+            response_html = feed_html
 
-        final_resp = HTMLResponse(content=response_html)
-        if disconnect_requested:
-            active_session = player_repo.active_session(after_player.id)
-            if active_session is not None:
-                SessionSafetyService(
-                    game_session=game_db,
-                    audit_session=audit_db,
-                    bus=get_bus(request),
-                    grace_seconds=grace_seconds,
-                ).begin_grace_period(active_session.id, after_player)
-                game_db.commit()
-                audit_db.commit()
-
-            if mgr and after_player.current_room_id:
-                room_id = after_player.current_room_id
-                # The "leaves the game." narration was already broadcast to the
-                # room by broadcast_command_effects() above (it drains
-                # ctx.room_messages) — don't re-broadcast it here or the room
-                # sees it twice.
-                try:
-                    await mgr.broadcast_to_room(
-                        room_id,
-                        {
-                            "type": "player_left",
-                            "player_id": after_player.id,
-                            "username": after_player.username,
-                            "presence": "grace",
-                        },
-                        exclude=after_player.id,
-                    )
-                    await mgr.broadcast_to_room(
-                        room_id,
-                        {
-                            "type": "state_change",
-                            "affected_panels": ["players-online"],
-                            "actor_id": after_player.id,
-                        },
-                        exclude=after_player.id,
-                    )
-                except Exception as e:
-                    log.debug("disconnect_broadcast_failed: %s", str(e))
-                # Terminate any follow involving the leaver and tell the still-
-                # connected other side (mirrors the involuntary-drop path in
-                # main.py's WS handler).
-                follow_service = (
-                    app_state.services.follow if app_state is not None else None
+            if room_state_changed and result.new_room:
+                room_html = templates.get_template(
+                    "partials/room_description.html"
+                ).render(
+                    current_room=result.new_room,
+                    current_player=after_player,
+                    **room_panel_context(
+                        result.new_room,
+                        room_repo,
+                        item_repo,
+                        after_player,
+                        npc_repo=NpcRepo(game_db),
+                    ),
                 )
-                if follow_service is not None:
+                response_html += mark_oob_swap(room_html, "room-description")
+
+            if result.inventory_changed:
+                inv_html = templates.get_template("partials/inventory.html").render(
+                    inventory=result.new_inventory,
+                    current_player=after_player,
+                    encumbrance=encumbrance_snapshot_for(
+                        game_db, player_repo, after_player.id
+                    ),
+                )
+                response_html += mark_oob_swap(inv_html, "inventory")
+
+            if result.minimap_changed:
+                map_html = templates.get_template("partials/minimap.html").render(
+                    current_room=after_room,
+                    current_player=after_player,
+                    **room_panel,
+                    **map_data,
+                )
+                response_html += (
+                    f'<div id="minimap" hx-swap-oob="true">{map_html}</div>'
+                )
+
+            if result.dialogue_changed:
+                dialogue_html = templates.get_template("partials/dialogue.html").render(
+                    dialogue=result.dialogue,
+                    request=request,
+                )
+                response_html += mark_oob_swap(dialogue_html, "dialogue-overlay")
+
+            if result.quest_changed:
+                quest_repo = QuestRepo(game_db)
+                quest_html = templates.get_template(
+                    "partials/quest_tracker.html"
+                ).render(
+                    active_quests=active_quests_snapshot(after_player, quest_repo),
+                )
+                response_html += mark_oob_swap(quest_html, "quest-tracker")
+
+            try:
+                players_html = templates.get_template(
+                    "partials/players_online.html"
+                ).render(
+                    players_here=players_here(
+                        after_player,
+                        after_player.current_room_id,
+                        get_real_manager(request),
+                        player_repo,
+                    ),
+                    current_player=after_player,
+                )
+                response_html += mark_oob_swap(players_html, "players-online")
+            except Exception as e:
+                log.debug("players_template_render_failed: %s", str(e))
+
+            mgr = get_real_manager(request)
+            if mgr:
+                await broadcast_command_effects(mgr, ctx, pre_room_id=pre_room_id)
+
+            final_resp = HTMLResponse(content=response_html)
+            if disconnect_requested:
+                active_session = player_repo.active_session(after_player.id)
+                if active_session is not None:
+                    SessionSafetyService(
+                        game_session=game_db,
+                        audit_session=audit_db,
+                        bus=get_bus(request),
+                        grace_seconds=grace_seconds,
+                    ).begin_grace_period(active_session.id, after_player)
+                    game_db.commit()
+                    audit_db.commit()
+
+                if mgr and after_player.current_room_id:
+                    room_id = after_player.current_room_id
+                    # The "leaves the game." narration was already broadcast to the
+                    # room by broadcast_command_effects() above (it drains
+                    # ctx.room_messages) — don't re-broadcast it here or the room
+                    # sees it twice.
                     try:
-                        await follow_service.break_on_disconnect(
-                            mgr, player_repo, after_player.id
+                        await mgr.broadcast_to_room(
+                            room_id,
+                            {
+                                "type": "player_left",
+                                "player_id": after_player.id,
+                                "username": after_player.username,
+                                "presence": "grace",
+                            },
+                            exclude=after_player.id,
+                        )
+                        await mgr.broadcast_to_room(
+                            room_id,
+                            {
+                                "type": "state_change",
+                                "affected_panels": ["players-online"],
+                                "actor_id": after_player.id,
+                            },
+                            exclude=after_player.id,
                         )
                     except Exception as e:
-                        log.debug("disconnect_follow_break_failed: %s", str(e))
-                try:
-                    await mgr.disconnect(after_player.id)
-                except Exception as e:
-                    log.debug("manager_disconnect_failed: %s", str(e))
+                        log.debug("disconnect_broadcast_failed: %s", str(e))
+                    # Terminate any follow involving the leaver and tell the still-
+                    # connected other side (mirrors the involuntary-drop path in
+                    # main.py's WS handler).
+                    follow_service = (
+                        app_state.services.follow if app_state is not None else None
+                    )
+                    if follow_service is not None:
+                        try:
+                            await follow_service.break_on_disconnect(
+                                mgr, player_repo, after_player.id
+                            )
+                        except Exception as e:
+                            log.debug("disconnect_follow_break_failed: %s", str(e))
+                    try:
+                        await mgr.disconnect(after_player.id)
+                    except Exception as e:
+                        log.debug("manager_disconnect_failed: %s", str(e))
 
-            clear_player_session_cookie(final_resp)
-            final_resp.headers["HX-Redirect"] = "/lobby"
-        return final_resp
+                clear_player_session_cookie(final_resp)
+                final_resp.headers["HX-Redirect"] = "/lobby"
+            return final_resp
+        except Exception as exc:
+            # Sprint 57.3: anything that escapes the command pipeline
+            # (as opposed to a handler exception, already caught and
+            # reported gracefully inside CommandEngine) previously
+            # produced a raw 500. Capture it and degrade to a friendly
+            # in-game error instead.
+            log.exception("unhandled_command_pipeline_exception")
+            game_db.rollback()
+            record_crash(
+                audit_db,
+                transaction_id=transaction.transaction_id,
+                correlation_id=transaction.correlation_id,
+                player_id=player.id,
+                command_text=raw,
+                exc=exc,
+            )
+            return HTMLResponse(
+                '<div class="msg system">Something went wrong processing that '
+                "command. It has been logged for review.</div>"
+            )
 
 
 # =============================================================================

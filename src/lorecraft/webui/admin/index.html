@@ -154,6 +154,7 @@
       <div class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</div>
       <div class="tab" data-tab="analytics"  onclick="showTab('analytics')">Analytics</div>
       <div class="tab" data-tab="audit"      onclick="showTab('audit')">Audit</div>
+      <div class="tab" data-tab="crashes"    onclick="showTab('crashes')">Crashes</div>
       <div class="tab" data-tab="world"      onclick="showTab('world')">World</div>
       <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
       <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
@@ -263,6 +264,26 @@
             <thead><tr><th>Time</th><th>Type</th><th>Actor</th><th>Room</th><th>Sev</th><th>Summary</th></tr></thead>
             <tbody id="audit-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Crashes (Sprint 57.4) -->
+      <div id="tab-crashes" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Crash Reports</h2>
+          <button onclick="loadCrashes()">↻ Refresh</button>
+        </div>
+        <div id="crashes-layout" style="display:flex;gap:1rem;min-height:0;flex:1;">
+          <div class="panel" style="flex:1;min-height:0;overflow:auto;">
+            <table>
+              <thead><tr><th>Time</th><th>Player</th><th>Command</th></tr></thead>
+              <tbody id="crashes-tbody"></tbody>
+            </table>
+          </div>
+          <div id="crash-detail-panel" class="panel" style="flex:1;min-height:0;overflow:auto;">
+            <h2>Select a crash</h2>
+            <p style="color:var(--text-dim);">Click a row to see its full stack trace.</p>
+          </div>
         </div>
       </div>
 
@@ -644,7 +665,8 @@ function showError(msg) {
 // ────────────────────────────────────────
 
 const TAB_LOADERS = {
-  dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit, world: loadRooms,
+  dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
+  crashes: loadCrashes, world: loadRooms,
   changesets: loadChangesets, clock: loadClock, issues: loadIssues,
   news: loadNews, help: loadHelp, accounts: loadAccounts
 };
@@ -926,6 +948,41 @@ async function loadAudit() {
       <td>${esc(e.summary)}</td>`;
     tbody.appendChild(tr);
   }
+}
+
+// ────────────────────────────────────────
+// Crashes (Sprint 57.4)
+// ────────────────────────────────────────
+
+async function loadCrashes() {
+  const crashes = await api("GET", "/admin/crashes");
+  const tbody = document.getElementById("crashes-tbody");
+  tbody.innerHTML = "";
+  if (!Array.isArray(crashes)) return;
+  for (const c of crashes) {
+    const ts = new Date(c.real_time * 1000).toLocaleString();
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    tr.onclick = () => showCrashDetail(c.id);
+    tr.innerHTML = `
+      <td style="color:var(--text-dim);white-space:nowrap">${ts}</td>
+      <td style="color:var(--amber)">${esc(c.player_id)}</td>
+      <td>${esc(c.command_text)}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+async function showCrashDetail(id) {
+  const c = await api("GET", `/admin/crashes/${id}`);
+  const panel = document.getElementById("crash-detail-panel");
+  panel.innerHTML = `
+    <h2>Crash #${esc(String(c.id))}</h2>
+    <p><b>Time:</b> ${esc(new Date(c.real_time * 1000).toLocaleString())}</p>
+    <p><b>Player:</b> ${esc(c.player_id)}</p>
+    <p><b>Command:</b> ${esc(c.command_text)}</p>
+    <p><b>Transaction:</b> ${esc(c.transaction_id)}</p>
+    <p><b>Correlation:</b> ${esc(c.correlation_id)}</p>
+    <pre style="white-space:pre-wrap;overflow:auto;background:var(--bg-alt,#111);padding:0.5rem;border-radius:4px;">${esc(c.stack_trace)}</pre>`;
 }
 
 // ────────────────────────────────────────

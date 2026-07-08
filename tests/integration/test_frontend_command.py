@@ -526,3 +526,50 @@ async def _test_quit_broadcasts_leaves_once_and_no_flicker() -> None:
     flickers = [c for c in contents if "connection flickers" in c]
     assert len(leaves) == 1, contents
     assert flickers == [], contents
+
+
+# ---------------------------------------------------------------------------
+# Crash capture (Sprint 57.3)
+# ---------------------------------------------------------------------------
+
+
+def test_post_command_unhandled_exception_returns_friendly_error() -> None:
+    anyio.run(_test_post_command_unhandled_exception)
+
+
+async def _test_post_command_unhandled_exception() -> None:
+    from unittest.mock import patch
+
+    from lorecraft.engine.models.audit import CrashReport
+
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS,
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with patch(
+            "lorecraft.webui.player.frontend.broadcast_command_effects",
+            side_effect=RuntimeError("boom"),
+        ):
+            status, html = await _http_form_post(
+                app,
+                "/command",
+                form={"command": "look"},
+                cookies={"player_id": "player-1"},
+            )
+
+        with Session(audit_engine) as session:
+            crash = session.exec(select(CrashReport)).first()
+
+    # A 500 (or a dropped connection, for the WS path) is exactly what
+    # Sprint 57.3 replaces with a graceful in-game error.
+    assert status == 200
+    assert "went wrong" in html.lower()
+    assert crash is not None
+    assert crash.command_text == "look"
+    assert crash.player_id == "player-1"
+    assert "RuntimeError" in crash.stack_trace
+    assert "boom" in crash.stack_trace

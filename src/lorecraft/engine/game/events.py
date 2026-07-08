@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Protocol
 
+from lorecraft.observability import record_span
 from lorecraft.types import JsonObject
 
 log = logging.getLogger(__name__)
@@ -143,6 +144,10 @@ class EventBus:
                 duration_ms,
                 len(handlers),
             )
+            # Sprint 57.1: feed the same per-command trace buffer
+            # time_operation() writes to, so a command's trace includes the
+            # event handlers it triggered, not just parse/condition/commit.
+            record_span(f"event:{event.type.value}:{handler_name}", duration_ms)
         return results
 
     def is_work_event(self, event_type: GameEvent) -> bool:

@@ -202,6 +202,66 @@ async def _test_websocket_connects_and_dispatches_text_commands() -> None:
     assert blocked_events[0].severity == "WARNING"
 
 
+def test_websocket_unhandled_exception_returns_friendly_error() -> None:
+    anyio.run(_test_websocket_unhandled_exception)
+
+
+async def _test_websocket_unhandled_exception() -> None:
+    from unittest.mock import patch
+
+    from lorecraft.engine.models.audit import CrashReport
+
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+    async with _lifespan(app):
+        with patch(
+            "lorecraft.main.broadcast_command_effects",
+            side_effect=RuntimeError("boom"),
+        ):
+            messages = await _run_websocket(
+                app,
+                query_string=b"player_id=player-1",
+                incoming=[
+                    {"type": "websocket.connect"},
+                    {"type": "websocket.receive", "text": "dance"},
+                    {"type": "websocket.disconnect", "code": 1000},
+                ],
+            )
+        with Session(audit_engine) as session:
+            crash = session.exec(select(CrashReport)).first()
+
+    payloads = [
+        json.loads(message["text"])
+        for message in messages
+        if message["type"] == "websocket.send"
+    ]
+    # Sprint 57.3: this used to propagate and kill the socket outright — now
+    # it degrades to a normal "error" payload, same connection, same loop.
+    assert payloads[1]["type"] == "error"
+    assert "logged" in payloads[1]["message"].lower()
+    assert crash is not None
+    assert crash.command_text == "dance"
+    assert crash.player_id == "player-1"
+    assert "RuntimeError" in crash.stack_trace
+
+
 def test_websocket_movement_persists_room_change() -> None:
     anyio.run(_test_websocket_movement_persists_room_change)
 

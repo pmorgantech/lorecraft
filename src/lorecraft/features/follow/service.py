@@ -12,6 +12,7 @@ own `PLAYER_MOVED`; cycles are rejected when the follow is created.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
@@ -234,7 +235,7 @@ class FollowService:
         )
 
     def _break_follow(
-        self, ctx: GameContext, follower: Player, *, reason: list[str]
+        self, ctx: GameContext, follower: Player, *, reason: Sequence[str]
     ) -> None:
         # The target the follower was following is the mover whose PLAYER_MOVED
         # triggered this cascade — i.e. ctx.player.

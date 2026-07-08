@@ -12,7 +12,7 @@ from sqlmodel import SQLModel, create_engine
 
 from lorecraft.config import Settings, load_settings
 from lorecraft.models.admin import AdminUser
-from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.audit import AuditEvent, CrashReport
 from lorecraft.features.bank.models import Bank, BankAccount
 from lorecraft.models.changeset import (
     Changeset,
@@ -93,7 +93,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     NpcMemory,
 )
 
-AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent,)
+AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent, CrashReport)
 
 
 def database_url(database_path_or_url: str) -> str:

@@ -1,4 +1,6 @@
-"""Structured logging: correlation/transaction IDs threaded via contextvars.
+"""Structured logging + request tracing: correlation/transaction IDs threaded
+via contextvars (Sprint 13), extended with a per-command trace buffer
+(Sprint 57.1).
 
 Every player command passes through exactly one of two entry points
 (`main.py`'s `/ws` command loop, `web/frontend.py`'s `POST /command`), each of
@@ -7,13 +9,17 @@ publishes that context's IDs to a contextvar for the duration of the call, so
 any `log.*` call made anywhere in the resulting call stack — services, event
 handlers, repos — picks them up automatically via `_TransactionLogFilter`,
 without threading `transaction_id`/`correlation_id` through every function
-signature.
+signature. `time_operation()`/`record_span()` piggyback on the same bound
+context to also collect an ordered list of `TraceSpan`s per command, kept in
+an in-memory ring buffer and readable via `get_trace()` (backing
+`GET /admin/trace/<transaction_id>`).
 """
 
 from __future__ import annotations
 
 import logging
 import time
+from collections import OrderedDict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -29,6 +35,12 @@ _LOG_FORMAT = (
 # The "slow" line from the perf baseline (scripts/perf_baseline.py): operations
 # over this budget are logged at WARNING so they surface without a debug filter.
 _SLOW_OPERATION_MS = 50.0
+
+# Sprint 57.1: how many recent commands' trace spans to keep. In-memory ring
+# buffer, not persisted — matches the "measure, don't over-build" caution
+# already applied to the deferred concurrency work (wishlist.md). Restore a
+# persisted version only if this proves too small in practice.
+_TRACE_BUFFER_MAX = 200
 
 
 @dataclass(frozen=True)
@@ -82,6 +94,55 @@ def bind_transaction_context(
         _current.reset(token)
 
 
+@dataclass(frozen=True)
+class TraceSpan:
+    """One timed operation within a single command (Sprint 57.1).
+
+    `started_at` is wall-clock (`time.time()`), for display ordering/timestamps
+    — `duration_ms` (from `time.perf_counter()`, monotonic) is the thing to
+    trust for the actual elapsed time.
+    """
+
+    name: str
+    duration_ms: float
+    started_at: float
+
+
+_trace_buffer: OrderedDict[str, list[TraceSpan]] = OrderedDict()
+
+
+def record_span(name: str, duration_ms: float) -> None:
+    """Append a trace span for the currently-bound transaction.
+
+    A no-op outside `bind_transaction_context` (nothing to key the span to).
+    `time_operation` calls this automatically; call it directly for timings
+    that already compute their own duration (e.g. `EventBus.emit()`'s
+    per-handler timing) rather than wrapping them in a second `with` block.
+    """
+    ctx = _current.get()
+    if ctx is None:
+        return
+    spans = _trace_buffer.get(ctx.transaction_id)
+    if spans is None:
+        spans = []
+        _trace_buffer[ctx.transaction_id] = spans
+        while len(_trace_buffer) > _TRACE_BUFFER_MAX:
+            _trace_buffer.popitem(last=False)
+    else:
+        _trace_buffer.move_to_end(ctx.transaction_id)
+    spans.append(TraceSpan(name=name, duration_ms=duration_ms, started_at=time.time()))
+
+
+def get_trace(transaction_id: str) -> list[TraceSpan] | None:
+    """The captured spans for one recent command.
+
+    `None` if the id was never bound or has aged out of the ring buffer
+    (`_TRACE_BUFFER_MAX` commands ago) — the `/admin/trace/<id>` endpoint
+    maps that to a 404.
+    """
+    return _trace_buffer.get(transaction_id)
+
+
 @dataclass
 class OperationTiming:
     """Handle yielded by ``time_operation``.
@@ -119,6 +180,7 @@ def time_operation(
         yield timing
     finally:
         timing.duration_ms = (time.perf_counter() - start) * 1000.0
+        record_span(name, timing.duration_ms)
         if timing.duration_ms > warn_ms:
             log.warning(
                 "perf_operation name=%s duration_ms=%.3f slow_threshold_ms=%.0f",

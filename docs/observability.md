@@ -4,11 +4,10 @@
 happened" during an incident. Player-facing UI (Analytics tab) is covered here too, but the
 console/log-level detail is the main subject.
 
-Three things exist today: **structured logging** with correlation IDs, **command latency
-instrumentation**, and the **Analytics tab/endpoints** that surface it. Two more —
-**request tracing** and **crash reports** — are scoped as roadmap
-[Sprint 57](roadmap.md#sprint-57--request-tracing--crash-reports) and not built yet; this doc
-will grow a section for them when they ship.
+Five things exist today: **structured logging** with correlation IDs, **command latency
+instrumentation**, the **Analytics tab/endpoints** that surface it, **per-command request
+tracing**, and **crash reports** — the last two shipped in
+[Sprint 57](roadmap.md#sprint-57--request-tracing--crash-reports).
 
 ---
 
@@ -92,11 +91,11 @@ detail, including the `/quests` vs. `/quest-funnel` gotcha and how to remove a w
 [`admin_builder_guide.md`](admin_builder_guide.md#analytics) — this doc covers the
 logging/tracing side; that one covers the dashboard/widget side.
 
-**When to reach for Analytics vs. raw logs:** Analytics answers "is the system slow, and where" —
-aggregate trends, percentiles, which commands/NPCs get used. Raw structured logs answer "what
-exactly happened for this one command" — you still need a `transaction_id` and a log grep for
-incident-level detail. Sprint 57's per-command trace view (below) is meant to close that gap
-without needing raw log access at all.
+**When to reach for Analytics vs. raw logs vs. tracing:** Analytics answers "is the system slow,
+and where" — aggregate trends, percentiles, which commands/NPCs get used. Raw structured logs
+answer "what exactly happened, in full detail" via `transaction_id` grep — the most complete view,
+but manual. The **request trace** below (Sprint 57.1/57.2) answers the middle case — "what ran,
+in order, for this one command" — as a structured JSON list, no log access needed.
 
 ## The audit log (related, not the same thing)
 
@@ -108,25 +107,76 @@ happen and who did it," not "why was it slow" or "why did it crash." See
 
 ---
 
-## Coming in Sprint 57: request tracing & crash reports
+## Request tracing (Sprint 57.1/57.2)
 
-Not built yet — scoped in [`roadmap.md`](roadmap.md#sprint-57--request-tracing--crash-reports).
-Two gaps this closes:
+A structured, ordered list of what one command actually did — condition checks, DB commits, and
+the event handlers it triggered — without grepping logs by hand.
 
-- **No structured "what ran" view for one command.** Today, reconstructing what a single command
-  did (which conditions were checked, which events fired, which DB commits happened) means
-  manually grepping every log line for one `transaction_id` and mentally reassembling the
-  sequence. Sprint 57 adds a `GET /admin/trace/<transaction_id>` endpoint returning that sequence
-  as structured spans directly — the ordered list `time_operation` already produces, just
-  collected and exposed instead of only logged.
-- **Nothing is captured when a command crashes.** An unhandled exception today produces whatever
-  hits stdout and, worst case, a raw disconnect — there's no saved, browsable record. Sprint 57
-  adds a `CrashReport` row (transaction id, correlation id, player, command text, stack trace,
-  timestamp) persisted to the audit DB on any unhandled exception, plus `GET /admin/crashes` /
-  `GET /admin/crashes/<id>` endpoints and a Crash Reports tab in the admin console — so a crash
-  is a lookup, not a log-archaeology exercise.
+**How it's captured:** `time_operation()` (used for `command_parse`, `condition_evaluate`,
+`db_commit`, and the command-handler dispatch itself) automatically records a `TraceSpan` for
+whatever transaction is currently bound via `bind_transaction_context()`. `EventBus.emit()` does
+the same manually for each event handler it dispatches, named `event:<event_type>:<handler_name>`
+so a trace shows exactly which handlers a command's events triggered, not just the top-level
+timings. Everything lands in one in-memory ring buffer (`observability._trace_buffer`, last 200
+commands server-wide — **not persisted**, so it only covers recent activity and is empty after a
+restart).
 
-This section will be filled in with actual usage instructions once Sprint 57 ships.
+**Using it:**
+
+```
+GET /admin/trace/<transaction_id>
+```
+
+Returns `[{"name": "command_parse", "duration_ms": 0.42, "started_at": 1720450931.2}, ...]` in
+execution order — no query params. 404 if the id was never bound, or has aged out of the ring
+buffer. Get a `transaction_id` from a structured log line (`txn=...`) or from a `COMMAND_EXECUTED`
+audit event's `transaction_id` field, then paste it in.
+
+**Why in-memory, not persisted:** matches the deliberate "measure, don't over-build" stance
+already applied to the deferred concurrency work — a bounded ring buffer covers the actual use
+case (someone just hit a slow/weird command and wants to know why, right now) without adding a
+new table, a retention policy, or write volume to the audit DB for data that's rarely looked at
+after the fact. Revisit if that assumption turns out wrong in practice.
+
+## Crash reports (Sprint 57.3/57.4)
+
+Before Sprint 57, an unhandled exception anywhere in the command pipeline (outside a command
+handler itself, which was already caught and reported gracefully) produced a raw disconnect on
+the `/ws` path or a bare 500 on `POST /command`, with nothing captured beyond whatever hit stdout.
+Both entry points now catch it, persist a `CrashReport` row, and return a friendly in-game error
+(`{"type": "error", "message": "... logged for review."}` over WS; an inline error `<div>` over
+HTMX) instead.
+
+**What's captured**, per `CrashReport` row (audit DB, `engine/models/audit.py`):
+
+| Field | What |
+|-------|------|
+| `transaction_id` / `correlation_id` | Same ids as the structured logs — cross-reference a crash against its log lines or trace. |
+| `player_id` | Who ran the command. |
+| `command_text` | The raw command text that triggered it. |
+| `stack_trace` | Full Python traceback (`traceback.format_exception`). |
+| `real_time` | When it happened. |
+
+This is deliberately separate from `AuditEvent`'s `COMMAND_FAILED`/`command_blocked` rows: those
+are *expected* failures a handler reports on purpose (bad input, a blocked action); a
+`CrashReport` is the pipeline itself blowing up — a bug, not a game-rule outcome.
+
+**Using it — the Crash Reports admin tab** (or directly):
+
+```
+GET /admin/crashes             — list, newest first (id, player, command, timestamp — no stack trace)
+GET /admin/crashes/<id>        — full detail including stack_trace
+```
+
+Click a row in the tab to load its full trace on the right. There's no severity filter or search
+yet (traffic has been low enough not to need it) — if crash volume grows, that's the natural next
+addition, alongside a retention/cleanup policy (there isn't one yet; rows accumulate in the audit
+DB indefinitely).
+
+**Rollback safety:** before writing a `CrashReport`, the handler rolls back both the game session
+(any partial, uncommitted state from the failed command) and the audit session (any half-written
+audit rows from earlier in that same command) — so a crash report never accidentally commits
+unrelated pending writes alongside itself. See `engine/services/crash_reports.py`.
 
 ---
 

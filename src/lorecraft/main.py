@@ -43,6 +43,7 @@ from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.content.help import ensure_help_bootstrapped
 from lorecraft.features.npc.scheduler import NpcScheduler
 from lorecraft.services.container import ServiceContainer
+from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
@@ -617,56 +618,78 @@ async def _handle_websocket_command(
             actor_id=player.id,
             correlation_id=session_id,
         )
-        ctx = build_game_context(
-            game_session,
-            player,
-            room,
-            bus=state.bus,
-            manager=state.manager,
-            transaction=transaction,
-            session_id=session_id,
-            rng=state.rng,
-            meters=state.meters,
-            effects=state.effects,
-            clock=room_repo.world_clock(),
-            audit_session=audit_session,
-            commit_state=game_session.commit,
-            commit_audit=audit_session.commit,
-            rollback_state=game_session.rollback,
-        )
-        with bind_transaction_context(
-            transaction.transaction_id, transaction.correlation_id
-        ):
-            parsed = state.command_engine.handle_command(command, ctx)
-        await broadcast_command_effects(state.manager, ctx, pre_room_id=pre_room_id)
-        messages: list[JsonValue] = list(ctx.messages)
-        room_messages: list[JsonValue] = list(ctx.room_messages)
-        # Chat echoes carry their channel (Sprint 52) so clients can tag/color
-        # per channel; older clients reading only `text` degrade gracefully.
-        chat_messages: list[JsonValue] = [
-            {"text": echo.text, "channel": echo.channel} for echo in ctx.chat_echoes
-        ]
+        try:
+            ctx = build_game_context(
+                game_session,
+                player,
+                room,
+                bus=state.bus,
+                manager=state.manager,
+                transaction=transaction,
+                session_id=session_id,
+                rng=state.rng,
+                meters=state.meters,
+                effects=state.effects,
+                clock=room_repo.world_clock(),
+                audit_session=audit_session,
+                commit_state=game_session.commit,
+                commit_audit=audit_session.commit,
+                rollback_state=game_session.rollback,
+            )
+            with bind_transaction_context(
+                transaction.transaction_id, transaction.correlation_id
+            ):
+                parsed = state.command_engine.handle_command(command, ctx)
+            await broadcast_command_effects(state.manager, ctx, pre_room_id=pre_room_id)
+            messages: list[JsonValue] = list(ctx.messages)
+            room_messages: list[JsonValue] = list(ctx.room_messages)
+            # Chat echoes carry their channel (Sprint 52) so clients can tag/color
+            # per channel; older clients reading only `text` degrade gracefully.
+            chat_messages: list[JsonValue] = [
+                {"text": echo.text, "channel": echo.channel} for echo in ctx.chat_echoes
+            ]
 
-        # Capture and store any pending disambiguation; don't send to client.
-        disambig = ctx.updates.pop("disambig_pending", None)
-        if disambig is not None and isinstance(disambig, dict):
-            state.pending_disambig[player_id] = disambig
+            # Capture and store any pending disambiguation; don't send to client.
+            disambig = ctx.updates.pop("disambig_pending", None)
+            if disambig is not None and isinstance(disambig, dict):
+                state.pending_disambig[player_id] = disambig
 
-        updates = {
-            **ctx.updates,
-            **_player_ui_updates(player, ctx.room, room_repo, ctx.item_repo),
-        }
-        response: JsonObject = {
-            "type": "command_result",
-            "command": parsed.raw,
-            "verb": parsed.verb,
-            "noun": parsed.noun,
-            "messages": messages,
-            "room_messages": room_messages,
-            "chat_messages": chat_messages,
-            "updates": updates,
-        }
-        return response
+            updates = {
+                **ctx.updates,
+                **_player_ui_updates(player, ctx.room, room_repo, ctx.item_repo),
+            }
+            response: JsonObject = {
+                "type": "command_result",
+                "command": parsed.raw,
+                "verb": parsed.verb,
+                "noun": parsed.noun,
+                "messages": messages,
+                "room_messages": room_messages,
+                "chat_messages": chat_messages,
+                "updates": updates,
+            }
+            return response
+        except Exception as exc:
+            # Sprint 57.3: anything that escapes the command pipeline itself
+            # (as opposed to a handler exception, already caught and
+            # reported gracefully inside CommandEngine) previously killed the
+            # WebSocket outright. Capture it and degrade to an in-game error
+            # instead of a raw disconnect.
+            log.exception("unhandled_command_pipeline_exception")
+            game_session.rollback()
+            record_crash(
+                audit_session,
+                transaction_id=transaction.transaction_id,
+                correlation_id=transaction.correlation_id,
+                player_id=player.id,
+                command_text=command,
+                exc=exc,
+            )
+            return {
+                "type": "error",
+                "message": "Something went wrong processing that command. "
+                "It has been logged for review.",
+            }
 
 
 def _load_hunt_definitions(hunts_yaml_path: str) -> None:

@@ -547,6 +547,12 @@ working example.
   world content first — player accounts are untouched).
 - **Where's the audit trail?** — the Audit tab / `F2` / `GET /admin/audit`, backed by
   `LORECRAFT_AUDIT_DB_PATH`, separate from the game DB.
+- **A player hit "something went wrong processing that command"** — the command pipeline threw
+  an unhandled exception (Sprint 57.3); check the **Crashes tab** (or `GET /admin/crashes`) for a
+  row with that player/timestamp — it has the full stack trace. For non-crashing slowness, pull
+  the `transaction_id` from a crash row or a structured log line and check
+  `GET /admin/trace/<transaction_id>` for the per-operation timing breakdown. Full detail in
+  [`observability.md`](observability.md) (Request tracing / Crash reports sections).
 
 ## Related Docs
 

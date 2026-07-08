@@ -2,6 +2,38 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.47.0] - 2026-07-08 (local `develop` branch, not on `main`)
+
+### Added
+
+- **Sprint 57: request tracing & crash reports.** Extends Sprint 13's structured logging with
+  two admin-facing debugging tools that previously didn't exist.
+  - **57.1/57.2 — request tracing.** `observability.py` gains a `TraceSpan`/`record_span()`/
+    `get_trace()` in-memory ring buffer (last 200 commands, not persisted). `time_operation()`
+    (already used for `command_parse`/`condition_evaluate`/`db_commit`) records automatically;
+    `EventBus.emit()` and the command-handler dispatch (`engine.py`) call `record_span()` directly
+    since they already compute their own timing. `GET /admin/trace/<transaction_id>` returns the
+    captured spans in execution order, 404 once aged out.
+  - **57.3 — crash capture.** New `CrashReport` audit-DB table (transaction/correlation id,
+    player, command text, full stack trace, timestamp) and
+    `engine/services/crash_reports.record_crash()`. Both command entry points (`main.py`'s `/ws`
+    loop, `frontend.py`'s `POST /command`) now catch any exception that escapes the command
+    pipeline itself (as opposed to a handler exception, already caught and reported gracefully)
+    — previously this killed the WebSocket outright or produced a bare 500. Now it rolls back
+    both sessions, persists a crash report, and returns a friendly in-game error instead.
+  - **57.4 — admin surface.** `GET /admin/crashes` (list) + `GET /admin/crashes/<id>` (detail)
+    endpoints, and a Crash Reports tab in the admin console (list-table + detail-panel layout,
+    mirroring the World tab's room-list/room-editor split).
+  - **57.5 — docs.** `docs/observability.md` now documents both features with usage examples;
+    cross-linked from `admin_builder_guide.md`'s Troubleshooting section.
+
+### Fixed
+
+- **`follow/service.py`'s `_break_follow` now accepts `Sequence[str]`, not `list[str]`,** for its
+  `reason` parameter — `list` is invariant, so passing the Sprint 56 `list[Message]` (a `str`
+  subclass) where a `list[str]` was expected failed strict type-checking even though it's
+  behaviorally a `list[str]`. No behavior change, just a type-checker fix surfaced by 56.2.
+
 ## [0.46.7] - 2026-07-08 (local `develop` branch, not on `main`)
 
 ### Added
@@ -22,6 +54,7 @@ All notable changes to Lorecraft will be documented in this file.
   `npc/dialogue.py`'s precondition-failure messages → `WARNING`; `npc/dialogue.py`'s NPC speech
   line → `TELL`. ~260 call sites across the remaining files are still on the `SYSTEM` default — a
   full sweep is a follow-on, not a blocker.
+
 ## [0.46.6] - 2026-07-08
 
 ### Fixed
