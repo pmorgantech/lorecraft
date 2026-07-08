@@ -7,6 +7,12 @@
 > **This is not a roadmap.** Nothing here is committed. The roadmap
 > ([`roadmap.md`](roadmap.md)) is the authoritative work queue; items graduate _into_ it
 > only after they're chosen and scoped. This file is where ideas live before that.
+>
+> **Codebase sync (2026-07-07):** this file was audited against the code. Several bullets
+> that pre-dated their implementation now carry inline **Shipped / Partly shipped** notes —
+> notably *timed/scheduled quests* (Sprint 30.2), *attributes*, *item quality/rarity*,
+> *durability*, *bound items*, *NPC memory*, *shop restock*, the *soft-cap primitive*, and
+> the *guided report flow* (Sprint 33.1). Items without such a note are still genuinely open.
 
 ## Guiding stance: borrow selectively, don't clone
 
@@ -109,9 +115,13 @@ and most combat.
   and puzzle/quest stashes. Pairs with the deferred `open`/container modeling noted in Sprint 2.5.
 - **Durability / condition** — items wear out or degrade (weather-exposed gear, torches burn
   down). Drives repair services, trade in consumables, and a light-source survival loop.
+  **Shipped (Sprint 22.2):** `Item.max_durability` + the `item_components` durability component.
 - **Item quality & rarity tiers** — common → legendary, affecting value and trade demand.
+  **Shipped:** `Item.quality` (`common|fine|superior|rare|legendary`); shop prices derive from
+  `value * quality` (Sprint 28).
 - **Bound vs. tradeable / attunement** — quest items bind to a player; some gear must be
-  attuned. Protects quest integrity and shapes the economy.
+  attuned. Protects quest integrity and shapes the economy. **Bound shipped (Sprint 16):**
+  `Item.bound` (soulbound; can't drop/sell/trade). _Attunement not built._
 - **Consumables & charges** — potions, food, scrolls, lantern oil, tickets (ties to transit).
 
 ### Character condition & survival 🤔 (fatigue / sleep — wanted as ideas)
@@ -154,6 +164,8 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
   and social/trade outcomes far more than combat. Improve through _use_ rather than XP grind.
 - **Attributes** — a light STR/DEX/INT-style spread, but explicitly framed for non-combat use
   (STR = carry weight, INT = lore checks, etc.). Keep minimal; resist stat bloat.
+  **Shipped (Sprint 19/24):** `PlayerStats` carries `strength`/`agility`/`vitality`/`intellect`/
+  `presence`/`fortitude`; skills key off them (e.g. bartering→presence, cartography→intellect).
 - **Reputation / standing** — per-NPC and per-faction opinion that unlocks dialogue, prices,
   quests, and access. The social spine of a quest-driven world. NPCs _remember_ you.
 - **Knowledge / lore flags** — "known facts" a player accumulates that unlock dialogue options
@@ -189,8 +201,11 @@ Beyond the basic currency→shops→P2P ladder in _Gameplay systems_ below:
   systems** — the ferry/rail network _is_ the trade network. Exploration feeds trade feeds
   exploration.
 - **Bartering skill & reputation pricing** — prices flex with skill, standing, and haggling.
+  **Partly shipped:** the `bartering` skill + `reputation` feature exist; deeper
+  standing/haggle price-flex is where the remaining work is.
 - **Supply & demand / stock** — shops have finite stock that restocks on the world clock;
   flooding a market drops prices. Emergent, driven by existing scheduler.
+  **Shipped (Sprint 28.2):** finite stock + clock-driven restock (`economy/restock.py`).
 - **Caravans / trade routes / commissions** — deliver goods between towns for profit; escort or
   investigate when they go missing (quest hooks). A whole quest genre falls out of this.
 - **Rare & seasonal goods** — availability tied to season/weather/events, rewarding travel and
@@ -235,8 +250,14 @@ naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)
   investigation quests where you assemble clues in the journal.
 - **NPC memory & relationship state** — NPCs recall past interactions and react; unlocks
   dialogue and quests. Overlaps with reputation above; the backbone of a story-driven world.
+  **Shipped:** the `npc_memory` feature — per-(player, NPC) memory keys backing the
+  `npc_remembers` dialogue/quest condition + the `remember` dialogue side effect.
 - **Timed / scheduled quests** — deadlines and world-clock-driven events (the festival is
   tonight; the tide turns at dusk). Runs on the existing scheduler + clock.
+  **✅ Shipped (Sprint 30.2):** `QuestTimerService` sweeps active quest progress on
+  `TIME_ADVANCED`; a stage's `timeout_ticks`/`on_timeout` advances to a fallback stage or
+  fails the quest, data-driven from the quest YAML. World-clock *events* (festivals) are
+  covered by scheduled scavenger hunts (Sprint 48) + celestial/weather events (Sprint 44/54).
 - **Non-combat resolutions** — quests solvable by stealth, persuasion, bribery, or cleverness,
   not only violence — central to the "combat is optional" pillar.
 
@@ -357,6 +378,8 @@ layer**, persisted on the account and read by the render layer.
   "+damage tiered drop-off". Bake into the trait/skill/effect maths _from [Sprint 24](roadmap.md#sprint-24--traits--skills)_: modifiers
   stack with diminishing returns and hard ceilings so nothing goes degenerate. A shared
   `apply_modifier`/soft-cap helper. Cheap now, painful to walk back later.
+  **Primitive shipped:** the §3.5 modifier resolver (`engine/game/modifiers.py`) supports
+  `clamp_min`/`clamp_max` (hard ceilings/floors); content just isn't broadly using them yet.
 - **Effect exclusivity groups 🤔** — affects/traits/marks can declare a mutex group so opposed or
   same-family effects don't stack ("Courage and Fear are mutex"). Small but important trait detail.
 - **Multiple / alternate currencies 🤔** — event tokens, faction scrip alongside base gold. Design
@@ -376,6 +399,8 @@ layer**, persisted on the account and read by the render layer.
   `INDEX <letter>` / `HELP <keyword>` is a browsable, indexed knowledge base. Lorecraft's context-aware
   `help` can grow into a searchable **codex panel/modal** (categories + full-text search + clickable
   cross-links), merged with the journal/lore log. Browser-native.
+  **Partly shipped (Sprint 36):** help topics with categories + `help topics [search]` filtering
+  already exist; the remaining work is the browser **codex panel/modal** merged with the journal.
 - **Player-facing world graphs / stats 🤔** — Alteraeon-style `graph` command: aggregate world
   statistics players can browse (hourly/daily player load, economy/gold offsets, alignment
   distribution), available both in-game _and_ on the web. Distinct from the admin analytics
@@ -738,29 +763,24 @@ command** — was promoted to roadmap
 
 ### Issue-report wizard (upgrade the shipped `report` command) 🤔
 
-`report <description>` shipped 2026-07-04 (v0.12.0) as a single-shot free-text command —
-it creates an `Issue` row immediately with everything in one string (title is just a
-truncated copy of the description). Good enough to unblock playtesting feedback, but too
-sparse for anything beyond a one-line bug note. Wanted: a guided, multi-turn flow instead
-of a single command:
+**Status (2026-07-07): the guided flow shipped; only the player-moderation branch remains.**
+`report <description>` shipped 2026-07-04 (v0.12.0) as a one-liner, and **Sprint 33.1** then
+added the guided multi-turn flow: bare `report` runs a **category (bug/feedback/idea) → title →
+detail** wizard with `cancel`, state in `player.flags`, free-text routed via
+`resolve_command_text` (tested by `test_report_wizard.py`). So the "guided instead of single
+command" ask is **done**.
 
-- `report` alone (no args) prompts with usage: `Usage: report <player|issue>` — the first
-  choice is *what kind* of report this is.
-- **`report issue`** (or similar) then asks follow-up questions in sequence: a short title,
-  then a fuller description ("what were you doing, what happened, what did you expect").
-- **`report player <name>`** asks what's being reported about that player, and records the
-  *target* player alongside the *filer* — today's `Issue` model has no "reported against"
-  concept at all, only `created_by`.
-- Metadata to capture beyond what exists today: filing timestamp (already have
-  `created_at`), title, description, filing player (`created_by`, already have), and a new
-  `target_player_id`/similar field for player-reports.
+**What actually remains** is the *player-moderation* branch only:
 
-This needs actual design work (new multi-turn command state — probably reusing the
-dialogue-state pattern in `npc/dialogue.py` rather than inventing a second one — a new
-`Issue` field or a companion table for the reported-player link, and a decision on whether
-`report player` moderation reports need different handling/visibility than `report issue`
-bug reports). Scoped out of the initial `report` command on purpose; revisit once there's
-real signal on how sparse the current one-liners actually are in practice.
+- **`report player <name>`** — asks what's being reported about that player, and records the
+  *target* player alongside the *filer*. Today's `Issue` model has no "reported against"
+  concept — only `created_by` — so this needs a new `target_player_id`/similar field (or a
+  companion table for the reported-player link).
+- The open design decision: whether `report player` moderation reports need different
+  handling/visibility (admin surfacing) than the `report issue` bug/feedback reports.
+
+Scope for a future sprint: one new wizard branch + one `Issue` field + admin visibility —
+much smaller than the original entry implies.
 
 ---
 
@@ -797,7 +817,7 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 | Tutorial/character-creation: engine feature or content? | Onboarding design                                                                  | Content (scripted, per-world) — reuses dialogue/quest primitives, not new engine mechanism                |
 | Split social/channel feed from narrative feed?          | Client UI/layout                                                                   | **Yes — biggest screenshot takeaway**                                                                     |
 | Currency model: single int or keyed quantity map?       | Trade ([Sprint 28](roadmap.md#sprint-28--trading--economy))                        | Keyed map — cheap now, expensive to retrofit                                                              |
-| Soft caps / diminishing returns on modifiers?           | Traits/skills ([Sprint 24](roadmap.md#sprint-24--traits--skills))                  | Yes — bake in from the start                                                                              |
+| Soft caps / diminishing returns on modifiers?           | Traits/skills ([Sprint 24](roadmap.md#sprint-24--traits--skills))                  | **Primitive shipped** — `clamp_min`/`clamp_max` in the §3.5 resolver; content adoption pending           |
 | Player settings/preferences: engine feature?            | Accessibility, UX                                                                  | Yes — thread through the render layer early                                                               |
 
 ---
