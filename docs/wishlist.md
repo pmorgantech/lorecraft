@@ -8,11 +8,19 @@
 > ([`roadmap.md`](roadmap.md)) is the authoritative work queue; items graduate _into_ it
 > only after they're chosen and scoped. This file is where ideas live before that.
 >
-> **Codebase sync (2026-07-07):** this file was audited against the code. Several bullets
-> that pre-dated their implementation now carry inline **Shipped / Partly shipped** notes —
-> notably *timed/scheduled quests* (Sprint 30.2), *attributes*, *item quality/rarity*,
-> *durability*, *bound items*, *NPC memory*, *shop restock*, the *soft-cap primitive*, and
-> the *guided report flow* (Sprint 33.1). Items without such a note are still genuinely open.
+> **Consolidation pass (2026-07-08):** merged in `wishlist2.md` (a MUD-survey quick-reference
+> guide that existed only on the `research` branch) and `wishlist3.md` (a shipped-feature audit
+> + "genuine gaps" list built for a Kindle doc). Everything the 2026-07-07 codebase sync had
+> flagged as **Shipped** was removed outright rather than left as a dead note — *timed/scheduled
+> quests*, *attributes*, *item quality/rarity*, *durability*, *bound items*, *NPC memory*, *shop
+> restock*, *collectible marks*, *celestial cycles*, *timed room effects*, the *item discovery
+> journal*, the *full-screen map modal*, *coloured/prefixed channels*, and *news/announcements*
+> are gone from this doc because they're done — see `roadmap_completed.md` for what shipped and
+> when. New ideas surfaced by that merge (escort quests, investigation/detective quests,
+> cross-quest consequences, dungeon z-levels, commodity boards, dynamic spawn policies, player-
+> built world/housing, AI-assisted content, multi-protocol networking, world rollback) are
+> folded into the sections below rather than kept as a separate file. `wishlist3.md` is deleted
+> from this branch as fully superseded; `wishlist2.md` was never on this branch to begin with.
 
 ## Guiding stance: borrow selectively, don't clone
 
@@ -113,15 +121,9 @@ and most combat.
 - **Containers / nested inventory** — bags, pouches, backpacks, chests. A container is an item
   that holds items (recursive). Enables organization, weight reduction (a "bag of holding"),
   and puzzle/quest stashes. Pairs with the deferred `open`/container modeling noted in Sprint 2.5.
-- **Durability / condition** — items wear out or degrade (weather-exposed gear, torches burn
-  down). Drives repair services, trade in consumables, and a light-source survival loop.
-  **Shipped (Sprint 22.2):** `Item.max_durability` + the `item_components` durability component.
-- **Item quality & rarity tiers** — common → legendary, affecting value and trade demand.
-  **Shipped:** `Item.quality` (`common|fine|superior|rare|legendary`); shop prices derive from
-  `value * quality` (Sprint 28).
-- **Bound vs. tradeable / attunement** — quest items bind to a player; some gear must be
-  attuned. Protects quest integrity and shapes the economy. **Bound shipped (Sprint 16):**
-  `Item.bound` (soulbound; can't drop/sell/trade). _Attunement not built._
+- **Attunement** — some gear must be attuned before its passive effects work (bound items
+  already exist — `Item.bound`, soulbound, can't drop/sell/trade — but attunement-before-use
+  is a separate, still-open mechanic). Protects quest integrity and adds a light gearing step.
 - **Consumables & charges** — potions, food, scrolls, lantern oil, tickets (ties to transit).
 
 ### Character condition & survival 🤔 (fatigue / sleep — wanted as ideas)
@@ -162,10 +164,6 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
 - **Skills** — perception, lockpicking, bartering, cartography, survival, lore/appraisal,
   stealth, persuasion, swimming/climbing. Skills gate exploration (find secrets, cross terrain)
   and social/trade outcomes far more than combat. Improve through _use_ rather than XP grind.
-- **Attributes** — a light STR/DEX/INT-style spread, but explicitly framed for non-combat use
-  (STR = carry weight, INT = lore checks, etc.). Keep minimal; resist stat bloat.
-  **Shipped (Sprint 19/24):** `PlayerStats` carries `strength`/`agility`/`vitality`/`intellect`/
-  `presence`/`fortitude`; skills key off them (e.g. bartering→presence, cartography→intellect).
 - **Reputation / standing** — per-NPC and per-faction opinion that unlocks dialogue, prices,
   quests, and access. The social spine of a quest-driven world. NPCs _remember_ you.
 - **Knowledge / lore flags** — "known facts" a player accumulates that unlock dialogue options
@@ -187,10 +185,20 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
   and pairs with transit (roads are fast, wilderness is slow).
 - **Environmental storytelling** — rooms with examinable detail, readable objects (books,
   inscriptions, signs), layered `examine` targets. Cheap, high-texture content.
-- **Journal / auto-log** — the game records discovered places, met NPCs, learned lore, and
-  active clues — a living quest/exploration log. Great UI panel candidate.
-  **Shipped (Sprint 25.3) minus items** — item discovery tracking promoted to roadmap
-  [Sprint 46](roadmap.md#sprint-46--item-discovery-journal) (2026-07-05).
+- **Environmental puzzle gates 💚 (2026-07-08)** — exploration blocked by a solvable obstacle
+  tied to terrain, not just a locked door: a collapsed bridge needing planks, a chasm needing a
+  climbing-skill check, a causeway only crossable at low tide. Builds on the same exit
+  `condition_flags` the lock/key mechanic already writes to, plus the already-shipped
+  celestial/tide state as another gating predicate — no new state, just more predicate types on
+  an existing seam.
+- **Dungeon complexity / z-levels 💚 (2026-07-08)** — rooms with real vertical structure
+  (basements, towers, hidden floors), not just a flat room graph. Room coordinates already
+  support it; this is mostly a **content** gap (world YAML hasn't used vertical exits yet). A
+  `z` coordinate would help the region-map view (below) distinguish floors if wanted.
+- **Conditional / state-gated exits 🤔 (2026-07-08)** — an exit that only opens under a
+  condition: a secret door after collecting a key item, a portal open only at night, a bridge
+  that solidifies after a puzzle stage. Same `condition_flags` seam as environmental puzzle
+  gates above, just gated by a quest flag or the world clock instead of terrain.
 
 ### Trading & economy depth 💚 (core pillar — designed in `trade_economy.md`, roadmap Sprint 28)
 
@@ -200,16 +208,22 @@ Beyond the basic currency→shops→P2P ladder in _Gameplay systems_ below:
   trade loop is buy-low-here, sell-high-there. **This is the killer pairing with transit
   systems** — the ferry/rail network _is_ the trade network. Exploration feeds trade feeds
   exploration.
-- **Bartering skill & reputation pricing** — prices flex with skill, standing, and haggling.
-  **Partly shipped:** the `bartering` skill + `reputation` feature exist; deeper
-  standing/haggle price-flex is where the remaining work is.
-- **Supply & demand / stock** — shops have finite stock that restocks on the world clock;
-  flooding a market drops prices. Emergent, driven by existing scheduler.
-  **Shipped (Sprint 28.2):** finite stock + clock-driven restock (`economy/restock.py`).
+- **Haggling / dynamic prices** — wire the already-shipped `bartering` skill and `reputation`
+  feature into an actual price-flex calculation (a `ModifierSource` emitting a `price.buy`/
+  `price.sell` modifier, feature-capped at a sane discount). The skill and reputation numbers
+  exist; they don't move prices yet.
 - **Caravans / trade routes / commissions** — deliver goods between towns for profit; escort or
-  investigate when they go missing (quest hooks). A whole quest genre falls out of this.
+  investigate when they go missing (quest hooks). A whole quest genre falls out of this. Reuses
+  the moving-room/`MobileRouteService` machinery already built for passenger transit — a
+  caravan is the same waypoint/dwell/travel state machine with cargo instead of passengers.
 - **Rare & seasonal goods** — availability tied to season/weather/events, rewarding travel and
-  timing.
+  timing. Shops already have season-aware fields the restock scheduler could read; mostly a
+  content gap (world YAML hasn't authored seasonal stock tables yet).
+- **Commodity markets / boards 🤔 (2026-07-08)** — a read-only "Grain Board" style display of
+  current shop prices/stock across known towns, so players can compare without walking to every
+  shop. Pure query over existing economy-service state; no new data model for the simple
+  version (a richer player-posted-offers board would need one, but isn't required to get most
+  of the value).
 
 ### Robbers & highway risk 💚 (ties money, travel & death)
 
@@ -230,8 +244,9 @@ transit worth using. Shares its whole core with [`death_resurrection.md`](death_
 - **Threat scales with what you carry** — hauling a fat purse of trade profit between towns is
   exactly when you're a target, which is exactly when you _should_ have banked or split it.
   Makes the trade loop a real decision, not a spreadsheet.
-- **Later:** player-robber roles, bounties, guard NPCs, fences for stolen goods — all deferred;
-  v1 is just "NPCs can rob carried wealth, banks/transit mitigate it."
+- **Later:** player-robber roles, guard NPCs, fences for stolen goods — all deferred; v1 is
+  just "NPCs can rob carried wealth, banks/transit mitigate it." (Bounty/target marks — a
+  related but distinct risk mechanic — now has its own entry under *PvP* below.)
 
 Design intent noted 2026-07-03 (product owner). No dedicated design doc yet; the money-at-risk
 mechanics are specified in [`death_resurrection.md`](death_resurrection.md) §8. Sprint TBD —
@@ -246,18 +261,22 @@ naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)
   keyed to items or knowledge. Needs the deferred item/room _state_ modeling (Sprint 2.5 note).
 - **Item-combination puzzles** — combine/apply items to solve problems (a craft-_like_ mechanic
   framed as puzzle-solving rather than production grind).
-- **Riddles & lore puzzles** — answers gated by knowledge flags gathered through exploration;
-  investigation quests where you assemble clues in the journal.
-- **NPC memory & relationship state** — NPCs recall past interactions and react; unlocks
-  dialogue and quests. Overlaps with reputation above; the backbone of a story-driven world.
-  **Shipped:** the `npc_memory` feature — per-(player, NPC) memory keys backing the
-  `npc_remembers` dialogue/quest condition + the `remember` dialogue side effect.
-- **Timed / scheduled quests** — deadlines and world-clock-driven events (the festival is
-  tonight; the tide turns at dusk). Runs on the existing scheduler + clock.
-  **✅ Shipped (Sprint 30.2):** `QuestTimerService` sweeps active quest progress on
-  `TIME_ADVANCED`; a stage's `timeout_ticks`/`on_timeout` advances to a fallback stage or
-  fails the quest, data-driven from the quest YAML. World-clock *events* (festivals) are
-  covered by scheduled scavenger hunts (Sprint 48) + celestial/weather events (Sprint 44/54).
+- **Riddles & lore puzzles** — answers gated by knowledge flags gathered through exploration.
+- **Investigation / detective quests 💚 (2026-07-08)** — gather clues across rooms/NPCs/items,
+  then synthesize them into a conclusion; a wrong conclusion fails or branches the quest
+  negatively. The discovery journal already stores the clues; the new piece is a synthesis
+  check — a quest-stage condition counting how many of a named clue-set the journal contains
+  before an "accuse"/"conclude" command succeeds.
+- **Escort quests 💚 (2026-07-08)** — guide an NPC through a route; if they're lost, delayed, or
+  (once combat ships) harmed, the quest can fail or branch. Reuses the already-shipped `follow`
+  command (Sprint 47) extended so an NPC can be the follower instead of only a player, gated by
+  ordinary quest-stage conditions (`npc_following:<id>`, `npc_present: false` = "you lost them").
+- **Cross-quest consequences 💚 (2026-07-08)** — one quest's choices visibly reshape a later
+  quest or NPC's dialogue (saved them → discount later; betrayed a faction → locked questline).
+  This is a **content discipline**, not a new mechanism: quest B's stage conditions read the
+  flags/NPC-memory keys quest A's side effects already wrote. Worth calling out explicitly as a
+  pattern to author toward, since the primitives (flags, `npc_remembers`, side effects) already
+  exist but aren't yet used *across* quests, only within one.
 - **Non-combat resolutions** — quests solvable by stealth, persuasion, bribery, or cleverness,
   not only violence — central to the "combat is optional" pillar.
 
@@ -350,36 +369,17 @@ layer**, persisted on the account and read by the render layer.
 
 #### More exploration & world-state ideas
 
-- **Collectible "marks" / attunements 💚** — named passive badges earned by _discovering_ things
-  ("Mark of Groundwater — go explore"): a progression track parallel to leveling, fed by
-  exploration not combat. Some cosmetic/lore, some small mechanical boons (soft-capped, below).
-  Builds on flags + trait registry ([Sprint 24](roadmap.md#sprint-24--traits--skills)). Pillar #1.
-- **Celestial cycles — moons & tides 💚** — the clock already tracks time/season/weather; add
-  lunar phase(s) and tides as world state. Gates content: moon-keyed doors/rituals (puzzles),
-  tides that shift a ferry schedule or reveal a causeway (transit + exploration), night-only
-  encounters. Small extension, three-pillar reach. Builds on `clock/weather.py` + scheduler.
 - **World-placed shrines / altars 🤔** — discoverable stations offering a set of _mutually
   exclusive_ boons, one active per station, bought with a token currency; multiple stations
   stack. An exploration reward + light respec-able customization + currency sink in one. The
   mutex-per-station rule keeps it from becoming a flat power-stack.
-- **Timed room effects / auras 💚 (engine primitive)** — apply an effect to a _room_ for a
-  duration with a cooldown, scheduler-driven (seeded by "germinate is now a 1-hour room effect").
-  A general tool: puzzle timers (a plate opens a gate for 30s), weather hazards, lingering zones,
-  farming growth. Worth naming as a primitive — lots of content wants it. Builds on
-  `SchedulerService` + `TIME_ADVANCED`.
-  **→ Promoted to roadmap [Sprint 39](roadmap_completed.md)**
-  (2026-07-05, design-first): decided to **reuse the Sprint 19 `ActiveEffect`/`EffectService`
-  timed-effect primitive** (already generic over `entity_type` — a room is just
-  `entity_type="room"`) rather than a new `RoomEffect` model or a component carrier.
 
 #### Systems & balance design notes
 
-- **Soft caps / diminishing returns 💚 (principle, not a feature)** — "no 100% resistance",
-  "+damage tiered drop-off". Bake into the trait/skill/effect maths _from [Sprint 24](roadmap.md#sprint-24--traits--skills)_: modifiers
-  stack with diminishing returns and hard ceilings so nothing goes degenerate. A shared
-  `apply_modifier`/soft-cap helper. Cheap now, painful to walk back later.
-  **Primitive shipped:** the §3.5 modifier resolver (`engine/game/modifiers.py`) supports
-  `clamp_min`/`clamp_max` (hard ceilings/floors); content just isn't broadly using them yet.
+- **Soft caps / diminishing returns 💚 (content adoption, not new engine work)** — the modifier
+  resolver already supports `clamp_min`/`clamp_max` (hard ceilings/floors); the open work is
+  content actually *using* them — "no 100% resistance," tiered damage drop-off — so nothing
+  goes degenerate as traits/skills/effects stack.
 - **Effect exclusivity groups 🤔** — affects/traits/marks can declare a mutex group so opposed or
   same-family effects don't stack ("Courage and Fear are mutex"). Small but important trait detail.
 - **Multiple / alternate currencies 🤔** — event tokens, faction scrip alongside base gold. Design
@@ -395,24 +395,19 @@ layer**, persisted on the account and read by the render layer.
   boundary is a real scheduler UX detail). **Tension:** dailies are the grind loop the pillars reject
   — only pursue as _rotating discovery/trade_ goals ("bring goods from three towns today"), never
   combat treadmills.
-- **Categorized, searchable help / codex 💚** — Aardwolf's `HELP CONTENTS` / `CONTENTS <category>` /
-  `INDEX <letter>` / `HELP <keyword>` is a browsable, indexed knowledge base. Lorecraft's context-aware
-  `help` can grow into a searchable **codex panel/modal** (categories + full-text search + clickable
-  cross-links), merged with the journal/lore log. Browser-native.
-  **Partly shipped (Sprint 36):** help topics with categories + `help topics [search]` filtering
-  already exist; the remaining work is the browser **codex panel/modal** merged with the journal.
-- **Player-facing world graphs / stats 🤔** — Alteraeon-style `graph` command: aggregate world
-  statistics players can browse (hourly/daily player load, economy/gold offsets, alignment
-  distribution), available both in-game _and_ on the web. Distinct from the admin analytics
-  ([Sprint 13](roadmap.md#sprint-13--observability--ci-quality-gates-) latency/instrumentation) — this is the _public_ "what is the whole world doing"
-  view. Reuses the [Sprint 13](roadmap.md#sprint-13--observability--ci-quality-gates-) metric queries + the `dataviz` skill for rendering; a natural
-  browser panel/page. Light community-texture feature, no gameplay dependency.
+- **Categorized, searchable help / codex 💚** — help topics with categories + `help topics
+  [search]` filtering already ship; the remaining work is a browser **codex panel/modal**
+  (full-text search + clickable cross-links) merged with the journal/lore log.
+- **Player-facing world graphs / stats 🤔** — Alteraeon-style `graph` command/page: aggregate
+  world statistics players can browse (hourly/daily player load, economy/gold offsets), distinct
+  from admin analytics — a *public* "what is the whole world doing" view. Reuses existing metric
+  queries + the `dataviz` skill; could also be exposed as a narrow **public read-only REST
+  endpoint** for community tooling (a companion page, a bot) rather than only an in-game panel.
 - **Instanced minigames / scenarios 🤔** — themed self-contained challenge areas (Fractals of the
   Weave: Unseelie Court, caravan defense) that repop on a timer (every 60h, _unannounced_ — players
   learn the rhythm) and restore vitals at checkpoints. Good fit for the feature-registration pattern +
   scheduler; the caravan-defense one pairs with the trade-route idea. Defer, but a strong "special
-  content" mould. The simplest *non-instanced* slice — **scavenger hunt events** — was promoted to
-  roadmap [Sprint 48](roadmap_completed.md) (2026-07-05).
+  content" mould. (The simplest *non-instanced* slice already shipped as scavenger hunt events.)
 
 #### Smaller design details (one line each)
 
@@ -453,6 +448,43 @@ Consent-based (challenge/accept) reusing the combat system. **Design choice pend
 opt-in PvP (most modern MUDs, Aardwolf's "99% harmless") vs. anything more punishing. Lean
 soft unless Lorecraft wants a darker RP tone.
 
+### Bounty / target marks 🤔 (2026-07-08, PK-oriented — needs the PvP consent decision first)
+
+A player or NPC can be **marked** for assassination or hunting; other players who kill (or
+capture/subdue) the marked target collect a reward. Common in PK-oriented MUDs — genuinely
+interesting, but it inherits the same open question as PvP above (soft vs. punishing) since a
+bounty is only meaningful if killing the target is actually possible.
+
+- **Issuing a mark** — an NPC (a "bounty board" or specific quest-giver) or, later, a player
+  posts a bounty: target id, reward (coins from the existing ledger, or an item), optional
+  expiry. Reuses the currency/ledger primitive for the reward escrow and the flag/reputation
+  system to record "is marked" state on the target.
+- **NPC bounties first, player bounties later** — mirrors the existing "NPC combat before PvP"
+  sequencing decision: a hunted NPC (a fugitive, a monster with a price on its head) is much
+  lower-stakes to design and test than a marked *player*, and reuses quest/combat primitives
+  directly (kill-quest with a bulletin-board presentation instead of a quest-giver dialogue).
+  Nothing new here beyond how the reward is discovered.
+- **Marked-player variant (needs PvP first)** — requires the PvP consent model to exist and
+  resolve: is being marked itself a form of consent to be attacked, or does the attacker still
+  need the target to accept a challenge? (If the latter, a mark just adds a reward on top of
+  ordinary consensual PvP, which is far simpler than a non-consensual bounty-hunting system.)
+- **Avoidance-first, per the pillars** — a marked player/NPC can go into hiding (leave the
+  marked area, change disguise if that ever exists), buy the mark off (pay to clear it,
+  economy sink), or seek protection (a safe-zone flag, guard NPCs) — killing on sight isn't the
+  only resolution, consistent with the "combat is optional" stance elsewhere in this doc.
+- **Reward payout & proof-of-kill** — on the marked target's death/defeat, a side effect (same
+  registry `death_resurrection.md` already uses) pays the escrowed reward to whoever landed the
+  killing blow (or subdued them, if non-lethal outcomes count) and clears the mark flag.
+- **Overlaps existing ideas** — shares its whole risk/reward shape with
+  [*Robbers & highway risk*](#robbers--highway-risk--ties-money-travel--death) (carried wealth
+  and marked status both make you a target) and with the *Reputation / standing* system (a
+  faction could auto-mark anyone whose standing drops low enough — a "wanted by the guard"
+  bounty with no player involved at all).
+
+**When to act:** after the PvP consent design question above resolves, and after NPC
+combat is real (bounty-on-an-NPC is the natural first slice — a "wanted poster" quest
+board is mostly presentation on top of existing kill-quest + reward plumbing).
+
 ### Leveling & progression 🤔
 
 Player model has an unused `level` field. No XP or skills yet. **Deliberately deferred** —
@@ -485,6 +517,14 @@ A "recall" or "known destinations" fast-travel could pair naturally with the tra
 (e.g., a rail pass unlocks quick hops between visited stations). Fits the travel-animation
 idea.
 
+### Dynamic area behaviors & spawn policies 💚 (2026-07-08)
+
+Respawn, ecology, and events should be content decisions, not engine constants: one forest
+respawns gradually, a siege zone spawns in waves, a depleted ruin stays depleted. Put area/spawn
+controllers behind the feature-registration pattern (swappable per area) rather than a single
+hardcoded respawn timer — the scheduler + `SCHEDULED_JOB_DUE` primitive already generalizes to
+this, it just isn't parameterized per-area yet.
+
 ---
 
 ## Client UI, layout & presentation 💚 (from Aardwolf/MUSHclient screenshots, 2026-07-03)
@@ -507,16 +547,10 @@ Patterns worth stealing:
 - **Bar gauges alongside numbers 💚** — HP/mana/moves/"TNL"/enemy as coloured progress bars _and_ raw
   numbers. Cheap, high-readability; a browser does this beautifully. Reserve an **enemy/target bar**
   slot for when combat exists.
-- **Two map zoom levels 🤔** — a _local_ minimap (immediate rooms + exits + coords) and a _zoomed-out
-  region/area map_ (tiled grid, colour-coded rooms) shown together. Lorecraft has one fog-of-war
-  minimap; the region view pairs with the planned full-screen map modal ([Sprint 26](roadmap.md#sprint-26--map--mobile-ui)) + cartography
-  ([Sprint 25](roadmap.md#sprint-25--exploration-depth)) — consider local-inline + region-modal rather than two always-on maps (screen budget).
-- **Colour-coded, prefixed channels 💚** — each channel has a consistent colour + bracket tag
-  (`(Friend)`, `[Newbie]`, `Auction:`) so the eye filters instantly. Cheap semantic styling in the
-  browser; pairs with the accessibility/palette preference above. **→ Promoted:** colored/prefixed
-  tags **and per-channel mute** are roadmap
-  [Sprint 45.3](roadmap_completed.md)
-  (2026-07-05).
+- **Two map zoom levels 🤔** — the full-screen pan/zoom map modal already shipped (Sprint 26.1);
+  the still-open nuance is whether a _local_ minimap and a _zoomed-out region/area map_ (tiled
+  grid, colour-coded rooms) should ever show **together**, or stay local-inline + region-modal
+  as today (screen budget favors the latter — low priority, revisit only if it's felt as a gap).
 - **Structured room header 💚** — room name + exits + "who/what is here" as a consistent styled header
   before prose. Lorecraft's room panel already does much of this; keep exits and occupant list
   _structured and clickable_, not buried in text.
@@ -692,10 +726,44 @@ performance at the current single-process design, and would likely regress comma
   *existing* SQLite world's **data** needs `pgloader` / an export-import script; and CI would need a
   Postgres service to validate.
 
-### News & announcements ✅
+### Content preview / diff view + world versioning 🤔 (2026-07-08)
 
-Already shipped ([Sprint 10.5](roadmap.md#sprint-105--tooling-infrastructure-)): `docs/news.yaml`, in-game `news` command, RSS feed. Listed here
-only to note it's _done_, not wanted.
+- **Content preview / diff view** — before publishing a web-builder YAML edit, show a diff of
+  what will change. The existing exporter + `lorecraft.tools.validators` already produce a
+  canonical serialized form and a lint pass; this is running both against pre/post-edit state
+  and rendering a unified diff in the admin UI — no new content model.
+- **World versioning & rollback** — restore world state (prices, descriptions, quest defs) to
+  an earlier point ("revert market prices to two days ago"). The audit log is already the
+  canonical, replayable history; the gap is purely a UI layer exposing it for restore, not new
+  persistence.
+
+### Networking & protocols 🤔 (multi-client support, low priority)
+
+Lorecraft is deliberately WebSocket/browser-only today — no Telnet, no GMCP/MSDP/MXP. That's
+the right call while the audience is a browser-first community, but worth naming as an
+explicit option rather than an accident:
+
+- **GMCP/MSDP structured OOB** — would let traditional MUD clients (Mudlet, CMUD, Tintin++)
+  consume vitals/map/event data the way the WebSocket JSON payloads already do for the browser
+  client. Revisit only if a retro-client community actually forms.
+- **External integrations** — Discord relay, RSS/news bridging (news RSS already ships),
+  cross-game chat. Would sit at the composition layer, behind the same permission checks as
+  in-game commands. Nice-to-have, not requested yet.
+- **Public read-only REST API** — a narrow, non-admin API surface (room/item/NPC lookups,
+  aggregate world stats) for community tooling — distinct from the existing admin-only REST
+  API. Natural first consumer: the player-facing world-graphs/stats idea above.
+
+### AI-assisted content & procedural generation 🤔 (2026-07-08, edge-only)
+
+- **AI/LLM-assisted NPCs & content** — a lore tutor, barkeep, or codex assistant answering in
+  character; builder-assistance and localization drafts. Keep strictly **async and
+  non-authoritative** — never the source of truth for game rules, quest outcomes, or combat
+  math. Cost, moderation, and determinism are the real risks; scope any first attempt to pure
+  flavor dialogue with a hard fallback to static text.
+- **Procedural generation with authorial constraints** — randomized quest objects, shuffled
+  clues, parameterized dungeon layouts generated from bounded templates + seed values, never
+  freeform randomness. Strong for variation, weak as a substitute for hand-authored content —
+  Lorecraft's narrative-quality bar means this stays a minor accent, not a content pipeline.
 
 ---
 
@@ -754,6 +822,23 @@ user is not sure Lorecraft wants these.** Heavy social meta-layer that assumes a
 competitive playerbase. Parking as _probably not_ unless the game grows a community that
 actually forms groups and asks for shared identity/spaces. Revisit only then.
 
+### Player-built world / housing / vehicles-as-property 🤔 (Tier 3, low priority)
+
+EmpireMUD-style player-modified geography (roads, outposts, territorial claims), Discworld/
+Materia-style housing and civic identity, and vehicles-as-owned-property (beyond the
+already-shipped passenger transit) are all genuine differentiators in the wider MUD landscape,
+but bigger commitments than Lorecraft's current scope:
+
+- **Housing / player shops** — a social anchor (storage, customization, a place friends visit)
+  and a natural extension of the shop system already built for NPCs. Defer until a social
+  community exists that would use it — pairs naturally with player groups/parties below.
+- **Player-modified geography** — claim parcels, structure templates, upkeep, reversible deltas.
+  Large design surface (griefing, persistence cost); not pursued unless Lorecraft's scope
+  shifts toward a sandbox-building game, which isn't the current direction.
+- **Vehicles as ownable property** — beyond the ferry/rail/balloon transit lines already
+  shipped, a player-owned boat/wagon. Interesting but low priority; the moving-room/
+  `MobileRouteService` primitive would carry it if ever pursued.
+
 ### Player-run economy at scale 🚫
 
 Auctions, player shops, clan banks, dynamic markets. Presupposes a busy economy Lorecraft
@@ -767,26 +852,14 @@ appears, without committing to the full guild apparatus. The lightest slice — 
 command** — was promoted to roadmap
 [Sprint 47](roadmap.md#sprint-47--follow-command-social-movement) (2026-07-05).
 
-### Issue-report wizard (upgrade the shipped `report` command) 🤔
+### `report player <name>` moderation branch 🤔
 
-**Status (2026-07-07): the guided flow shipped; only the player-moderation branch remains.**
-`report <description>` shipped 2026-07-04 (v0.12.0) as a one-liner, and **Sprint 33.1** then
-added the guided multi-turn flow: bare `report` runs a **category (bug/feedback/idea) → title →
-detail** wizard with `cancel`, state in `player.flags`, free-text routed via
-`resolve_command_text` (tested by `test_report_wizard.py`). So the "guided instead of single
-command" ask is **done**.
-
-**What actually remains** is the *player-moderation* branch only:
-
-- **`report player <name>`** — asks what's being reported about that player, and records the
-  *target* player alongside the *filer*. Today's `Issue` model has no "reported against"
-  concept — only `created_by` — so this needs a new `target_player_id`/similar field (or a
-  companion table for the reported-player link).
-- The open design decision: whether `report player` moderation reports need different
-  handling/visibility (admin surfacing) than the `report issue` bug/feedback reports.
-
-Scope for a future sprint: one new wizard branch + one `Issue` field + admin visibility —
-much smaller than the original entry implies.
+The guided `report` wizard (category → title → detail) already shipped. The only remaining
+piece: a **`report player <name>`** branch that asks what's being reported about that player and
+records the *target* alongside the *filer* — needs a new `target_player_id` field (or companion
+table) on `Issue`, plus a design decision on whether moderation reports need different
+admin-visibility handling than ordinary bug/feedback reports. Small scope: one wizard branch +
+one field + admin visibility.
 
 ---
 
@@ -808,22 +881,15 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 
 | Question                                                | Affects                                                                            | Current lean                                                                                              |
 | ------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Inventory/equipment before combat?                      | Sprint order                                                                       | **Yes — foundational, wanted next**                                                                       |
 | How deep is survival (fatigue/sleep/hunger)?            | Character-condition scope                                                          | Light/flavor, per-world toggle                                                                            |
 | Skills: use-based vs. XP-based improvement?             | Progression feel                                                                   | Use-based (fits exploration)                                                                              |
 | Attributes: minimal spread or none?                     | Character system                                                                   | Minimal, non-combat-framed                                                                                |
-| Death penalty: soft respawn vs. loss vs. permadeath?    | Combat feel                                                                        | **Resolved: resurrect + lose some carried coins/loot** ([`death_resurrection.md`](death_resurrection.md)) |
-| NPC combat before PvP?                                  | [Sprint 31–34](roadmap.md#sprint-31--combat-core-services-supporting-system) order | Yes                                                                                                       |
-| Currency model shape (what is "money")?                 | Trading, tickets, shops                                                            | **Resolved: carried `coins` + safe `BankAccount`** ([`trade_economy.md`](trade_economy.md))               |
-| Regional pricing + transit as the trade network?        | Trade/transit design                                                               | Yes — signature pairing                                                                                   |
+| PvP: soft opt-in vs. anything more punishing?           | Combat feel, gates the *Bounty / target marks* idea                                | Lean soft unless Lorecraft wants a darker RP tone                                                          |
 | Scripting layer: Python / Lua / YAML-only?              | Builder extensibility                                                              | Hold; decide during combat                                                                                |
 | Guilds/clans: in or out?                                | Social scope                                                                       | Leaning out                                                                                               |
-| Vehicle = special Room or new entity?                   | Transit design                                                                     | **Resolved: moving-room** ([`transit_systems.md`](transit_systems.md))                                    |
 | Engine/game-data split: when to act?                    | Repo structure, scripting design                                                   | Plan for it now; execute once scripting is decided or a 2nd world is wanted                               |
 | Tutorial/character-creation: engine feature or content? | Onboarding design                                                                  | Content (scripted, per-world) — reuses dialogue/quest primitives, not new engine mechanism                |
-| Split social/channel feed from narrative feed?          | Client UI/layout                                                                   | **Yes — biggest screenshot takeaway**                                                                     |
 | Currency model: single int or keyed quantity map?       | Trade ([Sprint 28](roadmap.md#sprint-28--trading--economy))                        | Keyed map — cheap now, expensive to retrofit                                                              |
-| Soft caps / diminishing returns on modifiers?           | Traits/skills ([Sprint 24](roadmap.md#sprint-24--traits--skills))                  | **Primitive shipped** — `clamp_min`/`clamp_max` in the §3.5 resolver; content adoption pending           |
 | Player settings/preferences: engine feature?            | Accessibility, UX                                                                  | Yes — thread through the render layer early                                                               |
 
 ---
