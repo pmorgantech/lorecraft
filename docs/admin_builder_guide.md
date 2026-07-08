@@ -432,6 +432,10 @@ field the engine stamps on each `COMMAND_EXECUTED` audit event, so you can see w
 going to parsing, condition checks, or the DB commit. `scheduler_tick`/`broadcast_send` are timed
 in the structured logs (WARNING over 50 ms) but sit outside the per-command audit path.
 
+For the logging/correlation-ID side of this (grepping one command's full log trail by
+`transaction_id`, the slow-operation WARNING threshold, and the upcoming per-command trace +
+crash-report tools), see [`observability.md`](observability.md).
+
 **`/quests` vs. `/quest-funnel`:** `quest_completion_counts` (backing `/quests`) reads the audit
 log for `QUEST_COMPLETED` events — but those are only ever queued on the in-process event bus, never
 persisted as audit rows, so this endpoint is always empty against real data (a pre-existing gap,
@@ -552,6 +556,7 @@ working example.
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | NPC, dialogue tree, and quest YAML schema |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | Changeset lifecycle, builder mode, optimistic locking |
 | [tooling_infrastructure.md](tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
+| [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, and (Sprint 57) request tracing + crash reports |
 | [player_authentication.md](player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
 | [disconnect_handling.md](disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
 | [architecture.md](architecture.md) | Full system architecture reference |

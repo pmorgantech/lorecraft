@@ -11,19 +11,26 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-07, v0.46.0)
+## Where things stand (2026-07-08, v0.46.2)
 
-**No sprint is scheduled.** Everything through **Sprint 55** is complete and merged to local `main`;
-the numbered roadmap is clear. Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar
-feature band (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills,
-character condition, transit), the tier-split refactor, the performance/WAL band, and the recent
-content/UX band (timed room effects, chat/feed split → global channels, marks, celestial cycles,
-context-attached commands) have all shipped. See [`roadmap_completed.md`](roadmap_completed.md).
+**Sprints 56–57 are drafted, not started.** Everything through **Sprint 55** is complete and merged
+to local `main`. Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar feature band
+(exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
+condition, transit), the tier-split refactor, the performance/WAL band, and the recent content/UX
+band (timed room effects, chat/feed split → global channels, marks, celestial cycles, context-attached
+commands) have all shipped. See [`roadmap_completed.md`](roadmap_completed.md).
 
-**Candidate work** lives in the *Backlog* table below and in [`wishlist.md`](wishlist.md) (audited
-against the code 2026-07-07 — bullets that were already shipped are annotated there). The nearest
-small, well-scoped item is the **`report player <name>` moderation branch** of the issue-report
-wizard (the guided flow itself already shipped in Sprint 33.1). **Next new sprint: 56.**
+**Sprint 56** (structured output-type tagging) and **Sprint 57** (request tracing & crash reports)
+are scoped below — an observability/output-infra pair identified 2026-07-08 comparing Lorecraft
+against a modern-MUD-engine research pass ([`wishlist.md`](wishlist.md) "Engine architecture" +
+"Operations, security & deployment" sections). Both are cheap now and expensive to retrofit once
+combat/quests are emitting output at volume, so they're queued ahead of the backlog below.
+
+**Candidate work** also lives in the *Backlog* table below and in [`wishlist.md`](wishlist.md)
+(audited against the code 2026-07-07 — bullets that were already shipped are annotated there). The
+nearest small, well-scoped backlog item is the **`report player <name>` moderation branch** of the
+issue-report wizard (the guided flow itself already shipped in Sprint 33.1). **Next new sprint after
+56–57: 58.**
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -33,6 +40,47 @@ help. Revisit the latter only if a *post-WAL* realistic-load test shows a hard s
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
+
+---
+
+## Sprint 56 — Structured output-type tagging
+
+**Goal:** tag every engine-emitted message with a semantic type (`room_event`, `chat`, `tell`,
+`combat`, `quest`, `warning`, `hint`, `system`) at the point of emission, instead of the flat
+untyped strings `GameContext.say()` produces today. **Why now:** the direct-response channel
+(`ctx.messages`) carries zero type information at all; the room-broadcast channel
+(`engine/game/broadcast.py`) only has an ad hoc binary `message_type: "chat" | "room_event"`. This
+is a single call-site change today (`ctx.say`) — leaving it untyped through the trading/quest band
+was fine, but combat (when it returns) and further quest/social output will multiply call sites
+fast, and retrofitting a type onto every existing `ctx.say(...)` later is far more expensive than
+adding one now. No new commands or player-visible behavior — this is invisible infrastructure that
+unlocks output filtering/routing (mute-by-type prefs, accessible/screen-reader-friendly rendering,
+future non-web clients) without further engine work.
+
+| # | Task | Status |
+|---|------|--------|
+| 56.1 | Define the starter taxonomy (`room_event`, `chat`, `tell`, `combat`, `quest`, `warning`, `hint`, `system`) in one small module. Keep it short and resist one-off types per feature — same "small, named taxonomy" discipline as the `EventBus` event names. | [ ] |
+| 56.2 | Extend `GameContext.say()` to accept an optional message type (default `"system"`); thread it through `ctx.messages` (currently `list[str]` → a small `(type, text)` pair or frozen dataclass) without changing every call site's required arguments. | [ ] |
+| 56.3 | Reuse the same taxonomy on the room-broadcast payload (`broadcast.py`'s `feed_append` messages) in place of the current `"chat"`/`"room_event"` binary, so the direct-response and broadcast channels share one vocabulary. | [ ] |
+| 56.4 | `webui/player/frontend.py`: apply a CSS class per type when rendering the feed (`.msg-combat`, `.msg-warning`, …) — the first real consumer, and the seed for a future per-type mute/filter preference (no new engine work needed later). | [ ] |
+| 56.5 | Sweep existing `ctx.say(...)` call sites in `engine/` and `features/`; assign a type where the intent is clear from context, leave genuinely ambiguous ones on the `"system"` default rather than guessing. | [ ] |
+
+## Sprint 57 — Request tracing & crash reports
+
+**Goal:** extend Sprint 13's structured logging (correlation/transaction IDs) and command latency
+percentiles with two admin-facing debugging tools that don't exist today: a per-command trace of
+what actually happened (conditions checked, events fired, DB commits) and a saved, browsable record
+of unhandled exceptions. Today an admin diagnosing a bad command has only raw log grep by
+`transaction_id` — no structured "what ran" view and nothing captured for an exception beyond
+whatever hits stdout.
+
+| # | Task | Status |
+|---|------|--------|
+| 57.1 | Trace buffer: within `bind_transaction_context()`'s scope, collect an ordered list of trace spans (condition evaluations, event dispatches, DB commits — reusing `time_operation`'s existing timing) keyed by `transaction_id`. In-memory ring buffer over the last N commands — not persisted, matching the "measure, don't over-build" caution already applied to the deferred concurrency work. | [ ] |
+| 57.2 | `GET /admin/trace/<transaction_id>` — returns the captured spans for one recent command (404 once it's aged out of the ring buffer). | [ ] |
+| 57.3 | Crash capture: a handler at both command entry points (`main.py`'s `/ws` loop, `web/frontend.py`'s `POST /command`) that, on an unhandled exception, persists a `CrashReport` row (transaction_id, correlation_id, player_id, command text, stack trace, timestamp) to the audit DB and returns a friendly in-game error instead of a raw disconnect/500. | [ ] |
+| 57.4 | `GET /admin/crashes` (list) + `GET /admin/crashes/<id>` (detail) endpoints and a Crash Reports tab in the admin console, reusing the Audit tab's table/detail pattern. | [ ] |
+| 57.5 | Document both features (usage, endpoints, retention) in [`observability.md`](observability.md) and cross-link from the admin guide's Troubleshooting section. | [ ] |
 
 ---
 
@@ -67,11 +115,14 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching) and 38
   (concurrency/threading gate) — never developed; fsync, not CPU, was the wall.
-- **Reserved but never used:** 56–60 (a gap from an earlier combat renumber).
+- **Drafted, not started:** 56 (structured output-type tagging), 57 (request tracing & crash
+  reports) — scoped above 2026-07-08 from the same gap in the numbering left by the earlier
+  combat renumber.
+- **Reserved but never used:** 58–60 (remainder of the gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat
   testing, PvP consent), 65 (multiplayer trade/transit tests). Don't reuse these numbers for
   unrelated work — restore under fresh numbers if that work returns.
-- **Next new sprint: 56.** Don't recycle a number that appears here or in
+- **Next new sprint after 56–57: 58.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---

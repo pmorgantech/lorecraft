@@ -2,6 +2,21 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.3] - 2026-07-08
+
+### Docs
+
+- **Scoped Sprint 56 (structured output-type tagging) and Sprint 57 (request tracing & crash
+  reports)** in `docs/roadmap.md`, filling the previously-reserved 56–57 slot. Identified from a
+  modern-MUD-engine research pass comparing Lorecraft's output/observability layers against the
+  gaps noted in `wishlist.md`'s "Engine architecture" and "Operations, security & deployment"
+  sections — the direct-response output channel (`ctx.messages`) carries no semantic type today,
+  and there's no per-command trace or crash-report view beyond raw log grep.
+- **Added `docs/observability.md`** — an admin-facing guide to structured logging (correlation/
+  transaction IDs), command/operation latency instrumentation, and the Analytics tab/endpoints,
+  with a preview section for Sprint 57's tracing/crash-report tools. Cross-linked from
+  `admin_builder_guide.md`.
+
 ## [0.46.2] - 2026-07-07
 
 ### Added
