@@ -17,6 +17,7 @@ from lorecraft.engine.game.command_patterns import (
     role_str,
 )
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.encumbrance.rules import (
     encumbrance_band,
     resolve_carry_capacity,
@@ -140,7 +141,7 @@ class InventoryService:
         (either a "not found" message or a numbered disambiguation prompt).
         """
         if not matches:
-            ctx.say(not_found_msg)
+            ctx.say(not_found_msg, MessageType.WARNING)
             return None
         if len(matches) > 1:
             _prompt_disambiguation(ctx, verb, query, [item_of(m) for m in matches])
@@ -151,7 +152,7 @@ class InventoryService:
         self, ctx: GameContext, stack: ItemStack, item: Item, count: int
     ) -> None:
         if self._would_overload(ctx, item, count):
-            ctx.say("You can't carry any more weight.")
+            ctx.say("You can't carry any more weight.", MessageType.WARNING)
             return
         self._move_room_to_player(ctx, stack, count)
         label = format_inventory_entry(item.name, count)
@@ -235,7 +236,7 @@ class InventoryService:
 
     def take_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Take what?")
+            ctx.say("Take what?", MessageType.WARNING)
             return
 
         target = parse_item_target(name_or_id)
@@ -255,7 +256,7 @@ class InventoryService:
 
     def drop_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Drop what?")
+            ctx.say("Drop what?", MessageType.WARNING)
             return
 
         target = parse_item_target(name_or_id)
@@ -273,7 +274,7 @@ class InventoryService:
     def _take_everything_in_room(self, ctx: GameContext) -> None:
         room_items = ctx.item_repo.items_in_room(ctx.room.id)
         if not room_items:
-            ctx.say("There is nothing here to take.")
+            ctx.say("There is nothing here to take.", MessageType.WARNING)
             return
 
         taken_labels: list[str] = []
@@ -290,7 +291,7 @@ class InventoryService:
             self._emit_item_taken(ctx, item.id, count=count)
 
         if not taken_labels:
-            ctx.say("There is nothing here you can take.")
+            ctx.say("There is nothing here you can take.", MessageType.WARNING)
             return
 
         summary = ", ".join(taken_labels)
@@ -312,7 +313,7 @@ class InventoryService:
 
         stack, item = match
         if not item.takeable:
-            ctx.say("You can't take that.")
+            ctx.say("You can't take that.", MessageType.WARNING)
             return
 
         self._do_take(ctx, stack, item, 1)
@@ -334,13 +335,13 @@ class InventoryService:
 
         stack, item = match
         if not item.takeable:
-            ctx.say("You can't take that.")
+            ctx.say("You can't take that.", MessageType.WARNING)
             return
 
         available = stack.quantity
         count = available if take_all else min(target.quantity, available)
         if count <= 0:
-            ctx.say("You don't see that here.")
+            ctx.say("You don't see that here.", MessageType.WARNING)
             return
 
         self._do_take(ctx, stack, item, count)
@@ -352,12 +353,12 @@ class InventoryService:
             or target.index is None
             or not (1 <= target.index <= len(expanded))
         ):
-            ctx.say("You don't see that here.")
+            ctx.say("You don't see that here.", MessageType.WARNING)
             return
 
         stack, item = expanded[target.index - 1]
         if not item.takeable:
-            ctx.say("You can't take that.")
+            ctx.say("You can't take that.", MessageType.WARNING)
             return
 
         self._do_take(ctx, stack, item, 1)
@@ -377,7 +378,7 @@ class InventoryService:
 
         stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, query)
         if not stacks:
-            ctx.say("You don't have that.")
+            ctx.say("You don't have that.", MessageType.WARNING)
             return
 
         self._do_drop(ctx, stacks[0][0], match, 1)
@@ -387,7 +388,7 @@ class InventoryService:
     ) -> None:
         stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, target.query)
         if not stacks:
-            ctx.say("You don't have that.")
+            ctx.say("You don't have that.", MessageType.WARNING)
             return
 
         unique_items = _unique_items([item for _, item in stacks])
@@ -424,7 +425,7 @@ class InventoryService:
             or target.index is None
             or not (1 <= target.index <= len(expanded))
         ):
-            ctx.say("You don't have that.")
+            ctx.say("You don't have that.", MessageType.WARNING)
             return
 
         stack, item = expanded[target.index - 1]
@@ -452,7 +453,7 @@ class InventoryService:
 
     def use_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Use what?")
+            ctx.say("Use what?", MessageType.WARNING)
             return
 
         matches = self._find_carried_or_visible(name_or_id, ctx)
@@ -470,19 +471,25 @@ class InventoryService:
         other_phrase = _use_target_phrase(ctx)
         if other_phrase is None:
             if item.usable_with:
-                ctx.say(f"You need to use the {item.name} with something specific.")
+                ctx.say(
+                    f"You need to use the {item.name} with something specific.",
+                    MessageType.WARNING,
+                )
             else:
-                ctx.say(f"You use the {item.name}, but nothing happens.")
+                ctx.say(
+                    f"You use the {item.name}, but nothing happens.",
+                    MessageType.WARNING,
+                )
             self._emit_item_used(ctx, item.id)
             return
 
         other_matches = self._find_carried_or_visible(other_phrase, ctx)
         if not other_matches:
-            ctx.say(f"You don't see {other_phrase} here.")
+            ctx.say(f"You don't see {other_phrase} here.", MessageType.WARNING)
             return
         if len(other_matches) > 1:
             names = ", ".join(sorted({other.name for other in other_matches}))
-            ctx.say(f"Which do you mean: {names}?")
+            ctx.say(f"Which do you mean: {names}?", MessageType.WARNING)
             return
 
         other = other_matches[0]
@@ -491,7 +498,10 @@ class InventoryService:
             ctx.tell_room(f"{ctx.player.username} uses {item.name} with {other.name}.")
             self._apply_combination_side_effects(item, other, ctx)
         else:
-            ctx.say(f"Using the {item.name} with the {other.name} does nothing.")
+            ctx.say(
+                f"Using the {item.name} with the {other.name} does nothing.",
+                MessageType.WARNING,
+            )
 
         self._emit_item_used(ctx, item.id, other_item_id=other.id)
 
@@ -512,18 +522,18 @@ class InventoryService:
 
     def give_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Give what?")
+            ctx.say("Give what?", MessageType.WARNING)
             return
 
         parsed = ctx.parsed_command
         recipient_phrase = role_str(parsed, ROLE_RECIPIENT) if parsed else None
         if not recipient_phrase:
-            ctx.say("Give it to whom?")
+            ctx.say("Give it to whom?", MessageType.WARNING)
             return
 
         npc = ctx.npc_repo.find_in_room(ctx.room.id, recipient_phrase)
         if npc is None:
-            ctx.say(f"There is no {recipient_phrase} here.")
+            ctx.say(f"There is no {recipient_phrase} here.", MessageType.WARNING)
             return
 
         matches = ctx.item_repo.search_player_items(ctx.player.id, name_or_id)
@@ -540,7 +550,7 @@ class InventoryService:
 
         stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, name_or_id)
         if not stacks:
-            ctx.say("You don't have that.")
+            ctx.say("You don't have that.", MessageType.WARNING)
             return
 
         stack = stacks[0][0]
@@ -580,13 +590,13 @@ class InventoryService:
 
     def wear_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Wear what?")
+            ctx.say("Wear what?", MessageType.WARNING)
             return
         self._equip(name_or_id, ctx, verb="wear", wearable=True)
 
     def wield_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Wield what?")
+            ctx.say("Wield what?", MessageType.WARNING)
             return
         self._equip(name_or_id, ctx, verb="wield", wearable=False)
 
@@ -606,17 +616,17 @@ class InventoryService:
             return
 
         if item.wearable != wearable:
-            ctx.say(f"You can't {verb} the {item.name}.")
+            ctx.say(f"You can't {verb} the {item.name}.", MessageType.WARNING)
             return
 
         if item.slot is None:
-            ctx.say(f"The {item.name} has no equip slot.")
+            ctx.say(f"The {item.name} has no equip slot.", MessageType.WARNING)
             return
 
         stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, name_or_id)
         loose_stacks = [s for s, _ in stacks if s.slot is None]
         if not loose_stacks:
-            ctx.say(f"You aren't carrying a loose {item.name}.")
+            ctx.say(f"You aren't carrying a loose {item.name}.", MessageType.WARNING)
             return
         stack = loose_stacks[0]
 
@@ -630,7 +640,7 @@ class InventoryService:
                 stack.id, Location("player", ctx.player.id, slot=target_slot), 1
             )
         except (ValidationError, ConflictError) as exc:
-            ctx.say(exc.message)
+            ctx.say(exc.message, MessageType.WARNING)
             return
 
         ctx.say(f"You {verb} the {item.name}.")
@@ -652,18 +662,18 @@ class InventoryService:
                 Location("player", ctx.player.id, slot=slot)
             ):
                 return slot
-        ctx.say("Both your finger slots are full.")
+        ctx.say("Both your finger slots are full.", MessageType.WARNING)
         return None
 
     def remove_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Remove what?")
+            ctx.say("Remove what?", MessageType.WARNING)
             return
         self._unequip(name_or_id, ctx, verb="remove")
 
     def unwield_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Unwield what?")
+            ctx.say("Unwield what?", MessageType.WARNING)
             return
         self._unequip(name_or_id, ctx, verb="unwield")
 
@@ -675,7 +685,7 @@ class InventoryService:
             if self._query_matches_item(name_or_id, item)
         ]
         if not matching:
-            ctx.say("You aren't wearing or wielding that.")
+            ctx.say("You aren't wearing or wielding that.", MessageType.WARNING)
             return
         if len(matching) > 1:
             _prompt_disambiguation(
@@ -699,7 +709,7 @@ class InventoryService:
     def list_equipment(self, ctx: GameContext) -> None:
         equipped = self._equipped_stacks(ctx)
         if not equipped:
-            ctx.say("You aren't wearing or wielding anything.")
+            ctx.say("You aren't wearing or wielding anything.", MessageType.WARNING)
             ctx.push_update("equipment", [])
             return
 
@@ -720,13 +730,13 @@ class InventoryService:
 
     def put_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Put what?")
+            ctx.say("Put what?", MessageType.WARNING)
             return
 
         parsed = ctx.parsed_command
         container_phrase = role_str(parsed, ROLE_DESTINATION) if parsed else None
         if not container_phrase:
-            ctx.say("Put it where?")
+            ctx.say("Put it where?", MessageType.WARNING)
             return
 
         container_match = self._resolve_container(container_phrase, ctx, verb="put")
@@ -749,7 +759,7 @@ class InventoryService:
         stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, name_or_id)
         loose_stacks = [s for s, _ in stacks if s.slot is None]
         if not loose_stacks:
-            ctx.say("You aren't carrying that loose.")
+            ctx.say("You aren't carrying that loose.", MessageType.WARNING)
             return
         stack = loose_stacks[0]
 
@@ -759,7 +769,7 @@ class InventoryService:
                 stack.id, Location("container", container_instance.id), 1
             )
         except (ValidationError, ConflictError) as exc:
-            ctx.say(exc.message)
+            ctx.say(exc.message, MessageType.WARNING)
             return
 
         ctx.say(f"You put the {item.name} in the {_container_item.name}.")
@@ -773,7 +783,7 @@ class InventoryService:
 
     def take_from_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Take what?")
+            ctx.say("Take what?", MessageType.WARNING)
             return
 
         parsed = ctx.parsed_command
@@ -789,7 +799,7 @@ class InventoryService:
 
         openable_state = get_component_state(container_instance, "openable")
         if isinstance(openable_state, dict) and not openable_state.get("open"):
-            ctx.say(f"The {container_item.name} is closed.")
+            ctx.say(f"The {container_item.name} is closed.", MessageType.WARNING)
             return
 
         contents = ctx.stack_repo.stacks_at(
@@ -804,7 +814,10 @@ class InventoryService:
                 matching_stacks.append((content_stack, content_item))
 
         if not matching_stacks:
-            ctx.say(f"There is no {name_or_id} in the {container_item.name}.")
+            ctx.say(
+                f"There is no {name_or_id} in the {container_item.name}.",
+                MessageType.WARNING,
+            )
             return
         if len(matching_stacks) > 1:
             _prompt_disambiguation(
@@ -814,7 +827,7 @@ class InventoryService:
 
         stack, item = matching_stacks[0]
         if self._would_overload(ctx, item, 1):
-            ctx.say("You can't carry any more weight.")
+            ctx.say("You can't carry any more weight.", MessageType.WARNING)
             return
 
         assert stack.id is not None
@@ -876,19 +889,19 @@ class InventoryService:
 
         stack, item = resolved
         if stack.instance_id is None:
-            ctx.say(f"You can't {verb} that.")
+            ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return None
 
         instance = ctx.session.get(ItemInstance, stack.instance_id)
         if instance is None or get_component_state(instance, "openable") is None:
-            ctx.say(f"You can't {verb} that.")
+            ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return None
 
         return item, instance
 
     def open_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Open what?")
+            ctx.say("Open what?", MessageType.WARNING)
             return
 
         resolved = self._resolve_openable(name_or_id, ctx, verb="open")
@@ -898,7 +911,7 @@ class InventoryService:
 
         state = get_component_state(instance, "openable")
         if isinstance(state, dict) and state.get("open"):
-            ctx.say(f"The {item.name} is already open.")
+            ctx.say(f"The {item.name} is already open.", MessageType.WARNING)
             return
 
         set_component_state(ctx.session, instance, "openable", {"open": True})
@@ -907,7 +920,7 @@ class InventoryService:
 
     def close_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Close what?")
+            ctx.say("Close what?", MessageType.WARNING)
             return
 
         resolved = self._resolve_openable(name_or_id, ctx, verb="close")
@@ -917,7 +930,7 @@ class InventoryService:
 
         state = get_component_state(instance, "openable")
         if isinstance(state, dict) and not state.get("open"):
-            ctx.say(f"The {item.name} is already closed.")
+            ctx.say(f"The {item.name} is already closed.", MessageType.WARNING)
             return
 
         set_component_state(ctx.session, instance, "openable", {"open": False})
@@ -941,12 +954,12 @@ class InventoryService:
 
         stack, item = resolved
         if stack.instance_id is None:
-            ctx.say(f"You can't {verb} that.")
+            ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return None
 
         instance = ctx.session.get(ItemInstance, stack.instance_id)
         if instance is None or get_component_state(instance, "mechanism") is None:
-            ctx.say(f"You can't {verb} that.")
+            ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return None
 
         return item, instance
@@ -959,7 +972,7 @@ class InventoryService:
         so a lever "solving" is a one-way trigger, not a live "must be
         currently in state X" check."""
         if name_or_id is None:
-            ctx.say("Activate what?")
+            ctx.say("Activate what?", MessageType.WARNING)
             return
 
         resolved = self._resolve_mechanism(name_or_id, ctx, verb="activate")
@@ -969,7 +982,7 @@ class InventoryService:
 
         states = item.mechanism_states
         if not states:
-            ctx.say(f"You can't activate the {item.name}.")
+            ctx.say(f"You can't activate the {item.name}.", MessageType.WARNING)
             return
 
         state = get_component_state(instance, "mechanism")
@@ -1006,19 +1019,19 @@ class InventoryService:
 
         stack, item = resolved
         if stack.instance_id is None:
-            ctx.say(f"You can't {verb} that.")
+            ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return None
 
         instance = ctx.session.get(ItemInstance, stack.instance_id)
         if instance is None or get_component_state(instance, "lit") is None:
-            ctx.say(f"You can't {verb} that.")
+            ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return None
 
         return item, instance
 
     def light_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Light what?")
+            ctx.say("Light what?", MessageType.WARNING)
             return
 
         resolved = self._resolve_lit_source(name_or_id, ctx, verb="light")
@@ -1028,7 +1041,7 @@ class InventoryService:
 
         state = get_component_state(instance, "lit")
         if isinstance(state, dict) and state.get("lit"):
-            ctx.say(f"The {item.name} is already lit.")
+            ctx.say(f"The {item.name} is already lit.", MessageType.WARNING)
             return
 
         set_component_state(ctx.session, instance, "lit", {"lit": True})
@@ -1037,7 +1050,7 @@ class InventoryService:
 
     def extinguish_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
-            ctx.say("Extinguish what?")
+            ctx.say("Extinguish what?", MessageType.WARNING)
             return
 
         resolved = self._resolve_lit_source(name_or_id, ctx, verb="extinguish")
@@ -1047,7 +1060,7 @@ class InventoryService:
 
         state = get_component_state(instance, "lit")
         if isinstance(state, dict) and not state.get("lit"):
-            ctx.say(f"The {item.name} isn't lit.")
+            ctx.say(f"The {item.name} isn't lit.", MessageType.WARNING)
             return
 
         set_component_state(ctx.session, instance, "lit", {"lit": False})
@@ -1153,7 +1166,7 @@ def _prompt_disambiguation(
     ctx: GameContext, verb: str, noun: str, items: list[Item]
 ) -> None:
     options = ", ".join(f"({i + 1}) {item.name}" for i, item in enumerate(items))
-    ctx.say(f"Which do you mean? {options}")
+    ctx.say(f"Which do you mean? {options}", MessageType.WARNING)
     ctx.push_update(
         "disambig_pending",
         {"verb": verb, "noun": noun, "choices": [item.name for item in items]},

@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.47.1] - 2026-07-08 (local `develop` branch, not on `main`)
+
+### Changed
+
+- **Sprint 56.5: extended the output-type sweep to `features/inventory/service.py`.** ~59 of
+  its 86 `ctx.say(...)` calls — precondition failures ("Take what?", "You don't have that."),
+  disambiguation prompts, and `ValidationError`/`ConflictError` passthroughs — retyped to
+  `MessageType.WARNING`. The remaining ~27 (successful-action narration like "You take the
+  sword.", and `look`/`examine`/inventory-listing output) stay on the `SYSTEM` default —
+  they're not warnings and don't fit any other taxonomy entry cleanly. No behavior change.
+
 ## [0.47.0] - 2026-07-08 (local `develop` branch, not on `main`)
 
 ### Added

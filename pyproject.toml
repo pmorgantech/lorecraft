@@ -1,6 +1,6 @@
 [project]
 name = "lorecraft"
-version = "0.47.0"
+version = "0.47.1"
 description = "Persistent multiplayer text adventure engine."
 requires-python = ">=3.12"
 dependencies = [
