@@ -1,8 +1,8 @@
 # Lorecraft — Wishlist & Idea Backlog
 
 > **Purpose:** A menu of gaps, unimplemented ideas, and "wouldn't-it-be-cool" features
-> gathered from a planning session comparing Lorecraft against classic MUDs (Evennia,
-> Ranvier, SMAUG, Aardwolf, Materia Magica) — 2026-07-03.
+> gathered from planning sessions comparing Lorecraft against modern MUD engines (Evennia,
+> Ranvier, CoffeeMud, FluffOS, tbaMUD, Aardwolf, Materia Magica, BatMUD, Discworld).
 >
 > **This is not a roadmap.** Nothing here is committed. The roadmap
 > ([`roadmap.md`](roadmap.md)) is the authoritative work queue; items graduate _into_ it
@@ -13,6 +13,29 @@
 > notably *timed/scheduled quests* (Sprint 30.2), *attributes*, *item quality/rarity*,
 > *durability*, *bound items*, *NPC memory*, *shop restock*, the *soft-cap primitive*, and
 > the *guided report flow* (Sprint 33.1). Items without such a note are still genuinely open.
+
+## Engine architecture & design philosophy
+
+Based on analysis of modern MUD engines (Evennia, Ranvier, CoffeeMud, FluffOS, Discworld),
+the strongest pattern is **tiny core + everything else is a plugin**. The engine provides
+infrastructure (entities, persistence, networking, events, permissions, scheduling, world
+builder tools); gameplay is layered on top as optional modules. This enables:
+
+- **AI-friendly content** — all assets are human-readable YAML/structured data, version-controlled, isolated so coding agents can safely modify content.
+- **Independent evolution** — engine updates don't require content rewrites; new gameplay features don't change core code.
+- **Reusability across worlds** — the same engine can run fantasy, sci-fi, teaching, or experimental settings without forking.
+
+Key architectural principles:
+
+- **Data-driven everything** — world content lives in YAML/JSON/DSLs, not hardcoded logic.
+- **Event-driven subsystems** — combat, quests, weather, economy publish events; systems subscribe without direct coupling.
+- **Entity/component model** — instead of deep inheritance (Character → NPC → Merchant → Guard), use flat entities with composable components (Position, Health, Inventory, AI, Skills, Merchant, etc.). Avoids massive class hierarchies.
+- **Semantically structured output** — text output tags each line with type (room-text, combat, quest, tell, system, warning) so clients (terminal, browser, GUI, screen-reader) can route/filter/speak separately.
+- **Protocol abstraction** — game logic is transport-agnostic; telnet, WebSocket, web UI, or future clients all consume the same event stream via capability negotiation.
+
+Not all of these are implemented yet; the design intent is to apply them as subsystems mature.
+
+---
 
 ## Guiding stance: borrow selectively, don't clone
 
@@ -87,6 +110,38 @@ Resolved / remaining design questions:
   fast-travel. _(Resolved in the design doc.)_
 - Off-vehicle players _do_ see arrivals/departures and can watch the vehicle cross the minimap.
 - Tickets are items; free or quest-pass for now, priced once the [Sprint 28](roadmap.md#sprint-28--trading--economy) economy lands.
+
+---
+
+## World model flexibility 💚 (architectural — long-term planning)
+
+Lorecraft's world is currently **room-based** (rooms with exits). Future expansion can support
+multiple coordinate and topology systems on the same engine without major rewrites:
+
+**Coordinate-aware worlds:**
+- **Hex grid / wilderness** — coordinate regions with distance/terrain-based travel time.
+- **2.5D / Z-levels** — vertical stacking (caves below, balconies above, sky).
+- **Open world / seamless zones** — exits don't gate movement; walking off one "room" flows into
+  the next procedurally or via a loaded adjacent tile.
+
+**Alternative topologies:**
+- **Ships / vehicles** — rooms that move (especially useful for the transit systems above).
+- **Buildings / interior spaces** — logical room trees (a house contains 3 rooms; exiting all
+  rooms re-enters the main world).
+- **Instanced dungeons** — per-party or per-player copy of a zone template with independent
+  state (boss defeated? treasure taken?).
+- **Procedurally generated regions** — seeded randomization so a region generates consistently
+  but differently per seed/season.
+
+Today's room model is not a limitation — it's a starting point. The entity/component
+architecture means a new location type (hex tile, building, instance) is a component set, not
+a new class hierarchy. Design any new topology as a **component bundle** (coordinates + terrain,
+or container+interior-rooms, or instance+template-ref) so the engine stays flexible.
+
+When to act: **Not now.** The current room model serves the narrative/exploration pillars well.
+Revisit this design when/if a specific topology (hex wilderness, instanced arenas, building
+interiors) becomes a real content need — then implement it as a component set reusing the
+existing entity framework. Don't speculatively build all topologies.
 
 ---
 
@@ -494,6 +549,41 @@ Lorecraft is browser-based, so most of these map onto HTMX panels it already has
 minimap, players-online, quest tracker, world-clock bar) — the value is in _what deserves its own
 pane_ and _how information is separated_.
 
+**Structured output bus** (accessibility & client flexibility):
+
+The highest-impact insight from comparing Aardwolf, Materia, and Alter Aeon is that each line of
+output should be **tagged with semantic type** (room-text, combat, quest-update, tell, channel-chat,
+system-message, warning, hint). This enables:
+
+- **Screen readers** — speak only the important lines (warnings/tells), skip flavor.
+- **GUI clients** — route combat to a combat pane, tells to a social pane, quests to a tracker.
+- **Mobile clients** — collapse verbose room text, expand combat details.
+- **Bots & tools** — parse structured JSON instead of regex-ing plain text.
+- **Player preferences** — "mute combat spam", "speak warnings aloud", "hide shop spam".
+
+This is not a new protocol; it's **metadata on the existing text stream**. Each event from the
+command dispatcher gets a `(output_type, text, json_payload)` tuple. The browser renders `text`
+with CSS class; telnet clients ignore the type; GUI clients use it for routing.
+
+Design this early (in the command dispatcher or event layer) rather than retrofitting later.
+No new commands needed — it's invisible infrastructure that clients can optionally consume.
+
+**Protocol abstraction & capability negotiation** (future-proofing):
+
+Keep the game logic completely separate from transport. Lorecraft already uses telnet (text)
+and WebSocket (JSON) — future clients (mobile app, Discord bot, REST API) should all consume
+the same internal event stream. Achieve this via:
+
+- **Capability registry** — on connect, client declares what it can handle (text, JSON, colors, triggers, GMCP, etc.).
+- **Transport-agnostic events** — the engine publishes events; adapters translate to the client's capability.
+- **Negotiated OOB data** — clients that support it (Mudlet, CMUD, MUSHclient) receive structured data (GMCP-style) alongside text.
+
+Example: a telnet client says "I support plain text + GMCP". It receives `(text, gmcp_json)` tuples; it renders text, parses the JSON for status bars / vitals. A browser client says "I support JSON + semantic types"; it gets structured output with type tags and JSON payloads. One engine, many clients.
+
+**When to act:** Don't implement now. But keep the transport layer in a separate module so
+that when a second client type (mobile, Discordbot, whatever) arrives, it's a new adapter, not
+engine changes.
+
 Patterns worth stealing:
 
 - **Separate the communication log from the narrative feed 💚** — every screenshot devotes a whole
@@ -745,6 +835,63 @@ character creation something to actually choose.
 
 ---
 
+## Operations, security & deployment 💚 (reference for architecture decisions)
+
+Modern engines (Evennia, CoffeeMud, Discworld) treat operations as a core feature, not an
+afterthought. Based on comparative analysis:
+
+### Security baseline 💚
+
+- **Password hashing** — Argon2id or scrypt, never plaintext or reversible. ✅ **Shipped.**
+- **Admin/staff authentication** — separate from player login; staff accounts isolated. ✅ **Shipped (JWT + `is_staff`).**
+- **Audit log as source of truth** — all mutations logged with actor, target, payload, timestamp. ✅ **Shipped (Sprint 10).**
+- **Per-command & per-entity permission locks** — not just role-based. `can_execute(command, player)` checks `command_lock` + `player.permission` + context. Evennia's lock DSL is a proven model. (Basic pattern in place via `conditions.py`; deeper lock DSL is future.)
+- **Runtime script sandbox** — if a scripting layer is added (Python, Lua, etc.), bound evaluation budgets and cancellation so runaway code doesn't kill the server. FluffOS's evaluation-cost model is a reference.
+- **Network hardening** — reverse proxy (NGINX/HAProxy) terminates TLS; app binds internally only; `/admin` routes restricted to local IPs or staff VPN.
+- **Upload safety** — if asset uploads exist (player avatars, world images), scan and segregate them; never execute user media.
+
+### Observability & debugging 💚
+
+- **Structured logging** — JSON lines for machine processing; human-readable summaries for admins. Not just print statements.
+- **Metrics** — command latency, scheduler job duration, database commit time, active-player count. Graphed over time (Grafana, Datadog, etc.).
+- **Tracing** — trace a single request/command through the system (what locks were checked, what events fired, what DB queries ran). Invaluable for debugging.
+- **Error introspection** — `crash report` or `/admin show crash <id>` shows the full stack, inputs, and game state for post-mortems.
+- **Player activity log** — per-player `journal` of their actions (commands run, quests completed, items acquired) for anti-cheating or customer service.
+
+### Deployment patterns 💚
+
+**Single VPS** (v0/early access):
+- Containerized app (Docker) + SQLite database → simple restore/migrate/rollback.
+- TLS termination + reverse proxy on the host.
+- Cron-based backups to S3 or cold storage.
+
+**Production-ready** (post-launch):
+- App containers behind a reverse proxy (NGINX + healthchecks).
+- Database on a managed service (Postgres in RDS, Azure Database, etc.) or internal replica.
+- Object store for uploads / world media (S3, GCS, etc.).
+- Monitoring + alerting (Sentry for crashes, Prometheus for latency).
+- CI/CD (GitHub Actions or internal) to test and deploy on every commit to `main`.
+
+**Future multi-host** (if needed):
+- Multiple app processes sharing one DB (stateless design already in place).
+- Session sticky routing (a player's connection stays on the same app instance).
+- Shared cache (Redis) for session data, rate limits, and cross-process events.
+- Careful queue design for scheduler jobs (one instance wins each job via a `LOCK`/`SELECT FOR UPDATE`).
+
+**When to act:** The single-VPS pattern works until ~50 concurrent players. **Measure first** — don't pre-build multi-host infrastructure. When a real bottleneck appears (commits slower than command throughput, or player base grows), measure it, then choose the next tier.
+
+### Testing & CI as prerequisites 💚
+
+- **Unit tests** — parser, permissions, quest logic, trade math. Target: >70% coverage, zero silent failures.
+- **Integration tests** — command flow, NPC dialogue, quest progression, persistence migrations.
+- **Browser/e2e tests** — player login, navigation, form submission. Catches UI regressions.
+- **Simulation tests** — concurrent players, trade escrow, shared vehicles, scheduler stress. Replays `audit_log` to validate determinism.
+- **Golden tests** — capture command output + state deltas; regression-test that future changes match (or explicitly document why they should differ).
+
+CI runs the test suite on every commit and blocks merge to `main` if coverage drops or tests fail. See `Makefile` targets: `make test`, `make test-cov`, `make test-e2e`, `make test-simulation`.
+
+---
+
 ## Social & meta layers
 
 ### Guilds / clans 🚫 (leaning non-goal)
@@ -790,6 +937,40 @@ much smaller than the original entry implies.
 
 ---
 
+## Advanced integrations & AI-assisted pipeline 🤔
+
+### External APIs & integrations 💚 (reference design)
+
+Based on Evennia's Discord bridge and CoffeeMud's multi-channel integrations:
+
+- **Discord relay** — in-game channel messages ↔ Discord webhook (optional bridge, off by default for privacy).
+- **IRC / Grapevine / MUD-wide networks** — plug into multi-MUD social layers.
+- **RSS / news feeds** — world news updates via feed instead of hand-edits.
+- **REST API** — read-only or admin-scoped CRUD on entities, quests, and world state; useful for external dashboards, mobile apps, or third-party tools.
+
+**When to act:** Post-launch and only if a real use case appears (e.g., "I want to build a mobile quest tracker" or "Discord players want a relay"). Start with REST read-only; webhook writes are higher-security risk.
+
+### AI-assisted content creation 🤔
+
+Evennia ships an async LLM NPC contrib; CoffeeMud documents LLM integrations. The key insight:
+**AI assists content creation, not game rules.**
+
+- **NPC personality & flavor text** — an LLM can draft dialogue within constraints (tone, vocabulary, factual grounding). A builder reviews and edits.
+- **Quest structure & branching** — an LLM can expand a quest outline into branching dialogue trees and stage conditions. Builders author the YAML.
+- **Description generation** — room descriptions, item names, NPC appearances. Draft, then edit.
+- **Lore summarization** — distill a player's exploration history or NPC relationships for dynamic quests (e.g., "the NPC mentions that past encounter you had").
+
+**Never use LLM for:**
+- Game rules, math, or balance decisions.
+- The source of truth for lore or quest outcomes.
+- Real-time generation (too slow; all content should be pre-authored).
+
+**Design intent:** Keep LLM calls **async and non-authoritative** — use them to *generate candidates* that humans review, not to *compute* game state. This preserves determinism, auditability, and player trust.
+
+**When to act:** Once the quest/dialogue system is stable and builders are asking for content-generation help — probably post-launch. Not a prerequisite.
+
+---
+
 ## Architectural patterns worth keeping (not gaps — validation)
 
 The planning comparison confirmed Lorecraft already matches modern-MUD best practice on:
@@ -828,5 +1009,33 @@ These aren't wishlist items; they're the foundation the wishlist builds on.
 
 ---
 
-_Created 2026-07-03 from an architecture + MUD-comparison planning session. Update as ideas
-are chosen (move to [`roadmap.md`](roadmap.md)) or explicitly dropped._
+---
+
+## Implementation priorities: why and when
+
+The modern-MUD analysis reveals a progression of engine maturity:
+
+**Foundation (Sprints 5–15, largely complete):** Entity model, persistence, game context, permissions,
+world clock, scheduler, events, and core services. Without this, everything else is shaky.
+
+**Gameplay core (Sprints 16–35, in progress):** Combat (deferred), trading, quests, exploration,
+progression. What players actually _play_. These sprint on the foundation and drive retention.
+
+**Polish & quality (Sprints 36–50, ongoing):** UI/UX, accessibility, performance, builder tools,
+documentation. Turns a playable game into a _good_ game. Works because the foundation is solid.
+
+**Operations & scale (Sprints 51+, as needed):** Multi-host deployments, advanced monitoring,
+external integrations, LLM pipelines. Only needed when a real problem appears — don't pre-build
+for scale you don't have.
+
+The wishlist items reflect this: transit and trading are gameplay-core (Sprint 28+); accessibility
+and structured output are polish (Sprint 45+); REST APIs and multi-host are operations (post-launch).
+Items without a sprint number are either deferred (pending a design decision or a real need) or
+waiting for a prerequisite (e.g., combat before PvP).
+
+---
+
+_Created 2026-07-03 from an architecture + MUD-comparison planning session. Last updated
+2026-07-07 with modern-MUD engine analysis (Evennia, Ranvier, CoffeeMud, FluffOS, Discworld,
+Aardwolf, BatMUD, Materia Magica, Alter Aeon). Update as ideas are chosen (move to
+[`roadmap.md`](roadmap.md)) or explicitly dropped._
