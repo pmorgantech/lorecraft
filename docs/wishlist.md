@@ -367,7 +367,7 @@ layer**, persisted on the account and read by the render layer.
   A general tool: puzzle timers (a plate opens a gate for 30s), weather hazards, lingering zones,
   farming growth. Worth naming as a primitive — lots of content wants it. Builds on
   `SchedulerService` + `TIME_ADVANCED`.
-  **→ Promoted to roadmap [Sprint 39](roadmap.md#sprint-39--timed-room-effects-tier-1-engine-primitive-design-first)**
+  **→ Promoted to roadmap [Sprint 39](roadmap_completed.md)**
   (2026-07-05, design-first): decided to **reuse the Sprint 19 `ActiveEffect`/`EffectService`
   timed-effect primitive** (already generic over `entity_type` — a room is just
   `entity_type="room"`) rather than a new `RoomEffect` model or a component carrier.
@@ -412,7 +412,7 @@ layer**, persisted on the account and read by the render layer.
   learn the rhythm) and restore vitals at checkpoints. Good fit for the feature-registration pattern +
   scheduler; the caravan-defense one pairs with the trade-route idea. Defer, but a strong "special
   content" mould. The simplest *non-instanced* slice — **scavenger hunt events** — was promoted to
-  roadmap [Sprint 48](roadmap.md#sprint-48--scavenger-hunt-events-design-first) (2026-07-05).
+  roadmap [Sprint 48](roadmap_completed.md) (2026-07-05).
 
 #### Smaller design details (one line each)
 
@@ -515,7 +515,7 @@ Patterns worth stealing:
   (`(Friend)`, `[Newbie]`, `Auction:`) so the eye filters instantly. Cheap semantic styling in the
   browser; pairs with the accessibility/palette preference above. **→ Promoted:** colored/prefixed
   tags **and per-channel mute** are roadmap
-  [Sprint 45.3](roadmap.md#sprint-45--split-the-socialchat-feed-from-the-narrative-feed-opt-in)
+  [Sprint 45.3](roadmap_completed.md)
   (2026-07-05).
 - **Structured room header 💚** — room name + exits + "who/what is here" as a consistent styled header
   before prose. Lorecraft's room panel already does much of this; keep exits and occupant list
@@ -562,7 +562,7 @@ time comes:
 
 ### Context-attached commands 🤔 (distilled from Evennia cmdsets, 2026-07-03)
 
-**→ Promoted to roadmap [Sprint 55](roadmap.md#sprint-55--context-attached-commands-object-scoped-verbs)**
+**→ Promoted to roadmap [Sprint 55](roadmap_completed.md)**
 (2026-07-07): items *and* NPCs declare a `context_commands` map; verbs register into the flat
 `CommandRegistry` gated by new `object_present`/`npc_present` conditions (help already hides
 out-of-context verbs), firing the existing shared side-effect registry. The design notes below are

@@ -2,6 +2,12 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.1] - 2026-07-07
+
+### Changed
+
+- **Docs: archived all completed sprints; the active roadmap is now empty.** Moved the performance & scaling band (35–37), Sprint 39 (timed room effects — the stale `[~]` 39.1 checkbox flipped to `[x]`, since 39.2–39.4 had shipped), Sprint 45 (chat/feed split), and Sprints 52–55 (global channels, marks, celestial cycles, context-attached commands) from `docs/roadmap.md` into `docs/roadmap_completed.md` with full task-table detail. `roadmap.md` shrank 406 → 101 lines: intro, a concise "Where things stand," the Backlog, sprint numbering, and playtesting. Sprint 37 and 38 are removed from the active roadmap — 37's completed work is archived; 37.1 (scheduler batching) and 38 (concurrency gate) remain deferred to `wishlist.md`, not completed. Sprint 45.3's only leftover — cosmetic **mobile chat tab-collapse polish** — is kept as a standalone backlog item. Repointed four `wishlist.md` deep-links (Sprints 39/45/48/55) to the archive. No code change.
+
 ## [0.46.0] - 2026-07-07
 
 ### Added

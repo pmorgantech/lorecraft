@@ -1,13 +1,19 @@
 # Roadmap — completed sprint history
 
-> **Historical record, frozen 2026-07-05 (through v0.36.4).** The active, forward-looking
+> **Historical record (last extended 2026-07-07, through v0.46.0).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
-> the full detail of **completed** sprints (moved here 2026-07-05 so the active roadmap stays
+> the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
 >
-> Covers Sprints 1–34 (foundation hardening, Tier 1 engine-core primitives, the Tier 2 pillar
-> feature band, and the tier-split follow-ons) plus the Foundation exit criteria — all complete.
-> Combat/PvP (former Sprints 61–64) were set aside to [`wishlist.md`](wishlist.md), not completed.
+> Covers **every completed sprint: 1–34** (foundation hardening, Tier 1 engine-core primitives, the
+> Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
+> performance & scaling band), **and 39–55** (timed room effects; admin-console + analytics work;
+> the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
+> cycles, context-attached commands). Layout note: recent completions are grouped near the top
+> (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap` header.
+>
+> **Not here:** 37.1 (scheduler-commit batching) + 38 (concurrency gate) were deferred to
+> [`wishlist.md`](wishlist.md), not completed; Combat/PvP (former 61–64) likewise set aside there.
 > Do not plan against this file; append newly-completed sprints here as they close.
 
 ---
@@ -197,6 +203,124 @@ e2e 36 green.
 | 51.5 | Tests + architecture for removability. | [x] Each of the 4 widgets is a self-contained `{id, render(data)}` entry in `ANALYTICS_WIDGETS`, delimited by `<!-- WIDGET --> ... <!-- /WIDGET -->` HTML comments — delete a widget's block + render function + registry line to drop it without touching the others. Unit tests: engine `target_id` resolution (NPC vs. non-NPC target), `quest_completion_funnel`. Integration test: dashboard payload schema. Full suite + simulation (audit-regression golden) unaffected. |
 
 > **Rationale:** The `target_id` fix is a genuine, narrowly-scoped bug fix (foundation/observability, not new feature surface) uncovered by trying to build the NPC widget honestly rather than against dead data. The quest-audit gap (`quest_completion_counts`) is intentionally left unfixed — tracked here as a known gap rather than expanded into this sprint's scope. Merged after the Sprint 50 e2e work (rebased for version/changelog).
+
+---
+
+# Performance & scaling band (Sprints 35–38) — ✅ 35–37 complete; 37.1 + 38 deferred to wishlist
+
+**Goal:** Establish performance telemetry, capture a baseline before any optimization, then implement high-ROI single-process optimizations. Measure-first paid off twice: **Sprint 36** (parser entity-resolution, 9.3×) and the **fsync/WAL finding**. The dominant cost across every path was fsync-per-commit on the single SQLite writer; **SQLite WAL mode (37.4)** fixed it broadly — `scheduler_tick@50jobs` **1410 → 48 ms (~29×)**, load-test p50 **254 → 58 ms**. Consequently **37.1 (scheduler-commit batching)** and **all of Sprint 38 (concurrency/threading gate)** were **deferred to [`wishlist.md`](wishlist.md)** — the wall was fsync serialization, not CPU, so threads wouldn't help and WAL already removed most of the commit cost. Revisit only if a *post-WAL* realistic-load test shows a hard single-process wall.
+
+## Sprint 35 — Performance telemetry & baseline — ✅ complete
+
+| # | Task | Status |
+|---|------|--------|
+| 35.1 | Baseline micro-benchmark harness `scripts/perf_baseline.py` (p50/p95/p99 per operation vs. the Ashmoore world). | [x] Revealed parser entity-resolution was O(visible entities): `examine` parse 0.7 ms → 4.8 ms @25 items → 17 ms @100 items. |
+| 35.2 | Structured perf logging: `time_operation(name)` ctx-manager; instrument parse/condition/commit/scheduler/broadcast (warn >50 ms). | [x] `time_operation(name, *, warn_ms=50.0)` in `observability.py`; all five sites instrumented. |
+| 35.3 | Analytics API `/admin/analytics/performance` — p50/p95/p99 by operation from audit `duration_ms` payloads. | [x] `CommandEngine` stamps a per-operation `perf` breakdown on each `COMMAND_EXECUTED`; `analytics.operation_latency_percentiles` + endpoint, unit + e2e tested. |
+
+## Sprint 36 — Parser entity-resolution scaling — ✅ complete
+
+**Outcome:** `parse:examine@100items` **16.92 → 1.82 ms p50 (9.3×)**, p99 tail gone, flat in inventory size. Profiling drove the fix: DB round-trips (36.1) then full-`Item` ORM materialization (36.2), not the matcher scan — so 36.2 became a column projection and 36.3's memoization gate came back negative.
+
+| # | Task | Status |
+|---|------|--------|
+| 36.1 | Eliminate per-item DB round-trips in `GameContext.get_inventory()` (batch-load rows). | [x] `ItemRepo.get_many(ids)`; `@25items` 4.79 → 1.47 ms, `@100items` 16.92 → 3.01 ms. |
+| 36.2 | ~~Index visible entities by name+alias~~ → **column projection** (full-`Item` materialization was ~72% of parse). | [x] `ItemRepo.name_index(ids)` = `select(Item.id, Item.name, Item.aliases)`; `@100items` 3.01 → 1.82 ms, p99 tail collapsed ~22 → ~1.9 ms. |
+| 36.3 | Re-measure; add LRU memoization only if still material. | [x] At ~1.8 ms p50 / ~1.9 ms p99, resolution no longer material — **no memoization added**. |
+
+## Sprint 37 — Pool tuning, load test & the WAL win — ✅ complete (37.1 → wishlist)
+
+| # | Task | Status |
+|---|------|--------|
+| 37.2 | Connection-pool tuning knobs (`pool_size`/`pool_recycle`) — networked backends only. | [x] `db_pool_size`/`db_pool_recycle` + env vars; documented, unit-tested. |
+| 37.3 | Load test (`tests/simulation/test_load.py`): N concurrent `VirtualPlayer`s, p95/p99 before/after. | [x] Lockstep baseline p50 254 → 58 ms after WAL; p99 475 → 83 ms. Fixed a pre-existing sim-harness break. |
+| 37.4 | **SQLite WAL mode** (`journal_mode=WAL` + tunable `synchronous`). | [x] `db.configure_sqlite_engine`; `scheduler_tick@50jobs` 1410 → 48 ms (~29×). Documented, unit-tested. |
+| ~~37.1~~ | ~~Batch scheduler execution into one commit/tick~~ → **[`wishlist.md`](wishlist.md)** | Marginal after WAL (50 jobs/tick ≈ 48 ms). |
+
+---
+
+## Sprint 39 — Timed room effects (Tier 1 engine primitive) — ✅ complete
+
+**Goal:** A general, content-agnostic primitive for applying a **time-limited effect to a room** — puzzle timers, occupant auras, weather hazards. **Design decided: reuse the Sprint 19 `ActiveEffect`/`EffectService` timed-effect primitive** (`entity_type="room"`, `entity_id=<room_id>`) — no new model/table/scheduler. Two mechanics: room-state effects write the one authoritative `Exit` state (movement unchanged); occupant auras via a new `RoomAuraModifierSource` (§3.5).
+
+| # | Task | Status |
+|---|------|--------|
+| 39.1 | **Design spec** — room-effect hook interface (`on_apply`/`on_expire` for room-state; auras as a room-scoped `ModifierRegistry` source), written into [`engine_core.md`](engine_core.md) §3.9. | [x] §3.9 spec: room-state effects write the authoritative `Exit` (undo in `payload`, no read-through fork); auras are `RoomAuraModifierSource`; engine gains no exit awareness — "open the gate" is a Tier 2 `EffectDef` hook. Each behavior keeps one owner; no new model/table/scheduler. |
+| 39.2 | Room-effect application + expiry on the existing primitive; `on_expire` reverses room-state. | [x] `on_apply`/`on_expire` hooks on `EffectDef`; `apply()` fires `on_apply` after flush; expiry sweep fires `on_expire` before delete, each isolated in a savepoint (failing hook rolls back only itself, row kept for retry). Unit-tested. |
+| 39.3 | Read/gate points: modifier resolution consults `active_for("room", room_id)`; a plate/mechanism applying a timed gate is the first content example. | [x] `RoomAuraModifierSource` (shares `_effect_modifiers`) auto-picks-up a player's room auras; movement unchanged (effect writes the `Exit`). Content: `features/exploration/room_effects.py` `passage_open` EffectDef + `open_timed_passage` mechanism side-effect. Integration-tested. |
+| 39.4 | Tests: expiry closes a gate; aura modifies a resolved value; audit-regression stable; content-lint of room-effect keys + directions. | [x] Gate open→relock, aura modify+lift, `on_expire` savepoint isolation, `on_apply`-raise rollback covered; audit-regression stable; `world/validator._validate_open_timed_passage` shape-lint + tests. |
+
+---
+
+## Sprint 45 — Split the social/chat feed from the narrative feed (opt-in) — ✅ complete
+
+**Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output out of view. Split narrative feed from social/channel feed into two panes, as a toggleable player option. **Full plan: [`chat_feed_split.md`](chat_feed_split.md).**
+
+| # | Task | Status |
+|---|------|--------|
+| 45.1 | **Phase 1 (headless)** — GameContext chat channel (`say_chat`/`tell_room_chat`); `command_result.chat_messages` + broadcast `message_type:"chat"`; `separate_chat` preference. | [x] v0.40.3 — default UX unchanged (both render paths degrade the new type into the single feed until Phase 2). 7 unit tests. |
+| 45.2 | **Phase 2 (browser)** — `app.js` dual-pane routing, `game.html` pane, styling, settings toggle; two-player e2e. | [x] v0.40.4 — `#chat-pane`/`#chat-feed` (rendered only when `separate_chat` is on); WS + HTMX routing; two-player e2e (`test_chat_feed_split.py`). |
+| 45.3 | **Phase 3** — global channels (shout/tell); colored/prefixed per-channel tags; per-channel mute; mobile tab-collapse. | [x] **Completed by Sprint 52 (v0.45.0):** `tell` P2P + the `newbie` P2ALL channel (a distinct `shout` folded into named P2ALL channels by design); colored/prefixed tags (52.7); the interim v0.40.10 blanket `mute_chat` superseded by real per-channel subscriptions with a server-side drop (52.5/52.8). *Cosmetic mobile tab-collapse polish left as a standalone backlog item.* |
+
+---
+
+## Sprint 52 — Global channels & the channel framework — ✅ complete (v0.45.0)
+
+**Goal:** Add the global chat channels the Sprint 45 split was built to carry; finish chat Phase 3. **Design:** two orthogonal axes — a fixed `ChatScope` enum (`P2P`/`P2ROOM`/`P2ALL`, mapping onto the three `ConnectionManager` sends) × named channels in a `ChannelRegistry` (engine owns the mechanism; `newbie` seeds capacity). Decisions: offline `tell` rejected; channels code-registered for now (world-YAML defs a follow-on); per-channel subscription generalizes `mute_chat`; verb-per-channel; rate-limiting deferred.
+
+| # | Task | Status |
+|---|------|--------|
+| 52.1 | `ChatScope` + `Channel` + `ChannelRegistry` (engine mechanism); built-in `say`/`tell` + seed `newbie`. | [x] v0.44.1 — muteable-only-P2ALL enforced; `say`/`tell` at module load, `newbie` from composition. |
+| 52.2 | Channel-aware chat outbox on `GameContext`, replacing the Sprint 45 lists. | [x] v0.44.2 — `chat_echoes` + `chat_outbox`; unknown channels fall back to P2ROOM (never accidentally global). |
+| 52.3 | `broadcast.py` routes each outbox entry by scope; stamps `channel`. | [x] v0.44.2 — P2ALL iterates `connected_player_ids()` per-recipient (server-side subscription drop); WS `chat_messages` entries became `{text, channel}`. |
+| 52.4 | `tell <player>` (P2P, offline-reject); registry auto-registers a verb per named channel. | [x] v0.44.3 — `tell`/`whisper`; topic verbs with `(Tag)` prefix baked into server text. |
+| 52.5 | Per-channel subscription in prefs (generalize `mute_chat`); server-side drop. | [x] v0.44.4 — `channel_subscriptions` map; `mute_chat` retired (say/tell not muteable); client-side gate removed. |
+| 52.6 | Unit tests: routing, offline-tell, verb dispatch, subscription drop, channel tag. | [x] 24 new unit tests across `test_channels`/`test_chat_broadcast`/`test_chat_verbs`/preferences. |
+| 52.7 | Colored/prefixed per-channel tags on both render paths. | [x] v0.44.5 — `chat-<channel>` class; say cyan / tell violet / newbie amber. |
+| 52.8 | Settings UI: per-channel toggle list replacing the mute checkbox. | [x] v0.44.5 — one subscribe checkbox per muteable topic channel, via `apply_updates`. |
+| 52.9 | Two-player e2e: newbie subscribed/muted; tell reaches only target; say room-scoped. | [x] v0.45.0 — three-context e2e; Sprint 45 say-routing e2e still passes. |
+
+**Deferred to a follow-on:** data-driven channel defs in world YAML; a distinct `shout` verb; channel scrollback/history; mobile tab-collapse polish; rate-limiting.
+
+---
+
+## Sprint 53 — Collectible marks / attunements — ✅ complete (v0.43.0)
+
+**Goal:** Named passive badges earned by *discovering* things — a progression track fed by exploration, not combat. **Design:** the hunts feature (Sprint 48) is the template — `world_content/marks.yaml` defs, earned state a `mark:<id>` flag, criteria over existing `Player` journal state, boons via a `MarkModifierSource`. No new table.
+
+| # | Task | Status |
+|---|------|--------|
+| 53.1 | `features/marks/` package + `marks.yaml` loader + fail-fast validation + content-lint + registry. | [x] v0.42.6 — hunts-def template; `MarkBoon.kind` typed as the engine `ModifierKind` literal. |
+| 53.2 | `MarkService`: criteria eval over journal state; idempotent award = flag + announcement; `register(bus)`. | [x] v0.42.7 — rides `PLAYER_MOVED`/`ITEM_TAKEN`/`QUEST_COMPLETED` (queued pre-commit so award writes land in the txn); fixpoint loop chains mark-on-mark criteria. |
+| 53.3 | Boons (`MarkModifierSource`) + `marks` command. | [x] v0.42.8 — traits `sources.py` pattern; `marks` verb lists earned + "???" teasers (hidden omitted). |
+| 53.4 | Ashmoore marks content + unit/integration tests + docs. | [x] v0.43.0 — 4 marks (village_wanderer; friend_of_the_crow; far_strider +5 carry; hidden deep_delver +5 cartography); integration walk-test; shipped-content lint. |
+
+---
+
+## Sprint 54 — Celestial cycles: moons & tides — ✅ complete (v0.44.0)
+
+**Goal:** Lunar phase and tide as world state derived from the world clock, gating content across pillars. **Design:** pure derivation, no new persisted state, no new scheduler — `moon_phase_for_day`/`tide_for_hour` beside `season_for_day`; change detection rides `HOUR_CHANGED`/`DAY_CHANGED`; content gates via condition registry + a tide-written authoritative `Exit`.
+
+| # | Task | Status |
+|---|------|--------|
+| 54.1 | Tier 1 calendar functions + `MOON_PHASE_CHANGED`/`TIDE_CHANGED` events. | [x] v0.43.1 — `engine/clock/celestial.py`: 8-phase 16-day lunar month (drifts against the 30-day season), semi-diurnal tide. |
+| 54.2 | `features/celestial/`: transition handlers; `moon_phase_is`/`tide_is` gates (command + dialogue); status-bar surfacing. | [x] v0.43.2 — handlers compare event endpoints; gates fail closed with in-fiction reasons; moon/tide in `time_update` + status bar. |
+| 54.3 | Ashmoore tide-gated causeway + moon-gated dialogue beat; content-lint; integration tests; docs. | [x] v0.44.0 — data-driven `celestial.yaml` `tide_gates` drives `creek_crossing → tidal_islet` (authoritative-`Exit` writes; ungated return so the tide never strands). Required aligning the validator with the dialogue engine's open-keyed choice contract (`DialogueChoiceData` now `extra="allow"`). |
+
+---
+
+## Sprint 55 — Context-attached commands (object-scoped verbs) — ✅ complete (v0.46.0)
+
+**Goal:** let world content give an **item or NPC its own verbs** that appear and work only when that object is present. Adopt Evennia's object-scoped-verb concept; **skip** its cmdset merge algebra. **Key finding:** Lorecraft already had most of the machinery — the help filter auto-hides out-of-context verbs, the shared side-effect registry provides the actions, `CommandRegistry` already supports per-command conditions. New parts: a presence gate, a content schema, a loader/dispatcher.
+
+| # | Task | Status |
+|---|------|--------|
+| 55.1 | `object_present:<id>` / `npc_present:<id>` command-condition gates. | [x] v0.45.4 — join the built-in conditions; the help filter then lists a context verb only when its object is present. |
+| 55.2 | `context_commands` schema on items/NPCs (validator) + content-lint + registry + loader. | [x] v0.45.5 — `ContextCommandData`, `context_commands` JSON columns (+ SQLite migrations), YAML round-trip, `features/context_commands` registry + `load_from_session` + `lint_context_commands`. |
+| 55.3 | Dispatcher: one gated command per verb; resolve the present declaring object; fire side-effects; collision-warning. | [x] v0.45.6 — `context_verb:<verb>` availability condition; noun disambiguates shared verbs; verb/alias shadowing a built-in is skipped with a warning. |
+| 55.4 | Ashmoore content + integration/help tests + docs. | [x] v0.46.0 — altar `read`/`study` (→ `lore:chapel_wheel`) in the Ruined Chapel + Mira's `tip` (→ `tipped_mira`); gated to their room, hidden from `help` out of context, shipped content lints clean. |
+
+**Deferred to a follow-on:** Evennia's cmdset merge algebra; optional-prefix matching (`@look`) and per-command permission locks.
 
 ---
 
@@ -737,6 +861,8 @@ command wins that improve day-to-day play. Both came in via the in-game `/report
 | 34.2 | `score` command — a player progress report (level/xp, quest completion, coins/net worth, reputation, discoveries) reading existing stats/quest/economy state; no new persistent schema ([`issue-257c6643`](issues.yaml)) | [x] `score` in the character feature aggregates level/xp, quests (completed/active), wealth (carried + banked), reputation count, discoveries (rooms/NPCs). Reads existing tables only; degrades to zeros. issue-257c6643 resolved. 4 tests. |
 
 ---
+
+*Updated 2026-07-07 — archived the **performance & scaling band (35–37)**, **Sprint 39** (timed room effects), **Sprint 45** (chat/feed split; its cosmetic mobile tab-collapse leftover kept as a standalone backlog item), and **Sprints 52–55** (global channels, marks, celestial cycles, context-attached commands) here, clearing the active roadmap. 37.1 + Sprint 38 (scheduler batching / concurrency gate) were deferred to [`wishlist.md`](wishlist.md), not completed.*
 
 *Last updated: 2026-07-05 — **Combat & PvP set aside to [`wishlist.md`](wishlist.md)** (former Sprints 61–64 + the PvP-consent portion of 65) to stop them forcing roadmap renumbering; ready-to-restore specs preserved there. Added the **Performance & scaling band (66–69)** and the `scripts/perf_baseline.py` baseline harness (v0.36.3–0.36.4). Earlier (2026-07-04) — **[Sprint 30](#sprint-30--quests--puzzles-depth-) complete**, closing out every non-combat/PvP Tier 2 sprint (22–30). Branching quests (stage `branches`: conditions + `next_stage` + `side_effects`, backward-compatible with pre-existing linear quests), NPC memory (`models/npc_memory.py`, scoped per-player-per-NPC), a new pluggable `game/quest_conditions.py` registry, mechanism items (levers/dials via a new `"mechanism"` standard component + `turn`/`pull`/`activate` commands), item-combination consequences (`Item.combination_side_effects`), and `services/quest_timer.py`'s `QuestTimerService` (timed clock-driven quest stage deadlines, `RestockService`'s scheduler shape). 26 new tests; full suite (739 unit/integration + 10 e2e + 5 simulation) green. Version bumped to 0.14.0. Sprints 31–35 (combat core, combat commands/UI, combat testing, PvP consent, multiplayer trade/PvP/transit tests) remain — deliberately out of scope for this pass.
 
