@@ -11,14 +11,15 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-08, v0.46.2)
+## Where things stand (2026-07-08, v0.46.3)
 
-**Sprints 56–57 are drafted, not started.** Everything through **Sprint 55** is complete and merged
-to local `main`. Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar feature band
-(exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
-condition, transit), the tier-split refactor, the performance/WAL band, and the recent content/UX
-band (timed room effects, chat/feed split → global channels, marks, celestial cycles, context-attached
-commands) have all shipped. See [`roadmap_completed.md`](roadmap_completed.md).
+**Sprint 56 (56.1–56.4 done, 56.5 partial) is implemented; Sprint 57 is drafted, not started.**
+Everything through **Sprint 55** is complete and merged to local `main`. Foundation, the Tier 1
+engine-core primitives, the full Tier 2 pillar feature band (exploration · trading · questing ·
+puzzles, plus inventory/equipment, traits/skills, character condition, transit), the tier-split
+refactor, the performance/WAL band, and the recent content/UX band (timed room effects, chat/feed
+split → global channels, marks, celestial cycles, context-attached commands) have all shipped. See
+[`roadmap_completed.md`](roadmap_completed.md).
 
 **Sprint 56** (structured output-type tagging) and **Sprint 57** (request tracing & crash reports)
 are scoped below — an observability/output-infra pair identified 2026-07-08 comparing Lorecraft
@@ -59,11 +60,11 @@ future non-web clients) without further engine work.
 
 | # | Task | Status |
 |---|------|--------|
-| 56.1 | Define the starter taxonomy (`room_event`, `chat`, `tell`, `combat`, `quest`, `warning`, `hint`, `system`) in one small module. Keep it short and resist one-off types per feature — same "small, named taxonomy" discipline as the `EventBus` event names. | [ ] |
-| 56.2 | Extend `GameContext.say()` to accept an optional message type (default `"system"`); thread it through `ctx.messages` (currently `list[str]` → a small `(type, text)` pair or frozen dataclass) without changing every call site's required arguments. | [ ] |
-| 56.3 | Reuse the same taxonomy on the room-broadcast payload (`broadcast.py`'s `feed_append` messages) in place of the current `"chat"`/`"room_event"` binary, so the direct-response and broadcast channels share one vocabulary. | [ ] |
-| 56.4 | `webui/player/frontend.py`: apply a CSS class per type when rendering the feed (`.msg-combat`, `.msg-warning`, …) — the first real consumer, and the seed for a future per-type mute/filter preference (no new engine work needed later). | [ ] |
-| 56.5 | Sweep existing `ctx.say(...)` call sites in `engine/` and `features/`; assign a type where the intent is clear from context, leave genuinely ambiguous ones on the `"system"` default rather than guessing. | [ ] |
+| 56.1 | Define the starter taxonomy (`room_event`, `chat`, `tell`, `combat`, `quest`, `warning`, `hint`, `system`) in one small module. Keep it short and resist one-off types per feature — same "small, named taxonomy" discipline as the `EventBus` event names. | [x] `engine/game/message_types.py` — `MessageType(str, Enum)`. |
+| 56.2 | Extend `GameContext.say()` to accept an optional message type (default `"system"`); thread it through `ctx.messages` (currently `list[str]` → a small `(type, text)` pair or frozen dataclass) without changing every call site's required arguments. | [x] `Message(str)` subclass carrying `.type` (`message_types.py`) — `ctx.messages` stays behaviorally `list[str]` (equality/`.startswith`/`in`/JSON serialization all degrade to plain text), so none of the ~280 existing `ctx.say(text)` call sites or their test assertions needed to change. |
+| 56.3 | Reuse the same taxonomy on the room-broadcast payload (`broadcast.py`'s `feed_append` messages) in place of the current `"chat"`/`"room_event"` binary, so the direct-response and broadcast channels share one vocabulary. | [x] `broadcast.py`, plus the two duplicate disconnect-narration broadcasts in `main.py`/`frontend.py`, now source `"message_type"` from `MessageType.*.value` instead of separate literal strings. |
+| 56.4 | `webui/player/frontend.py`: apply a CSS class per type when rendering the feed (`.msg-combat`, `.msg-warning`, …) — the first real consumer, and the seed for a future per-type mute/filter preference (no new engine work needed later). | [x] Feed messages carry a new `msg_type` field; `feed_item.html`/`feed_items.html` add an additive `msg-<type>` class (new CSS only for types actually in use — `quest`/`warning`/`tell`/`combat`/`hint` — so untouched call sites' current look is unchanged). |
+| 56.5 | Sweep existing `ctx.say(...)` call sites in `engine/` and `features/`; assign a type where the intent is clear from context, leave genuinely ambiguous ones on the `"system"` default rather than guessing. | [~] Retyped the ~20 call sites with unambiguous, content-verified intent: `quests/service.py` + `hunts/service.py` + `marks/service.py` → `QUEST`; `commands/social.py` + `npc/dialogue.py`'s precondition failures → `WARNING`; `npc/dialogue.py`'s actual NPC speech line → `TELL`. Sampled other candidate files (`fatigue/service.py`) and found no clean fit — left on `SYSTEM` rather than force a stretch mapping. ~260 call sites across the remaining 22 files are still on the `SYSTEM` default; a full sweep is a follow-on, not blocking. |
 
 ## Sprint 57 — Request tracing & crash reports
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.models.player import Player
 from lorecraft.features.marks.models import (
     MarkCriteria,
@@ -108,6 +109,6 @@ class MarkService:
         flags = dict(ctx.player.flags)
         flags[earned_flag(mark.id)] = True
         ctx.player.flags = flags
-        ctx.say(f"You have earned {mark.name}!")
+        ctx.say(f"You have earned {mark.name}!", MessageType.QUEST)
         if mark.description:
-            ctx.say(mark.description)
+            ctx.say(mark.description, MessageType.QUEST)

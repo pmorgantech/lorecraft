@@ -19,6 +19,7 @@ from lorecraft.engine.game.channels import (
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import Message, MessageType
 from lorecraft.engine.game.parser import ParsedCommand
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
@@ -67,7 +68,7 @@ class GameContext:
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
     rollback_state: Callable[[], None] | None = None
-    messages: list[str] = field(default_factory=list)
+    messages: list[Message] = field(default_factory=list)
     room_messages: list[str] = field(default_factory=list)
     arrival_messages: list[str] = field(default_factory=list)
     # Chat (Sprint 45 split, Sprint 52 channels): `chat_echoes` is the actor's
@@ -96,8 +97,8 @@ class GameContext:
         `broadcast_command_effects`."""
         self.pending_deliveries.append(factory)
 
-    def say(self, text: str) -> None:
-        self.messages.append(text)
+    def say(self, text: str, msg_type: MessageType = MessageType.SYSTEM) -> None:
+        self.messages.append(Message(text, msg_type))
 
     def tell_room(self, text: str) -> None:
         """Narrate to the room the actor is leaving (or the current room, if

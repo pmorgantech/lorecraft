@@ -4,6 +4,7 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext, build_game_context
 from lorecraft.engine.game.events import EventBus, GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
@@ -76,9 +77,14 @@ def test_context_collects_messages_updates_and_emits_events() -> None:
         ctx.emit(GameEvent.PLAYER_MOVED, room_id="square")
 
         assert ctx.messages == ["You move north."]
+        assert ctx.messages[0].type == MessageType.SYSTEM
         assert ctx.room_messages == ["Player leaves north."]
         assert ctx.updates == {"room": "square"}
         assert observed == [({"room_id": "square"}, "session-1")]
+
+        ctx.say("A goblin attacks!", MessageType.COMBAT)
+        assert ctx.messages[-1] == "A goblin attacks!"
+        assert ctx.messages[-1].type == MessageType.COMBAT
 
 
 def test_build_game_context_wires_all_repos() -> None:

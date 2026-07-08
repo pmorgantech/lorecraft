@@ -17,6 +17,7 @@ from sqlmodel import Session
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.services.scheduler import SchedulerEventContext
 from lorecraft.engine.repos.item_repo import ItemRepo
@@ -139,7 +140,8 @@ class HuntService:
             label = item.name if item is not None else item_id
             ctx.say(
                 f"You found a hunt item ({label})! "
-                f"{len(remaining)} still to find for {hunt.name}."
+                f"{len(remaining)} still to find for {hunt.name}.",
+                MessageType.QUEST,
             )
             return
 
@@ -151,9 +153,12 @@ class HuntService:
         if hunt.reward.coins > 0:
             self._ledger.credit(ctx.session, "player", ctx.player.id, hunt.reward.coins)
         ctx.say(
-            f"You've completed {hunt.name}! Reward: {hunt.reward.coins} coins."
-            if hunt.reward.coins > 0
-            else f"You've completed {hunt.name}!"
+            (
+                f"You've completed {hunt.name}! Reward: {hunt.reward.coins} coins."
+                if hunt.reward.coins > 0
+                else f"You've completed {hunt.name}!"
+            ),
+            MessageType.QUEST,
         )
 
     # ---- helpers -------------------------------------------------------

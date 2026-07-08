@@ -11,6 +11,7 @@ from lorecraft.engine.game.channels import (
     get_registry as get_channel_registry,
 )
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 from lorecraft.features.npc.dialogue import DialogueService, _NPC_KEY
 
@@ -43,11 +44,11 @@ def register_social_commands(
     )
     def talk_command(noun: str | None, ctx: GameContext) -> None:
         if noun is None:
-            ctx.say("Talk to whom?")
+            ctx.say("Talk to whom?", MessageType.WARNING)
             return
         npc = ctx.npc_repo.find_in_room(ctx.room.id, noun)
         if npc is None:
-            ctx.say(f"There is no {noun} here.")
+            ctx.say(f"There is no {noun} here.", MessageType.WARNING)
             return
         service.start(npc.id, ctx)
 
@@ -59,15 +60,15 @@ def register_social_commands(
     )
     def choice_command(noun: str | None, ctx: GameContext) -> None:
         if not ctx.player.flags.get(_NPC_KEY):
-            ctx.say("You are not in a conversation.")
+            ctx.say("You are not in a conversation.", MessageType.WARNING)
             return
         if noun is None:
-            ctx.say("Choose a number.")
+            ctx.say("Choose a number.", MessageType.WARNING)
             return
         try:
             index = int(noun)
         except ValueError:
-            ctx.say("Enter the number of your choice.")
+            ctx.say("Enter the number of your choice.", MessageType.WARNING)
             return
         service.choose(index, ctx)
 
@@ -78,7 +79,7 @@ def register_social_commands(
     )
     def say_command(noun: str | None, ctx: GameContext) -> None:
         if noun is None:
-            ctx.say("Say what?")
+            ctx.say("Say what?", MessageType.WARNING)
             return
         # Chat channel (Sprint 45): conversation, not room narration — lets
         # clients route it to a chat pane when separate_chat is on.
@@ -95,22 +96,22 @@ def register_social_commands(
         # P2P channel (Sprint 52.4). Offline targets are rejected — no
         # store-and-forward (that's a future mail feature, by decision).
         if noun is None:
-            ctx.say("Tell whom what?")
+            ctx.say("Tell whom what?", MessageType.WARNING)
             return
         parts = noun.split(None, 1)
         if len(parts) < 2:
-            ctx.say("Tell them what?")
+            ctx.say("Tell them what?", MessageType.WARNING)
             return
         target_name, message = parts
         target = ctx.player_repo.by_username(target_name)
         if target is None:
-            ctx.say(f"There's no one called '{target_name}'.")
+            ctx.say(f"There's no one called '{target_name}'.", MessageType.WARNING)
             return
         if target.id == ctx.player.id:
-            ctx.say("You mutter to yourself.")
+            ctx.say("You mutter to yourself.", MessageType.WARNING)
             return
         if not ctx.manager.is_connected(target.id):
-            ctx.say(f"{target.username} isn't online right now.")
+            ctx.say(f"{target.username} isn't online right now.", MessageType.WARNING)
             return
         ctx.chat_echo(TELL_CHANNEL, f'You tell {target.username}: "{message}"')
         ctx.chat_out(
@@ -132,7 +133,7 @@ def register_social_commands(
         )
         def topic_command(noun: str | None, ctx: GameContext) -> None:
             if noun is None:
-                ctx.say(f"Say what on the {channel.tag} channel?")
+                ctx.say(f"Say what on the {channel.tag} channel?", MessageType.WARNING)
                 return
             ctx.chat_echo(channel.id, f'({channel.tag}) You: "{noun}"')
             ctx.chat_out(channel.id, f'({channel.tag}) {ctx.player.username}: "{noun}"')
@@ -150,7 +151,7 @@ def register_social_commands(
     def bye_command(noun: str | None, ctx: GameContext) -> None:
         del noun
         if not ctx.player.flags.get(_NPC_KEY):
-            ctx.say("You are not speaking with anyone.")
+            ctx.say("You are not speaking with anyone.", MessageType.WARNING)
             return
         service.end(ctx)
         ctx.say("Farewell.")

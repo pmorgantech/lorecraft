@@ -51,6 +51,7 @@ from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.registry import CommandRegistry
@@ -530,7 +531,7 @@ def create_app(
                         {
                             "type": "feed_append",
                             "content": f"{player.username}'s connection flickers.",
-                            "message_type": "room_event",
+                            "message_type": MessageType.ROOM_EVENT.value,
                         },
                         exclude=player.id,
                     )

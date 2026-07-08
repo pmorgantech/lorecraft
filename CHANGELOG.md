@@ -2,6 +2,26 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.7] - 2026-07-08 (local `develop` branch, not on `main`)
+
+### Added
+
+- **Sprint 56.1–56.4: structured output-type tagging.** `engine/game/message_types.py` adds a
+  small `MessageType` taxonomy (`room_event`, `chat`, `tell`, `combat`, `quest`, `warning`,
+  `hint`, `system`); `GameContext.say(text, msg_type=...)` tags each message via a new
+  `Message(str)` subclass that preserves full backward compatibility (`ctx.messages` still
+  behaves as `list[str]` for equality, `.startswith`, `in`, and JSON serialization — none of the
+  ~280 existing `ctx.say()` call sites needed to change). `broadcast.py`'s room-broadcast payload
+  and two duplicate disconnect-broadcast blocks (`main.py`, `frontend.py`) now source
+  `message_type` from the shared taxonomy instead of separate hardcoded literals. The player feed
+  (`frontend.py` + `feed_item.html`/`feed_items.html`) carries the type through as an additive
+  `msg-<type>` CSS class, styled only for types actually in use so untouched output is visually
+  unchanged.
+- **Sprint 56.5 (partial): retyped ~20 call sites** with unambiguous, content-verified intent —
+  `quests/service.py`, `hunts/service.py`, `marks/service.py` → `QUEST`; `commands/social.py` and
+  `npc/dialogue.py`'s precondition-failure messages → `WARNING`; `npc/dialogue.py`'s NPC speech
+  line → `TELL`. ~260 call sites across the remaining files are still on the `SYSTEM` default — a
+  full sweep is a follow-on, not a blocker.
 ## [0.46.6] - 2026-07-08
 
 ### Fixed

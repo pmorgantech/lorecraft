@@ -709,6 +709,12 @@ async def handle_command(
                     "actor": None,
                     "text": m,
                     "type": "narrative",
+                    # Sprint 56: the semantic type from ctx.say(), kept as a
+                    # separate field from `type` above (which drives the
+                    # pre-existing player_action/system/dialogue/narrative
+                    # styling) so existing rendering is unchanged; templates
+                    # add an additional msg-<msg_type> class opt-in.
+                    "msg_type": m.type.value,
                 }
             )
 

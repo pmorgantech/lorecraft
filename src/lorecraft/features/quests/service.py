@@ -20,6 +20,7 @@ from lorecraft.features.quests import conditions as quest_conditions
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
@@ -129,7 +130,10 @@ class QuestService:
         progress.current_stage_id = next_stage_id
         progress.stage_started_epoch = _current_epoch(ctx)
         ctx.session.add(progress)
-        ctx.say(f"Quest updated: {quest.title} — {next_stage.get('description', '')}")
+        ctx.say(
+            f"Quest updated: {quest.title} — {next_stage.get('description', '')}",
+            MessageType.QUEST,
+        )
         ctx.push_update(
             "quest_update",
             {
@@ -158,7 +162,7 @@ class QuestService:
         ctx.session.add(progress)
         if stage is not None:
             self._award_rewards(stage.get("rewards") or {}, ctx)  # type: ignore[arg-type]
-        ctx.say(f"Quest completed: {quest.title}!")
+        ctx.say(f"Quest completed: {quest.title}!", MessageType.QUEST)
         ctx.push_update(
             "quest_update",
             {

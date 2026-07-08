@@ -4,10 +4,13 @@
 
   Always pass a list of feed_messages (can be empty).
   Each msg should have: id, timestamp (optional), actor (optional), text, type, meta (optional)
+  msg_type (optional, Sprint 56): the MessageType from ctx.say() — a
+  room_event/chat/tell/combat/quest/warning/hint/system tag added as an
+  additional `msg-<msg_type>` class, alongside (not replacing) `type` above.
 #}
 
 {% for msg in feed_messages %}
-    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat{% if msg.channel %} chat-{{ msg.channel }}{% endif %}{% else %}narrative{% endif %}"
+    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat{% if msg.channel %} chat-{{ msg.channel }}{% endif %}{% else %}narrative{% endif %}{% if msg.msg_type %} msg-{{ msg.msg_type }}{% endif %}"
          data-msg-id="{{ msg.id }}">
 
         {% if msg.timestamp %}
@@ -49,4 +52,15 @@
     .msg.chat { border-left-color: #22d3ee; }
     .msg.chat.chat-tell { border-left-color: #8b5cf6; }
     .msg.chat.chat-newbie { border-left-color: #f59e0b; }
+    /* Sprint 56 message-type taxonomy: additive `msg-<type>` classes from
+       ctx.say()'s msg_type, layered on top of the classes above rather than
+       replacing them. Only types actually assigned by call sites so far
+       (quest/warning/tell) get distinct styling; room_event/system/chat/hint/
+       combat are unstyled here until content opts in, so untouched call
+       sites (still defaulting to "system") keep their current look. */
+    .msg.msg-quest { border-left-color: #c084fc; }
+    .msg.msg-warning { border-left-color: #f97316; }
+    .msg.msg-tell { border-left-color: #6366f1; }
+    .msg.msg-combat { border-left-color: #ef4444; }
+    .msg.msg-hint { border-left-color: #2dd4bf; }
 </style>

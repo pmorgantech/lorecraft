@@ -1,5 +1,5 @@
 {# Single feed message item - useful for command responses or when pushing one message #}
-<div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% else %}narrative{% endif %}"
+<div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% else %}narrative{% endif %}{% if msg.msg_type %} msg-{{ msg.msg_type }}{% endif %}"
      data-msg-id="{{ msg.id }}">
 
     {% if msg.timestamp %}

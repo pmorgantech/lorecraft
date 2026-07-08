@@ -18,6 +18,7 @@ from lorecraft.engine.game.channels import Channel, ChatScope
 from lorecraft.engine.game.channels import get_registry as get_channel_registry
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.models.player import Player
 from lorecraft.types import JsonObject, JsonValue
 
@@ -84,7 +85,7 @@ async def broadcast_command_effects(
                 {
                     "type": "feed_append",
                     "content": str(room_msg),
-                    "message_type": "room_event",
+                    "message_type": MessageType.ROOM_EVENT.value,
                 },
                 exclude=actor_id,
             )
@@ -101,7 +102,7 @@ async def broadcast_command_effects(
         payload: JsonObject = {
             "type": "feed_append",
             "content": chat.text,
-            "message_type": "chat",
+            "message_type": MessageType.CHAT.value,
             "channel": chat.channel,
         }
         try:
@@ -133,7 +134,7 @@ async def broadcast_command_effects(
                 {
                     "type": "feed_append",
                     "content": str(arrival_msg),
-                    "message_type": "room_event",
+                    "message_type": MessageType.ROOM_EVENT.value,
                 },
                 exclude=actor_id,
             )

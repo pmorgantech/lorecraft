@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.npc.repo import DialogueRepo
 from lorecraft.types import JsonObject
 
@@ -30,16 +31,16 @@ class DialogueService:
     def start(self, npc_id: str, ctx: GameContext) -> None:
         npc = ctx.npc_repo.get(npc_id)
         if npc is None:
-            ctx.say("That person isn't here.")
+            ctx.say("That person isn't here.", MessageType.WARNING)
             return
         if npc_id not in ctx.player.met_npcs:
             ctx.player.met_npcs = [*ctx.player.met_npcs, npc_id]
         if not npc.dialogue_tree_id:
-            ctx.say(f"{npc.name} has nothing to say.")
+            ctx.say(f"{npc.name} has nothing to say.", MessageType.WARNING)
             return
         tree_record = DialogueRepo(ctx.session).get(npc.dialogue_tree_id)
         if tree_record is None:
-            ctx.say(f"{npc.name} has nothing to say.")
+            ctx.say(f"{npc.name} has nothing to say.", MessageType.WARNING)
             return
         tree = tree_record.tree_data
         root = str(tree.get("root_node", "root"))
@@ -50,7 +51,7 @@ class DialogueService:
         npc_id = ctx.player.flags.get(_NPC_KEY)
         node_id = ctx.player.flags.get(_NODE_KEY)
         if not npc_id or not node_id:
-            ctx.say("You are not in a conversation.")
+            ctx.say("You are not in a conversation.", MessageType.WARNING)
             return
         npc = ctx.npc_repo.get(str(npc_id))
         if npc is None:
@@ -65,7 +66,7 @@ class DialogueService:
         node: JsonObject = nodes.get(str(node_id), {})  # type: ignore[assignment]
         visible = _visible_choices(node, ctx)
         if index < 1 or index > len(visible):
-            ctx.say(f"Choose between 1 and {len(visible)}.")
+            ctx.say(f"Choose between 1 and {len(visible)}.", MessageType.WARNING)
             return
         choice = visible[index - 1]
         _apply_side_effects(choice.get("side_effects", {}), ctx)  # type: ignore[arg-type]
@@ -117,7 +118,7 @@ class DialogueService:
             self._end(ctx)
             return
         text = str(node.get("text", ""))
-        ctx.say(f"{npc_name}: {text}")
+        ctx.say(f"{npc_name}: {text}", MessageType.TELL)
         visible = _visible_choices(node, ctx)
         terminal = not visible
 
