@@ -500,6 +500,17 @@ def create_app(
                 )
                 await websocket.send_json(response)
         except WebSocketDisconnect:
+            # Distinguish an involuntary drop from a graceful quit. A graceful
+            # quit (POST /command with disconnect=True) has already torn this
+            # session down: it began the grace period, broadcast "leaves the
+            # game." + player_left, broke follows, and removed the socket from
+            # the manager. In that case the socket is already gone, so bail out
+            # — otherwise the room would see "connection flickers." on top of
+            # "leaves the game.", grace would be re-begun, and player_left would
+            # fire twice. Only a genuine drop (socket still live in the manager)
+            # runs the flicker/grace/player_left/follow-break teardown here.
+            if not state.manager.is_connected(player_id):
+                return
             with (
                 Session(state.game_engine) as game_session,
                 Session(state.audit_engine) as audit_session,
@@ -532,6 +543,13 @@ def create_app(
                         },
                         exclude=player.id,
                     )
+                    # Terminate any follow involving the dropped player and tell
+                    # the still-connected other side.
+                    follow_service = state.services.follow
+                    if follow_service is not None:
+                        await follow_service.break_on_disconnect(
+                            state.manager, PlayerRepo(game_session), player_id
+                        )
             # Deregister the leaving socket *before* the player_left broadcast:
             # this broadcast has no `exclude`, so with the connection still in
             # the pool it would try to send to the just-closed socket — the

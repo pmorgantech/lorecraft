@@ -405,3 +405,124 @@ async def _test_post_command_bye_closes_dialogue_overlay() -> None:
     assert 'id="dialogue-overlay" hx-swap-oob="true"' in html
     assert "dialogue-overlay flex" not in html
     assert "dialogue-overlay hidden" in html
+
+
+# ---------------------------------------------------------------------------
+# Disconnect broadcast hygiene (quit): exactly one "leaves the game." and no
+# spurious "connection flickers." when the WS then closes.
+# ---------------------------------------------------------------------------
+
+
+class _RecordingSocket:
+    """An observer socket that records every pushed message."""
+
+    def __init__(self) -> None:
+        self.sent: list[Any] = []
+
+    async def accept(self) -> None:
+        pass
+
+    async def send_json(self, data: Any) -> None:
+        self.sent.append(data)
+
+
+def _ws_scope(query_string: bytes) -> AsgiMessage:
+    return {
+        "type": "websocket",
+        "asgi": {"version": "3.0", "spec_version": "2.4"},
+        "scheme": "ws",
+        "path": "/ws",
+        "raw_path": b"/ws",
+        "query_string": query_string,
+        "headers": [],
+        "client": ("testclient", 50000),
+        "server": ("testserver", 80),
+        "subprotocols": [],
+        "state": {},
+    }
+
+
+def test_quit_broadcasts_leaves_once_and_no_flicker() -> None:
+    anyio.run(_test_quit_broadcasts_leaves_once_and_no_flicker)
+
+
+async def _test_quit_broadcasts_leaves_once_and_no_flicker() -> None:
+    """The exact reported scenario: player-1 quits while player-2 watches.
+
+    player-2 should see 'player-1 leaves the game.' exactly once (not twice),
+    and must NOT also see 'player-1's connection flickers.' when player-1's
+    WebSocket subsequently closes — the graceful-quit path already tore the
+    session down.
+    """
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+
+    async with _lifespan(app):
+        state = app.state.lorecraft
+
+        # Materialize player-1 via the dev-cookie path and learn its room.
+        await _http_form_post(
+            app, "/command", form={"command": "look"}, cookies={"player_id": "player-1"}
+        )
+        with Session(game_engine) as session:
+            p1 = session.exec(select(Player).where(Player.id == "player-1")).first()
+            assert p1 is not None
+            room_id = p1.current_room_id
+            session.add(
+                Player(
+                    id="observer",
+                    username="observer",
+                    current_room_id=room_id,
+                    respawn_room_id=room_id,
+                    visited_rooms=[room_id],
+                )
+            )
+            session.commit()
+
+        # An observer in the same room, connected with a recording socket.
+        observer_socket = _RecordingSocket()
+        state.manager._connections["observer"] = observer_socket  # type: ignore[assignment]
+        state.manager.move_player("observer", None, room_id)
+
+        # Drive player-1's real WebSocket, held live via a controllable stream.
+        recv_tx, recv_rx = anyio.create_memory_object_stream[AsgiMessage](8)
+        connected = anyio.Event()
+
+        async def p1_receive() -> AsgiMessage:
+            return await recv_rx.receive()
+
+        async def p1_send(message: AsgiMessage) -> None:
+            if message["type"] == "websocket.send":
+                import json
+
+                if json.loads(message["text"]).get("type") == "connected":
+                    connected.set()
+
+        async with anyio.create_task_group() as tg, recv_tx, recv_rx:
+            tg.start_soon(app, _ws_scope(b"player_id=player-1"), p1_receive, p1_send)
+            await recv_tx.send({"type": "websocket.connect"})
+            with anyio.fail_after(5):
+                await connected.wait()
+
+            # player-1 quits (graceful): broadcasts "leaves the game." once and
+            # removes player-1 from the manager.
+            await _http_form_post(
+                app,
+                "/command",
+                form={"command": "quit"},
+                cookies={"player_id": "player-1"},
+            )
+
+            # player-1's socket now closes — the WS handler must NOT re-broadcast
+            # a "connection flickers." on top of the graceful teardown.
+            await recv_tx.send({"type": "websocket.disconnect", "code": 1000})
+
+    contents = [
+        str(m.get("content", "")) for m in observer_socket.sent if isinstance(m, dict)
+    ]
+    leaves = [c for c in contents if "leaves the game" in c]
+    flickers = [c for c in contents if "connection flickers" in c]
+    assert len(leaves) == 1, contents
+    assert flickers == [], contents

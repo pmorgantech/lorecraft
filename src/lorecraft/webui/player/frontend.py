@@ -835,19 +835,10 @@ async def handle_command(
 
             if mgr and after_player.current_room_id:
                 room_id = after_player.current_room_id
-                for room_msg in ctx.room_messages:
-                    try:
-                        await mgr.broadcast_to_room(
-                            room_id,
-                            {
-                                "type": "feed_append",
-                                "content": str(room_msg),
-                                "message_type": "room_event",
-                            },
-                            exclude=after_player.id,
-                        )
-                    except Exception as e:
-                        log.debug("disconnect_feed_broadcast_failed: %s", str(e))
+                # The "leaves the game." narration was already broadcast to the
+                # room by broadcast_command_effects() above (it drains
+                # ctx.room_messages) — don't re-broadcast it here or the room
+                # sees it twice.
                 try:
                     await mgr.broadcast_to_room(
                         room_id,
@@ -870,6 +861,19 @@ async def handle_command(
                     )
                 except Exception as e:
                     log.debug("disconnect_broadcast_failed: %s", str(e))
+                # Terminate any follow involving the leaver and tell the still-
+                # connected other side (mirrors the involuntary-drop path in
+                # main.py's WS handler).
+                follow_service = (
+                    app_state.services.follow if app_state is not None else None
+                )
+                if follow_service is not None:
+                    try:
+                        await follow_service.break_on_disconnect(
+                            mgr, player_repo, after_player.id
+                        )
+                    except Exception as e:
+                        log.debug("disconnect_follow_break_failed: %s", str(e))
                 try:
                     await mgr.disconnect(after_player.id)
                 except Exception as e:

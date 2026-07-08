@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import anyio
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
@@ -34,6 +35,19 @@ class _FakeSocket:
 
     async def send_json(self, data: object) -> None:  # pragma: no cover
         pass
+
+
+class _RecordingSocket:
+    """A socket that records every pushed message, for disconnect-notice asserts."""
+
+    def __init__(self) -> None:
+        self.sent: list[object] = []
+
+    async def accept(self) -> None:  # pragma: no cover - protocol completeness
+        pass
+
+    async def send_json(self, data: object) -> None:
+        self.sent.append(data)
 
 
 def _seed(session: Session, *, locked_east: bool = False) -> None:
@@ -239,3 +253,58 @@ def test_gate_failure_breaks_the_follow() -> None:
         assert follow.target_of("f") is None
         # Both sides were notified (follower push + target push queued).
         assert ctx.pending_deliveries
+
+
+def test_disconnect_of_target_terminates_and_notifies_followers() -> None:
+    """When the followed player disconnects, each follower's follow is cleared
+    and the still-connected follower is told, so it doesn't silently resume
+    when the target returns."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    with Session(engine) as session:
+        _seed(session)
+        target = _add_player(session, "p-target", "Aldric", ROOM_A)
+        follower = _add_player(session, "p-follow", "Bryn", ROOM_A)
+        manager = ConnectionManager()
+        _connect(manager, target.id, ROOM_A)
+        follower_socket = _RecordingSocket()
+        manager._connections[follower.id] = follower_socket  # type: ignore[assignment]
+        manager.move_player(follower.id, None, ROOM_A)
+
+        follow = FollowService(MovementService())
+        follow._following["p-follow"] = "p-target"
+
+        anyio.run(follow.break_on_disconnect, manager, PlayerRepo(session), target.id)
+
+        # Follow graph cleared both ways.
+        assert follow.target_of("p-follow") is None
+        assert follow.followers_of("p-target") == []
+        # The follower was told, and its players-online panel nudged.
+        feed = [m for m in follower_socket.sent if m.get("type") == "feed_append"]
+        assert feed and "Aldric" in feed[0]["content"]
+        assert any(m.get("type") == "state_change" for m in follower_socket.sent)
+
+
+def test_disconnect_of_follower_terminates_and_notifies_target() -> None:
+    """When a follower disconnects, their follow is cleared and the target
+    (still connected) is told they lost a follower."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    with Session(engine) as session:
+        _seed(session)
+        target = _add_player(session, "p-target", "Aldric", ROOM_A)
+        follower = _add_player(session, "p-follow", "Bryn", ROOM_A)
+        manager = ConnectionManager()
+        target_socket = _RecordingSocket()
+        manager._connections[target.id] = target_socket  # type: ignore[assignment]
+        manager.move_player(target.id, None, ROOM_A)
+        _connect(manager, follower.id, ROOM_A)
+
+        follow = FollowService(MovementService())
+        follow._following["p-follow"] = "p-target"
+
+        anyio.run(follow.break_on_disconnect, manager, PlayerRepo(session), follower.id)
+
+        assert follow.target_of("p-follow") is None
+        feed = [m for m in target_socket.sent if m.get("type") == "feed_append"]
+        assert feed and "Bryn" in feed[0]["content"]

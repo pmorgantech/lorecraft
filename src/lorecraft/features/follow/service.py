@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import dataclasses
 
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
+from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.features.movement.service import MovementService
 from lorecraft.types import JsonObject, JsonValue
 
@@ -87,6 +89,56 @@ class FollowService:
                 f"{ctx.player.username} stops following you.",
                 chat=False,
             )
+
+    async def break_on_disconnect(
+        self, manager: ConnectionManager, player_repo: PlayerRepo, player_id: str
+    ) -> None:
+        """Terminate any follow involving a player who just disconnected.
+
+        Follow state is transient (see the module docstring): a disconnect stops
+        the follow rather than silently resuming it when the player returns.
+        Both directions are cleared — the leaver's own follow, and anyone
+        following the leaver — and any still-connected player on the other end
+        is told, so their follow status and `players-online` panel don't lie.
+        Called from the async disconnect handlers (graceful quit + involuntary
+        drop) where a `ConnectionManager` is available to push the notice; the
+        follow graph itself is process-local so nothing is persisted.
+        """
+        leaver = player_repo.get(player_id)
+        leaver_name = leaver.username if leaver is not None else "someone"
+
+        # The leaver was following someone: stop, and tell that target.
+        target_id = self._following.pop(player_id, None)
+        if target_id is not None and manager.is_connected(target_id):
+            await self._push_disconnect_notice(
+                manager, target_id, f"{leaver_name} is no longer following you."
+            )
+
+        # Others were following the leaver: orphan them, and tell each one.
+        for follower_id in self.followers_of(player_id):
+            self._following.pop(follower_id, None)
+            if manager.is_connected(follower_id):
+                await self._push_disconnect_notice(
+                    manager,
+                    follower_id,
+                    f"You stop following {leaver_name} — they have left.",
+                )
+
+    async def _push_disconnect_notice(
+        self, manager: ConnectionManager, player_id: str, text: str
+    ) -> None:
+        await manager.send_to_player(
+            player_id,
+            {"type": "feed_append", "content": text, "message_type": "room_event"},
+        )
+        await manager.send_to_player(
+            player_id,
+            {
+                "type": "state_change",
+                "affected_panels": ["players-online"],
+                "actor_id": player_id,
+            },
+        )
 
     def _show_status(self, ctx: GameContext) -> None:
         target_id = self._following.get(ctx.player.id)

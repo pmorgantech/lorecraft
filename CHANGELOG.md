@@ -2,6 +2,30 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.6] - 2026-07-08
+
+### Fixed
+
+- **Disconnect no longer spams the room with duplicate messages.** A graceful `quit` used to
+  broadcast "X leaves the game." **twice** — once via the shared `broadcast_command_effects()`
+  step (which already drains `ctx.room_messages`) and again from a redundant re-broadcast loop
+  in the `POST /command` disconnect block. The redundant loop is removed, so the room sees it
+  once.
+- **A graceful quit no longer also shows "X's connection flickers."** After a `quit`, the
+  player's WebSocket still closes, and the `/ws` disconnect handler ran its *involuntary-drop*
+  messaging (the "connection flickers." feed line + a second grace period + a duplicate
+  `player_left`) on top of the graceful teardown. The handler now bails out when the socket is
+  already gone from the `ConnectionManager` (i.e. the graceful path already handled it); only a
+  genuine, unannounced drop emits "connection flickers.".
+- **Follow is now terminated when either party disconnects.** The in-memory follow graph was
+  never cleared on disconnect, so a follow could silently resume when the followed player
+  reconnected (and `follow` status lied in the meantime). Both disconnect paths (graceful quit
+  in `frontend.py`, involuntary drop in `main.py`) now call `FollowService.break_on_disconnect`,
+  which clears the follow both ways and notifies the still-connected other side ("You stop
+  following X — they have left." / "X is no longer following you.") plus refreshes their
+  `players-online` panel. Regression tests in `tests/unit/test_follow.py` and an end-to-end
+  quit-with-observer test in `tests/integration/test_frontend_command.py`.
+
 ## [0.46.5] - 2026-07-08
 
 ### Fixed
