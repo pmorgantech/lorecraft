@@ -2,6 +2,14 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.48.3] - 2026-07-08
+
+### Added
+
+- **`docs/feature_testing_guide.md`** — comprehensive manual + automated testing reference for
+  implemented features (through Sprint 55). Rescued from an orphaned Claude worktree and landed
+  on main.
+
 ## [0.48.2] - 2026-07-08
 
 ### Fixed

@@ -44,6 +44,7 @@ Lorecraft uses a **three-tier architecture** to separate engine concerns from ga
 - **[`docs/user_guide.md`](docs/user_guide.md)** — Player-facing features and commands
 - **[`docs/admin_builder_guide.md`](docs/admin_builder_guide.md)** — How to design worlds in YAML and use the admin tools
 - **[`docs/world_building.md`](docs/world_building.md)** — World authoring conventions
+- **[`docs/feature_testing_guide.md`](docs/feature_testing_guide.md)** — Manual + automated testing reference for implemented features
 
 ---
 
