@@ -2,6 +2,34 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.46.2] - 2026-07-07
+
+### Added
+
+- **Web-layer test coverage for two previously-untested partial routes.** A fresh
+  architecture/code review (`docs/code_review_20260707.md`) found `/partials/quest-tracker`
+  (scheduler-driven; only exercised by an e2e browser assertion) and `/partials/map-full`
+  (the full-screen map modal) had no integration coverage. Added integration tests for both
+  in `tests/integration/test_frontend_characterization.py`.
+
+### Fixed
+
+- **Pluggable condition predicates now log on failure instead of swallowing silently.**
+  The two predicate registries that absorb a raising predicate — `CommandConditionRegistry`
+  (`engine/game/command_conditions.py`) and the dialogue `ConditionRegistry`
+  (`features/npc/dialogue_conditions.py`) — now `log.exception(...)` before degrading
+  (disallow the command / hide the dialogue option). Previously a buggy predicate made a
+  command silently unavailable or a choice silently vanish with no diagnostics. Behaviour is
+  unchanged (still graceful); the failure is now traceable. Regression tests in
+  `tests/unit/test_condition_error_handling.py` pin "degrades **and** logs".
+
+### Docs
+
+- **Added `docs/code_review_20260707.md`** — a same-day architecture + code review against the
+  2026-07-01 `CODE_AUDIT.md`, recording the tier-boundary/type-safety/error-hierarchy wins,
+  the remaining incremental items, and the follow-up actions taken (the two fixes above, plus
+  an assessed-but-deferred note on splitting the large `inventory/service.py`).
+
 ## [0.46.1] - 2026-07-07
 
 ### Changed
