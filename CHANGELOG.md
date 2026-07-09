@@ -2,6 +2,25 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.49.2] - 2026-07-08
+
+### Added
+
+- **Live theme/layout preview (Sprint 58.9).** The Settings **Theme** and **Layout** dropdowns
+  now preview instantly as you pick them — **Save** keeps the choice, **Cancel** discards it and
+  returns to the game with your last-saved look.
+- **Distinct client layouts (Sprint 58.6–58.8, first cuts).** The three alternate layouts are
+  now visibly different from `standard`:
+  - **Ledger** — Location + Map on a narrow left column, a wide full-width chronicle, and a right
+    rail with an **Inventory/Quests window-shade accordion** (only one open at a time).
+  - **Dock** — panels float as spaced, rounded, shadowed cards.
+  - **Immersive** — slim flanks, a dominant larger-type chronicle, low chrome, and a soft vignette.
+
+### Changed
+
+- Ledger's central chronicle no longer has a fixed reading-width cap (v0.49.1 starved the pane of
+  real estate); it now fills the widened centre column.
+
 ## [0.49.1] - 2026-07-08
 
 ### Added

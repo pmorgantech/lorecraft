@@ -75,6 +75,18 @@ saved to your account, so they follow you to any device you log in from.
 
 The theme only changes colours and fonts; every panel and command works the same in all of them.
 
+**Layout** sets how the panels are arranged (independent of the theme — mix and match freely):
+
+| Layout | Arrangement |
+|--------|-------------|
+| **Standard** *(default)* | The classic three columns: room/inventory/map, chronicle, players/quests. |
+| **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either header to swap which one is open). |
+| **Dock** | The same panels as floating, rounded "cards". |
+| **Immersive** | A low-chrome, cinematic view: the chronicle dominates, side panels slim down, and a soft vignette frames the world. |
+
+Theme and layout **preview live** as you change the dropdowns — click **Save preferences** to
+keep them, or **Cancel** to discard and go back to your last-saved look.
+
 Other display options on the same page:
 
 - **Display density** — *Comfortable* or *Compact* (tighter spacing to fit more on screen).

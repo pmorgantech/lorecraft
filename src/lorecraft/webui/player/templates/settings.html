@@ -19,13 +19,24 @@
     </div>
     {% endif %}
 
-    <form method="post" action="/settings" class="space-y-6">
+    <form method="post" action="/settings" class="space-y-6"
+          x-data="{
+            theme: '{{ prefs.theme }}',
+            layout: '{{ prefs.layout }}',
+            applyPreview() {
+              const b = document.body;
+              [...b.classList].forEach(c => {
+                if (c.startsWith('theme-') || c.startsWith('layout-')) b.classList.remove(c);
+              });
+              b.classList.add('theme-' + this.theme, 'layout-' + this.layout);
+            }
+          }">
       <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">
         <legend class="px-1 text-sm font-semibold text-zinc-300">Display</legend>
 
         <div class="mb-4">
           <label for="theme" class="block text-sm text-zinc-400 mb-1">Theme</label>
-          <select id="theme" name="theme"
+          <select id="theme" name="theme" x-model="theme" @change="applyPreview()"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
             {% for opt in theme_options %}
             <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
@@ -36,7 +47,7 @@
 
         <div class="mb-4">
           <label for="layout" class="block text-sm text-zinc-400 mb-1">Layout</label>
-          <select id="layout" name="layout"
+          <select id="layout" name="layout" x-model="layout" @change="applyPreview()"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
             {% for opt in layout_options %}
             <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
@@ -153,6 +164,7 @@
           Save preferences
         </button>
         <a href="/game" class="text-sm text-zinc-400 hover:underline">Cancel</a>
+        <span class="text-xs text-zinc-500">Theme &amp; layout preview live — <b>Save</b> to keep, <b>Cancel</b> to discard.</span>
       </div>
     </form>
   </div>

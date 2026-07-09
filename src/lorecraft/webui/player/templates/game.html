@@ -19,7 +19,7 @@
             class="game-col game-col-left lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
 
             <!-- Room Description Panel -->
-            <div class="flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
+            <div class="game-panel-room flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
                 <div class="px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Current Location</span>
                     <button
@@ -34,8 +34,9 @@
                 {% include "partials/room_description.html" %}
             </div>
 
-            <!-- Inventory: flexible between room and map -->
-            {% if 'inventory' not in prefs.hidden_panels %}
+            <!-- Inventory: flexible between room and map. In the ledger layout it
+                 moves to the right rail (see below), so it is omitted here. -->
+            {% if 'inventory' not in prefs.hidden_panels and prefs.layout != 'ledger' %}
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Inventory</span>
@@ -108,8 +109,9 @@
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR: Players + Combat / Events -->
+        <!-- RIGHT SIDEBAR: Players + Quests (+ Inventory in the ledger layout) -->
         <div
+            x-data="{ rail: 'inventory' }"
             :class="mobileTab === 'players' ? 'flex' : 'hidden'"
             class="game-col game-col-right lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
 
@@ -124,6 +126,37 @@
             </div>
             {% endif %}
 
+            {% if prefs.layout == 'ledger' %}
+            <!-- Ledger: Inventory + Quests share the rail as a window-shade
+                 accordion — only one is expanded at a time. Both stay in the DOM
+                 so their OOB live-updates (#inventory / #quest-tracker) keep
+                 working even while collapsed. -->
+            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
+                {% if 'inventory' not in prefs.hidden_panels %}
+                <button type="button" @click="rail = 'inventory'"
+                        :class="rail === 'inventory' ? 'text-emerald-400' : 'text-text-muted'"
+                        class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest hover:text-emerald-400 transition-colors">
+                    <span>Inventory</span>
+                    <span x-text="rail === 'inventory' ? '▾' : '▸'"></span>
+                </button>
+                <div x-show="rail === 'inventory'" class="flex-1 flex flex-col overflow-hidden min-h-0">
+                    {% include "partials/inventory.html" %}
+                </div>
+                {% endif %}
+
+                {% if 'quest_tracker' not in prefs.hidden_panels %}
+                <button type="button" @click="rail = 'quests'"
+                        :class="rail === 'quests' ? 'text-emerald-400' : 'text-text-muted'"
+                        class="px-3 py-1.5 bg-panel-light border-t border-b border-border flex items-center justify-between text-xs uppercase tracking-widest hover:text-emerald-400 transition-colors">
+                    <span>Quests</span>
+                    <span x-text="rail === 'quests' ? '▾' : '▸'"></span>
+                </button>
+                <div x-show="rail === 'quests'" x-cloak class="flex-1 flex flex-col overflow-hidden min-h-0">
+                    {% include "partials/quest_tracker.html" %}
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
             <!-- Quest tracker -->
             {% if 'quest_tracker' not in prefs.hidden_panels %}
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-[120px]">
@@ -132,6 +165,7 @@
                 </div>
                 {% include "partials/quest_tracker.html" %}
             </div>
+            {% endif %}
             {% endif %}
         </div>
 

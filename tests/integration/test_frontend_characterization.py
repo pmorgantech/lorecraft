@@ -448,6 +448,49 @@ async def _test_game_screen_applies_layout_body_class() -> None:
     assert "layout-standard" not in html
 
 
+def test_ledger_layout_moves_inventory_to_right_rail() -> None:
+    anyio.run(_test_ledger_layout_moves_inventory_to_right_rail)
+
+
+async def _test_ledger_layout_moves_inventory_to_right_rail() -> None:
+    """Ledger relocates inventory from the left column into a right-rail
+    Inventory/Quests accordion, rendered exactly once (Sprint 58.6)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        # Standard: inventory sits in the LEFT column, before the centre feed,
+        # and there is no accordion.
+        _, std = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+        assert std.count('id="inventory"') == 1
+        assert std.index('id="inventory"') < std.index('id="feed"')
+        # No accordion in standard (the Quests toggle button is ledger-only).
+        assert "rail = 'quests'" not in std
+
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "ledger"}
+            db.add(player)
+            db.commit()
+        _, led = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    # Ledger: inventory still rendered exactly once, but now AFTER the feed
+    # (i.e. in the right rail), and the accordion toggle is present.
+    assert led.count('id="inventory"') == 1
+    assert led.index('id="inventory"') > led.index('id="feed"')
+    assert "rail: 'inventory'" in led
+    assert "rail = 'quests'" in led
+
+
 def test_settings_renders_and_persists_theme() -> None:
     anyio.run(_test_settings_renders_and_persists_theme)
 
