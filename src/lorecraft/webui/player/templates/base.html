@@ -28,22 +28,39 @@
     <link rel="stylesheet" href="/static/css/custom.css">
 
     <script>
-        // Instant theme swap for the top-bar appearance picker (Sprint 58,
-        // feature-flagged). Swaps only the theme-* body class; persistence is
-        // handled separately by the picker's hx-post.
+        // Instant colour-scheme swap for the top-bar appearance picker
+        // (Sprint 58, feature-flagged). Swaps only the theme-* body class —
+        // schemes are colours-only, so no reflow; persistence is handled
+        // separately by the picker's hx-post.
         window.lcApplyTheme = function(theme) {
             const b = document.body;
             if (theme === 'auto') {
-                // "auto" palette follows the current mode's tuned default.
+                // "auto" scheme follows the current layout's tuned default.
                 var lc = [...b.classList].find(function(c){ return c.indexOf('layout-') === 0; });
                 var layout = lc ? lc.slice(7) : 'standard';
-                var map = {standard:'terminal','e-reader':'parchment',dock:'slate',immersive:'immersive',classic:'classic'};
+                var map = {standard:'terminal','e-reader':'parchment',dock:'slate',immersive:'immersive',classic:'mono-green'};
                 theme = map[layout] || 'terminal';
             }
             [...b.classList].forEach(function(c) {
                 if (c.indexOf('theme-') === 0) b.classList.remove(c);
             });
             b.classList.add('theme-' + theme);
+        };
+
+        // Minimap ⇄ compass toggle (Sprint 62) — the little button in every
+        // layout's MAP pane head. Flips the body class instantly (CSS shows
+        // one of the two pre-rendered views) and persists via the same
+        // merge-one-field endpoint the appearance pickers use.
+        window.lcToggleMinimapStyle = function() {
+            const b = document.body;
+            const next = b.classList.contains('minimap-compass') ? 'graph' : 'compass';
+            b.classList.remove('minimap-graph', 'minimap-compass');
+            b.classList.add('minimap-' + next);
+            fetch('/settings/appearance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'minimap_style=' + next
+            });
         };
 
         // Tailwind config - fantasy / terminal inspired dark theme
@@ -68,7 +85,12 @@
                             'text': 'var(--lc-text)',         // zinc-200
                             'text-muted': 'var(--lc-text-muted)', // zinc-400
                             'feed-bg': 'var(--lc-bg)',        // zinc-950
-                            'border': 'var(--lc-border)'      // zinc-700
+                            'border': 'var(--lc-border)',     // zinc-700
+                            // Characters mentioned in room text (NPCs present,
+                            // "X is here") — a token distinct from item
+                            // highlighting, defaulting to today's amber-400 so
+                            // the terminal theme is unchanged (Sprint 61).
+                            'npc': 'var(--lc-npc)'
                         }
                     }
                 }

@@ -143,30 +143,45 @@ def audit_to_feed(event: AuditEvent, current_player: Player) -> dict[str, Any]:
     }
 
 
-def mud_room_block(room: Any, room_panel: dict[str, Any]) -> list[str]:
-    """Old-school-MUD-style plain-text room description (Sprint 58): name,
-    description, NPCs present, visible items, and non-hidden exits — the text
-    equivalent of the room + minimap panels, for layouts (immersive) that drop
-    them in favour of a dominant chronicle. Built from the same `room_panel`
-    data those panels render, so it can't drift from what they'd show.
+def room_card_message(
+    room: Any,
+    room_panel: dict[str, Any],
+    players_in_room: list[dict[str, Any]],
+    *,
+    msg_id: str,
+    timestamp: str,
+) -> dict[str, Any]:
+    """A structured "room card" feed message for the chronicle-only layouts
+    (immersive, classic), which drop the dedicated Current Location panel.
+
+    On arrival or an explicit ``look`` these layouts must narrate the room *in
+    the chronicle*. Rendering it as this structured card (see
+    ``partials/feed_room_card.html``) lets the feed reuse the panel's styled
+    name / description / NPC / item / exit look instead of the flat, unstyled
+    text the engine's ``ctx.say()`` produces. Built from the same ``room_panel``
+    data the Current Location panel renders, so the card can't drift from what
+    that panel would show (Sprint 60).
     """
-    lines = [room.name, room.description]
-
-    npcs = room_panel.get("npcs") or []
-    if npcs:
-        lines.append(f"Present: {', '.join(npcs)}.")
-
-    items = room_panel.get("items_visible") or []
-    if items:
-        lines.append(f"You see: {', '.join(items)}.")
-
-    exits = [e["direction"] for e in room_panel.get("exits", []) if not e.get("hidden")]
-    lines.append(
-        f"Exits: {', '.join(sorted(exits))}."
-        if exits
-        else "There are no obvious exits."
+    exits = sorted(
+        e["direction"] for e in room_panel.get("exits", []) if not e.get("hidden")
     )
-    return lines
+    return {
+        "id": msg_id,
+        "timestamp": timestamp,
+        "actor": None,
+        "type": "room_card",
+        "room": {
+            "name": room.name,
+            "subtitle": getattr(room, "subtitle", None),
+            "description": room.description,
+            "npcs": room_panel.get("npcs") or [],
+            # Keyed `items_visible` (not `items`) so a Jinja `room.items`
+            # attribute lookup can't resolve to the dict's built-in .items().
+            "items_visible": room_panel.get("items_visible") or [],
+            "exits": exits,
+            "players_here": mud_players_here_line(players_in_room),
+        },
+    }
 
 
 def mud_players_here_line(players_in_room: list[dict[str, Any]]) -> str | None:

@@ -1,11 +1,13 @@
 {#
-  Dock layout — modern dark "app" (Sprint 59/60, ported from
-  lorecraft-export/dock). Three columns of floating cards: LEFT = Location +
-  Minimap; CENTRE = Chronicle (log + command bar with a Send button); RIGHT =
-  Party + Pack (a textual row list — coloured name + type tag + weight) with a
-  Quests footer. The base-nav Mode/Palette pickers act as the "control bar".
+  Dock layout — modern dark "app" (Sprint 59/60/62, ported from
+  lorecraft-export/dock, right pane realigned to Standard's). Three columns of
+  floating cards: LEFT = Location (with an ALSO HERE list) + Minimap; CENTRE =
+  Chronicle (log + command bar with a Send button); RIGHT = one full-height
+  card with WINDOW-SHADE sections — Inv / Quests / Stats, one open at a time
+  (Dock's accordion take on Standard's tabbed pane; same panes, same ids).
   Pairs with the Slate palette. Reuses the shared ids: #room-description,
-  #minimap, #feed, #players-online, #inventory, #quest-tracker, #command-input.
+  #minimap, #feed, #players-online, #inventory, #quest-tracker, #stats-panel,
+  #command-input.
 
   The card chrome (border/radius/shadow + the `.dock-card__head` title) lives
   HERE, not inside partials/minimap.html — matching the reference, where
@@ -16,11 +18,21 @@
      class="dock flex-1 grid gap-3.5 p-3.5 overflow-hidden h-full min-h-0"
      style="grid-template-columns: 18rem minmax(0, 1fr) 17rem">
 
-    <!-- LEFT: location + minimap -->
+    <!-- LEFT: location (+ who's here) + minimap -->
     <div class="flex flex-col gap-3.5 min-h-0">
         <div class="dock-card flex-1 min-h-0 flex flex-col overflow-hidden">
             <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">LOCATION</span></div>
-            {% include "partials/room_description.html" %}
+            <div class="flex-1 min-h-0 overflow-y-auto bg-feed-bg">
+                {% include "partials/room_description.html" %}
+                {% if 'players_online' not in prefs.hidden_panels %}
+                <div class="px-3 pb-3">
+                    <div class="pt-2 border-t border-border text-[9.5px] tracking-[0.15em] text-text-muted mb-1">
+                        ALSO HERE <span class="font-mono text-accent" id="player-count">{{ players_here | length if players_here else 0 }}</span>
+                    </div>
+                    {% include "partials/players_online.html" %}
+                </div>
+                {% endif %}
+            </div>
         </div>
         {% if 'minimap' not in prefs.hidden_panels %}
         <div class="dock-card flex-none overflow-hidden">
@@ -28,6 +40,7 @@
                 <span class="grip">⋮⋮</span>
                 <span class="mm-title-graph t">MINIMAP</span><span class="mm-title-compass t">EXITS</span>
                 <span class="dock-card__r flex items-center gap-2">
+                    <button type="button" onclick="lcToggleMinimapStyle()" class="hover:text-accent transition-colors" title="Toggle map / compass">⇄</button>
                     <button type="button" @click="mapModalOpen = true" hx-get="/partials/map-full" hx-target="#map-modal-content" hx-swap="innerHTML" class="hover:text-accent transition-colors" title="Full-screen map">⛶</button>
                     <button type="button" hx-get="/partials/minimap" hx-target="#minimap" hx-swap="outerHTML" class="hover:text-accent transition-colors" title="Refresh">⟳</button>
                 </span>
@@ -63,23 +76,42 @@
         </div>
     </div>
 
-    <!-- RIGHT: party + pack + quests -->
-    <div class="flex flex-col gap-3.5 min-h-0">
-        {% if 'players_online' not in prefs.hidden_panels %}
-        <div class="dock-card flex-none overflow-hidden">
-            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">PARTY</span><span class="dock-card__r">{{ players_here | length if players_here else 0 }}</span></div>
-            {% include "partials/players_online.html" %}
-        </div>
-        {% endif %}
+    {# RIGHT: one full-height card, window-shaded Inv / Quests / Stats — the
+       same three panes as Standard's tabbed rail, as an accordion: each
+       section's head is always visible, one body open at a time. All bodies
+       stay in the DOM (x-show) so the OOB live-updates (#inventory /
+       #quest-tracker) keep firing while shaded. #}
+    <div class="dock-card min-h-0 flex flex-col overflow-hidden"
+         x-data="{ shade: '{{ 'inv' if 'inventory' not in prefs.hidden_panels else 'stats' }}' }">
         {% if 'inventory' not in prefs.hidden_panels %}
         {% set pack_count = inventory | sum(attribute='quantity') if inventory else 0 %}
-        <div class="dock-card flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">PACK</span><span class="dock-card__r">{{ pack_count }} item{{ '' if pack_count == 1 else 's' }}{% if encumbrance %} · {{ encumbrance.current }}/{{ encumbrance.capacity }}{% endif %}</span></div>
+        <button type="button" class="dock-card__head dock-shade__head w-full text-left"
+                :aria-expanded="shade === 'inv'" @click="shade = 'inv'">
+            <span class="grip">⋮⋮</span><span class="t">INV</span>
+            <span class="dock-card__r">{{ pack_count }} item{{ '' if pack_count == 1 else 's' }}{% if encumbrance %} · {{ encumbrance.current }}/{{ encumbrance.capacity }}{% endif %}</span>
+        </button>
+        <div x-show="shade === 'inv'" class="flex-1 flex flex-col overflow-hidden min-h-0">
             {% include "partials/inventory.html" %}
-            {% if 'quest_tracker' not in prefs.hidden_panels %}
-            <div class="dock-quests-foot">{% include "partials/quest_tracker.html" %}</div>
-            {% endif %}
         </div>
         {% endif %}
+
+        {% if 'quest_tracker' not in prefs.hidden_panels %}
+        <button type="button" class="dock-card__head dock-shade__head w-full text-left"
+                :aria-expanded="shade === 'quests'" @click="shade = 'quests'">
+            <span class="grip">⋮⋮</span><span class="t">QUESTS</span>
+            <span class="dock-card__r">{{ active_quests | length if active_quests else 0 }}</span>
+        </button>
+        <div x-show="shade === 'quests'" x-cloak class="flex-1 flex flex-col overflow-hidden min-h-0">
+            {% include "partials/quest_tracker.html" %}
+        </div>
+        {% endif %}
+
+        <button type="button" class="dock-card__head dock-shade__head w-full text-left"
+                :aria-expanded="shade === 'stats'" @click="shade = 'stats'">
+            <span class="grip">⋮⋮</span><span class="t">STATS</span>
+        </button>
+        <div x-show="shade === 'stats'" x-cloak class="flex-1 overflow-y-auto bg-feed-bg p-3 min-h-0">
+            {% include "partials/stats_panel.html" %}
+        </div>
     </div>
 </div>

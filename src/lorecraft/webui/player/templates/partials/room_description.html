@@ -19,10 +19,10 @@
         {% if npcs or items_visible %}
         <div class="mt-2 text-xs text-text-muted">
             {% if npcs %}
-                <div>Present: <span class="text-amber-400">{{ npcs | join(', ') }}</span></div>
+                <div>Present: <span class="text-npc">{{ npcs | join(', ') }}</span></div>
             {% endif %}
             {% if items_visible %}
-                <div class="mt-0.5">You notice: <span class="text-sky-400">{{ items_visible | join(', ') }}</span></div>
+                <div class="mt-0.5">You notice: <span class="text-amber-400">{{ items_visible | join(', ') }}</span></div>
             {% endif %}
         </div>
         {% endif %}

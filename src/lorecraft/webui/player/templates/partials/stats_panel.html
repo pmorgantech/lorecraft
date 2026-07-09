@@ -1,0 +1,87 @@
+{#
+  Stats pane body (Sprint 62) — the full character readout from
+  lorecraft-export/standard's "Score" pane (renamed Stats per direction):
+  VITALS as coloured meter bars + coins, ATTRIBUTES, TRAITS chips, MARKS,
+  REPUTATION with a display band, and AFFLICTIONS & EFFECTS. Standard shows
+  it as a tab; Dock as a window-shade section. Driven by `player_stats`
+  (session.stats_snapshot) — all real engine data (hp/fatigue meters, ledger
+  coins, PlayerStats, trait registry, earned marks, reputation rows, active
+  effects), so each section renders only when its data exists.
+#}
+<div id="stats-panel" class="text-xs">
+    {% set ps = player_stats or {} %}
+    {% set v = ps.vitals %}
+
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2">VITALS</div>
+    <div class="space-y-2.5 mb-4">
+        {% for bar in ps.meter_bars or [] %}
+        <div>
+            <div class="flex justify-between mb-1">
+                <span style="color:{{ bar.color }}">{{ bar.label }}</span>
+                <span class="text-text font-mono">{{ bar.current }} / {{ bar.maximum }}</span>
+            </div>
+            <div class="h-1 rounded bg-panel-light">
+                <div class="h-full rounded" style="width: {{ (100 * bar.current / bar.maximum) | round | int if bar.maximum else 0 }}%; background: {{ bar.color }}"></div>
+            </div>
+        </div>
+        {% endfor %}
+        <div class="flex justify-between">
+            <span class="text-amber-400">Coins</span>
+            <span class="text-text font-mono">{{ v.coins if v else 0 }}</span>
+        </div>
+    </div>
+
+    {% if ps.attributes %}
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">ATTRIBUTES</div>
+    <div class="grid grid-cols-2 gap-x-4 gap-y-1 mb-4 font-mono">
+        {% for name, value in ps.attributes.items() %}
+        <div class="flex justify-between"><span class="text-text-muted">{{ name }}</span><span class="text-text">{{ value }}</span></div>
+        {% endfor %}
+    </div>
+
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">LEVEL</div>
+    <div class="flex justify-between mb-4 font-mono">
+        <span class="text-text-muted">Level {{ ps.level }}</span>
+        <span class="text-text">{{ ps.xp }} / {{ ps.xp_to_next }} xp</span>
+    </div>
+    {% endif %}
+
+    {% if ps.traits %}
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">TRAITS</div>
+    <div class="flex flex-wrap gap-1.5 mb-4">
+        {% for trait in ps.traits %}
+        <span class="px-2 py-0.5 rounded-full border border-emerald-900 text-text">{{ trait | replace('_', ' ') | title }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if ps.marks %}
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">MARKS</div>
+    <div class="space-y-1 mb-4 leading-relaxed" style="color:var(--lc-copper, #c88a5a)">
+        {% for mark in ps.marks %}
+        <div>&#9670; {{ mark.name }}{% if mark.description %} &middot; <span class="opacity-80">{{ mark.description }}</span>{% endif %}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if ps.reputation %}
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">REPUTATION</div>
+    <div class="space-y-1 mb-4">
+        {% for rep in ps.reputation %}
+        <div class="flex justify-between">
+            <span class="text-text-muted">{{ rep.name }}</span>
+            <span class="{% if rep.band == 'Friendly' %}text-emerald-400{% elif rep.band == 'Wary' %}text-red-400{% else %}text-text{% endif %}">{{ rep.band }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if ps.effects %}
+    <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">AFFLICTIONS &amp; EFFECTS</div>
+    <div class="space-y-0.5">
+        {% for effect in ps.effects %}
+        <div><span class="text-emerald-400">&#9702;</span> <span class="text-text">{{ effect.name }}</span></div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>

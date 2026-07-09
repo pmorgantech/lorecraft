@@ -180,22 +180,28 @@ class TestTheme:
         )
 
     def test_auto_resolves_per_mode(self) -> None:
-        # theme "auto" (the default) follows the layout's tuned palette.
-        for layout, palette in [
+        # scheme "auto" (the default) follows the layout's tuned scheme.
+        for layout, scheme in [
             ("e-reader", "parchment"),
             ("dock", "slate"),
             ("immersive", "immersive"),
-            ("classic", "classic"),
+            ("classic", "mono-green"),
         ]:
             ctx = resolve_preferences({"layout": layout}).to_context()["prefs"]
-            assert ctx["theme_class"] == f"theme-{palette}", layout
+            assert ctx["theme_class"] == f"theme-{scheme}", layout
 
     def test_explicit_theme_overrides_the_mode_palette(self) -> None:
-        # An explicit palette wins over the mode default.
-        ctx = resolve_preferences({"layout": "dock", "theme": "classic"}).to_context()[
-            "prefs"
-        ]
-        assert ctx["theme_class"] == "theme-classic"
+        # An explicit scheme wins over the layout default.
+        ctx = resolve_preferences(
+            {"layout": "dock", "theme": "mono-green"}
+        ).to_context()["prefs"]
+        assert ctx["theme_class"] == "theme-mono-green"
+
+    def test_legacy_theme_names_alias_to_renamed_schemes(self) -> None:
+        # Pre-rename blobs ("classic"/"classic-amber") keep their CRT look
+        # (Sprint 62 rename to mono-green/mono-amber).
+        assert resolve_preferences({"theme": "classic"}).theme == "mono-green"
+        assert resolve_preferences({"theme": "classic-amber"}).theme == "mono-amber"
 
     def test_all_named_themes_resolve(self) -> None:
         for name in THEMES:

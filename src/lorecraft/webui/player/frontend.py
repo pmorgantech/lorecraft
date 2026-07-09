@@ -62,9 +62,8 @@ from lorecraft.webui.player.rendering import (
     create_dev_player,
     feed_items_html,
     mark_oob_swap,
-    mud_players_here_line,
-    mud_room_block,
     resolve_command_text,
+    room_card_message,
 )
 from lorecraft.webui.player.session import (
     CommandResult,
@@ -86,6 +85,7 @@ from lorecraft.webui.player.session import (
     set_player_session_cookie,
     clear_player_session_cookie,
     active_quests_snapshot,
+    stats_snapshot,
     vitals_snapshot,
     world_time_snapshot,
 )
@@ -491,27 +491,20 @@ async def game_screen(
         )
 
         # The chronicle-only layouts (immersive, classic) drop the dedicated
-        # room/players panels, so they need that info as old-school-MUD plain
-        # text instead — appended last (closest to the prompt), like a MUD
-        # showing you the room right after you connect (Sprint 58/59).
+        # room/players panels, so they narrate the room in the chronicle
+        # instead — as a styled room card (mirrors the Current Location panel;
+        # see room_card_message / feed_room_card.html) appended last (closest
+        # to the prompt), like a MUD showing you the room right after you
+        # connect (Sprint 58/59, styled in Sprint 60).
         if prefs.layout in MUD_CHRONICLE_LAYOUTS and current_room:
-            mud_lines = mud_room_block(current_room, room_panel)
-            players_line = mud_players_here_line(players_in_room)
-            if players_line:
-                mud_lines.append(players_line)
-            mud_ts = time.strftime("%H:%M", time.localtime())
             feed_messages = [
                 *feed_messages,
-                *(
-                    {
-                        "id": f"mud-{i}",
-                        "timestamp": mud_ts,
-                        "actor": None,
-                        "text": line,
-                        "type": "narrative",
-                        "msg_type": "room_event",
-                    }
-                    for i, line in enumerate(mud_lines)
+                room_card_message(
+                    current_room,
+                    room_panel,
+                    players_in_room,
+                    msg_id="room-card",
+                    timestamp=time.strftime("%H:%M", time.localtime()),
                 ),
             ]
 
@@ -520,6 +513,19 @@ async def game_screen(
         vitals = (
             vitals_snapshot(game_db, get_meters(request), player.id)
             if prefs.layout == "classic"
+            else None
+        )
+        # The Stats pane (Sprint 62, from the export's "Score" readout) —
+        # Standard shows it as a tab, Dock as a window-shade section.
+        player_stats = (
+            stats_snapshot(
+                game_db,
+                player_repo,
+                get_meters(request),
+                get_effects(request),
+                player.id,
+            )
+            if prefs.layout in ("standard", "dock")
             else None
         )
 
@@ -535,6 +541,7 @@ async def game_screen(
             "dialogue": dialogue,
             "world_time": world_time,
             "vitals": vitals,
+            "player_stats": player_stats,
             # Top-bar quick Theme/Layout pickers (Sprint 58, feature-flagged).
             "appearance_picker": APPEARANCE_TOPBAR,
             "theme_options": THEMES,
@@ -658,19 +665,23 @@ async def update_appearance(
     request: Request,
     theme: str | None = Form(default=None),
     layout: str | None = Form(default=None),
+    minimap_style: str | None = Form(default=None),
     player: Player = Depends(get_current_player),
 ):
-    """Quick theme/layout change from the top-bar pickers (Sprint 58, gated by
-    ``APPEARANCE_TOPBAR``). Updates ONLY the field(s) supplied, merged over the
-    account's current preferences, so it never disturbs any other setting.
-    Returns 204 — the picker updates the page client-side (instant theme swap)
-    or via a reload (layout), so there is nothing to render here.
+    """Quick scheme/layout/minimap-style change from the top-bar pickers
+    (Sprint 58, gated by ``APPEARANCE_TOPBAR``) and the map-pane toggle
+    (Sprint 62). Updates ONLY the field(s) supplied, merged over the account's
+    current preferences, so it never disturbs any other setting. Returns 204 —
+    the caller updates the page client-side (instant class swap) or via a
+    reload (layout), so there is nothing to render here.
     """
     updates: dict[str, object] = {}
     if theme is not None:
         updates["theme"] = theme
     if layout is not None:
         updates["layout"] = layout
+    if minimap_style is not None:
+        updates["minimap_style"] = minimap_style
     if updates:
         game_engine, _ = get_engines(request)
         with DBSession(game_engine) as db:
@@ -797,13 +808,28 @@ async def handle_command(
                 player_repo,
             )
 
-            # Resolved once here (Sprint 58): drives both the immersive
-            # old-school-MUD room text below and which pane a chat echo lands in.
+            # Resolved once here (Sprint 58): drives both the chronicle-only
+            # room card below and which pane a chat echo lands in.
             prefs = resolve_preferences(after_player.preferences)
-            command_verb = (
-                command_text.strip().split(None, 1)[0].lower()
-                if command_text.strip()
-                else ""
+            _cmd_parts = command_text.strip().split(None, 1)
+            command_verb = _cmd_parts[0].lower() if _cmd_parts else ""
+            command_arg = _cmd_parts[1].strip() if len(_cmd_parts) > 1 else ""
+
+            # Chronicle-only layouts (immersive, classic) drop the Current
+            # Location panel, so they narrate the room in the feed as a styled
+            # card (Sprint 60). It shows on arrival (movement doesn't otherwise
+            # narrate the new room) and on a successful *bare* `look` — for
+            # which the engine's own flat room narration is suppressed below so
+            # the card doesn't duplicate it. A blocked look (e.g. darkness)
+            # pushes no `room_id`, so its warning still shows and no card fires.
+            mud_layout = prefs.layout in MUD_CHRONICLE_LAYOUTS
+            is_bare_look = command_verb in {"look", "l"} and not command_arg
+            # Suppression only applies where the card replaces the narration —
+            # a chronicle-only layout. Elsewhere (standard/dock/e-reader) the
+            # engine's look output must reach the feed untouched.
+            look_narrated = mud_layout and is_bare_look and "room_id" in ctx.updates
+            show_room_card = after_room is not None and (
+                (mud_layout and room_changed) or look_narrated
             )
 
             # Only emit what this command produced this turn.
@@ -813,6 +839,11 @@ async def handle_command(
             ts = time.strftime("%H:%M", time.localtime())
 
             for m in ctx.messages:
+                # On a narrated bare `look` in a chronicle-only layout the
+                # engine's flat room text is replaced by the styled card below,
+                # so drop it here to avoid showing the room twice (Sprint 60).
+                if look_narrated:
+                    continue
                 feed_msgs.append(
                     {
                         "id": f"msg-{session_id}-{len(feed_msgs)}",
@@ -829,35 +860,22 @@ async def handle_command(
                     }
                 )
 
-            # The chronicle-only layouts (immersive, classic) drop the dedicated
-            # room/players panels, so they need that info as old-school-MUD plain
-            # text instead (Sprint 58/59): the full room block on arrival
-            # (movement doesn't otherwise narrate the new room at all — that's
-            # normally the panel's job), or just the "who's here" line on an
-            # explicit look (which already narrates name/description/exits/items
-            # itself via ctx.messages above).
-            if prefs.layout in MUD_CHRONICLE_LAYOUTS:
-                mud_lines: list[str] = []
-                if room_changed:
-                    mud_lines.extend(mud_room_block(after_room, room_panel))
-                    players_line = mud_players_here_line(players_in_room)
-                    if players_line:
-                        mud_lines.append(players_line)
-                elif command_verb in {"look", "l"}:
-                    players_line = mud_players_here_line(players_in_room)
-                    if players_line:
-                        mud_lines.append(players_line)
-                for line in mud_lines:
-                    feed_msgs.append(
-                        {
-                            "id": f"msg-{session_id}-{len(feed_msgs)}",
-                            "timestamp": ts,
-                            "actor": None,
-                            "text": line,
-                            "type": "narrative",
-                            "msg_type": "room_event",
-                        }
+            # The chronicle-only layouts (immersive, classic) narrate the room
+            # as a styled card in place of the Current Location panel — on
+            # arrival (movement never narrated the new room; that was the
+            # panel's job) and on a bare `look` (whose engine narration was
+            # suppressed above). Built from the same room_panel data the panel
+            # renders, so the card can't drift from it (Sprint 60).
+            if show_room_card:
+                feed_msgs.append(
+                    room_card_message(
+                        after_room,
+                        room_panel,
+                        players_in_room,
+                        msg_id=f"msg-{session_id}-room",
+                        timestamp=ts,
                     )
+                )
 
             # Chat channel (Sprint 45 split, Sprint 52 channels): the actor's own
             # chat echo, tagged so the client can route it to the chat pane when

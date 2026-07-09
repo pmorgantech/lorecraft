@@ -21,7 +21,15 @@
 {%- endmacro %}
 
 {% for msg in feed_messages %}
-    {% if msg.type == 'chat' and route_chat_oob %}
+    {% if msg.type == 'room_card' %}
+    {#
+      Styled room block for the chronicle-only layouts (immersive, classic),
+      which drop the Current Location panel and narrate the room in the feed
+      instead. Rendered by its own partial rather than the generic body above,
+      so it reuses the panel's styling instead of flat text (Sprint 60).
+    #}
+    {% include "partials/feed_room_card.html" %}
+    {% elif msg.type == 'chat' and route_chat_oob %}
     {#
       Chat echo routed to the chat pane. A rendered `type == 'chat'` item is
       always the ACTOR'S OWN echo (ctx.chat_echoes) — others' chat only ever

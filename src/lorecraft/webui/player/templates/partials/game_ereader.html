@@ -25,13 +25,18 @@
         <div class="flex-none border-t border-border p-4" style="background:var(--lc-panel-light)">
             <div class="mb-2 flex items-center justify-between text-[10px] tracking-[0.18em] text-text-muted">
                 <span>&#10022; THE KNOWN WAYS</span>
-                <button
-                    @click="mapModalOpen = true"
-                    hx-get="/partials/map-full"
-                    hx-target="#map-modal-content"
-                    hx-swap="innerHTML"
-                    class="normal-case tracking-normal hover:text-accent transition-colors"
-                    title="Full-screen map">&#10726;</button>
+                <span class="flex items-center gap-2 normal-case tracking-normal">
+                    <button type="button" onclick="lcToggleMinimapStyle()"
+                            class="hover:text-accent transition-colors"
+                            title="Toggle map / compass">&#8644;</button>
+                    <button
+                        @click="mapModalOpen = true"
+                        hx-get="/partials/map-full"
+                        hx-target="#map-modal-content"
+                        hx-swap="innerHTML"
+                        class="hover:text-accent transition-colors"
+                        title="Full-screen map">&#10726;</button>
+                </span>
             </div>
             <div class="w-full h-[7.5rem]">
                 {% include "partials/minimap.html" %}

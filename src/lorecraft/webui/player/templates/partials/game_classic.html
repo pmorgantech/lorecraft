@@ -2,8 +2,9 @@
   Classic layout — old-MUD terminal (Sprint 59). Chronicle + vitals prompt on
   the left; a ~420px minimap-over-chat column on the right. Chronicle-only, like
   immersive: the room/inventory/players/quests panels are dropped and the
-  chronicle narrates the room instead (frontend.py's mud_room_block fires for
-  immersive AND classic). Stacks vertically below the lg breakpoint.
+  chronicle narrates the room instead as a styled room card (frontend.py's
+  room_card_message fires for immersive AND classic). Stacks vertically below
+  the lg breakpoint.
 
   Reuses the shared ids the rest of the app keys on: #feed (chronicle),
   #chat-feed (chat pane), #minimap (OOB movement swap), #vitals (OOB refresh),
@@ -39,14 +40,19 @@
                   lg:h-auto lg:w-[26rem] lg:border-t-0">
         {% if 'minimap' not in prefs.hidden_panels %}
         {# Text-only dashed header (matches the CHAT header below) — no box,
-           no buttons. The one border is the square `.classic-map-box` itself,
+           no buttons. The map fills the pane's width (Sprint 61, like
+           Standard's card) rather than floating as a small square with
+           wasted side margins; the one border is `.classic-map-box` itself,
            around #minimap's bare content — a single box, not a nested one. #}
         <section class="flex-none border-b border-border">
-            <div class="px-4 py-2 text-[11px] tracking-[0.2em] text-text-muted">
-                <span class="mm-title-graph">── MINIMAP ──</span><span class="mm-title-compass">── EXITS ──</span>
+            <div class="px-4 py-2 text-[11px] tracking-[0.2em] text-text-muted flex items-center justify-between">
+                <span><span class="mm-title-graph">── MINIMAP ──</span><span class="mm-title-compass">── EXITS ──</span></span>
+                <button type="button" onclick="lcToggleMinimapStyle()"
+                        class="normal-case tracking-normal hover:text-accent transition-colors"
+                        title="Toggle map / compass">&#8644;</button>
             </div>
-            <div class="flex justify-center pb-4">
-                <div class="classic-map-box">
+            <div class="px-4 pb-4">
+                <div class="classic-map-box w-full aspect-square max-h-64">
                     {% include "partials/minimap.html" %}
                 </div>
             </div>

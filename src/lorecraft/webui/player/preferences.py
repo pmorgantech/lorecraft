@@ -24,32 +24,39 @@ from lorecraft.types import JsonObject
 # Allowed values for the enum-like preferences. Anything outside these falls
 # back to the default, so a hand-edited or stale blob can never inject an
 # invalid class name / format string into a template.
-# Colour + typography themes (Sprint 58.1). Each maps to a `theme-<name>` body
-# class and a CSS-variable token set in static/css/custom.css. "terminal" is the
-# default and reproduces today's zinc/emerald look, so an account that never
-# picks a theme renders exactly as before. "classic"/"classic-amber" (Sprint 59)
-# are the phosphor-CRT old-MUD palettes (green / amber) with scanlines + glow.
-# "auto" (Sprint 59, the default) is not a palette itself — it means "use the
-# palette tuned for the current mode/layout" (MODE_DEFAULT_THEME below), so the
-# theme dropdown acts as an *optional override* over the mode's own look.
+# COLOR SCHEMES (Sprint 58.1, renamed from "themes" per the 2026-07-09 axis
+# split): each maps to a `theme-<name>` body class and a CSS-variable *colour*
+# token set in static/css/custom.css — colours only. Typography (font faces,
+# sizes, spacing) belongs to the LAYOUT axis, so picking a scheme never reflows
+# text. "mono-green"/"mono-amber" (Sprint 59, formerly "classic"/
+# "classic-amber") are the phosphor-CRT palettes with scanlines + glow —
+# standalone overrides, not named after (or tied to) any layout.
+# "auto" (the default) is not a scheme itself — it means "use the scheme tuned
+# for the current layout" (MODE_DEFAULT_THEME below), so the dropdown acts as
+# an *optional override* over the layout's own look.
 THEMES = (
     "auto",
     "terminal",
     "parchment",
     "slate",
     "immersive",
-    "classic",
-    "classic-amber",
+    "mono-green",
+    "mono-amber",
 )
-# Each layout ("mode") ships with a tuned default palette; `theme == "auto"`
-# resolves to this. Coupling the two by default while leaving the override in
-# place (per the 2026-07-09 UI direction) — decouple later if wanted.
+# Legacy stored values from before the rename resolve to their new names, so
+# an account that picked "classic" keeps its green CRT rather than silently
+# falling back to the default.
+THEME_ALIASES = {"classic": "mono-green", "classic-amber": "mono-amber"}
+# Each layout ships with a tuned default colour scheme; `theme == "auto"`
+# resolves to this. A layout + its resolved scheme together are what the UI
+# calls a "Theme". The classic layout's default is mono-green — the phosphor
+# palette of docs/lorecraft-export/classic.
 MODE_DEFAULT_THEME = {
     "standard": "terminal",
     "e-reader": "parchment",
     "dock": "slate",
     "immersive": "immersive",
-    "classic": "classic",
+    "classic": "mono-green",
 }
 # Panel-arrangement layouts (Sprint 58.5), a *second, independent* axis from
 # theme. Each maps to a `layout-<name>` body class. "standard" is the default
@@ -81,10 +88,11 @@ TOGGLEABLE_PANELS = ("minimap", "inventory", "players_online", "quest_tracker")
 class PlayerPreferences:
     """Fully-resolved, always-valid presentation preferences for one account."""
 
-    # Colour + typography theme (Sprint 58.1). Default "auto" = the current
-    # mode's tuned palette (MODE_DEFAULT_THEME); any explicit value overrides it.
+    # Colour scheme (Sprint 58.1; colours ONLY — typography follows layout).
+    # Default "auto" = the current layout's tuned scheme (MODE_DEFAULT_THEME);
+    # any explicit value overrides it.
     theme: str = "auto"
-    # Panel arrangement (Sprint 58.5), independent of theme. Default = today.
+    # Panel arrangement + typography (Sprint 58.5). Default = today.
     layout: str = "standard"
     # Minimap rendering style (Sprint 59): graph node-map vs compass exit-star.
     minimap_style: str = "graph"
@@ -220,8 +228,11 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         if isinstance(subscriptions_raw, dict)
         else {}
     )
+    theme_raw = raw.get("theme")
+    if isinstance(theme_raw, str):
+        theme_raw = THEME_ALIASES.get(theme_raw, theme_raw)
     return PlayerPreferences(
-        theme=_clean_enum(raw.get("theme"), THEMES, "auto"),
+        theme=_clean_enum(theme_raw, THEMES, "auto"),
         layout=_clean_enum(raw.get("layout"), LAYOUTS, "standard"),
         minimap_style=_clean_enum(raw.get("minimap_style"), MINIMAP_STYLES, "graph"),
         display_density=_clean_enum(

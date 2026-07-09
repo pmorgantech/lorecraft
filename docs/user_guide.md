@@ -57,72 +57,77 @@ When an NPC conversation is active, a dialogue overlay appears above the command
 the NPC's line and numbered reply buttons — see [Talking to NPCs](#talking-to-npcs--quests).
 
 On a narrow (phone-width) screen, the three panel columns collapse into one at a time —
-use the **Room** / **Feed** / **Players** tabs at the bottom to switch between them.
+use the **Room** / **Feed** / **Panel** tabs at the bottom to switch between them.
 
 ## Themes & Display
 
 Open **Settings** (top-right of the game screen) to change how the client looks. Choices are
 saved to your account, so they follow you to any device you log in from.
 
-**Mode** is the main choice — it sets the whole look (layout **and** a palette tuned to match):
-Standard, E-reader, Dock, Immersive, or Classic (see the table further down). Each comes ready to
-go, so most players only ever pick a Mode.
+A **Theme** is the combination of a **Layout** and a **Color scheme** — the two dropdowns.
 
-**Palette override** is optional. Leave it on **Auto** to use the mode's own colours, or pick one
-of the palettes below to override it — e.g. the Classic green/amber CRT look under any layout:
+**Layout** is the main choice — it sets the panel arrangement **and** the typography (font faces,
+sizes, spacing): Standard, E-reader, Dock, Immersive, or Classic (see the table further down).
+Each layout brings its own tuned colours too, so most players only ever pick a Layout.
 
-| Theme | Look |
-|-------|------|
-| **Terminal** *(default)* | The classic green-on-black monospace console. |
-| **Slate** | A modern dark app with a cyan accent and a clean sans-serif face. |
-| **Immersive** | A cinematic, low-glare dark theme lit in warm amber. |
-| **Parchment** | A warm, light "old book" theme — serif prose with monospace commands. |
-| **Classic** | A phosphor-green CRT terminal — scanlines and a soft glow, like an old text game. |
-| **Classic Amber** | The same CRT terminal, in amber phosphor. |
+**Color scheme** is optional and changes **colours only** — it never reflows the text. Leave it on
+**Auto** to use the layout's own scheme, or pick one to override it — e.g. the Mono Green CRT look
+under any layout:
 
-A palette only changes colours and fonts; every panel and command works the same under all of them.
+| Scheme | Look |
+|--------|------|
+| **Terminal** *(default for Standard)* | A green-tinted terminal — spring-green accent on near-black. |
+| **Slate** | A modern dark app scheme with a cyan accent. |
+| **Immersive** | A cinematic, low-glare dark scheme lit in warm amber. |
+| **Parchment** | A warm, light "old book" scheme. |
+| **Mono Green** *(default for Classic)* | A phosphor-green CRT — scanlines and a soft glow, like an old text game. |
+| **Mono Amber** | The same CRT, in amber phosphor. |
 
-The **Modes** — each is a layout with its own tuned palette (the palette override still applies on top):
+The **Layouts** — each pairs panel arrangement with its own typesetting (the scheme override
+recolours it without changing the type):
 
 | Layout | Arrangement |
 |--------|-------------|
-| **Standard** *(default)* | Three columns: room + map on the left, chronicle in the centre, and players + an **Inventory/Quests** pane on the right (a **toggle button** in its title bar flips between the two). |
-| **E-reader** | A warm "illuminated manuscript" book: the location on a left ledger, a wide **serif chronicle** in the centre with an *Inscribe* prompt, and a slim right rail of vertical tabs (Here / Quests / Pack / Stats). Pairs best with the Parchment theme. |
-| **Dock** | A modern dark "app": three columns of floating, rounded **cards** — Location + Minimap on the left, the Chronicle (with a **Send** button) in the centre, and your Party plus a **Pack** on the right. The Pack lists your inventory with each item's name **coloured by type** (weapon/armor/utility/coin) plus a small type tag and its weight (click a row to examine it), with Quests tucked in below. Pairs with the Slate palette. |
-| **Immersive** | A focused, cinematic view: a slim **icon rail** on the far left (glyph shortcuts for Look / Inventory / Journal / Score), a **full-bleed chronicle** filling the screen, and a **floating minimap** and **command bar** hovering over it. Chat folds into the chronicle — no side panels at all. Pairs with the amber-lit **Immersive** theme. |
-| **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chat is display-only — send messages with `say …` on the main command line. Chronicle-only like Immersive; pairs naturally with the **Classic** theme but works under any. |
+| **Standard** *(default)* | Three columns: the Current Location (with an **Also Here** list) + map on the left, chronicle in the centre with its command prompt, and one full-height right pane **tabbed between Inv / Quests / Stats**. |
+| **E-reader** | A warm "illuminated manuscript" book: the location on a left ledger, a wide **serif chronicle** in the centre with an *Inscribe* prompt, and a slim right rail of vertical tabs (Here / Quests / Pack / Stats). Pairs best with the Parchment scheme. |
+| **Dock** | A modern dark "app": three columns of floating, rounded **cards** — the Location (with an **Also Here** list) + Minimap on the left, the Chronicle (with a **Send** button) in the centre, and one right card with **window-shade sections Inv / Quests / Stats** (click a shade's title to open it; the others collapse to their headers). Inv lists your inventory with each item's name **coloured by type** (weapon/armor/utility/coin) plus a small type tag and its weight (click a row to examine it). Pairs with the Slate scheme. |
+| **Immersive** | A focused, cinematic view: a slim **icon rail** on the far left (glyph shortcuts for Look / Inventory / Journal / Score), a **full-bleed chronicle** filling the screen, and a **floating minimap** and **command bar** hovering over it. Chat folds into the chronicle — no side panels at all. Pairs with the amber-lit **Immersive** scheme. |
+| **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chat is display-only — send messages with `say …` on the main command line. Chronicle-only like Immersive; defaults to the **Mono Green** CRT scheme but works under any. |
 
-Each Mode is also **typeset** to suit its feel: Standard and Classic use a monospace terminal face,
-E-reader sets its chronicle as serif book prose (spoken lines in *italics*), and Dock and Immersive
-use a clean sans. Numbers line up (tabular figures) and descriptions are held to a comfortable
-reading width in every Mode.
+Each Layout is also **typeset** to suit its feel: Standard uses JetBrains Mono and Classic IBM
+Plex Mono, E-reader sets its chronicle as serif book prose (spoken lines in *italics*), and Dock
+and Immersive use a clean sans. Numbers line up (tabular figures) and descriptions are held to a
+comfortable reading width in every Layout. Switching the color scheme never changes any of this.
 
-In **Standard**, Inventory and Quests **share one pane** — a toggle in the title bar flips between
-them, so the sidebar stays compact. (Dock gives each its own space — the Pack card with a Quests
-footer — and E-reader reaches them from its tab rail.) Immersive drops the room, inventory, players
-and quest panels entirely to keep the focus on the chronicle — see below for how it makes that
-information up.
+In **Standard**, the right pane holds **Inv, Quests, and Stats as tabs** in a single card; Dock
+holds the same three as **window shades**. The **Stats** pane is a full character readout — vitals
+as meter bars plus coins, attributes and level, trait chips, earned marks, your reputation with
+each faction (Friendly / Neutral / Wary), and any active effects. Who's here lives in the **Also
+Here** section of the Location card in both. (E-reader reaches everything from its tab rail.)
+Immersive drops the room, inventory, players and quest panels entirely to keep the focus on the
+chronicle — see below for how it makes that information up.
 
-**Immersive reads like an old-school MUD.** With no side panels, the chronicle itself narrates what
-they'd normally show: entering a new room prints its name, description, NPCs, items, and exits as
-plain text (the same information `look` already shows you), and `look` also lists anyone else
-present. Lines have no colour bar or timestamp here — just scrolling text, telnet-style.
+**Immersive and Classic read like an old-school MUD.** With no side panels, the chronicle itself
+narrates what they'd normally show: entering a new room (or a bare `look`) prints a styled room
+readout — name, description, NPCs, items, exits, and anyone else present — flush in the chronicle.
+Lines have no colour bar or timestamp here — just scrolling text, telnet-style.
 
 **Your own chat is right-aligned, with the colour bar on the right** — wherever it appears as its
 own message (the separate chat pane, or the classic layout's chat channel) — so your lines read as
 "sent by me" against everyone else's left-aligned messages. (In Immersive your chat simply folds
 into the chronicle inline, MUD-style.)
 
-Theme and layout **preview live** as you change the dropdowns — click **Save** to keep them (you
+Layout and scheme **preview live** as you change the dropdowns — click **Save** to keep them (you
 go straight back to the game), or **Cancel** to discard and return with your last-saved look.
 
-There are also quick **Theme** and **Layout** dropdowns in the top bar (next to your name) that
-take effect immediately, if you'd rather not open Settings.
+There are also quick **Layout** and **Color scheme** dropdowns in the top bar (next to your name)
+that take effect immediately, if you'd rather not open Settings.
 
 Other display options on the same page:
 
 - **Minimap style** — *Graph* (the map of rooms you've discovered) or *Compass* (an exit-star
-  rose: a lit spoke means an exit that way — click it to go).
+  rose: a lit spoke means an exit that way — click it to go). Every layout's map pane also has a
+  small **⇄ toggle** that flips between the two on the spot.
 - **Display density** — *Comfortable* or *Compact* (tighter spacing to fit more on screen).
 - **Text size**, **High-contrast theme**, and **Reduce motion** for readability and accessibility.
 - **Feed verbosity**, **timestamp format**, and how many feed entries to load.

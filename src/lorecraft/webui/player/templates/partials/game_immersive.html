@@ -4,8 +4,9 @@
   commands), a full-bleed CHRONICLE (#feed) that fills the screen, a FLOATING
   minimap card (bottom-right), and a FLOATING command bar (bottom). Chronicle-
   only, like classic: the room/inventory/players/quests panels are dropped and
-  the chronicle narrates the room instead (frontend.py's mud_room_block fires
-  for immersive AND classic). Chat folds INTO the chronicle here (no separate
+  the chronicle narrates the room instead as a styled room card (frontend.py's
+  room_card_message fires for immersive AND classic). Chat folds INTO the
+  chronicle here (no separate
   pane) — route_chat_oob is off for immersive, so the actor's own echo stays in
   #feed. Pairs naturally with the amber-lit Immersive theme but works under any.
 
@@ -50,13 +51,18 @@
         <div class="immersive-map absolute right-4 bottom-20 w-[15.6rem]">
             <div class="immersive-map__head flex items-center justify-between">
                 <span class="mm-title-graph">MAP</span><span class="mm-title-compass">EXITS</span>
-                <button
-                    @click="mapModalOpen = true"
-                    hx-get="/partials/map-full"
-                    hx-target="#map-modal-content"
-                    hx-swap="innerHTML"
-                    class="hover:text-accent transition-colors"
-                    title="Full-screen map">&#10726;</button>
+                <span class="flex items-center gap-2">
+                    <button type="button" onclick="lcToggleMinimapStyle()"
+                            class="hover:text-accent transition-colors"
+                            title="Toggle map / compass">&#8644;</button>
+                    <button
+                        @click="mapModalOpen = true"
+                        hx-get="/partials/map-full"
+                        hx-target="#map-modal-content"
+                        hx-swap="innerHTML"
+                        class="hover:text-accent transition-colors"
+                        title="Full-screen map">&#10726;</button>
+                </span>
             </div>
             <div class="w-full h-[9.375rem]">{% include "partials/minimap.html" %}</div>
         </div>

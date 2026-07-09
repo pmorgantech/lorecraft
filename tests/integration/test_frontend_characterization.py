@@ -489,11 +489,12 @@ def test_inventory_and_quests_share_right_rail() -> None:
 
 
 async def _test_inventory_and_quests_share_right_rail() -> None:
-    """Standard's right rail carries Inventory + Quests, mutually exclusive via a
-    titlebar toggle — inventory rendered once, AFTER the centre feed. Dock is a
-    bespoke card shell: its Pack card holds the inventory (rendered once) with a
-    Quests footer, so no accordion. (E-reader and classic are bespoke shells with
-    their own arrangements, tested separately.)"""
+    """Standard's right rail is ONE full-height card tabbed between Inv /
+    Quests / Stats (Sprint 62, from lorecraft-export/standard) — inventory
+    rendered once, AFTER the centre feed. Dock is a bespoke card shell: its
+    Pack card holds the inventory (rendered once) with a Quests footer, so no
+    tabs. (E-reader and classic are bespoke shells with their own
+    arrangements, tested separately.)"""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -523,12 +524,14 @@ async def _test_inventory_and_quests_share_right_rail() -> None:
         assert html.count('id="inventory"') == 1, layout
         assert html.index('id="inventory"') > html.index('id="feed"'), layout
 
-    # Standard uses a single toggle pane (one titlebar, a Show Quests button).
-    assert "Show Quests" in results["standard"]
-    assert "rail = (rail ===" in results["standard"]
-    # Dock is a bespoke card shell — no windowshade accordion; the Pack card
-    # holds inventory, and the textual invlist row view is present for it.
-    assert "rail = 'quests'" not in results["dock"]
+    # Standard uses one tabbed right card: Inv / Quests / Stats.
+    assert ">Inv</button>" in results["standard"]
+    assert ">Quests</button>" in results["standard"]
+    assert ">Stats</button>" in results["standard"]
+    assert 'id="stats-panel"' in results["standard"]
+    # Dock is a bespoke card shell — no tabbed rail; the Pack card holds
+    # inventory, and the textual invlist row view is present for it.
+    assert ">Stats</button>" not in results["dock"]
     assert "dock-card" in results["dock"]
     assert "invlist" in results["dock"]
 
@@ -585,7 +588,8 @@ def test_standard_layout_keeps_players_column_and_tab() -> None:
 
 async def _test_standard_layout_keeps_players_column_and_tab() -> None:
     """Sanity check the inverse of the immersive test above: the standard grid
-    keeps the Here Now panel + mobile Players tab (Sprint 58.8)."""
+    keeps the who's-here readout (ALSO HERE, folded into the Current Location
+    card per lorecraft-export/standard) + the mobile Panel tab (Sprint 62)."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -600,22 +604,22 @@ async def _test_standard_layout_keeps_players_column_and_tab() -> None:
     async with _lifespan(app):
         _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
 
-    assert "Here Now" in html
-    assert ">Players</button>" in html
+    assert "ALSO HERE" in html
+    assert 'id="players-online"' in html
+    assert ">Panel</button>" in html
 
 
-def test_immersive_movement_appends_old_school_mud_room_block() -> None:
-    anyio.run(_test_immersive_movement_appends_old_school_mud_room_block)
+def test_immersive_movement_narrates_room_as_styled_card() -> None:
+    anyio.run(_test_immersive_movement_narrates_room_as_styled_card)
 
 
-async def _test_immersive_movement_appends_old_school_mud_room_block() -> None:
+async def _test_immersive_movement_narrates_room_as_styled_card() -> None:
     """Immersive drops the room panel, so entering a new room must narrate the
-    room as plain chronicle text instead (name/description/exits) — something
-    plain movement never did before, since that was previously the panel's
-    job (Sprint 58.8). Standard layout gets no such text (the panel already
-    shows it): the synthesized lines are tagged `msg_type=room_event`, which
-    no ordinary ctx.say() call produces (those default to `system`), so its
-    presence/absence is an unambiguous signal either way.
+    room in the chronicle instead — as a styled `room-card` block (name /
+    description / exits with the panel's colouring), something plain movement
+    never did before, since that was previously the panel's job (Sprint 58.8,
+    styled in Sprint 60). Standard layout gets no such card (its panel already
+    shows the room): the card's `room-card` class is the unambiguous signal.
 
     Uses the real seeded Ashmoore dev world (`village_square`'s `north` exit
     leads to the blacksmith's forge) rather than fabricated fixtures — the
@@ -649,12 +653,12 @@ async def _test_immersive_movement_appends_old_school_mud_room_block() -> None:
             cookies={"player_id": "player-1"},
         )
         assert status == 200
-        assert "msg-room_event" in immersive_html
+        assert "room-card" in immersive_html
         assert "Forge and Hammer" in immersive_html
-        assert "Exits:" in immersive_html or "no obvious exits" in immersive_html
+        assert "Exits:" in immersive_html
 
-        # Move back south and switch to standard — no synthesized chronicle
-        # text this time (the room panel's OOB swap already covers it).
+        # Move back south and switch to standard — no room card this time
+        # (the room panel's OOB swap already covers it).
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
             assert player is not None
@@ -670,19 +674,20 @@ async def _test_immersive_movement_appends_old_school_mud_room_block() -> None:
         )
 
     assert status == 200
-    assert "msg-room_event" not in standard_html
+    assert "room-card" not in standard_html
 
 
-def test_immersive_look_appends_players_here_line_only() -> None:
-    anyio.run(_test_immersive_look_appends_players_here_line_only)
+def test_immersive_look_renders_styled_room_card() -> None:
+    anyio.run(_test_immersive_look_renders_styled_room_card)
 
 
-async def _test_immersive_look_appends_players_here_line_only() -> None:
-    """`look` in immersive already narrates name/description/exits via the
-    engine's existing ctx.say() output — only the "who's here" line is new
-    (the Here Now panel doesn't exist in this layout). No second player in
-    the room means no line at all; a second player produces exactly one
-    (Sprint 58.8).
+async def _test_immersive_look_renders_styled_room_card() -> None:
+    """`look` in immersive renders the room as a styled `room-card` block in
+    the chronicle (mirroring the Current Location panel that this layout drops)
+    instead of the engine's flat ctx.say() text, which is suppressed to avoid
+    showing the room twice. The card carries the "who's here" line too (the
+    Here Now panel doesn't exist here): no second player means no such line; a
+    second player produces exactly one (Sprint 60).
 
     The seeded Ashmoore dev world already has `player-2` in `village_square`
     (its default multiplayer fixture), so the "accompanied" case needs no
@@ -716,7 +721,10 @@ async def _test_immersive_look_appends_players_here_line_only() -> None:
             app, "/command", form={"command": "look"}, cookies={"player_id": "player-1"}
         )
         assert status == 200
-        assert "msg-room_event" not in alone_html
+        # The room is narrated as a styled card even when alone…
+        assert "room-card" in alone_html
+        # …but with no other player present, no "who's here" line.
+        assert "player-2 is here." not in alone_html
 
         with Session(game_engine) as db:
             other = db.exec(select(Player).where(Player.id == "player-2")).first()
@@ -730,8 +738,80 @@ async def _test_immersive_look_appends_players_here_line_only() -> None:
         )
 
     assert status == 200
-    assert accompanied_html.count("msg-room_event") == 1
+    # Match the outer card div specifically (not `.room-card__name`, which
+    # also starts with the `room-card` prefix).
+    assert accompanied_html.count('class="room-card"') == 1
     assert "player-2 is here." in accompanied_html
+
+
+def test_standard_look_narrates_in_feed_without_room_card() -> None:
+    anyio.run(_test_standard_look_narrates_in_feed_without_room_card)
+
+
+async def _test_standard_look_narrates_in_feed_without_room_card() -> None:
+    """A bare `look` in standard keeps the engine's own narration in the feed
+    (the Current Location panel exists, so no room card fires — and crucially
+    the card's look-suppression must NOT swallow the output; regression for a
+    Sprint 62 bug where it suppressed on every layout)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        status, html = await _http_post_form(
+            app, "/command", form={"command": "look"}, cookies={"player_id": "player-1"}
+        )
+
+    assert status == 200
+    assert "room-card" not in html
+    # The engine's look narration (room name at minimum) reached the feed.
+    assert 'class="msg' in html
+    assert "Village Square" in html
+
+
+def test_stats_pane_shows_default_attributes_without_a_saved_row() -> None:
+    anyio.run(_test_stats_pane_shows_default_attributes_without_a_saved_row)
+
+
+async def _test_stats_pane_shows_default_attributes_without_a_saved_row() -> None:
+    """A PlayerStats row is only ever persisted on save-load (engine/services/
+    save.py), never at character creation — so a normally-created player (the
+    seeded dev player-1 included) has none. Attributes + Level must still show
+    in the Stats pane using the model's own declared defaults (all 10, level
+    1), matching the read-time-default convention the `score` command already
+    uses for level/xp (Sprint 63 fix — this previously omitted the section
+    entirely for every player until one loaded a save)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "standard"}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert 'id="stats-panel"' in html
+    assert "ATTRIBUTES" in html
+    assert "Strength" in html and ">10<" in html
+    assert "Level 1" in html
 
 
 def test_immersive_own_chat_folds_into_chronicle() -> None:
@@ -802,8 +882,8 @@ async def _test_classic_layout_renders_mud_terminal() -> None:
     """Classic is a purpose-built old-MUD shell (Sprint 59): one chronicle
     (#feed) with a vitals prompt + command input, a chat pane (#chat-feed) with
     its own input, and a minimap — no room/players/inventory panels. The
-    chronicle narrates the room as plain text (shared with immersive, tagged
-    msg_type=room_event)."""
+    chronicle narrates the room as a styled room card (shared with immersive,
+    Sprint 60)."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -819,12 +899,15 @@ async def _test_classic_layout_renders_mud_terminal() -> None:
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
             assert player is not None
+            # Stored legacy "classic" scheme name aliases to mono-green
+            # (Sprint 62 rename) — asserting on the alias keeps the migration
+            # path covered.
             player.preferences = {"layout": "classic", "theme": "classic"}
             db.add(player)
             db.commit()
         _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
 
-    assert "layout-classic" in html and "theme-classic" in html
+    assert "layout-classic" in html and "theme-mono-green" in html
     # Chronicle + its own command prompt, chat pane + its own input, minimap.
     assert 'id="feed"' in html
     assert 'id="chat-feed"' in html
@@ -836,8 +919,8 @@ async def _test_classic_layout_renders_mud_terminal() -> None:
     assert html.count('name="command"') == 1
     # No three-column grid panels — this is chronicle-only.
     assert "Here Now" not in html
-    # Room narrated in the chronicle on load (the mud room block).
-    assert "msg-room_event" in html
+    # Room narrated in the chronicle on load (the styled room card).
+    assert "room-card" in html
 
 
 def test_classic_layout_command_refreshes_vitals_and_routes_chat() -> None:
@@ -941,14 +1024,14 @@ def test_dock_layout_renders_card_shell() -> None:
 
 
 async def _test_dock_layout_renders_card_shell() -> None:
-    """Dock is a bespoke card shell (Sprint 59/60): three columns of floating
-    .dock-card panels — LEFT location + minimap, CENTRE chronicle (#feed with a
-    Send button), RIGHT party + a Pack card whose inventory uses the textual
-    invlist row (coloured name + type tag + weight, ported from
-    lorecraft-export/dock), with a Quests footer. It keeps the location panel,
-    so no MUD narration; and it is NOT the grid, so no toggle pane / mobile tab
-    bar. #minimap itself is bare content — the card head supplies the MINIMAP
-    title, so it doesn't double-box."""
+    """Dock is a bespoke card shell (Sprint 59/60/62): three columns of
+    floating .dock-card panels — LEFT location (with ALSO HERE) + minimap,
+    CENTRE chronicle (#feed with a Send button), RIGHT one full-height card
+    with WINDOW-SHADE sections Inv / Quests / Stats (the accordion take on
+    Standard's tabbed pane; inventory keeps Dock's textual invlist row view).
+    It keeps the location panel, so no MUD narration; and it is NOT the grid,
+    so no tabbed pane / mobile tab bar. #minimap itself is bare content — the
+    card head supplies the MINIMAP title, so it doesn't double-box."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -974,14 +1057,20 @@ async def _test_dock_layout_renders_card_shell() -> None:
     assert "dock-send" in html  # gradient Send button
     assert "invlist" in html  # Dock's textual inventory row
     assert 'id="room-description"' in html  # LEFT location card
+    assert "ALSO HERE" in html  # who's-here folded into the location card
     assert 'id="minimap"' in html
     assert html.count('id="feed"') == 1
     assert html.count('id="inventory"') == 1
-    assert 'id="players-online"' in html  # party card
-    assert 'id="quest-tracker"' in html  # quests footer
-    # Bespoke shell: no standard toggle pane, no mobile tab bar.
-    assert "Show Quests" not in html
-    assert "rail = 'quests'" not in html
+    assert 'id="players-online"' in html  # the ALSO HERE list keeps the OOB id
+    assert 'id="quest-tracker"' in html  # quests shade
+    assert 'id="stats-panel"' in html  # stats shade
+    # Window-shade right pane: three shade heads, no separate Party/Pack cards.
+    assert html.count("dock-shade__head") >= 3
+    assert ">PARTY</span>" not in html
+    assert ">PACK</span>" not in html
+    # Bespoke shell: no standard tabbed pane, no mobile tab bar.
+    assert ">Stats</button>" not in html
+    assert ">Panel</button>" not in html
     # It keeps the location panel, so it does not synthesize the MUD room block.
     assert "msg-room_event" not in html
 
@@ -1012,9 +1101,11 @@ async def _test_minimap_style_toggles_graph_vs_compass() -> None:
         # Both views are always rendered (CSS shows one).
         assert "mm-graph" in default_html and "mm-compass" in default_html
         # Both pane titles render too; CSS reveals the one matching the style —
-        # "Map" for graph, "Exits" for compass (never "Map" alone in compass).
+        # "Minimap" for graph, "Exits" for compass.
         assert "mm-title-graph" in default_html and "mm-title-compass" in default_html
-        assert ">Map</span>" in default_html and ">Exits</span>" in default_html
+        assert ">Minimap</span>" in default_html and ">Exits</span>" in default_html
+        # The map head carries the graph ⇄ compass toggle (Sprint 62).
+        assert "lcToggleMinimapStyle()" in default_html
 
 
 def test_minimap_is_bare_content_no_double_box() -> None:
@@ -1067,8 +1158,15 @@ async def _test_minimap_is_bare_content_no_double_box() -> None:
             app, "/game", cookies={"player_id": "player-1"}
         )
 
-    assert "minimap-compass" in compass_html
-    assert "minimap-graph" not in compass_html
+    # The minimap-<style> class lands on the <body> tag (the base JS mentions
+    # both class names, so assert on the tag rather than the whole document).
+    body_tag = compass_html[
+        compass_html.index("<body") : compass_html.index(
+            ">", compass_html.index("<body")
+        )
+    ]
+    assert "minimap-compass" in body_tag
+    assert "minimap-graph" not in body_tag
 
 
 def test_settings_renders_and_persists_theme() -> None:

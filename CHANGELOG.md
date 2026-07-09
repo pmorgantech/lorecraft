@@ -2,6 +2,92 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.54.0] - 2026-07-09
+
+### Changed
+
+- **Layout owns typography; the scheme picker is colours-only (Sprint 62 axis split).** All the
+  per-mode type treatment (font faces via `--lc-font-*`, sizes, leading, features, measure, the
+  Immersive glow, Dock's timestamp chips, E-reader italics) moved from the `theme-*` palette
+  classes to the `layout-*` classes. Picking a color scheme now repaints without ever reflowing
+  text; picking a layout brings its arrangement *and* its typesetting. A **Theme** is the
+  combination of a Layout + a Color scheme.
+- **Color schemes renamed and retuned to the design exports.** "Classic"/"Classic Amber" are now
+  **Mono Green** / **Mono Amber** — standalone CRT overrides usable under any layout, no longer
+  named after a layout (stored legacy names alias transparently). The Classic layout defaults to
+  Mono Green (the `docs/lorecraft-export/classic` palette). The **Terminal** scheme was retuned
+  from raw zinc/emerald to the export's green-tinted terminal (`#070a08` ground, `#4fdc9f`
+  accent, gold items, `#9be6a6` characters), and per-scheme character colours now match each
+  export (Dock violet, Immersive mint, Parchment forest green, CRT phosphor tones). The minimap
+  graph's hardcoded emerald/zinc SVG colours now flow through scheme tokens too.
+- **Standard layout rebuilt to the export design.** Left column: the Current Location card gains
+  the compact `exits N E W S` readout in its head and folds who's-here in as an **ALSO HERE**
+  section; the minimap card sits below. Centre: the command prompt (with a **SEND** button) moved
+  inside the chronicle card, replacing the full-width bottom bar. Right: one full-height card
+  **tabbed between Inv / Quests / Stats** (the export's tabbed pane; "Score" renamed Stats) — the
+  new Stats tab shows real vitals (stamina meter + coins), attributes, level/xp, and traits. The
+  mobile tab bar's third tab is now **Panel**. Columns are gapped cards on the app ground rather
+  than a hairline-seamed grid, matching the export.
+- **Minimap ⇄ compass toggle in every layout's map pane.** A small `⇄` button in each map head
+  (Standard, Dock, E-reader, Immersive, Classic) flips the graph/compass view instantly and
+  persists to the account (`/settings/appearance` now accepts `minimap_style`).
+- **Dock's right column now mirrors Standard's panes, window-shade style.** The Party and Pack
+  cards are gone: who's-here folds into the Location card as **ALSO HERE** (like Standard), and
+  the right column is one full-height card with **window-shade sections Inv / Quests / Stats** —
+  the accordion take on Standard's tabs (one open at a time, collapsed heads always visible with
+  their counts; inventory keeps Dock's textual row view).
+- **The Stats pane is now the full "Score" readout from the design export** — in both Standard
+  (tab) and Dock (shade), all real engine data: **VITALS** as coloured meter bars (Health from
+  the hp meter, Stamina from fatigue) + coins, **ATTRIBUTES** + level/xp, **TRAITS** as chips
+  (effective traits — innate plus effect-granted, via the trait registry), **MARKS** (earned
+  marks in copper), **REPUTATION** (per faction/NPC with a Friendly / Neutral / Wary display
+  band), and **AFFLICTIONS & EFFECTS** (active effects). Sections render only when their data
+  exists — except Attributes/Level, which always show: a `PlayerStats` row is only ever persisted
+  on save-load, never at character creation, so every normally-created player used to see just
+  Vitals until they loaded a save. Attributes/Level now fall back to the model's own declared
+  defaults (all 10, level 1) at read time, the same convention the `score` command already uses
+  for level/xp — no new schema, no backfill needed.
+
+### Fixed
+
+- A bare `look` outside the chronicle-only layouts (Standard, Dock, E-reader) produced **no
+  output**: the room-card suppression of the engine's narration applied on every layout while the
+  replacement card only rendered on Classic/Immersive. Suppression is now scoped to the
+  chronicle-only layouts (regression test added).
+
+## [0.53.0] - 2026-07-09
+
+### Changed
+
+- **Classic & Immersive now narrate the room with the panel's rich styling, not flat text.** Those
+  two chronicle-only Modes drop the Current Location panel, so a `look` (or arriving in a new room)
+  is shown in the chronicle itself — but it was rendered as plain, unstyled lines, unlike the
+  richly-styled panel every other Mode shows. The room is now rendered in the feed with that same
+  treatment: room name + subtitle, formatted description, characters present (NPCs and other
+  players) in a dedicated hue, visible items in the item-highlight hue, themed `Exits:`, and the
+  "who's here" line — flush with the rest of the chronicle, no card border/background (matching
+  both the `docs/lorecraft-export` reference and the rest of the feed's unboxed entries). On a bare
+  `look` the engine's flat narration is suppressed so the room isn't shown twice; a *blocked* look
+  (e.g. darkness) still shows its warning and no duplicate room text. Built from the same room data
+  the panel uses, so it can't drift from it.
+- **The room card is now wired into the per-mode typography pass, and item/character colours are
+  theme-correct.** The card didn't exist when Sprint 60's per-mode type pass was written, so its
+  name/description silently fell outside every Mode's tuned size, glow, and measure-cap rules
+  (`#room-description h2` / `#feed .msg` didn't match `.room-card`) — now fixed via explicit
+  `.room-card` / `.room-card__name` hooks in every rule, matching each Mode's font size (Immersive's
+  26px amber-glow name, Classic's 15.5px CRT name, etc). Separately, "items you see" / "who's here"
+  used a raw, unthemed `sky-400` that stayed literal blue under every palette, clashing badly with
+  Classic's phosphor CRT and Immersive's amber-lit look; items now resolve through the existing
+  item-highlight token (already themed per-Mode) and a new `--lc-npc` token gives characters
+  (NPCs + players) their own hue — Classic's cyan and Immersive's mint-green, matching the
+  `docs/lorecraft-export` design reference exactly; other Modes default to the prior amber, so
+  their look is unchanged.
+- **Classic's minimap now fills its pane instead of floating as a small centered square.** The
+  panel's `.classic-map-box` was a fixed 224×224px square with a large empty margin on either side;
+  it now uses the same `w-full aspect-square max-h-64` sizing as Standard's card, so it fills the
+  side column's width like every other Mode's map, rather than sitting inside conspicuous dead
+  space.
+
 ## [0.52.0] - 2026-07-09
 
 ### Changed

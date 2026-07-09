@@ -1,0 +1,62 @@
+{#
+  Styled "room card" feed entry (Sprint 60/61) — used by the chronicle-only
+  layouts (immersive, classic), which drop the dedicated Current Location
+  panel. On arrival or an explicit `look`, the room is narrated *in the feed*;
+  rendering it here with the same colored NPC/item/exit styling the panel uses
+  (see room_description.html) keeps it from looking like flat, unstyled text.
+  Driven entirely by `msg.room` (built in rendering.py's room_card_message).
+
+  No card chrome (border/background/rounding) — flush text like every other
+  chronicle entry and like the lorecraft-export reference's room readout,
+  which is plain lines, not a boxed block (Sprint 62).
+
+  `.room-card__name` and `.room-card` (alongside `#room-description h2` and
+  `#feed .msg`) are explicit hooks the per-mode typography pass in custom.css
+  targets — this partial didn't exist when that pass was written, so without
+  these classes the card would silently fall outside every mode's tuned
+  size/measure/glow rules. `text-npc` (characters — NPCs and other players)
+  and `text-amber-400`/highlight (items) resolve through theme tokens (the
+  `body:not(.theme-terminal)` remap + the `--lc-npc` token in custom.css), so
+  the card adopts each mode's palette instead of an unmapped literal blue.
+#}
+{% set room = msg.room %}
+<div class="room-card" data-msg-id="{{ msg.id }}">
+    {% if msg.timestamp %}
+    <span class="msg-ts float-right text-[10px] text-zinc-600 font-mono align-super">{{ msg.timestamp }}</span>
+    {% endif %}
+
+    <div class="mb-1.5">
+        <h3 class="room-card__name m-0 text-emerald-400 font-semibold text-base tracking-wide leading-tight">{{ room.name }}</h3>
+        {% if room.subtitle %}
+        <p class="m-0 mt-0.5 text-xs text-emerald-600/80 leading-tight">{{ room.subtitle }}</p>
+        {% endif %}
+    </div>
+
+    <div class="text-zinc-300 leading-snug [&_p]:m-0 [&_p+p]:mt-1.5">
+        {{ room.description | safe }}
+    </div>
+
+    {% if room.npcs or room.items_visible %}
+    <div class="mt-2 text-xs text-text-muted">
+        {% if room.npcs %}
+        <div>Here: <span class="text-npc">{{ room.npcs | join(', ') }}</span></div>
+        {% endif %}
+        {% if room.items_visible %}
+        <div class="mt-0.5">You see: <span class="text-amber-400">{{ room.items_visible | join(', ') }}</span></div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="mt-1.5 text-xs text-text-muted">
+        Exits:
+        {% if room.exits %}
+        <span class="text-emerald-400">{{ room.exits | join(', ') }}</span>
+        {% else %}
+        <span class="italic">none</span>
+        {% endif %}
+    </div>
+
+    {% if room.players_here %}
+    <div class="mt-0.5 text-xs text-npc italic">{{ room.players_here }}</div>
+    {% endif %}
+</div>

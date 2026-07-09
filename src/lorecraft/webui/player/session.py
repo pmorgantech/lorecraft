@@ -23,7 +23,7 @@ from lorecraft.features.items.rules import register_item_rules
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
-from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
@@ -416,6 +416,111 @@ def vitals_snapshot(
         out["stamina_max"] = int(round(meter.maximum))
     except Exception:  # pragma: no cover - only when fatigue feature is disabled
         pass
+    return out
+
+
+# Reputation standing → display band (Sprint 62 Stats pane). The engine keeps
+# a raw -100..100 standing (conditions test raw thresholds); these bands are a
+# presentation choice only.
+_REPUTATION_BANDS = (
+    (25, "Friendly"),
+    (-24, "Neutral"),
+)
+
+
+def _standing_band(standing: int) -> str:
+    for threshold, label in _REPUTATION_BANDS:
+        if standing >= threshold:
+            return label
+    return "Wary"
+
+
+def stats_snapshot(
+    session: DBSession,
+    player_repo: PlayerRepo,
+    meters: MeterService,
+    effects: EffectService,
+    player_id: str,
+) -> dict[str, Any]:
+    """Data for the Standard/Dock Stats pane (Sprint 62, from the
+    lorecraft-export/standard "Score" pane): the full character readout —
+    vitals as named meter bars (hp as Health, fatigue as Stamina) + coins,
+    attributes + level/xp, *effective* traits (innate + effect-granted, via
+    the trait registry), earned marks, reputation with a display band, and
+    active effects. Every section degrades gracefully: a missing meter,
+    PlayerStats row, or feature simply omits its section."""
+    from lorecraft.engine.game import traits as traits_module
+    from lorecraft.features.marks.service import MarkService
+    from lorecraft.features.reputation.repo import ReputationRepo
+
+    out: dict[str, Any] = {"vitals": vitals_snapshot(session, meters, player_id)}
+
+    # Named meter bars. "hp" is the engine's bootstrap meter; "fatigue" comes
+    # from the fatigue feature (already surfaced as stamina in vitals, but the
+    # Stats pane wants each as a bar with its own colour).
+    meter_bars: list[dict[str, Any]] = []
+    for key, label, color in (
+        ("hp", "Health", "var(--lc-hp, #e69a86)"),
+        ("fatigue", "Stamina", "var(--lc-accent)"),
+    ):
+        try:
+            meter = meters.get(session, "player", player_id, key)
+        except Exception:  # meter/feature not present in this world
+            continue
+        meter_bars.append(
+            {
+                "label": label,
+                "current": int(round(meter.current)),
+                "maximum": int(round(meter.maximum)),
+                "color": color,
+            }
+        )
+    out["meter_bars"] = meter_bars
+
+    # Attributes + level always show, even before a PlayerStats row exists
+    # (one is only ever persisted on save-load, see save.py) — a fresh
+    # character's sheet is the model's own declared defaults (all 10,
+    # level 1), the same "read-time default, no new schema" convention the
+    # `score` command already uses for level/xp.
+    stats = player_repo.stats(player_id) or PlayerStats(player_id=player_id)
+    out["attributes"] = {
+        "Strength": stats.strength,
+        "Agility": stats.agility,
+        "Vitality": stats.vitality,
+        "Intellect": stats.intellect,
+        "Presence": stats.presence,
+        "Fortitude": stats.fortitude,
+    }
+    out["level"] = stats.level
+    out["xp"] = stats.xp
+    out["xp_to_next"] = stats.xp_to_next
+
+    # Effective traits — innate + granted (equipment, active effects), the
+    # same view the `traits` command shows.
+    out["traits"] = sorted(
+        traits_module.get_registry().traits_for(session, "player", player_id)
+    )
+
+    player = player_repo.get(player_id)
+    if player is not None:
+        out["marks"] = [
+            {"name": mark.name, "description": mark.description}
+            for mark in MarkService().earned(player)
+        ]
+
+    out["reputation"] = [
+        {
+            "name": f"{row.target_id}".replace("_", " ").title(),
+            "standing": row.standing,
+            "band": _standing_band(row.standing),
+        }
+        for row in ReputationRepo(session).for_player(player_id)
+    ]
+
+    out["effects"] = [
+        {"name": effect.effect_key.replace("_", " ").title()}
+        for effect in effects.active_for(session, "player", player_id)
+    ]
     return out
 
 

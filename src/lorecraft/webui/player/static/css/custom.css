@@ -4,24 +4,37 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
 
-    /* ---- Theme tokens (Sprint 58.1) ----
-       Semantic colour/typography variables the Tailwind config's semantic names
-       (bg-feed-bg / bg-panel / text-accent / border-border / …) resolve to, so a
-       `theme-<name>` class on <body> can repaint the whole UI by overriding just
-       these. The defaults below are today's zinc/emerald "terminal" values —
-       identical to the pre-58 hardcoded palette, so the default theme is a
-       byte-for-byte visual no-op. Per-theme overrides live further down. */
-    --lc-bg: #09090b;            /* zinc-950 — body / feed background */
-    --lc-panel: #18181b;         /* zinc-900 — panel surface */
-    --lc-panel-light: #27272a;   /* zinc-800 — raised panel / input */
-    --lc-border: #3f3f46;        /* zinc-700 — panel borders (Tailwind `border`) */
-    --lc-accent: #10b981;        /* emerald-500 — primary accent */
-    --lc-accent-strong: #059669; /* emerald-600 — accent hover/active */
-    --lc-text: #e4e4e7;          /* zinc-200 — body text */
-    --lc-text-muted: #a1a1aa;    /* zinc-400 — muted/secondary text */
-    --lc-highlight: #fbbf24;     /* amber-400 — item names / quest accents */
-    --lc-font-body: var(--font-mono);
-    --lc-font-head: var(--font-mono);
+    /* ---- Colour-scheme tokens (Sprint 58.1 / 62) ----
+       Semantic COLOUR variables the Tailwind config's semantic names
+       (bg-feed-bg / bg-panel / text-accent / border-border / …) resolve to, so
+       a `theme-<name>` class on <body> can repaint the whole UI by overriding
+       just these. Colours ONLY: typography (--lc-font-*, sizes, measure) is
+       owned by the `layout-<name>` axis further down, so switching scheme
+       never reflows text. The defaults below are the "terminal" scheme — the
+       green-tinted terminal of docs/lorecraft-export/standard. Per-scheme
+       overrides live further down. */
+    --lc-bg: #070a08;            /* body / feed background */
+    --lc-panel: #0a100d;         /* panel surface */
+    --lc-panel-light: #0e1712;   /* raised panel / input */
+    --lc-border: #16241c;        /* panel borders (Tailwind `border`) */
+    --lc-accent: #4fdc9f;        /* primary accent (spring green) */
+    --lc-accent-strong: #7ce7b6; /* accent hover/active ("bright") */
+    --lc-text: #c7e3d4;          /* body text */
+    --lc-text-muted: #6f8a7c;    /* muted/secondary text ("dim") */
+    --lc-highlight: #e0b64a;     /* gold — item names / quest accents */
+    /* Characters (NPCs present, "X is here") — the export's --char, distinct
+       from item-gold highlighting (Sprint 61). */
+    --lc-npc: #9be6a6;
+    /* Stats-pane accents (Sprint 62, export --hp / --copper): the Health bar
+       and the Marks lines. Root-level (not per-scheme) — they read fine on
+       every dark scheme and acceptably on parchment. */
+    --lc-hp: #e69a86;
+    --lc-copper: #c88a5a;
+    /* Font tokens carry the LAYOUT's typography (set per layout-<name> block
+       below); these root values are just the standard layout's, so pages
+       without a layout class (lobby, login) still render sensibly. */
+    --lc-font-body: 'JetBrains Mono', var(--font-mono);
+    --lc-font-head: 'JetBrains Mono', var(--font-mono);
 }
 
 /* Smooth scrolling for feed */
@@ -235,74 +248,77 @@ kbd {
 }
 
 /* =======================================================================
-   Selectable themes (Sprint 58.2 / 58.3)
+   Selectable colour schemes (Sprint 58.2 / 58.3 / 62)
    -----------------------------------------------------------------------
-   The default "terminal" theme keeps today's raw zinc/emerald Tailwind
-   literals untouched (byte-for-byte identical to pre-58). Every OTHER theme:
-     (a) overrides the --lc-* tokens (see per-theme blocks below), which
-         repaints all elements already using the semantic Tailwind names
-         (bg-panel, bg-feed-bg, text-text-muted, border-border, …); and
-     (b) is caught by the shared `body:not(.theme-terminal)` remap layer
-         immediately below, which routes the remaining *raw* zinc/emerald/
-         amber literals through the same tokens.
-   So adding a theme = one token block; no per-theme selector soup. A
-   `body:not(.theme-terminal) .foo` selector has specificity (0,2,x) and so
-   always beats a bare Tailwind utility (0,1,0) — no !important required.
+   Every scheme (terminal included — since Sprint 62 it's the export's green
+   terminal, no longer raw zinc/emerald):
+     (a) overrides the --lc-* tokens (:root = terminal; per-scheme blocks
+         below), which repaints all elements already using the semantic
+         Tailwind names (bg-panel, bg-feed-bg, text-text-muted, …); and
+     (b) is caught by the shared `body .…` remap layer immediately below,
+         which routes the remaining *raw* zinc/emerald/amber literals through
+         the same tokens.
+   So adding a scheme = one token block; no per-scheme selector soup. A
+   `body .foo` selector has specificity (0,1,1) and so always beats a bare
+   Tailwind utility (0,1,0) — no !important required.
    ======================================================================= */
 
-/* --- Shared raw-literal -> token remap (all non-terminal themes) --- */
+/* --- Shared raw-literal -> token remap (all schemes) --- */
 
-/* Body element + inherited defaults (base.html keeps raw body utilities). */
-body:not(.theme-terminal) {
+/* Body element + inherited defaults (base.html keeps raw body utilities).
+   `body.font-mono` keeps (0,1,1) specificity over the utility for the font. */
+body,
+body.font-mono {
     color: var(--lc-text);
     font-family: var(--lc-font-body);
 }
-body:not(.theme-terminal).bg-zinc-950 { background-color: var(--lc-bg); }
+body.bg-zinc-950 { background-color: var(--lc-bg); }
 
 /* Surfaces */
-body:not(.theme-terminal) .bg-zinc-950 { background-color: var(--lc-bg); }
-body:not(.theme-terminal) .bg-zinc-900 { background-color: var(--lc-panel); }
-body:not(.theme-terminal) .bg-zinc-800,
-body:not(.theme-terminal) .bg-zinc-700 { background-color: var(--lc-panel-light); }
+body .bg-zinc-950 { background-color: var(--lc-bg); }
+body .bg-zinc-900 { background-color: var(--lc-panel); }
+body .bg-zinc-800,
+body .bg-zinc-700 { background-color: var(--lc-panel-light); }
 
 /* Text shades */
-body:not(.theme-terminal) .text-zinc-100,
-body:not(.theme-terminal) .text-zinc-200,
-body:not(.theme-terminal) .text-zinc-300 { color: var(--lc-text); }
-body:not(.theme-terminal) .text-zinc-400,
-body:not(.theme-terminal) .text-zinc-500,
-body:not(.theme-terminal) .text-zinc-600 { color: var(--lc-text-muted); }
+body .text-zinc-100,
+body .text-zinc-200,
+body .text-zinc-300 { color: var(--lc-text); }
+body .text-zinc-400,
+body .text-zinc-500,
+body .text-zinc-600 { color: var(--lc-text-muted); }
 
 /* Borders */
-body:not(.theme-terminal) .border-zinc-600,
-body:not(.theme-terminal) .border-zinc-700,
-body:not(.theme-terminal) .border-zinc-800 { border-color: var(--lc-border); }
+body .border-zinc-600,
+body .border-zinc-700,
+body .border-zinc-800 { border-color: var(--lc-border); }
 
-/* Accent (emerald) text/background/border -> theme accent */
-body:not(.theme-terminal) .text-emerald-300,
-body:not(.theme-terminal) .text-emerald-400,
-body:not(.theme-terminal) .text-emerald-500,
-body:not(.theme-terminal) .text-emerald-600,
-body:not(.theme-terminal) .text-emerald-700 { color: var(--lc-accent); }
-body:not(.theme-terminal) .bg-emerald-500,
-body:not(.theme-terminal) .bg-emerald-600,
-body:not(.theme-terminal) .bg-emerald-700 {
+/* Accent (emerald) text/background/border -> scheme accent */
+body .text-emerald-300,
+body .text-emerald-400,
+body .text-emerald-500,
+body .text-emerald-600,
+body .text-emerald-700 { color: var(--lc-accent); }
+body .bg-emerald-500,
+body .bg-emerald-600,
+body .bg-emerald-700 {
     background-color: var(--lc-accent);
     color: var(--lc-bg);
 }
-body:not(.theme-terminal) .border-emerald-500,
-body:not(.theme-terminal) .border-emerald-600,
-body:not(.theme-terminal) .border-emerald-700,
-body:not(.theme-terminal) .border-emerald-900 { border-color: var(--lc-accent); }
+body .bg-emerald-900 { background-color: color-mix(in srgb, var(--lc-accent) 22%, var(--lc-bg)); }
+body .border-emerald-500,
+body .border-emerald-600,
+body .border-emerald-700,
+body .border-emerald-900 { border-color: var(--lc-accent); }
 
-/* Highlight (amber: item names, quest markers) -> theme highlight */
-body:not(.theme-terminal) .text-amber-300,
-body:not(.theme-terminal) .text-amber-400,
-body:not(.theme-terminal) .text-amber-500 { color: var(--lc-highlight); }
+/* Highlight (amber: item names, quest markers) -> scheme highlight */
+body .text-amber-300,
+body .text-amber-400,
+body .text-amber-500 { color: var(--lc-highlight); }
 
-/* --- Per-theme token sets --- */
+/* --- Per-scheme token sets (colours ONLY — fonts live on the layout) --- */
 
-/* 1c — Slate dock: modern dark app, cyan accent, IBM Plex Sans. */
+/* 1c — Slate dock: modern dark app, cyan accent. */
 body.theme-slate {
     --lc-bg: #0a0d15;
     --lc-panel: #141a28;
@@ -314,11 +330,11 @@ body.theme-slate {
     --lc-text: #dbe4f2;
     --lc-text-muted: #8794b0;
     --lc-highlight: #e0b64a;
-    --lc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
-    --lc-font-head: 'IBM Plex Sans', system-ui, sans-serif;
+    /* Characters — the dock export's violet player names. */
+    --lc-npc: #8b7bf0;
 }
 
-/* 1d — Immersive focus: cinematic, amber-lit, IBM Plex Sans. */
+/* 1d — Immersive focus: cinematic, amber-lit. */
 body.theme-immersive {
     --lc-bg: #0a0807;
     --lc-panel: #14100d;
@@ -329,12 +345,12 @@ body.theme-immersive {
     --lc-text: #ece2d2;
     --lc-text-muted: #b6a892;
     --lc-highlight: #e8a13c;
-    --lc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
-    --lc-font-head: 'IBM Plex Sans', system-ui, sans-serif;
+    /* Characters — the immersive export's mint --green player names. */
+    --lc-npc: #7ce7b6;
 }
 
-/* 1b — Parchment & ink: warm light "book", oxblood accent, Spectral serif.
-   The one light theme, so it also needs to soften error red and lift the
+/* 1b — Parchment & ink: warm light "book", oxblood accent.
+   The one light scheme, so it also needs to soften error red and lift the
    feed-hover so it reads on a light surface. */
 body.theme-parchment {
     --lc-bg: #e3d7bd;
@@ -346,22 +362,20 @@ body.theme-parchment {
     --lc-text: #33291f;
     --lc-text-muted: #7a6a4f;
     --lc-highlight: #a07c3a;
-    --lc-font-body: 'Spectral', Georgia, 'Times New Roman', serif;
-    --lc-font-head: 'Spectral', Georgia, serif;
+    /* Characters — the e-reader export's forest --green. */
+    --lc-npc: #3a5a3f;
 }
-/* Commands stay monospace even under the serif body theme. */
-body.theme-parchment #command-input,
-body.theme-parchment .font-mono { font-family: 'IBM Plex Mono', var(--font-mono); }
 /* Error red needs more weight on a light ground. */
 body.theme-parchment .text-red-400,
 body.theme-parchment .text-red-300 { color: #9b2c2c; }
 body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08); }
 
-/* Classic — phosphor-CRT old-MUD palettes (Sprint 59). Green (default) + amber,
-   from docs/classic-export. Monospace throughout, plus a phosphor glow and a
-   scanline overlay (below). Caught by the shared `:not(.theme-terminal)` remap
-   above like the other themes, so raw literals route through these tokens too. */
-body.theme-classic {
+/* Mono Green / Mono Amber — phosphor-CRT palettes (Sprint 59, renamed from
+   "classic"/"classic-amber" in Sprint 62), from docs/lorecraft-export/classic.
+   Standalone colour overrides usable with ANY layout (the classic layout just
+   defaults to mono-green). Phosphor glow + scanline overlay below are part of
+   the scheme (they are colour/effect, not typography). */
+body.theme-mono-green {
     --lc-bg: #060a07;
     --lc-panel: #0a140d;
     --lc-panel-light: #0e1c13;
@@ -371,10 +385,10 @@ body.theme-classic {
     --lc-text: #7dd08a;
     --lc-text-muted: #5f9f72;
     --lc-highlight: #e0c56a;
-    --lc-font-body: 'IBM Plex Mono', ui-monospace, monospace;
-    --lc-font-head: 'IBM Plex Mono', ui-monospace, monospace;
+    /* Characters — the classic export's .char b name colour. */
+    --lc-npc: #9be6a6;
 }
-body.theme-classic-amber {
+body.theme-mono-amber {
     --lc-bg: #0a0705;
     --lc-panel: #140f0a;
     --lc-panel-light: #1c150c;
@@ -384,19 +398,19 @@ body.theme-classic-amber {
     --lc-text: #e0b24a;
     --lc-text-muted: #9a7a34;
     --lc-highlight: #f0c96a;
-    --lc-font-body: 'IBM Plex Mono', ui-monospace, monospace;
-    --lc-font-head: 'IBM Plex Mono', ui-monospace, monospace;
+    /* Characters — the amber variant's --char. */
+    --lc-npc: #e6c060;
 }
 /* Phosphor glow on the body text. */
-body.theme-classic,
-body.theme-classic-amber {
+body.theme-mono-green,
+body.theme-mono-amber {
     text-shadow: 0 0 2px color-mix(in srgb, var(--lc-accent) 30%, transparent);
 }
 /* CRT scanline overlay + edge vignette, drawn over everything but below the
    z-50 modals. Fixed + pointer-events:none so it never intercepts clicks.
    Suppressed under reduced-motion as a low-vision / low-distraction opt-out. */
-body.theme-classic::after,
-body.theme-classic-amber::after {
+body.theme-mono-green::after,
+body.theme-mono-amber::after {
     content: "";
     position: fixed;
     inset: 0;
@@ -411,8 +425,8 @@ body.theme-classic-amber::after {
     opacity: 0.5;
     box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.6);
 }
-body.reduced-motion.theme-classic::after,
-body.reduced-motion.theme-classic-amber::after { display: none; }
+body.reduced-motion.theme-mono-green::after,
+body.reduced-motion.theme-mono-amber::after { display: none; }
 
 /* =======================================================================
    Selectable layouts (Sprint 58.5+)
@@ -481,9 +495,11 @@ body.reduced-motion.theme-classic-amber::after { display: none; }
 }
 .classic-input::placeholder { color: var(--lc-text-muted); opacity: 0.7; }
 /* The classic minimap's one box: square corners (CRT, not app-rounded), a
-   single hairline border, sized like the reference's 224px map. #minimap's own
-   content supplies the radial-gradient fill (see .mm-graph/.mm-compass). */
-.classic-map-box { width: 14rem; height: 14rem; border: 1px solid var(--lc-border); }
+   single hairline border. Sizing is the template's own `w-full aspect-square
+   max-h-64` (Sprint 61, matching Standard's card) so it fills the pane's
+   width instead of floating as a small fixed square; #minimap's own content
+   supplies the radial-gradient fill (see .mm-graph/.mm-compass). */
+.classic-map-box { border: 1px solid var(--lc-border); overflow: hidden; }
 
 /* Minimap style toggle (Sprint 59). The minimap partial renders BOTH a graph
    node-map (.mm-graph) and a compass exit-star (.mm-compass); the player's
@@ -577,21 +593,13 @@ body.layout-dock .invlist { display: flex; }
 /* =======================================================================
    E-reader layout (Sprint 59) — the illuminated-manuscript book. Bespoke
    shell (partials/game_ereader.html), so — like classic — it needs its own
-   rules rather than the .game-col grid. Serif prose is forced here so it reads
-   book-like under any theme (it pairs best with the Parchment palette).
+   rules rather than the .game-col grid. Serif prose comes from the layout's
+   own typography block (Sprint 62) so it reads book-like under any scheme
+   (it pairs best with the Parchment scheme).
    ======================================================================= */
 .ereader__ledger { width: 20rem; }
 .ereader__rail { width: 3.25rem; }
-.ereader__title { font-family: var(--font-serif); font-style: italic; font-size: 0.95rem; }
-/* Serif typesetting for the location readout + the chronicle prose — forced
-   here so it reads book-like under any palette (sizes/features are tuned in the
-   parchment block of the per-mode typography section, which wins by source
-   order under the coupled default). */
-body.layout-e-reader #room-description,
-body.layout-e-reader #feed {
-    font-family: 'Spectral', var(--font-serif);
-    line-height: 1.8;
-}
+.ereader__title { font-family: var(--lc-font-head); font-style: italic; font-size: 0.95rem; }
 /* Vertical tab rail (writing-mode makes the label read bottom-to-top). */
 .ereader-tab {
     writing-mode: vertical-rl;
@@ -649,11 +657,16 @@ body.layout-e-reader #feed {
     transition: filter 0.12s ease;
 }
 .dock-send:hover { filter: brightness(1.1); }
-.dock-quests-foot {
-    border-top: 1px solid var(--lc-border);
-    max-height: 9rem;
-    overflow-y: auto;
+/* Window-shade section heads (Sprint 62) — Dock's accordion take on
+   Standard's tabbed right pane. A shade head is a full-width clickable
+   `.dock-card__head`; the open section's title takes the accent. */
+.dock-shade__head {
+    cursor: pointer;
+    transition: color 0.12s ease, background-color 0.12s ease;
 }
+.dock-shade__head:hover .t { color: var(--lc-accent); }
+.dock-shade__head[aria-expanded="true"] .t { color: var(--lc-accent); }
+.dock-shade__head + .dock-shade__head { border-top: 1px solid var(--lc-border); }
 /* Below the lg breakpoint the three card-columns stack. */
 @media (max-width: 1023px) {
     #main-content.dock { grid-template-columns: 1fr !important; }
@@ -722,13 +735,14 @@ body.layout-e-reader #feed {
                 0 0 30px -8px var(--lc-accent);
 }
 /* =======================================================================
-   Per-mode typography (Sprint 60). Each Mode gets a tuned type treatment,
-   scoped by its palette class — the palette carries the mode's typographic
-   identity in the coupled Mode design, so overriding the palette carries the
-   type with it. Two rules are shared by all five modes: a capped prose measure
-   (~60–66ch) so descriptions don't run too wide, and tabular figures wherever
-   numbers align. (Density: to add a size axis later, scale a single --lc-fs
-   base in rems rather than touching each rule here.)
+   Per-layout typography (Sprint 60, re-keyed to the layout axis in Sprint
+   62). Each LAYOUT owns its type treatment — font faces (via --lc-font-*),
+   sizes, leading, features, and measure — scoped by its `layout-<name>` body
+   class. The colour-scheme picker never touches any of this: swapping scheme
+   repaints, never reflows. Two rules are shared by all five layouts: a capped
+   prose measure (~60–66ch) so descriptions don't run too wide, and tabular
+   figures wherever numbers align. (Density: to add a size axis later, scale
+   a single --lc-fs base in rems rather than touching each rule here.)
    ======================================================================= */
 
 /* Shared — tabular figures for aligned numbers (timestamps, weights, vitals,
@@ -740,27 +754,45 @@ body.layout-e-reader #feed {
 #player-count,
 #world-clock { font-variant-numeric: tabular-nums; }
 
-/* Shared — cap the chronicle measure per mode (var set in each block below);
-   centre it where the mode reads book-like. */
-#feed .msg { max-width: var(--lc-measure, 68ch); }
-body.theme-parchment #feed .msg,
-body.theme-immersive #feed .msg { margin-inline: auto; }
+/* Shared — cap the chronicle measure per layout (var set in each block
+   below); centre it where the layout reads book-like. `.room-card` (Sprint
+   61) is the chronicle-only layouts' styled room block, tuned alongside
+   `.msg` everywhere below. */
+#feed .msg,
+#feed .room-card { max-width: var(--lc-measure, 68ch); }
+body.layout-e-reader #feed .msg,
+body.layout-e-reader #feed .room-card,
+body.layout-immersive #feed .msg,
+body.layout-immersive #feed .room-card { margin-inline: auto; }
 
-/* ---- Standard · terminal — JetBrains Mono, code-literal ---- */
-body.theme-terminal { --lc-measure: 66ch; }
-body.theme-terminal,
-body.theme-terminal .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+/* ---- Standard — JetBrains Mono, code-literal ---- */
+body.layout-standard { --lc-measure: 66ch; }
+body.layout-standard,
+body.layout-standard .font-mono,
+body.layout-standard #command-input {
+    --lc-font-body: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    --lc-font-head: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    font-family: var(--lc-font-body);
     /* Kill ligatures — want code-literal glyphs (-> not →). 400→700 only. */
-    font-feature-settings: "calt" 0;
+    font-feature-settings: "calt" 0, "zero" 1;
 }
-body.theme-terminal #feed { font-size: 13px; line-height: 1.7; }
-body.theme-terminal #room-description h2 { font-size: 14px; font-weight: 700; }
+body.layout-standard { font-size: 13px; line-height: 1.5; }
+body.layout-standard #feed { font-size: 13px; line-height: 1.7; }
+body.layout-standard #room-description h2,
+body.layout-standard .room-card__name { font-size: 14px; font-weight: 700; }
 
-/* ---- E-reader · parchment — Spectral prose + IBM Plex Mono UI ---- */
-body.theme-parchment { --lc-measure: 62ch; }
-body.theme-parchment #feed,
-body.theme-parchment #room-description {
+/* ---- E-reader — Spectral prose + IBM Plex Mono UI ---- */
+body.layout-e-reader { --lc-measure: 62ch; }
+body.layout-e-reader {
+    --lc-font-body: 'Spectral', Georgia, 'Times New Roman', serif;
+    --lc-font-head: 'Spectral', Georgia, serif;
+    font-family: var(--lc-font-body);
+}
+/* Commands + UI chrome stay monospace under the serif body. */
+body.layout-e-reader #command-input,
+body.layout-e-reader .font-mono { font-family: 'IBM Plex Mono', var(--font-mono); font-size: 12px; }
+body.layout-e-reader #feed,
+body.layout-e-reader #room-description {
     font-size: 15px;
     line-height: 1.8;
     letter-spacing: 0;
@@ -768,51 +800,69 @@ body.theme-parchment #room-description {
     font-feature-settings: "onum" 1;
     text-wrap: pretty;
 }
-body.theme-parchment #room-description h2 { font-size: 20px; line-height: 1.2; }
-body.theme-parchment .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; }
+body.layout-e-reader #room-description h2,
+body.layout-e-reader .room-card__name { font-size: 20px; line-height: 1.2; }
 /* Spoken lines read as italic prose, not a colour shift — more book-like. */
-body.theme-parchment #feed .msg.chat,
-body.theme-parchment #feed .msg.dialogue { font-style: italic; }
+body.layout-e-reader #feed .msg.chat,
+body.layout-e-reader #feed .msg.dialogue { font-style: italic; }
 
-/* ---- Dock · slate — IBM Plex Sans + IBM Plex Mono, weight hierarchy ---- */
-body.theme-slate { --lc-measure: 66ch; }
-body.theme-slate #feed { font-size: 13.5px; line-height: 1.65; }
-body.theme-slate .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
-body.theme-slate #room-description h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+/* ---- Dock — IBM Plex Sans + IBM Plex Mono, weight hierarchy ---- */
+body.layout-dock { --lc-measure: 66ch; }
+body.layout-dock {
+    --lc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --lc-font-head: 'IBM Plex Sans', system-ui, sans-serif;
+    font-family: var(--lc-font-body);
+    font-size: 13px;
+}
+body.layout-dock #feed { font-size: 13.5px; line-height: 1.65; }
+body.layout-dock .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+body.layout-dock #room-description h2,
+body.layout-dock .room-card__name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
 .dock-card__head .t { font-weight: 600; }
-/* Timestamps as chips rather than coloured text. */
-body.theme-slate .msg-ts {
-    background: #182035;
+/* Timestamps as chips rather than coloured text (chip bg follows scheme). */
+body.layout-dock .msg-ts {
+    background: color-mix(in srgb, var(--lc-panel-light) 80%, var(--lc-bg));
     color: var(--lc-text-muted);
     padding: 0 5px;
     border-radius: 4px;
     vertical-align: baseline;
 }
 
-/* ---- Immersive · amber focus — IBM Plex Sans, big & loose (cinema) ---- */
-body.theme-immersive { --lc-measure: 720px; }
-body.theme-immersive #feed { font-size: 15px; line-height: 1.7; }
-body.theme-immersive #room-description h2 {
+/* ---- Immersive — IBM Plex Sans, big & loose (cinema) ---- */
+body.layout-immersive { --lc-measure: 720px; }
+body.layout-immersive {
+    --lc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --lc-font-head: 'IBM Plex Sans', system-ui, sans-serif;
+    font-family: var(--lc-font-body);
+    font-size: 13px;
+}
+body.layout-immersive #feed { font-size: 15px; line-height: 1.7; }
+body.layout-immersive #room-description h2,
+body.layout-immersive .room-card__name {
     font-size: 26px;
     font-weight: 700;
     letter-spacing: -0.02em;
-    /* Candlelight glow on the name only — soft, never hurts legibility. */
-    text-shadow: 0 0 24px rgba(232, 161, 60, 0.15);
+    /* Candlelight glow on the name only — follows the scheme accent. */
+    text-shadow: 0 0 24px color-mix(in srgb, var(--lc-accent) 15%, transparent);
 }
 /* Atmosphere / spoken lines recede into italic; timestamps tiny + faint. */
-body.theme-immersive #feed .msg.chat,
-body.theme-immersive #feed .msg.dialogue { font-style: italic; color: var(--lc-text-muted); }
-body.theme-immersive .msg-ts { color: #5c5344; }
+body.layout-immersive #feed .msg.chat,
+body.layout-immersive #feed .msg.dialogue { font-style: italic; color: var(--lc-text-muted); }
+body.layout-immersive .msg-ts { color: color-mix(in srgb, var(--lc-text-muted) 55%, var(--lc-bg)); }
 
-/* ---- Classic · CRT — IBM Plex Mono, tight uniform grid ---- */
-body.theme-classic,
-body.theme-classic-amber { --lc-measure: 70ch; }
-body.theme-classic .font-mono,
-body.theme-classic-amber .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
-/* No ligatures + a slashed zero — sells the terminal. */
-body.theme-classic,
-body.theme-classic-amber { font-feature-settings: "calt" 0, "zero" 1; }
-body.theme-classic #feed,
-body.theme-classic-amber #feed { font-size: 13.5px; line-height: 1.62; }
-body.theme-classic #chat-feed,
-body.theme-classic-amber #chat-feed { font-size: 13px; }
+/* ---- Classic — IBM Plex Mono, tight uniform grid ---- */
+body.layout-classic { --lc-measure: 70ch; }
+body.layout-classic,
+body.layout-classic .font-mono,
+body.layout-classic #command-input {
+    --lc-font-body: 'IBM Plex Mono', ui-monospace, monospace;
+    --lc-font-head: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: var(--lc-font-body);
+    /* No ligatures + a slashed zero — sells the terminal. */
+    font-feature-settings: "calt" 0, "zero" 1;
+}
+body.layout-classic #feed { font-size: 13.5px; line-height: 1.62; }
+/* The room-card's name, sized like the reference's .room-name (Classic has
+   no #room-description panel to key off of like the other four layouts). */
+body.layout-classic .room-card__name { font-size: 15.5px; font-weight: 600; letter-spacing: 0.3px; }
+body.layout-classic #chat-feed { font-size: 13px; }

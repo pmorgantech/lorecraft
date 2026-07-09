@@ -21,42 +21,52 @@
     {% elif prefs.layout == 'immersive' %}
     {% include "partials/game_immersive.html" %}
     {% else %}
-    <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
+    {# Standard layout (Sprint 62, rebuilt to lorecraft-export/standard):
+       three gapped card columns — LEFT Current Location (room + items + ALSO
+       HERE) over a Minimap card; CENTRE Chronicle card with the command bar
+       inside it (Send button); RIGHT one full-height card tabbed between
+       Inv / Quests / Stats. #}
+    <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-3 bg-feed-bg p-3 overflow-hidden items-stretch h-full">
 
-        <!-- LEFT SIDEBAR: Room + Minimap -->
+        <!-- LEFT COLUMN: Current Location + Minimap -->
         <div
             :class="mobileTab === 'room' ? 'flex' : 'hidden'"
-            class="game-col game-col-left lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
+            class="game-col game-col-left lg:!flex flex-col gap-3 overflow-hidden h-full w-full lg:w-80 lg:flex-none">
 
-            <!-- Room Description Panel. Inventory lives in the right rail
-                 (paired with Quests), so the room fills the space above the
-                 minimap here. -->
-            <div class="game-panel-room flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden min-h-0">
-                <div class="px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+            <div class="game-panel-room flex-1 flex flex-col bg-panel border border-border rounded-lg overflow-hidden min-h-0">
+                <div class="px-3 py-2 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
                     <span>Current Location</span>
-                    <button
-                        hx-get="/partials/room-description"
-                        hx-target="#room-description"
-                        hx-swap="outerHTML"
-                        class="text-emerald-500 hover:text-emerald-400 transition-colors"
-                        title="Refresh room">
-                        ⟳
-                    </button>
+                    <span class="normal-case tracking-normal">
+                        exits
+                        {% for e in exits if not e.hidden %}<span class="text-emerald-400 uppercase ml-1">{{ e.direction[0] }}</span>{% else %} <span class="italic">none</span>{% endfor %}
+                    </span>
                 </div>
-                {% include "partials/room_description.html" %}
+                <div class="flex-1 min-h-0 overflow-y-auto bg-feed-bg">
+                    {% include "partials/room_description.html" %}
+                    {% if 'players_online' not in prefs.hidden_panels %}
+                    <!-- ALSO HERE (the export folds who's-here into the location card) -->
+                    <div class="px-3 pb-3">
+                        <div class="pt-2 border-t border-border text-[9.5px] tracking-[0.15em] text-text-muted mb-1">
+                            ALSO HERE <span class="font-mono text-emerald-600" id="player-count">{{ players_here | length if players_here else 0 }}</span>
+                        </div>
+                        {% include "partials/players_online.html" %}
+                    </div>
+                    {% endif %}
+                </div>
             </div>
 
-            <!-- Mini-map (at bottom, size perfect - do not change). The card
-                 chrome (border/header) lives here, not in minimap.html, which
-                 renders bare content — so this is the ONE box, continuing the
-                 Room panel above it (rounded-b-lg pairs with its rounded-t-lg,
-                 same hairline-seam pattern as the right rail). -->
+            <!-- Minimap card. The card chrome (border/header) lives here, not in
+                 minimap.html, which renders bare content — so this is the ONE box. -->
             {% if 'minimap' not in prefs.hidden_panels %}
-            <div class="mt-px flex-none">
-                <div class="w-full aspect-square max-h-64 bg-panel border border-border rounded-b-lg overflow-hidden flex flex-col">
-                    <div class="flex-none px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                        <span class="mm-title-graph">Map</span><span class="mm-title-compass">Exits</span>
+            <div class="flex-none">
+                <div class="w-full aspect-square max-h-56 bg-panel border border-border rounded-lg overflow-hidden flex flex-col">
+                    <div class="flex-none px-3 py-1.5 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
+                        <span class="mm-title-graph">Minimap</span><span class="mm-title-compass">Exits</span>
                         <div class="flex items-center gap-2">
+                            <button type="button"
+                                onclick="lcToggleMinimapStyle()"
+                                class="text-emerald-500 hover:text-emerald-400 transition-colors"
+                                title="Toggle map / compass">⇄</button>
                             <button
                                 @click="mapModalOpen = true"
                                 hx-get="/partials/map-full"
@@ -80,13 +90,13 @@
             {% endif %}
         </div>
 
-        <!-- CENTER: Main Feed / Narrative Log -->
+        <!-- CENTER: Chronicle card, command bar inside it (per the export) -->
         <div
             :class="mobileTab === 'feed' ? 'flex' : 'hidden'"
             class="game-col game-col-center lg:!flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
-            <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                <span>The Chronicle • Live</span>
-                <div class="flex items-center gap-2 text-[10px]">
+            <div class="px-3 py-2 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
+                <span>The Chronicle <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse align-middle mx-0.5"></span> Live</span>
+                <div class="flex items-center gap-2 normal-case tracking-normal">
                     <button
                         @click="document.getElementById('feed').scrollTop = 0"
                         class="hover:text-emerald-400 transition-colors px-1">↑ top</button>
@@ -99,8 +109,8 @@
             </div>
 
             <!-- Feed content (append-only strategy). No font utility here — the
-                 chronicle inherits the active Mode's font (see custom.css
-                 per-mode typography): JetBrains Mono under Standard/terminal. -->
+                 chronicle inherits the active Layout's font (see custom.css
+                 per-layout typography): JetBrains Mono under Standard. -->
             <div id="feed"
                  role="log" aria-live="polite" aria-label="Game narrative log"
                  class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg scroll-smooth"
@@ -115,11 +125,11 @@
                  view. Rendered only when the separate_chat preference is on;
                  its presence is what routeChatMessages()/the WS handler key on. -->
             <div id="chat-pane" class="h-1/3 min-h-28 flex flex-col border-t border-border">
-                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                <div class="px-3 py-1.5 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
                     <span>Chat</span>
                     <button
                         @click="document.getElementById('chat-feed').scrollTop = document.getElementById('chat-feed').scrollHeight"
-                        class="hover:text-emerald-400 transition-colors px-1 text-[10px]">↓ bottom</button>
+                        class="hover:text-emerald-400 transition-colors px-1">↓ bottom</button>
                 </div>
                 <div id="chat-feed"
                      role="log" aria-live="polite" aria-label="Chat log"
@@ -128,55 +138,76 @@
             </div>
             {% endif %}
 
-            <!-- Subtle status line -->
-            <div class="px-3 py-1 border-t border-border bg-panel-light text-[10px] text-text-muted flex items-center justify-between">
-                <span>Press <kbd class="px-1 py-px bg-zinc-800 rounded text-emerald-500">/</kbd> to focus command</span>
-                <span class="hidden md:inline">Shift+Enter for multiline (future)</span>
+            <!-- Command bar INSIDE the chronicle card (per the export). -->
+            <div class="flex-none p-3 border-t border-border">
+                <form id="command-form"
+                      hx-post="/command"
+                      hx-target="#feed"
+                      hx-swap="beforeend"
+                      hx-on::after-request="handleCommandSuccess(this)"
+                      class="flex gap-2.5 items-center rounded-lg px-3.5 py-2.5 bg-feed-bg border border-border focus-within:border-emerald-600"
+                      x-data="{ localCommand: '' }">
+                    <span class="text-emerald-500">›</span>
+                    <input
+                        type="text"
+                        name="command"
+                        id="command-input"
+                        x-model="localCommand"
+                        placeholder="What do you do?"
+                        autocomplete="off"
+                        spellcheck="false"
+                        class="flex-1 bg-transparent text-sm outline-none placeholder:text-text-muted">
+                    <button
+                        type="submit"
+                        class="text-[10px] font-bold tracking-wide px-3 py-1 bg-emerald-500 hover:bg-emerald-600 transition-colors rounded text-feed-bg disabled:opacity-50"
+                        :disabled="!localCommand.trim()">SEND</button>
+                </form>
+                <div class="mt-1 flex items-center justify-between text-[10px] text-text-muted px-1">
+                    <span>Press <kbd class="px-1 py-px bg-zinc-800 rounded text-emerald-500">/</kbd> to focus ·
+                        <span class="cursor-pointer hover:text-emerald-400" @click="showHelp = !showHelp">help</span></span>
+                    <span class="hidden md:inline">Connected • <span class="text-emerald-600">low latency</span></span>
+                </div>
             </div>
         </div>
 
-        {# RIGHT SIDEBAR: Players + an Inventory/Quests pane (mutually exclusive). #}
+        {# RIGHT COLUMN: one full-height card, tabbed Inv / Quests / Stats
+           (the export's tabbed right pane; "Score" renamed Stats). All three
+           panes stay in the DOM (x-show) so the OOB live-updates (#inventory /
+           #quest-tracker) keep firing while hidden. #}
         <div
-            x-data="{ rail: 'inventory' }"
-            :class="mobileTab === 'players' ? 'flex' : 'hidden'"
-            class="game-col game-col-right lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
-
-            <!-- Players in Room / Online -->
-            {% if 'players_online' not in prefs.hidden_panels %}
-            <div class="flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden">
-                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                    <span>Here Now</span>
-                    <span class="font-mono text-emerald-600 text-[10px]" id="player-count">{{ players_here | length if players_here else 0 }}</span>
-                </div>
-                {% include "partials/players_online.html" %}
-            </div>
-            {% endif %}
-
-            {# Standard: Inventory + Quests share ONE pane, mutually exclusive —
-               a titlebar toggle flips between them. Both bodies stay in the DOM
-               (x-show) so their OOB live-updates (#inventory / #quest-tracker)
-               keep firing while hidden. `rail` (on the column) is the shared
-               open-panel state. (The other modes are bespoke shells.) #}
-            <!-- Toggle pane (standard): one titlebar, a button flips Inventory ⇄ Quests -->
-            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
-                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                    <span x-text="rail === 'inventory' ? 'Inventory' : 'Quests'"></span>
-                    <button type="button"
-                            @click="rail = (rail === 'inventory' ? 'quests' : 'inventory')"
-                            class="normal-case tracking-normal text-[10px] px-2 py-0.5 rounded border border-border text-text-muted hover:text-emerald-400 hover:border-emerald-600 transition-colors">
-                        <span x-text="rail === 'inventory' ? 'Show Quests' : 'Show Inventory'"></span>
-                    </button>
-                </div>
+            x-data="{ tab: 'inv' }"
+            :class="mobileTab === 'panel' ? 'flex' : 'hidden'"
+            class="game-col game-col-right lg:!flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full w-full lg:w-72 lg:flex-none">
+            <div class="flex-none flex border-b border-border" role="tablist" aria-label="Character panes">
                 {% if 'inventory' not in prefs.hidden_panels %}
-                <div x-show="rail === 'inventory'" class="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {% include "partials/inventory.html" %}
-                </div>
+                <button type="button" role="tab" :aria-selected="tab === 'inv'"
+                        @click="tab = 'inv'"
+                        :class="tab === 'inv' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
+                        class="px-4 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Inv</button>
                 {% endif %}
                 {% if 'quest_tracker' not in prefs.hidden_panels %}
-                <div x-show="rail === 'quests'" x-cloak class="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {% include "partials/quest_tracker.html" %}
-                </div>
+                <button type="button" role="tab" :aria-selected="tab === 'quests'"
+                        @click="tab = 'quests'"
+                        :class="tab === 'quests' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
+                        class="px-4 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Quests</button>
                 {% endif %}
+                <button type="button" role="tab" :aria-selected="tab === 'stats'"
+                        @click="tab = 'stats'"
+                        :class="tab === 'stats' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
+                        class="px-4 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Stats</button>
+            </div>
+            {% if 'inventory' not in prefs.hidden_panels %}
+            <div x-show="tab === 'inv'" role="tabpanel" class="flex-1 flex flex-col overflow-hidden min-h-0">
+                {% include "partials/inventory.html" %}
+            </div>
+            {% endif %}
+            {% if 'quest_tracker' not in prefs.hidden_panels %}
+            <div x-show="tab === 'quests'" x-cloak role="tabpanel" class="flex-1 flex flex-col overflow-hidden min-h-0">
+                {% include "partials/quest_tracker.html" %}
+            </div>
+            {% endif %}
+            <div x-show="tab === 'stats'" x-cloak role="tabpanel" class="flex-1 overflow-y-auto bg-feed-bg p-3 min-h-0">
+                {% include "partials/stats_panel.html" %}
             </div>
         </div>
 
@@ -194,9 +225,9 @@
             :class="mobileTab === 'feed' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
             class="flex-1 py-2 border-t-2 transition-colors">Feed</button>
         <button
-            @click="mobileTab = 'players'"
-            :class="mobileTab === 'players' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
-            class="flex-1 py-2 border-t-2 transition-colors">Players</button>
+            @click="mobileTab = 'panel'"
+            :class="mobileTab === 'panel' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
+            class="flex-1 py-2 border-t-2 transition-colors">Panel</button>
     </div>
     {% endif %}{# end grid-layout main area #}
 
@@ -223,56 +254,9 @@
 
     {% include "partials/dialogue.html" %}
 
-    <!-- COMMAND INPUT BAR (fixed bottom). Only the standard grid uses it — the
-         bespoke shells (classic, e-reader, dock, immersive) carry their own
-         prompt, so the full-width bar is skipped there. -->
-    {% if prefs.layout not in ['classic', 'e-reader', 'dock', 'immersive'] %}
-    <div class="border-t border-zinc-800 bg-zinc-900 p-3">
-        <form id="command-form"
-              hx-post="/command"
-              hx-target="#feed"
-              hx-swap="beforeend"
-              hx-on::after-request="handleCommandSuccess(this)"
-              class="flex gap-2 items-center"
-              x-data="{ localCommand: '' }">
-
-            <div class="flex-1 relative">
-                <input
-                    type="text"
-                    name="command"
-                    id="command-input"
-                    x-model="localCommand"
-                    placeholder="What do you do? (type 'help' for commands)"
-                    autocomplete="off"
-                    spellcheck="false"
-                    class="w-full bg-zinc-950 border border-zinc-700 focus:border-emerald-600 text-sm px-4 py-2.5 rounded-lg outline-none placeholder:text-zinc-600 font-mono"
-                >
-                <!-- Future: autocomplete suggestions dropdown with Alpine -->
-            </div>
-
-            <button
-                type="submit"
-                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition-all text-sm font-semibold rounded-lg flex items-center gap-2 disabled:opacity-50"
-                :disabled="!localCommand.trim()">
-                <span>Send</span>
-                <span class="text-xs opacity-75">⏎</span>
-            </button>
-
-            <!-- Optional: voice input or macro buttons later -->
-        </form>
-
-        <div class="mt-1.5 flex items-center justify-between text-[10px] text-zinc-600 px-1">
-            <div>
-                <span class="cursor-pointer hover:text-zinc-400" @click="showHelp = !showHelp">help</span>
-                <span class="mx-1">•</span>
-                <span class="cursor-pointer hover:text-zinc-400">look</span>
-                <span class="mx-1">•</span>
-                <span class="cursor-pointer hover:text-zinc-400">inv</span>
-            </div>
-            <div class="hidden md:block">Connected • <span class="text-emerald-600">low latency</span></div>
-        </div>
-    </div>
-    {% endif %}{# end non-classic command bar #}
+    {# The command prompt lives inside each shell now: the standard grid's is
+       in its chronicle card (per lorecraft-export/standard); the bespoke
+       shells (classic, e-reader, dock, immersive) carry their own. #}
 
     <!-- Help overlay (Alpine controlled) -->
     <div x-show="showHelp"
