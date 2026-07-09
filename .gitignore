@@ -240,3 +240,10 @@ test_dbs/
 !.claude/skills/kindle-doc-weaver/SKILL.md
 
 docs/issues.yaml
+
+# Design-canvas exports — local reference material for the UI work, not repo
+# source (kept out of the tree by request). The implementation lives in
+# src/lorecraft/webui/player/; these folders are just the mockups we emulate.
+docs/lorecraft-export/
+docs/classic-export/
+docs/Lorecraft Client*.html

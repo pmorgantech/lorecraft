@@ -55,7 +55,10 @@
                 {% if d in ['southwest','sw'] %}{% set cmd_sw = e.direction %}{% endif %}
             {% endfor %}
 
-            <div class="relative h-full bg-feed-bg overflow-hidden rounded border border-border">
+            {# Both views render; a `minimap-<style>` body class (from prefs)
+               shows one via CSS (see custom.css). "graph" = discovered-rooms
+               node-map; "compass" = the phosphor exit-star rose. #}
+            <div class="mm-graph relative h-full bg-feed-bg overflow-hidden rounded border border-border">
                 {% if nearby_rooms %}
                 <svg width="100%" height="100%" viewBox="0 0 88 52" preserveAspectRatio="xMidYMid meet" class="block">
                     {% for ln in map_lines %}
@@ -81,6 +84,44 @@
 <span class="exit-dir {{ 'lit cursor-pointer' if has_sw else 'dim' }}" {% if has_sw %}hx-post="/command" hx-vals='{"command":"go {{ cmd_sw }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>/</span><span class="exit-dir {{ 'lit cursor-pointer' if has_down else 'dim' }}" {% if has_down %}hx-post="/command" hx-vals='{"command":"go {{ cmd_down }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>d</span><span class="exit-dir {{ 'lit cursor-pointer' if has_south else 'dim' }}" {% if has_south %}hx-post="/command" hx-vals='{"command":"go {{ cmd_s }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>|</span> <span class="exit-dir {{ 'lit cursor-pointer' if has_se else 'dim' }}" {% if has_se %}hx-post="/command" hx-vals='{"command":"go {{ cmd_se }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>\</span>
                     </pre>
                 </div>
+            </div>
+
+            {# Compass exit-star (from the design canvas): lit spoke = available
+               exit (clickable to move), dim = none; u/d marks up/down; centre
+               dot = you. Theme-token colours so it matches the active theme. #}
+            <div class="mm-compass w-full h-full rounded border border-border bg-feed-bg overflow-hidden">
+                <svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet"
+                     class="block" style="width:100%;height:100%;display:block">
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="var(--lc-border)" stroke-width="1"/>
+                    <line x1="100" y1="100" x2="150" y2="50"  stroke="{{ 'var(--lc-accent)' if has_ne else 'var(--lc-border)' }}" stroke-width="1.6"/>
+                    <line x1="100" y1="100" x2="50"  y2="50"  stroke="{{ 'var(--lc-accent)' if has_nw else 'var(--lc-border)' }}" stroke-width="1.6"/>
+                    <line x1="100" y1="100" x2="150" y2="150" stroke="{{ 'var(--lc-accent)' if has_se else 'var(--lc-border)' }}" stroke-width="1.6"/>
+                    <line x1="100" y1="100" x2="50"  y2="150" stroke="{{ 'var(--lc-accent)' if has_sw else 'var(--lc-border)' }}" stroke-width="1.6"/>
+                    <g {% if has_north %}class="cursor-pointer" hx-post="/command" hx-vals='{"command":"go {{ cmd_n }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>
+                        <line x1="100" y1="100" x2="100" y2="44" stroke="{{ 'var(--lc-accent)' if has_north else 'var(--lc-border)' }}" stroke-width="2.5"/>
+                        {% if has_north %}<polygon points="100,36 93,50 107,50" fill="var(--lc-accent)"/>{% endif %}
+                    </g>
+                    <g {% if has_south %}class="cursor-pointer" hx-post="/command" hx-vals='{"command":"go {{ cmd_s }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>
+                        <line x1="100" y1="100" x2="100" y2="156" stroke="{{ 'var(--lc-accent)' if has_south else 'var(--lc-border)' }}" stroke-width="2.5"/>
+                        {% if has_south %}<polygon points="100,164 93,150 107,150" fill="var(--lc-accent)"/>{% endif %}
+                    </g>
+                    <g {% if has_east %}class="cursor-pointer" hx-post="/command" hx-vals='{"command":"go {{ cmd_e }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>
+                        <line x1="100" y1="100" x2="156" y2="100" stroke="{{ 'var(--lc-accent)' if has_east else 'var(--lc-border)' }}" stroke-width="2.5"/>
+                        {% if has_east %}<polygon points="164,100 150,93 150,107" fill="var(--lc-accent)"/>{% endif %}
+                    </g>
+                    <g {% if has_west %}class="cursor-pointer" hx-post="/command" hx-vals='{"command":"go {{ cmd_w }}"}' hx-target="#feed" hx-swap="beforeend"{% endif %}>
+                        <line x1="100" y1="100" x2="44" y2="100" stroke="{{ 'var(--lc-accent)' if has_west else 'var(--lc-border)' }}" stroke-width="2.5"/>
+                        {% if has_west %}<polygon points="36,100 50,93 50,107" fill="var(--lc-accent)"/>{% endif %}
+                    </g>
+                    <text x="100" y="26"  text-anchor="middle" font-family="monospace" font-size="14" fill="var(--lc-text-muted)">N</text>
+                    <text x="100" y="196" text-anchor="middle" font-family="monospace" font-size="14" fill="var(--lc-text-muted)">S</text>
+                    <text x="186" y="106" text-anchor="middle" font-family="monospace" font-size="14" fill="var(--lc-text-muted)">E</text>
+                    <text x="14"  y="106" text-anchor="middle" font-family="monospace" font-size="14" fill="var(--lc-text-muted)">W</text>
+                    {% if has_up %}<text x="150" y="46"  font-family="monospace" font-size="11" fill="var(--lc-accent)">u</text>{% endif %}
+                    {% if has_down %}<text x="44"  y="160" font-family="monospace" font-size="11" fill="var(--lc-accent)">d</text>{% endif %}
+                    <circle cx="100" cy="100" r="8" fill="var(--lc-accent)"/>
+                    <circle cx="100" cy="100" r="13" fill="none" stroke="var(--lc-accent)" stroke-opacity=".35" stroke-width="1.5"/>
+                </svg>
             </div>
         {% else %}
             <div class="text-text-muted text-xs italic py-4 text-center">Map data unavailable</div>

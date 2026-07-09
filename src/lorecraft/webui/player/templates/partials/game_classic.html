@@ -46,25 +46,18 @@
         {% endif %}
 
         <section class="flex-1 flex flex-col min-h-0">
-            <div class="px-4 py-2 text-[11px] tracking-[0.2em] text-text-muted">── CHAT ──</div>
+            <div class="px-4 py-2 text-[11px] tracking-[0.2em] text-text-muted">
+                ── CHAT ── <span class="normal-case tracking-normal opacity-70">(type <b>say …</b> below)</span>
+            </div>
+            {#
+              Display-only chat pane (no separate input — per review, chat is sent
+              with `say …` on the main command line). The actor's own echo routes
+              here via the feed_items OOB (route_chat_oob is on for classic);
+              other players' chat arrives client-side over WS (app.js appendToChat).
+            #}
             <div id="chat-feed"
                  role="log" aria-live="polite" aria-label="Chat log"
-                 class="flex-1 overflow-y-auto px-4 pb-2 space-y-1 text-sm leading-relaxed scroll-smooth"></div>
-            {#
-              The chat input sends on the `say` channel: htmx:configRequest
-              rewrites `command` -> `say <message>` just before the POST, so it
-              reuses /command (no new endpoint). The actor's own echo routes to
-              #chat-feed via the feed_items OOB (route_chat_oob is on for
-              classic); other players' chat arrives client-side over WS.
-            #}
-            <form class="flex-none px-4 py-2 border-t border-border flex items-center gap-2 text-sm"
-                  hx-post="/command" hx-target="#feed" hx-swap="beforeend"
-                  hx-on::config-request="if(event.detail.parameters.command){event.detail.parameters.command='say '+event.detail.parameters.command}"
-                  hx-on::after-request="this.reset()">
-                <span class="text-accent">chat&gt;</span>
-                <input name="command" autocomplete="off" placeholder="message…"
-                       aria-label="chat message" class="classic-input">
-            </form>
+                 class="flex-1 overflow-y-auto px-4 py-2 space-y-1 text-sm leading-relaxed scroll-smooth"></div>
         </section>
     </aside>
 </div>

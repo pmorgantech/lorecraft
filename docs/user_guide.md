@@ -85,7 +85,7 @@ The theme only changes colours and fonts; every panel and command works the same
 | **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either title bar to roll it open; the other rolls shut). |
 | **Dock** | The same panels as floating, rounded "cards", with the window-shade Inventory/Quests rail. |
 | **Immersive** | A focused, cinematic view: a slim left column with **chat on top and the minimap below**, and the chronicle takes the rest of the screen — there's no third column at all. |
-| **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chronicle-only like Immersive. Pairs naturally with the **Classic** theme, but works under any theme. |
+| **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chat is display-only — send messages with `say …` on the main command line. Chronicle-only like Immersive; pairs naturally with the **Classic** theme but works under any. |
 
 In every layout except immersive, **Inventory and Quests share one pane** — only one is shown at a
 time, so the sidebar stays compact. (Immersive drops the room, inventory, players and quest panels
@@ -108,6 +108,8 @@ take effect immediately, if you'd rather not open Settings.
 
 Other display options on the same page:
 
+- **Minimap style** — *Graph* (the map of rooms you've discovered) or *Compass* (an exit-star
+  rose: a lit spoke means an exit that way — click it to go).
 - **Display density** — *Comfortable* or *Compact* (tighter spacing to fit more on screen).
 - **Text size**, **High-contrast theme**, and **Reduce motion** for readability and accessibility.
 - **Feed verbosity**, **timestamp format**, and how many feed entries to load.

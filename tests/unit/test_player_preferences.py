@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from lorecraft.webui.player.preferences import (
     LAYOUTS,
+    MINIMAP_STYLES,
     THEMES,
     PlayerPreferences,
     apply_updates,
@@ -96,22 +97,24 @@ class TestToContext:
         assert prefs["is_compact"] is False
 
     def test_body_classes_combines_only_active(self) -> None:
-        # Default: theme + layout + density + font scale are always present.
+        # Default: theme + layout + minimap + density + font scale always present.
         default = PlayerPreferences().to_context()["prefs"]
         assert default["body_classes"] == (
-            "theme-terminal layout-standard density-comfortable font-normal"
+            "theme-terminal layout-standard minimap-graph "
+            "density-comfortable font-normal"
         )
 
         full = PlayerPreferences(
             theme="slate",
             layout="dock",
+            minimap_style="compass",
             display_density="compact",
             reduced_motion=True,
             high_contrast=True,
             font_scale="large",
         ).to_context()["prefs"]
         assert full["body_classes"] == (
-            "theme-slate layout-dock density-compact "
+            "theme-slate layout-dock minimap-compass density-compact "
             "reduced-motion high-contrast font-large"
         )
         assert full["contrast_class"] == "high-contrast"
@@ -230,6 +233,33 @@ class TestLayout:
         assert prefs.theme == "parchment"
         assert prefs.layout == "immersive"
         assert prefs.to_stored() == {"theme": "parchment", "layout": "immersive"}
+
+
+class TestMinimapStyle:
+    """Minimap rendering style (Sprint 59): graph node-map vs compass exit-star."""
+
+    def test_defaults_to_graph(self) -> None:
+        assert PlayerPreferences().minimap_style == "graph"
+        assert resolve_preferences({}).minimap_style == "graph"
+
+    def test_all_named_styles_resolve(self) -> None:
+        for name in MINIMAP_STYLES:
+            assert resolve_preferences({"minimap_style": name}).minimap_style == name
+
+    def test_invalid_style_falls_back(self) -> None:
+        assert (
+            resolve_preferences({"minimap_style": "hologram"}).minimap_style == "graph"
+        )
+
+    def test_default_not_written_and_round_trips(self) -> None:
+        assert "minimap_style" not in PlayerPreferences().to_stored()
+        prefs = resolve_preferences({"minimap_style": "compass"})
+        assert prefs.to_stored() == {"minimap_style": "compass"}
+        assert resolve_preferences(prefs.to_stored()) == prefs
+
+    def test_class_in_context(self) -> None:
+        ctx = resolve_preferences({"minimap_style": "compass"}).to_context()["prefs"]
+        assert ctx["minimap_class"] == "minimap-compass"
 
 
 class TestSeparateChat:

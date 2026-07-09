@@ -501,3 +501,12 @@ body.reduced-motion.theme-classic-amber::after { display: none; }
     caret-color: var(--lc-accent);
 }
 .classic-input::placeholder { color: var(--lc-text-muted); opacity: 0.7; }
+
+/* Minimap style toggle (Sprint 59). The minimap partial renders BOTH a graph
+   node-map (.mm-graph) and a compass exit-star (.mm-compass); the player's
+   `minimap-<style>` body class (default `minimap-graph`) shows exactly one.
+   Both are plain blocks filling the (square) minimap pane; the compass SVG uses
+   preserveAspectRatio="meet" so it scales down to fit rather than overflowing. */
+.mm-compass { display: none; }
+body.minimap-compass .mm-graph { display: none; }
+body.minimap-compass .mm-compass { display: block; }

@@ -2,7 +2,26 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
-## [0.50.0] - 2026-07-09
+## [0.50.1] - 2026-07-09
+
+### Added
+
+- **Switchable minimap style (Sprint 59.4).** A new **Minimap style** setting: **Graph** (the
+  discovered-rooms map, default) or **Compass** — the phosphor **exit-star rose** from the design
+  canvas, where a lit spoke is an available exit you can click to move. Theme-token colours, so it
+  matches whatever theme you're on.
+
+### Fixed
+
+- **Chat lines no longer run together in the chat pane** (immersive/classic). HTMX's positional
+  out-of-band swap appends an element's *child nodes*, so the chat line's block wrapper was being
+  dropped and consecutive messages wrapped onto the same line. Each chat echo is now wrapped in an
+  OOB carrier so it lands as its own block.
+
+### Changed
+
+- **Classic mode's separate chat input is removed** — chat is sent with `say …` on the main
+  command line (the chat pane is display-only), per review.
 
 ### Added
 

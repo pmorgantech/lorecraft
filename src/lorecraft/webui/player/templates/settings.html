@@ -48,6 +48,17 @@
         </div>
 
         <div class="mb-4">
+          <label for="minimap_style" class="block text-sm text-zinc-400 mb-1">Minimap style</label>
+          <select id="minimap_style" name="minimap_style"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in minimap_style_options %}
+            <option value="{{ opt }}" {% if prefs.minimap_style == opt %}selected{% endif %}>{{ opt|title }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-zinc-500">Graph is the discovered-rooms map; Compass is the exit-star rose.</p>
+        </div>
+
+        <div class="mb-4">
           <label for="display_density" class="block text-sm text-zinc-400 mb-1">Display density</label>
           <select id="display_density" name="display_density"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">

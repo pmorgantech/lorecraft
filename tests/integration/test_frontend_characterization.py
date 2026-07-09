@@ -783,10 +783,10 @@ async def _test_classic_layout_renders_mud_terminal() -> None:
     assert 'id="chat-feed"' in html
     assert 'id="minimap"' in html
     assert 'id="vitals"' in html
-    # The command input is unique (the "/" hotkey + handleCommandSuccess key on
-    # it); the chat input reuses name="command" (rewritten to `say …` on send).
+    # A single command input — chat is sent via `say …` on that same line (the
+    # separate chat input was removed per review), so there's no second one.
     assert html.count('id="command-input"') == 1
-    assert html.count('name="command"') == 2
+    assert html.count('name="command"') == 1
     # No three-column grid panels — this is chronicle-only.
     assert "Here Now" not in html
     # Room narrated in the chronicle on load (the mud room block).
@@ -833,8 +833,52 @@ async def _test_classic_layout_command_refreshes_vitals_and_routes_chat() -> Non
         )
 
     assert status == 200
-    assert "beforeend:#chat-feed" in say_html
-    assert "chat mine" in say_html
+    # The chat echo is wrapped in an OOB *carrier* div whose content (the real
+    # .msg block) HTMX appends to #chat-feed — so each line lands as its own
+    # block instead of loose inline spans that wrap together (Sprint 59 fix).
+    assert (
+        '<div hx-swap-oob="beforeend:#chat-feed"><div class="msg chat mine' in say_html
+    )
+
+
+def test_minimap_style_toggles_graph_vs_compass() -> None:
+    anyio.run(_test_minimap_style_toggles_graph_vs_compass)
+
+
+async def _test_minimap_style_toggles_graph_vs_compass() -> None:
+    """The minimap partial renders both views; the player's minimap_style picks
+    which the `minimap-<style>` body class reveals. Default = graph (Sprint 59)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, default_html = await _http_get(
+            app, "/game", cookies={"player_id": "player-1"}
+        )
+        assert "minimap-graph" in default_html
+        # Both views are always rendered (CSS shows one).
+        assert "mm-graph" in default_html and "mm-compass" in default_html
+
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"minimap_style": "compass"}
+            db.add(player)
+            db.commit()
+        _, compass_html = await _http_get(
+            app, "/game", cookies={"player_id": "player-1"}
+        )
+
+    assert "minimap-compass" in compass_html
+    assert "minimap-graph" not in compass_html
 
 
 def test_settings_renders_and_persists_theme() -> None:

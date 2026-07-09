@@ -36,6 +36,11 @@ THEMES = ("terminal", "parchment", "slate", "immersive", "classic", "classic-amb
 # layout renders exactly as before. "classic" (Sprint 59) is the old-MUD terminal
 # arrangement: chronicle + vitals prompt on the left, minimap-over-chat on the right.
 LAYOUTS = ("standard", "ledger", "dock", "immersive", "classic")
+# Minimap rendering style (Sprint 59), emitted as a `minimap-<style>` body class
+# and toggled in the minimap partial via CSS: "graph" (the discovered-rooms
+# node-map, default) or "compass" (the phosphor exit-star rose — lit spoke =
+# available exit — from the design canvas).
+MINIMAP_STYLES = ("graph", "compass")
 DISPLAY_DENSITIES = ("comfortable", "compact")
 FEED_VERBOSITIES = ("verbose", "normal", "terse")
 TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")
@@ -58,6 +63,8 @@ class PlayerPreferences:
     theme: str = "terminal"
     # Panel arrangement (Sprint 58.5), independent of theme. Default = today.
     layout: str = "standard"
+    # Minimap rendering style (Sprint 59): graph node-map vs compass exit-star.
+    minimap_style: str = "graph"
     display_density: str = "comfortable"
     feed_verbosity: str = "normal"
     timestamp_format: str = "relative"
@@ -85,6 +92,7 @@ class PlayerPreferences:
         # Convenience booleans/classes so templates stay logic-light.
         data["theme_class"] = f"theme-{self.theme}"
         data["layout_class"] = f"layout-{self.layout}"
+        data["minimap_class"] = f"minimap-{self.minimap_style}"
         data["is_compact"] = self.display_density == "compact"
         data["density_class"] = f"density-{self.display_density}"
         data["motion_class"] = "reduced-motion" if self.reduced_motion else ""
@@ -96,6 +104,7 @@ class PlayerPreferences:
             for c in (
                 data["theme_class"],
                 data["layout_class"],
+                data["minimap_class"],
                 data["density_class"],
                 data["motion_class"],
                 data["contrast_class"],
@@ -118,6 +127,8 @@ class PlayerPreferences:
             out["theme"] = self.theme
         if self.layout != default.layout:
             out["layout"] = self.layout
+        if self.minimap_style != default.minimap_style:
+            out["minimap_style"] = self.minimap_style
         if self.display_density != default.display_density:
             out["display_density"] = self.display_density
         if self.feed_verbosity != default.feed_verbosity:
@@ -182,6 +193,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
     return PlayerPreferences(
         theme=_clean_enum(raw.get("theme"), THEMES, "terminal"),
         layout=_clean_enum(raw.get("layout"), LAYOUTS, "standard"),
+        minimap_style=_clean_enum(raw.get("minimap_style"), MINIMAP_STYLES, "graph"),
         display_density=_clean_enum(
             raw.get("display_density"), DISPLAY_DENSITIES, "comfortable"
         ),

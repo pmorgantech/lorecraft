@@ -9,36 +9,33 @@
   additional `msg-<msg_type>` class, alongside (not replacing) `type` above.
 #}
 
+{#
+  The line body (timestamp · actor · text · meta), shared by the two branches
+  below so the chat and non-chat paths can't drift.
+#}
+{% macro msg_body(msg, current_player) -%}
+    {% if msg.timestamp %}<span class="msg-ts text-[10px] text-zinc-600 font-mono mr-1.5 align-super">{{ msg.timestamp }}</span>{% endif %}
+    {% if msg.actor %}<span class="font-semibold {% if msg.actor == current_player.name %}text-emerald-400{% else %}text-amber-400{% endif %}">{{ msg.actor }}</span><span class="text-zinc-500">:</span> {% endif %}
+    <span class="text-zinc-200 whitespace-pre-line">{{ msg.text | safe }}</span>
+    {%- if msg.meta %} <span class="text-[10px] text-zinc-600 ml-1">({{ msg.meta }})</span>{% endif %}
+{%- endmacro %}
+
 {% for msg in feed_messages %}
+    {% if msg.type == 'chat' and route_chat_oob %}
     {#
-      A rendered `type == 'chat'` item is always the ACTOR'S OWN echo (see
-      ctx.chat_echoes in frontend.py) — other players' chat only ever arrives
-      client-side via WS (app.js's appendToChat), never through this Jinja
-      path — so `mine` here is unconditional, not a flag on the message dict.
-      When a chat pane exists (route_chat_oob, Sprint 58), route this item
-      there via HTMX out-of-band append instead of the main feed target.
+      Chat echo routed to the chat pane. A rendered `type == 'chat'` item is
+      always the ACTOR'S OWN echo (ctx.chat_echoes) — others' chat only ever
+      arrives client-side via WS (app.js appendToChat) — so `mine` is
+      unconditional. The OUTER div carries the OOB directive: HTMX's positional
+      OOB appends the carrier's *child nodes* into #chat-feed, so wrapping the
+      real `.msg` block here keeps each chat line on its own line (putting
+      hx-swap-oob straight on the .msg appended its loose spans, which wrapped).
     #}
+    <div hx-swap-oob="beforeend:#chat-feed"><div class="msg chat mine{% if msg.channel %} chat-{{ msg.channel }}{% endif %}" data-msg-id="{{ msg.id }}">{{ msg_body(msg, current_player) }}</div></div>
+    {% else %}
     <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat mine{% if msg.channel %} chat-{{ msg.channel }}{% endif %}{% else %}narrative{% endif %}{% if msg.msg_type %} msg-{{ msg.msg_type }}{% endif %}"
-         data-msg-id="{{ msg.id }}"
-         {% if msg.type == 'chat' and route_chat_oob %}hx-swap-oob="beforeend:#chat-feed"{% endif %}>
-
-        {% if msg.timestamp %}
-        <span class="msg-ts text-[10px] text-zinc-600 font-mono mr-1.5 align-super">{{ msg.timestamp }}</span>
-        {% endif %}
-
-        {% if msg.actor %}
-            <span class="font-semibold {% if msg.actor == current_player.name %}text-emerald-400{% else %}text-amber-400{% endif %}">
-                {{ msg.actor }}
-            </span>
-            <span class="text-zinc-500">:</span>
-        {% endif %}
-
-        <span class="text-zinc-200 whitespace-pre-line">{{ msg.text | safe }}</span>
-
-        {% if msg.meta %}
-            <span class="text-[10px] text-zinc-600 ml-1">({{ msg.meta }})</span>
-        {% endif %}
-    </div>
+         data-msg-id="{{ msg.id }}">{{ msg_body(msg, current_player) }}</div>
+    {% endif %}
 {% else %}
     {# nothing new #}
 {% endfor %}
