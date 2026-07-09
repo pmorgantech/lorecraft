@@ -129,6 +129,23 @@ with 1d's chronicle" framing. Phase 1 lands first and stands alone; Phase 2 buil
 
 ---
 
+## Sprint 59 — Classic mode (old-MUD CRT terminal)
+
+**Goal:** integrate the new **"Classic" mode** (design source: the `Lorecraft Client (standalone).html`
+canvas; clean framework-free spec committed as [`classic-export/`](classic-export/)) — a pure
+old-MUD phosphor-CRT terminal. Added
+**alongside** the existing themes/layouts (per review — nothing removed), so it slots onto the same
+two orthogonal axes: a **theme** (CRT palette) and a **layout** (MUD arrangement). Reuses the
+chronicle-narration machinery from Sprint 58.13 (immersive), which classic also needs.
+
+| # | Task | Status |
+|---|------|--------|
+| 59.1 | **Classic CRT themes.** Add `classic` (phosphor green) + `classic-amber` to `THEMES`: token overrides from the `classic-export` palette, a text-shadow **phosphor glow**, and a fixed **scanline overlay** (`::after`, `z-index:40` under the modals; suppressed under `reduced-motion`). Caught by the shared `:not(.theme-terminal)` remap like every other theme. | [x] `body.theme-classic{,-amber}` token blocks + glow + CRT overlay in `custom.css`. |
+| 59.2 | **Classic layout.** Add `classic` to `LAYOUTS`: a purpose-built shell (`partials/game_classic.html`) — chronicle (`#feed`) + vitals prompt + command input on the left, a ~420px **minimap-over-chat** column on the right (chat has its own input that rewrites `command`→`say …` via `htmx:configRequest`). Chronicle-only, so it drops room/inventory/players/quests and reuses the MUD room-narration (`MUD_CHRONICLE_LAYOUTS = ("immersive","classic")`) + own-chat→pane routing (`route_chat_oob`). `game.html` branches `#main-content`, the mobile tab bar, and the full-width command bar on `layout == 'classic'`. | [x] `game_classic.html`; `game.html` three-way branch; shared `#feed`/`#chat-feed`/`#minimap`/`#command-input` ids preserved so WS/OOB/hotkeys keep working. |
+| 59.3 | **Vitals prompt + polish + tests + docs.** A real **vitals line** in the prompt (`session.vitals_snapshot`: fatigue meter as stamina + carried coins via the ledger — Lorecraft has no HP/MP/MV, so surface real meters; OOB-refreshed each command). Nicer picker labels (`classic-amber` → "Classic Amber"). Render + command tests; user guide + changelog. | [x] `partials/vitals.html`; `#vitals` OOB refresh in `handle_command`; `test_classic_layout_renders_mud_terminal`, `test_classic_layout_command_refreshes_vitals_and_routes_chat`; existing parametrized `TestTheme`/`TestLayout` auto-cover the new enum values. |
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -163,12 +180,13 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 - **Drafted, not started:** 56 (structured output-type tagging), 57 (request tracing & crash
   reports) — scoped above 2026-07-08 from the same gap in the numbering left by the earlier
   combat renumber.
-- **In progress:** 58 (selectable client themes & layouts) — scoped above 2026-07-08.
-- **Reserved but never used:** 59–60 (remainder of the gap from an earlier combat renumber).
+- **In progress:** 58 (selectable client themes & layouts) + 59 (classic old-MUD CRT mode) —
+  scoped above 2026-07-08/09.
+- **Reserved but never used:** 60 (remainder of the gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat
   testing, PvP consent), 65 (multiplayer trade/transit tests). Don't reuse these numbers for
   unrelated work — restore under fresh numbers if that work returns.
-- **Next new sprint after 58: 59.** Don't recycle a number that appears here or in
+- **Next new sprint after 59: 60.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---

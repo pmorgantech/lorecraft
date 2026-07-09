@@ -356,6 +356,63 @@ body.theme-parchment .text-red-400,
 body.theme-parchment .text-red-300 { color: #9b2c2c; }
 body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08); }
 
+/* Classic — phosphor-CRT old-MUD palettes (Sprint 59). Green (default) + amber,
+   from docs/classic-export. Monospace throughout, plus a phosphor glow and a
+   scanline overlay (below). Caught by the shared `:not(.theme-terminal)` remap
+   above like the other themes, so raw literals route through these tokens too. */
+body.theme-classic {
+    --lc-bg: #060a07;
+    --lc-panel: #0a140d;
+    --lc-panel-light: #0e1c13;
+    --lc-border: #163021;
+    --lc-accent: #7dd08a;
+    --lc-accent-strong: #dff6e2;
+    --lc-text: #7dd08a;
+    --lc-text-muted: #5f9f72;
+    --lc-highlight: #e0c56a;
+    --lc-font-body: 'IBM Plex Mono', ui-monospace, monospace;
+    --lc-font-head: 'IBM Plex Mono', ui-monospace, monospace;
+}
+body.theme-classic-amber {
+    --lc-bg: #0a0705;
+    --lc-panel: #140f0a;
+    --lc-panel-light: #1c150c;
+    --lc-border: #2e2110;
+    --lc-accent: #e0b24a;
+    --lc-accent-strong: #ffe6a8;
+    --lc-text: #e0b24a;
+    --lc-text-muted: #9a7a34;
+    --lc-highlight: #f0c96a;
+    --lc-font-body: 'IBM Plex Mono', ui-monospace, monospace;
+    --lc-font-head: 'IBM Plex Mono', ui-monospace, monospace;
+}
+/* Phosphor glow on the body text. */
+body.theme-classic,
+body.theme-classic-amber {
+    text-shadow: 0 0 2px color-mix(in srgb, var(--lc-accent) 30%, transparent);
+}
+/* CRT scanline overlay + edge vignette, drawn over everything but below the
+   z-50 modals. Fixed + pointer-events:none so it never intercepts clicks.
+   Suppressed under reduced-motion as a low-vision / low-distraction opt-out. */
+body.theme-classic::after,
+body.theme-classic-amber::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent 0,
+        transparent 2px,
+        rgba(0, 0, 0, 0.16) 3px
+    );
+    opacity: 0.5;
+    box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.6);
+}
+body.reduced-motion.theme-classic::after,
+body.reduced-motion.theme-classic-amber::after { display: none; }
+
 /* =======================================================================
    Selectable layouts (Sprint 58.5+)
    -----------------------------------------------------------------------
@@ -412,14 +469,35 @@ body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08
     }
     body.layout-immersive .game-col > div { border-color: transparent; }
 
-    /* Old-school-MUD chronicle (Sprint 58): plain scrolling text, no per-line
+    /* Old-school-MUD chronicle (Sprint 58/59): plain scrolling text, no per-line
        colour gutter or timestamp — just the words, like a telnet MUD client.
+       Shared by immersive and classic (both are chronicle-only MUD views).
        Scoped to #feed only (id specificity beats the .msg.<type> border-color
        rules in feed_items.html, all of which are 2 plain classes) so the
        #chat-feed pane (and its own mine/right-bar styling) is unaffected. */
-    body.layout-immersive #feed .msg {
+    body.layout-immersive #feed .msg,
+    body.layout-classic #feed .msg {
         border-left-width: 0;
         padding-left: 0;
     }
-    body.layout-immersive #feed .msg-ts { display: none; }
+    body.layout-immersive #feed .msg-ts,
+    body.layout-classic #feed .msg-ts { display: none; }
 }
+
+/* Classic layout (Sprint 59): a purpose-built old-MUD shell (see game.html's
+   `layout == 'classic'` branch) — chronicle + vitals prompt on the left, a
+   ~420px minimap-over-chat column on the right — so it needs almost no reflow
+   of the standard grid. These few rules cover the bits Tailwind utilities
+   can't express inline. Applies at all widths (the shell stacks itself below
+   the lg breakpoint via responsive classes in the template). */
+.classic-input {
+    flex: 1;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--lc-accent-strong);
+    font-family: var(--lc-font-body);
+    text-shadow: inherit;
+    caret-color: var(--lc-accent);
+}
+.classic-input::placeholder { color: var(--lc-text-muted); opacity: 0.7; }

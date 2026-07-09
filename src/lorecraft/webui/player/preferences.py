@@ -27,13 +27,15 @@ from lorecraft.types import JsonObject
 # Colour + typography themes (Sprint 58.1). Each maps to a `theme-<name>` body
 # class and a CSS-variable token set in static/css/custom.css. "terminal" is the
 # default and reproduces today's zinc/emerald look, so an account that never
-# picks a theme renders exactly as before.
-THEMES = ("terminal", "parchment", "slate", "immersive")
+# picks a theme renders exactly as before. "classic"/"classic-amber" (Sprint 59)
+# are the phosphor-CRT old-MUD palettes (green / amber) with scanlines + glow.
+THEMES = ("terminal", "parchment", "slate", "immersive", "classic", "classic-amber")
 # Panel-arrangement layouts (Sprint 58.5), a *second, independent* axis from
 # theme. Each maps to a `layout-<name>` body class. "standard" is the default
 # and reproduces today's three-column grid, so an account that never picks a
-# layout renders exactly as before.
-LAYOUTS = ("standard", "ledger", "dock", "immersive")
+# layout renders exactly as before. "classic" (Sprint 59) is the old-MUD terminal
+# arrangement: chronicle + vitals prompt on the left, minimap-over-chat on the right.
+LAYOUTS = ("standard", "ledger", "dock", "immersive", "classic")
 DISPLAY_DENSITIES = ("comfortable", "compact")
 FEED_VERBOSITIES = ("verbose", "normal", "terse")
 TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")

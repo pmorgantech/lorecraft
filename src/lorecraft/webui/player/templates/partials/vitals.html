@@ -1,0 +1,9 @@
+{#
+  Classic-layout vitals line (Sprint 59). Inner content only — the #vitals
+  container (and the OOB-refresh wrapper in the /command response) include this.
+  Real meters, not invented MUD stats: `stamina` = the fatigue meter (omitted
+  if that feature is off), plus carried `coins`. See session.vitals_snapshot().
+#}
+<span class="text-text-muted">[</span>
+{% if vitals and vitals.stamina_max %}<span class="text-accent">STA {{ vitals.stamina_current }}/{{ vitals.stamina_max }}</span>&nbsp;<span class="text-text-muted">&middot;</span>&nbsp;{% endif %}<span class="text-amber-400">{{ (vitals.coins if vitals else 0) }} coin{{ '' if (vitals and vitals.coins == 1) else 's' }}</span>
+<span class="text-text-muted">]</span>

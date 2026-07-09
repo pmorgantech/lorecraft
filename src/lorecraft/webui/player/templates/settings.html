@@ -30,7 +30,7 @@
           <select id="theme" name="theme" x-model="theme" @change="applyPreview()"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
             {% for opt in theme_options %}
-            <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|replace('-', ' ')|title }}</option>
             {% endfor %}
           </select>
           <p class="mt-1 text-xs text-zinc-500">Colour &amp; typography. Terminal is the classic green-on-black look.</p>
@@ -41,7 +41,7 @@
           <select id="layout" name="layout" x-model="layout" @change="applyPreview()"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
             {% for opt in layout_options %}
-            <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|replace('-', ' ')|title }}</option>
             {% endfor %}
           </select>
           <p class="mt-1 text-xs text-zinc-500">Panel arrangement. Standard is the classic three-column grid.</p>

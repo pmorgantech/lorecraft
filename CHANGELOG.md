@@ -2,7 +2,20 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
-## [0.49.4] - 2026-07-08
+## [0.50.0] - 2026-07-09
+
+### Added
+
+- **Classic mode — an old-school MUD CRT terminal (Sprint 59).** A new client "look", added
+  alongside the existing ones (nothing removed), on the same two axes:
+  - Two **CRT themes** — **Classic** (phosphor green) and **Classic Amber** — with a soft glow
+    and a scanline overlay (suppressed under Reduce Motion).
+  - A **Classic layout** — the chronicle with a **vitals line + command prompt** fills the left,
+    and a **minimap over a chat channel** (with its own input) sits on the right. Chronicle-only
+    like Immersive: it drops the room/inventory/players/quests panels and narrates the room as
+    plain text instead. The vitals line shows real meters — stamina (fatigue) and carried coins,
+    since Lorecraft has no HP/MP/MV — refreshed after each command.
+- Theme/layout picker labels now read nicely (e.g. **Classic Amber** instead of "Classic-amber").
 
 ### Added
 

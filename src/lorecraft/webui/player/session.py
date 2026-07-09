@@ -364,6 +364,34 @@ def world_time_snapshot(room_repo: RoomRepo) -> dict[str, Any]:
     }
 
 
+CLASSIC_LAYOUT = "classic"
+# Layouts whose chronicle is the whole UI (no room/players panels), so movement
+# and look must narrate the room as plain text instead. See rendering.mud_*.
+MUD_CHRONICLE_LAYOUTS = ("immersive", "classic")
+
+
+def vitals_snapshot(
+    session: DBSession, meters: MeterService, player_id: str
+) -> dict[str, Any]:
+    """Compact vitals for the classic-layout prompt (Sprint 59): carried coins
+    and the fatigue meter as "stamina". Lorecraft has no HP/MP/MV, so this
+    surfaces the real meters instead of inventing MUD stats. Degrades
+    gracefully — a missing fatigue MeterDef (feature disabled) just omits
+    stamina; only coins (always available via the ledger) is guaranteed."""
+    from lorecraft.engine.services.ledger import LedgerService
+
+    out: dict[str, Any] = {
+        "coins": LedgerService().balance_of(session, "player", player_id)
+    }
+    try:
+        meter = meters.get(session, "player", player_id, "fatigue")
+        out["stamina_current"] = int(round(meter.current))
+        out["stamina_max"] = int(round(meter.maximum))
+    except Exception:  # pragma: no cover - only when fatigue feature is disabled
+        pass
+    return out
+
+
 def format_idle_duration(seconds: float) -> str:
     """Compact idle label for the Here Now panel."""
     total_minutes = max(0, int(seconds // 60))

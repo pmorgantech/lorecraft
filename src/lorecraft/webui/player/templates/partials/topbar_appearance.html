@@ -17,7 +17,7 @@
           hx-post="/settings/appearance" hx-trigger="change" hx-swap="none"
           class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300 focus:border-emerald-600 outline-none">
     {% for opt in theme_options %}
-    <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+    <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|replace('-', ' ')|title }}</option>
     {% endfor %}
   </select>
   <select name="layout" aria-label="Layout"
@@ -26,7 +26,7 @@
           hx-on::after-request="window.location.reload()"
           class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300 focus:border-emerald-600 outline-none">
     {% for opt in layout_options %}
-    <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+    <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|replace('-', ' ')|title }}</option>
     {% endfor %}
   </select>
 </div>

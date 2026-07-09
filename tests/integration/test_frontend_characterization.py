@@ -747,6 +747,96 @@ async def _test_immersive_own_chat_routes_to_chat_pane() -> None:
     assert "beforeend:#chat-feed" not in standard_html
 
 
+def test_classic_layout_renders_mud_terminal() -> None:
+    anyio.run(_test_classic_layout_renders_mud_terminal)
+
+
+async def _test_classic_layout_renders_mud_terminal() -> None:
+    """Classic is a purpose-built old-MUD shell (Sprint 59): one chronicle
+    (#feed) with a vitals prompt + command input, a chat pane (#chat-feed) with
+    its own input, and a minimap — no room/players/inventory panels. The
+    chronicle narrates the room as plain text (shared with immersive, tagged
+    msg_type=room_event)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "classic", "theme": "classic"}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "layout-classic" in html and "theme-classic" in html
+    # Chronicle + its own command prompt, chat pane + its own input, minimap.
+    assert 'id="feed"' in html
+    assert 'id="chat-feed"' in html
+    assert 'id="minimap"' in html
+    assert 'id="vitals"' in html
+    # The command input is unique (the "/" hotkey + handleCommandSuccess key on
+    # it); the chat input reuses name="command" (rewritten to `say …` on send).
+    assert html.count('id="command-input"') == 1
+    assert html.count('name="command"') == 2
+    # No three-column grid panels — this is chronicle-only.
+    assert "Here Now" not in html
+    # Room narrated in the chronicle on load (the mud room block).
+    assert "msg-room_event" in html
+
+
+def test_classic_layout_command_refreshes_vitals_and_routes_chat() -> None:
+    anyio.run(_test_classic_layout_command_refreshes_vitals_and_routes_chat)
+
+
+async def _test_classic_layout_command_refreshes_vitals_and_routes_chat() -> None:
+    """In classic, every command OOB-refreshes the vitals line, and the actor's
+    own chat echo routes into the chat pane (Sprint 59)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "classic"}
+            db.add(player)
+            db.commit()
+
+        status, look_html = await _http_post_form(
+            app, "/command", form={"command": "look"}, cookies={"player_id": "player-1"}
+        )
+        assert status == 200
+        assert 'id="vitals" hx-swap-oob' in look_html
+
+        status, say_html = await _http_post_form(
+            app,
+            "/command",
+            form={"command": "say hello"},
+            cookies={"player_id": "player-1"},
+        )
+
+    assert status == 200
+    assert "beforeend:#chat-feed" in say_html
+    assert "chat mine" in say_html
+
+
 def test_settings_renders_and_persists_theme() -> None:
     anyio.run(_test_settings_renders_and_persists_theme)
 

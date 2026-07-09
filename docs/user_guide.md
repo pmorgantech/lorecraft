@@ -72,6 +72,8 @@ saved to your account, so they follow you to any device you log in from.
 | **Slate** | A modern dark app with a cyan accent and a clean sans-serif face. |
 | **Immersive** | A cinematic, low-glare dark theme lit in warm amber. |
 | **Parchment** | A warm, light "old book" theme — serif prose with monospace commands. |
+| **Classic** | A phosphor-green CRT terminal — scanlines and a soft glow, like an old text game. |
+| **Classic Amber** | The same CRT terminal, in amber phosphor. |
 
 The theme only changes colours and fonts; every panel and command works the same in all of them.
 
@@ -83,6 +85,7 @@ The theme only changes colours and fonts; every panel and command works the same
 | **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either title bar to roll it open; the other rolls shut). |
 | **Dock** | The same panels as floating, rounded "cards", with the window-shade Inventory/Quests rail. |
 | **Immersive** | A focused, cinematic view: a slim left column with **chat on top and the minimap below**, and the chronicle takes the rest of the screen — there's no third column at all. |
+| **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chronicle-only like Immersive. Pairs naturally with the **Classic** theme, but works under any theme. |
 
 In every layout except immersive, **Inventory and Quests share one pane** — only one is shown at a
 time, so the sidebar stays compact. (Immersive drops the room, inventory, players and quest panels

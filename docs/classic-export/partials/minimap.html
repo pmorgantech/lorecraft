@@ -1,0 +1,34 @@
+<!--
+  partials/minimap.html  —  replace #minimap innerHTML when the player moves.
+  Return via hx-swap-oob from a movement response, e.g.:
+      <div id="minimap" hx-swap-oob="true"> …this svg… </div>
+
+  Wiring: draw a spoke in the LIT colour (#7dd08a) for every available exit,
+  and in the DIM colour (#173a25) for directions with no exit. The four
+  <polygon> arrowheads follow their spokes. 'u' / 'd' mark up / down.
+-->
+<svg viewBox="0 0 200 200">
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#12281a" stroke-width="1"/>
+  <!-- diagonals (decorative, dim) -->
+  <line x1="100" y1="100" x2="150" y2="50" stroke="#173a25" stroke-width="1.5"/>
+  <line x1="100" y1="100" x2="50" y2="50" stroke="#173a25" stroke-width="1.5"/>
+  <line x1="100" y1="100" x2="150" y2="150" stroke="#173a25" stroke-width="1.5"/>
+  <line x1="100" y1="100" x2="50" y2="150" stroke="#173a25" stroke-width="1.5"/>
+  <!-- cardinal spokes: swap stroke to #173a25 when that exit is absent -->
+  <line x1="100" y1="100" x2="100" y2="44" stroke="#7dd08a" stroke-width="2.5"/>
+  <line x1="100" y1="100" x2="100" y2="156" stroke="#7dd08a" stroke-width="2.5"/>
+  <line x1="100" y1="100" x2="156" y2="100" stroke="#7dd08a" stroke-width="2.5"/>
+  <line x1="100" y1="100" x2="44" y2="100" stroke="#7dd08a" stroke-width="2.5"/>
+  <polygon points="100,36 93,50 107,50" fill="#7dd08a"/>
+  <polygon points="100,164 93,150 107,150" fill="#7dd08a"/>
+  <polygon points="164,100 150,93 150,107" fill="#7dd08a"/>
+  <polygon points="36,100 50,93 50,107" fill="#7dd08a"/>
+  <text x="100" y="26" text-anchor="middle" font-family="monospace" font-size="14" fill="#b8f5c0">N</text>
+  <text x="100" y="192" text-anchor="middle" font-family="monospace" font-size="14" fill="#b8f5c0">S</text>
+  <text x="184" y="106" text-anchor="middle" font-family="monospace" font-size="14" fill="#b8f5c0">E</text>
+  <text x="16" y="106" text-anchor="middle" font-family="monospace" font-size="14" fill="#b8f5c0">W</text>
+  <text x="150" y="46" font-family="monospace" font-size="11" fill="#4a7a55">u</text>
+  <text x="46" y="158" font-family="monospace" font-size="11" fill="#4a7a55">d</text>
+  <circle cx="100" cy="100" r="9" fill="#7dd08a"/>
+  <circle cx="100" cy="100" r="15" fill="none" stroke="#7dd08a" stroke-opacity=".35" stroke-width="1.5"/>
+</svg>

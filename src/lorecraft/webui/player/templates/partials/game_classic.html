@@ -1,0 +1,70 @@
+{#
+  Classic layout — old-MUD terminal (Sprint 59). Chronicle + vitals prompt on
+  the left; a ~420px minimap-over-chat column on the right. Chronicle-only, like
+  immersive: the room/inventory/players/quests panels are dropped and the
+  chronicle narrates the room instead (frontend.py's mud_room_block fires for
+  immersive AND classic). Stacks vertically below the lg breakpoint.
+
+  Reuses the shared ids the rest of the app keys on: #feed (chronicle),
+  #chat-feed (chat pane), #minimap (OOB movement swap), #vitals (OOB refresh),
+  #command-input (the "/" focus hotkey + handleCommandSuccess). Pairs naturally
+  with the classic / classic-amber CRT themes but works under any theme.
+#}
+<div id="main-content" role="main" aria-label="Game screen"
+     class="flex-1 flex flex-col lg:flex-row overflow-hidden h-full min-h-0">
+
+    <!-- MAIN: chronicle + vitals + command prompt -->
+    <main class="flex-1 flex flex-col min-h-0 lg:border-r border-border">
+        <div id="feed"
+             role="log" aria-live="polite" aria-label="Game narrative log"
+             class="flex-1 overflow-y-auto p-4 space-y-2 text-sm leading-relaxed bg-feed-bg scroll-smooth"
+             data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
+            {% include "partials/feed_items.html" %}
+        </div>
+
+        <form class="flex-none px-4 py-3 border-t border-border"
+              hx-post="/command" hx-target="#feed" hx-swap="beforeend"
+              hx-on::after-request="handleCommandSuccess(this)">
+            <div id="vitals" class="mb-1.5 text-xs">{% include "partials/vitals.html" %}</div>
+            <div class="flex items-center gap-2 text-sm">
+                <span class="text-accent">&gt;</span>
+                <input name="command" id="command-input" autocomplete="off" spellcheck="false"
+                       placeholder="type a command…" aria-label="command" class="classic-input">
+            </div>
+        </form>
+    </main>
+
+    <!-- SIDE: minimap over chat -->
+    <aside class="flex-none flex flex-col min-h-0 h-72 border-t border-border
+                  lg:h-auto lg:w-[26rem] lg:border-t-0">
+        {% if 'minimap' not in prefs.hidden_panels %}
+        <section class="flex-none border-b border-border p-2">
+            <div class="w-full max-w-[15rem] mx-auto aspect-square">
+                {% include "partials/minimap.html" %}
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="flex-1 flex flex-col min-h-0">
+            <div class="px-4 py-2 text-[11px] tracking-[0.2em] text-text-muted">── CHAT ──</div>
+            <div id="chat-feed"
+                 role="log" aria-live="polite" aria-label="Chat log"
+                 class="flex-1 overflow-y-auto px-4 pb-2 space-y-1 text-sm leading-relaxed scroll-smooth"></div>
+            {#
+              The chat input sends on the `say` channel: htmx:configRequest
+              rewrites `command` -> `say <message>` just before the POST, so it
+              reuses /command (no new endpoint). The actor's own echo routes to
+              #chat-feed via the feed_items OOB (route_chat_oob is on for
+              classic); other players' chat arrives client-side over WS.
+            #}
+            <form class="flex-none px-4 py-2 border-t border-border flex items-center gap-2 text-sm"
+                  hx-post="/command" hx-target="#feed" hx-swap="beforeend"
+                  hx-on::config-request="if(event.detail.parameters.command){event.detail.parameters.command='say '+event.detail.parameters.command}"
+                  hx-on::after-request="this.reset()">
+                <span class="text-accent">chat&gt;</span>
+                <input name="command" autocomplete="off" placeholder="message…"
+                       aria-label="chat message" class="classic-input">
+            </form>
+        </section>
+    </aside>
+</div>

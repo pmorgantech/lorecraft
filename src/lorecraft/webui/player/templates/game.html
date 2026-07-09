@@ -10,7 +10,11 @@
     mapModalOpen: false,
     mobileTab: 'feed'
 }">
-    <!-- Main game area -->
+    <!-- Main game area. The classic layout is a purpose-built old-MUD shell
+         (its own partial); every other layout uses the three-column grid below. -->
+    {% if prefs.layout == 'classic' %}
+    {% include "partials/game_classic.html" %}
+    {% else %}
     <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
         <!-- LEFT SIDEBAR: Room + Minimap (Chat + Minimap in immersive) -->
@@ -220,6 +224,7 @@
             class="flex-1 py-2 border-t-2 transition-colors">Players</button>
         {% endif %}
     </div>
+    {% endif %}{# end non-classic main area #}
 
     <!-- Full-screen map modal (Sprint 26.1) -->
     <div
@@ -244,7 +249,9 @@
 
     {% include "partials/dialogue.html" %}
 
-    <!-- COMMAND INPUT BAR (fixed bottom) -->
+    <!-- COMMAND INPUT BAR (fixed bottom). The classic layout carries its own
+         prompt inside the chronicle column, so the full-width bar is skipped. -->
+    {% if prefs.layout != 'classic' %}
     <div class="border-t border-zinc-800 bg-zinc-900 p-3">
         <form id="command-form"
               hx-post="/command"
@@ -290,6 +297,7 @@
             <div class="hidden md:block">Connected • <span class="text-emerald-600">low latency</span></div>
         </div>
     </div>
+    {% endif %}{# end non-classic command bar #}
 
     <!-- Help overlay (Alpine controlled) -->
     <div x-show="showHelp"

@@ -67,6 +67,7 @@ from lorecraft.webui.player.rendering import (
 )
 from lorecraft.webui.player.session import (
     CommandResult,
+    MUD_CHRONICLE_LAYOUTS,
     expire_grace_periods,
     get_app_state,
     get_bus,
@@ -84,6 +85,7 @@ from lorecraft.webui.player.session import (
     set_player_session_cookie,
     clear_player_session_cookie,
     active_quests_snapshot,
+    vitals_snapshot,
     world_time_snapshot,
 )
 
@@ -460,7 +462,11 @@ async def game_screen(
 
         feed_messages = [audit_to_feed(e, player) for e in reversed(feed_events)]
 
-        if not feed_messages and current_room and prefs.layout != "immersive":
+        if (
+            not feed_messages
+            and current_room
+            and prefs.layout not in MUD_CHRONICLE_LAYOUTS
+        ):
             feed_messages = [
                 {
                     "id": "welcome",
@@ -483,11 +489,11 @@ async def game_screen(
             player_repo,
         )
 
-        # Immersive layout drops the dedicated room/players panels in favour of
-        # a dominant chronicle, so it needs their info as old-school-MUD plain
+        # The chronicle-only layouts (immersive, classic) drop the dedicated
+        # room/players panels, so they need that info as old-school-MUD plain
         # text instead — appended last (closest to the prompt), like a MUD
-        # showing you the room right after you connect (Sprint 58).
-        if prefs.layout == "immersive" and current_room:
+        # showing you the room right after you connect (Sprint 58/59).
+        if prefs.layout in MUD_CHRONICLE_LAYOUTS and current_room:
             mud_lines = mud_room_block(current_room, room_panel)
             players_line = mud_players_here_line(players_in_room)
             if players_line:
@@ -508,6 +514,14 @@ async def game_screen(
                 ),
             ]
 
+        # The classic layout's prompt shows a vitals line (real meters, not MUD
+        # stats — see vitals_snapshot). Only computed for that layout.
+        vitals = (
+            vitals_snapshot(game_db, get_meters(request), player.id)
+            if prefs.layout == "classic"
+            else None
+        )
+
         context = {
             "request": request,
             "current_player": player,
@@ -519,6 +533,7 @@ async def game_screen(
             "active_quests": active_quests,
             "dialogue": dialogue,
             "world_time": world_time,
+            "vitals": vitals,
             # Top-bar quick Theme/Layout pickers (Sprint 58, feature-flagged).
             "appearance_picker": APPEARANCE_TOPBAR,
             "theme_options": THEMES,
@@ -811,13 +826,14 @@ async def handle_command(
                     }
                 )
 
-            # Immersive layout drops the dedicated room/players panels, so it
-            # needs their info as old-school-MUD plain text instead (Sprint 58):
-            # the full room block on arrival (movement doesn't otherwise narrate
-            # the new room at all — that's normally the panel's job), or just
-            # the "who's here" line on an explicit look (which already narrates
-            # name/description/exits/items itself via ctx.messages above).
-            if prefs.layout == "immersive":
+            # The chronicle-only layouts (immersive, classic) drop the dedicated
+            # room/players panels, so they need that info as old-school-MUD plain
+            # text instead (Sprint 58/59): the full room block on arrival
+            # (movement doesn't otherwise narrate the new room at all — that's
+            # normally the panel's job), or just the "who's here" line on an
+            # explicit look (which already narrates name/description/exits/items
+            # itself via ctx.messages above).
+            if prefs.layout in MUD_CHRONICLE_LAYOUTS:
                 mud_lines: list[str] = []
                 if room_changed:
                     mud_lines.extend(mud_room_block(after_room, room_panel))
@@ -878,9 +894,13 @@ async def handle_command(
             )
 
             # A chat pane exists when separate_chat is on, or always in the
-            # immersive layout (Sprint 58) — route the actor's own chat echo
-            # there via HTMX OOB instead of the main feed (see feed_items.html).
-            route_chat_oob = prefs.separate_chat or prefs.layout == "immersive"
+            # immersive / classic layouts (Sprint 58/59) — route the actor's own
+            # chat echo there via HTMX OOB instead of the main feed (see
+            # feed_items.html).
+            route_chat_oob = prefs.separate_chat or prefs.layout in (
+                "immersive",
+                "classic",
+            )
             feed_html = templates.get_template("partials/feed_items.html").render(
                 feed_messages=result.new_feed_messages,
                 current_player=after_player,
@@ -888,6 +908,20 @@ async def handle_command(
             )
 
             response_html = feed_html
+
+            # Classic layout shows a vitals line in its prompt (Sprint 59) —
+            # OOB-refresh it each turn (stamina/coins change on rest, travel,
+            # buying, etc.), like the design's "vitals update in the same trip".
+            if prefs.layout == "classic":
+                vitals_html = templates.get_template("partials/vitals.html").render(
+                    vitals=vitals_snapshot(
+                        game_db, get_meters(request), after_player.id
+                    ),
+                )
+                response_html += (
+                    f'<div id="vitals" hx-swap-oob="true" '
+                    f'class="mb-1.5 text-xs">{vitals_html}</div>'
+                )
 
             if room_state_changed and result.new_room:
                 room_html = templates.get_template(
