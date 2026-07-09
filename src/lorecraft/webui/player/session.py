@@ -276,17 +276,24 @@ def ensure_player_session(player: Player, db: DBSession) -> str:
 # Rarity/type chip for an inventory row (Sprint 59): glyph + fixed type colours,
 # mirroring the design canvas (weapon ◆ / armour ▲ / misc ● / coin ¤). Classified
 # from item *properties* (data-driven), not name matching, except the coin case.
+# `type` is the same classification as a short tag word (Sprint 60, Dock's
+# textual inventory row: coloured name + tag + weight, no icon glyph).
 _ICO_GOLD, _ICO_CYAN, _ICO_BROWN = "#e0b64a", "#7bd3e0", "#c88a5a"
 
 
 def _item_icon(item: Any) -> dict[str, str]:
     if "coin" in (item.name or "").lower():
-        return {"glyph": "¤", "bg": "#2a2a20", "fg": _ICO_GOLD}
+        return {"glyph": "¤", "bg": "#2a2a20", "fg": _ICO_GOLD, "type": "coin"}
     if getattr(item, "wearable", False):
-        return {"glyph": "▲", "bg": "#3a2a20", "fg": _ICO_BROWN}
+        return {"glyph": "▲", "bg": "#3a2a20", "fg": _ICO_BROWN, "type": "armor"}
     if getattr(item, "slot", None):  # wielded weapon / tool / light
-        return {"glyph": "◆", "bg": "#2a3a20", "fg": _ICO_GOLD}
-    return {"glyph": "●", "bg": "#20303a", "fg": _ICO_CYAN}  # misc / consumable
+        return {"glyph": "◆", "bg": "#2a3a20", "fg": _ICO_GOLD, "type": "weapon"}
+    return {
+        "glyph": "●",
+        "bg": "#20303a",
+        "fg": _ICO_CYAN,
+        "type": "item",
+    }  # misc / consumable
 
 
 def inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, Any]]:

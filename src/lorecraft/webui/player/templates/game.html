@@ -46,11 +46,35 @@
                 {% include "partials/room_description.html" %}
             </div>
 
-            <!-- Mini-map (at bottom, size perfect - do not change) -->
+            <!-- Mini-map (at bottom, size perfect - do not change). The card
+                 chrome (border/header) lives here, not in minimap.html, which
+                 renders bare content — so this is the ONE box, continuing the
+                 Room panel above it (rounded-b-lg pairs with its rounded-t-lg,
+                 same hairline-seam pattern as the right rail). -->
             {% if 'minimap' not in prefs.hidden_panels %}
             <div class="mt-px flex-none">
-                <div class="w-full aspect-square max-h-64">
-                    {% include "partials/minimap.html" %}
+                <div class="w-full aspect-square max-h-64 bg-panel border border-border rounded-b-lg overflow-hidden flex flex-col">
+                    <div class="flex-none px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
+                        <span class="mm-title-graph">Map</span><span class="mm-title-compass">Exits</span>
+                        <div class="flex items-center gap-2">
+                            <button
+                                @click="mapModalOpen = true"
+                                hx-get="/partials/map-full"
+                                hx-target="#map-modal-content"
+                                hx-swap="innerHTML"
+                                class="text-emerald-500 hover:text-emerald-400 transition-colors"
+                                title="Full-screen map">⛶</button>
+                            <button
+                                hx-get="/partials/minimap"
+                                hx-target="#minimap"
+                                hx-swap="outerHTML"
+                                class="text-emerald-500 hover:text-emerald-400 transition-colors"
+                                title="Refresh">⟳</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-h-0">
+                        {% include "partials/minimap.html" %}
+                    </div>
                 </div>
             </div>
             {% endif %}

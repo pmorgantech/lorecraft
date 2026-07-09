@@ -1,11 +1,16 @@
 {#
-  Dock layout — modern dark "app" (Sprint 59, ported from lorecraft-export/dock).
-  Three columns of floating cards: LEFT = Location + Minimap; CENTRE = Chronicle
-  (log + command bar with a Send button); RIGHT = Party + Pack (a rarity
-  icon-grid) with a Quests footer. The base-nav Mode/Palette pickers act as the
-  "control bar". Pairs with the Slate palette. Reuses the shared ids:
-  #room-description, #minimap, #feed, #players-online, #inventory,
-  #quest-tracker, #command-input.
+  Dock layout — modern dark "app" (Sprint 59/60, ported from
+  lorecraft-export/dock). Three columns of floating cards: LEFT = Location +
+  Minimap; CENTRE = Chronicle (log + command bar with a Send button); RIGHT =
+  Party + Pack (a textual row list — coloured name + type tag + weight) with a
+  Quests footer. The base-nav Mode/Palette pickers act as the "control bar".
+  Pairs with the Slate palette. Reuses the shared ids: #room-description,
+  #minimap, #feed, #players-online, #inventory, #quest-tracker, #command-input.
+
+  The card chrome (border/radius/shadow + the `.dock-card__head` title) lives
+  HERE, not inside partials/minimap.html — matching the reference, where
+  `#minimap`/`#inventory` are always bare content and the surrounding card
+  supplies the box, so nothing double-boxes.
 #}
 <div id="main-content" role="main" aria-label="Game screen"
      class="dock flex-1 grid gap-3.5 p-3.5 overflow-hidden h-full min-h-0"
@@ -19,8 +24,15 @@
         </div>
         {% if 'minimap' not in prefs.hidden_panels %}
         <div class="dock-card flex-none overflow-hidden">
-            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">MINIMAP</span></div>
-            <div class="p-2"><div class="w-full aspect-[4/3] max-h-44">{% include "partials/minimap.html" %}</div></div>
+            <div class="dock-card__head">
+                <span class="grip">⋮⋮</span>
+                <span class="mm-title-graph t">MINIMAP</span><span class="mm-title-compass t">EXITS</span>
+                <span class="dock-card__r flex items-center gap-2">
+                    <button type="button" @click="mapModalOpen = true" hx-get="/partials/map-full" hx-target="#map-modal-content" hx-swap="innerHTML" class="hover:text-accent transition-colors" title="Full-screen map">⛶</button>
+                    <button type="button" hx-get="/partials/minimap" hx-target="#minimap" hx-swap="outerHTML" class="hover:text-accent transition-colors" title="Refresh">⟳</button>
+                </span>
+            </div>
+            <div class="mm-body-dock">{% include "partials/minimap.html" %}</div>
         </div>
         {% endif %}
     </div>
@@ -60,8 +72,9 @@
         </div>
         {% endif %}
         {% if 'inventory' not in prefs.hidden_panels %}
+        {% set pack_count = inventory | sum(attribute='quantity') if inventory else 0 %}
         <div class="dock-card flex-1 min-h-0 flex flex-col overflow-hidden">
-            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">PACK</span><span class="dock-card__r">{% if encumbrance %}{{ encumbrance.current }}/{{ encumbrance.capacity }}{% endif %}</span></div>
+            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">PACK</span><span class="dock-card__r">{{ pack_count }} item{{ '' if pack_count == 1 else 's' }}{% if encumbrance %} · {{ encumbrance.current }}/{{ encumbrance.capacity }}{% endif %}</span></div>
             {% include "partials/inventory.html" %}
             {% if 'quest_tracker' not in prefs.hidden_panels %}
             <div class="dock-quests-foot">{% include "partials/quest_tracker.html" %}</div>

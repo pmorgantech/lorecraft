@@ -20,9 +20,20 @@
             {% include "partials/room_description.html" %}
         </div>
         {% if 'minimap' not in prefs.hidden_panels %}
-        <div class="flex-none border-t border-border p-4">
-            <div class="text-[10px] tracking-[0.18em] text-text-muted mb-2">&#10022; THE KNOWN WAYS</div>
-            <div class="w-full max-w-[13rem] mx-auto aspect-square">
+        {# Bare content, no card — matches ledger__map's own reference treatment
+           (a plain top-bordered, tinted section; no nested box around the map). #}
+        <div class="flex-none border-t border-border p-4" style="background:var(--lc-panel-light)">
+            <div class="mb-2 flex items-center justify-between text-[10px] tracking-[0.18em] text-text-muted">
+                <span>&#10022; THE KNOWN WAYS</span>
+                <button
+                    @click="mapModalOpen = true"
+                    hx-get="/partials/map-full"
+                    hx-target="#map-modal-content"
+                    hx-swap="innerHTML"
+                    class="normal-case tracking-normal hover:text-accent transition-colors"
+                    title="Full-screen map">&#10726;</button>
+            </div>
+            <div class="w-full h-[7.5rem]">
                 {% include "partials/minimap.html" %}
             </div>
         </div>

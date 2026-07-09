@@ -1,30 +1,14 @@
 {#
-  Graphical mini-map (full pane size) with exits star as picture-in-picture (top-left).
-  Star uses compact monospaced layout with tucked u/d.
+  Graphical mini-map — bare content only (Sprint 60): no border, no rounded
+  corners, no header/title/buttons. Every reference mode (standard/dock/
+  e-reader/immersive/classic) keeps `#minimap` as plain content and puts the
+  card chrome + title + any refresh/expand controls in the SURROUNDING
+  per-mode template instead — so nothing double-boxes when a mode already
+  wraps this include in its own card. Star uses compact monospaced layout with
+  tucked u/d.
 #}
 
-<div id="minimap" class="bg-panel border border-border rounded-lg overflow-hidden flex flex-col w-full h-full">
-    <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-        {# Label follows the active view (the body renders both; CSS shows one). #}
-        <span class="mm-title-graph">Map</span><span class="mm-title-compass">Exits</span>
-        <div class="flex items-center gap-2">
-            <button
-                @click="mapModalOpen = true"
-                hx-get="/partials/map-full"
-                hx-target="#map-modal-content"
-                hx-swap="innerHTML"
-                class="text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
-                title="Full-screen map">⛶</button>
-            <button
-                hx-get="/partials/minimap"
-                hx-target="#minimap"
-                hx-swap="outerHTML"
-                class="text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
-                title="Refresh">⟳</button>
-        </div>
-    </div>
-
-    <div class="flex-1 bg-feed-bg overflow-hidden min-h-0">
+<div id="minimap" class="w-full h-full overflow-hidden">
         {% if current_room %}
             {% set avail = (exits or []) | map(attribute='direction') | map('lower') | list %}
             {% set has_up = 'up' in avail or 'u' in avail %}
@@ -127,5 +111,4 @@
         {% else %}
             <div class="text-text-muted text-xs italic py-4 text-center">Map data unavailable</div>
         {% endif %}
-    </div>
 </div>

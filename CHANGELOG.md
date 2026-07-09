@@ -2,6 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.52.0] - 2026-07-09
+
+### Changed
+
+- **Minimap no longer double-boxes.** An updated design reference confirmed a pattern true across
+  all five modes: the minimap (and inventory) are always *bare content* — the card border, rounding,
+  and title live in the surrounding panel, never inside the swapped fragment. Dock, E-reader, and
+  Immersive were nesting the minimap's own card inside a card that already had one (most visible in
+  E-reader, where "THE KNOWN WAYS" sat right above a second bordered, titled box). The minimap is now
+  bare everywhere; each mode supplies its own title and refresh/full-screen-map controls in its own
+  idiom instead — Standard's card header, Dock's `MINIMAP` card head, E-reader's kicker line,
+  Immersive's new floating card head, and Classic's plain `── MINIMAP ──` text.
+- **Dock's inventory is now a textual row, not an icon grid** — matching the updated reference: each
+  item's name is coloured by type (weapon/armor/utility/coin), with a small uppercase type tag and its
+  weight, rather than a grid of glyph tiles. Every other mode is unchanged (icon chip + name + weight).
+
 ## [0.51.0] - 2026-07-09
 
 ### Changed

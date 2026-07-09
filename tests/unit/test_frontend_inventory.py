@@ -44,7 +44,7 @@ def test_inventory_snapshot_groups_duplicate_items() -> None:
         snapshot = inventory_snapshot(player, ItemRepo(session))
 
     # Non-wearable, no slot → the "misc" (●) rarity chip; weight = per-unit * qty.
-    misc_icon = {"glyph": "●", "bg": "#20303a", "fg": "#7bd3e0"}
+    misc_icon = {"glyph": "●", "bg": "#20303a", "fg": "#7bd3e0", "type": "item"}
     assert snapshot == [
         {
             "id": "apple",

@@ -1,22 +1,28 @@
 {#
-  Inventory Partial. Renders TWO views from the same data — a list (default) and
-  a dock icon-grid — and CSS shows one per the `layout-<mode>` body class (see
-  custom.css `.inv-grid`/`.inv-list`). Rendering both keeps this a single OOB
-  target (#inventory) that works in every mode without passing the layout in.
-  item.icon = {glyph, bg, fg} from inventory_snapshot.
+  Inventory Partial. Renders TWO views from the same data — a list (default,
+  icon chip + name + weight) and Dock's textual row (coloured name + type tag +
+  weight, no icon glyph — ported from lorecraft-export/dock) — and CSS shows
+  one per the `layout-<mode>` body class (see custom.css `.invlist`/`.inv-list`).
+  Rendering both keeps this a single OOB target (#inventory) that works in
+  every mode without passing the layout in.
+  item.icon = {glyph, bg, fg, type} from inventory_snapshot.
 #}
 {% set item_count = inventory | sum(attribute='quantity') if inventory else 0 %}
 <div id="inventory" class="flex-1 overflow-y-auto bg-feed-bg min-h-0">
 
-    {# ---- Dock icon-grid view (rarity-coloured tiles) ---- #}
-    <div class="inv-grid">
+    {# ---- Dock textual row view (name coloured by rarity + type tag + weight) ---- #}
+    <div class="invlist">
         {% for item in inventory %}
-        <div class="inv-slot" style="border-color:{{ item.icon.fg }};color:{{ item.icon.fg }}"
-             title="{{ item.name }}{% if item.quantity and item.quantity > 1 %} ×{{ item.quantity }}{% endif %}"
-             hx-post="/command" hx-vals='{"command": "examine {{ item.name | lower }}"}' hx-target="#feed" hx-swap="beforeend">{{ item.icon.glyph }}</div>
+        <div class="invlist__row"
+             hx-post="/command" hx-vals='{"command": "examine {{ item.name | lower }}"}' hx-target="#feed" hx-swap="beforeend">
+            <span class="invlist__name" style="color:{{ item.icon.fg }}">{% if item.quantity and item.quantity > 1 %}[{{ item.quantity }}] {% endif %}{{ item.name }}</span>
+            <span class="invlist__tag">{{ item.icon.type }}</span>
+            <span class="invlist__wt">{{ item.weight }}</span>
+        </div>
         {% endfor %}
-        {% set pad = 8 - (inventory | length if inventory else 0) %}
-        {% if pad > 0 %}{% for _ in range(pad) %}<div class="inv-slot inv-slot--empty"></div>{% endfor %}{% endif %}
+        {% if not inventory %}
+        <div class="py-6 text-center text-text-muted text-xs">Your pack is empty.</div>
+        {% endif %}
     </div>
 
     {# ---- List view (rarity chip · name · weight) ---- #}

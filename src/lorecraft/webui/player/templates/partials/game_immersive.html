@@ -42,10 +42,23 @@
             {% include "partials/feed_items.html" %}
         </div>
 
-        <!-- Floating minimap card (bottom-right, above the command bar). -->
+        <!-- Floating minimap card (bottom-right, above the command bar). The
+             card chrome (border/blur/shadow) is on .immersive-map; its head is
+             a plain title + expand glyph, and #minimap below is bare content —
+             matching the reference, so nothing double-boxes. -->
         {% if 'minimap' not in prefs.hidden_panels %}
-        <div class="immersive-map absolute right-4 bottom-20 w-40">
-            <div class="w-full aspect-square">{% include "partials/minimap.html" %}</div>
+        <div class="immersive-map absolute right-4 bottom-20 w-[15.6rem]">
+            <div class="immersive-map__head flex items-center justify-between">
+                <span class="mm-title-graph">MAP</span><span class="mm-title-compass">EXITS</span>
+                <button
+                    @click="mapModalOpen = true"
+                    hx-get="/partials/map-full"
+                    hx-target="#map-modal-content"
+                    hx-swap="innerHTML"
+                    class="hover:text-accent transition-colors"
+                    title="Full-screen map">&#10726;</button>
+            </div>
+            <div class="w-full h-[9.375rem]">{% include "partials/minimap.html" %}</div>
         </div>
         {% endif %}
 

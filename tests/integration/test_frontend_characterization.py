@@ -527,10 +527,10 @@ async def _test_inventory_and_quests_share_right_rail() -> None:
     assert "Show Quests" in results["standard"]
     assert "rail = (rail ===" in results["standard"]
     # Dock is a bespoke card shell — no windowshade accordion; the Pack card
-    # holds inventory, and the icon-grid view is present for it.
+    # holds inventory, and the textual invlist row view is present for it.
     assert "rail = 'quests'" not in results["dock"]
     assert "dock-card" in results["dock"]
-    assert "inv-grid" in results["dock"]
+    assert "invlist" in results["dock"]
 
 
 def test_immersive_layout_renders_full_bleed_shell() -> None:
@@ -941,11 +941,14 @@ def test_dock_layout_renders_card_shell() -> None:
 
 
 async def _test_dock_layout_renders_card_shell() -> None:
-    """Dock is a bespoke card shell (Sprint 59): three columns of floating
+    """Dock is a bespoke card shell (Sprint 59/60): three columns of floating
     .dock-card panels — LEFT location + minimap, CENTRE chronicle (#feed with a
-    Send button), RIGHT party + a Pack card whose inventory uses the rarity
-    icon-grid, with a Quests footer. It keeps the location panel, so no MUD
-    narration; and it is NOT the grid, so no toggle pane / mobile tab bar."""
+    Send button), RIGHT party + a Pack card whose inventory uses the textual
+    invlist row (coloured name + type tag + weight, ported from
+    lorecraft-export/dock), with a Quests footer. It keeps the location panel,
+    so no MUD narration; and it is NOT the grid, so no toggle pane / mobile tab
+    bar. #minimap itself is bare content — the card head supplies the MINIMAP
+    title, so it doesn't double-box."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -969,7 +972,7 @@ async def _test_dock_layout_renders_card_shell() -> None:
     assert "layout-dock" in html
     assert "dock-card" in html  # floating cards
     assert "dock-send" in html  # gradient Send button
-    assert "inv-grid" in html  # rarity icon-grid Pack
+    assert "invlist" in html  # Dock's textual inventory row
     assert 'id="room-description"' in html  # LEFT location card
     assert 'id="minimap"' in html
     assert html.count('id="feed"') == 1
@@ -1012,6 +1015,47 @@ async def _test_minimap_style_toggles_graph_vs_compass() -> None:
         # "Map" for graph, "Exits" for compass (never "Map" alone in compass).
         assert "mm-title-graph" in default_html and "mm-title-compass" in default_html
         assert ">Map</span>" in default_html and ">Exits</span>" in default_html
+
+
+def test_minimap_is_bare_content_no_double_box() -> None:
+    anyio.run(_test_minimap_is_bare_content_no_double_box)
+
+
+async def _test_minimap_is_bare_content_no_double_box() -> None:
+    """partials/minimap.html renders #minimap as bare content — no border, no
+    rounded corners, no header of its own (Sprint 60). Every mode's own
+    wrapping template supplies the card chrome + title instead, so a mode that
+    already wraps the include in its own card (dock, e-reader, immersive)
+    doesn't end up with a box nested inside a box. Checked across all five
+    modes since each has its own wrapper markup."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        for layout in ("standard", "dock", "e-reader", "immersive", "classic"):
+            with Session(game_engine) as db:
+                player = db.exec(select(Player).where(Player.id == "player-1")).first()
+                assert player is not None
+                player.preferences = {"layout": layout}
+                db.add(player)
+                db.commit()
+            _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+            minimap_open = html.index('id="minimap"')
+            minimap_tag = html[
+                html.rindex("<div", 0, minimap_open) : html.index(">", minimap_open)
+            ]
+            assert "border" not in minimap_tag, layout
+            assert "bg-panel" not in minimap_tag, layout
+            assert "rounded" not in minimap_tag, layout
 
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
