@@ -896,14 +896,12 @@ async def handle_command(
                 quest_changed=quest_changed,
             )
 
-            # A chat pane exists when separate_chat is on, or always in the
-            # immersive / classic layouts (Sprint 58/59) — route the actor's own
-            # chat echo there via HTMX OOB instead of the main feed (see
-            # feed_items.html).
-            route_chat_oob = prefs.separate_chat or prefs.layout in (
-                "immersive",
-                "classic",
-            )
+            # A chat pane exists when separate_chat is on, or in the classic
+            # layout's display-only channel (Sprint 58/59) — route the actor's
+            # own chat echo there via HTMX OOB instead of the main feed (see
+            # feed_items.html). Immersive folds chat INTO the full-bleed
+            # chronicle (Sprint 59.8), so it keeps the default in-feed render.
+            route_chat_oob = prefs.separate_chat or prefs.layout == "classic"
             feed_html = templates.get_template("partials/feed_items.html").render(
                 feed_messages=result.new_feed_messages,
                 current_player=after_player,

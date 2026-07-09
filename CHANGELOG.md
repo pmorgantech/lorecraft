@@ -2,7 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
-## [0.50.4] - 2026-07-09
+## [0.50.5] - 2026-07-09
+
+### Changed
+
+- **Immersive layout rebuilt as a bespoke cinematic shell** to match the design reference: a slim
+  left **icon rail** (glyph shortcuts that run Look / Inventory / Journal / Score into the log), a
+  **full-bleed chronicle**, and a **floating minimap card** + **floating command bar** hovering over
+  it (amber-lit glass under the Immersive palette). Chat now **folds into the chronicle** — no
+  separate chat pane — so your own lines and others' appear inline like an old-school MUD. The grid
+  template is simplified accordingly (it now serves only Standard).
 
 ### Changed
 

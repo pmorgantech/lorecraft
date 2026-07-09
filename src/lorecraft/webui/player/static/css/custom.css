@@ -630,3 +630,59 @@ body.layout-e-reader #room-description h2 { font-size: 1.3rem; }
 @media (max-width: 1023px) {
     #main-content.dock { grid-template-columns: 1fr !important; }
 }
+
+/* =======================================================================
+   Immersive layout (Sprint 59.8) — the cinematic, full-bleed MUD. Bespoke
+   shell (partials/game_immersive.html): a slim left icon rail, a full-bleed
+   chronicle, and a floating minimap card + command bar over it. Chat folds
+   into the chronicle (no separate pane). Pairs with the amber-lit Immersive
+   palette but works under any theme (the floating chrome uses theme tokens).
+   ======================================================================= */
+.immersive-rail {
+    width: 3rem;
+    border-right: 1px solid var(--lc-border);
+    background: color-mix(in srgb, var(--lc-panel) 55%, transparent);
+}
+.immersive-ico {
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    font-size: 15px;
+    border-radius: 8px;
+    color: var(--lc-text-muted);
+    transition: color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+}
+.immersive-ico:hover {
+    color: var(--lc-accent);
+    background: color-mix(in srgb, var(--lc-accent) 12%, transparent);
+    box-shadow: 0 0 12px -4px var(--lc-accent);
+}
+/* Floating minimap card — glassy, sits above the command bar, bottom-right. */
+.immersive-map {
+    border: 1px solid color-mix(in srgb, var(--lc-accent) 30%, var(--lc-border));
+    border-radius: 12px;
+    padding: 6px;
+    background: color-mix(in srgb, var(--lc-panel) 82%, transparent);
+    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+}
+/* Floating command bar — amber-lit glass slab hovering over the chronicle. */
+.immersive-cmd {
+    padding: 0.7rem 1.1rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--lc-accent) 40%, var(--lc-border));
+    background: color-mix(in srgb, var(--lc-panel) 85%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--lc-accent) 12%, transparent),
+                0 10px 30px -8px rgba(0, 0, 0, 0.6),
+                0 0 24px -10px var(--lc-accent);
+    backdrop-filter: blur(8px);
+}
+.immersive-cmd:focus-within {
+    border-color: var(--lc-accent);
+    box-shadow: 0 0 0 1px var(--lc-accent),
+                0 10px 30px -8px rgba(0, 0, 0, 0.6),
+                0 0 30px -8px var(--lc-accent);
+}
+/* Chronicle prose stays readable full-bleed by capping the measure. */
+.immersive-feed > * { max-width: 62rem; }

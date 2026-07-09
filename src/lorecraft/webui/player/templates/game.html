@@ -10,42 +10,27 @@
     mapModalOpen: false,
     mobileTab: 'feed'
 }">
-    <!-- Main game area. Classic and E-reader are purpose-built shells (their
-         own partials); every other layout uses the three-column grid below. -->
+    <!-- Main game area. Classic, E-reader, Dock and Immersive are purpose-built
+         shells (their own partials); Standard uses the three-column grid below. -->
     {% if prefs.layout == 'classic' %}
     {% include "partials/game_classic.html" %}
     {% elif prefs.layout == 'e-reader' %}
     {% include "partials/game_ereader.html" %}
     {% elif prefs.layout == 'dock' %}
     {% include "partials/game_dock.html" %}
+    {% elif prefs.layout == 'immersive' %}
+    {% include "partials/game_immersive.html" %}
     {% else %}
     <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
-        <!-- LEFT SIDEBAR: Room + Minimap (Chat + Minimap in immersive) -->
+        <!-- LEFT SIDEBAR: Room + Minimap -->
         <div
             :class="mobileTab === 'room' ? 'flex' : 'hidden'"
             class="game-col game-col-left lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
 
-            <!-- Immersive layout: Chat fills the top of the slim left column
-                 (Minimap sits below); Room + Inventory are dropped for focus.
-                 The centre chat pane is suppressed below so #chat-pane /
-                 #chat-feed stay unique and chat routes into this one. -->
-            {% if prefs.layout == 'immersive' %}
-            <div id="chat-pane" class="flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden min-h-0">
-                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                    <span>Chat</span>
-                    <button @click="document.getElementById('chat-feed').scrollTop = document.getElementById('chat-feed').scrollHeight"
-                            class="hover:text-emerald-400 transition-colors px-1 text-[10px]">↓ bottom</button>
-                </div>
-                <div id="chat-feed" role="log" aria-live="polite" aria-label="Chat log"
-                     class="flex-1 overflow-y-auto p-3 space-y-2 text-sm leading-relaxed bg-feed-bg scroll-smooth"></div>
-            </div>
-            {% endif %}
-
-            <!-- Room Description Panel. Inventory now lives in the right rail
-                 (paired with Quests) for every layout, so the room fills the
-                 space above the minimap here. -->
-            {% if prefs.layout != 'immersive' %}
+            <!-- Room Description Panel. Inventory lives in the right rail
+                 (paired with Quests), so the room fills the space above the
+                 minimap here. -->
             <div class="game-panel-room flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden min-h-0">
                 <div class="px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Current Location</span>
@@ -60,7 +45,6 @@
                 </div>
                 {% include "partials/room_description.html" %}
             </div>
-            {% endif %}
 
             <!-- Mini-map (at bottom, size perfect - do not change) -->
             {% if 'minimap' not in prefs.hidden_panels %}
@@ -99,13 +83,11 @@
                 {% include "partials/feed_items.html" %}
             </div>
 
-            {% if prefs.separate_chat and prefs.layout != 'immersive' %}
+            {% if prefs.separate_chat %}
             <!-- Chat pane (Sprint 45): conversation split from the narrative
                  feed so chatter never scrolls room/quest/action output out of
                  view. Rendered only when the separate_chat preference is on;
-                 its presence is what routeChatMessages()/the WS handler key on.
-                 In the immersive layout the chat pane lives in the left column
-                 instead, so it is suppressed here to keep #chat-pane unique. -->
+                 its presence is what routeChatMessages()/the WS handler key on. -->
             <div id="chat-pane" class="h-1/3 min-h-28 flex flex-col border-t border-border">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Chat</span>
@@ -127,10 +109,7 @@
             </div>
         </div>
 
-        {# RIGHT SIDEBAR: Players + an Inventory/Quests pane (mutually exclusive).
-           Dropped entirely for immersive (per review) — the chronicle takes
-           that space instead; there is no third column there at all. #}
-        {% if prefs.layout != 'immersive' %}
+        {# RIGHT SIDEBAR: Players + an Inventory/Quests pane (mutually exclusive). #}
         <div
             x-data="{ rail: 'inventory' }"
             :class="mobileTab === 'players' ? 'flex' : 'hidden'"
@@ -152,7 +131,6 @@
                (x-show) so their OOB live-updates (#inventory / #quest-tracker)
                keep firing while hidden. `rail` (on the column) is the shared
                open-panel state. (The other modes are bespoke shells.) #}
-            {% if prefs.layout != 'immersive' %}
             <!-- Toggle pane (standard): one titlebar, a button flips Inventory ⇄ Quests -->
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
@@ -174,30 +152,25 @@
                 </div>
                 {% endif %}
             </div>
-            {% endif %}
         </div>
-        {% endif %}
 
     </div>
 
-    <!-- Mobile tab bar: switches which column is visible below the lg breakpoint.
-         Immersive has no Players column, so that tab is dropped there; the
-         first tab is relabelled since it holds Chat, not Room, in immersive. -->
+    <!-- Mobile tab bar (standard grid only): switches which column is visible
+         below the lg breakpoint. -->
     <div class="lg:hidden flex border-t border-zinc-800 bg-zinc-900 text-xs">
         <button
             @click="mobileTab = 'room'"
             :class="mobileTab === 'room' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
-            class="flex-1 py-2 border-t-2 transition-colors">{{ 'Chat' if prefs.layout == 'immersive' else 'Room' }}</button>
+            class="flex-1 py-2 border-t-2 transition-colors">Room</button>
         <button
             @click="mobileTab = 'feed'"
             :class="mobileTab === 'feed' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
             class="flex-1 py-2 border-t-2 transition-colors">Feed</button>
-        {% if prefs.layout != 'immersive' %}
         <button
             @click="mobileTab = 'players'"
             :class="mobileTab === 'players' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
             class="flex-1 py-2 border-t-2 transition-colors">Players</button>
-        {% endif %}
     </div>
     {% endif %}{# end grid-layout main area #}
 
@@ -224,9 +197,10 @@
 
     {% include "partials/dialogue.html" %}
 
-    <!-- COMMAND INPUT BAR (fixed bottom). The bespoke shells (classic, e-reader,
-         dock) carry their own prompt, so the full-width bar is skipped there. -->
-    {% if prefs.layout not in ['classic', 'e-reader', 'dock'] %}
+    <!-- COMMAND INPUT BAR (fixed bottom). Only the standard grid uses it — the
+         bespoke shells (classic, e-reader, dock, immersive) carry their own
+         prompt, so the full-width bar is skipped there. -->
+    {% if prefs.layout not in ['classic', 'e-reader', 'dock', 'immersive'] %}
     <div class="border-t border-zinc-800 bg-zinc-900 p-3">
         <form id="command-form"
               hx-post="/command"

@@ -1,0 +1,62 @@
+{#
+  Immersive layout — cinematic, full-bleed MUD (Sprint 59.8, ported from
+  lorecraft-export/immersive). A slim left ICON RAIL (nav glyphs that run
+  commands), a full-bleed CHRONICLE (#feed) that fills the screen, a FLOATING
+  minimap card (bottom-right), and a FLOATING command bar (bottom). Chronicle-
+  only, like classic: the room/inventory/players/quests panels are dropped and
+  the chronicle narrates the room instead (frontend.py's mud_room_block fires
+  for immersive AND classic). Chat folds INTO the chronicle here (no separate
+  pane) — route_chat_oob is off for immersive, so the actor's own echo stays in
+  #feed. Pairs naturally with the amber-lit Immersive theme but works under any.
+
+  Reuses the shared ids the rest of the app keys on: #feed (chronicle),
+  #minimap (OOB movement swap), #command-input (the "/" focus hotkey +
+  handleCommandSuccess).
+#}
+<div id="main-content" role="main" aria-label="Game screen"
+     class="immersive relative flex-1 flex overflow-hidden h-full min-h-0">
+
+    <!-- Slim left icon rail: glyph shortcuts that run a command into the feed. -->
+    <nav class="immersive-rail flex-none flex flex-col items-center gap-1 py-3"
+         aria-label="Quick actions">
+        <button type="button" class="immersive-ico" title="Look around"
+                hx-post="/command" hx-vals='{"command": "look"}' hx-target="#feed" hx-swap="beforeend"
+                hx-on::after-request="handleCommandSuccess(this)">◎</button>
+        <button type="button" class="immersive-ico" title="Inventory"
+                hx-post="/command" hx-vals='{"command": "inventory"}' hx-target="#feed" hx-swap="beforeend"
+                hx-on::after-request="handleCommandSuccess(this)">▣</button>
+        <button type="button" class="immersive-ico" title="Journal / quests"
+                hx-post="/command" hx-vals='{"command": "journal"}' hx-target="#feed" hx-swap="beforeend"
+                hx-on::after-request="handleCommandSuccess(this)">✦</button>
+        <button type="button" class="immersive-ico" title="Score / stats"
+                hx-post="/command" hx-vals='{"command": "score"}' hx-target="#feed" hx-swap="beforeend"
+                hx-on::after-request="handleCommandSuccess(this)">◆</button>
+    </nav>
+
+    <!-- Stage: full-bleed chronicle with a floating minimap + command bar. -->
+    <div class="relative flex-1 min-h-0">
+        <div id="feed"
+             role="log" aria-live="polite" aria-label="Game narrative log"
+             class="immersive-feed absolute inset-0 overflow-y-auto px-6 pt-6 pb-24 space-y-2 text-sm leading-relaxed bg-feed-bg scroll-smooth"
+             data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
+            {% include "partials/feed_items.html" %}
+        </div>
+
+        <!-- Floating minimap card (bottom-right, above the command bar). -->
+        {% if 'minimap' not in prefs.hidden_panels %}
+        <div class="immersive-map absolute right-4 bottom-20 w-40">
+            <div class="w-full aspect-square">{% include "partials/minimap.html" %}</div>
+        </div>
+        {% endif %}
+
+        <!-- Floating command bar. -->
+        <form class="immersive-cmd absolute left-4 right-4 bottom-4 flex items-center gap-3"
+              hx-post="/command" hx-target="#feed" hx-swap="beforeend"
+              hx-on::after-request="handleCommandSuccess(this)">
+            <span class="text-accent text-lg leading-none">&rsaquo;</span>
+            <input name="command" id="command-input" autocomplete="off" spellcheck="false"
+                   placeholder="What do you do?" aria-label="command"
+                   class="flex-1 bg-transparent outline-none text-sm text-text placeholder:text-text-muted">
+        </form>
+    </div>
+</div>

@@ -497,13 +497,15 @@ async def _test_inventory_and_quests_share_right_rail() -> None:
     assert "inv-grid" in results["dock"]
 
 
-def test_immersive_layout_puts_chat_in_left_column() -> None:
-    anyio.run(_test_immersive_layout_puts_chat_in_left_column)
+def test_immersive_layout_renders_full_bleed_shell() -> None:
+    anyio.run(_test_immersive_layout_renders_full_bleed_shell)
 
 
-async def _test_immersive_layout_puts_chat_in_left_column() -> None:
-    """Immersive drops Room/Inventory and puts a single Chat pane in the left
-    column (before the centre chronicle), even with separate_chat off (58.8)."""
+async def _test_immersive_layout_renders_full_bleed_shell() -> None:
+    """Immersive is a bespoke cinematic shell (Sprint 59.8): a slim left icon
+    rail, a full-bleed chronicle (#feed), and a floating minimap card + command
+    bar. Chat folds INTO the chronicle — no separate pane — and the room /
+    inventory / players / quest panels are dropped for focus."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -524,14 +526,19 @@ async def _test_immersive_layout_puts_chat_in_left_column() -> None:
             db.commit()
         _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
 
-    # Exactly one chat pane, in the left column (before the centre feed).
-    assert html.count('id="chat-pane"') == 1
-    assert html.index('id="chat-pane"') < html.index('id="feed"')
-    # Room + inventory are dropped for focus.
+    assert "layout-immersive" in html
+    assert "immersive-rail" in html  # slim left icon rail
+    assert "immersive-cmd" in html  # floating command bar
+    assert "immersive-map" in html  # floating minimap card
+    assert html.count('id="feed"') == 1  # the full-bleed chronicle
+    assert html.count('id="command-input"') == 1
+    assert 'id="minimap"' in html
+    # Chat folds into the chronicle: no separate chat pane/feed.
+    assert 'id="chat-pane"' not in html
+    assert 'id="chat-feed"' not in html
+    # Room + inventory + players + quests panels are dropped for focus.
     assert "Current Location" not in html
     assert 'id="inventory"' not in html
-    # There is no third column at all in immersive (per review) — no Here Now
-    # panel and no mobile Players tab.
     assert "Here Now" not in html
     assert ">Players</button>" not in html
 
@@ -541,8 +548,8 @@ def test_standard_layout_keeps_players_column_and_tab() -> None:
 
 
 async def _test_standard_layout_keeps_players_column_and_tab() -> None:
-    """Sanity check the inverse of the immersive test above: every other
-    layout keeps the Here Now panel + mobile Players tab (Sprint 58.8)."""
+    """Sanity check the inverse of the immersive test above: the standard grid
+    keeps the Here Now panel + mobile Players tab (Sprint 58.8)."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -691,18 +698,16 @@ async def _test_immersive_look_appends_players_here_line_only() -> None:
     assert "player-2 is here." in accompanied_html
 
 
-def test_immersive_own_chat_routes_to_chat_pane() -> None:
-    anyio.run(_test_immersive_own_chat_routes_to_chat_pane)
+def test_immersive_own_chat_folds_into_chronicle() -> None:
+    anyio.run(_test_immersive_own_chat_folds_into_chronicle)
 
 
-async def _test_immersive_own_chat_routes_to_chat_pane() -> None:
-    """The actor's own chat echo is routed into #chat-feed (via an HTMX OOB
-    append) whenever a chat pane exists — always in immersive, matching the
-    request that MY OWN chat land in that pane too, not just others' (Sprint
-    58). It's also tagged `mine` so it can be styled distinctly (right-barred/
-    right-aligned — see feed_items.html's CSS) from other players' messages,
-    which only ever arrive client-side via WS, never through this path. In
-    standard (no chat pane by default), the echo stays in the plain feed."""
+async def _test_immersive_own_chat_folds_into_chronicle() -> None:
+    """Immersive folds chat INTO the full-bleed chronicle (Sprint 59.8): the
+    actor's own chat echo stays inline in #feed — tagged `mine` for styling —
+    rather than being OOB-routed to a separate #chat-feed pane (which is what
+    classic and separate_chat do). Standard likewise keeps it in the plain
+    feed, so neither should carry the #chat-feed OOB carrier."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -729,8 +734,9 @@ async def _test_immersive_own_chat_routes_to_chat_pane() -> None:
             cookies={"player_id": "player-1"},
         )
         assert status == 200
-        assert 'hx-swap-oob="beforeend:#chat-feed"' in immersive_html
+        # Own echo is present and styled, but NOT routed to a chat pane.
         assert "chat mine" in immersive_html
+        assert "beforeend:#chat-feed" not in immersive_html
 
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
