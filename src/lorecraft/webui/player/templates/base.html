@@ -24,6 +24,17 @@
     <link rel="stylesheet" href="/static/css/custom.css">
 
     <script>
+        // Instant theme swap for the top-bar appearance picker (Sprint 58,
+        // feature-flagged). Swaps only the theme-* body class; persistence is
+        // handled separately by the picker's hx-post.
+        window.lcApplyTheme = function(theme) {
+            const b = document.body;
+            [...b.classList].forEach(function(c) {
+                if (c.indexOf('theme-') === 0) b.classList.remove(c);
+            });
+            b.classList.add('theme-' + theme);
+        };
+
         // Tailwind config - fantasy / terminal inspired dark theme
         function initializeTailwind() {
             document.documentElement.style.setProperty('--accent', '#10b981'); // emerald
@@ -117,6 +128,10 @@
         </div>
 
         <div class="flex items-center gap-4 text-xs">
+            {# Top-bar quick appearance pickers (Sprint 58, feature-flagged). #}
+            {% if appearance_picker and prefs and current_player %}
+                {% include "partials/topbar_appearance.html" %}
+            {% endif %}
             <div class="flex items-center gap-2">
                 <span class="text-zinc-500">Player:</span>
                 <span class="font-semibold text-emerald-400">{{ current_player.username if current_player else 'Guest' }}</span>

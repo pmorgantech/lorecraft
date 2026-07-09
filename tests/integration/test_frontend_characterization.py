@@ -491,6 +491,40 @@ async def _test_ledger_layout_moves_inventory_to_right_rail() -> None:
     assert "rail = 'quests'" in led
 
 
+def test_immersive_layout_puts_chat_in_left_column() -> None:
+    anyio.run(_test_immersive_layout_puts_chat_in_left_column)
+
+
+async def _test_immersive_layout_puts_chat_in_left_column() -> None:
+    """Immersive drops Room/Inventory and puts a single Chat pane in the left
+    column (before the centre chronicle), even with separate_chat off (58.8)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "immersive"}  # separate_chat off
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    # Exactly one chat pane, in the left column (before the centre feed).
+    assert html.count('id="chat-pane"') == 1
+    assert html.index('id="chat-pane"') < html.index('id="feed"')
+    # Room panel is dropped for focus.
+    assert "Current Location" not in html
+
+
 def test_settings_renders_and_persists_theme() -> None:
     anyio.run(_test_settings_renders_and_persists_theme)
 
@@ -515,7 +549,7 @@ async def _test_settings_renders_and_persists_theme() -> None:
         assert 'name="theme"' in get_html
         assert 'name="layout"' in get_html
 
-        status, post_html = await _http_post_form(
+        status, _ = await _http_post_form(
             app,
             "/settings",
             form={"theme": "parchment"},
@@ -523,12 +557,81 @@ async def _test_settings_renders_and_persists_theme() -> None:
         )
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
+        # Re-open settings to confirm the saved theme is pre-selected.
+        _, reget = await _http_get(app, "/settings", cookies={"player_id": "player-1"})
 
-    assert status == 200
+    assert status == 303
     assert player is not None
     assert player.preferences["theme"] == "parchment"
-    # The saved theme is pre-selected on the way back.
-    assert '<option value="parchment" selected>' in post_html
+    assert '<option value="parchment" selected>' in reget
+
+
+def test_topbar_appearance_pickers_render_on_game() -> None:
+    anyio.run(_test_topbar_appearance_pickers_render_on_game)
+
+
+async def _test_topbar_appearance_pickers_render_on_game() -> None:
+    """The feature-flagged top-bar Theme/Layout pickers render on /game (Sprint 58)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert 'hx-post="/settings/appearance"' in html
+    assert "lcApplyTheme" in html
+
+
+def test_appearance_endpoint_updates_only_supplied_fields() -> None:
+    anyio.run(_test_appearance_endpoint_updates_only_supplied_fields)
+
+
+async def _test_appearance_endpoint_updates_only_supplied_fields() -> None:
+    """The quick picker's endpoint persists only the field(s) it posts, leaving
+    every other preference untouched (Sprint 58)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"theme": "slate", "display_density": "compact"}
+            db.add(player)
+            db.commit()
+
+        # Change ONLY the layout via the quick endpoint.
+        status, _ = await _http_post_form(
+            app,
+            "/settings/appearance",
+            form={"layout": "ledger"},
+            cookies={"player_id": "player-1"},
+        )
+
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+
+    assert status == 204
+    assert player is not None
+    assert player.preferences["layout"] == "ledger"  # updated
+    assert player.preferences["theme"] == "slate"  # untouched
+    assert player.preferences["display_density"] == "compact"  # untouched
 
 
 def test_game_screen_hides_panel_when_preference_set() -> None:
@@ -609,7 +712,7 @@ async def _test_settings_post_persists_preferences() -> None:
     )
 
     async with _lifespan(app):
-        status, html = await _http_post_form(
+        status, _ = await _http_post_form(
             app,
             "/settings",
             form={
@@ -623,9 +726,10 @@ async def _test_settings_post_persists_preferences() -> None:
         )
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
+        # Save uses Post/Redirect/Get: it returns to /game, not the settings page.
+        _, game_html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
 
-    assert status == 200
-    assert "Preferences saved." in html
+    assert status == 303
     assert player is not None
     # Only non-default values are stored.
     assert player.preferences["display_density"] == "compact"
@@ -633,8 +737,8 @@ async def _test_settings_post_persists_preferences() -> None:
     assert player.preferences["timestamp_format"] == "clock24"
     assert player.preferences["reduced_motion"] is True
     assert player.preferences["hidden_panels"] == ["minimap"]
-    # And the rendered form reflects the saved state on the way back.
-    assert "density-compact" in html
+    # And the saved prefs render on the game screen we were redirected to.
+    assert "density-compact" in game_html
 
 
 def test_settings_post_invalid_value_falls_back_to_default() -> None:

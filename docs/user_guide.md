@@ -82,10 +82,13 @@ The theme only changes colours and fonts; every panel and command works the same
 | **Standard** *(default)* | The classic three columns: room/inventory/map, chronicle, players/quests. |
 | **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either header to swap which one is open). |
 | **Dock** | The same panels as floating, rounded "cards". |
-| **Immersive** | A low-chrome, cinematic view: the chronicle dominates, side panels slim down, and a soft vignette frames the world. |
+| **Immersive** | A focused, cinematic view: a slim left column with **chat on top and the minimap below**, and the chronicle taking the rest of the screen (room, inventory, players and quests are hidden for focus). |
 
-Theme and layout **preview live** as you change the dropdowns — click **Save preferences** to
-keep them, or **Cancel** to discard and go back to your last-saved look.
+Theme and layout **preview live** as you change the dropdowns — click **Save** to keep them (you
+go straight back to the game), or **Cancel** to discard and return with your last-saved look.
+
+There are also quick **Theme** and **Layout** dropdowns in the top bar (next to your name) that
+take effect immediately, if you'd rather not open Settings.
 
 Other display options on the same page:
 

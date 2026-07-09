@@ -1,0 +1,32 @@
+{#
+  Top-bar quick appearance pickers (Sprint 58 — EXPERIMENTAL, feature-flagged).
+
+  Two small dropdowns (Theme, Layout) that take effect immediately and persist
+  to the account. Theme swaps the body class client-side (instant, no reload);
+  Layout persists then reloads so its structural reflow (ledger/immersive) fully
+  applies. Both POST only their own field to /settings/appearance, which merges
+  over current prefs without touching any other setting.
+
+  To remove this feature: delete this file, its {% include %} in base.html, the
+  `APPEARANCE_TOPBAR` flag + `/settings/appearance` route in frontend.py.
+#}
+<div class="hidden lg:flex items-center gap-1.5 text-xs" aria-label="Quick appearance">
+  <select name="theme" aria-label="Theme"
+          title="Theme (colour scheme)"
+          onchange="lcApplyTheme(this.value)"
+          hx-post="/settings/appearance" hx-trigger="change" hx-swap="none"
+          class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300 focus:border-emerald-600 outline-none">
+    {% for opt in theme_options %}
+    <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+    {% endfor %}
+  </select>
+  <select name="layout" aria-label="Layout"
+          title="Layout (panel arrangement) — applies on change"
+          hx-post="/settings/appearance" hx-trigger="change" hx-swap="none"
+          hx-on::after-request="window.location.reload()"
+          class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-300 focus:border-emerald-600 outline-none">
+    {% for opt in layout_options %}
+    <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+    {% endfor %}
+  </select>
+</div>

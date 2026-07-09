@@ -14,7 +14,7 @@ import logging
 import time
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
@@ -89,6 +89,13 @@ log = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/webui/player/templates")
+
+# Feature flag (Sprint 58): show the quick Theme/Layout pickers in the top nav
+# bar. Experimental — flip to False (or delete the flag, the
+# `partials/topbar_appearance.html` include, and the `/settings/appearance`
+# route) to peel the feature back. The settings page keeps its own pickers
+# regardless of this flag.
+APPEARANCE_TOPBAR = True
 
 
 def _carried_snapshot(item_repo: ItemRepo, player_id: str) -> list[tuple[str, int]]:
@@ -484,6 +491,10 @@ async def game_screen(
             "active_quests": active_quests,
             "dialogue": dialogue,
             "world_time": world_time,
+            # Top-bar quick Theme/Layout pickers (Sprint 58, feature-flagged).
+            "appearance_picker": APPEARANCE_TOPBAR,
+            "theme_options": THEMES,
+            "layout_options": LAYOUTS,
             **room_panel,
             **map_data,
             # Per-account presentation preferences (Sprint 32.2) — resolved in
@@ -507,13 +518,13 @@ def _muteable_topic_channels() -> list:
     return [c for c in get_channel_registry().topic_channels() if c.muteable]
 
 
-def _settings_context(request: Request, player: Player, *, saved: bool = False) -> dict:
+def _settings_context(request: Request, player: Player) -> dict:
     """Build the settings-form context from the account's resolved preferences."""
     prefs = resolve_preferences(player.preferences)
     return {
         "request": request,
         "current_player": player,
-        "saved": saved,
+        "appearance_picker": APPEARANCE_TOPBAR,
         "theme_options": THEMES,
         "layout_options": LAYOUTS,
         "density_options": DISPLAY_DENSITIES,
@@ -554,10 +565,12 @@ async def settings_screen(
 async def update_settings(
     request: Request, player: Player = Depends(get_current_player)
 ):
-    """Persist a preferences update, then re-render the settings page.
+    """Persist a preferences update, then redirect back to the game screen.
 
     Every field is re-validated through ``apply_updates`` (invalid values fall
     back to their default), so the stored blob can never hold an invalid value.
+    Uses Post/Redirect/Get so Save returns to ``/game`` (where the new theme /
+    layout takes effect) without the player needing a second click.
     """
     form = await request.form()
     updates: dict[str, object] = {
@@ -591,9 +604,38 @@ async def update_settings(
         player.preferences = apply_updates(current, updates).to_stored()
         repo.add(player)
         db.commit()
-        db.refresh(player)
-        context = _settings_context(request, player, saved=True)
-    return templates.TemplateResponse(request, "settings.html", context)
+    return RedirectResponse(url="/game", status_code=303)
+
+
+@router.post("/settings/appearance")
+async def update_appearance(
+    request: Request,
+    theme: str | None = Form(default=None),
+    layout: str | None = Form(default=None),
+    player: Player = Depends(get_current_player),
+):
+    """Quick theme/layout change from the top-bar pickers (Sprint 58, gated by
+    ``APPEARANCE_TOPBAR``). Updates ONLY the field(s) supplied, merged over the
+    account's current preferences, so it never disturbs any other setting.
+    Returns 204 — the picker updates the page client-side (instant theme swap)
+    or via a reload (layout), so there is nothing to render here.
+    """
+    updates: dict[str, object] = {}
+    if theme is not None:
+        updates["theme"] = theme
+    if layout is not None:
+        updates["layout"] = layout
+    if updates:
+        game_engine, _ = get_engines(request)
+        with DBSession(game_engine) as db:
+            repo = PlayerRepo(db)
+            player = repo.get(player.id) or player
+            current = resolve_preferences(player.preferences)
+            # Reassign (not mutate) so SQLModel flags the JSON column dirty.
+            player.preferences = apply_updates(current, updates).to_stored()
+            repo.add(player)
+            db.commit()
+    return Response(status_code=204)
 
 
 # =============================================================================

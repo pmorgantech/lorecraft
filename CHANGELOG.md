@@ -2,6 +2,25 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.49.3] - 2026-07-08
+
+### Added
+
+- **Top-bar quick appearance pickers (experimental).** Small **Theme** and **Layout** dropdowns
+  in the nav (next to your name) that take effect immediately — theme swaps live, layout persists
+  and reloads. Backed by a dedicated `POST /settings/appearance` that updates only the changed
+  field. Gated behind the `APPEARANCE_TOPBAR` flag + a self-contained partial so it can be removed
+  after testing; the Settings page keeps its own pickers.
+
+### Changed
+
+- **Settings Save returns to the game.** Saving now takes you straight back to `/game` (the new
+  theme/layout applies immediately) instead of staying on the settings page. The button row is now
+  just **[Save] [Cancel]** — the back-to-game link, the saved banner and the helper text are gone.
+- **Immersive layout reworked** (from review) into a focused two-column view: a slim left column
+  with **Chat on top and the Minimap below**, and a dominant Chronicle taking the rest; room,
+  inventory, players and quests are hidden. (Replaces the earlier slim-flanks first cut.)
+
 ## [0.49.2] - 2026-07-08
 
 ### Added

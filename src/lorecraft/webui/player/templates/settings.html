@@ -5,19 +5,10 @@
 {% block content %}
 <main class="min-h-[calc(100vh-3.5rem)] bg-zinc-950 text-zinc-200 p-6">
   <div class="max-w-2xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-bold tracking-tight text-emerald-400">Account Settings</h1>
-        <p class="text-sm text-zinc-500">Display preferences for {{ current_player.username }}.</p>
-      </div>
-      <a href="/game" class="text-sm text-emerald-400 hover:underline">&larr; Back to game</a>
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold tracking-tight text-emerald-400">Account Settings</h1>
+      <p class="text-sm text-zinc-500">Display preferences for {{ current_player.username }}.</p>
     </div>
-
-    {% if saved %}
-    <div role="status" class="mb-4 rounded border border-emerald-700 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300">
-      Preferences saved.
-    </div>
-    {% endif %}
 
     <form method="post" action="/settings" class="space-y-6"
           x-data="{
@@ -161,10 +152,12 @@
       <div class="flex items-center gap-3">
         <button type="submit"
                 class="rounded bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-semibold text-white">
-          Save preferences
+          Save
         </button>
-        <a href="/game" class="text-sm text-zinc-400 hover:underline">Cancel</a>
-        <span class="text-xs text-zinc-500">Theme &amp; layout preview live — <b>Save</b> to keep, <b>Cancel</b> to discard.</span>
+        <a href="/game"
+           class="rounded border border-zinc-600 hover:bg-zinc-800 px-4 py-2 text-sm font-semibold text-zinc-300">
+          Cancel
+        </a>
       </div>
     </form>
   </div>
