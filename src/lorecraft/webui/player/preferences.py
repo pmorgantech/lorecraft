@@ -29,6 +29,11 @@ from lorecraft.types import JsonObject
 # default and reproduces today's zinc/emerald look, so an account that never
 # picks a theme renders exactly as before.
 THEMES = ("terminal", "parchment", "slate", "immersive")
+# Panel-arrangement layouts (Sprint 58.5), a *second, independent* axis from
+# theme. Each maps to a `layout-<name>` body class. "standard" is the default
+# and reproduces today's three-column grid, so an account that never picks a
+# layout renders exactly as before.
+LAYOUTS = ("standard", "ledger", "dock", "immersive")
 DISPLAY_DENSITIES = ("comfortable", "compact")
 FEED_VERBOSITIES = ("verbose", "normal", "terse")
 TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")
@@ -49,6 +54,8 @@ class PlayerPreferences:
 
     # Colour + typography theme (Sprint 58.1). Default reproduces today's look.
     theme: str = "terminal"
+    # Panel arrangement (Sprint 58.5), independent of theme. Default = today.
+    layout: str = "standard"
     display_density: str = "comfortable"
     feed_verbosity: str = "normal"
     timestamp_format: str = "relative"
@@ -75,6 +82,7 @@ class PlayerPreferences:
         data["hidden_panels"] = list(self.hidden_panels)
         # Convenience booleans/classes so templates stay logic-light.
         data["theme_class"] = f"theme-{self.theme}"
+        data["layout_class"] = f"layout-{self.layout}"
         data["is_compact"] = self.display_density == "compact"
         data["density_class"] = f"density-{self.display_density}"
         data["motion_class"] = "reduced-motion" if self.reduced_motion else ""
@@ -85,6 +93,7 @@ class PlayerPreferences:
             c
             for c in (
                 data["theme_class"],
+                data["layout_class"],
                 data["density_class"],
                 data["motion_class"],
                 data["contrast_class"],
@@ -105,6 +114,8 @@ class PlayerPreferences:
         out: JsonObject = {}
         if self.theme != default.theme:
             out["theme"] = self.theme
+        if self.layout != default.layout:
+            out["layout"] = self.layout
         if self.display_density != default.display_density:
             out["display_density"] = self.display_density
         if self.feed_verbosity != default.feed_verbosity:
@@ -168,6 +179,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
     )
     return PlayerPreferences(
         theme=_clean_enum(raw.get("theme"), THEMES, "terminal"),
+        layout=_clean_enum(raw.get("layout"), LAYOUTS, "standard"),
         display_density=_clean_enum(
             raw.get("display_density"), DISPLAY_DENSITIES, "comfortable"
         ),

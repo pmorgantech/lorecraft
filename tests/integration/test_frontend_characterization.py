@@ -411,6 +411,43 @@ async def _test_game_screen_applies_theme_body_class() -> None:
     assert "theme-terminal" not in slate_html
 
 
+def test_game_screen_applies_layout_body_class() -> None:
+    anyio.run(_test_game_screen_applies_layout_body_class)
+
+
+async def _test_game_screen_applies_layout_body_class() -> None:
+    """The chosen layout surfaces as an independent `layout-<name>` body class (Sprint 58.5)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, default_html = await _http_get(
+            app, "/game", cookies={"player_id": "player-1"}
+        )
+        assert "layout-standard" in default_html
+
+        # Theme and layout are independent axes — both classes co-exist.
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"theme": "slate", "layout": "ledger"}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "layout-ledger" in html
+    assert "theme-slate" in html
+    assert "layout-standard" not in html
+
+
 def test_settings_renders_and_persists_theme() -> None:
     anyio.run(_test_settings_renders_and_persists_theme)
 
@@ -433,6 +470,7 @@ async def _test_settings_renders_and_persists_theme() -> None:
             app, "/settings", cookies={"player_id": "player-1"}
         )
         assert 'name="theme"' in get_html
+        assert 'name="layout"' in get_html
 
         status, post_html = await _http_post_form(
             app,

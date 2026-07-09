@@ -48,6 +48,7 @@ from lorecraft.webui.player.preferences import (
     FEED_PAGE_LENGTHS,
     FEED_VERBOSITIES,
     FONT_SCALES,
+    LAYOUTS,
     THEMES,
     TIMESTAMP_FORMATS,
     TOGGLEABLE_PANELS,
@@ -514,6 +515,7 @@ def _settings_context(request: Request, player: Player, *, saved: bool = False) 
         "current_player": player,
         "saved": saved,
         "theme_options": THEMES,
+        "layout_options": LAYOUTS,
         "density_options": DISPLAY_DENSITIES,
         "verbosity_options": FEED_VERBOSITIES,
         "timestamp_options": TIMESTAMP_FORMATS,
@@ -560,6 +562,7 @@ async def update_settings(
     form = await request.form()
     updates: dict[str, object] = {
         "theme": form.get("theme"),
+        "layout": form.get("layout"),
         "display_density": form.get("display_density"),
         "feed_verbosity": form.get("feed_verbosity"),
         "timestamp_format": form.get("timestamp_format"),

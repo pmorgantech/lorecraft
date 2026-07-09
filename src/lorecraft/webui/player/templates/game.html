@@ -16,7 +16,7 @@
         <!-- LEFT SIDEBAR: Room + Inventory + Minimap -->
         <div
             :class="mobileTab === 'room' ? 'flex' : 'hidden'"
-            class="lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
+            class="game-col game-col-left lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
 
             <!-- Room Description Panel -->
             <div class="flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
@@ -58,7 +58,7 @@
         <!-- CENTER: Main Feed / Narrative Log -->
         <div
             :class="mobileTab === 'feed' ? 'flex' : 'hidden'"
-            class="lg:!flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
+            class="game-col game-col-center lg:!flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
             <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                 <span>The Chronicle • Live</span>
                 <div class="flex items-center gap-2 text-[10px]">
@@ -111,7 +111,7 @@
         <!-- RIGHT SIDEBAR: Players + Combat / Events -->
         <div
             :class="mobileTab === 'players' ? 'flex' : 'hidden'"
-            class="lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
+            class="game-col game-col-right lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-56 lg:flex-none">
 
             <!-- Players in Room / Online -->
             {% if 'players_online' not in prefs.hidden_panels %}

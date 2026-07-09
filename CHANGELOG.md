@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.49.1] - 2026-07-08
+
+### Added
+
+- **Client layout preference (Sprint 58, Phase 2 — first cut).** A new **Layout** setting
+  (`standard`/`ledger`/`dock`/`immersive`), independent of the theme axis, emitted as a
+  `layout-<name>` body class. `standard` (default) is unchanged. The first layout, **ledger**,
+  reflows the desktop view into a wide, centred "chronicle" column with a comfortable reading
+  measure between slim left/right rails. `game.html` gains stable `game-col-*` column hooks so
+  layouts can be targeted from CSS without disturbing the default. Dock + immersive layouts to
+  follow.
+
 ## [0.49.0] - 2026-07-08
 
 ### Added

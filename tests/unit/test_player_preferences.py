@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lorecraft.webui.player.preferences import (
+    LAYOUTS,
     THEMES,
     PlayerPreferences,
     apply_updates,
@@ -95,21 +96,23 @@ class TestToContext:
         assert prefs["is_compact"] is False
 
     def test_body_classes_combines_only_active(self) -> None:
-        # Default: theme + density + font scale are always present.
+        # Default: theme + layout + density + font scale are always present.
         default = PlayerPreferences().to_context()["prefs"]
         assert default["body_classes"] == (
-            "theme-terminal density-comfortable font-normal"
+            "theme-terminal layout-standard density-comfortable font-normal"
         )
 
         full = PlayerPreferences(
             theme="slate",
+            layout="dock",
             display_density="compact",
             reduced_motion=True,
             high_contrast=True,
             font_scale="large",
         ).to_context()["prefs"]
         assert full["body_classes"] == (
-            "theme-slate density-compact reduced-motion high-contrast font-large"
+            "theme-slate layout-dock density-compact "
+            "reduced-motion high-contrast font-large"
         )
         assert full["contrast_class"] == "high-contrast"
         assert full["font_scale_class"] == "font-large"
@@ -193,6 +196,40 @@ class TestTheme:
         assert updated.theme == "slate"
         # An invalid value falls back rather than persisting.
         assert apply_updates(updated, {"theme": "bogus"}).theme == "terminal"
+
+
+class TestLayout:
+    """Panel-arrangement layout preference (Sprint 58.5), independent of theme."""
+
+    def test_defaults_to_standard(self) -> None:
+        assert PlayerPreferences().layout == "standard"
+        assert resolve_preferences({}).layout == "standard"
+
+    def test_all_named_layouts_resolve(self) -> None:
+        for name in LAYOUTS:
+            assert resolve_preferences({"layout": name}).layout == name
+
+    def test_invalid_layout_falls_back_to_standard(self) -> None:
+        assert resolve_preferences({"layout": "spaceship"}).layout == "standard"
+        assert resolve_preferences({"layout": 7}).layout == "standard"
+
+    def test_default_layout_not_written_to_stored_blob(self) -> None:
+        assert "layout" not in PlayerPreferences().to_stored()
+
+    def test_non_default_layout_round_trips(self) -> None:
+        prefs = resolve_preferences({"layout": "ledger"})
+        assert prefs.to_stored() == {"layout": "ledger"}
+        assert resolve_preferences(prefs.to_stored()) == prefs
+
+    def test_layout_class_in_context(self) -> None:
+        ctx = resolve_preferences({"layout": "dock"}).to_context()["prefs"]
+        assert ctx["layout_class"] == "layout-dock"
+
+    def test_theme_and_layout_are_independent(self) -> None:
+        prefs = resolve_preferences({"theme": "parchment", "layout": "immersive"})
+        assert prefs.theme == "parchment"
+        assert prefs.layout == "immersive"
+        assert prefs.to_stored() == {"theme": "parchment", "layout": "immersive"}
 
 
 class TestSeparateChat:

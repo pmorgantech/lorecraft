@@ -35,6 +35,17 @@
         </div>
 
         <div class="mb-4">
+          <label for="layout" class="block text-sm text-zinc-400 mb-1">Layout</label>
+          <select id="layout" name="layout"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in layout_options %}
+            <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-zinc-500">Panel arrangement. Standard is the classic three-column grid.</p>
+        </div>
+
+        <div class="mb-4">
           <label for="display_density" class="block text-sm text-zinc-400 mb-1">Display density</label>
           <select id="display_density" name="display_density"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">

@@ -355,3 +355,33 @@ body.theme-parchment .font-mono { font-family: 'IBM Plex Mono', var(--font-mono)
 body.theme-parchment .text-red-400,
 body.theme-parchment .text-red-300 { color: #9b2c2c; }
 body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08); }
+
+/* =======================================================================
+   Selectable layouts (Sprint 58.5+)
+   -----------------------------------------------------------------------
+   Panel *arrangement*, a separate axis from theme. Keyed on the
+   `layout-<name>` body class. The default "standard" layout has NO rules
+   here, so it renders exactly as the stock Tailwind three-column flex grid.
+
+   Layout rules apply only at the lg breakpoint (>=1024px), matching the
+   template's own `lg:` classes; below it the mobile Room/Feed/Players tab
+   switcher owns the single-column view for every layout. The column hooks
+   `.game-col-left / -center / -right` are added in game.html. A
+   `body.layout-x .game-col-left` selector (specificity 0,2,1) beats the
+   Tailwind width utility (0,1,0), so no !important is needed.
+   ======================================================================= */
+@media (min-width: 1024px) {
+    /* 1b — Ledger: a wide central "chronicle" flanked by a narrow left column
+       and a slim right rail, read like an illuminated manuscript. This first
+       pass reflows the column *proportions* and gives the feed a comfortable
+       centred reading measure; panels keep their own columns (moving a panel
+       across columns would need a DOM/grid restructure, deferred until the
+       proportions are approved). */
+    body.layout-ledger .game-col-left { width: 19rem; }
+    body.layout-ledger .game-col-right { width: 12.5rem; }
+    body.layout-ledger #feed {
+        max-width: 72ch;
+        margin-inline: auto;
+        width: 100%;
+    }
+}
