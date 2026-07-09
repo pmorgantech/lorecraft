@@ -273,6 +273,22 @@ def ensure_player_session(player: Player, db: DBSession) -> str:
     return ps.id
 
 
+# Rarity/type chip for an inventory row (Sprint 59): glyph + fixed type colours,
+# mirroring the design canvas (weapon ◆ / armour ▲ / misc ● / coin ¤). Classified
+# from item *properties* (data-driven), not name matching, except the coin case.
+_ICO_GOLD, _ICO_CYAN, _ICO_BROWN = "#e0b64a", "#7bd3e0", "#c88a5a"
+
+
+def _item_icon(item: Any) -> dict[str, str]:
+    if "coin" in (item.name or "").lower():
+        return {"glyph": "¤", "bg": "#2a2a20", "fg": _ICO_GOLD}
+    if getattr(item, "wearable", False):
+        return {"glyph": "▲", "bg": "#3a2a20", "fg": _ICO_BROWN}
+    if getattr(item, "slot", None):  # wielded weapon / tool / light
+        return {"glyph": "◆", "bg": "#2a3a20", "fg": _ICO_GOLD}
+    return {"glyph": "●", "bg": "#20303a", "fg": _ICO_CYAN}  # misc / consumable
+
+
 def inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, Any]]:
     """Build a snapshot of the player's inventory for display."""
     items: list[dict[str, Any]] = []
@@ -283,6 +299,10 @@ def inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[dict[str, An
                 "name": item.name,
                 "description_short": (item.description or "")[:60],
                 "quantity": stack.quantity,
+                "weight": round(
+                    (getattr(item, "weight", 0.0) or 0.0) * stack.quantity, 1
+                ),
+                "icon": _item_icon(item),
                 "usable": False,
                 "droppable": True,
             }

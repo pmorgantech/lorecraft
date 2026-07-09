@@ -10,10 +10,12 @@
     mapModalOpen: false,
     mobileTab: 'feed'
 }">
-    <!-- Main game area. The classic layout is a purpose-built old-MUD shell
-         (its own partial); every other layout uses the three-column grid below. -->
+    <!-- Main game area. Classic and E-reader are purpose-built shells (their
+         own partials); every other layout uses the three-column grid below. -->
     {% if prefs.layout == 'classic' %}
     {% include "partials/game_classic.html" %}
+    {% elif prefs.layout == 'e-reader' %}
+    {% include "partials/game_ereader.html" %}
     {% else %}
     <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
@@ -144,14 +146,14 @@
             {% endif %}
 
             {# Inventory + Quests share the right rail, mutually exclusive. Two
-               UI patterns are in play so they can be compared: dock + ledger use
+               UI patterns are in play so they can be compared: dock uses
                a WINDOW-SHADE accordion (stacked titlebars, click to roll open);
                standard uses a single TOGGLE pane (one titlebar, a button flips
                between the two). Both bodies stay in the DOM (x-show) so their OOB
                live-updates (#inventory / #quest-tracker) keep firing while
                hidden. `rail` (on the column) is the shared open-panel state. #}
-            {% if prefs.layout in ['ledger', 'dock'] %}
-            <!-- Window-shade accordion (dock + ledger) -->
+            {% if prefs.layout == 'dock' %}
+            <!-- Window-shade accordion (dock) -->
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
                 {% if 'inventory' not in prefs.hidden_panels %}
                 <button type="button" @click="rail = 'inventory'"
@@ -224,7 +226,7 @@
             class="flex-1 py-2 border-t-2 transition-colors">Players</button>
         {% endif %}
     </div>
-    {% endif %}{# end non-classic main area #}
+    {% endif %}{# end grid-layout main area #}
 
     <!-- Full-screen map modal (Sprint 26.1) -->
     <div
@@ -249,9 +251,9 @@
 
     {% include "partials/dialogue.html" %}
 
-    <!-- COMMAND INPUT BAR (fixed bottom). The classic layout carries its own
+    <!-- COMMAND INPUT BAR (fixed bottom). Classic and E-reader carry their own
          prompt inside the chronicle column, so the full-width bar is skipped. -->
-    {% if prefs.layout != 'classic' %}
+    {% if prefs.layout not in ['classic', 'e-reader'] %}
     <div class="border-t border-zinc-800 bg-zinc-900 p-3">
         <form id="command-form"
               hx-post="/command"

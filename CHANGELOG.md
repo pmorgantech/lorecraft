@@ -2,6 +2,24 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.50.2] - 2026-07-09
+
+### Added
+
+- **E-reader layout** (renamed from "Ledger" and rebuilt to match the design reference): a warm
+  "illuminated manuscript" — the location on a left ledger, a wide **serif chronicle** with an
+  *Inscribe* prompt in the centre, and a slim right rail of vertical tabs (Here / Quests / Pack /
+  Stats) that run the matching command. Pairs best with the Parchment theme.
+- **Rarity-chip inventory.** Inventory rows now show a coloured type chip (weapon ◆ / armour ▲ /
+  misc ● / coin ¤, classified from item properties) and the stack weight, with an "N items ·
+  weight/capacity" header — matching the design canvas.
+
+### Fixed
+
+- **The compass minimap no longer balloons when you change rooms.** Its out-of-band refresh was
+  nesting the sized minimap inside an unsized wrapper, so it lost its box and grew; it now swaps
+  the partial's own root.
+
 ## [0.50.1] - 2026-07-09
 
 ### Added

@@ -1,0 +1,75 @@
+{#
+  E-reader layout — warm "illuminated manuscript" book (Sprint 59, ported from
+  lorecraft-export/e-reader). Three regions: a left LEDGER (location + compass
+  map), a wide centre FOLIO (the chronicle as centred serif prose + an
+  "Inscribe" command bar), and a slim right RAIL of vertical tabs
+  (Here/Quests/Pack/Stats) that run the matching command into the chronicle.
+
+  Serif typesetting is forced by CSS (body.layout-e-reader …) so it reads
+  book-like under any theme, though it pairs best with the Parchment theme.
+  Reuses the shared ids: #room-description (OOB on move), #minimap, #feed,
+  #command-input.
+#}
+<div id="main-content" role="main" aria-label="Game screen"
+     class="ereader flex-1 flex overflow-hidden h-full min-h-0">
+
+    <!-- LEFT: ledger — location + map -->
+    <div class="ereader__ledger flex-none flex flex-col min-h-0 border-r border-border overflow-hidden">
+        <div class="flex-1 overflow-y-auto p-5 min-h-0">
+            <div class="text-[10px] tracking-[0.18em] text-text-muted mb-2">&#10086; WHERE YOU STAND</div>
+            {% include "partials/room_description.html" %}
+        </div>
+        {% if 'minimap' not in prefs.hidden_panels %}
+        <div class="flex-none border-t border-border p-4">
+            <div class="text-[10px] tracking-[0.18em] text-text-muted mb-2">&#10022; THE KNOWN WAYS</div>
+            <div class="w-full max-w-[13rem] mx-auto aspect-square">
+                {% include "partials/minimap.html" %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- CENTRE: folio — the chronicle + command bar -->
+    <main class="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div class="flex-none px-6 py-3 border-b border-border flex items-center justify-between">
+            <span class="ereader__title text-accent">The Chronicle
+                <span class="live inline-block w-1.5 h-1.5 rounded-full bg-accent align-middle ml-1"></span></span>
+            <span class="text-[10px] tracking-[0.15em] text-text-muted">FOLIO &middot; LIVE</span>
+        </div>
+        <div class="flex-1 flex justify-center overflow-hidden bg-feed-bg min-h-0">
+            <div id="feed" role="log" aria-live="polite" aria-label="Game narrative log"
+                 class="w-full max-w-[42rem] overflow-y-auto px-6 py-6 space-y-4 leading-relaxed scroll-smooth"
+                 data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
+                {% include "partials/feed_items.html" %}
+            </div>
+        </div>
+        <div class="flex-none px-6 py-3 border-t border-border">
+            <form hx-post="/command" hx-target="#feed" hx-swap="beforeend"
+                  hx-on::after-request="handleCommandSuccess(this)"
+                  class="flex items-center gap-3 rounded border border-border px-4 py-3"
+                  style="background:var(--lc-panel-light)">
+                <span class="text-accent font-bold">&#10095;</span>
+                <input name="command" id="command-input" autocomplete="off" spellcheck="false"
+                       placeholder="Speak, traveller&hellip;" aria-label="command"
+                       class="flex-1 bg-transparent outline-none text-sm text-text placeholder:text-text-muted">
+                <button type="submit"
+                        class="text-[10px] tracking-[0.12em] uppercase px-3 py-1.5 rounded bg-accent text-feed-bg font-semibold">
+                    Inscribe
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <!-- RIGHT: slim vertical tab rail -->
+    <div class="ereader__rail flex-none flex flex-col items-center gap-1.5 pt-4 border-l border-border"
+         style="background:var(--lc-panel-light)">
+        <button type="button" class="ereader-tab" title="look around"
+                hx-post="/command" hx-vals='{"command":"look"}' hx-target="#feed" hx-swap="beforeend">HERE &middot; {{ players_here | length if players_here else 0 }}</button>
+        <button type="button" class="ereader-tab" title="your quest journal"
+                hx-post="/command" hx-vals='{"command":"journal"}' hx-target="#feed" hx-swap="beforeend">QUESTS &middot; {{ active_quests | length if active_quests else 0 }}</button>
+        <button type="button" class="ereader-tab" title="your pack"
+                hx-post="/command" hx-vals='{"command":"inventory"}' hx-target="#feed" hx-swap="beforeend">PACK &middot; {{ inventory | sum(attribute='quantity') if inventory else 0 }}</button>
+        <button type="button" class="ereader-tab" title="your standing"
+                hx-post="/command" hx-vals='{"command":"score"}' hx-target="#feed" hx-swap="beforeend">STATS</button>
+    </div>
+</div>

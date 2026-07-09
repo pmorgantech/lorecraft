@@ -4,46 +4,35 @@
 #}
 
 <div id="inventory" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
-    {% if encumbrance %}
+    {% set item_count = inventory | sum(attribute='quantity') if inventory else 0 %}
     <div class="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider
-                {% if encumbrance.band == 'overloaded' %}text-red-400{% elif encumbrance.band == 'burdened' %}text-amber-400{% else %}text-text-muted{% endif %}">
-        <span>Weight</span>
-        <span title="carry band: {{ encumbrance.band }}">{{ encumbrance.current }} / {{ encumbrance.capacity }}{% if encumbrance.band != 'unburdened' %} · {{ encumbrance.band }}{% endif %}</span>
+                {% if encumbrance and encumbrance.band == 'overloaded' %}text-red-400{% elif encumbrance and encumbrance.band == 'burdened' %}text-amber-400{% else %}text-text-muted{% endif %}">
+        <span>{{ item_count }} item{{ '' if item_count == 1 else 's' }}</span>
+        {% if encumbrance %}
+        <span title="carry band: {{ encumbrance.band }}">{{ encumbrance.current }}/{{ encumbrance.capacity }}{% if encumbrance.band != 'unburdened' %} · {{ encumbrance.band }}{% endif %}</span>
+        {% endif %}
     </div>
-    {% endif %}
     {% if inventory and inventory|length > 0 %}
-        <ul class="space-y-1 text-xs">
+        {#
+          Rarity/type icon rows (Sprint 59), mirroring the design canvas: a
+          coloured type chip, the item name, then the stack weight — with the
+          use/drop quick-actions revealed on hover. `.inv__*` styles live in
+          custom.css. item.icon = {glyph, bg, fg} from inventory_snapshot.
+        #}
+        <ul class="text-xs">
             {% for item in inventory %}
-                <li class="flex items-start justify-between gap-2 group">
-                    <div class="flex-1">
-                        <span class="font-medium text-zinc-200 group-hover:text-emerald-400 transition-colors">{% if item.quantity and item.quantity > 1 %}[{{ item.quantity }}] {% endif %}{{ item.name }}</span>
-                        {% if item.description_short %}
-                            <div class="text-[10px] text-text-muted leading-tight">{{ item.description_short }}</div>
-                        {% endif %}
-                    </div>
-
-                    <!-- Quick action buttons (use HTMX to /command with prefilled) -->
+                <li class="inv__row group">
+                    <span class="inv__ico" style="background:{{ item.icon.bg }};color:{{ item.icon.fg }}">{{ item.icon.glyph }}</span>
+                    <span class="inv__name group-hover:text-accent transition-colors">{% if item.quantity and item.quantity > 1 %}[{{ item.quantity }}] {% endif %}{{ item.name }}</span>
                     {% if item.usable %}
-                    <button
-                        hx-post="/command"
-                        hx-vals='{"command": "use {{ item.name | lower }}"}'
-                        hx-target="#feed"
-                        hx-swap="beforeend"
-                        class="opacity-0 group-hover:opacity-100 transition-all text-[10px] px-1.5 py-px rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-400">
-                        use
-                    </button>
+                    <button hx-post="/command" hx-vals='{"command": "use {{ item.name | lower }}"}' hx-target="#feed" hx-swap="beforeend"
+                            class="opacity-0 group-hover:opacity-100 transition-all text-[10px] px-1.5 py-px rounded bg-emerald-900/60 hover:bg-emerald-800 text-emerald-400">use</button>
                     {% endif %}
-
                     {% if item.droppable %}
-                    <button
-                        hx-post="/command"
-                        hx-vals='{"command": "drop {{ item.name | lower }}"}'
-                        hx-target="#feed"
-                        hx-swap="beforeend"
-                        class="opacity-0 group-hover:opacity-100 transition-all text-[10px] px-1.5 py-px rounded bg-red-900/40 hover:bg-red-900 text-red-400">
-                        drop
-                    </button>
+                    <button hx-post="/command" hx-vals='{"command": "drop {{ item.name | lower }}"}' hx-target="#feed" hx-swap="beforeend"
+                            class="opacity-0 group-hover:opacity-100 transition-all text-[10px] px-1.5 py-px rounded bg-red-900/40 hover:bg-red-900 text-red-400">drop</button>
                     {% endif %}
+                    <span class="inv__wt">{{ item.weight }}</span>
                 </li>
             {% endfor %}
         </ul>

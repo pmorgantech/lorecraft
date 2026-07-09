@@ -428,13 +428,6 @@ body.reduced-motion.theme-classic-amber::after { display: none; }
    Tailwind width utility (0,1,0), so no !important is needed.
    ======================================================================= */
 @media (min-width: 1024px) {
-    /* 1b — Ledger: Location + Map on a narrow left column, a WIDE central
-       chronicle that keeps the full column width (the chronicle is the point —
-       no reading cap), and a slim right rail holding the Here-Now list plus an
-       Inventory/Quests accordion (one open at a time — see game.html). */
-    body.layout-ledger .game-col-left { width: 16rem; }
-    body.layout-ledger .game-col-right { width: 15rem; }
-
     /* 1c — Dock: panels become floating "cards" — spaced apart, rounded, with a
        soft drop shadow over the app background — versus standard's flush,
        hairline-separated grid. The most "app-like" arrangement. */
@@ -510,3 +503,63 @@ body.reduced-motion.theme-classic-amber::after { display: none; }
 .mm-compass { display: none; }
 body.minimap-compass .mm-graph { display: none; }
 body.minimap-compass .mm-compass { display: block; }
+
+/* Inventory rows (Sprint 59): a coloured type/rarity chip · name · weight,
+   from the design canvas. The chip bg/fg are inline (per item type); the row /
+   name / weight use theme tokens. */
+.inv__row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 6px;
+    border-radius: 5px;
+}
+.inv__row:hover { background-color: var(--lc-panel-light); }
+.inv__ico {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-size: 10px;
+    font-weight: 700;
+}
+.inv__name { flex: 1; color: var(--lc-text); }
+.inv__wt { color: var(--lc-text-muted); font-variant-numeric: tabular-nums; }
+
+/* =======================================================================
+   E-reader layout (Sprint 59) — the illuminated-manuscript book. Bespoke
+   shell (partials/game_ereader.html), so — like classic — it needs its own
+   rules rather than the .game-col grid. Serif prose is forced here so it reads
+   book-like under any theme (it pairs best with the Parchment palette).
+   ======================================================================= */
+.ereader__ledger { width: 20rem; }
+.ereader__rail { width: 3.25rem; }
+.ereader__title { font-family: var(--font-serif); font-style: italic; font-size: 0.95rem; }
+/* Serif typesetting for the location readout + the chronicle prose. */
+body.layout-e-reader #room-description,
+body.layout-e-reader #feed {
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.75;
+}
+body.layout-e-reader #room-description h2 { font-size: 1.3rem; }
+/* Vertical tab rail (writing-mode makes the label read bottom-to-top). */
+.ereader-tab {
+    writing-mode: vertical-rl;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--lc-text-muted);
+    padding: 12px 2px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--lc-border) 45%, transparent);
+    cursor: pointer;
+    transition: color 0.12s ease, background-color 0.12s ease;
+}
+.ereader-tab:hover { color: var(--lc-accent); background: var(--lc-border); }
+/* Below the lg breakpoint the ledger + rail fold away — just the folio. */
+@media (max-width: 1023px) {
+    .ereader__ledger,
+    .ereader__rail { display: none; }
+}

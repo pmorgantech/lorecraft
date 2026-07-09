@@ -82,7 +82,7 @@ The theme only changes colours and fonts; every panel and command works the same
 | Layout | Arrangement |
 |--------|-------------|
 | **Standard** *(default)* | Three columns: room + map on the left, chronicle in the centre, and players + an **Inventory/Quests** pane on the right (a **toggle button** in its title bar flips between the two). |
-| **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either title bar to roll it open; the other rolls shut). |
+| **E-reader** | A warm "illuminated manuscript" book: the location on a left ledger, a wide **serif chronicle** in the centre with an *Inscribe* prompt, and a slim right rail of vertical tabs (Here / Quests / Pack / Stats). Pairs best with the Parchment theme. |
 | **Dock** | The same panels as floating, rounded "cards", with the window-shade Inventory/Quests rail. |
 | **Immersive** | A focused, cinematic view: a slim left column with **chat on top and the minimap below**, and the chronicle takes the rest of the screen — there's no third column at all. |
 | **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chat is display-only — send messages with `say …` on the main command line. Chronicle-only like Immersive; pairs naturally with the **Classic** theme but works under any. |

@@ -959,9 +959,11 @@ async def handle_command(
                     **room_panel,
                     **map_data,
                 )
-                response_html += (
-                    f'<div id="minimap" hx-swap-oob="true">{map_html}</div>'
-                )
+                # Mark the partial's OWN sized root (w-full h-full) for the OOB
+                # swap — NOT a bare <div id="minimap"> wrapper. Wrapping nested a
+                # sized #minimap inside an unsized one, so the compass lost its
+                # box on room change and ballooned (Sprint 59 fix).
+                response_html += mark_oob_swap(map_html, "minimap")
 
             if result.dialogue_changed:
                 dialogue_html = templates.get_template("partials/dialogue.html").render(

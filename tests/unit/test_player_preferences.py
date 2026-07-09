@@ -220,8 +220,8 @@ class TestLayout:
         assert "layout" not in PlayerPreferences().to_stored()
 
     def test_non_default_layout_round_trips(self) -> None:
-        prefs = resolve_preferences({"layout": "ledger"})
-        assert prefs.to_stored() == {"layout": "ledger"}
+        prefs = resolve_preferences({"layout": "e-reader"})
+        assert prefs.to_stored() == {"layout": "e-reader"}
         assert resolve_preferences(prefs.to_stored()) == prefs
 
     def test_layout_class_in_context(self) -> None:

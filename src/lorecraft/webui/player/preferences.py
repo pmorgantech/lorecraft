@@ -34,8 +34,9 @@ THEMES = ("terminal", "parchment", "slate", "immersive", "classic", "classic-amb
 # theme. Each maps to a `layout-<name>` body class. "standard" is the default
 # and reproduces today's three-column grid, so an account that never picks a
 # layout renders exactly as before. "classic" (Sprint 59) is the old-MUD terminal
-# arrangement: chronicle + vitals prompt on the left, minimap-over-chat on the right.
-LAYOUTS = ("standard", "ledger", "dock", "immersive", "classic")
+# arrangement; "e-reader" (Sprint 59) is the illuminated-manuscript book (left
+# ledger + centre serif folio + right vertical tab rail) — both bespoke shells.
+LAYOUTS = ("standard", "e-reader", "dock", "immersive", "classic")
 # Minimap rendering style (Sprint 59), emitted as a `minimap-<style>` body class
 # and toggled in the minimap partial via CSS: "graph" (the discovered-rooms
 # node-map, default) or "compass" (the phosphor exit-star rose — lit spoke =

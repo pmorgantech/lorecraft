@@ -438,12 +438,12 @@ async def _test_game_screen_applies_layout_body_class() -> None:
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()
             assert player is not None
-            player.preferences = {"theme": "slate", "layout": "ledger"}
+            player.preferences = {"theme": "slate", "layout": "e-reader"}
             db.add(player)
             db.commit()
         _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
 
-    assert "layout-ledger" in html
+    assert "layout-e-reader" in html
     assert "theme-slate" in html
     assert "layout-standard" not in html
 
@@ -453,9 +453,10 @@ def test_inventory_and_quests_share_right_rail() -> None:
 
 
 async def _test_inventory_and_quests_share_right_rail() -> None:
-    """Inventory + Quests share the right rail (mutually exclusive) in standard,
-    dock and ledger — inventory rendered once, AFTER the centre feed. Standard
-    uses a toggle button; dock + ledger use a window-shade accordion (Sprint 58.6)."""
+    """Inventory + Quests share the right rail (mutually exclusive) in the
+    grid layouts — inventory rendered once, AFTER the centre feed. Standard uses
+    a toggle button; dock uses a window-shade accordion (Sprint 58.6). (E-reader
+    and classic are bespoke shells with their own arrangements, tested separately.)"""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -469,7 +470,7 @@ async def _test_inventory_and_quests_share_right_rail() -> None:
 
     results: dict[str, str] = {}
     async with _lifespan(app):
-        for layout in ("standard", "dock", "ledger"):
+        for layout in ("standard", "dock"):
             with Session(game_engine) as db:
                 player = db.exec(select(Player).where(Player.id == "player-1")).first()
                 assert player is not None
@@ -485,11 +486,10 @@ async def _test_inventory_and_quests_share_right_rail() -> None:
         assert html.count('id="inventory"') == 1, layout
         assert html.index('id="inventory"') > html.index('id="feed"'), layout
 
-    # Standard uses the toggle button; dock + ledger use the window-shade accordion.
+    # Standard uses the toggle button; dock uses the window-shade accordion.
     assert "Show Quests" in results["standard"]
     assert "rail = 'quests'" not in results["standard"]
     assert "rail = 'quests'" in results["dock"]
-    assert "rail = 'quests'" in results["ledger"]
 
 
 def test_immersive_layout_puts_chat_in_left_column() -> None:
@@ -841,6 +841,48 @@ async def _test_classic_layout_command_refreshes_vitals_and_routes_chat() -> Non
     )
 
 
+def test_ereader_layout_renders_ledger_folio_rail() -> None:
+    anyio.run(_test_ereader_layout_renders_ledger_folio_rail)
+
+
+async def _test_ereader_layout_renders_ledger_folio_rail() -> None:
+    """E-reader is a bespoke book shell (Sprint 59): a left ledger with the
+    location readout (#room-description) + compass map, a centre serif folio
+    (#feed + an Inscribe prompt), and a right vertical tab rail. It keeps the
+    location panel (unlike immersive/classic), so it does NOT MUD-narrate."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "e-reader", "theme": "parchment"}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "layout-e-reader" in html
+    assert 'id="room-description"' in html  # left ledger location readout
+    assert 'id="feed"' in html  # centre folio chronicle
+    assert 'id="minimap"' in html
+    assert "ereader-tab" in html  # right vertical tab rail
+    assert "Inscribe" in html  # folio command button
+    # A single command input; no full-width command bar or mobile tab bar.
+    assert html.count('id="command-input"') == 1
+    assert ">Players</button>" not in html
+    # It shows the location panel, so it does not synthesize the MUD room block.
+    assert "msg-room_event" not in html
+
+
 def test_minimap_style_toggles_graph_vs_compass() -> None:
     anyio.run(_test_minimap_style_toggles_graph_vs_compass)
 
@@ -976,7 +1018,7 @@ async def _test_appearance_endpoint_updates_only_supplied_fields() -> None:
         status, _ = await _http_post_form(
             app,
             "/settings/appearance",
-            form={"layout": "ledger"},
+            form={"layout": "e-reader"},
             cookies={"player_id": "player-1"},
         )
 
@@ -985,7 +1027,7 @@ async def _test_appearance_endpoint_updates_only_supplied_fields() -> None:
 
     assert status == 204
     assert player is not None
-    assert player.preferences["layout"] == "ledger"  # updated
+    assert player.preferences["layout"] == "e-reader"  # updated
     assert player.preferences["theme"] == "slate"  # untouched
     assert player.preferences["display_density"] == "compact"  # untouched
 
