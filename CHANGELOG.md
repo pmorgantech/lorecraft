@@ -2,6 +2,26 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.48.4] - 2026-07-08
+
+### Added
+
+- **`tests/integration/test_gameplay_journeys.py`** — headless integration tests driving the real
+  `CommandEngine` over the shipped `world_content/world.yaml` for three marquee player
+  walkthroughs the suite lacked a fast regression for: the vault locked-door (Bad Key rejected,
+  Good Key unlocks), wear/remove equipment (pack ↔ head slot), and Mira's dialogue starting the
+  `investigate_lights` quest. Complements the existing e2e coverage of the same flows without the
+  browser/uvicorn overhead.
+
+### Changed
+
+- **`docs/feature_testing_guide.md`** — reconciled against a full audit of the real test suite
+  (984 unit + integration tests run green). Added a **Validated Coverage Matrix** mapping every
+  feature to its real test file(s) instead of the original's best-guess `**Location:**` hints (some
+  of which named the wrong path). Flagged combat, death/resurrection, and PvP as not implemented
+  (design docs / a `models/combat.py` stub only) so no one writes tests against fake behavior for
+  them.
+
 ## [0.48.3] - 2026-07-08
 
 ### Added

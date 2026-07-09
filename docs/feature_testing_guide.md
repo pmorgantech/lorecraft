@@ -12,9 +12,18 @@ kindle_doc_weaver: ignore
 - **Edge cases** — corner cases and known gotchas to watch for
 - **Verification checklist** — what to look for in each test
 
-> **Last updated:** 2026-07-07, v0.46.2 (all features through Sprint 55)
+> **Last updated:** 2026-07-08, v0.46.2 (all features through Sprint 55)
 > **Scope:** Tier 1 engine primitives + Tier 2 features (Sprints 1–55)
 > **Coverage:** Foundation (Sprints 1–34), Performance & scaling (35–37), Content & UX (39–55)
+>
+> **⚠️ Coverage reality (verified 2026-07-08):** Every *implemented* feature below already has
+> real, passing automated tests — **984 unit + integration tests pass** (`make test`), plus e2e
+> and simulation suites. The authoritative map from feature → real test file(s) is the
+> **[Validated Coverage Matrix](#validated-coverage-matrix)** immediately below; it supersedes the
+> best-guess `**Location:**` hints inside each feature's *Automated Testing* subsection (those were
+> written from the design docs before the suite was audited and some name/path guesses are wrong —
+> trust the matrix). The per-feature **Manual Testing** walkthroughs, **Edge Cases**, and
+> **Verification Checklists** remain the primary value of this document for hands-on QA.
 
 ---
 
@@ -31,6 +40,64 @@ kindle_doc_weaver: ignore
 9. [Pillar 5: Social & Multiplayer](#pillar-5-social--multiplayer)
 10. [World Events & Content](#world-events--content)
 11. [Admin & Observability](#admin--observability)
+
+---
+
+## Validated Coverage Matrix
+
+**How to read this:** ✅ = real automated tests exist **and were run green** in the audit pass
+(`tests/unit` + `tests/integration`, 984 passed, 2026-07-08). ⬜ = tests exist in the repo but
+were **not run** in this pass (e2e needs Chromium + a live uvicorn socket; simulation is serial).
+🚫 = the feature is **not implemented** (only a stub or design doc), so there is nothing to test and
+no test should be written until it ships.
+
+Run any single file from a worktree with:
+`PYTHONPATH="$PWD/src" python -m pytest -n auto --dist=loadfile tests/unit/<file>.py`
+(activate the primary `.venv` first — see AGENTS.md § *Running tests from a git worktree*).
+
+| Feature (guide section) | Status | Real test file(s) |
+|---|---|---|
+| Player Authentication | ✅ | `unit/test_player_auth.py`, `test_player_login.py`, `test_password_policy.py`, `test_config_secrets.py`; `integration/test_player_authentication.py`, `test_player_session.py`; ⬜ `e2e/test_auth_flows.py` |
+| Disconnect / Reconnect | ✅ | `unit/test_player_presence.py`, `test_save.py` (grace/reconnect/expiry audited), `test_connection_manager.py`; ⬜ `e2e/test_reconnect.py` |
+| Movement & navigation | ✅ | `unit/test_movement.py`, `test_exploration.py` (terrain skill-gating, flag-gated exits) |
+| Item examine / use / give | ✅ | `unit/test_use_command.py`, `test_give_command.py`, `test_inventory.py`, `test_inventory_disambiguation.py` |
+| Search & hidden exits | ✅ | `unit/test_exploration.py` (`test_search_*`, `test_hidden_exit_*`) |
+| Celestial cycles & tides | ✅ | `unit/test_celestial_calendar.py`, `test_celestial_feature.py`; `integration/test_celestial_integration.py` |
+| Inventory & encumbrance | ✅ | `unit/test_inventory.py`, `test_item_location_service.py`, `test_fatigue.py`, `test_frontend_inventory.py` |
+| Equipment & slots | ✅ | `unit/test_equipment.py`, `test_effects_and_traits.py`; ⬜ `e2e/test_panel_rendering.py` (P4.2) |
+| Containers & light/durability | ✅ | `unit/test_containers_and_light.py`, `test_open_close_command.py` |
+| Skills / checks | ✅ | `unit/test_traits_skills.py`, `test_checks.py`, `test_game_rng.py` |
+| Traits & effects | ✅ | `unit/test_traits_innate_traits.py`, `test_effects_and_traits.py`, `test_modifiers.py`, `test_meters.py` |
+| Reputation & standing | ✅ | `unit/test_traits_reputation.py` |
+| Journal & discoveries | ✅ | `unit/test_exploration.py` (`test_journal_*`), `test_inventory.py` (discovered_items) |
+| Marks / attunements | ✅ | `unit/test_marks_models.py`, `test_marks_service.py`, `test_marks_boons.py`; `integration/test_marks_integration.py` |
+| Scavenger hunts | ✅ | `unit/test_hunts.py` |
+| Currency & banking | ✅ | `unit/test_bank.py`, `test_ledger.py` |
+| NPC shops & economy | ✅ | `unit/test_economy.py` (quality/barter/region/demand/restock) |
+| Player-to-player trading | ✅ | `unit/test_trade_offer_and_accept.py`, `test_trade_decline.py` |
+| Transit & travel | ✅ | `unit/test_transit_board.py`, `test_transit_disembark.py`, `test_transit_schedule.py`, `test_transit_load_lines.py`, `test_transit_minimap_animation.py`, `test_mobile_route.py` |
+| Weather effects | ✅ | `unit/test_weather_modifiers.py`, `test_transit_weather_grounding.py` |
+| NPC dialogue trees | ✅ | `unit/test_dialogue.py`, `test_npc_memory.py` |
+| Quests & progress | ✅ | `unit/test_quest_service.py`, `test_quest_branching.py`, `test_quest_timer.py`, `test_quest_puzzle_world_schema.py` |
+| Chat & channels | ✅ | `unit/test_channels.py`, `test_chat_broadcast.py`, `test_chat_verbs.py`, `test_player_preferences.py`; ⬜ `e2e/test_chat_feed_split.py` |
+| Following / group move | ✅ | `unit/test_follow.py`; ⬜ `e2e/test_multiplayer_realtime.py` |
+| Multiplayer presence | ✅ | `unit/test_player_presence.py`, `test_connection_manager.py`; `integration/test_admin_websocket.py`; ⬜ `e2e/test_multiplayer_realtime.py` |
+| Room effects & timed events | ✅ | `unit/test_room_effects.py` |
+| Context-attached commands | ✅ | `unit/test_context_commands_schema.py`, `test_context_commands_dispatch.py`, `test_context_conditions.py`, `test_mechanism_command.py`; `integration/test_context_commands_integration.py` |
+| Analytics & performance | ✅ | `unit/test_analytics.py`, `test_observability.py`; `integration/test_admin_api.py` |
+| Issue reporting & tracking | ✅ | `unit/test_report_command.py`, `test_report_wizard.py`, `test_issue_repo.py`, `test_issues_content.py`; ⬜ `e2e/test_admin_issues.py` |
+| Content linting & validation | ✅ | `unit/test_issues_content.py`, `test_news_content.py`, `test_quest_puzzle_world_schema.py`, `test_world_loader.py`, `test_world_export.py` |
+| Save / load slots | ✅ | `unit/test_save.py`, `test_score_command.py` |
+| World versioning / changesets | ✅ | `integration/test_versioning.py`, `test_feature_toggling.py` |
+| Session record & replay | ✅ | `unit/test_session_replay.py`; ⬜ `simulation/test_audit_regression.py`, `test_load.py`, `test_soak.py`, `test_multiplayer_scenarios.py` |
+| **Composed player journeys (headless)** | ✅ | `integration/test_gameplay_journeys.py` — added 2026-07-08: drives raw command strings through the real `CommandEngine` over the shipped `world.yaml` for three marquee walkthroughs: vault locked-door → Bad-Key rejected → Good-Key → pass; wear/remove helmet (pack ↔ head slot); Mira dialogue → `investigate_lights` quest start. Fast regressions the golden_path sim + slow e2e didn't provide. |
+| **Death & resurrection** | 🚫 | Not implemented — only `models/combat.py` stub. Do not write tests. |
+| **Combat system** | 🚫 | Not implemented (design doc only, Sprint 61+ set aside). |
+| **PvP** | 🚫 | Not implemented (set aside to `wishlist.md`). |
+
+**Bottom line:** the implemented game is already comprehensively covered. Net-new automated tests
+should target genuinely-uncovered *behaviors* (found by reading a specific test file against its
+feature's Verification Checklist below), not whole features — and never the 🚫 rows.
 
 ---
 
@@ -2182,21 +2249,37 @@ Automated checks on world content (YAML) for consistency: missing item reference
 
 ## Coverage Gaps & Future Work
 
-### Not Yet Tested Comprehensively:
-- Combat system (awaiting implementation — Sprint 61+)
-- PvP mechanics (awaiting implementation)
-- Multiplayer trade/transit test pass (deferred to wishlist)
-- Death/resurrection mechanics (awaiting implementation)
-- Offline message history (not implemented)
-- Rate limiting on chat (not implemented)
-- World versioning & builder mode (tested but integration could be deeper)
+### Cannot be tested — feature not implemented (do NOT write tests; they'd force fake code):
+- **Combat system** — design doc + `models/combat.py` stub only (set aside, Sprint 61+).
+- **Death & resurrection** — not implemented. (This is why the Banking checklist's "carried coins
+  lost on death / banked safe" cannot be validated yet — the death path doesn't exist. The
+  *carried-vs-banked split* itself is fully tested in `unit/test_bank.py`.)
+- **PvP** — not implemented (set aside to `wishlist.md`).
+- **Offline message history / in-game mail** — not implemented (`tell` is online-only by design).
+- **Chat rate limiting** — explicitly deferred (Sprint 52 notes).
 
-### Recommended Next Steps:
-1. **Expand E2E coverage:** Every major feature should have an end-to-end test exercising the full flow
-2. **Multiplayer scenarios:** Record and replay real multi-player sessions (group quest, trading chain, etc.)
-3. **Stress testing:** Push system to 50+, 100+ concurrent players to find bottlenecks
-4. **Edge-case scenarios:** Test rare combinations (max encumbrance + no light + low stamina, etc.)
-5. **Browser compatibility:** Test on Safari, Firefox, mobile Chrome (current tests run Chromium)
+### Genuinely thin coverage worth adding real tests for (behavior exists, assertion may be light):
+> These are candidates found by reading the suite; confirm the gap is real before writing —
+> don't duplicate an existing assertion just to tick a box.
+- ✅ **DONE (2026-07-08):** headless command-engine drive-through of the marquee walkthroughs
+  (locked-door → key → pass; wear/remove; dialogue → quest start) →
+  `tests/integration/test_gameplay_journeys.py`, complementing the slow e2e versions.
+  *Not added: buy/sell and transit journeys — the shipped `world.yaml` contains no shop and no
+  transit line (economy has only regions), so a real-world journey for those would require
+  fabricating content. Those commands remain covered by their synthetic-fixture unit suites
+  (`test_economy.py`, `test_transit_*.py`).*
+- Integration-level (headless) equivalents of the multiplayer-presence flows currently proven
+  only in slow e2e (`player_left` decrements occupancy, third-person narration form).
+- Mobile/responsive chat tab-collapse (the one acknowledged cosmetic backlog item, Sprint 45.3).
+
+### Recommended next steps (validated against the real suite, 2026-07-08):
+1. **The implemented game is already comprehensively covered** — 984 unit+integration tests pass.
+   Prioritize *breadth of scenarios* over more micro-unit tests.
+2. **Multiplayer scenarios:** the deferred trade/transit sim-test pass (`wishlist.md`) is the
+   highest-value net-new work — record and replay real multi-player sessions.
+3. **Stress testing:** push `tests/simulation/test_load.py` to 50+/100+ concurrent players.
+4. **Edge-case scenarios:** rare combinations (max encumbrance + no light + low stamina).
+5. **Browser compatibility:** current e2e runs Chromium only; add Firefox/WebKit if it matters.
 
 ---
 
