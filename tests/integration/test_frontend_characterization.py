@@ -374,6 +374,82 @@ async def _test_game_screen_applies_accessibility_body_classes() -> None:
     assert "font-xlarge" in html
 
 
+def test_game_screen_applies_theme_body_class() -> None:
+    anyio.run(_test_game_screen_applies_theme_body_class)
+
+
+async def _test_game_screen_applies_theme_body_class() -> None:
+    """The selected theme surfaces as a `theme-<name>` class on <body> (Sprint 58.1)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        # Default (no stored theme) -> terminal.
+        _, default_html = await _http_get(
+            app, "/game", cookies={"player_id": "player-1"}
+        )
+        assert "theme-terminal" in default_html
+
+        # A stored non-default theme repaints via the body class.
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"theme": "slate"}
+            db.add(player)
+            db.commit()
+        _, slate_html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "theme-slate" in slate_html
+    assert "theme-terminal" not in slate_html
+
+
+def test_settings_renders_and_persists_theme() -> None:
+    anyio.run(_test_settings_renders_and_persists_theme)
+
+
+async def _test_settings_renders_and_persists_theme() -> None:
+    """The settings form exposes the theme picker and round-trips a choice (Sprint 58.1)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, get_html = await _http_get(
+            app, "/settings", cookies={"player_id": "player-1"}
+        )
+        assert 'name="theme"' in get_html
+
+        status, post_html = await _http_post_form(
+            app,
+            "/settings",
+            form={"theme": "parchment"},
+            cookies={"player_id": "player-1"},
+        )
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+
+    assert status == 200
+    assert player is not None
+    assert player.preferences["theme"] == "parchment"
+    # The saved theme is pre-selected on the way back.
+    assert '<option value="parchment" selected>' in post_html
+
+
 def test_game_screen_hides_panel_when_preference_set() -> None:
     anyio.run(_test_game_screen_hides_panel_when_preference_set)
 

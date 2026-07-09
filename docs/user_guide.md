@@ -11,15 +11,16 @@ to NPCs, and the full command list.
 
 1. [Getting Started](#getting-started)
 2. [The Game Screen](#the-game-screen)
-3. [Movement](#movement)
-4. [Looking, Taking, and Using Items](#looking-taking-and-using-items)
-5. [Talking to NPCs & Quests](#talking-to-npcs--quests)
-6. [Chat & Social](#chat--social)
-7. [Saving, Quitting, and Reconnecting](#saving-quitting-and-reconnecting)
-8. [News](#news)
-9. [Reporting Bugs](#reporting-bugs)
-10. [Full Command Reference](#full-command-reference)
-11. [Tips & Troubleshooting](#tips--troubleshooting)
+3. [Themes & Display](#themes--display)
+4. [Movement](#movement)
+5. [Looking, Taking, and Using Items](#looking-taking-and-using-items)
+6. [Talking to NPCs & Quests](#talking-to-npcs--quests)
+7. [Chat & Social](#chat--social)
+8. [Saving, Quitting, and Reconnecting](#saving-quitting-and-reconnecting)
+9. [News](#news)
+10. [Reporting Bugs](#reporting-bugs)
+11. [Full Command Reference](#full-command-reference)
+12. [Tips & Troubleshooting](#tips--troubleshooting)
 
 ---
 
@@ -57,6 +58,32 @@ the NPC's line and numbered reply buttons — see [Talking to NPCs](#talking-to-
 
 On a narrow (phone-width) screen, the three panel columns collapse into one at a time —
 use the **Room** / **Feed** / **Players** tabs at the bottom to switch between them.
+
+## Themes & Display
+
+Open **Settings** (top-right of the game screen) to change how the client looks. Choices are
+saved to your account, so they follow you to any device you log in from.
+
+**Theme** sets the colour palette and typography:
+
+| Theme | Look |
+|-------|------|
+| **Terminal** *(default)* | The classic green-on-black monospace console. |
+| **Slate** | A modern dark app with a cyan accent and a clean sans-serif face. |
+| **Immersive** | A cinematic, low-glare dark theme lit in warm amber. |
+| **Parchment** | A warm, light "old book" theme — serif prose with monospace commands. |
+
+The theme only changes colours and fonts; every panel and command works the same in all of them.
+
+Other display options on the same page:
+
+- **Display density** — *Comfortable* or *Compact* (tighter spacing to fit more on screen).
+- **Text size**, **High-contrast theme**, and **Reduce motion** for readability and accessibility.
+- **Feed verbosity**, **timestamp format**, and how many feed entries to load.
+- **Hidden panels** — hide the mini-map, inventory, players, or quest panels you don't want.
+
+> Prefer keyboard-friendly, low-distraction play? Pair **High-contrast** or **Reduce motion**
+> with any theme — those toggles stack on top of your chosen palette.
 
 ## Movement
 

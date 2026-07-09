@@ -30,8 +30,12 @@ combat/quests are emitting output at volume, so they're queued ahead of the back
 **Candidate work** also lives in the *Backlog* table below and in [`wishlist.md`](wishlist.md)
 (audited against the code 2026-07-07 — bullets that were already shipped are annotated there). The
 nearest small, well-scoped backlog item is the **`report player <name>` moderation branch** of the
-issue-report wizard (the guided flow itself already shipped in Sprint 33.1). **Next new sprint after
-56–57: 58.**
+issue-report wizard (the guided flow itself already shipped in Sprint 33.1).
+
+**Sprint 58** (selectable client themes & layouts) is scoped below — turning the four client design
+directions in [`Lorecraft Client.dc.html`](Lorecraft%20Client.dc.html) into player-selectable
+colour/typography **themes** (Phase 1) and panel **layouts** (Phase 2), two independent preference
+axes riding the display-preference seam that already exists. **Next new sprint after 58: 59.**
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -85,6 +89,41 @@ whatever hits stdout.
 
 ---
 
+## Sprint 58 — Selectable client themes & layouts
+
+**Goal:** turn the four client design directions in [`Lorecraft Client.dc.html`](Lorecraft%20Client.dc.html)
+— **terminal** (1a), **parchment** (1b), **slate** (1c), **immersive** (1d) — into player-selectable
+**themes** *and* **layouts**, persisted through the same `PlayerPreferences` blob as every other
+display setting. **Why now:** the foundation gate is green and the display-preference seam
+(Sprints 32.2/32.3 — density, font scale, high-contrast, hidden panels) already exists; both are a
+natural extension of it, not new engine surface.
+
+**Two orthogonal axes, sequenced.** *Phase 1 (58.1–58.4)* delivers **theme** = palette + typography
+on today's three-column layout — small, low-risk, and independently shippable. *Phase 2 (58.5–58.8)*
+adds **layout** as a *second, independent preference* (`standard` / `ledger` / `dock` / `immersive`),
+so a player can pair any palette with any arrangement — matching the mockups' own "combine 1c layout
+with 1d's chronicle" framing. Phase 1 lands first and stands alone; Phase 2 builds on it.
+
+### Phase 1 — Themes (palette + typography)
+
+| # | Task | Status |
+|---|------|--------|
+| 58.1 | **Theme token layer + preference.** Add a semantic CSS-variable token layer (`--lc-bg`, `--lc-panel`, `--lc-accent`, `--lc-text`, `--lc-text-muted`, `--lc-border`, `--lc-font-body`, `--lc-font-head`, …) to `static/css/custom.css`, defaulting to today's zinc/emerald terminal values (**zero visual change**). Point `base.html`'s Tailwind config semantic colours (`panel`/`accent`/`text`/`text-muted`/`feed-bg`/`border`) at those vars. Add a `theme` enum to `PlayerPreferences` (`THEMES = ("terminal","parchment","slate","immersive")`, default `terminal`), emit `theme-<name>` on `<body>` via `body_classes`, and add the theme `<select>` to the settings form. Unit tests for the pref round-trip/validation + the body-class output. | [x] `theme` field on `PlayerPreferences` (default `terminal`, leads `body_classes`); Tailwind semantic colours resolve to `--lc-*`; settings selector; `TestTheme` unit + `test_game_screen_applies_theme_body_class`/`test_settings_renders_and_persists_theme` integration tests. |
+| 58.2 | **Slate & Immersive (dark) themes.** Define the `slate` (1c: `#0a0d15`/`#43c7d8`, Plex Sans) and `immersive` (1d: `#0a0807`/`#e8a13c`, Plex Sans) token sets + the override layer that remaps the raw `zinc-*`/`emerald-*` literals still in the partials (same mechanism as the existing high-contrast block) so both repaint the whole screen. Load the required web fonts. | [x] Shared **`body:not(.theme-terminal)` remap** (one block, specificity 0,2,x — no `!important`) routes every raw literal through the tokens; each theme is just a token block. IBM Plex Sans/Mono + Spectral loaded in `base.html`. |
+| 58.3 | **Parchment (light) theme.** The one light theme (1b: `#e3d7bd`/`#8c3b2e`, Spectral serif body + Plex Mono commands) — inverts background/text, needs its own override set and a WCAG-AA contrast pass. | [x] `body.theme-parchment` token block + serif body / mono commands + softened error-red + lifted feed-hover for the light ground. |
+| 58.4 | **Theme docs & regression tests.** Document the theme picker in [`user_guide.md`](user_guide.md); changelog; a settings test that a chosen theme persists and re-renders selected; a render assertion that `<body>` carries the right `theme-*` class. | [x] Regression tests landed with 58.1; user-guide "Themes" section + CHANGELOG. |
+
+### Phase 2 — Layouts (panel arrangement)
+
+| # | Task | Status |
+|---|------|--------|
+| 58.5 | **Layout preference + collapsible-panel mechanism.** Add a `layout` enum to `PlayerPreferences` (`LAYOUTS = ("standard","ledger","dock","immersive")`, default `standard`), emit `layout-<name>` on `<body>` (independent of `theme-*`), and build the shared building block the other three need: an Alpine-driven **collapsible panel rail** (icon-collapsed ↔ expanded), CSS-only where possible. `standard` reproduces today's three-column grid (**zero visual change**). Settings gets a layout `<select>`; unit tests mirror 58.1. | [ ] |
+| 58.6 | **Ledger layout (1b).** Left column = Location + Map; Chronicle runs wide in the centre; secondary panels (Here / Quests / Pack / Stats) collapse into a slim right vertical rail using the 58.5 mechanism. Pure CSS-grid re-flow + rail — no data changes. | [ ] |
+| 58.7 | **Dock layout (1c).** A visible control bar (theme · density · layout · panel toggles surfaced from `/settings` inline) above card-style panels, plus the rarity-coloured **icon-grid inventory** variant. Drag-to-reorder panels is a **stretch** (behind a flag) — the reviewable core is the toolbar + card treatment + icon-grid. | [ ] |
+| 58.8 | **Immersive layout (1d) + docs.** Near-full-bleed Chronicle with a soft vignette; everything else collapses to a slim icon rail (58.5) that expands on demand; floating minimap + floating command bar. Document both axes in [`user_guide.md`](user_guide.md); changelog; render tests asserting the `layout-*` body class and that hidden-by-default rail panels are still reachable. | [ ] |
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -119,11 +158,12 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 - **Drafted, not started:** 56 (structured output-type tagging), 57 (request tracing & crash
   reports) — scoped above 2026-07-08 from the same gap in the numbering left by the earlier
   combat renumber.
-- **Reserved but never used:** 58–60 (remainder of the gap from an earlier combat renumber).
+- **In progress:** 58 (selectable client themes & layouts) — scoped above 2026-07-08.
+- **Reserved but never used:** 59–60 (remainder of the gap from an earlier combat renumber).
 - **Retired to [`wishlist.md`](wishlist.md):** 61–64 (combat core, combat commands/UI, combat
   testing, PvP consent), 65 (multiplayer trade/transit tests). Don't reuse these numbers for
   unrelated work — restore under fresh numbers if that work returns.
-- **Next new sprint after 56–57: 58.** Don't recycle a number that appears here or in
+- **Next new sprint after 58: 59.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---

@@ -24,6 +24,11 @@ from lorecraft.types import JsonObject
 # Allowed values for the enum-like preferences. Anything outside these falls
 # back to the default, so a hand-edited or stale blob can never inject an
 # invalid class name / format string into a template.
+# Colour + typography themes (Sprint 58.1). Each maps to a `theme-<name>` body
+# class and a CSS-variable token set in static/css/custom.css. "terminal" is the
+# default and reproduces today's zinc/emerald look, so an account that never
+# picks a theme renders exactly as before.
+THEMES = ("terminal", "parchment", "slate", "immersive")
 DISPLAY_DENSITIES = ("comfortable", "compact")
 FEED_VERBOSITIES = ("verbose", "normal", "terse")
 TIMESTAMP_FORMATS = ("relative", "clock24", "clock12", "none")
@@ -42,6 +47,8 @@ TOGGLEABLE_PANELS = ("minimap", "inventory", "players_online", "quest_tracker")
 class PlayerPreferences:
     """Fully-resolved, always-valid presentation preferences for one account."""
 
+    # Colour + typography theme (Sprint 58.1). Default reproduces today's look.
+    theme: str = "terminal"
     display_density: str = "comfortable"
     feed_verbosity: str = "normal"
     timestamp_format: str = "relative"
@@ -67,6 +74,7 @@ class PlayerPreferences:
         data = asdict(self)
         data["hidden_panels"] = list(self.hidden_panels)
         # Convenience booleans/classes so templates stay logic-light.
+        data["theme_class"] = f"theme-{self.theme}"
         data["is_compact"] = self.display_density == "compact"
         data["density_class"] = f"density-{self.display_density}"
         data["motion_class"] = "reduced-motion" if self.reduced_motion else ""
@@ -76,6 +84,7 @@ class PlayerPreferences:
         data["body_classes"] = " ".join(
             c
             for c in (
+                data["theme_class"],
                 data["density_class"],
                 data["motion_class"],
                 data["contrast_class"],
@@ -94,6 +103,8 @@ class PlayerPreferences:
         """
         default = PlayerPreferences()
         out: JsonObject = {}
+        if self.theme != default.theme:
+            out["theme"] = self.theme
         if self.display_density != default.display_density:
             out["display_density"] = self.display_density
         if self.feed_verbosity != default.feed_verbosity:
@@ -156,6 +167,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         else {}
     )
     return PlayerPreferences(
+        theme=_clean_enum(raw.get("theme"), THEMES, "terminal"),
         display_density=_clean_enum(
             raw.get("display_density"), DISPLAY_DENSITIES, "comfortable"
         ),

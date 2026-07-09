@@ -2,6 +2,24 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.49.0] - 2026-07-08
+
+### Added
+
+- **Selectable client themes (Sprint 58, Phase 1).** The player can now pick a colour +
+  typography **theme** on the **Settings** page; the choice is saved per account (in the same
+  preferences blob as density/contrast/font-size) and follows them across devices. Four themes:
+  - **Terminal** *(default)* — today's green-on-black monospace console, unchanged.
+  - **Slate** — modern dark app, cyan accent, IBM Plex Sans.
+  - **Immersive** — cinematic warm-amber dark theme.
+  - **Parchment** — warm light "old book" theme, Spectral serif prose with monospace commands.
+
+  Implemented as a CSS-variable token layer in `static/css/custom.css`: the Tailwind semantic
+  colours resolve to `--lc-*` tokens, and a single shared `body:not(.theme-terminal)` remap
+  routes the remaining raw palette utilities through the same tokens — so `terminal` is a
+  byte-for-byte no-op and each new theme is just a block of token values. Documented in the
+  player guide's new **Themes & Display** section.
+
 ## [0.48.4] - 2026-07-08
 
 ### Added

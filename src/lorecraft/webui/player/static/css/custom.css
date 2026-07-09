@@ -3,30 +3,49 @@
 :root {
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+
+    /* ---- Theme tokens (Sprint 58.1) ----
+       Semantic colour/typography variables the Tailwind config's semantic names
+       (bg-feed-bg / bg-panel / text-accent / border-border / …) resolve to, so a
+       `theme-<name>` class on <body> can repaint the whole UI by overriding just
+       these. The defaults below are today's zinc/emerald "terminal" values —
+       identical to the pre-58 hardcoded palette, so the default theme is a
+       byte-for-byte visual no-op. Per-theme overrides live further down. */
+    --lc-bg: #09090b;            /* zinc-950 — body / feed background */
+    --lc-panel: #18181b;         /* zinc-900 — panel surface */
+    --lc-panel-light: #27272a;   /* zinc-800 — raised panel / input */
+    --lc-border: #3f3f46;        /* zinc-700 — panel borders (Tailwind `border`) */
+    --lc-accent: #10b981;        /* emerald-500 — primary accent */
+    --lc-accent-strong: #059669; /* emerald-600 — accent hover/active */
+    --lc-text: #e4e4e7;          /* zinc-200 — body text */
+    --lc-text-muted: #a1a1aa;    /* zinc-400 — muted/secondary text */
+    --lc-highlight: #fbbf24;     /* amber-400 — item names / quest accents */
+    --lc-font-body: var(--font-mono);
+    --lc-font-head: var(--font-mono);
 }
 
 /* Smooth scrolling for feed */
 #feed {
     scroll-behavior: smooth;
     scrollbar-width: thin;
-    scrollbar-color: #3f3f46 #09090b;
+    scrollbar-color: var(--lc-border) var(--lc-bg);
 }
 
 #feed::-webkit-scrollbar {
     width: 6px;
 }
 #feed::-webkit-scrollbar-thumb {
-    background-color: #3f3f46;
+    background-color: var(--lc-border);
     border-radius: 3px;
 }
 #feed::-webkit-scrollbar-thumb:hover {
-    background-color: #52525b;
+    background-color: var(--lc-text-muted);
 }
 
 /* Command input focus ring (Tailwind doesn't cover all) */
 #command-input:focus {
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-    border-color: #059669;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lc-accent) 18%, transparent);
+    border-color: var(--lc-accent-strong);
 }
 
 /* Hide Alpine-controlled elements before Alpine initializes (avoids a flash
@@ -53,11 +72,11 @@ kbd {
     font-family: var(--font-mono);
     font-size: 0.65rem;
     padding: 1px 4px;
-    background: #27272a;
-    border: 1px solid #3f3f46;
+    background: var(--lc-panel-light);
+    border: 1px solid var(--lc-border);
     border-bottom-width: 2px;
     border-radius: 3px;
-    color: #10b981;
+    color: var(--lc-accent);
 }
 
 /* Dialogue overlay — animate in only while visible */
@@ -93,23 +112,23 @@ kbd {
 }
 
 @keyframes flashBorder {
-    0%, 100% { border-color: #3f3f46; }
-    50% { border-color: #10b981; }
+    0%, 100% { border-color: var(--lc-border); }
+    50% { border-color: var(--lc-accent); }
 }
 
 /* Exit direction star (monospace visual) */
 .exit-dir.lit {
-    color: #10b981;
+    color: var(--lc-accent);
     font-weight: 600;
 }
 .exit-dir.dim {
-    color: #3f3f46;
+    color: var(--lc-border);
 }
 .exit-dir {
     transition: color 0.1s ease;
 }
 .exit-dir:hover {
-    color: #34d399;
+    color: var(--lc-accent-strong);
 }
 
 /* ---- Per-account presentation preferences (Sprint 32.2) ---- */
@@ -214,3 +233,125 @@ kbd {
     clip: auto;
     white-space: normal;
 }
+
+/* =======================================================================
+   Selectable themes (Sprint 58.2 / 58.3)
+   -----------------------------------------------------------------------
+   The default "terminal" theme keeps today's raw zinc/emerald Tailwind
+   literals untouched (byte-for-byte identical to pre-58). Every OTHER theme:
+     (a) overrides the --lc-* tokens (see per-theme blocks below), which
+         repaints all elements already using the semantic Tailwind names
+         (bg-panel, bg-feed-bg, text-text-muted, border-border, …); and
+     (b) is caught by the shared `body:not(.theme-terminal)` remap layer
+         immediately below, which routes the remaining *raw* zinc/emerald/
+         amber literals through the same tokens.
+   So adding a theme = one token block; no per-theme selector soup. A
+   `body:not(.theme-terminal) .foo` selector has specificity (0,2,x) and so
+   always beats a bare Tailwind utility (0,1,0) — no !important required.
+   ======================================================================= */
+
+/* --- Shared raw-literal -> token remap (all non-terminal themes) --- */
+
+/* Body element + inherited defaults (base.html keeps raw body utilities). */
+body:not(.theme-terminal) {
+    color: var(--lc-text);
+    font-family: var(--lc-font-body);
+}
+body:not(.theme-terminal).bg-zinc-950 { background-color: var(--lc-bg); }
+
+/* Surfaces */
+body:not(.theme-terminal) .bg-zinc-950 { background-color: var(--lc-bg); }
+body:not(.theme-terminal) .bg-zinc-900 { background-color: var(--lc-panel); }
+body:not(.theme-terminal) .bg-zinc-800,
+body:not(.theme-terminal) .bg-zinc-700 { background-color: var(--lc-panel-light); }
+
+/* Text shades */
+body:not(.theme-terminal) .text-zinc-100,
+body:not(.theme-terminal) .text-zinc-200,
+body:not(.theme-terminal) .text-zinc-300 { color: var(--lc-text); }
+body:not(.theme-terminal) .text-zinc-400,
+body:not(.theme-terminal) .text-zinc-500,
+body:not(.theme-terminal) .text-zinc-600 { color: var(--lc-text-muted); }
+
+/* Borders */
+body:not(.theme-terminal) .border-zinc-600,
+body:not(.theme-terminal) .border-zinc-700,
+body:not(.theme-terminal) .border-zinc-800 { border-color: var(--lc-border); }
+
+/* Accent (emerald) text/background/border -> theme accent */
+body:not(.theme-terminal) .text-emerald-300,
+body:not(.theme-terminal) .text-emerald-400,
+body:not(.theme-terminal) .text-emerald-500,
+body:not(.theme-terminal) .text-emerald-600,
+body:not(.theme-terminal) .text-emerald-700 { color: var(--lc-accent); }
+body:not(.theme-terminal) .bg-emerald-500,
+body:not(.theme-terminal) .bg-emerald-600,
+body:not(.theme-terminal) .bg-emerald-700 {
+    background-color: var(--lc-accent);
+    color: var(--lc-bg);
+}
+body:not(.theme-terminal) .border-emerald-500,
+body:not(.theme-terminal) .border-emerald-600,
+body:not(.theme-terminal) .border-emerald-700,
+body:not(.theme-terminal) .border-emerald-900 { border-color: var(--lc-accent); }
+
+/* Highlight (amber: item names, quest markers) -> theme highlight */
+body:not(.theme-terminal) .text-amber-300,
+body:not(.theme-terminal) .text-amber-400,
+body:not(.theme-terminal) .text-amber-500 { color: var(--lc-highlight); }
+
+/* --- Per-theme token sets --- */
+
+/* 1c — Slate dock: modern dark app, cyan accent, IBM Plex Sans. */
+body.theme-slate {
+    --lc-bg: #0a0d15;
+    --lc-panel: #141a28;
+    --lc-panel-light: #1c2436;
+    --lc-border: #263048;
+    --lc-accent: #43c7d8;
+    --lc-accent-strong: #6ad3e2;
+    --lc-text: #dbe4f2;
+    --lc-text-muted: #8794b0;
+    --lc-highlight: #e0b64a;
+    --lc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --lc-font-head: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+/* 1d — Immersive focus: cinematic, amber-lit, IBM Plex Sans. */
+body.theme-immersive {
+    --lc-bg: #0a0807;
+    --lc-panel: #14100d;
+    --lc-panel-light: #1e1813;
+    --lc-border: #2e251b;
+    --lc-accent: #e8a13c;
+    --lc-accent-strong: #f2b45a;
+    --lc-text: #ece2d2;
+    --lc-text-muted: #b6a892;
+    --lc-highlight: #e8a13c;
+    --lc-font-body: 'IBM Plex Sans', system-ui, sans-serif;
+    --lc-font-head: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+/* 1b — Parchment & ink: warm light "book", oxblood accent, Spectral serif.
+   The one light theme, so it also needs to soften error red and lift the
+   feed-hover so it reads on a light surface. */
+body.theme-parchment {
+    --lc-bg: #e3d7bd;
+    --lc-panel: #e8ddc6;
+    --lc-panel-light: #ece2cc;
+    --lc-border: #c3ac82;
+    --lc-accent: #8c3b2e;
+    --lc-accent-strong: #6f2d22;
+    --lc-text: #33291f;
+    --lc-text-muted: #7a6a4f;
+    --lc-highlight: #a07c3a;
+    --lc-font-body: 'Spectral', Georgia, 'Times New Roman', serif;
+    --lc-font-head: 'Spectral', Georgia, serif;
+}
+/* Commands stay monospace even under the serif body theme. */
+body.theme-parchment #command-input,
+body.theme-parchment .font-mono { font-family: 'IBM Plex Mono', var(--font-mono); }
+/* Error red needs more weight on a light ground. */
+body.theme-parchment .text-red-400,
+body.theme-parchment .text-red-300 { color: #9b2c2c; }
+body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08); }

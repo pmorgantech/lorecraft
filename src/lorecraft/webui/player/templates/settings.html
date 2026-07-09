@@ -24,6 +24,17 @@
         <legend class="px-1 text-sm font-semibold text-zinc-300">Display</legend>
 
         <div class="mb-4">
+          <label for="theme" class="block text-sm text-zinc-400 mb-1">Theme</label>
+          <select id="theme" name="theme"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in theme_options %}
+            <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-zinc-500">Colour &amp; typography. Terminal is the classic green-on-black look.</p>
+        </div>
+
+        <div class="mb-4">
           <label for="display_density" class="block text-sm text-zinc-400 mb-1">Display density</label>
           <select id="display_density" name="display_density"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
