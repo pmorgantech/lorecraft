@@ -74,10 +74,12 @@
                 </div>
             </div>
 
-            <!-- Feed content (append-only strategy) -->
+            <!-- Feed content (append-only strategy). No font utility here — the
+                 chronicle inherits the active Mode's font (see custom.css
+                 per-mode typography): JetBrains Mono under Standard/terminal. -->
             <div id="feed"
                  role="log" aria-live="polite" aria-label="Game narrative log"
-                 class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg font-serif scroll-smooth"
+                 class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg scroll-smooth"
                  data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
                 <!-- Initial server-rendered messages -->
                 {% include "partials/feed_items.html" %}
@@ -97,7 +99,7 @@
                 </div>
                 <div id="chat-feed"
                      role="log" aria-live="polite" aria-label="Chat log"
-                     class="flex-1 overflow-y-auto p-4 space-y-2 text-sm leading-relaxed bg-feed-bg font-serif scroll-smooth">
+                     class="flex-1 overflow-y-auto p-4 space-y-2 text-sm leading-relaxed bg-feed-bg scroll-smooth">
                 </div>
             </div>
             {% endif %}

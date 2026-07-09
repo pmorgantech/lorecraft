@@ -5,11 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Lorecraft{% endblock %}</title>
 
-    <!-- Theme web fonts (Sprint 58): sans for slate/immersive, serif + mono for
-         parchment. Terminal uses the system mono stack and needs none of these. -->
+    <!-- Theme web fonts (Sprint 58/60): JetBrains Mono (standard/terminal),
+         IBM Plex Sans (slate/immersive), IBM Plex Mono (classic + UI mono),
+         Spectral serif w/ italic (parchment prose). Each Mode's palette selects
+         its family via --lc-font-body + the per-mode typography block in
+         custom.css. For production these should be self-hosted (CDN latency
+         causes a FOUT that's ugly on the parchment/CRT modes especially). -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS Play CDN (zero build step) -->
     <script src="https://cdn.tailwindcss.com"></script>

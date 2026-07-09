@@ -92,6 +92,11 @@ The **Modes** — each is a layout with its own tuned palette (the palette overr
 | **Immersive** | A focused, cinematic view: a slim **icon rail** on the far left (glyph shortcuts for Look / Inventory / Journal / Score), a **full-bleed chronicle** filling the screen, and a **floating minimap** and **command bar** hovering over it. Chat folds into the chronicle — no side panels at all. Pairs with the amber-lit **Immersive** theme. |
 | **Classic** | An old-MUD terminal: the chronicle (with a vitals line + command prompt) fills the left; a minimap and a chat channel are stacked on the right. Chat is display-only — send messages with `say …` on the main command line. Chronicle-only like Immersive; pairs naturally with the **Classic** theme but works under any. |
 
+Each Mode is also **typeset** to suit its feel: Standard and Classic use a monospace terminal face,
+E-reader sets its chronicle as serif book prose (spoken lines in *italics*), and Dock and Immersive
+use a clean sans. Numbers line up (tabular figures) and descriptions are held to a comfortable
+reading width in every Mode.
+
 In **Standard**, Inventory and Quests **share one pane** — a toggle in the title bar flips between
 them, so the sidebar stays compact. (Dock gives each its own space — the Pack card with a Quests
 footer — and E-reader reaches them from its tab rail.) Immersive drops the room, inventory, players

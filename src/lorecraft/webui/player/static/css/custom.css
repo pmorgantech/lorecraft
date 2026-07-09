@@ -560,14 +560,15 @@ body.layout-dock .inv-grid {
 .ereader__ledger { width: 20rem; }
 .ereader__rail { width: 3.25rem; }
 .ereader__title { font-family: var(--font-serif); font-style: italic; font-size: 0.95rem; }
-/* Serif typesetting for the location readout + the chronicle prose. */
+/* Serif typesetting for the location readout + the chronicle prose — forced
+   here so it reads book-like under any palette (sizes/features are tuned in the
+   parchment block of the per-mode typography section, which wins by source
+   order under the coupled default). */
 body.layout-e-reader #room-description,
 body.layout-e-reader #feed {
-    font-family: var(--font-serif);
-    font-size: 1rem;
-    line-height: 1.75;
+    font-family: 'Spectral', var(--font-serif);
+    line-height: 1.8;
 }
-body.layout-e-reader #room-description h2 { font-size: 1.3rem; }
 /* Vertical tab rail (writing-mode makes the label read bottom-to-top). */
 .ereader-tab {
     writing-mode: vertical-rl;
@@ -688,5 +689,98 @@ body.layout-e-reader #room-description h2 { font-size: 1.3rem; }
                 0 10px 30px -8px rgba(0, 0, 0, 0.6),
                 0 0 30px -8px var(--lc-accent);
 }
-/* Chronicle prose stays readable full-bleed by capping the measure. */
-.immersive-feed > * { max-width: 62rem; }
+/* =======================================================================
+   Per-mode typography (Sprint 60). Each Mode gets a tuned type treatment,
+   scoped by its palette class — the palette carries the mode's typographic
+   identity in the coupled Mode design, so overriding the palette carries the
+   type with it. Two rules are shared by all five modes: a capped prose measure
+   (~60–66ch) so descriptions don't run too wide, and tabular figures wherever
+   numbers align. (Density: to add a size axis later, scale a single --lc-fs
+   base in rems rather than touching each rule here.)
+   ======================================================================= */
+
+/* Shared — tabular figures for aligned numbers (timestamps, weights, vitals,
+   counters, the world clock). */
+.msg-ts,
+.inv__wt,
+#vitals,
+.dock-card__r,
+#player-count,
+#world-clock { font-variant-numeric: tabular-nums; }
+
+/* Shared — cap the chronicle measure per mode (var set in each block below);
+   centre it where the mode reads book-like. */
+#feed .msg { max-width: var(--lc-measure, 68ch); }
+body.theme-parchment #feed .msg,
+body.theme-immersive #feed .msg { margin-inline: auto; }
+
+/* ---- Standard · terminal — JetBrains Mono, code-literal ---- */
+body.theme-terminal { --lc-measure: 66ch; }
+body.theme-terminal,
+body.theme-terminal .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    /* Kill ligatures — want code-literal glyphs (-> not →). 400→700 only. */
+    font-feature-settings: "calt" 0;
+}
+body.theme-terminal #feed { font-size: 13px; line-height: 1.7; }
+body.theme-terminal #room-description h2 { font-size: 14px; font-weight: 700; }
+
+/* ---- E-reader · parchment — Spectral prose + IBM Plex Mono UI ---- */
+body.theme-parchment { --lc-measure: 62ch; }
+body.theme-parchment #feed,
+body.theme-parchment #room-description {
+    font-size: 15px;
+    line-height: 1.8;
+    letter-spacing: 0;
+    /* Oldstyle figures sit in the text like a real book; avoid orphans. */
+    font-feature-settings: "onum" 1;
+    text-wrap: pretty;
+}
+body.theme-parchment #room-description h2 { font-size: 20px; line-height: 1.2; }
+body.theme-parchment .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; }
+/* Spoken lines read as italic prose, not a colour shift — more book-like. */
+body.theme-parchment #feed .msg.chat,
+body.theme-parchment #feed .msg.dialogue { font-style: italic; }
+
+/* ---- Dock · slate — IBM Plex Sans + IBM Plex Mono, weight hierarchy ---- */
+body.theme-slate { --lc-measure: 66ch; }
+body.theme-slate #feed { font-size: 13.5px; line-height: 1.65; }
+body.theme-slate .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+body.theme-slate #room-description h2 { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.dock-card__head .t { font-weight: 600; }
+/* Timestamps as chips rather than coloured text. */
+body.theme-slate .msg-ts {
+    background: #182035;
+    color: var(--lc-text-muted);
+    padding: 0 5px;
+    border-radius: 4px;
+    vertical-align: baseline;
+}
+
+/* ---- Immersive · amber focus — IBM Plex Sans, big & loose (cinema) ---- */
+body.theme-immersive { --lc-measure: 720px; }
+body.theme-immersive #feed { font-size: 15px; line-height: 1.7; }
+body.theme-immersive #room-description h2 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    /* Candlelight glow on the name only — soft, never hurts legibility. */
+    text-shadow: 0 0 24px rgba(232, 161, 60, 0.15);
+}
+/* Atmosphere / spoken lines recede into italic; timestamps tiny + faint. */
+body.theme-immersive #feed .msg.chat,
+body.theme-immersive #feed .msg.dialogue { font-style: italic; color: var(--lc-text-muted); }
+body.theme-immersive .msg-ts { color: #5c5344; }
+
+/* ---- Classic · CRT — IBM Plex Mono, tight uniform grid ---- */
+body.theme-classic,
+body.theme-classic-amber { --lc-measure: 70ch; }
+body.theme-classic .font-mono,
+body.theme-classic-amber .font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+/* No ligatures + a slashed zero — sells the terminal. */
+body.theme-classic,
+body.theme-classic-amber { font-feature-settings: "calt" 0, "zero" 1; }
+body.theme-classic #feed,
+body.theme-classic-amber #feed { font-size: 13.5px; line-height: 1.62; }
+body.theme-classic #chat-feed,
+body.theme-classic-amber #chat-feed { font-size: 13px; }

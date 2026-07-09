@@ -2,6 +2,27 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.51.0] - 2026-07-09
+
+### Changed
+
+- **Per-mode typography pass (Sprint 60).** Each Mode now has a tuned type treatment, keyed to its
+  palette:
+  - **Standard** — *JetBrains Mono*, code-literal (ligatures off), 13px chronicle at 1.7 leading.
+  - **E-reader** — *Spectral* serif prose at 15px/1.8 with **oldstyle figures** and `text-wrap: pretty`;
+    spoken lines render as *italic* (book-like) rather than a colour shift; IBM Plex Mono for UI.
+  - **Dock** — *IBM Plex Sans* with a 400→700 weight hierarchy; timestamps as slate **chips**;
+    tightened headings.
+  - **Immersive** — *IBM Plex Sans*, larger and looser (15px/1.7), a 26px room name with a soft amber
+    **candlelight glow**, atmosphere/spoken lines italic and faint.
+  - **Classic** — *IBM Plex Mono*, tight uniform grid (13.5px/1.62), ligatures off + **slashed zero**,
+    with the existing phosphor glow.
+  - Shared across all five: prose **measure capped** (~60–66ch) so descriptions don't run wide, and
+    **tabular figures** wherever numbers align (timestamps, weights, vitals, counters, clock).
+  - The chronicle no longer hardcodes a serif font — it inherits the active Mode's font. JetBrains Mono
+    is now loaded alongside IBM Plex Sans/Mono and Spectral. *(Fonts are still CDN-loaded; self-hosting
+    is a recommended production follow-up to avoid FOUT on the parchment/CRT modes.)*
+
 ## [0.50.7] - 2026-07-09
 
 ### Changed

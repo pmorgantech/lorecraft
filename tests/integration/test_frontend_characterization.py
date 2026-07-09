@@ -411,6 +411,42 @@ async def _test_game_screen_applies_theme_body_class() -> None:
     assert "theme-terminal" not in slate_html
 
 
+def test_typography_fonts_loaded_and_feed_inherits_mode_font() -> None:
+    anyio.run(_test_typography_fonts_loaded_and_feed_inherits_mode_font)
+
+
+async def _test_typography_fonts_loaded_and_feed_inherits_mode_font() -> None:
+    """Per-mode typography (Sprint 60): the four theme families are loaded, and
+    the chronicle no longer hardcodes a serif font utility — it inherits the
+    active Mode's font (JetBrains Mono under Standard/terminal), which the
+    per-mode CSS blocks key on."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    # All four mode families are requested from the font host.
+    assert "JetBrains+Mono" in html
+    assert "IBM+Plex+Sans" in html
+    assert "IBM+Plex+Mono" in html
+    assert "Spectral" in html
+    # The chronicle carries no font utility, so it inherits the mode font (the
+    # feed div is the one with role="log"/aria-label="Game narrative log").
+    feed_open = html.index('aria-label="Game narrative log"')
+    feed_tag = html[html.rindex("<div", 0, feed_open) : html.index(">", feed_open)]
+    assert "font-serif" not in feed_tag
+    assert "font-mono" not in feed_tag
+
+
 def test_game_screen_applies_layout_body_class() -> None:
     anyio.run(_test_game_screen_applies_layout_body_class)
 
