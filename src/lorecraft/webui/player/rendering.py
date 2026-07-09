@@ -143,6 +143,42 @@ def audit_to_feed(event: AuditEvent, current_player: Player) -> dict[str, Any]:
     }
 
 
+def mud_room_block(room: Any, room_panel: dict[str, Any]) -> list[str]:
+    """Old-school-MUD-style plain-text room description (Sprint 58): name,
+    description, NPCs present, visible items, and non-hidden exits — the text
+    equivalent of the room + minimap panels, for layouts (immersive) that drop
+    them in favour of a dominant chronicle. Built from the same `room_panel`
+    data those panels render, so it can't drift from what they'd show.
+    """
+    lines = [room.name, room.description]
+
+    npcs = room_panel.get("npcs") or []
+    if npcs:
+        lines.append(f"Present: {', '.join(npcs)}.")
+
+    items = room_panel.get("items_visible") or []
+    if items:
+        lines.append(f"You see: {', '.join(items)}.")
+
+    exits = [e["direction"] for e in room_panel.get("exits", []) if not e.get("hidden")]
+    lines.append(
+        f"Exits: {', '.join(sorted(exits))}."
+        if exits
+        else "There are no obvious exits."
+    )
+    return lines
+
+
+def mud_players_here_line(players_in_room: list[dict[str, Any]]) -> str | None:
+    """'X, Y are here.' line — the text equivalent of the Here Now panel, for
+    layouts (immersive) that drop it. None if no one else is present."""
+    others = [p["name"] for p in players_in_room if not p.get("is_self")]
+    if not others:
+        return None
+    verb = "is" if len(others) == 1 else "are"
+    return f"{', '.join(others)} {verb} here."
+
+
 def mark_oob_swap(html: str, element_id: str) -> str:
     """Mark a rendered partial for HTMX out-of-band swap by element id."""
     needle = f'id="{element_id}"'

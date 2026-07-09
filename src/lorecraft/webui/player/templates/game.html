@@ -13,7 +13,7 @@
     <!-- Main game area -->
     <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
-        <!-- LEFT SIDEBAR: Room + Inventory + Minimap -->
+        <!-- LEFT SIDEBAR: Room + Minimap (Chat + Minimap in immersive) -->
         <div
             :class="mobileTab === 'room' ? 'flex' : 'hidden'"
             class="game-col game-col-left lg:!flex flex-col gap-px overflow-hidden h-full w-full lg:w-96 lg:flex-none">
@@ -34,9 +34,11 @@
             </div>
             {% endif %}
 
-            <!-- Room Description Panel -->
+            <!-- Room Description Panel. Inventory now lives in the right rail
+                 (paired with Quests) for every layout, so the room fills the
+                 space above the minimap here. -->
             {% if prefs.layout != 'immersive' %}
-            <div class="game-panel-room flex-none flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden h-96">
+            <div class="game-panel-room flex-1 flex flex-col bg-panel border border-border rounded-t-lg overflow-hidden min-h-0">
                 <div class="px-3 py-1 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
                     <span>Current Location</span>
                     <button
@@ -49,18 +51,6 @@
                     </button>
                 </div>
                 {% include "partials/room_description.html" %}
-            </div>
-            {% endif %}
-
-            <!-- Inventory: flexible between room and map. Moved to the right rail
-                 in ledger; dropped entirely in immersive. -->
-            {% if 'inventory' not in prefs.hidden_panels and prefs.layout not in ['ledger', 'immersive'] %}
-            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden">
-                <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                    <span>Inventory</span>
-                    <span class="font-mono text-[10px] text-emerald-600">{{ inventory | sum(attribute='quantity') if inventory else 0 }} items</span>
-                </div>
-                {% include "partials/inventory.html" %}
             </div>
             {% endif %}
 
@@ -129,7 +119,10 @@
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR: Players + Quests (+ Inventory in the ledger layout) -->
+        {# RIGHT SIDEBAR: Players + an Inventory/Quests pane (mutually exclusive).
+           Dropped entirely for immersive (per review) — the chronicle takes
+           that space instead; there is no third column there at all. #}
+        {% if prefs.layout != 'immersive' %}
         <div
             x-data="{ rail: 'inventory' }"
             :class="mobileTab === 'players' ? 'flex' : 'hidden'"
@@ -146,11 +139,15 @@
             </div>
             {% endif %}
 
-            {% if prefs.layout == 'ledger' %}
-            <!-- Ledger: Inventory + Quests share the rail as a window-shade
-                 accordion — only one is expanded at a time. Both stay in the DOM
-                 so their OOB live-updates (#inventory / #quest-tracker) keep
-                 working even while collapsed. -->
+            {# Inventory + Quests share the right rail, mutually exclusive. Two
+               UI patterns are in play so they can be compared: dock + ledger use
+               a WINDOW-SHADE accordion (stacked titlebars, click to roll open);
+               standard uses a single TOGGLE pane (one titlebar, a button flips
+               between the two). Both bodies stay in the DOM (x-show) so their OOB
+               live-updates (#inventory / #quest-tracker) keep firing while
+               hidden. `rail` (on the column) is the shared open-panel state. #}
+            {% if prefs.layout in ['ledger', 'dock'] %}
+            <!-- Window-shade accordion (dock + ledger) -->
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
                 {% if 'inventory' not in prefs.hidden_panels %}
                 <button type="button" @click="rail = 'inventory'"
@@ -177,34 +174,51 @@
                 {% endif %}
             </div>
             {% else %}
-            <!-- Quest tracker -->
-            {% if 'quest_tracker' not in prefs.hidden_panels %}
-            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-[120px]">
+            <!-- Toggle pane (standard): one titlebar, a button flips Inventory ⇄ Quests -->
+            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-                    <span>Quests</span>
+                    <span x-text="rail === 'inventory' ? 'Inventory' : 'Quests'"></span>
+                    <button type="button"
+                            @click="rail = (rail === 'inventory' ? 'quests' : 'inventory')"
+                            class="normal-case tracking-normal text-[10px] px-2 py-0.5 rounded border border-border text-text-muted hover:text-emerald-400 hover:border-emerald-600 transition-colors">
+                        <span x-text="rail === 'inventory' ? 'Show Quests' : 'Show Inventory'"></span>
+                    </button>
                 </div>
-                {% include "partials/quest_tracker.html" %}
+                {% if 'inventory' not in prefs.hidden_panels %}
+                <div x-show="rail === 'inventory'" class="flex-1 flex flex-col overflow-hidden min-h-0">
+                    {% include "partials/inventory.html" %}
+                </div>
+                {% endif %}
+                {% if 'quest_tracker' not in prefs.hidden_panels %}
+                <div x-show="rail === 'quests'" x-cloak class="flex-1 flex flex-col overflow-hidden min-h-0">
+                    {% include "partials/quest_tracker.html" %}
+                </div>
+                {% endif %}
             </div>
             {% endif %}
-            {% endif %}
         </div>
+        {% endif %}
 
     </div>
 
-    <!-- Mobile tab bar: switches which column is visible below the lg breakpoint -->
+    <!-- Mobile tab bar: switches which column is visible below the lg breakpoint.
+         Immersive has no Players column, so that tab is dropped there; the
+         first tab is relabelled since it holds Chat, not Room, in immersive. -->
     <div class="lg:hidden flex border-t border-zinc-800 bg-zinc-900 text-xs">
         <button
             @click="mobileTab = 'room'"
             :class="mobileTab === 'room' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
-            class="flex-1 py-2 border-t-2 transition-colors">Room</button>
+            class="flex-1 py-2 border-t-2 transition-colors">{{ 'Chat' if prefs.layout == 'immersive' else 'Room' }}</button>
         <button
             @click="mobileTab = 'feed'"
             :class="mobileTab === 'feed' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
             class="flex-1 py-2 border-t-2 transition-colors">Feed</button>
+        {% if prefs.layout != 'immersive' %}
         <button
             @click="mobileTab = 'players'"
             :class="mobileTab === 'players' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
             class="flex-1 py-2 border-t-2 transition-colors">Players</button>
+        {% endif %}
     </div>
 
     <!-- Full-screen map modal (Sprint 26.1) -->

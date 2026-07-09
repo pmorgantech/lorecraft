@@ -10,11 +10,20 @@
 #}
 
 {% for msg in feed_messages %}
-    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat{% if msg.channel %} chat-{{ msg.channel }}{% endif %}{% else %}narrative{% endif %}{% if msg.msg_type %} msg-{{ msg.msg_type }}{% endif %}"
-         data-msg-id="{{ msg.id }}">
+    {#
+      A rendered `type == 'chat'` item is always the ACTOR'S OWN echo (see
+      ctx.chat_echoes in frontend.py) — other players' chat only ever arrives
+      client-side via WS (app.js's appendToChat), never through this Jinja
+      path — so `mine` here is unconditional, not a flag on the message dict.
+      When a chat pane exists (route_chat_oob, Sprint 58), route this item
+      there via HTMX out-of-band append instead of the main feed target.
+    #}
+    <div class="msg {% if msg.type == 'player_action' %}player-action{% elif msg.type == 'system' %}system{% elif msg.type == 'dialogue' %}dialogue{% elif msg.type == 'chat' %}chat mine{% if msg.channel %} chat-{{ msg.channel }}{% endif %}{% else %}narrative{% endif %}{% if msg.msg_type %} msg-{{ msg.msg_type }}{% endif %}"
+         data-msg-id="{{ msg.id }}"
+         {% if msg.type == 'chat' and route_chat_oob %}hx-swap-oob="beforeend:#chat-feed"{% endif %}>
 
         {% if msg.timestamp %}
-        <span class="text-[10px] text-zinc-600 font-mono mr-1.5 align-super">{{ msg.timestamp }}</span>
+        <span class="msg-ts text-[10px] text-zinc-600 font-mono mr-1.5 align-super">{{ msg.timestamp }}</span>
         {% endif %}
 
         {% if msg.actor %}
@@ -52,6 +61,21 @@
     .msg.chat { border-left-color: #22d3ee; }
     .msg.chat.chat-tell { border-left-color: #8b5cf6; }
     .msg.chat.chat-newbie { border-left-color: #f59e0b; }
+    /* Own messages, in a chat pane only (Sprint 58): mirror the bar to the
+       right and right-justify, like a chat-bubble UI — read as "sent by me"
+       versus everyone else's left-barred/left-aligned lines. Outside a chat
+       pane (#chat-feed absent — separate_chat off, non-immersive layout) the
+       item stays in the main feed with the ordinary left-bar/left-align
+       styling above; this rule only fires when it's actually IN the pane. */
+    #chat-feed .msg.chat.mine {
+        border-left: none;
+        padding-left: 0;
+        border-right: 2px solid #22d3ee;
+        padding-right: 0.5rem;
+        text-align: right;
+    }
+    #chat-feed .msg.chat.mine.chat-tell { border-right-color: #8b5cf6; }
+    #chat-feed .msg.chat.mine.chat-newbie { border-right-color: #f59e0b; }
     /* Sprint 56 message-type taxonomy: additive `msg-<type>` classes from
        ctx.say()'s msg_type, layered on top of the classes above rather than
        replacing them. Only types actually assigned by call sites so far

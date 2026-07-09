@@ -79,10 +79,23 @@ The theme only changes colours and fonts; every panel and command works the same
 
 | Layout | Arrangement |
 |--------|-------------|
-| **Standard** *(default)* | The classic three columns: room/inventory/map, chronicle, players/quests. |
-| **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either header to swap which one is open). |
-| **Dock** | The same panels as floating, rounded "cards". |
-| **Immersive** | A focused, cinematic view: a slim left column with **chat on top and the minimap below**, and the chronicle taking the rest of the screen (room, inventory, players and quests are hidden for focus). |
+| **Standard** *(default)* | Three columns: room + map on the left, chronicle in the centre, and players + an **Inventory/Quests** pane on the right (a **toggle button** in its title bar flips between the two). |
+| **Ledger** | Location + map on a slim left column, a wide central chronicle, and a right rail where **Inventory and Quests share a window-shade** (click either title bar to roll it open; the other rolls shut). |
+| **Dock** | The same panels as floating, rounded "cards", with the window-shade Inventory/Quests rail. |
+| **Immersive** | A focused, cinematic view: a slim left column with **chat on top and the minimap below**, and the chronicle takes the rest of the screen — there's no third column at all. |
+
+In every layout except immersive, **Inventory and Quests share one pane** — only one is shown at a
+time, so the sidebar stays compact. (Immersive drops the room, inventory, players and quest panels
+entirely to keep the focus on the chronicle — see below for how it makes that information up.)
+
+**Immersive reads like an old-school MUD.** With no side panels, the chronicle itself narrates what
+they'd normally show: entering a new room prints its name, description, NPCs, items, and exits as
+plain text (the same information `look` already shows you), and `look` also lists anyone else
+present. Lines have no colour bar or timestamp here — just scrolling text, telnet-style.
+
+**Your own chat is right-aligned, with the colour bar on the right** — wherever a chat pane
+exists (a separate chat pane, or always in immersive) — so your lines read as "sent by me" against
+everyone else's left-aligned messages.
 
 Theme and layout **preview live** as you change the dropdowns — click **Save** to keep them (you
 go straight back to the game), or **Cancel** to discard and return with your last-saved look.

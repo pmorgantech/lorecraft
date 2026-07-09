@@ -2,6 +2,37 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.49.4] - 2026-07-08
+
+### Added
+
+- **Immersive chronicle reads like an old-school MUD.** With no room/players panels in this
+  layout, the chronicle now narrates what they'd show as plain text: entering a new room prints
+  its name, description, NPCs, items, and exits (movement never narrated any of this before — that
+  was the room panel's job); `look` already narrates name/description/exits via the engine's
+  existing output, so only a **"X is here."** line is newly added there. Lines in this layout drop
+  the colour bar and timestamp — just scrolling text, telnet-MUD style.
+- **Own chat now reaches the chat pane too.** Previously only *other* players' chat (via WS)
+  ever routed into a chat pane (`separate_chat`, or the immersive layout's pane) — your own
+  `say`/`tell`/channel echo always stayed in the main chronicle instead, splitting a conversation
+  across two places. It's now routed into the chat pane the same way, and styled as a **"sent by
+  me" bubble**: the colour bar moves to the right and the line right-justifies, scoped to the chat
+  pane only (the main feed is unaffected).
+
+### Changed
+
+- **Inventory moved into the right-hand pane in every layout** (was left column in standard/dock).
+  Inventory and Quests now **share one pane, mutually exclusive** — only one is shown at a time —
+  so the sidebar stays compact. Two UI patterns are in play so they can be compared:
+  - **Standard** uses a **toggle button** in the title bar that flips Inventory ⇄ Quests.
+  - **Dock** and **Ledger** use a **window-shade accordion** — stacked title bars, click one to
+    roll it open while the other rolls shut.
+
+  Both panels stay in the DOM while hidden, so their live (`#inventory` / `#quest-tracker`) updates
+  keep working. The room panel now fills the left column above the minimap.
+- **Immersive drops the right column entirely** (Here Now / Inventory / Quests), including its
+  mobile tab — not just visually hidden, removed from the page. The chronicle takes that space.
+
 ## [0.49.3] - 2026-07-08
 
 ### Added

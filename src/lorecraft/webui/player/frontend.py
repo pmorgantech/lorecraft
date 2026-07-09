@@ -61,6 +61,8 @@ from lorecraft.webui.player.rendering import (
     create_dev_player,
     feed_items_html,
     mark_oob_swap,
+    mud_players_here_line,
+    mud_room_block,
     resolve_command_text,
 )
 from lorecraft.webui.player.session import (
@@ -458,7 +460,7 @@ async def game_screen(
 
         feed_messages = [audit_to_feed(e, player) for e in reversed(feed_events)]
 
-        if not feed_messages and current_room:
+        if not feed_messages and current_room and prefs.layout != "immersive":
             feed_messages = [
                 {
                     "id": "welcome",
@@ -480,6 +482,32 @@ async def game_screen(
             get_real_manager(request),
             player_repo,
         )
+
+        # Immersive layout drops the dedicated room/players panels in favour of
+        # a dominant chronicle, so it needs their info as old-school-MUD plain
+        # text instead — appended last (closest to the prompt), like a MUD
+        # showing you the room right after you connect (Sprint 58).
+        if prefs.layout == "immersive" and current_room:
+            mud_lines = mud_room_block(current_room, room_panel)
+            players_line = mud_players_here_line(players_in_room)
+            if players_line:
+                mud_lines.append(players_line)
+            mud_ts = time.strftime("%H:%M", time.localtime())
+            feed_messages = [
+                *feed_messages,
+                *(
+                    {
+                        "id": f"mud-{i}",
+                        "timestamp": mud_ts,
+                        "actor": None,
+                        "text": line,
+                        "type": "narrative",
+                        "msg_type": "room_event",
+                    }
+                    for i, line in enumerate(mud_lines)
+                ),
+            ]
+
         context = {
             "request": request,
             "current_player": player,
@@ -744,6 +772,21 @@ async def handle_command(
                 npc_repo=npc_repo,
             )
             map_data = build_map_data(room_repo, after_player, after_room)
+            players_in_room = players_here(
+                after_player,
+                after_player.current_room_id,
+                get_real_manager(request),
+                player_repo,
+            )
+
+            # Resolved once here (Sprint 58): drives both the immersive
+            # old-school-MUD room text below and which pane a chat echo lands in.
+            prefs = resolve_preferences(after_player.preferences)
+            command_verb = (
+                command_text.strip().split(None, 1)[0].lower()
+                if command_text.strip()
+                else ""
+            )
 
             # Only emit what this command produced this turn.
             # No manual raw-echo + no re-pulling old audits here (prevents duplicate
@@ -768,10 +811,42 @@ async def handle_command(
                     }
                 )
 
+            # Immersive layout drops the dedicated room/players panels, so it
+            # needs their info as old-school-MUD plain text instead (Sprint 58):
+            # the full room block on arrival (movement doesn't otherwise narrate
+            # the new room at all — that's normally the panel's job), or just
+            # the "who's here" line on an explicit look (which already narrates
+            # name/description/exits/items itself via ctx.messages above).
+            if prefs.layout == "immersive":
+                mud_lines: list[str] = []
+                if room_changed:
+                    mud_lines.extend(mud_room_block(after_room, room_panel))
+                    players_line = mud_players_here_line(players_in_room)
+                    if players_line:
+                        mud_lines.append(players_line)
+                elif command_verb in {"look", "l"}:
+                    players_line = mud_players_here_line(players_in_room)
+                    if players_line:
+                        mud_lines.append(players_line)
+                for line in mud_lines:
+                    feed_msgs.append(
+                        {
+                            "id": f"msg-{session_id}-{len(feed_msgs)}",
+                            "timestamp": ts,
+                            "actor": None,
+                            "text": line,
+                            "type": "narrative",
+                            "msg_type": "room_event",
+                        }
+                    )
+
             # Chat channel (Sprint 45 split, Sprint 52 channels): the actor's own
             # chat echo, tagged so the client can route it to the chat pane when
             # separate_chat is on and style it per channel. With the preference
-            # off it renders in the single feed like before.
+            # off it renders in the single feed like before. When a chat pane
+            # exists (separate_chat, or the immersive layout's left-column pane),
+            # the render below routes this item there via an HTMX OOB append
+            # instead of leaving it in the main feed (Sprint 58).
             for echo in ctx.chat_echoes:
                 feed_msgs.append(
                     {
@@ -802,9 +877,14 @@ async def handle_command(
                 quest_changed=quest_changed,
             )
 
+            # A chat pane exists when separate_chat is on, or always in the
+            # immersive layout (Sprint 58) — route the actor's own chat echo
+            # there via HTMX OOB instead of the main feed (see feed_items.html).
+            route_chat_oob = prefs.separate_chat or prefs.layout == "immersive"
             feed_html = templates.get_template("partials/feed_items.html").render(
                 feed_messages=result.new_feed_messages,
                 current_player=after_player,
+                route_chat_oob=route_chat_oob,
             )
 
             response_html = feed_html
@@ -866,12 +946,7 @@ async def handle_command(
                 players_html = templates.get_template(
                     "partials/players_online.html"
                 ).render(
-                    players_here=players_here(
-                        after_player,
-                        after_player.current_room_id,
-                        get_real_manager(request),
-                        player_repo,
-                    ),
+                    players_here=players_in_room,
                     current_player=after_player,
                 )
                 response_html += mark_oob_swap(players_html, "players-online")

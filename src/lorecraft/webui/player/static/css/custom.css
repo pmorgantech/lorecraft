@@ -377,8 +377,6 @@ body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08
        Inventory/Quests accordion (one open at a time — see game.html). */
     body.layout-ledger .game-col-left { width: 16rem; }
     body.layout-ledger .game-col-right { width: 15rem; }
-    /* Inventory moves to the rail, so let the room panel fill the left column. */
-    body.layout-ledger .game-panel-room { flex: 1 1 auto; height: auto; }
 
     /* 1c — Dock: panels become floating "cards" — spaced apart, rounded, with a
        soft drop shadow over the app background — versus standard's flush,
@@ -397,14 +395,14 @@ body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08
 
     /* 1d — Immersive: a focused TWO-column view — a slim left column (Chat on
        top, Minimap below) and a dominant Chronicle taking the rest. Room /
-       Inventory / Players / Quests are dropped (see game.html); larger type,
-       softened chrome and a soft vignette make it cinematic. */
+       Inventory / Players / Quests are dropped from the DOM entirely (see
+       game.html) rather than just hidden, so no CSS display:none is needed
+       for the right column here — the flex row simply has one fewer child. */
     body.layout-immersive .game-col-left {
         width: 30%;
         max-width: 24rem;
         min-width: 15rem;
     }
-    body.layout-immersive .game-col-right { display: none; }
     body.layout-immersive .game-col-center {
         box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.55);
     }
@@ -413,4 +411,15 @@ body.theme-parchment #feed .msg:hover { background-color: rgba(140, 59, 46, 0.08
         line-height: 1.85;
     }
     body.layout-immersive .game-col > div { border-color: transparent; }
+
+    /* Old-school-MUD chronicle (Sprint 58): plain scrolling text, no per-line
+       colour gutter or timestamp — just the words, like a telnet MUD client.
+       Scoped to #feed only (id specificity beats the .msg.<type> border-color
+       rules in feed_items.html, all of which are 2 plain classes) so the
+       #chat-feed pane (and its own mine/right-bar styling) is unaffected. */
+    body.layout-immersive #feed .msg {
+        border-left-width: 0;
+        padding-left: 0;
+    }
+    body.layout-immersive #feed .msg-ts { display: none; }
 }

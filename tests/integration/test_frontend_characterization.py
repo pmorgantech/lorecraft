@@ -448,13 +448,14 @@ async def _test_game_screen_applies_layout_body_class() -> None:
     assert "layout-standard" not in html
 
 
-def test_ledger_layout_moves_inventory_to_right_rail() -> None:
-    anyio.run(_test_ledger_layout_moves_inventory_to_right_rail)
+def test_inventory_and_quests_share_right_rail() -> None:
+    anyio.run(_test_inventory_and_quests_share_right_rail)
 
 
-async def _test_ledger_layout_moves_inventory_to_right_rail() -> None:
-    """Ledger relocates inventory from the left column into a right-rail
-    Inventory/Quests accordion, rendered exactly once (Sprint 58.6)."""
+async def _test_inventory_and_quests_share_right_rail() -> None:
+    """Inventory + Quests share the right rail (mutually exclusive) in standard,
+    dock and ledger — inventory rendered once, AFTER the centre feed. Standard
+    uses a toggle button; dock + ledger use a window-shade accordion (Sprint 58.6)."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -466,29 +467,29 @@ async def _test_ledger_layout_moves_inventory_to_right_rail() -> None:
         audit_engine=audit_engine,
     )
 
+    results: dict[str, str] = {}
     async with _lifespan(app):
-        # Standard: inventory sits in the LEFT column, before the centre feed,
-        # and there is no accordion.
-        _, std = await _http_get(app, "/game", cookies={"player_id": "player-1"})
-        assert std.count('id="inventory"') == 1
-        assert std.index('id="inventory"') < std.index('id="feed"')
-        # No accordion in standard (the Quests toggle button is ledger-only).
-        assert "rail = 'quests'" not in std
+        for layout in ("standard", "dock", "ledger"):
+            with Session(game_engine) as db:
+                player = db.exec(select(Player).where(Player.id == "player-1")).first()
+                assert player is not None
+                player.preferences = {"layout": layout}
+                db.add(player)
+                db.commit()
+            _, results[layout] = await _http_get(
+                app, "/game", cookies={"player_id": "player-1"}
+            )
 
-        with Session(game_engine) as db:
-            player = db.exec(select(Player).where(Player.id == "player-1")).first()
-            assert player is not None
-            player.preferences = {"layout": "ledger"}
-            db.add(player)
-            db.commit()
-        _, led = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+    for layout, html in results.items():
+        # Inventory lives in the right rail: rendered once, after the centre feed.
+        assert html.count('id="inventory"') == 1, layout
+        assert html.index('id="inventory"') > html.index('id="feed"'), layout
 
-    # Ledger: inventory still rendered exactly once, but now AFTER the feed
-    # (i.e. in the right rail), and the accordion toggle is present.
-    assert led.count('id="inventory"') == 1
-    assert led.index('id="inventory"') > led.index('id="feed"')
-    assert "rail: 'inventory'" in led
-    assert "rail = 'quests'" in led
+    # Standard uses the toggle button; dock + ledger use the window-shade accordion.
+    assert "Show Quests" in results["standard"]
+    assert "rail = 'quests'" not in results["standard"]
+    assert "rail = 'quests'" in results["dock"]
+    assert "rail = 'quests'" in results["ledger"]
 
 
 def test_immersive_layout_puts_chat_in_left_column() -> None:
@@ -521,8 +522,229 @@ async def _test_immersive_layout_puts_chat_in_left_column() -> None:
     # Exactly one chat pane, in the left column (before the centre feed).
     assert html.count('id="chat-pane"') == 1
     assert html.index('id="chat-pane"') < html.index('id="feed"')
-    # Room panel is dropped for focus.
+    # Room + inventory are dropped for focus.
     assert "Current Location" not in html
+    assert 'id="inventory"' not in html
+    # There is no third column at all in immersive (per review) — no Here Now
+    # panel and no mobile Players tab.
+    assert "Here Now" not in html
+    assert ">Players</button>" not in html
+
+
+def test_standard_layout_keeps_players_column_and_tab() -> None:
+    anyio.run(_test_standard_layout_keeps_players_column_and_tab)
+
+
+async def _test_standard_layout_keeps_players_column_and_tab() -> None:
+    """Sanity check the inverse of the immersive test above: every other
+    layout keeps the Here Now panel + mobile Players tab (Sprint 58.8)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "Here Now" in html
+    assert ">Players</button>" in html
+
+
+def test_immersive_movement_appends_old_school_mud_room_block() -> None:
+    anyio.run(_test_immersive_movement_appends_old_school_mud_room_block)
+
+
+async def _test_immersive_movement_appends_old_school_mud_room_block() -> None:
+    """Immersive drops the room panel, so entering a new room must narrate the
+    room as plain chronicle text instead (name/description/exits) — something
+    plain movement never did before, since that was previously the panel's
+    job (Sprint 58.8). Standard layout gets no such text (the panel already
+    shows it): the synthesized lines are tagged `msg_type=room_event`, which
+    no ordinary ctx.say() call produces (those default to `system`), so its
+    presence/absence is an unambiguous signal either way.
+
+    Uses the real seeded Ashmoore dev world (`village_square`'s `north` exit
+    leads to the blacksmith's forge) rather than fabricated fixtures — the
+    test app auto-imports `world_content/world.yaml` on startup, and adding a
+    second same-direction Exit row would just be ignored/ambiguous alongside
+    the real one (per AGENTS.md: tests use the shipped world, not a parallel
+    hardcoded one)."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "immersive"}
+            db.add(player)
+            db.commit()
+
+        status, immersive_html = await _http_post_form(
+            app,
+            "/command",
+            form={"command": "go north"},
+            cookies={"player_id": "player-1"},
+        )
+        assert status == 200
+        assert "msg-room_event" in immersive_html
+        assert "Forge and Hammer" in immersive_html
+        assert "Exits:" in immersive_html or "no obvious exits" in immersive_html
+
+        # Move back south and switch to standard — no synthesized chronicle
+        # text this time (the room panel's OOB swap already covers it).
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "standard"}
+            db.add(player)
+            db.commit()
+
+        status, standard_html = await _http_post_form(
+            app,
+            "/command",
+            form={"command": "go south"},
+            cookies={"player_id": "player-1"},
+        )
+
+    assert status == 200
+    assert "msg-room_event" not in standard_html
+
+
+def test_immersive_look_appends_players_here_line_only() -> None:
+    anyio.run(_test_immersive_look_appends_players_here_line_only)
+
+
+async def _test_immersive_look_appends_players_here_line_only() -> None:
+    """`look` in immersive already narrates name/description/exits via the
+    engine's existing ctx.say() output — only the "who's here" line is new
+    (the Here Now panel doesn't exist in this layout). No second player in
+    the room means no line at all; a second player produces exactly one
+    (Sprint 58.8).
+
+    The seeded Ashmoore dev world already has `player-2` in `village_square`
+    (its default multiplayer fixture), so the "accompanied" case needs no
+    setup — only "alone" does, by relocating player-2 elsewhere first."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "immersive"}
+            db.add(player)
+            # Move the seeded player-2 out of village_square so player-1 is
+            # genuinely alone for the first assertion.
+            other = db.exec(select(Player).where(Player.id == "player-2")).first()
+            if other is not None:
+                other.current_room_id = "blacksmith_forge"
+                db.add(other)
+            db.commit()
+
+        status, alone_html = await _http_post_form(
+            app, "/command", form={"command": "look"}, cookies={"player_id": "player-1"}
+        )
+        assert status == 200
+        assert "msg-room_event" not in alone_html
+
+        with Session(game_engine) as db:
+            other = db.exec(select(Player).where(Player.id == "player-2")).first()
+            assert other is not None
+            other.current_room_id = "village_square"
+            db.add(other)
+            db.commit()
+
+        status, accompanied_html = await _http_post_form(
+            app, "/command", form={"command": "look"}, cookies={"player_id": "player-1"}
+        )
+
+    assert status == 200
+    assert accompanied_html.count("msg-room_event") == 1
+    assert "player-2 is here." in accompanied_html
+
+
+def test_immersive_own_chat_routes_to_chat_pane() -> None:
+    anyio.run(_test_immersive_own_chat_routes_to_chat_pane)
+
+
+async def _test_immersive_own_chat_routes_to_chat_pane() -> None:
+    """The actor's own chat echo is routed into #chat-feed (via an HTMX OOB
+    append) whenever a chat pane exists — always in immersive, matching the
+    request that MY OWN chat land in that pane too, not just others' (Sprint
+    58). It's also tagged `mine` so it can be styled distinctly (right-barred/
+    right-aligned — see feed_items.html's CSS) from other players' messages,
+    which only ever arrive client-side via WS, never through this path. In
+    standard (no chat pane by default), the echo stays in the plain feed."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "immersive"}
+            db.add(player)
+            db.commit()
+
+        status, immersive_html = await _http_post_form(
+            app,
+            "/command",
+            form={"command": "say hello"},
+            cookies={"player_id": "player-1"},
+        )
+        assert status == 200
+        assert 'hx-swap-oob="beforeend:#chat-feed"' in immersive_html
+        assert "chat mine" in immersive_html
+
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "standard"}
+            db.add(player)
+            db.commit()
+
+        status, standard_html = await _http_post_form(
+            app,
+            "/command",
+            form={"command": "say hello again"},
+            cookies={"player_id": "player-1"},
+        )
+
+    assert status == 200
+    # The players-online panel is OOB-swapped regardless of layout — that's
+    # unrelated to this feature — so check specifically for chat routing.
+    assert "beforeend:#chat-feed" not in standard_html
 
 
 def test_settings_renders_and_persists_theme() -> None:
