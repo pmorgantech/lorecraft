@@ -5,7 +5,8 @@
 
 <div id="minimap" class="bg-panel border border-border rounded-lg overflow-hidden flex flex-col w-full h-full">
     <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
-        <span>Map</span>
+        {# Label follows the active view (the body renders both; CSS shows one). #}
+        <span class="mm-title-graph">Map</span><span class="mm-title-compass">Exits</span>
         <div class="flex items-center gap-2">
             <button
                 @click="mapModalOpen = true"
@@ -23,7 +24,7 @@
         </div>
     </div>
 
-    <div class="p-1 flex-1 bg-feed-bg overflow-hidden">
+    <div class="flex-1 bg-feed-bg overflow-hidden min-h-0">
         {% if current_room %}
             {% set avail = (exits or []) | map(attribute='direction') | map('lower') | list %}
             {% set has_up = 'up' in avail or 'u' in avail %}
@@ -58,7 +59,7 @@
             {# Both views render; a `minimap-<style>` body class (from prefs)
                shows one via CSS (see custom.css). "graph" = discovered-rooms
                node-map; "compass" = the phosphor exit-star rose. #}
-            <div class="mm-graph relative h-full bg-feed-bg overflow-hidden rounded border border-border">
+            <div class="mm-graph relative h-full bg-feed-bg overflow-hidden">
                 {% if nearby_rooms %}
                 <svg width="100%" height="100%" viewBox="0 0 88 52" preserveAspectRatio="xMidYMid meet" class="block">
                     {% for ln in map_lines %}
@@ -89,7 +90,7 @@
             {# Compass exit-star (from the design canvas): lit spoke = available
                exit (clickable to move), dim = none; u/d marks up/down; centre
                dot = you. Theme-token colours so it matches the active theme. #}
-            <div class="mm-compass w-full h-full rounded border border-border bg-feed-bg overflow-hidden">
+            <div class="mm-compass w-full h-full bg-feed-bg overflow-hidden">
                 <svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet"
                      class="block" style="width:100%;height:100%;display:block">
                     <circle cx="100" cy="100" r="70" fill="none" stroke="var(--lc-border)" stroke-width="1"/>

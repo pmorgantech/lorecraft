@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.50.7] - 2026-07-09
+
+### Changed
+
+- **The minimap pane title now matches the view:** it reads **EXITS** in compass mode (the
+  exit-star rose) and **MAP** in graph mode, instead of always saying "MAP".
+- **The minimap fills its pane.** Dropped the redundant inner border and padding that boxed the
+  map/compass inside the panel frame, so the view (the compass especially) now uses the full pane
+  instead of sitting small inside a double border.
+
 ## [0.50.6] - 2026-07-09
 
 ### Fixed

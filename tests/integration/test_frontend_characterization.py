@@ -972,6 +972,10 @@ async def _test_minimap_style_toggles_graph_vs_compass() -> None:
         assert "minimap-graph" in default_html
         # Both views are always rendered (CSS shows one).
         assert "mm-graph" in default_html and "mm-compass" in default_html
+        # Both pane titles render too; CSS reveals the one matching the style —
+        # "Map" for graph, "Exits" for compass (never "Map" alone in compass).
+        assert "mm-title-graph" in default_html and "mm-title-compass" in default_html
+        assert ">Map</span>" in default_html and ">Exits</span>" in default_html
 
         with Session(game_engine) as db:
             player = db.exec(select(Player).where(Player.id == "player-1")).first()

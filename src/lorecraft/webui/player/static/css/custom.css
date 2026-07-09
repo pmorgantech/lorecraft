@@ -489,6 +489,10 @@ body.reduced-motion.theme-classic-amber::after { display: none; }
 .mm-compass { display: none; }
 body.minimap-compass .mm-graph { display: none; }
 body.minimap-compass .mm-compass { display: block; }
+/* The pane title follows the active view (both render; CSS picks one). */
+.mm-title-compass { display: none; }
+body.minimap-compass .mm-title-graph { display: none; }
+body.minimap-compass .mm-title-compass { display: inline; }
 
 /* Inventory rows (Sprint 59): a coloured type/rarity chip · name · weight,
    from the design canvas. The chip bg/fg are inline (per item type); the row /
