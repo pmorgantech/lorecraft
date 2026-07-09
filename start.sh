@@ -160,4 +160,4 @@ cp "${SEED_AUDIT_DB}" "${RUNTIME_AUDIT_DB}"
 # otherwise break server startup on a future websockets bump.
 LORECRAFT_DB_PATH="${RUNTIME_GAME_DB}" \
 LORECRAFT_AUDIT_DB_PATH="${RUNTIME_AUDIT_DB}" \
-"${SCRIPT_DIR}/.venv/bin/uvicorn" lorecraft.main:app --host 127.0.0.1 --port 8000 --ws websockets-sansio
+"${SCRIPT_DIR}/.venv/bin/uvicorn" lorecraft.main:app --host 0.0.0.0 --port 8000 --ws websockets-sansio
