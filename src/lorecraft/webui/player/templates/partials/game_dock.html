@@ -1,0 +1,72 @@
+{#
+  Dock layout — modern dark "app" (Sprint 59, ported from lorecraft-export/dock).
+  Three columns of floating cards: LEFT = Location + Minimap; CENTRE = Chronicle
+  (log + command bar with a Send button); RIGHT = Party + Pack (a rarity
+  icon-grid) with a Quests footer. The base-nav Mode/Palette pickers act as the
+  "control bar". Pairs with the Slate palette. Reuses the shared ids:
+  #room-description, #minimap, #feed, #players-online, #inventory,
+  #quest-tracker, #command-input.
+#}
+<div id="main-content" role="main" aria-label="Game screen"
+     class="dock flex-1 grid gap-3.5 p-3.5 overflow-hidden h-full min-h-0"
+     style="grid-template-columns: 18rem minmax(0, 1fr) 17rem">
+
+    <!-- LEFT: location + minimap -->
+    <div class="flex flex-col gap-3.5 min-h-0">
+        <div class="dock-card flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">LOCATION</span></div>
+            {% include "partials/room_description.html" %}
+        </div>
+        {% if 'minimap' not in prefs.hidden_panels %}
+        <div class="dock-card flex-none overflow-hidden">
+            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">MINIMAP</span></div>
+            <div class="p-2"><div class="w-full aspect-[4/3] max-h-44">{% include "partials/minimap.html" %}</div></div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- CENTRE: chronicle + command -->
+    <div class="dock-card min-h-0 flex flex-col overflow-hidden">
+        <div class="dock-card__head">
+            <span class="t">CHRONICLE</span>
+            <span class="inline-block w-1.5 h-1.5 rounded-full ml-0.5" style="background:var(--lc-accent)"></span>
+            <span class="text-[11px] text-text-muted">live</span>
+        </div>
+        <div id="feed" role="log" aria-live="polite" aria-label="Game narrative log"
+             class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg scroll-smooth"
+             data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
+            {% include "partials/feed_items.html" %}
+        </div>
+        <div class="flex-none p-3.5 border-t border-border">
+            <form hx-post="/command" hx-target="#feed" hx-swap="beforeend"
+                  hx-on::after-request="handleCommandSuccess(this)"
+                  class="flex items-center gap-3 rounded-lg px-3.5 py-3"
+                  style="background:var(--lc-bg);border:1px solid var(--lc-panel-light)">
+                <span class="text-accent">&rsaquo;</span>
+                <input name="command" id="command-input" autocomplete="off" spellcheck="false"
+                       placeholder="What do you do?" aria-label="command"
+                       class="flex-1 bg-transparent outline-none text-sm text-text placeholder:text-text-muted">
+                <button type="submit" class="dock-send">Send</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- RIGHT: party + pack + quests -->
+    <div class="flex flex-col gap-3.5 min-h-0">
+        {% if 'players_online' not in prefs.hidden_panels %}
+        <div class="dock-card flex-none overflow-hidden">
+            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">PARTY</span><span class="dock-card__r">{{ players_here | length if players_here else 0 }}</span></div>
+            {% include "partials/players_online.html" %}
+        </div>
+        {% endif %}
+        {% if 'inventory' not in prefs.hidden_panels %}
+        <div class="dock-card flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div class="dock-card__head"><span class="grip">⋮⋮</span><span class="t">PACK</span><span class="dock-card__r">{% if encumbrance %}{{ encumbrance.current }}/{{ encumbrance.capacity }}{% endif %}</span></div>
+            {% include "partials/inventory.html" %}
+            {% if 'quest_tracker' not in prefs.hidden_panels %}
+            <div class="dock-quests-foot">{% include "partials/quest_tracker.html" %}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>

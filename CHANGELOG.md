@@ -2,7 +2,19 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
-## [0.50.3] - 2026-07-09
+## [0.50.4] - 2026-07-09
+
+### Changed
+
+- **Dock layout rebuilt as a bespoke "app" shell** to match the design reference: three columns of
+  floating, rounded **cards** (soft drop shadow, a drag "grip", uppercase titles) — LEFT holds the
+  Location + Minimap, CENTRE the Chronicle with a gradient **Send** button, RIGHT the Party plus a
+  **Pack** card. Pairs with the Slate palette (now with a violet accent for the Send gradient).
+- **Dock inventory is now a rarity icon-grid.** In Dock, the Pack shows items as coloured tiles
+  (a 4-wide grid with dashed empty slots) instead of a list; click a tile to examine it. Every other
+  mode keeps the list — the inventory partial renders both and CSS reveals the right one, so live
+  updates keep working everywhere. Dock's Quests sit in a footer under the Pack rather than a
+  window-shade accordion.
 
 ### Changed
 

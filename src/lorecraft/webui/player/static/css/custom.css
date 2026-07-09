@@ -310,6 +310,7 @@ body.theme-slate {
     --lc-border: #263048;
     --lc-accent: #43c7d8;
     --lc-accent-strong: #6ad3e2;
+    --lc-accent-2: #8b7bf0;      /* violet — Dock Send gradient tail */
     --lc-text: #dbe4f2;
     --lc-text-muted: #8794b0;
     --lc-highlight: #e0b64a;
@@ -428,21 +429,6 @@ body.reduced-motion.theme-classic-amber::after { display: none; }
    Tailwind width utility (0,1,0), so no !important is needed.
    ======================================================================= */
 @media (min-width: 1024px) {
-    /* 1c — Dock: panels become floating "cards" — spaced apart, rounded, with a
-       soft drop shadow over the app background — versus standard's flush,
-       hairline-separated grid. The most "app-like" arrangement. */
-    body.layout-dock #main-content {
-        gap: 0.75rem;
-        padding: 0.75rem;
-        background: transparent;
-    }
-    body.layout-dock .game-col { gap: 0.75rem; }
-    body.layout-dock .game-col > div,
-    body.layout-dock .game-col-center {
-        border-radius: 0.75rem;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    }
-
     /* 1d — Immersive: a focused TWO-column view — a slim left column (Chat on
        top, Minimap below) and a dominant Chronicle taking the rest. Room /
        Inventory / Players / Quests are dropped from the DOM entirely (see
@@ -528,6 +514,39 @@ body.minimap-compass .mm-compass { display: block; }
 .inv__name { flex: 1; color: var(--lc-text); }
 .inv__wt { color: var(--lc-text-muted); font-variant-numeric: tabular-nums; }
 
+/* Inventory view toggle (Sprint 59): the partial renders BOTH a list (default,
+   all modes) and a rarity icon-grid; only Dock shows the grid. Single OOB
+   target (#inventory) works everywhere because CSS — not the server — picks. */
+.inv-grid { display: none; }
+body.layout-dock .inv-list { display: none; }
+body.layout-dock .inv-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px;
+    align-content: start;
+}
+.inv-slot {
+    aspect-ratio: 1;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    font-size: 18px;
+    background: color-mix(in srgb, var(--lc-panel-light) 60%, transparent);
+    border: 1px solid color-mix(in srgb, var(--lc-border) 80%, transparent);
+    box-shadow: 0 0 0 1px transparent, 0 0 10px -4px currentColor;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.12s ease;
+}
+.inv-slot:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px currentColor, 0 0 14px -3px currentColor; }
+.inv-slot--empty {
+    border-style: dashed;
+    border-color: color-mix(in srgb, var(--lc-border) 55%, transparent) !important;
+    box-shadow: none;
+    cursor: default;
+}
+.inv-slot--empty:hover { transform: none; box-shadow: none; }
+
 /* =======================================================================
    E-reader layout (Sprint 59) — the illuminated-manuscript book. Bespoke
    shell (partials/game_ereader.html), so — like classic — it needs its own
@@ -562,4 +581,52 @@ body.layout-e-reader #room-description h2 { font-size: 1.3rem; }
 @media (max-width: 1023px) {
     .ereader__ledger,
     .ereader__rail { display: none; }
+}
+
+/* =======================================================================
+   Dock layout (Sprint 59) — the modern dark "app". Bespoke shell
+   (partials/game_dock.html): three columns of floating, rounded cards with a
+   soft drop shadow, a "grip" affordance, and a gradient Send button. Pairs
+   with the Slate palette. The Pack card uses the rarity icon-grid above.
+   ======================================================================= */
+.dock-card {
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--lc-panel) 92%, transparent),
+        var(--lc-panel));
+    border: 1px solid var(--lc-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.dock-card__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--lc-border);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--lc-text-muted);
+}
+.dock-card__head .t { font-weight: 700; }
+.dock-card__r { margin-left: auto; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.grip { color: color-mix(in srgb, var(--lc-text-muted) 70%, transparent); cursor: grab; letter-spacing: -2px; }
+.dock-send {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    color: #0a0d15;
+    background: linear-gradient(135deg, var(--lc-accent), var(--lc-accent-2, var(--lc-accent)));
+    transition: filter 0.12s ease;
+}
+.dock-send:hover { filter: brightness(1.1); }
+.dock-quests-foot {
+    border-top: 1px solid var(--lc-border);
+    max-height: 9rem;
+    overflow-y: auto;
+}
+/* Below the lg breakpoint the three card-columns stack. */
+@media (max-width: 1023px) {
+    #main-content.dock { grid-template-columns: 1fr !important; }
 }

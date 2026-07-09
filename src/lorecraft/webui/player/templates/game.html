@@ -16,6 +16,8 @@
     {% include "partials/game_classic.html" %}
     {% elif prefs.layout == 'e-reader' %}
     {% include "partials/game_ereader.html" %}
+    {% elif prefs.layout == 'dock' %}
+    {% include "partials/game_dock.html" %}
     {% else %}
     <div id="main-content" role="main" aria-label="Game screen" class="flex-1 flex flex-col lg:flex-row gap-px bg-zinc-800 p-px overflow-hidden items-stretch h-full">
 
@@ -145,41 +147,12 @@
             </div>
             {% endif %}
 
-            {# Inventory + Quests share the right rail, mutually exclusive. Two
-               UI patterns are in play so they can be compared: dock uses
-               a WINDOW-SHADE accordion (stacked titlebars, click to roll open);
-               standard uses a single TOGGLE pane (one titlebar, a button flips
-               between the two). Both bodies stay in the DOM (x-show) so their OOB
-               live-updates (#inventory / #quest-tracker) keep firing while
-               hidden. `rail` (on the column) is the shared open-panel state. #}
-            {% if prefs.layout == 'dock' %}
-            <!-- Window-shade accordion (dock) -->
-            <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
-                {% if 'inventory' not in prefs.hidden_panels %}
-                <button type="button" @click="rail = 'inventory'"
-                        :class="rail === 'inventory' ? 'text-emerald-400' : 'text-text-muted'"
-                        class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest hover:text-emerald-400 transition-colors">
-                    <span>Inventory</span>
-                    <span x-text="rail === 'inventory' ? '▾' : '▸'"></span>
-                </button>
-                <div x-show="rail === 'inventory'" class="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {% include "partials/inventory.html" %}
-                </div>
-                {% endif %}
-
-                {% if 'quest_tracker' not in prefs.hidden_panels %}
-                <button type="button" @click="rail = 'quests'"
-                        :class="rail === 'quests' ? 'text-emerald-400' : 'text-text-muted'"
-                        class="px-3 py-1.5 bg-panel-light border-t border-b border-border flex items-center justify-between text-xs uppercase tracking-widest hover:text-emerald-400 transition-colors">
-                    <span>Quests</span>
-                    <span x-text="rail === 'quests' ? '▾' : '▸'"></span>
-                </button>
-                <div x-show="rail === 'quests'" x-cloak class="flex-1 flex flex-col overflow-hidden min-h-0">
-                    {% include "partials/quest_tracker.html" %}
-                </div>
-                {% endif %}
-            </div>
-            {% else %}
+            {# Standard: Inventory + Quests share ONE pane, mutually exclusive —
+               a titlebar toggle flips between them. Both bodies stay in the DOM
+               (x-show) so their OOB live-updates (#inventory / #quest-tracker)
+               keep firing while hidden. `rail` (on the column) is the shared
+               open-panel state. (The other modes are bespoke shells.) #}
+            {% if prefs.layout != 'immersive' %}
             <!-- Toggle pane (standard): one titlebar, a button flips Inventory ⇄ Quests -->
             <div class="flex-1 flex flex-col bg-panel border border-border rounded-b-lg overflow-hidden min-h-0">
                 <div class="px-3 py-1.5 bg-panel-light border-b border-border flex items-center justify-between text-xs uppercase tracking-widest text-text-muted">
@@ -251,9 +224,9 @@
 
     {% include "partials/dialogue.html" %}
 
-    <!-- COMMAND INPUT BAR (fixed bottom). Classic and E-reader carry their own
-         prompt inside the chronicle column, so the full-width bar is skipped. -->
-    {% if prefs.layout not in ['classic', 'e-reader'] %}
+    <!-- COMMAND INPUT BAR (fixed bottom). The bespoke shells (classic, e-reader,
+         dock) carry their own prompt, so the full-width bar is skipped there. -->
+    {% if prefs.layout not in ['classic', 'e-reader', 'dock'] %}
     <div class="border-t border-zinc-800 bg-zinc-900 p-3">
         <form id="command-form"
               hx-post="/command"

@@ -453,10 +453,11 @@ def test_inventory_and_quests_share_right_rail() -> None:
 
 
 async def _test_inventory_and_quests_share_right_rail() -> None:
-    """Inventory + Quests share the right rail (mutually exclusive) in the
-    grid layouts — inventory rendered once, AFTER the centre feed. Standard uses
-    a toggle button; dock uses a window-shade accordion (Sprint 58.6). (E-reader
-    and classic are bespoke shells with their own arrangements, tested separately.)"""
+    """Standard's right rail carries Inventory + Quests, mutually exclusive via a
+    titlebar toggle — inventory rendered once, AFTER the centre feed. Dock is a
+    bespoke card shell: its Pack card holds the inventory (rendered once) with a
+    Quests footer, so no accordion. (E-reader and classic are bespoke shells with
+    their own arrangements, tested separately.)"""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -482,14 +483,18 @@ async def _test_inventory_and_quests_share_right_rail() -> None:
             )
 
     for layout, html in results.items():
-        # Inventory lives in the right rail: rendered once, after the centre feed.
+        # Inventory lives to the right, rendered once, after the centre feed.
         assert html.count('id="inventory"') == 1, layout
         assert html.index('id="inventory"') > html.index('id="feed"'), layout
 
-    # Standard uses the toggle button; dock uses the window-shade accordion.
+    # Standard uses a single toggle pane (one titlebar, a Show Quests button).
     assert "Show Quests" in results["standard"]
-    assert "rail = 'quests'" not in results["standard"]
-    assert "rail = 'quests'" in results["dock"]
+    assert "rail = (rail ===" in results["standard"]
+    # Dock is a bespoke card shell — no windowshade accordion; the Pack card
+    # holds inventory, and the icon-grid view is present for it.
+    assert "rail = 'quests'" not in results["dock"]
+    assert "dock-card" in results["dock"]
+    assert "inv-grid" in results["dock"]
 
 
 def test_immersive_layout_puts_chat_in_left_column() -> None:
@@ -880,6 +885,53 @@ async def _test_ereader_layout_renders_ledger_folio_rail() -> None:
     assert html.count('id="command-input"') == 1
     assert ">Players</button>" not in html
     # It shows the location panel, so it does not synthesize the MUD room block.
+    assert "msg-room_event" not in html
+
+
+def test_dock_layout_renders_card_shell() -> None:
+    anyio.run(_test_dock_layout_renders_card_shell)
+
+
+async def _test_dock_layout_renders_card_shell() -> None:
+    """Dock is a bespoke card shell (Sprint 59): three columns of floating
+    .dock-card panels — LEFT location + minimap, CENTRE chronicle (#feed with a
+    Send button), RIGHT party + a Pack card whose inventory uses the rarity
+    icon-grid, with a Quests footer. It keeps the location panel, so no MUD
+    narration; and it is NOT the grid, so no toggle pane / mobile tab bar."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"layout": "dock", "theme": "slate"}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert "layout-dock" in html
+    assert "dock-card" in html  # floating cards
+    assert "dock-send" in html  # gradient Send button
+    assert "inv-grid" in html  # rarity icon-grid Pack
+    assert 'id="room-description"' in html  # LEFT location card
+    assert 'id="minimap"' in html
+    assert html.count('id="feed"') == 1
+    assert html.count('id="inventory"') == 1
+    assert 'id="players-online"' in html  # party card
+    assert 'id="quest-tracker"' in html  # quests footer
+    # Bespoke shell: no standard toggle pane, no mobile tab bar.
+    assert "Show Quests" not in html
+    assert "rail = 'quests'" not in html
+    # It keeps the location panel, so it does not synthesize the MUD room block.
     assert "msg-room_event" not in html
 
 

@@ -1,24 +1,34 @@
 {#
-  Inventory Partial
-  Simple list for MVP. Can expand to tabs (equipped / backpack) with Alpine later.
+  Inventory Partial. Renders TWO views from the same data — a list (default) and
+  a dock icon-grid — and CSS shows one per the `layout-<mode>` body class (see
+  custom.css `.inv-grid`/`.inv-list`). Rendering both keeps this a single OOB
+  target (#inventory) that works in every mode without passing the layout in.
+  item.icon = {glyph, bg, fg} from inventory_snapshot.
 #}
+{% set item_count = inventory | sum(attribute='quantity') if inventory else 0 %}
+<div id="inventory" class="flex-1 overflow-y-auto bg-feed-bg min-h-0">
 
-<div id="inventory" class="flex-1 p-3 text-sm overflow-y-auto bg-feed-bg">
-    {% set item_count = inventory | sum(attribute='quantity') if inventory else 0 %}
-    <div class="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider
-                {% if encumbrance and encumbrance.band == 'overloaded' %}text-red-400{% elif encumbrance and encumbrance.band == 'burdened' %}text-amber-400{% else %}text-text-muted{% endif %}">
-        <span>{{ item_count }} item{{ '' if item_count == 1 else 's' }}</span>
-        {% if encumbrance %}
-        <span title="carry band: {{ encumbrance.band }}">{{ encumbrance.current }}/{{ encumbrance.capacity }}{% if encumbrance.band != 'unburdened' %} · {{ encumbrance.band }}{% endif %}</span>
-        {% endif %}
+    {# ---- Dock icon-grid view (rarity-coloured tiles) ---- #}
+    <div class="inv-grid">
+        {% for item in inventory %}
+        <div class="inv-slot" style="border-color:{{ item.icon.fg }};color:{{ item.icon.fg }}"
+             title="{{ item.name }}{% if item.quantity and item.quantity > 1 %} ×{{ item.quantity }}{% endif %}"
+             hx-post="/command" hx-vals='{"command": "examine {{ item.name | lower }}"}' hx-target="#feed" hx-swap="beforeend">{{ item.icon.glyph }}</div>
+        {% endfor %}
+        {% set pad = 8 - (inventory | length if inventory else 0) %}
+        {% if pad > 0 %}{% for _ in range(pad) %}<div class="inv-slot inv-slot--empty"></div>{% endfor %}{% endif %}
     </div>
-    {% if inventory and inventory|length > 0 %}
-        {#
-          Rarity/type icon rows (Sprint 59), mirroring the design canvas: a
-          coloured type chip, the item name, then the stack weight — with the
-          use/drop quick-actions revealed on hover. `.inv__*` styles live in
-          custom.css. item.icon = {glyph, bg, fg} from inventory_snapshot.
-        #}
+
+    {# ---- List view (rarity chip · name · weight) ---- #}
+    <div class="inv-list p-3 text-sm">
+        <div class="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider
+                    {% if encumbrance and encumbrance.band == 'overloaded' %}text-red-400{% elif encumbrance and encumbrance.band == 'burdened' %}text-amber-400{% else %}text-text-muted{% endif %}">
+            <span>{{ item_count }} item{{ '' if item_count == 1 else 's' }}</span>
+            {% if encumbrance %}
+            <span title="carry band: {{ encumbrance.band }}">{{ encumbrance.current }}/{{ encumbrance.capacity }}{% if encumbrance.band != 'unburdened' %} · {{ encumbrance.band }}{% endif %}</span>
+            {% endif %}
+        </div>
+        {% if inventory and inventory|length > 0 %}
         <ul class="text-xs">
             {% for item in inventory %}
                 <li class="inv__row group">
@@ -36,12 +46,11 @@
                 </li>
             {% endfor %}
         </ul>
-    {% else %}
-        <div class="h-full flex items-center justify-center">
-            <div class="text-center text-text-muted text-xs">
-                Your inventory is empty.<br>
-                <span class="text-emerald-700">Explore to find items.</span>
-            </div>
+        {% else %}
+        <div class="py-6 text-center text-text-muted text-xs">
+            Your inventory is empty.<br>
+            <span class="text-emerald-700">Explore to find items.</span>
         </div>
-    {% endif %}
+        {% endif %}
+    </div>
 </div>
