@@ -14,37 +14,40 @@
           x-data="{
             theme: '{{ prefs.theme }}',
             layout: '{{ prefs.layout }}',
+            modePalette: {standard:'terminal','e-reader':'parchment',dock:'slate',immersive:'immersive',classic:'classic'},
             applyPreview() {
               const b = document.body;
               [...b.classList].forEach(c => {
                 if (c.startsWith('theme-') || c.startsWith('layout-')) b.classList.remove(c);
               });
-              b.classList.add('theme-' + this.theme, 'layout-' + this.layout);
+              // 'auto' palette follows the mode's tuned default (see MODE_DEFAULT_THEME).
+              const palette = this.theme === 'auto' ? (this.modePalette[this.layout] || 'terminal') : this.theme;
+              b.classList.add('theme-' + palette, 'layout-' + this.layout);
             }
           }">
       <fieldset class="rounded border border-zinc-800 bg-zinc-900 p-4">
         <legend class="px-1 text-sm font-semibold text-zinc-300">Display</legend>
 
         <div class="mb-4">
-          <label for="theme" class="block text-sm text-zinc-400 mb-1">Theme</label>
-          <select id="theme" name="theme" x-model="theme" @change="applyPreview()"
-                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
-            {% for opt in theme_options %}
-            <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ opt|replace('-', ' ')|title }}</option>
-            {% endfor %}
-          </select>
-          <p class="mt-1 text-xs text-zinc-500">Colour &amp; typography. Terminal is the classic green-on-black look.</p>
-        </div>
-
-        <div class="mb-4">
-          <label for="layout" class="block text-sm text-zinc-400 mb-1">Layout</label>
+          <label for="layout" class="block text-sm text-zinc-400 mb-1">Mode</label>
           <select id="layout" name="layout" x-model="layout" @change="applyPreview()"
                   class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
             {% for opt in layout_options %}
             <option value="{{ opt }}" {% if prefs.layout == opt %}selected{% endif %}>{{ opt|replace('-', ' ')|title }}</option>
             {% endfor %}
           </select>
-          <p class="mt-1 text-xs text-zinc-500">Panel arrangement. Standard is the classic three-column grid.</p>
+          <p class="mt-1 text-xs text-zinc-500">The overall look — layout + a tuned palette. Standard is the classic three-column terminal.</p>
+        </div>
+
+        <div class="mb-4">
+          <label for="theme" class="block text-sm text-zinc-400 mb-1">Palette override</label>
+          <select id="theme" name="theme" x-model="theme" @change="applyPreview()"
+                  class="w-full rounded bg-zinc-800 border border-zinc-700 px-2 py-1 text-sm">
+            {% for opt in theme_options %}
+            <option value="{{ opt }}" {% if prefs.theme == opt %}selected{% endif %}>{{ 'Auto (match mode)' if opt == 'auto' else opt|replace('-', ' ')|title }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-zinc-500">Leave on <b>Auto</b> to use the mode's own colours, or pick a palette to override it.</p>
         </div>
 
         <div class="mb-4">

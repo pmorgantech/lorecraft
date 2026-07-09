@@ -29,6 +29,13 @@
         // handled separately by the picker's hx-post.
         window.lcApplyTheme = function(theme) {
             const b = document.body;
+            if (theme === 'auto') {
+                // "auto" palette follows the current mode's tuned default.
+                var lc = [...b.classList].find(function(c){ return c.indexOf('layout-') === 0; });
+                var layout = lc ? lc.slice(7) : 'standard';
+                var map = {standard:'terminal','e-reader':'parchment',dock:'slate',immersive:'immersive',classic:'classic'};
+                theme = map[layout] || 'terminal';
+            }
             [...b.classList].forEach(function(c) {
                 if (c.indexOf('theme-') === 0) b.classList.remove(c);
             });

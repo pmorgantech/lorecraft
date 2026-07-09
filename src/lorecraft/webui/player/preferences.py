@@ -29,7 +29,28 @@ from lorecraft.types import JsonObject
 # default and reproduces today's zinc/emerald look, so an account that never
 # picks a theme renders exactly as before. "classic"/"classic-amber" (Sprint 59)
 # are the phosphor-CRT old-MUD palettes (green / amber) with scanlines + glow.
-THEMES = ("terminal", "parchment", "slate", "immersive", "classic", "classic-amber")
+# "auto" (Sprint 59, the default) is not a palette itself — it means "use the
+# palette tuned for the current mode/layout" (MODE_DEFAULT_THEME below), so the
+# theme dropdown acts as an *optional override* over the mode's own look.
+THEMES = (
+    "auto",
+    "terminal",
+    "parchment",
+    "slate",
+    "immersive",
+    "classic",
+    "classic-amber",
+)
+# Each layout ("mode") ships with a tuned default palette; `theme == "auto"`
+# resolves to this. Coupling the two by default while leaving the override in
+# place (per the 2026-07-09 UI direction) — decouple later if wanted.
+MODE_DEFAULT_THEME = {
+    "standard": "terminal",
+    "e-reader": "parchment",
+    "dock": "slate",
+    "immersive": "immersive",
+    "classic": "classic",
+}
 # Panel-arrangement layouts (Sprint 58.5), a *second, independent* axis from
 # theme. Each maps to a `layout-<name>` body class. "standard" is the default
 # and reproduces today's three-column grid, so an account that never picks a
@@ -60,8 +81,9 @@ TOGGLEABLE_PANELS = ("minimap", "inventory", "players_online", "quest_tracker")
 class PlayerPreferences:
     """Fully-resolved, always-valid presentation preferences for one account."""
 
-    # Colour + typography theme (Sprint 58.1). Default reproduces today's look.
-    theme: str = "terminal"
+    # Colour + typography theme (Sprint 58.1). Default "auto" = the current
+    # mode's tuned palette (MODE_DEFAULT_THEME); any explicit value overrides it.
+    theme: str = "auto"
     # Panel arrangement (Sprint 58.5), independent of theme. Default = today.
     layout: str = "standard"
     # Minimap rendering style (Sprint 59): graph node-map vs compass exit-star.
@@ -90,8 +112,15 @@ class PlayerPreferences:
         """Template context for the base shell (read in one place by the renderer)."""
         data = asdict(self)
         data["hidden_panels"] = list(self.hidden_panels)
-        # Convenience booleans/classes so templates stay logic-light.
-        data["theme_class"] = f"theme-{self.theme}"
+        # Convenience booleans/classes so templates stay logic-light. "auto"
+        # theme resolves to the mode's tuned default palette.
+        resolved_theme = (
+            self.theme
+            if self.theme != "auto"
+            else MODE_DEFAULT_THEME.get(self.layout, "terminal")
+        )
+        data["resolved_theme"] = resolved_theme
+        data["theme_class"] = f"theme-{resolved_theme}"
         data["layout_class"] = f"layout-{self.layout}"
         data["minimap_class"] = f"minimap-{self.minimap_style}"
         data["is_compact"] = self.display_density == "compact"
@@ -192,7 +221,7 @@ def resolve_preferences(raw: JsonObject | None) -> PlayerPreferences:
         else {}
     )
     return PlayerPreferences(
-        theme=_clean_enum(raw.get("theme"), THEMES, "terminal"),
+        theme=_clean_enum(raw.get("theme"), THEMES, "auto"),
         layout=_clean_enum(raw.get("layout"), LAYOUTS, "standard"),
         minimap_style=_clean_enum(raw.get("minimap_style"), MINIMAP_STYLES, "graph"),
         display_density=_clean_enum(

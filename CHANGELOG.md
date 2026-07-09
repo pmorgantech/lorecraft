@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.50.3] - 2026-07-09
+
+### Changed
+
+- **Settings now lead with a "Mode" that couples layout + a tuned palette.** Picking a mode
+  (Standard / E-reader / Dock / Immersive / Classic) gives you its intended colours automatically —
+  the palette dropdown becomes an optional **override** (defaulting to **Auto = match the mode**).
+  Most players now only need one choice. The two are still stored separately, so they can be fully
+  decoupled later. No visual change to existing looks — Standard still resolves to the terminal
+  palette.
+
 ## [0.50.2] - 2026-07-09
 
 ### Added

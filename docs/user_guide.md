@@ -64,7 +64,12 @@ use the **Room** / **Feed** / **Players** tabs at the bottom to switch between t
 Open **Settings** (top-right of the game screen) to change how the client looks. Choices are
 saved to your account, so they follow you to any device you log in from.
 
-**Theme** sets the colour palette and typography:
+**Mode** is the main choice — it sets the whole look (layout **and** a palette tuned to match):
+Standard, E-reader, Dock, Immersive, or Classic (see the table further down). Each comes ready to
+go, so most players only ever pick a Mode.
+
+**Palette override** is optional. Leave it on **Auto** to use the mode's own colours, or pick one
+of the palettes below to override it — e.g. the Classic green/amber CRT look under any layout:
 
 | Theme | Look |
 |-------|------|
@@ -75,9 +80,9 @@ saved to your account, so they follow you to any device you log in from.
 | **Classic** | A phosphor-green CRT terminal — scanlines and a soft glow, like an old text game. |
 | **Classic Amber** | The same CRT terminal, in amber phosphor. |
 
-The theme only changes colours and fonts; every panel and command works the same in all of them.
+A palette only changes colours and fonts; every panel and command works the same under all of them.
 
-**Layout** sets how the panels are arranged (independent of the theme — mix and match freely):
+The **Modes** — each is a layout with its own tuned palette (the palette override still applies on top):
 
 | Layout | Arrangement |
 |--------|-------------|

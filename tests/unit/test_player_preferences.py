@@ -168,17 +168,42 @@ class TestApplyUpdates:
 class TestTheme:
     """Colour + typography theme preference (Sprint 58.1)."""
 
-    def test_defaults_to_terminal(self) -> None:
-        assert PlayerPreferences().theme == "terminal"
-        assert resolve_preferences({}).theme == "terminal"
+    def test_defaults_to_auto_resolving_to_the_mode_palette(self) -> None:
+        # The stored/raw default is "auto"; it *resolves* to the mode's palette.
+        assert PlayerPreferences().theme == "auto"
+        assert resolve_preferences({}).theme == "auto"
+        # Standard mode's tuned palette is terminal — so the body class is
+        # still theme-terminal by default (zero visual change).
+        assert PlayerPreferences().to_context()["prefs"]["resolved_theme"] == "terminal"
+        assert (
+            PlayerPreferences().to_context()["prefs"]["theme_class"] == "theme-terminal"
+        )
+
+    def test_auto_resolves_per_mode(self) -> None:
+        # theme "auto" (the default) follows the layout's tuned palette.
+        for layout, palette in [
+            ("e-reader", "parchment"),
+            ("dock", "slate"),
+            ("immersive", "immersive"),
+            ("classic", "classic"),
+        ]:
+            ctx = resolve_preferences({"layout": layout}).to_context()["prefs"]
+            assert ctx["theme_class"] == f"theme-{palette}", layout
+
+    def test_explicit_theme_overrides_the_mode_palette(self) -> None:
+        # An explicit palette wins over the mode default.
+        ctx = resolve_preferences({"layout": "dock", "theme": "classic"}).to_context()[
+            "prefs"
+        ]
+        assert ctx["theme_class"] == "theme-classic"
 
     def test_all_named_themes_resolve(self) -> None:
         for name in THEMES:
             assert resolve_preferences({"theme": name}).theme == name
 
-    def test_invalid_theme_falls_back_to_terminal(self) -> None:
-        assert resolve_preferences({"theme": "neon"}).theme == "terminal"
-        assert resolve_preferences({"theme": 123}).theme == "terminal"
+    def test_invalid_theme_falls_back_to_auto(self) -> None:
+        assert resolve_preferences({"theme": "neon"}).theme == "auto"
+        assert resolve_preferences({"theme": 123}).theme == "auto"
 
     def test_default_theme_not_written_to_stored_blob(self) -> None:
         assert "theme" not in PlayerPreferences().to_stored()
@@ -197,8 +222,8 @@ class TestTheme:
     def test_apply_updates_switches_theme(self) -> None:
         updated = apply_updates(PlayerPreferences(), {"theme": "slate"})
         assert updated.theme == "slate"
-        # An invalid value falls back rather than persisting.
-        assert apply_updates(updated, {"theme": "bogus"}).theme == "terminal"
+        # An invalid value falls back to the "auto" default rather than persisting.
+        assert apply_updates(updated, {"theme": "bogus"}).theme == "auto"
 
 
 class TestLayout:
