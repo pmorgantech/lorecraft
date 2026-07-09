@@ -405,5 +405,19 @@
     }
     document.body.addEventListener('htmx:afterSwap', routeChatMessages);
     document.addEventListener('DOMContentLoaded', routeChatMessages);
+
+    // Auto-follow the chronicle. The command bar scrolls #feed to the bottom via
+    // handleCommandSuccess, but the other append-to-feed paths — the e-reader /
+    // immersive side rails, dock item tiles, inventory use/drop — don't run it,
+    // so their output could land below the fold. Pin #feed to the bottom after
+    // ANY HTMX swap that targeted it (a rAF lets serif/text reflow settle first).
+    // These are all user-initiated, so this never fights manual scroll-back
+    // (live WS events append via app.js, not HTMX, so they don't trigger this).
+    document.body.addEventListener('htmx:afterSwap', (event) => {
+        const target = event.detail && event.detail.target;
+        if (target && target.id === 'feed') {
+            requestAnimationFrame(() => { target.scrollTop = target.scrollHeight; });
+        }
+    });
 </script>
 {% endblock %}

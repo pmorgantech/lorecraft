@@ -892,6 +892,12 @@ async def _test_ereader_layout_renders_ledger_folio_rail() -> None:
     assert ">Players</button>" not in html
     # It shows the location panel, so it does not synthesize the MUD room block.
     assert "msg-room_event" not in html
+    # The side-rail tabs append into the chronicle, and the page carries the
+    # global auto-follow seam so their output pins #feed to the bottom (the tabs
+    # themselves don't run handleCommandSuccess — see the htmx:afterSwap handler).
+    assert html.count('hx-target="#feed" hx-swap="beforeend"') >= 4  # 4 rail tabs
+    assert "htmx:afterSwap" in html
+    assert "target.scrollTop = target.scrollHeight" in html
 
 
 def test_dock_layout_renders_card_shell() -> None:

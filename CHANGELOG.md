@@ -2,6 +2,16 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.50.6] - 2026-07-09
+
+### Fixed
+
+- **The chronicle now auto-scrolls to the bottom for side-rail actions too.** Clicking a layout's
+  side buttons (E-reader's Here / Quests / Pack / Stats tabs, Immersive's icon rail, Dock item
+  tiles, inventory use/drop) appended to the log without following the scroll, so on a short window
+  the new output could land below the fold and you had to scroll down by hand. The chronicle now pins
+  to the bottom after any of those appends, matching what typing a command already did.
+
 ## [0.50.5] - 2026-07-09
 
 ### Changed
