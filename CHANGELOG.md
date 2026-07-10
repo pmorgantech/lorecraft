@@ -2,6 +2,20 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.60.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A0.4 — fail-closed author-time validator (`engine/scripting/validator.py`).**
+  A pure Tier-1 library that checks `when:` / `do:` blocks against the catalog: every condition/
+  effect name must exist and be the right kind (a `do:` verb used in a `when:` is flagged), and
+  multi-param descriptors are checked for their required keys. Accepts both authoring shapes (a
+  map, or an ordered list of single-key maps) and one level of `any:` / `all:` grouping —
+  deeper nesting is reported as the Phase-B line. This is the fail-closed half of §8.5 (runtime
+  registries stay fail-open); the same validator will back the deferred editor/webui surfaces.
+  Wired into the load path in A2 when the `triggers:` schema lands. 12 tests
+  (`tests/unit/test_scripting_validator.py`).
+
 ## [0.59.0] - 2026-07-10
 
 ### Added
