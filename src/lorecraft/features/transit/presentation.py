@@ -48,7 +48,9 @@ def build_minimap_context(player: Player, db: Session) -> dict[str, Any]:
         player,
         npc_repo=NpcRepo(db),
     )
-    map_data = build_map_data(room_repo, player, room)
+    map_data = build_map_data(
+        room_repo, player, room, level=room.map_z if room else None
+    )
 
     return {
         "current_room": room,

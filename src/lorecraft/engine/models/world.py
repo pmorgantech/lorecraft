@@ -14,6 +14,7 @@ class Room(SQLModel, table=True):
     description: str
     map_x: int
     map_y: int
+    map_z: int = 0  # floor/level; minimap filters to current_room.map_z (Sprint 66)
     area_id: str | None = None
     is_active: bool = True
     fallback_room_id: str | None = None

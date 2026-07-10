@@ -249,6 +249,7 @@ class Room(SQLModel, table=True):
     description: str
     map_x: int
     map_y: int
+    map_z: int = 0                          # floor/level; minimap filters to current_room.map_z
     area_id: Optional[str]                  # logical grouping
     is_active: bool = True                  # False = not reachable; part of changeset system
     fallback_room_id: Optional[str]         # where to displace players if deactivated
@@ -1381,7 +1382,7 @@ Displays: game time · weather · season · player count in room
 
 - **Minimap panel:** SVG, ~200×200px. Shows visited rooms only. Fog-of-war on unvisited rooms (muted color, no exits shown).
 - **Full-screen map modal:** Triggered by clicking minimap. Pan + zoom. Same fog-of-war logic.
-- **Room coordinates:** Rooms have `map_x` / `map_y` fields. The map builds from `room_change` messages as the player explores. Room data is never sent in bulk — it accumulates incrementally.
+- **Room coordinates:** Rooms have `map_x` / `map_y` / `map_z` fields. The map builds from `room_change` messages as the player explores. Room data is never sent in bulk — it accumulates incrementally. `build_map_data()`'s `level` filter restricts the minimap/full-map to the current room's `map_z`, so floors that reuse the same `(map_x, map_y)` footprint don't overlap.
 - **Exits:** Rendered as invisible SVG hit-target lines between room nodes. Clickable to navigate.
 - **Current room:** Highlighted in `--phosphor`.
 
@@ -1431,7 +1432,7 @@ On reconnect (or page refresh), the client sends `{"type": "reconnect_sync_reque
 
 ```json
 {"type": "response", "messages": ["You head north."], "updates": {"inventory": [...]}}
-{"type": "room_change", "room": {"id": "forest_path", "name": "...", "description": "...", "exits": {"north": "...", "south": "..."}, "map_x": 3, "map_y": 5, "occupants": [...]}}
+{"type": "room_change", "room": {"id": "forest_path", "name": "...", "description": "...", "exits": {"north": "...", "south": "..."}, "map_x": 3, "map_y": 5, "map_z": 0, "occupants": [...]}}
 {"type": "room_event", "messages": ["Bob arrives from the south."]}
 {"type": "time_update", "hour": 14, "minute": 30, "day": 5, "season": "summer"}
 {"type": "weather_change", "weather": "light_rain", "season": "summer"}

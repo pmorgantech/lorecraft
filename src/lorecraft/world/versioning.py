@@ -255,6 +255,7 @@ class VersioningService:
                     description=str(after.get("description", "")),
                     map_x=int(after.get("map_x", 0)),  # type: ignore[arg-type]
                     map_y=int(after.get("map_y", 0)),  # type: ignore[arg-type]
+                    map_z=int(after.get("map_z", 0)),  # type: ignore[arg-type]
                 )
                 self._session.add(new_room)
         elif op == "update" and room is not None:

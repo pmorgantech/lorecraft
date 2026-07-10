@@ -231,6 +231,39 @@ def test_promote_update_room_changes_name_in_db() -> None:
     assert room.name == "Renamed Room A"
 
 
+def test_promote_create_room_carries_map_z() -> None:
+    with _make_session() as session:
+        _seed_world(session)
+        svc = VersioningService(session)
+        cs = svc.create_changeset("Add cellar", "admin")
+        svc.add_item(
+            cs.id,
+            ChangesetItem(
+                changeset_id=cs.id,
+                entity_type="room",
+                entity_id="room_c",
+                operation="create",
+                before_state={},
+                after_state={
+                    "name": "Cellar",
+                    "description": "Below room A.",
+                    "map_x": 0,
+                    "map_y": 0,
+                    "map_z": -1,
+                },
+            ),
+        )
+        session.commit()
+        svc.scan_conflicts(cs.id)
+        session.commit()
+        svc.promote(cs.id)
+        session.commit()
+        room = session.get(Room, "room_c")
+
+    assert room is not None
+    assert room.map_z == -1
+
+
 def test_promote_deactivate_displaces_player_to_fallback() -> None:
     with _make_session() as session:
         _seed_world(session)

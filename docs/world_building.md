@@ -91,6 +91,7 @@ rooms:
 | `description` | string | ✓ | Long description shown on entry |
 | `map_x` | integer | ✓ | X coordinate for mapping |
 | `map_y` | integer | ✓ | Y coordinate for mapping |
+| `map_z` | integer | | Floor/level for mapping (default: 0 — "ground floor") |
 | `area_id` | string | | Area grouping (for organization) |
 | `light_level` | integer | | 0 = dark, 1 = lit (default: 1) |
 | `is_active` | boolean | | Room accessible (default: true) |
@@ -134,6 +135,33 @@ rooms:
 ```
 
 Consider drawing your map on grid paper first. Y increases northward, X increases eastward (standard cartography).
+
+### Multiple Floors/Levels
+
+`map_z` (default `0`) lets rooms on different floors reuse the same `(map_x, map_y)`
+footprint — a cellar directly below the village square, or an upper gallery above a
+hall — without overlapping on the minimap. The player-facing minimap and full-map
+modal only ever plot rooms on the current room's `map_z`; connect floors with a
+normal `up`/`down` exit (the exit still works exactly like any other — `map_z`
+only affects what's *drawn*, not traversal):
+
+```yaml
+rooms:
+  - id: village_square
+    map_x: 4
+    map_y: 8
+    # map_z omitted -> 0 (ground floor)
+    exits:
+      - direction: down
+        target_room_id: square_cellar
+  - id: square_cellar
+    map_x: 4
+    map_y: 8
+    map_z: -1
+    exits:
+      - direction: up
+        target_room_id: village_square
+```
 
 ### Light Levels
 

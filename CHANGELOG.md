@@ -2,6 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.55.0] - 2026-07-09
+
+### Added
+
+- **Multi-level map foundation (`Room.map_z`, Sprint 66).** Rooms gain a `map_z: int = 0`
+  floor/level field — additive, defaults to "ground floor," no migration risk to existing
+  content. `build_map_data()` gains a `level: int | None` parameter (`None` plots every known
+  room regardless of floor, matching prior behavior; an int hard-filters candidates to that
+  floor) so a floor that reuses the same `(map_x, map_y)` footprint as another floor no longer
+  overlaps on the 2D minimap/full-map plot. Every player-facing map call site (sidebar minimap,
+  post-command refresh, `/partials/minimap`, `/partials/map-full`, the transit minimap panel)
+  now passes `level=current_room.map_z`. `up`/`down` exits are unaffected — `map_z` only
+  changes what's *drawn*, never traversal. Threaded through the full authoring path: world YAML
+  (`RoomData`, `import_world`/`export_world_document`), changeset promotion (`create` op), and
+  the admin room editor (REST API, SPA form field, TUI table column).
+
 ## [0.54.0] - 2026-07-09
 
 ### Changed

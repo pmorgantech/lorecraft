@@ -443,7 +443,12 @@ async def game_screen(
             player,
             npc_repo=NpcRepo(game_db),
         )
-        map_data = build_map_data(room_repo, player, current_room)
+        map_data = build_map_data(
+            room_repo,
+            player,
+            current_room,
+            level=current_room.map_z if current_room else None,
+        )
 
         # Feed length is a per-account preference (Sprint 33.2 quick-win).
         prefs = resolve_preferences(player.preferences)
@@ -800,7 +805,12 @@ async def handle_command(
                 after_player,
                 npc_repo=npc_repo,
             )
-            map_data = build_map_data(room_repo, after_player, after_room)
+            map_data = build_map_data(
+                room_repo,
+                after_player,
+                after_room,
+                level=after_room.map_z if after_room else None,
+            )
             players_in_room = players_here(
                 after_player,
                 after_player.current_room_id,
@@ -1225,7 +1235,9 @@ async def partial_minimap(
             player,
             npc_repo=NpcRepo(db),
         )
-        map_data = build_map_data(room_repo, player, room)
+        map_data = build_map_data(
+            room_repo, player, room, level=room.map_z if room else None
+        )
     return templates.TemplateResponse(
         request,
         "partials/minimap.html",
@@ -1253,7 +1265,12 @@ async def partial_map_full(
         room = room_repo.get(player.current_room_id) if player.current_room_id else None
         cartography_level = _cartography_level(db, player.id)
         map_data = build_map_data(
-            room_repo, player, room, full=True, cartography_level=cartography_level
+            room_repo,
+            player,
+            room,
+            full=True,
+            cartography_level=cartography_level,
+            level=room.map_z if room else None,
         )
     return templates.TemplateResponse(
         request,

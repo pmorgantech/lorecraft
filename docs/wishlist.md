@@ -191,10 +191,12 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
   `condition_flags` the lock/key mechanic already writes to, plus the already-shipped
   celestial/tide state as another gating predicate — no new state, just more predicate types on
   an existing seam.
-- **Dungeon complexity / z-levels 💚 (2026-07-08)** — rooms with real vertical structure
-  (basements, towers, hidden floors), not just a flat room graph. Room coordinates already
-  support it; this is mostly a **content** gap (world YAML hasn't used vertical exits yet). A
-  `z` coordinate would help the region-map view (below) distinguish floors if wanted.
+- **Dungeon complexity / z-levels 💚 (2026-07-08; foundation shipped Sprint 66)** — rooms
+  with real vertical structure (basements, towers, hidden floors), not just a flat room
+  graph. `Room.map_z` (default 0) now exists and the minimap/full-map filter to the current
+  floor, so multi-floor content can reuse `(map_x, map_y)` per floor without overlapping.
+  What remains is mostly a **content** gap (world YAML hasn't used vertical exits yet) plus a
+  region-map level selector / inter-level connection rendering — see `genuine_gaps.md` §3.
 - **Conditional / state-gated exits 🤔 (2026-07-08)** — an exit that only opens under a
   condition: a secret door after collecting a key item, a portal open only at night, a bridge
   that solidifies after a puzzle stage. Same `condition_flags` seam as environmental puzzle

@@ -287,6 +287,13 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                 )
             )
 
+    room_columns = {column["name"] for column in inspect(engine).get_columns("room")}
+    if "map_z" not in room_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE room ADD COLUMN map_z INTEGER NOT NULL DEFAULT 0")
+            )
+
     if "npc" in inspect(engine).get_table_names():
         npc_columns = {column["name"] for column in inspect(engine).get_columns("npc")}
         if "context_commands" not in npc_columns:

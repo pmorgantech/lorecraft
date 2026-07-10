@@ -361,6 +361,50 @@ async def _test_update_room() -> None:
     assert room.version == inn["version"] + 1
 
 
+def test_list_rooms_includes_map_z() -> None:
+    anyio.run(_test_list_rooms_includes_map_z)
+
+
+async def _test_list_rooms_includes_map_z() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/world/rooms", token=token)
+    assert status == 200
+    square = next(r for r in data if r["id"] == "village_square")
+    assert square["map_z"] == 0
+
+
+def test_update_room_changes_map_z() -> None:
+    anyio.run(_test_update_room_map_z)
+
+
+async def _test_update_room_map_z() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _, rooms = await _http(app, "GET", "/admin/world/rooms", token=token)
+        inn = next(r for r in rooms if r["id"] == "wandering_crow_inn")
+        status, _data = await _http(
+            app,
+            "PUT",
+            "/admin/world/rooms/wandering_crow_inn",
+            body={"map_z": -1, "version": inn["version"]},
+            token=token,
+        )
+    assert status == 200
+    with Session(game_engine) as session:
+        room = session.get(Room, "wandering_crow_inn")
+    assert room is not None
+    assert room.map_z == -1
+
+
 def test_update_room_version_conflict_returns_409() -> None:
     anyio.run(_test_version_conflict)
 

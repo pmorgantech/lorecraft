@@ -27,6 +27,7 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
 
 - Start with local files and tests.
 - Use Graphify for architecture, impact analysis, dependency paths, and unfamiliar subsystems when graphify-out/graph.json exists.
+- After code changes, run `make ai-graph` to refresh graphify-out/graph.json (AST re-extraction, no LLM needed) so the graph doesn't drift.
 - Use Ref before changing code that depends on external APIs, libraries, SDKs, or framework behavior.
 - Create a new branch for any changes which are large in scope or risky.
 

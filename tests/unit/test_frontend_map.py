@@ -219,6 +219,42 @@ def test_full_map_cartography_reveal_excludes_hidden_exits() -> None:
     assert {r["id"] for r in map_data["nearby_rooms"]} == {"start"}
 
 
+def test_level_filters_out_rooms_on_a_different_floor_at_the_same_xy() -> None:
+    """Two floors that reuse the same (x, y) footprint must not overlap on the
+    minimap once a `level` is passed — the cellar below the square should be
+    invisible while standing in the square, and vice versa (Sprint 66)."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        room_repo = RoomRepo(session)
+        room_repo.add(
+            Room(id="square", name="Square", description="d", map_x=0, map_y=0, map_z=0)
+        )
+        room_repo.add(
+            Room(
+                id="cellar", name="Cellar", description="d", map_x=0, map_y=0, map_z=-1
+            )
+        )
+        session.add(Exit(room_id="square", direction="down", target_room_id="cellar"))
+        session.commit()
+
+        player = Player(
+            id="player-1",
+            username="player-1",
+            current_room_id="square",
+            respawn_room_id="square",
+            visited_rooms=["square", "cellar"],
+        )
+        current_room = room_repo.get("square")
+
+        ground_floor = build_map_data(room_repo, player, current_room, level=0)
+        all_floors = build_map_data(room_repo, player, current_room, level=None)
+
+    assert {r["id"] for r in ground_floor["nearby_rooms"]} == {"square"}
+    assert {r["id"] for r in all_floors["nearby_rooms"]} == {"square", "cellar"}
+
+
 def test_non_full_map_ignores_cartography_level() -> None:
     """The sidebar minimap (full=False) never expands beyond visited rooms,
     regardless of cartography level — that's the full-screen modal's job."""

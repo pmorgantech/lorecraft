@@ -852,6 +852,7 @@ def _room_snapshot(
         if target_room is not None:
             target_payload["target_map_x"] = target_room.map_x
             target_payload["target_map_y"] = target_room.map_y
+            target_payload["target_map_z"] = target_room.map_z
         exits.append(target_payload)
 
     return {
@@ -860,6 +861,7 @@ def _room_snapshot(
         "description": room.description,
         "map_x": room.map_x,
         "map_y": room.map_y,
+        "map_z": room.map_z,
         "exits": exits,
     }
 

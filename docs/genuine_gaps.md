@@ -115,12 +115,18 @@ floors — using room coordinates that already support it but that world content
 exercised yet.
 
 **Implementation.**
-- No new engine code: `Room` already carries `(x, y, area_id)`-style coordinates and named
-  exits (`up`, `down` are just exit directions like any other). This is purely a **content**
-  gap — world YAML hasn't used a `z` coordinate or vertical exits yet.
-- If a `z` axis is wanted for the minimap/region-map rendering (Part 1, item 1) to distinguish
-  floors, add a `z: int = 0` field to the room model — a single additive column, no migration
-  risk to existing content (defaults to 0, i.e., "ground floor").
+- **Shipped (Sprint 66):** `Room.map_z: int = 0` (additive column, defaults to "ground
+  floor," no migration risk to existing content) and `build_map_data()`'s `level` param —
+  the player-facing minimap and full-map modal now filter candidate rooms to
+  `current_room.map_z`, so a floor that reuses the same `(map_x, map_y)` footprint as
+  another floor no longer overlaps on the 2D plot. `up`/`down` exits work exactly as
+  before — `map_z` only affects what's *drawn*, not traversal.
+- **Still content-only from here:** world YAML hasn't exercised multi-floor structures yet
+  (towers, basements, hidden floors) — that's authoring, not engine work.
+- **Deferred (not started):** the full-map modal still hard-filters to the current floor
+  rather than offering a level selector or plotting inter-level connections (dashed lines
+  to `up`/`down` neighbors on a different floor). `level=None` (show every floor at once)
+  is already wired as a `build_map_data()` option for whenever that UI lands.
 - Secret/structural exits that only *appear* after a puzzle solves reuse Part 3's
   **conditional exits** primitive (see Puzzles section) rather than inventing a second
   mechanism for "hidden" vs. "conditional."

@@ -299,7 +299,7 @@ class WorldScreen(Screen[None]):
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
-        table.add_columns("ID", "Name", "Active", "x", "y")
+        table.add_columns("ID", "Name", "Active", "x", "y", "z")
         self.action_refresh()
 
     def action_refresh(self) -> None:
@@ -319,6 +319,7 @@ class WorldScreen(Screen[None]):
                 "✓" if r.get("is_active") else "✗",
                 str(r.get("map_x", 0)),
                 str(r.get("map_y", 0)),
+                str(r.get("map_z", 0)),
                 key=r.get("id", ""),
             )
         self.app._rooms_cache = rooms  # type: ignore[attr-defined]

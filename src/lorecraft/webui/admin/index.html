@@ -307,6 +307,7 @@
             <div class="field" style="display:flex;gap:0.5rem;">
               <div style="flex:1;"><label>MAP X</label><input id="r-x" type="number" /></div>
               <div style="flex:1;"><label>MAP Y</label><input id="r-y" type="number" /></div>
+              <div style="flex:1;"><label>MAP Z (floor)</label><input id="r-z" type="number" /></div>
             </div>
             <div class="field"><label>LIGHT LEVEL (0–1)</label><input id="r-light" type="number" min="0" max="1" step="0.1" /></div>
             <div class="field" style="display:flex;align-items:center;gap:0.5rem;">
@@ -1013,6 +1014,7 @@ function editRoom(roomJson) {
   document.getElementById("r-desc").value    = r.description || "";
   document.getElementById("r-x").value       = r.map_x ?? 0;
   document.getElementById("r-y").value       = r.map_y ?? 0;
+  document.getElementById("r-z").value       = r.map_z ?? 0;
   document.getElementById("r-light").value   = r.light_level ?? 1;
   document.getElementById("r-active").checked = r.is_active;
   document.getElementById("room-save-error").textContent = "";
@@ -1032,6 +1034,7 @@ async function saveRoom() {
     description: document.getElementById("r-desc").value,
     map_x:       parseInt(document.getElementById("r-x").value),
     map_y:       parseInt(document.getElementById("r-y").value),
+    map_z:       parseInt(document.getElementById("r-z").value),
     light_level: parseFloat(document.getElementById("r-light").value),
     is_active:   document.getElementById("r-active").checked,
     version:     r.version,

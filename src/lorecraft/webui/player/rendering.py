@@ -30,6 +30,7 @@ def build_map_data(
     *,
     full: bool = False,
     cartography_level: int = 0,
+    level: int | None = None,
 ) -> dict:
     """Build data for the graphical mini-map of nearby discovered rooms + connections.
 
@@ -39,6 +40,12 @@ def build_map_data(
     from anywhere visited — "known but unvisited" (dimmer, name withheld).
     Hidden exits stay off the map entirely; that's `search`'s reveal, not
     cartography's (Sprint 25.1).
+
+    `level` restricts candidate rooms to a single `Room.map_z` floor (Sprint
+    66) — pass `current_room.map_z` so multi-level buildings/dungeons that
+    reuse (x, y) on a different floor don't overlap on the 2D plot. `None`
+    (the default) plots every known room regardless of floor, which existing
+    single-level worlds already rely on.
     """
     if not current_room:
         return {"nearby_rooms": [], "map_lines": []}
@@ -63,6 +70,8 @@ def build_map_data(
             and getattr(r, "map_x", None) is not None
             and getattr(r, "map_y", None) is not None
         ):
+            if level is not None and (getattr(r, "map_z", 0) or 0) != level:
+                continue
             d = abs((r.map_x or 0) - cx) + abs((r.map_y or 0) - cy)
             cands.append((d, r, rid in visited))
     cands.sort(key=lambda item: item[0])

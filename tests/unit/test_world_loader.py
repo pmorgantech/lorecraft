@@ -67,6 +67,48 @@ room_items:
     ]
 
 
+def test_world_loader_defaults_and_round_trips_map_z(tmp_path) -> None:
+    """`map_z` is optional (defaults to floor 0, backward-compatible with
+    existing single-level YAML) and round-trips through import → export."""
+    source = tmp_path / "world.yaml"
+    source.write_text(
+        """
+rooms:
+  - id: square
+    name: Square
+    description: A busy square.
+    map_x: 0
+    map_y: 0
+  - id: cellar
+    name: Cellar
+    description: Below the square.
+    map_x: 0
+    map_y: 0
+    map_z: -1
+    exits:
+      - direction: up
+        target_room_id: square
+""",
+        encoding="utf-8",
+    )
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        load_world_yaml(source, session)
+        session.commit()
+
+        rooms_by_id = {room.id: room for room in session.exec(select(Room)).all()}
+        assert rooms_by_id["square"].map_z == 0
+        assert rooms_by_id["cellar"].map_z == -1
+
+        document = export_world_document(session)
+
+    rooms_by_id_exported = {room.id: room for room in document.rooms}
+    assert rooms_by_id_exported["square"].map_z == 0
+    assert rooms_by_id_exported["cellar"].map_z == -1
+
+
 def test_world_loader_imports_npc_shop_and_seeds_cash_once(tmp_path) -> None:
     source = tmp_path / "world.yaml"
     source.write_text(

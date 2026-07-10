@@ -120,6 +120,7 @@ async def teleport_player(
             "description": target.description,
             "map_x": target.map_x,
             "map_y": target.map_y,
+            "map_z": target.map_z,
             "exits": [],
         }
     state.manager.move_player(player_id, old_room, body.room_id)
