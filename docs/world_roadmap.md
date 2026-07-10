@@ -15,8 +15,9 @@
 | Feature | Support | Notes |
 |---------|---------|-------|
 | **Multi-level rooms** | `Room.map_z` (v0.55.0) | Floors/levels via z-coordinate; minimap filters by current level |
-| **NPCs** | `features/npc/` | Place NPCs in rooms; NPCs can hold items/coins |
-| **NPC movement/patrol** | `features/movement/`, `MobileRouteService` | Route NPCs between rooms on scheduler cycles |
+| **NPCs** | `features/npc/` | Place NPCs in rooms; dialogue trees with pluggable conditions (`min_reputation`, `npc_remembers`, flags) and side effects (`give_item`, `start_quest`, `adjust_reputation`, `remember`) |
+| **NPC scheduled teleport** | `NPC.schedule` + `NpcScheduler` (`features/npc/scheduler.py`) | Data-driven `[{game_hour, target_room_id}, ...]`; jumps the NPC's room on `HOUR_CHANGED`. **Instant teleport, not pathed movement** — no interim rooms/narration. |
+| **NPC context-attached verbs** | `NPC.context_commands` (Sprint 55) | Data-driven custom verbs (e.g. `bow`) available only while the NPC is present, each with `{aliases, help, say, side_effects, requires}` |
 | **Weather system** | `features/weather/` | Global weather state; transit lines can block on weather |
 | **Item types** | weapon, armor, utility, coin | Color-coded in UI (rarity system available too) |
 | **Shops/stores** | `features/shop/` | Create shops with inventory, NPC shopkeepers, prices |
@@ -37,15 +38,19 @@
 | **Climate/biome** | Weather exists but not tied to zones | A forest should have rain/fog; a desert dry heat. No zone-climate mapping yet. (Minor content work, depends on indoor flag.) |
 | **Treasure/loot** | Items can be placed in rooms | No randomized loot tables yet. (Tier 2 feature, probably Sprint 16+ backlog.) |
 | **Ambient messages** | Not yet | Rooms could narrate ambient events (wind, birds, dripping water). (Tier 2 feature; would need room-effect scheduler.) |
+| **NPC fixed-route patrol** | `MobileRouteService` primitive exists, unwired for NPCs | The Tier 1 route-runner (`engine/services/mobile_route.py` — waypoints, ping-pong/loop, dwell/travel ticks, restart-safe state) is genuinely content-agnostic, but today only the **transit** feature instantiates it (ferries/trains). No NPC-specific `RouteHooks` exist to move `NPC.current_room_id` + broadcast arrival/departure on `on_arrive`/`on_depart`. Real but modest glue work — the hard scheduling logic is already built. |
+| **Reputation as an NPC behavior gate** | Reputation itself is real; nothing *acts* on it autonomously | `features/reputation` gives per-(player, npc-or-faction) standing with `reputation_at_least` (command condition), `min_reputation` (dialogue condition), `adjust_reputation` (side effect) — so standing can already gate what a player can *say/do* to an NPC. What's missing is any NPC decision loop that *reads* standing on its own initiative (e.g. to refuse service, flee, or turn hostile without the player first triggering dialogue). |
 
 ### ❌ Not Yet Supported (requires engine work)
 
 | Feature | Blocker | Notes |
 |---------|---------|-------|
-| **[BLOCKED] NPC faction/reputation** | Needs Tier 1 foundation | Engine has a reputation system but NPC-specific faction standing isn't modeled. (Good feature-band candidate.) |
+| **[BLOCKED] NPC autonomous behavior (patrol-an-area, aggro, flee, follow)** | No NPC-agency loop | Everything NPC-side today is either scheduled-teleport or player-triggered (dialogue/context verbs). There is no per-tick "NPC decides what to do" loop. Zone-wide roam ("wander anywhere in `area_id: sewers`") isn't built at all — would need new logic to sample a valid room by `area_id` (ideally adjacency-aware) each scheduler tick. `NPC.behavior: str = "defensive"` **exists on the model and round-trips through world YAML/admin API but is never read by any game logic** (confirmed by grep) — dead schema, presumably laid down for a combat-stance system that was never built. |
+| **[BLOCKED] Combat / attack system (any trigger source)** | Not built — schema stub only | `models/combat.py`'s `CombatSession` is a bare table (`id, room_id, started_at, status, combatants: JSON`) with **no service, repo, command, event, or side-effect handler anywhere in the codebase**. `features/npc/side_effects.py`'s docstring name-drops `combat.start_combat` only as an *illustrative example* of the registration pattern — never implemented. NPCs cannot act against a player under any condition (reputation, marks, or otherwise) because there is neither an NPC-agency loop nor a combat resolution path for an "attack" to resolve into. Matches `docs/wishlist.md`'s deliberate stance: combat is set aside as "a supporting system, not the centerpiece." |
+| **[BLOCKED] Alignment system** | Doesn't exist | Zero references anywhere in the codebase. `features/marks` are discovery/exploration badges (visited rooms, met NPCs, items found), not a morality/alignment axis — don't conflate the two when scripting "good/evil" NPC reactions. |
 | **[BLOCKED] Ambient/flavor text rotation** | Needs event loop | Rooms with descriptions that change over time (sunrise, shadows, NPC banter). Needs a timed-event framework beyond schedulers. (Design-time decision: too much scope for foundation?) |
 | **[BLOCKED] Weather particle effects** | UI-only, not engine** | Can describe weather in text; visual rain/snow is future stretch. |
-| **[BLOCKED] Day/night cycle tied to NPC behavior** | Needs NPC schedule model | NPCs could sleep at night, work during day. Needs a new tier-1 NPC schedule primitive. (Roadmap future, not critical for testing.) |
+| **[BLOCKED] Day/night cycle tied to NPC behavior** | Needs NPC schedule model | NPCs could sleep at night, work during day. The hour-based teleport schedule is a start but isn't behavior-branching (it only relocates). Roadmap future, not critical for testing. |
 
 ---
 
@@ -398,12 +403,19 @@ Build NPC variety; add dialogue, quests, and flavor.
 
 **For each:** 2–3 unique lines, no quest, just color. Verify they appear/disappear as expected.
 
-#### P3.4 — NPC Movement/Patrol (3+ NPCs)
-- [ ] Dock Worker (patrols docks 3-room loop)
-- [ ] Night Guard (patrols city streets after dark—future time-based feature)
-- [ ] Forest Scout (patrols forest trails; visible at random clearing)
+#### P3.4 — NPC Movement (3+ NPCs) — **scope corrected, see Blocked Items**
+True room-list/loop **patrol** requires new glue on top of `MobileRouteService` (unwired for
+NPCs today — see Blocked Items). Zone-wide roam requires new logic entirely (not built). For
+v1 of this world, scope down to what's actually wired:
+- [ ] Dock Worker — `NPC.schedule` relocates docks → warehouse at set game-hours (teleport, not a walked loop)
+- [ ] Night Guard — `NPC.schedule` relocates city streets → guardhouse after dark
+- [ ] Forest Scout — `NPC.schedule` relocates between 2–3 clearings across the day
 
-**Test:** Check NPC location at different times; see them move between rooms.
+**Stretch (blocked on engine work):** true patrol (visibly walking a room loop, broadcast to
+players present) needs NPC-specific `RouteHooks` built against `MobileRouteService` first — see
+Blocked Items. Don't build content that assumes this exists.
+
+**Test:** Check NPC location at different game-hours; confirm the room-relocation actually fires on `HOUR_CHANGED`.
 
 ---
 
