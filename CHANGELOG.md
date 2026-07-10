@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.55.1] - 2026-07-09
+
+### Added
+
+- **`webui-theming` agent skill.** Bakes in the Layout × Color-scheme architecture
+  (`preferences.py`, the `custom.css` token/typography split, per-mode shell partials,
+  the `MODE_DEFAULT_THEME` 3-places gotcha, `MUD_CHRONICLE_LAYOUTS`, the minimap
+  bare-content convention, recipes for adding a scheme/layout, and a testing/pitfalls
+  list) so future agents don't have to re-derive it by reading the whole webui each
+  time. Canonical copy at `.agents/skills/webui-theming/SKILL.md`; mirrored (per this
+  repo's existing multi-platform convention) at `.claude/`, `.grok/`, `.codex/`.
+
 ## [0.55.0] - 2026-07-09
 
 ### Added
