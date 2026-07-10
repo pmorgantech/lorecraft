@@ -2,6 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.66.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A4 - container/item effect triggers (the magic chest).** Placing a carried
+  item into a container (or taking it out) now fires the *container item's* triggers:
+  - New `ITEM_STORED` / `ITEM_REMOVED` events (emitted by `put`/`take`), routed to triggers bound
+    to the container (`entity_type: item`) via `on: item_stored` / `on: item_removed`.
+  - New `apply_effect` effect - applies a timed `ActiveEffect` to `actor`, `room`, or
+    `stored_item` (the item just placed, reached through the new transient `ctx.event_payload`).
+    So a chest can buff/degrade/curse what's placed inside: `do: [{apply_effect: {target:
+    stored_item, effect: hexed, ticks: 50}}]`. In the catalog (`docs/scripting_api.md`, 17
+    entries).
+  - `GameContext.event_payload` threads the triggering event's data to effects (general, not
+    container-specific). 5 tests (`tests/unit/test_container_triggers.py`).
+
 ## [0.65.0] - 2026-07-10
 
 ### Added

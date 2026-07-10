@@ -79,6 +79,10 @@ class GameContext:
     chat_outbox: list[ChatMessage] = field(default_factory=list)
     updates: JsonObject = field(default_factory=dict)
     pending_events: list[Event] = field(default_factory=list)
+    # Transient: the payload of the event a trigger is currently firing on (scripting engine
+    # A4), so an effect can read event-specific data (e.g. the item just stored in a container).
+    # Empty outside trigger execution; set by TriggerService before each `do` runs.
+    event_payload: JsonObject = field(default_factory=dict)
     parsed_command: ParsedCommand | None = None
     # Deferred async WS deliveries produced by *synchronous* handlers that need
     # to push to another player's socket (e.g. Sprint 47 follow moving a

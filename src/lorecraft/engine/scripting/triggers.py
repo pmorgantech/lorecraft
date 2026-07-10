@@ -36,6 +36,8 @@ log = logging.getLogger(__name__)
 ON_ENCOUNTER = "encounter"
 ON_PLAYER_ENTERED = "player_entered"
 ON_PLAYER_LEFT = "player_left"
+ON_ITEM_STORED = "item_stored"
+ON_ITEM_REMOVED = "item_removed"
 
 ENTITY_ROOM = "room"
 ENTITY_NPC = "npc"
@@ -131,6 +133,8 @@ class TriggerService:
         """Subscribe to the engine events that map onto trigger-surface events."""
         bus.on(GameEvent.PLAYER_MOVED, self._on_player_moved)
         bus.on(GameEvent.NPC_MOVED, self._on_npc_moved)
+        bus.on(GameEvent.ITEM_STORED, self._on_item_stored)
+        bus.on(GameEvent.ITEM_REMOVED, self._on_item_removed)
 
     # -- event mapping -------------------------------------------------------
 
@@ -142,15 +146,18 @@ class TriggerService:
         to_room = event.payload.get("to_room_id")
         if not isinstance(to_room, str):
             return
-        for trigger in self._by_on.get(ON_PLAYER_ENTERED, ()):
-            if trigger.entity_type == ENTITY_ROOM and trigger.entity_id == to_room:
-                self._fire(trigger, ctx)
-        encounter_triggers = self._by_on.get(ON_ENCOUNTER, ())
-        if encounter_triggers:
-            npc_ids = {npc.id for npc in ctx.npc_repo.in_room(to_room)}
-            for trigger in encounter_triggers:
-                if trigger.entity_type == ENTITY_NPC and trigger.entity_id in npc_ids:
-                    self._fire(trigger, ctx)
+        matches = [
+            trigger
+            for trigger in self._by_on.get(ON_PLAYER_ENTERED, ())
+            if trigger.entity_type == ENTITY_ROOM and trigger.entity_id == to_room
+        ]
+        npc_ids = {npc.id for npc in ctx.npc_repo.in_room(to_room)}
+        matches += [
+            trigger
+            for trigger in self._by_on.get(ON_ENCOUNTER, ())
+            if trigger.entity_type == ENTITY_NPC and trigger.entity_id in npc_ids
+        ]
+        self._fire_all(matches, ctx, event.payload)
 
     def _on_npc_moved(self, event: Event, ctx: object) -> None:
         """An NPC entered a room autonomously (A3): fire *its* `encounter` triggers for each
@@ -187,10 +194,45 @@ class TriggerService:
                 effects=ctx.effects,
                 clock=ctx.clock,
             )
-            for trigger in triggers:
-                self._fire(trigger, game_ctx)
+            self._fire_all(triggers, game_ctx, event.payload)
+
+    def _on_item_stored(self, event: Event, ctx: object) -> None:
+        self._on_container_event(event, ctx, ON_ITEM_STORED)
+
+    def _on_item_removed(self, event: Event, ctx: object) -> None:
+        self._on_container_event(event, ctx, ON_ITEM_REMOVED)
+
+    def _on_container_event(self, event: Event, ctx: object, on_name: str) -> None:
+        """A carried item was stored into / removed from a container (A4). Fire the
+        *container item's* triggers, with the event payload (which item, which container)
+        exposed on ``ctx.event_payload`` so effects like ``apply_effect: {target: stored_item}``
+        can reach it."""
+        if not isinstance(ctx, GameContext):
+            return
+        container_id = event.payload.get("container_item_id")
+        if not isinstance(container_id, str):
+            return
+        matches = [
+            trigger
+            for trigger in self._by_on.get(on_name, ())
+            if trigger.entity_type == ENTITY_ITEM and trigger.entity_id == container_id
+        ]
+        self._fire_all(matches, ctx, event.payload)
 
     # -- firing --------------------------------------------------------------
+
+    def _fire_all(
+        self, triggers: list[Trigger], ctx: GameContext, payload: JsonObject
+    ) -> None:
+        """Fire triggers with the event payload exposed on the context, then clear it."""
+        if not triggers:
+            return
+        ctx.event_payload = payload
+        try:
+            for trigger in triggers:
+                self._fire(trigger, ctx)
+        finally:
+            ctx.event_payload = {}
 
     def _fire(self, trigger: Trigger, ctx: GameContext) -> None:
         try:

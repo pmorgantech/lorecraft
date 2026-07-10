@@ -23,6 +23,8 @@ class GameEvent(StrEnum):
     ITEM_DROPPED = "item_dropped"
     ITEM_USED = "item_used"
     ITEM_GIVEN = "item_given"
+    ITEM_STORED = "item_stored"  # a carried item placed into a container (A4)
+    ITEM_REMOVED = "item_removed"  # an item taken out of a container (A4)
     PLAYER_MOVED = "player_moved"
     PLAYER_DIED = "player_died"
     PLAYER_RESPAWNED = "player_respawned"

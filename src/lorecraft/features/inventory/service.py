@@ -780,6 +780,14 @@ class InventoryService:
             "inventory",
             inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
         )
+        # A4: container effect triggers — a magic chest can react to what's placed inside.
+        ctx.queue_event(
+            GameEvent.ITEM_STORED,
+            container_item_id=_container_item.id,
+            container_instance_id=container_instance.id,
+            item_id=item.id,
+            player_id=ctx.player.id,
+        )
 
     def take_from_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:
@@ -839,6 +847,14 @@ class InventoryService:
         ctx.push_update(
             "inventory",
             inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
+        # A4: container effect triggers — mirror of item_stored.
+        ctx.queue_event(
+            GameEvent.ITEM_REMOVED,
+            container_item_id=container_item.id,
+            container_instance_id=container_instance.id,
+            item_id=item.id,
+            player_id=ctx.player.id,
         )
 
     def _resolve_container(

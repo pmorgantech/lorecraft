@@ -172,6 +172,48 @@ def _handle_narrate_room(data: JsonValue, ctx: "GameContext") -> None:  # type: 
         broadcast_room_async(ctx.manager, room_id, text)
 
 
+def _handle_apply_effect(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
+    """Apply a timed :class:`ActiveEffect` to a target (scripting engine A4/A5).
+
+    ``apply_effect: {effect: <key>, target: actor|room|stored_item, ticks?: N}``. ``stored_item``
+    resolves to the item id in ``ctx.event_payload`` (the item a container trigger just handled).
+    ``ticks`` omitted = permanent. The ``effect`` key must be a registered effect definition.
+    """
+    if not isinstance(data, dict):
+        return
+    effect_key = str(data.get("effect", ""))
+    if not effect_key:
+        return
+    target = str(data.get("target", "actor"))
+    raw_ticks = data.get("ticks")
+    duration = (
+        float(raw_ticks)
+        if isinstance(raw_ticks, (int, float)) and not isinstance(raw_ticks, bool)
+        else None
+    )
+    entity_type, entity_id = _effect_target(target, ctx)
+    if entity_id is None:
+        return
+    epoch = ctx.clock.game_epoch if ctx.clock is not None else 0.0
+    ctx.effects.apply(
+        ctx.session,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        effect_key=effect_key,
+        duration_ticks=duration,
+        clock_epoch=epoch,
+    )
+
+
+def _effect_target(target: str, ctx: "GameContext") -> tuple[str, str | None]:
+    if target == "room":
+        return "room", ctx.room.id
+    if target == "stored_item":
+        item_id = ctx.event_payload.get("item_id")
+        return "item", item_id if isinstance(item_id, str) else None
+    return "player", ctx.player.id  # default: the actor
+
+
 def _effect(
     name: str,
     *,
@@ -272,6 +314,30 @@ _registry.register_spec(
         ),
     ),
     _handle_narrate_room,
+)
+_registry.register_spec(
+    _effect(
+        "apply_effect",
+        subject=Subject.TARGET,
+        category="effects",
+        domain="effects",
+        attribute="active",
+        op="apply",
+        doc="Apply a timed ActiveEffect to a target (actor | room | stored_item).",
+        params=(
+            ParamSpec("effect", "effect_key", doc="Registered effect definition key."),
+            ParamSpec(
+                "target",
+                "subject",
+                required=False,
+                doc="actor (default) | room | stored_item.",
+            ),
+            ParamSpec(
+                "ticks", "int", required=False, doc="Duration; omitted = permanent."
+            ),
+        ),
+    ),
+    _handle_apply_effect,
 )
 
 

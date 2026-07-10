@@ -7,7 +7,7 @@ The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC
 engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry
 shows its subject role, capability signature, and parameters.
 
-_16 entries._
+_17 entries._
 
 ## Conditions (`when:`)
 
@@ -119,6 +119,19 @@ Close the actor's current dialogue session.
 - **Subject:** `actor`
 - **Capability:** `dialogue/session` · `clear`
 - **Params:** _none_
+
+### effects
+
+#### `apply_effect`
+
+Apply a timed ActiveEffect to a target (actor | room | stored_item).
+
+- **Subject:** `target`
+- **Capability:** `effects/active` · `apply`
+- **Params:**
+  - `effect` (`effect_key`, required) — Registered effect definition key.
+  - `target` (`subject`, optional) — actor (default) | room | stored_item.
+  - `ticks` (`int`, optional) — Duration; omitted = permanent.
 
 ### flags
 
