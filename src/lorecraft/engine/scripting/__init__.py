@@ -8,15 +8,21 @@ A cohesive home for the declarative-scripting primitives described in
 * :mod:`~lorecraft.engine.scripting.catalog` — render the catalog to JSON / builder-guide doc.
 * :mod:`~lorecraft.engine.scripting.validator` — fail-closed author-time linting of
   ``when:`` / ``do:`` blocks against the catalog.
+* :mod:`~lorecraft.engine.scripting.triggers` — the ``on``/``when``/``do`` binding service.
 
-Follow-up Phase-A modules land here as they're built: ``triggers`` (the ``on``/``when``/``do``
-binding service). The subsystem depends *on* ``engine.game`` primitives (e.g. ``WorldContext``);
+The subsystem depends *on* ``engine.game`` primitives (e.g. ``WorldContext``);
 ``engine.game`` never imports back into it, keeping the arrow one-way.
 """
 
 from __future__ import annotations
 
 from lorecraft.engine.scripting.catalog import render_json, render_markdown
+from lorecraft.engine.scripting.triggers import (
+    Trigger,
+    TriggerLoadError,
+    TriggerService,
+    parse_trigger,
+)
 from lorecraft.engine.scripting.validator import (
     ValidationIssue,
     validate_conditions,
@@ -37,12 +43,16 @@ __all__ = [
     "CapabilitySig",
     "ParamSpec",
     "Subject",
+    "Trigger",
+    "TriggerLoadError",
+    "TriggerService",
     "ValidationIssue",
     "VocabEntry",
     "VocabKind",
     "Vocabulary",
     "VocabularyError",
     "global_vocabulary",
+    "parse_trigger",
     "render_json",
     "render_markdown",
     "validate_conditions",

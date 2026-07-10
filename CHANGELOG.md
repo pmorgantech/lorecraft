@@ -2,6 +2,29 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.63.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A2 (core) — `TriggerService` + declarative `on`/`when`/`do` binding
+  (`engine/scripting/triggers.py`).** Attaches triggers to world entities and fires their
+  effects when conditions pass (`docs/scripting_engine_design.md` §3.3). Lands the engine
+  mechanism, exercised end to end against the real dialogue-condition and side-effect registries:
+  - The **`encounter`** synthetic event (an NPC and a player becoming co-located) and
+    `player_entered`, mapped from `PLAYER_MOVED`.
+  - One level of `any:` (OR) / `all:` (AND) grouping over conditions; AND across keys.
+  - Fail-closed load-time validation (`parse_trigger` runs the A0.4 validator — an unknown
+    condition/effect name raises `TriggerLoadError` where it was authored; runtime stays
+    fail-open).
+  - Tier-1-clean: the condition/effect vocabulary lives in feature registries, injected as
+    `WhenEvaluator` / `DoApplier` protocols (satisfied structurally, wired at composition). 10
+    tests (`tests/unit/test_triggers.py`).
+
+  Queued for A2 follow-ups / acceptance: firing `encounter` from autonomous `NPC_MOVED` (A3), the
+  world-content `triggers:` schema/loader + `NPC.triggers` storage, the new world-safe vocabulary
+  (`chance`, `narrate_room`, …), and the deferred flag-family rename (now that the validator can
+  guard the load path).
+
 ## [0.62.1] - 2026-07-10
 
 ### Docs
