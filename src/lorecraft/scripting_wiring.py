@@ -8,6 +8,7 @@ world and feature registries — which the engine may not import — so it lives
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from sqlmodel import Session, select
 
@@ -22,8 +23,19 @@ from lorecraft.engine.scripting.triggers import (
 )
 from lorecraft.engine.scripting.vocabulary import global_vocabulary
 from lorecraft.features.npc import dialogue_conditions, side_effects
+from lorecraft.types import JsonObject
+from lorecraft.world.yaml_io import load_world_yaml_text
 
 log = logging.getLogger(__name__)
+
+
+def load_yaml_config(path: str) -> JsonObject:
+    """Load an optional scripting config file (weather fronts, spawns); ``{}`` if absent."""
+    source = Path(path)
+    if not source.exists():
+        return {}
+    data = load_world_yaml_text(source.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else {}
 
 
 def load_triggers(session: Session) -> list[Trigger]:

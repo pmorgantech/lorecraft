@@ -42,7 +42,12 @@ from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.content.help import ensure_help_bootstrapped
 from lorecraft.features.npc.scheduler import NpcScheduler
-from lorecraft.scripting_wiring import build_trigger_service
+from lorecraft.features.spawns.service import SpawnControllerService
+from lorecraft.features.weather.fronts import (
+    WeatherFrontService,
+    register_storm_effects,
+)
+from lorecraft.scripting_wiring import build_trigger_service, load_yaml_config
 from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.services.scheduler import SchedulerService
@@ -206,6 +211,25 @@ def create_app(
                 resolved_game_engine, manager, app_rng, meter_service, effect_service
             )
             npc_behavior_service.register(bus)
+        weather_front_service = None
+        if "weather" in enabled_set:
+            register_storm_effects()
+            weather_front_service = WeatherFrontService(
+                resolved_game_engine,
+                manager,
+                app_rng,
+                effect_service,
+                load_yaml_config(resolved_settings.weather_fronts_yaml_path),
+            )
+            weather_front_service.register(bus)
+        spawn_controller_service = None
+        if "spawns" in enabled_set:
+            spawn_controller_service = SpawnControllerService(
+                resolved_game_engine,
+                app_rng,
+                load_yaml_config(resolved_settings.spawns_yaml_path),
+            )
+            spawn_controller_service.register(bus)
         transit_service = None
         if "transit" in enabled_set:
             transit_service = TransitService(

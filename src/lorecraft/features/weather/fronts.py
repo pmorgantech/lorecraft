@@ -19,7 +19,9 @@ from dataclasses import dataclass, field
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
+from lorecraft.engine.game import effects as effects_module
 from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.effects import EffectDef
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.world_context import broadcast_room_async
@@ -28,6 +30,18 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.types import JsonObject
 
 log = logging.getLogger(__name__)
+
+
+def register_storm_effects() -> None:
+    """Register the built-in ``storm_lashed`` room effect a weather front applies.
+
+    A marker room-state effect (no stat modifiers yet — those are content detail); its presence
+    is what weather-aware systems and the `storm_lashed` room feed read. Idempotent: the effect
+    registry overwrites on re-register.
+    """
+    effects_module.get_registry().register(
+        EffectDef(key="storm_lashed", modifiers=lambda effect: [])
+    )
 
 
 @dataclass

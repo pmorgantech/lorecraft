@@ -2,6 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.70.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A-accept (live) — weather fronts + spawn controllers wired into the game;
+  Phase A complete.** `WeatherFrontService` (A5) and `SpawnControllerService` (A6) are now
+  constructed and bus-registered at startup (gated on the `weather`/`spawns` features), loading
+  config from `world_content/weather_fronts.yaml` / `world_content/spawns.yaml`
+  (`weather_fronts_yaml_path` / `spawns_yaml_path` settings; empty/absent = no-op). The built-in
+  `storm_lashed` room effect is registered (`register_storm_effects`). Ships a demo
+  `world_content/weather_fronts.yaml` — a spring/autumn squall that rolls over the town, applies
+  the room effect, travels to the wilderness, and clears. **To see it in-game:** play through a
+  few in-game hours in spring; storms narrate and mark rooms. With this, **Phase A of the
+  scripting engine is complete** (A0–A6 + acceptance); see `docs/scripting_engine_design.md` §6
+  and the generated `docs/scripting_api.md`.
+
 ## [0.69.0] - 2026-07-10
 
 ### Added

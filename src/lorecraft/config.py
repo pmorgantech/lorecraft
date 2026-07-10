@@ -50,6 +50,8 @@ class Settings:
     hunts_yaml_path: str = "world_content/hunts.yaml"
     marks_yaml_path: str = "world_content/marks.yaml"
     celestial_yaml_path: str = "world_content/celestial.yaml"
+    weather_fronts_yaml_path: str = "world_content/weather_fronts.yaml"
+    spawns_yaml_path: str = "world_content/spawns.yaml"
     seed_player_id: str = "player-1"
     seed_player_username: str = "player-1"
     seed_player_start_room: str = "village_square"

@@ -323,6 +323,14 @@ Everything below is **declarative YAML over Phase-A primitives** — no language
 
 ## 6. Phased roadmap
 
+> **Status — Phase A COMPLETE (2026-07-10, v0.57.0–v0.70.0).** All of A0–A6 plus the acceptance
+> harness are implemented, tested, and wired into the running game. Governance lives in
+> `engine/scripting/` (vocabulary/catalog/validator/triggers); the actor-less `WorldContext` in
+> `engine/game/`; the agency loop, weather fronts, and spawn controllers in `features/npc_ai`,
+> `features/weather`, `features/spawns`. Authoring reference: **`docs/scripting_api.md`** (generated).
+> Acceptance: `tests/unit/test_phase_a_acceptance.py`. Phase B (a behavior-tree DSL) remains
+> deferred until YAML authoring proves painful.
+
 **Phase A — Autonomy primitives (foundation; no language).** *This is the whole unlock.*
 - A0. **Vocabulary governance foundation (precedes A2, §8).** Descriptor-carrying condition/
   effect registry (name / typed-params / subject / reads-or-writes / category / doc /

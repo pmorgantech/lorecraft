@@ -1,0 +1,14 @@
+# Traveling weather fronts (scripting engine A5). Loaded by WeatherFrontService, which rolls
+# each dormant storm's `chance` every in-game hour (seeded RNG). On a hit the front applies the
+# `room_effect` across the first zone in `path`, narrates, travels zone->zone every `travel_ticks`
+# hours, and expires after its rolled `duration_ticks`. See docs/scripting_api.md for effects.
+storms:
+  spring_squall:
+    chance: 0.12            # ~per-hour odds while dormant and in season
+    seasons: [spring, autumn]
+    duration_ticks: {min: 3, max: 6}
+    travel_ticks: 2         # hours before the front rolls on to the next zone
+    path: [town, wilderness]
+    room_effect: storm_lashed
+    on_enter: "Dark clouds gather overhead and a cold rain begins to fall."
+    on_leave: "The rain eases and the clouds thin to a pale grey."
