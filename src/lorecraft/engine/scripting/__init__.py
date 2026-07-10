@@ -22,6 +22,7 @@ from lorecraft.engine.scripting.vocabulary import (
     Vocabulary,
     VocabKind,
     VocabularyError,
+    global_vocabulary,
 )
 
 __all__ = [
@@ -32,4 +33,5 @@ __all__ = [
     "VocabKind",
     "Vocabulary",
     "VocabularyError",
+    "global_vocabulary",
 ]

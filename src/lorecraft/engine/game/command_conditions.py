@@ -13,6 +13,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.scripting.vocabulary import (
+    CapabilitySig,
+    ParamSpec,
+    Subject,
+    VocabEntry,
+    VocabKind,
+    global_vocabulary,
+)
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
@@ -44,8 +52,17 @@ class CommandConditionRegistry:
         self._handlers: dict[str, ConditionHandler] = {}
 
     def register(self, condition_name: str, handler: ConditionHandler) -> None:
-        """Register a condition handler by name."""
+        """Register a condition handler by name (no catalog descriptor)."""
         self._handlers[condition_name] = handler
+
+    def register_spec(self, spec: VocabEntry, handler: ConditionHandler) -> None:
+        """Register a handler *and* publish its descriptor to the shared catalog.
+
+        See ``docs/scripting_engine_design.md`` §8. An exact-name collision in the shared
+        catalog raises ``VocabularyError`` rather than silently overwriting.
+        """
+        global_vocabulary().register(spec)
+        self._handlers[spec.name] = handler
 
     def evaluate(self, condition: str, ctx: "GameContext") -> ConditionResult:
         """Evaluate a single condition string (format: "name" or "name:param").
@@ -161,14 +178,129 @@ def _npc_present_check(parameter: str, ctx: "GameContext") -> ConditionResult:
     return ConditionResult(False, "They aren't here.")
 
 
-_registry.register("requires_light", _light_check)
-_registry.register("not_in_combat", _not_in_combat_check)
-_registry.register("in_combat", _in_combat_check)
-_registry.register("flag_set", _flag_set_check)
-_registry.register("flag_not_set", _flag_not_set_check)
-_registry.register("item_in_inventory", _item_in_inventory_check)
-_registry.register("object_present", _object_present_check)
-_registry.register("npc_present", _npc_present_check)
+def _condition(
+    name: str,
+    *,
+    subject: Subject,
+    category: str,
+    domain: str,
+    attribute: str,
+    op: str,
+    doc: str,
+    params: tuple[ParamSpec, ...] = (),
+) -> VocabEntry:
+    return VocabEntry(
+        name=name,
+        kind=VocabKind.CONDITION,
+        subject=subject,
+        category=category,
+        doc=doc,
+        capability=CapabilitySig(subject, domain, attribute, op),
+        params=params,
+    )
+
+
+_registry.register_spec(
+    _condition(
+        "requires_light",
+        subject=Subject.SELF,
+        category="environment",
+        domain="light",
+        attribute="level",
+        op="at_least",
+        doc="The room is lit, or the actor carries a lit light source.",
+    ),
+    _light_check,
+)
+_registry.register_spec(
+    _condition(
+        "not_in_combat",
+        subject=Subject.ACTOR,
+        category="combat",
+        domain="combat",
+        attribute="session",
+        op="lacks",
+        doc="The actor is not currently in a combat session.",
+    ),
+    _not_in_combat_check,
+)
+_registry.register_spec(
+    _condition(
+        "in_combat",
+        subject=Subject.ACTOR,
+        category="combat",
+        domain="combat",
+        attribute="session",
+        op="has",
+        doc="The actor is currently in a combat session.",
+    ),
+    _in_combat_check,
+)
+_registry.register_spec(
+    _condition(
+        "flag_set",
+        subject=Subject.ACTOR,
+        category="flags",
+        domain="flags",
+        attribute="<flag>",
+        op="has",
+        doc="The named flag is set on the actor.",
+        params=(ParamSpec("flag", "flag", doc="Flag name (colon-string param)."),),
+    ),
+    _flag_set_check,
+)
+_registry.register_spec(
+    _condition(
+        "flag_not_set",
+        subject=Subject.ACTOR,
+        category="flags",
+        domain="flags",
+        attribute="<flag>",
+        op="lacks",
+        doc="The named flag is not set on the actor.",
+        params=(ParamSpec("flag", "flag", doc="Flag name (colon-string param)."),),
+    ),
+    _flag_not_set_check,
+)
+_registry.register_spec(
+    _condition(
+        "item_in_inventory",
+        subject=Subject.ACTOR,
+        category="inventory",
+        domain="inventory",
+        attribute="item",
+        op="has",
+        doc="The actor carries at least one of the named item.",
+        params=(ParamSpec("item_id", "item_id", doc="Item id (colon-string param)."),),
+    ),
+    _item_in_inventory_check,
+)
+_registry.register_spec(
+    _condition(
+        "object_present",
+        subject=Subject.SELF,
+        category="presence",
+        domain="presence",
+        attribute="item",
+        op="has",
+        doc="The named item is in the current room or held by the actor.",
+        params=(ParamSpec("item_id", "item_id", doc="Item id (colon-string param)."),),
+    ),
+    _object_present_check,
+)
+_registry.register_spec(
+    _condition(
+        "npc_present",
+        subject=Subject.SELF,
+        category="presence",
+        domain="presence",
+        attribute="npc",
+        op="has",
+        doc="The named NPC is in the current room.",
+        params=(ParamSpec("npc_id", "npc_id", doc="NPC id (colon-string param)."),),
+    ),
+    _npc_present_check,
+)
 
 
 def get_registry() -> CommandConditionRegistry:

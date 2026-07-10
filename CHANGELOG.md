@@ -2,6 +2,23 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.58.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A0.2 — the three condition/effect registries publish descriptors to a
+  shared catalog.** `SideEffectRegistry`, `CommandConditionRegistry`, and the dialogue
+  `ConditionRegistry` gain a `register_spec(spec, handler)` path that publishes a
+  self-describing `VocabEntry` into a single process-global `Vocabulary`
+  (`engine/scripting/vocabulary.py::global_vocabulary()`) alongside the handler, so the
+  vocabulary is introspectable from code (the source for the generated builder-guide doc, A0.3)
+  and exact-name collisions become a hard error instead of a silent overwrite. All 15 built-in
+  conditions/effects are migrated; the legacy bare `register(name, fn)` path stays for
+  un-migrated feature callers. The capability-signature duplication check now surfaces the real
+  historical flag-family drift (`flag_set`↔`required_flags`, `flag_not_set`↔`forbidden_flags`) —
+  which A0.5 renames to one canonical name each. New tests in
+  `tests/unit/test_vocabulary_registries.py`.
+
 ## [0.57.1] - 2026-07-10
 
 ### Changed

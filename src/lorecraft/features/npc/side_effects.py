@@ -14,6 +14,14 @@ from typing import TYPE_CHECKING
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.scripting.vocabulary import (
+    CapabilitySig,
+    ParamSpec,
+    Subject,
+    VocabEntry,
+    VocabKind,
+    global_vocabulary,
+)
 from lorecraft.features.quests.models import PlayerQuestProgress
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.types import JsonObject, JsonValue
@@ -30,14 +38,31 @@ class SideEffectRegistry:
     Built-in handlers (set_flags, clear_flags, give_item, start_quest,
     end_dialogue) are registered at module load. New effects can be
     registered by calling register() without touching dialogue.py.
+
+    Handlers registered via :meth:`register_spec` also publish a self-describing
+    :class:`VocabEntry` descriptor into the shared scripting catalog
+    (``global_vocabulary()``) — the path new effects should use so they show up in the
+    generated builder-guide and are checked for duplication (see
+    ``docs/scripting_engine_design.md`` §8). The bare :meth:`register` remains for
+    un-migrated callers.
     """
 
     def __init__(self) -> None:
         self._handlers: dict[str, SideEffectHandler] = {}
 
     def register(self, effect_name: str, handler: SideEffectHandler) -> None:
-        """Register a side effect handler by name."""
+        """Register a side effect handler by name (no catalog descriptor)."""
         self._handlers[effect_name] = handler
+
+    def register_spec(self, spec: VocabEntry, handler: SideEffectHandler) -> None:
+        """Register a handler *and* its descriptor in the shared catalog.
+
+        The descriptor's ``name`` is the handler's key, so the two can't drift. An
+        exact-name collision in the shared catalog raises ``VocabularyError`` (loud, not a
+        silent overwrite).
+        """
+        global_vocabulary().register(spec)
+        self._handlers[spec.name] = handler
 
     def apply(self, effects: JsonObject, ctx: GameContext) -> None:
         """Apply all side effects from the given dict using registered handlers."""
@@ -126,11 +151,87 @@ def _handle_end_dialogue(data: JsonValue, ctx: "GameContext") -> None:  # type: 
     ctx.push_update("dialogue", None)
 
 
-_registry.register("set_flags", _handle_set_flags)
-_registry.register("clear_flags", _handle_clear_flags)
-_registry.register("give_item", _handle_give_item)
-_registry.register("start_quest", _handle_start_quest)
-_registry.register("end_dialogue", _handle_end_dialogue)
+def _effect(
+    name: str,
+    *,
+    category: str,
+    domain: str,
+    attribute: str,
+    op: str,
+    doc: str,
+    params: tuple[ParamSpec, ...] = (),
+    subject: Subject = Subject.ACTOR,
+) -> VocabEntry:
+    return VocabEntry(
+        name=name,
+        kind=VocabKind.EFFECT,
+        subject=subject,
+        category=category,
+        doc=doc,
+        capability=CapabilitySig(subject, domain, attribute, op),
+        params=params,
+    )
+
+
+_registry.register_spec(
+    _effect(
+        "set_flags",
+        category="flags",
+        domain="flags",
+        attribute="<flag>",
+        op="set",
+        doc="Set one or more boolean flags on the actor.",
+        params=(ParamSpec("flags", "list[str]", doc="Flag names to set true."),),
+    ),
+    _handle_set_flags,
+)
+_registry.register_spec(
+    _effect(
+        "clear_flags",
+        category="flags",
+        domain="flags",
+        attribute="<flag>",
+        op="clear",
+        doc="Remove one or more boolean flags from the actor.",
+        params=(ParamSpec("flags", "list[str]", doc="Flag names to clear."),),
+    ),
+    _handle_clear_flags,
+)
+_registry.register_spec(
+    _effect(
+        "give_item",
+        category="inventory",
+        domain="inventory",
+        attribute="item",
+        op="give",
+        doc="Give the actor one of an item (no-op if already carried).",
+        params=(ParamSpec("item_id", "item_id", doc="Item to grant."),),
+    ),
+    _handle_give_item,
+)
+_registry.register_spec(
+    _effect(
+        "start_quest",
+        category="quests",
+        domain="quests",
+        attribute="quest",
+        op="start",
+        doc="Start a quest for the actor at its first stage (no-op if already started).",
+        params=(ParamSpec("quest_id", "quest_id", doc="Quest to start."),),
+    ),
+    _handle_start_quest,
+)
+_registry.register_spec(
+    _effect(
+        "end_dialogue",
+        category="dialogue",
+        domain="dialogue",
+        attribute="session",
+        op="clear",
+        doc="Close the actor's current dialogue session.",
+    ),
+    _handle_end_dialogue,
+)
 
 
 def get_registry() -> SideEffectRegistry:

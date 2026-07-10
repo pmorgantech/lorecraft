@@ -203,3 +203,20 @@ class Vocabulary:
     def to_json(self) -> JsonObject:
         """Serialize the whole catalog — the source for the generated builder-guide doc."""
         return {"entries": [entry.to_json() for entry in self.all()]}
+
+
+# --- The one process-global catalog -------------------------------------------------
+#
+# Every scripting registry (side effects, command/dialogue/quest conditions) registers its
+# descriptors into this single instance so the catalog, the generated builder-guide doc, and
+# the duplication check see the *entire* vocabulary at once (§8.2/§8.3). It's populated at
+# module import — the same lifetime as the registry singletons that feed it — so it's fully
+# built once the engine and its features are imported. Tests that need isolation should
+# construct a throwaway :class:`Vocabulary` instead of touching this one.
+
+_GLOBAL_VOCABULARY = Vocabulary()
+
+
+def global_vocabulary() -> Vocabulary:
+    """The shared, engine-wide scripting vocabulary catalog."""
+    return _GLOBAL_VOCABULARY
