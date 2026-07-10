@@ -42,6 +42,7 @@ from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.content.help import ensure_help_bootstrapped
 from lorecraft.features.npc.scheduler import NpcScheduler
+from lorecraft.scripting_wiring import build_trigger_service
 from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.services.scheduler import SchedulerService
@@ -220,6 +221,12 @@ def create_app(
             services.marks.register(bus)
         if "context_commands" in enabled_set:
             _load_context_commands(resolved_game_engine)
+
+        # Scripting engine (A2): bind declarative on/when/do triggers loaded from world
+        # content to the live bus. Runs after features register so their conditions/effects
+        # are available; fail-closed on a malformed trigger.
+        with Session(resolved_game_engine) as trigger_session:
+            build_trigger_service(trigger_session, bus)
 
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:

@@ -43,6 +43,9 @@ class RoomData(BaseModel):
     terrain: str = "normal"
     safe_rest: bool = False
     exits: list[ExitData] = Field(default_factory=list)
+    # Declarative on/when/do trigger hooks (scripting engine A2). Raw dicts here; validated
+    # against the vocabulary catalog by `parse_trigger` at world load (fail-closed).
+    triggers: list[dict[str, object]] = Field(default_factory=list)
 
 
 class ContextCommandData(BaseModel):
@@ -150,6 +153,8 @@ class NpcData(BaseModel):
     shop: ShopData | None = None
     bank: BankBranchData | None = None
     context_commands: dict[str, ContextCommandData] = Field(default_factory=dict)
+    # Declarative on/when/do trigger hooks (scripting engine A2); validated by `parse_trigger`.
+    triggers: list[dict[str, object]] = Field(default_factory=list)
 
 
 class DialogueChoiceData(BaseModel):

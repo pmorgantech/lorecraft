@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import cast
 
 from sqlmodel import Session, select
-import yaml
 
 from lorecraft.engine.game.holders import Location
 from lorecraft.features.bank.models import Bank
@@ -20,6 +19,7 @@ from lorecraft.engine.repos.ledger_repo import LedgerRepo
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.types import JsonObject
+from lorecraft.world.yaml_io import load_world_yaml_text
 from lorecraft.world.validator import (
     ContextCommandData,
     BankBranchData,
@@ -48,7 +48,7 @@ from lorecraft.world.validator import (
 
 def load_world_yaml(path: str | Path, session: Session) -> WorldDocument:
     source_path = Path(path)
-    data = yaml.safe_load(source_path.read_text(encoding="utf-8")) or {}
+    data = load_world_yaml_text(source_path.read_text(encoding="utf-8")) or {}
     document = validate_world_document(cast(object, data))
     import_world(document, session)
     return document
@@ -73,6 +73,7 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 version=room.version,
                 terrain=room.terrain,
                 safe_rest=room.safe_rest,
+                triggers=cast(list[JsonObject], room.triggers),
             )
         )
 
@@ -179,6 +180,7 @@ def import_world(document: WorldDocument, session: Session) -> None:
                     verb: spec.model_dump()
                     for verb, spec in npc.context_commands.items()
                 },
+                triggers=cast(list[JsonObject], npc.triggers),
             )
         )
         if npc.shop is not None:
@@ -353,6 +355,7 @@ def export_world_document(session: Session) -> WorldDocument:
             version=room.version,
             terrain=room.terrain,
             safe_rest=room.safe_rest,
+            triggers=cast(list[dict[str, object]], room.triggers),
             exits=[
                 ExitData(
                     direction=exit_.direction,
@@ -435,6 +438,7 @@ def export_world_document(session: Session) -> WorldDocument:
                 verb: ContextCommandData.model_validate(spec)
                 for verb, spec in npc.context_commands.items()
             },
+            triggers=cast(list[dict[str, object]], npc.triggers),
         )
         for npc in session.exec(select(NPC)).all()
     ]

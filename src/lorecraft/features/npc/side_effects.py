@@ -151,6 +151,27 @@ def _handle_end_dialogue(data: JsonValue, ctx: "GameContext") -> None:  # type: 
     ctx.push_update("dialogue", None)
 
 
+def _handle_narrate_room(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
+    """World-safe narration to a room's occupants (the first *visible* trigger effect).
+
+    ``{narrate_room: "text"}`` narrates to the actor's current room; the map form
+    ``{narrate_room: {room: <id>, text: "..."}}`` targets an explicit room. Broadcasts
+    immediately (autonomous-style, actor included) so the line shows up in the room feed.
+    """
+    from lorecraft.engine.game.world_context import broadcast_room_async
+
+    if isinstance(data, str):
+        text, room_id = data, ctx.room.id
+    elif isinstance(data, dict):
+        text = str(data.get("text", ""))
+        raw_room = data.get("room")
+        room_id = raw_room if isinstance(raw_room, str) else ctx.room.id
+    else:
+        return
+    if text:
+        broadcast_room_async(ctx.manager, room_id, text)
+
+
 def _effect(
     name: str,
     *,
@@ -231,6 +252,26 @@ _registry.register_spec(
         doc="Close the actor's current dialogue session.",
     ),
     _handle_end_dialogue,
+)
+_registry.register_spec(
+    _effect(
+        "narrate_room",
+        subject=Subject.WORLD,
+        category="narration",
+        domain="narration",
+        attribute="room",
+        op="broadcast",
+        doc=(
+            'Broadcast a line to a room\'s occupants. Scalar form `narrate_room: "text"` '
+            "targets the actor's room; map form `{text, room?}` can target another room."
+        ),
+        params=(
+            ParamSpec(
+                "text", "str", doc="The line to narrate (or a {text, room?} map)."
+            ),
+        ),
+    ),
+    _handle_narrate_room,
 )
 
 

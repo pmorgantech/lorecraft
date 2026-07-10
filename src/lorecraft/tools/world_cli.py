@@ -31,6 +31,7 @@ from lorecraft.features.quests.models import Quest
 from lorecraft.engine.models.world import Exit, Item, NPC, Room
 from lorecraft.tools.validators import run_all_checks
 from lorecraft.world.loader import export_world_document, load_world_yaml
+from lorecraft.world.yaml_io import load_world_yaml_text
 from lorecraft.world.validator import (
     WorldDocument,
     WorldValidationError,
@@ -95,7 +96,7 @@ def cmd_export(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     source_path = Path(args.file)
-    data = yaml.safe_load(source_path.read_text(encoding="utf-8")) or {}
+    data = load_world_yaml_text(source_path.read_text(encoding="utf-8")) or {}
     try:
         document = validate_world_document(data)
     except WorldValidationError as exc:
@@ -141,7 +142,7 @@ def _diff_entity_lists(base: list[Any], theirs: list[Any]) -> dict[str, list[str
 
 
 def _load_world_document(path: str | Path) -> WorldDocument:
-    data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+    data = load_world_yaml_text(Path(path).read_text(encoding="utf-8")) or {}
     return validate_world_document(data)
 
 

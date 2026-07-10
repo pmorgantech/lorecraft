@@ -7,7 +7,7 @@ The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC
 engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry
 shows its subject role, capability signature, and parameters.
 
-_15 entries._
+_16 entries._
 
 ## Conditions (`when:`)
 
@@ -150,6 +150,17 @@ Give the actor one of an item (no-op if already carried).
 - **Capability:** `inventory/item` · `give`
 - **Params:**
   - `item_id` (`item_id`, required) — Item to grant.
+
+### narration
+
+#### `narrate_room`
+
+Broadcast a line to a room's occupants. Scalar form `narrate_room: "text"` targets the actor's room; map form `{text, room?}` can target another room.
+
+- **Subject:** `world`
+- **Capability:** `narration/room` · `broadcast`
+- **Params:**
+  - `text` (`str`, required) — The line to narrate (or a {text, room?} map).
 
 ### quests
 

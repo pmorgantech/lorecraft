@@ -26,6 +26,10 @@ class Room(SQLModel, table=True):
         "normal"  # affects travel gating; see game/terrain.py's TerrainRegistry
     )
     safe_rest: bool = False  # inns/camps: `sleep` here is reliable, never interrupted
+    # Declarative on/when/do trigger hooks (scripting engine A2): each is a raw
+    # {on, when?, do} dict, parsed+validated by scripting.triggers.parse_trigger at load
+    # and bound to the live event bus by scripting_wiring.build_trigger_service.
+    triggers: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))
 
 
 class Exit(SQLModel, table=True):
@@ -132,6 +136,9 @@ class NPC(SQLModel, table=True):
     # side_effects, requires?}, available only when this NPC is in the room
     # (gated npc_present:<id>); see features/context_commands.
     context_commands: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    # Declarative on/when/do trigger hooks (scripting engine A2): raw {on, when?, do}
+    # dicts, parsed by scripting.triggers.parse_trigger and bound to the bus at load.
+    triggers: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))
     # Escort quests (Sprint 68): the player this NPC is currently following, if
     # any. Set/cleared by the "start_escort"/"end_escort" side effects
     # (features/follow/conditions.py); driven by PLAYER_MOVED the same way

@@ -1117,6 +1117,12 @@ npcs:
     current_room_id: wandering_crow_inn
     dialogue_tree_id: innkeeper_dialogue
     behavior: defensive
+    # Scripting engine A2 demo: an `encounter` trigger — fires when a player enters the inn
+    # while Mira is here, narrating a line to the room. Walk west from the village square.
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Mira glances up from behind the counter and gives you a nod of welcome."
     # Sprint 55: an NPC-carried context verb — available only where Mira is.
     context_commands:
       tip:

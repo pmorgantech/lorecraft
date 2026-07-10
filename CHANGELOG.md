@@ -2,6 +2,28 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.64.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A2 (live) — triggers are now authorable in world content and fire in a
+  running game.** The A2 mechanism is wired end to end:
+  - **`triggers:` on rooms and NPCs** in `world.yaml` (new `Room.triggers` / `NPC.triggers`
+    columns + pydantic schema + loader import/export). Each entry is an `{on, when?, do}` block.
+  - **`narrate_room`** effect — the first *visible* trigger effect (broadcasts a line to a
+    room's feed). Now in the catalog (`docs/scripting_api.md`, 16 entries).
+  - **Startup wiring** (`scripting_wiring.build_trigger_service`, called from `main.py`): reads
+    every entity's triggers from the world DB, validates them fail-closed against the catalog,
+    and binds a `TriggerService` to the live event bus after features register.
+  - **Demo trigger** on Mira the Innkeeper (`wandering_crow_inn`): an `encounter` trigger that
+    narrates a greeting. **To see it:** start the server, log in (you spawn in the village
+    square), and walk **west** into the inn — Mira's greeting appears in the room feed.
+  - **World YAML "Norway problem" fix** (`world/yaml_io.py`): world content now loads with a
+    loader that keeps `on`/`off`/`yes`/`no` as strings (not booleans), so the `on:` trigger key
+    is authorable unquoted. `true`/`false` still parse as booleans.
+  - 3 wiring tests (`tests/unit/test_scripting_wiring.py`) load the real `world.yaml` and fire
+    the demo trigger headlessly.
+
 ## [0.63.0] - 2026-07-10
 
 ### Added
