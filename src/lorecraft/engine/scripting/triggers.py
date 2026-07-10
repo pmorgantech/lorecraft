@@ -21,8 +21,9 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol
 
-from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.context import GameContext, build_game_context
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.world_context import StandaloneWorldContext
 from lorecraft.engine.scripting.validator import validate_conditions, validate_effects
 from lorecraft.engine.scripting.vocabulary import Vocabulary
 from lorecraft.types import JsonObject, JsonValue
@@ -129,6 +130,7 @@ class TriggerService:
     def register(self, bus: EventBus) -> None:
         """Subscribe to the engine events that map onto trigger-surface events."""
         bus.on(GameEvent.PLAYER_MOVED, self._on_player_moved)
+        bus.on(GameEvent.NPC_MOVED, self._on_npc_moved)
 
     # -- event mapping -------------------------------------------------------
 
@@ -149,6 +151,44 @@ class TriggerService:
             for trigger in encounter_triggers:
                 if trigger.entity_type == ENTITY_NPC and trigger.entity_id in npc_ids:
                     self._fire(trigger, ctx)
+
+    def _on_npc_moved(self, event: Event, ctx: object) -> None:
+        """An NPC entered a room autonomously (A3): fire *its* `encounter` triggers for each
+        player already there — the mirror of the player-walks-in case. Runs against a fresh
+        `GameContext` per co-located player (built from the autonomous tick's world context), so
+        the same actor-bound conditions/effects apply."""
+        if not isinstance(ctx, StandaloneWorldContext):
+            return  # NPC_MOVED is emitted from the actor-less agency loop
+        npc_id = event.payload.get("npc_id")
+        to_room = event.payload.get("to_room_id")
+        if not isinstance(npc_id, str) or not isinstance(to_room, str):
+            return
+        triggers = [
+            trigger
+            for trigger in self._by_on.get(ON_ENCOUNTER, ())
+            if trigger.entity_type == ENTITY_NPC and trigger.entity_id == npc_id
+        ]
+        if not triggers:
+            return
+        room = ctx.room_repo.get(to_room)
+        if room is None:
+            return
+        for player in ctx.player_repo.in_room(to_room):
+            game_ctx = build_game_context(
+                ctx.session,
+                player,
+                room,
+                bus=ctx.bus,
+                manager=ctx.manager,
+                transaction=ctx.transaction,
+                session_id=ctx.session_id,
+                rng=ctx.rng,
+                meters=ctx.meters,
+                effects=ctx.effects,
+                clock=ctx.clock,
+            )
+            for trigger in triggers:
+                self._fire(trigger, game_ctx)
 
     # -- firing --------------------------------------------------------------
 

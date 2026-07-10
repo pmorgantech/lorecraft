@@ -2,6 +2,25 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.65.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A3 - autonomous NPC agency loop (`features/npc_ai`).** NPCs carrying an
+  `ai` config now move on their own initiative each `TIME_ADVANCED` tick - the first engine code
+  that makes an NPC *act* without a player:
+  - **`wander`** (random adjacency-valid exit, optionally confined to an `area`, rolled through
+    the seedable RNG) and **`patrol`** (a fixed `route`, looping), gated by `move_every`.
+  - Each move updates `NPC.current_room_id`, narrates depart/arrive, and **emits `NPC_MOVED`**
+    (the first real emitter) built on the actor-less `StandaloneWorldContext` (A1).
+  - `TriggerService` now handles `NPC_MOVED`: when an NPC walks into a room where a player
+    stands, it fires that NPC's `encounter` triggers against a `GameContext` for each co-located
+    player - the mirror of the player-walks-into-NPC case, so `encounter` fires from *either*
+    direction.
+  - New `NPC.ai` column + world-schema field + loader; the feature is gated (`npc_ai`) and wired
+    in `main.py`. Authoring: `ai: {mode: wander, move_every: 3, area: town}` or
+    `ai: {mode: patrol, route: [room_a, room_b]}`. 5 tests (`tests/unit/test_npc_ai.py`).
+
 ## [0.64.0] - 2026-07-10
 
 ### Added

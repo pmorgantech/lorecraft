@@ -155,6 +155,8 @@ class NpcData(BaseModel):
     context_commands: dict[str, ContextCommandData] = Field(default_factory=dict)
     # Declarative on/when/do trigger hooks (scripting engine A2); validated by `parse_trigger`.
     triggers: list[dict[str, object]] = Field(default_factory=list)
+    # Autonomous agency config (scripting engine A3): {mode: wander|patrol, move_every, ...}.
+    ai: dict[str, object] = Field(default_factory=dict)
 
 
 class DialogueChoiceData(BaseModel):

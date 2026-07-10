@@ -73,6 +73,7 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.light.service import LightFuelService
 from lorecraft.features.economy.restock import RestockService
+from lorecraft.features.npc_ai.service import NpcBehaviorService
 from lorecraft.features.quests.timer import QuestTimerService
 from lorecraft.engine.services.mobile_route import MobileRouteService
 from lorecraft.features.transit.service import TransitService
@@ -199,6 +200,12 @@ def create_app(
         if "quests" in enabled_set:
             quest_timer_service = QuestTimerService(resolved_game_engine, manager)
             quest_timer_service.register(bus)
+        npc_behavior_service = None
+        if "npc_ai" in enabled_set:
+            npc_behavior_service = NpcBehaviorService(
+                resolved_game_engine, manager, app_rng, meter_service, effect_service
+            )
+            npc_behavior_service.register(bus)
         transit_service = None
         if "transit" in enabled_set:
             transit_service = TransitService(

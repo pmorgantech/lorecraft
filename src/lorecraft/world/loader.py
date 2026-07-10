@@ -181,6 +181,7 @@ def import_world(document: WorldDocument, session: Session) -> None:
                     for verb, spec in npc.context_commands.items()
                 },
                 triggers=cast(list[JsonObject], npc.triggers),
+                ai=cast(JsonObject, npc.ai),
             )
         )
         if npc.shop is not None:
@@ -439,6 +440,7 @@ def export_world_document(session: Session) -> WorldDocument:
                 for verb, spec in npc.context_commands.items()
             },
             triggers=cast(list[dict[str, object]], npc.triggers),
+            ai=cast(dict[str, object], npc.ai),
         )
         for npc in session.exec(select(NPC)).all()
     ]

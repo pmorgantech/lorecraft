@@ -139,6 +139,9 @@ class NPC(SQLModel, table=True):
     # Declarative on/when/do trigger hooks (scripting engine A2): raw {on, when?, do}
     # dicts, parsed by scripting.triggers.parse_trigger and bound to the bus at load.
     triggers: list[JsonObject] = Field(default_factory=list, sa_column=Column(JSON))
+    # Autonomous agency config (scripting engine A3): {mode: wander|patrol, move_every,
+    # area?, route?}. Empty = passive (the default). Driven by features/npc_ai.
+    ai: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     # Escort quests (Sprint 68): the player this NPC is currently following, if
     # any. Set/cleared by the "start_escort"/"end_escort" side effects
     # (features/follow/conditions.py); driven by PLAYER_MOVED the same way
