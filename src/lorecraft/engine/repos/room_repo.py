@@ -24,6 +24,10 @@ class RoomRepo(Repository[Room, str]):
         statement = select(Exit).where(Exit.room_id == room_id)
         return self.session.exec(statement).all()
 
+    def rooms_in_area(self, area_id: str) -> Sequence[Room]:
+        """All rooms in a zone (scripting engine A5: weather fronts, zone narration)."""
+        return self.session.exec(select(Room).where(Room.area_id == area_id)).all()
+
     def exit(self, room_id: str, direction: str) -> Exit | None:
         statement = select(Exit).where(
             Exit.room_id == room_id,

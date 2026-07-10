@@ -7,7 +7,7 @@ The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC
 engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry
 shows its subject role, capability signature, and parameters.
 
-_17 entries._
+_18 entries._
 
 ## Conditions (`when:`)
 
@@ -174,6 +174,15 @@ Broadcast a line to a room's occupants. Scalar form `narrate_room: "text"` targe
 - **Capability:** `narration/room` · `broadcast`
 - **Params:**
   - `text` (`str`, required) — The line to narrate (or a {text, room?} map).
+
+#### `narrate_zone`
+
+Broadcast a line to every room in a zone (defaults to the actor's area).
+
+- **Subject:** `world`
+- **Capability:** `narration/zone` · `broadcast`
+- **Params:**
+  - `text` (`str`, required) — The line (or a {text, area?} map).
 
 ### quests
 

@@ -172,6 +172,29 @@ def _handle_narrate_room(data: JsonValue, ctx: "GameContext") -> None:  # type: 
         broadcast_room_async(ctx.manager, room_id, text)
 
 
+def _handle_narrate_zone(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
+    """Broadcast a line to every room in a zone (scripting engine A5).
+
+    ``{narrate_zone: "text"}`` uses the actor's current area; ``{narrate_zone: {area, text}}``
+    targets an explicit ``area_id``.
+    """
+    from lorecraft.engine.game.world_context import broadcast_room_async
+
+    if isinstance(data, str):
+        text: str = data
+        area = ctx.room.area_id
+    elif isinstance(data, dict):
+        text = str(data.get("text", ""))
+        raw_area = data.get("area")
+        area = raw_area if isinstance(raw_area, str) else ctx.room.area_id
+    else:
+        return
+    if not text or not area:
+        return
+    for room in ctx.room_repo.rooms_in_area(area):
+        broadcast_room_async(ctx.manager, room.id, text)
+
+
 def _handle_apply_effect(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
     """Apply a timed :class:`ActiveEffect` to a target (scripting engine A4/A5).
 
@@ -314,6 +337,19 @@ _registry.register_spec(
         ),
     ),
     _handle_narrate_room,
+)
+_registry.register_spec(
+    _effect(
+        "narrate_zone",
+        subject=Subject.WORLD,
+        category="narration",
+        domain="narration",
+        attribute="zone",
+        op="broadcast",
+        doc="Broadcast a line to every room in a zone (defaults to the actor's area).",
+        params=(ParamSpec("text", "str", doc="The line (or a {text, area?} map)."),),
+    ),
+    _handle_narrate_zone,
 )
 _registry.register_spec(
     _effect(

@@ -2,6 +2,23 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.67.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A5 - traveling weather fronts + `narrate_zone` (`features/weather/fronts.py`).**
+  Generalizes the single global weather roll into localized storm fronts (design SS A.4):
+  - `WeatherFrontService` rolls each dormant storm's `chance` hourly (seeded RNG, replay-faithful);
+    on a hit a front activates over the first zone in its `path`, applying a room `ActiveEffect`
+    to every room there, then travels zone->zone every `travel_ticks` and expires after its
+    (optionally rng-rolled) duration, cleaning up its effects (no accumulation across cycles).
+    Season-gated. Config-driven `{storms: {id: {chance, seasons?, duration_ticks, travel_ticks,
+    path, room_effect, on_enter?, on_leave?}}}`.
+  - New `narrate_zone` effect - broadcasts a line to every room in an area; `RoomRepo.rooms_in_area`.
+    In the catalog (`docs/scripting_api.md`, 18 entries).
+  - 6 tests (`tests/unit/test_weather_fronts.py`). Live wiring + a demo storm land with the
+    acceptance harness (they need a registered `storm_lashed` room effect def).
+
 ## [0.66.0] - 2026-07-10
 
 ### Added
