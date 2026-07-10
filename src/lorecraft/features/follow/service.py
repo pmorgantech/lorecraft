@@ -7,6 +7,17 @@ direction through the *standard* `MovementService.move` gates; a follower who
 fails a gate (locked/terrain/flag) has their follow broken with a message to
 both sides. Chains (A->B->C) cascade naturally because each auto-move emits its
 own `PLAYER_MOVED`; cycles are rejected when the follow is created.
+
+Escort quests (Sprint 68) are a separate, DB-backed cousin of the above: an NPC
+following a player is tracked on `NPC.following_player_id` (not this class's
+in-memory `_following` dict), because the `npc_following` quest condition
+(`features/follow/conditions.py`) needs to read it via `ctx.npc_repo` alone,
+with no shared `FollowService` instance in reach. The same `PLAYER_MOVED`
+handler drives both: player-followers via `_following`, escorted NPCs via
+`ctx.npc_repo.escorting()`. Unlike player-follow, an escorted NPC is never
+gate-checked (no NPC movement command to re-run) — it simply comes along
+whenever it was co-located with the player who moved; losing co-location
+(e.g. the NPC's own schedule moved it elsewhere) quietly ends the escort.
 """
 
 from __future__ import annotations
@@ -92,6 +103,65 @@ class FollowService:
                 target.id,
                 f"{ctx.player.username} stops following you.",
                 chat=False,
+            )
+
+    # ---- escort quests (Sprint 68) --------------------------------------
+
+    def start_escort(self, npc_id: str, ctx: GameContext) -> bool:
+        """Make NPC `npc_id` start following `ctx.player` (an escort quest's
+        "start_escort" side effect). Requires the NPC to be co-located and
+        not already escorting someone; a no-op (returns False) otherwise —
+        callers that want player-facing feedback should check the return
+        value, since this may run from a quest side effect with no natural
+        failure narration of its own."""
+        npc = ctx.npc_repo.get(npc_id)
+        if npc is None or npc.current_room_id != ctx.room.id:
+            return False
+        if npc.following_player_id is not None:
+            return False
+        npc.following_player_id = ctx.player.id
+        ctx.npc_repo.add(npc)
+        ctx.say(f"{npc.name} agrees to follow you.")
+        return True
+
+    def end_escort(self, npc_id: str, ctx: GameContext) -> bool:
+        """Stop NPC `npc_id` from following `ctx.player` (an escort quest's
+        "end_escort" side effect, e.g. on quest completion)."""
+        npc = ctx.npc_repo.get(npc_id)
+        if npc is None or npc.following_player_id != ctx.player.id:
+            return False
+        npc.following_player_id = None
+        ctx.npc_repo.add(npc)
+        ctx.say(f"{npc.name} stops following you.")
+        return True
+
+    def _advance_escorted_npcs(
+        self,
+        ctx: GameContext,
+        *,
+        target_id: str,
+        from_room_id: str,
+        to_room_id: str,
+        direction: str,
+    ) -> None:
+        for npc in ctx.npc_repo.escorting(target_id):
+            if npc.current_room_id != from_room_id:
+                # Wandered off (e.g. its own schedule) — quietly lose them,
+                # same "not co-located" semantics as a player follower.
+                npc.following_player_id = None
+                ctx.npc_repo.add(npc)
+                ctx.say(f"You've lost track of {npc.name}.", MessageType.WARNING)
+                continue
+            npc.current_room_id = to_room_id
+            ctx.npc_repo.add(npc)
+            ctx.say(f"{npc.name} follows you.")
+            ctx.queue_event(
+                GameEvent.NPC_MOVED,
+                npc_id=npc.id,
+                player_id=ctx.player.id,
+                from_room_id=from_room_id,
+                to_room_id=to_room_id,
+                direction=direction,
             )
 
     async def break_on_disconnect(
@@ -181,6 +251,13 @@ class FollowService:
                 to_room_id=to_room_id,
                 direction=direction,
             )
+        self._advance_escorted_npcs(
+            ctx,
+            target_id=target_id,
+            from_room_id=from_room_id,
+            to_room_id=to_room_id,
+            direction=direction,
+        )
 
     def _advance_follower(
         self,

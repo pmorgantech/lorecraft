@@ -132,3 +132,10 @@ class NPC(SQLModel, table=True):
     # side_effects, requires?}, available only when this NPC is in the room
     # (gated npc_present:<id>); see features/context_commands.
     context_commands: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    # Escort quests (Sprint 68): the player this NPC is currently following, if
+    # any. Set/cleared by the "start_escort"/"end_escort" side effects
+    # (features/follow/conditions.py); driven by PLAYER_MOVED the same way
+    # player-follow is, but DB-backed (not FollowService's in-memory dict) so
+    # the "npc_following" quest condition can read it without needing a
+    # shared service reference. See features/follow/service.py.
+    following_player_id: str | None = None

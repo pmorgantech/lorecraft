@@ -2,6 +2,27 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.56.0] - 2026-07-09 — Sprint 68 complete
+
+### Added
+
+- **Escort quests (Sprint 68).** An NPC can now follow a player, driven by the same
+  `PLAYER_MOVED` movement cascade the shipped `follow` command (Sprint 47) already uses:
+  `NPC.following_player_id` (a new additive, `None`-default column — no migration risk) tracks
+  who an NPC is escorting, DB-backed rather than `FollowService`'s in-memory player-follow graph
+  so the new quest condition can read it via `ctx.npc_repo` with no shared service reference in
+  reach. New `"start_escort"`/`"end_escort"` dialogue/quest side effects (npc_id string) on the
+  existing `npc/side_effects.py` registry — the same one quest-stage branches already use (Sprint
+  30.1) — so escort start/stop can be authored identically from a dialogue choice or a quest
+  branch. New `"npc_following"`/`"npc_present"` quest condition types (`features/follow/
+  conditions.py`) let a quest stage branch on whether the escorted NPC is still with the player.
+  When the player moves, any NPC escorting them moves along if still co-located; losing
+  co-location (e.g. the NPC's own schedule moved it elsewhere) quietly ends the escort with a
+  "you've lost track of them" narration — no movement-gate re-run, since NPCs don't have their
+  own move command to re-run against the way a following player does. First real emitter of the
+  long-declared, previously-unused `GameEvent.NPC_MOVED`. 12 new unit tests
+  (`tests/unit/test_escort_quests.py`).
+
 ## [0.55.5] - 2026-07-09
 
 ### Fixed

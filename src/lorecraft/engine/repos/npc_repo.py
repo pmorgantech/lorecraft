@@ -28,3 +28,8 @@ class NpcRepo(Repository[NPC, str]):
             ),
             None,
         )
+
+    def escorting(self, player_id: str) -> Sequence[NPC]:
+        """NPCs currently following `player_id` (Sprint 68 escort quests)."""
+        statement = select(NPC).where(NPC.following_player_id == player_id)
+        return self.session.exec(statement).all()

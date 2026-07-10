@@ -242,12 +242,12 @@ genuinely new, not duplicates):
   The discovery journal already stores the clues; the new piece is a synthesis check — a
   quest-stage condition counting how many of a named clue-set the journal contains before an
   "accuse"/"conclude" command succeeds.
-- **Escort quests 💚 (in progress — Sprint 68)** — guide an NPC through a route; if they're
-  lost, delayed, or (once combat ships) harmed, the quest can fail or branch. Reuses the
-  already-shipped `follow` command (Sprint 47) extended so an NPC can be the follower instead of
-  only a player, gated by ordinary quest-stage conditions (`npc_following:<id>`,
-  `npc_present: false` = "you lost them"). Confirmed 2026-07-09: no NPC-follower support exists
-  yet in `features/follow/`, so this is a genuine gap, not stale text.
+- ~~**Escort quests**~~ **✅ Shipped — Sprint 68 (2026-07-09).** An NPC can now follow a player
+  (`NPC.following_player_id`, DB-backed) via the `"start_escort"`/`"end_escort"` dialogue/quest
+  side effects, moving along on `PLAYER_MOVED` the same way a player-follower does; losing
+  co-location quietly ends the escort. `"npc_following"`/`"npc_present"` quest conditions gate
+  stages on it. See `features/follow/service.py` + `features/follow/conditions.py`. Delayed/
+  harmed (once combat ships) outcomes are still future work — v1 only covers "lost".
 - **Cross-quest consequences 💚** — one quest's choices visibly reshape a later quest or NPC's
   dialogue (saved them → discount later; betrayed a faction → locked questline). This is a
   **content discipline**, not a new mechanism: quest B's stage conditions read the

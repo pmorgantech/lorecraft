@@ -304,6 +304,11 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                         "ADD COLUMN context_commands JSON NOT NULL DEFAULT '{}'"
                     )
                 )
+        if "following_player_id" not in npc_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text("ALTER TABLE npc ADD COLUMN following_player_id TEXT")
+                )
 
     if "playerquestprogress" in inspect(engine).get_table_names():
         quest_columns = {

@@ -11,16 +11,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-09, v0.55.3)
+## Where things stand (2026-07-09, v0.56.0)
 
-**Sprints 56–60 and 66–67 (all tasks, complete) are merged to local `main`.** Everything through
-**Sprint 55** was already there. Foundation, the
+**Sprints 56–60, 62, and 66–68 (all tasks, complete) are merged to local `main`.** Everything
+through **Sprint 55** was already there. Foundation, the
 Tier 1 engine-core primitives, the full Tier 2 pillar feature band
 (exploration · trading · questing · puzzles, plus inventory/equipment, traits/skills, character
 condition, transit), the tier-split refactor, the performance/WAL band, the observability pair
 (56–57), the client themes/layouts band (58–60, including the undocumented-until-now **Sprint 62**
-layout/scheme axis split — see its own row below), and multi-level map foundation (66) + the
-webui-theming skill (67) have all shipped. See [`roadmap_completed.md`](roadmap_completed.md).
+layout/scheme axis split — see its own row below), multi-level map foundation (66), the
+webui-theming skill (67), and escort quests (68) have all shipped. See
+[`roadmap_completed.md`](roadmap_completed.md).
 
 **Doc-hygiene note (2026-07-09):** this file and [`wishlist.md`](wishlist.md) had drifted from the
 shipped code — a sync pass found (a) the "Sprint 62" work below was never logged here despite
@@ -35,9 +36,9 @@ ship*, not after the fact — CHANGELOG.md is the accurate source when this file
 nearest small, well-scoped backlog item is the **`report player <name>` moderation branch** of the
 issue-report wizard (the guided flow itself already shipped in Sprint 33.1).
 
-**Sprint 68** (escort quests) is scoped below — the shipped `follow` command (Sprint 47) is
-extended so an NPC can be the one being followed, gated by new quest-stage conditions, so a quest
-can fail or branch if the escorted NPC is lost. **Next new sprint after 68: 69.**
+**Sprint 68** (escort quests, complete) extended the shipped `follow` command (Sprint 47) so an
+NPC can be the one being followed, gated by new quest-stage conditions, so a quest can fail or
+branch if the escorted NPC is lost. **Next new sprint: 69.**
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -158,6 +159,23 @@ chronicle-narration machinery from Sprint 58.13 (immersive), which classic also 
 
 ---
 
+## Sprint 68 — Escort quests
+
+**Goal:** let a quest/dialogue send an NPC along with the player instead of only ever standing
+still, so a story can task the player with "guide me home" content. Reuses the shipped `follow`
+command's movement cascade (Sprint 47) rather than building a second one, and reuses the
+pluggable quest-condition/side-effect registries (Sprint 30.1) rather than adding a new mechanism
+— per [`wishlist.md`](wishlist.md) → *Quests & puzzles*, dated 2026-07-08.
+
+| # | Task | Status |
+|---|------|--------|
+| 68.1 | `NPC.following_player_id: str \| None` (additive column, default `None`, no migration risk — same pattern as Sprint 66's `Room.map_z`). DB-backed rather than `FollowService`'s in-memory player-follow dict, so the new quest condition can read it via `ctx.npc_repo` alone with no shared service reference in reach. `NpcRepo.escorting(player_id)` query. | [x] `engine/models/world.py`, `db.py` sqlite compat-column migration, `engine/repos/npc_repo.py`. |
+| 68.2 | `FollowService.start_escort`/`end_escort` (co-located + not-already-escorting checks, narration) and the `PLAYER_MOVED` cascade extended to also advance any NPC escorting the mover: moves along if still co-located, otherwise quietly ends the escort with a "you've lost track of them" narration — no movement-gate re-run (NPCs don't have their own move command to re-run against), unlike player-to-player follow. First real emitter of the long-declared, previously-unused `GameEvent.NPC_MOVED`. | [x] `features/follow/service.py`. |
+| 68.3 | `"start_escort"`/`"end_escort"` dialogue/quest side effects (npc_id string) on the shared `npc/side_effects.py` registry — the same registry quest-stage `branches[].side_effects` already use (Sprint 30.1), so escort start/stop can be authored identically from a dialogue choice or a quest branch. `"npc_following"`/`"npc_present"` quest condition types (explicit `npc_id`) on `quests/conditions.py`'s registry, mirroring the `npc_present` *command* condition's logic (`engine/game/command_conditions.py`) for quest stages. | [x] New `features/follow/conditions.py`, wired via the `follow` feature manifest's `register_fn` (mirrors the `npc_memory` package's registration pattern). |
+| 68.4 | Unit tests: escort start/end (including the co-located and already-escorting rejections), the movement cascade (moves along; quietly ends when co-location is lost), both side effects via the shared registry, both quest conditions. | [x] `tests/unit/test_escort_quests.py` — 12 tests. **Deferred:** `world_content/world.yaml` has no escort-quest content yet (a "guide me home" dialogue/quest using Mira or a new NPC) — the mechanism ships without a playtestable in-game example, same content-vs-engine split as Sprint 66's `map_z`. |
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -194,13 +212,12 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   60 (per-mode typography + minimap de-boxing, 60.1–60.2), **62** (layout/scheme axis split,
   Standard+Dock rebuild, full Stats pane — shipped v0.54.0, backfilled to this ledger 2026-07-09;
   see its row under Sprint 59 above), 66 (multi-level map foundation — `map_z`), 67 (webui-theming
-  agent skill + `MODE_DEFAULT_THEME` single-sourcing fix).
+  agent skill + `MODE_DEFAULT_THEME` single-sourcing fix), 68 (escort quests).
 - **Retired to [`wishlist.md`](wishlist.md):** 61, 63, 64 (combat core, combat commands/UI, combat
   testing, PvP consent — 62 was reclaimed for the unrelated axis-split work above since combat
   stayed shelved), 65 (multiplayer trade/transit tests). Don't reuse 61/63/64/65 for unrelated
   work — restore under fresh numbers if that work returns.
-- **In progress:** 68 (escort quests) — scoped above 2026-07-09.
-- **Next new sprint after 68: 69.** Don't recycle a number that appears here or in
+- **Next new sprint: 69.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
