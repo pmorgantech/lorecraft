@@ -109,6 +109,10 @@ def test_dialogue_choice_starts_quest(page: Any, live_server: str) -> None:
     dialogue_overlay.get_by_text("Any news around town?").click()
     page.locator("#dialogue-overlay", has_text="I'll look into it.").wait_for()
 
+    # The Standard layout's right column is a single Inv/Quests/Stats tabbed
+    # pane (Sprint 62 rebuild) — #quest-tracker exists but stays x-show-hidden
+    # until its tab is active.
+    page.click("button[role='tab']:has-text('Quests')")
     page.locator("#quest-tracker", has_text="Lights in the Square").wait_for()
 
 

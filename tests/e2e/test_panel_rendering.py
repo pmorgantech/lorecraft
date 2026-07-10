@@ -35,8 +35,13 @@ def test_minimap_updates_on_movement(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
 
+    # The minimap partial renders both the graph node-map and the compass
+    # exit-star simultaneously (CSS picks one via the minimap-<style> body
+    # class, Sprint 59.4) — `#minimap svg` resolves to 2 elements, so scope to
+    # the graph view specifically; that's the build_map_data-driven one this
+    # test is about.
     minimap = page.locator("#minimap")
-    minimap.locator("svg").wait_for()
+    minimap.locator(".mm-graph svg").wait_for()
     before = minimap.inner_html()
 
     send_command(page, "go east")
@@ -48,7 +53,7 @@ def test_minimap_updates_on_movement(page: Any, live_server: str) -> None:
         arg=before,
     )
     # Still a rendered map (an svg), not an empty/error state.
-    page.locator("#minimap svg").wait_for()
+    page.locator("#minimap .mm-graph svg").wait_for()
 
 
 def test_equip_and_unequip_updates_inventory_panel(page: Any, live_server: str) -> None:

@@ -107,12 +107,19 @@ def enable_separate_chat(page: Any, base_url: str) -> None:
 
     After enabling, the #chat-pane element is present (or becomes visible)
     for further assertions in the test.
+
+    `POST /settings` redirects (303) straight to `/game` — it never re-renders
+    the settings form — so waiting for the settings checkbox to read
+    `:checked` after the submit click is a race against that navigation: the
+    browser may already be on `/game` (which has no such input) by the time
+    the wait starts, timing out every time. Wait for the redirect to land on
+    `/game` instead, then confirm via `#chat-pane`, which only renders there
+    when `separate_chat` is on.
     """
     page.goto(f"{base_url}/settings")
     page.check("input[name='separate_chat']")
     page.click("button[type='submit']")
-    page.wait_for_selector("input[name='separate_chat']:checked")
-    page.goto(f"{base_url}/game")
+    page.wait_for_url(re.compile(r".*/game$"))
     page.wait_for_selector("#chat-pane")
 
 

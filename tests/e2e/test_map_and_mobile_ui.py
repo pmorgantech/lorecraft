@@ -42,6 +42,11 @@ def test_map_modal_closes_on_escape(page: Any, live_server: str) -> None:
 
 
 def test_mobile_tab_bar_switches_panels(page: Any, live_server: str) -> None:
+    """The Standard layout's right column became a single Inv/Quests/Stats
+    tabbed pane and who's-here folded into the Location card's "ALSO HERE"
+    section (Sprint 62 rebuild) — the mobile tab bar's three tabs are Room /
+    Feed / Panel now, not Room / Feed / Players, and #player-count lives in
+    the same Room-tab column as #room-description rather than its own tab."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
     page.set_viewport_size({"width": 390, "height": 844})
@@ -52,7 +57,9 @@ def test_mobile_tab_bar_switches_panels(page: Any, live_server: str) -> None:
     page.click("text=Room")
     page.locator("#room-description").wait_for()
     assert not page.locator("#feed").is_visible()
+    # Who's-here ("ALSO HERE") lives in the same left column as the room.
+    assert page.locator("#player-count").is_visible()
 
-    page.click("text=Players")
-    page.locator("#player-count").wait_for()
+    page.click("text=Panel")
+    page.locator("#inventory").wait_for()
     assert not page.locator("#room-description").is_visible()

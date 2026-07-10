@@ -2,6 +2,31 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.55.3] - 2026-07-09
+
+### Fixed
+
+- **CI e2e suite (5 tests, 4 distinct causes).** All pre-existing, surfaced by the first
+  CI run against the Sprint 62-era Standard-layout rebuild + minimap dual-view — none
+  caused by this session's `map_z`/theming work:
+  - `enable_separate_chat` / `_unsubscribe_newbie` (`tests/e2e/_helpers.py`,
+    `test_chat_feed_split.py`) waited for a settings-page checkbox to read
+    `:checked`/`:not(:checked)` **after** clicking Submit — but `POST /settings`
+    redirects (303) straight to `/game`, which has no such input, so the wait raced the
+    navigation and timed out. Now waits for the `/game` redirect first.
+  - `test_dialogue_choice_starts_quest` (`test_gameplay_flows.py`) checked
+    `#quest-tracker` without first clicking the Standard layout's now-tabbed right pane's
+    "Quests" tab (the element exists but is `x-show`-hidden until selected).
+  - `test_mobile_tab_bar_switches_panels` (`test_map_and_mobile_ui.py`) clicked a
+    "Players" mobile tab that no longer exists — the tab bar's third button is "Panel"
+    (Sprint 62 renamed it when who's-here folded into the Location card's "ALSO HERE").
+    Rewritten to match: Room tab now covers both `#room-description` and
+    `#player-count`; Panel tab covers `#inventory`/Quests/Stats.
+  - `test_minimap_updates_on_movement` (`test_panel_rendering.py`) located `#minimap
+    svg`, which now resolves to 2 elements (the graph node-map and the compass
+    exit-star render simultaneously, Sprint 59.4's dual-view) — a Playwright strict-mode
+    violation. Scoped to `.mm-graph svg`, the view this test is actually about.
+
 ## [0.55.2] - 2026-07-09
 
 ### Fixed

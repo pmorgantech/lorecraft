@@ -16,6 +16,7 @@ the settings page. Verifies the plan's acceptance scenario end to end:
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pytest
@@ -78,12 +79,18 @@ def test_say_routes_to_chat_pane_only_for_opted_in_players(
 
 def _unsubscribe_newbie(page: Any, base_url: str) -> None:
     """Untick the Newbie channel subscription on the settings page (Sprint
-    52.8's per-channel toggle list) and return to /game."""
+    52.8's per-channel toggle list) and return to /game.
+
+    `POST /settings` redirects (303) straight to `/game` — it never
+    re-renders the settings form — so waiting for the settings checkbox to
+    read `:not(:checked)` after the submit click races that navigation: the
+    browser may already be on `/game` (which has no such input) by the time
+    the wait starts. Wait for the redirect to land on `/game` instead.
+    """
     page.goto(f"{base_url}/settings")
     page.uncheck("input[name='channel_sub_newbie']")
     page.click("button[type='submit']")
-    page.wait_for_selector("input[name='channel_sub_newbie']:not(:checked)")
-    page.goto(f"{base_url}/game")
+    page.wait_for_url(re.compile(r".*/game$"))
     page.wait_for_selector("#command-input")
 
 
