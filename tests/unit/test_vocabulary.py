@@ -53,11 +53,23 @@ def test_get_unknown_returns_none() -> None:
     assert Vocabulary().get("nope") is None
 
 
-def test_exact_name_collision_is_hard_error() -> None:
+def test_name_reused_for_different_capability_is_hard_error() -> None:
     vocab = Vocabulary()
     vocab.register(_condition("actor_reputation_at_least"))
-    with pytest.raises(VocabularyError, match="duplicate vocabulary name"):
+    # Same name, *different* capability (op differs) — the collision we reject.
+    with pytest.raises(VocabularyError, match="already registered"):
         vocab.register(_condition("actor_reputation_at_least", op="below"))
+
+
+def test_same_capability_reregistration_is_idempotent() -> None:
+    """One canonical predicate on two surfaces / a re-enabled feature = a no-op."""
+    vocab = Vocabulary()
+    first = vocab.register(_condition("actor_reputation_at_least"))
+    again = vocab.register(
+        _condition("actor_reputation_at_least")
+    )  # identical capability
+    assert again is first
+    assert len(vocab) == 1
 
 
 def test_overlaps_detects_capability_synonyms() -> None:

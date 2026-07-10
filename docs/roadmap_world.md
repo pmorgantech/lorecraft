@@ -15,7 +15,7 @@
 | Feature | Support | Notes |
 |---------|---------|-------|
 | **Multi-level rooms** | `Room.map_z` (v0.55.0) | Floors/levels via z-coordinate; minimap filters by current level |
-| **NPCs** | `features/npc/` | Place NPCs in rooms; dialogue trees with pluggable conditions (`min_reputation`, `npc_remembers`, flags) and side effects (`give_item`, `start_quest`, `adjust_reputation`, `remember`) |
+| **NPCs** | `features/npc/` | Place NPCs in rooms; dialogue trees with pluggable conditions (`actor_reputation_at_least`, `npc_remembers`, flags) and side effects (`give_item`, `start_quest`, `adjust_reputation`, `remember`) |
 | **NPC scheduled teleport** | `NPC.schedule` + `NpcScheduler` (`features/npc/scheduler.py`) | Data-driven `[{game_hour, target_room_id}, ...]`; jumps the NPC's room on `HOUR_CHANGED`. **Instant teleport, not pathed movement** — no interim rooms/narration. |
 | **NPC context-attached verbs** | `NPC.context_commands` (Sprint 55) | Data-driven custom verbs (e.g. `bow`) available only while the NPC is present, each with `{aliases, help, say, side_effects, requires}` |
 | **Weather system** | `features/weather/` | Global weather state; transit lines can block on weather |
@@ -39,7 +39,7 @@
 | **Treasure/loot** | Items can be placed in rooms | No randomized loot tables yet. (Tier 2 feature, probably Sprint 16+ backlog.) |
 | **Ambient messages** | Not yet | Rooms could narrate ambient events (wind, birds, dripping water). (Tier 2 feature; would need room-effect scheduler.) |
 | **NPC fixed-route patrol** | `MobileRouteService` primitive exists, unwired for NPCs | The Tier 1 route-runner (`engine/services/mobile_route.py` — waypoints, ping-pong/loop, dwell/travel ticks, restart-safe state) is genuinely content-agnostic, but today only the **transit** feature instantiates it (ferries/trains). No NPC-specific `RouteHooks` exist to move `NPC.current_room_id` + broadcast arrival/departure on `on_arrive`/`on_depart`. Real but modest glue work — the hard scheduling logic is already built. |
-| **Reputation as an NPC behavior gate** | Reputation itself is real; nothing *acts* on it autonomously | `features/reputation` gives per-(player, npc-or-faction) standing with `reputation_at_least` (command condition), `min_reputation` (dialogue condition), `adjust_reputation` (side effect) — so standing can already gate what a player can *say/do* to an NPC. What's missing is any NPC decision loop that *reads* standing on its own initiative (e.g. to refuse service, flee, or turn hostile without the player first triggering dialogue). |
+| **Reputation as an NPC behavior gate** | Reputation itself is real; nothing *acts* on it autonomously | `features/reputation` gives per-(player, npc-or-faction) standing with `actor_reputation_at_least` (the one canonical predicate, registered on both the command and dialogue condition registries) and `adjust_reputation` (side effect) — so standing can already gate what a player can *say/do* to an NPC. What's missing is any NPC decision loop that *reads* standing on its own initiative (e.g. to refuse service, flee, or turn hostile without the player first triggering dialogue). |
 
 ### ❌ Not Yet Supported (requires engine work)
 

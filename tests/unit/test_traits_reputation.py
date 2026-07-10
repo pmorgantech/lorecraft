@@ -136,7 +136,7 @@ class TestReputation:
         from lorecraft.engine.game.command_conditions import get_registry
 
         _cmd_engine, ctx, _session = built
-        result = get_registry().evaluate("reputation_at_least:npc:mira:10", ctx)
+        result = get_registry().evaluate("actor_reputation_at_least:npc:mira:10", ctx)
 
         assert not result.allowed
 
@@ -148,11 +148,11 @@ class TestReputation:
         _cmd_engine, ctx, session = built
         ReputationService().adjust(session, ctx.player.id, "npc", "mira", 20)
 
-        result = get_registry().evaluate("reputation_at_least:npc:mira:10", ctx)
+        result = get_registry().evaluate("actor_reputation_at_least:npc:mira:10", ctx)
 
         assert result.allowed
 
-    def test_min_reputation_dialogue_condition(
+    def test_reputation_at_least_dialogue_condition(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         from lorecraft.features.npc.dialogue_conditions import get_registry
@@ -161,7 +161,13 @@ class TestReputation:
         ReputationService().adjust(session, ctx.player.id, "npc", "mira", 5)
 
         satisfied = get_registry().evaluate(
-            {"min_reputation": {"target_type": "npc", "target_id": "mira", "min": 10}},
+            {
+                "actor_reputation_at_least": {
+                    "target_type": "npc",
+                    "target_id": "mira",
+                    "min": 10,
+                }
+            },
             ctx,
         )
 

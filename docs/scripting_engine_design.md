@@ -521,6 +521,29 @@ from the separate, existing **command-verb** alias mechanism — `look`/`l`, `ex
 is player-facing CLI ergonomics on the command parser, untouched by this and not part of the
 scripting vocabulary.)
 
+**Execution note — A0.5 as built (safe sequencing over one big-bang).** The "one atomic
+commit" ideal above assumed all the drift is code/test-only. One class isn't: `set_flags`
+appears in `world_content/world.yaml`, and the runtime is **fail-open** — a *missed* rename of a
+content-facing name silently stops firing instead of erroring, which for a quest flag is a
+gameplay bug with no trace. So the rename splits by safety:
+
+- **Reputation pair → `actor_reputation_at_least` (A0.5, done).** Fully content-free (only the
+  reputation feature + tests referenced `min_reputation`/`reputation_at_least`), so it renames
+  cleanly now. The command and dialogue registries both register the one canonical name (a
+  legal, non-colliding "same predicate, two surfaces" — enabled by the catalog's idempotent
+  same-capability registration; see `Vocabulary.register`).
+- **Flag family + colon-string→map → A2, validator-guarded.** The `flag_set`/`flag_not_set`/
+  `required_flags`/`forbidden_flags`/`set_flags` rename is deferred until A2 wires the §8.5
+  validator into the world load path. With the validator active, a missed rename in
+  `world.yaml` becomes a **fail-closed load error**, not a silent fail-open no-op — the correct
+  order is *validator first, then rename*. Until then the catalog still *reports* the flag-
+  family overlaps (the drift stays visible, just not yet removed).
+- **Feature-enable-time descriptors → follow-up.** Registrations that run in a feature's
+  `register()` (reputation, follow, npc_memory, …) only enter the generated catalog once the
+  doc generator *enables* features rather than merely importing them; until then A0.5's
+  reputation rename stays on bare `register`. Landing that (and migrating those registrations to
+  `register_spec`) is tracked as a small follow-up so `docs/scripting_api.md` becomes complete.
+
 ---
 
 ## Appendix A — Authoring examples (the Phase-A surface)

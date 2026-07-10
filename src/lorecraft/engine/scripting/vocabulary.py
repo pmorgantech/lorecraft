@@ -155,10 +155,19 @@ class Vocabulary:
     def register(self, entry: VocabEntry) -> VocabEntry:
         existing = self._entries.get(entry.name)
         if existing is not None:
+            # Idempotent on same-name + same-capability: one canonical predicate offered on
+            # two surfaces (e.g. a command *and* a dialogue condition), or a feature re-enabled
+            # in a fresh app instance within one process, is a harmless no-op — keep the first
+            # registration. Only a name reused for a *different* capability is the collision we
+            # reject loudly (the drift this governance exists to kill; §8.6). There are still no
+            # aliases: one name maps to exactly one capability.
+            if existing.kind is entry.kind and existing.capability == entry.capability:
+                return existing
             raise VocabularyError(
-                f"duplicate vocabulary name {entry.name!r} "
-                f"(already registered as {existing.kind.value}); "
-                "names must be unique — no aliases (see docs/scripting_engine_design.md §8.6)"
+                f"vocabulary name {entry.name!r} is already registered as a "
+                f"{existing.kind.value} ({existing.capability}); cannot re-register it as a "
+                f"{entry.kind.value} ({entry.capability}) — one name maps to exactly one "
+                "capability (see docs/scripting_engine_design.md §8.6)"
             )
         self._entries[entry.name] = entry
         return entry

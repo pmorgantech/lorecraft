@@ -2,6 +2,25 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.61.0] - 2026-07-10
+
+### Changed
+
+- **Scripting engine A0.5 — canonicalized the reputation drift + idempotent catalog registration.**
+  - Collapsed the `reputation_at_least` (command) / `min_reputation` (dialogue) synonym pair to
+    the one §8.4 canonical name **`actor_reputation_at_least`**, registered on both condition
+    registries (same predicate, two authoring surfaces). Content-free rename (no `world.yaml`
+    uses); dialogue trees using `min_reputation` should switch to `actor_reputation_at_least`.
+  - `Vocabulary.register` is now **idempotent on same-name + same-capability** (a canonical
+    predicate offered on two surfaces, or a feature re-enabled in a fresh app instance, is a
+    no-op) while still hard-failing a name reused for a *different* capability. This is what
+    lets one canonical name serve multiple registries safely.
+  - **Sequencing (design §8.6):** the flag-family rename (`flag_set`/`required_flags`/
+    `set_flags` …) and colon-string→map param normalization are deferred to A2, performed
+    *after* the load-path validator is wired — so a missed rename in `world.yaml` is a
+    fail-closed load error, not a silent fail-open no-op. The catalog keeps *reporting* the
+    flag-family overlaps until then.
+
 ## [0.60.0] - 2026-07-10
 
 ### Added
