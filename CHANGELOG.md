@@ -2,6 +2,20 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.69.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A-accept - Phase A acceptance harness (`tests/unit/test_phase_a_acceptance.py`).**
+  One integration test wires every Phase-A service (TriggerService, NpcBehaviorService,
+  WeatherFrontService, SpawnControllerService) onto a single bus + clock over a small demo world,
+  advances time on a fixed seed, and asserts the behaviors work in concert: a guard patrols its
+  route (A3), its `encounter` trigger fires from the NPC side when it reaches the player (A2), a
+  storm applies a room effect across the zone (A5), and a spawner tops the population up (A6).
+  Plus a determinism check: two identical seeded runs produce identical observable state - the
+  replay-faithfulness invariant (every autonomous roll goes through `GameRng`). This is the
+  answer to "how do I know Phase A is done".
+
 ## [0.68.0] - 2026-07-10
 
 ### Added
