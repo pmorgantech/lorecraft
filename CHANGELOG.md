@@ -2,6 +2,17 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.62.1] - 2026-07-10
+
+### Docs
+
+- **`docs/gamecontext_audit_20260710.md`** — Graphify flagged `GameContext` as the top god
+  node (370 edges); audit confirms it's a deliberate per-command parameter object (one
+  construction site, no stored references, per-command lifetime) rather than a design flaw.
+  Two mild findings tracked for later: raw `ctx.session` bypasses wired repos in ~26 feature
+  files, and response-accumulation fields (`chat_outbox`, `pending_deliveries`, ...) are a
+  second responsibility that may eventually warrant splitting into a `CommandOutput` object.
+
 ## [0.62.0] - 2026-07-10
 
 ### Added
