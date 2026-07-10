@@ -2,6 +2,19 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.68.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A6 - area spawn/respawn controllers (`features/spawns`).** A spawner keeps a
+  zone feeling alive: every `every_ticks` it tops the area's population back up to `max_count`
+  clones of a template NPC, placing each in a random area room (seeded RNG). Clones carry a shared
+  id prefix (`<spawn_id>#<n>`) so the controller counts its own and repopulates after any are
+  slain/removed; they inherit the template's dialogue and `ai` config, so a spawned creature can
+  itself wander (A3). Config-driven `{spawns: {id: {area, template, max_count, every_ticks}}}`.
+  Tier-2 feature `spawns`. 5 tests (`tests/unit/test_spawns.py`). Live wiring + demo land with the
+  acceptance harness.
+
 ## [0.67.0] - 2026-07-10
 
 ### Added
