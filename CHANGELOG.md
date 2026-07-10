@@ -2,11 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.57.1] - 2026-07-10
+
+### Changed
+
+- **Scripting subsystem gets its own package (`engine/scripting/`).** Moved the vocabulary
+  governance module from `engine/game/vocabulary.py` into a dedicated Tier-1 `engine/scripting/`
+  package (the future home of the trigger service, author-time validator, and catalog
+  generator). Import path is now `lorecraft.engine.scripting.vocabulary` (or the package
+  re-export `lorecraft.engine.scripting`). Pure move; no behavior change. The dependency arrow
+  stays one-way (`scripting` -> `game`), so `engine.game` never imports the scripting package.
+
 ## [0.57.0] - 2026-07-10
 
 ### Added
 
-- **Scripting engine A0.1 — vocabulary governance primitives (`engine/game/vocabulary.py`).**
+- **Scripting engine A0.1 — vocabulary governance primitives (`engine/scripting/vocabulary.py`).**
   First implementation step of the scripting/behavior engine (`docs/scripting_engine_design.md`
   §8). Adds the self-describing descriptor types (`Subject`, `VocabKind`, `ParamSpec`,
   `CapabilitySig`, `VocabEntry`) and the governed `Vocabulary` catalog: exact-name-collision

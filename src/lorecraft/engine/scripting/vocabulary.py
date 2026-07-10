@@ -1,6 +1,7 @@
 """Vocabulary governance: self-describing descriptors for the scripting "language".
 
-See ``docs/scripting_engine_design.md`` §8. Every condition / effect / behavior-mode in
+Lives in the ``engine.scripting`` subsystem (Tier 1). See
+``docs/scripting_engine_design.md`` §8. Every condition / effect / behavior-mode in
 the declarative scripting vocabulary registers a *descriptor* (name + typed params +
 subject role + what it reads/writes + category + human doc + a **capability signature**)
 rather than a bare string. That self-description buys three things:

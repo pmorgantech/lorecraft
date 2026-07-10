@@ -1,4 +1,4 @@
-"""Tests for the scripting-vocabulary governance layer (engine/game/vocabulary.py).
+"""Tests for the scripting-vocabulary governance layer (engine/scripting/vocabulary.py).
 
 Covers the three jobs the descriptors exist for: registration with exact-name collision
 detection, capability-signature duplication detection, and serialization for the generated
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from lorecraft.engine.game.vocabulary import (
+from lorecraft.engine.scripting.vocabulary import (
     CapabilitySig,
     ParamSpec,
     Subject,
