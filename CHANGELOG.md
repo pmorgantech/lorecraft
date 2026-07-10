@@ -2,6 +2,21 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.55.2] - 2026-07-09
+
+### Fixed
+
+- **`MODE_DEFAULT_THEME` (layout → default colour scheme) is now single-sourced to the
+  client (Sprint 67).** Previously hand-copied into two JS literals (`base.html`'s
+  `lcApplyTheme()`, `settings.html`'s `applyPreview()`) alongside the authoritative
+  `preferences.py` dict, with nothing keeping the copies in sync — editing only the
+  Python dict left both client-side "auto" previews (the top-bar picker, the settings
+  page's live preview) silently showing the *old* default scheme's colours for a moment.
+  Fixed by injecting the dict once as JSON (`frontend.py` sets
+  `templates.env.globals["MODE_DEFAULT_THEME_JSON"]`) into `window.LC_MODE_DEFAULT_THEME`
+  and pointing both JS call sites at that global — one source of truth. The
+  `webui-theming` skill docs are updated to match (no more "3-places gotcha").
+
 ## [0.55.1] - 2026-07-09
 
 ### Added

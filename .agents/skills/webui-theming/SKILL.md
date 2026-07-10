@@ -86,8 +86,12 @@ separated sections, each with a banner comment:
 **3. `templates/base.html`** — the Tailwind config (`tailwind.config.extend.colors`)
 maps semantic names to the CSS vars: `panel`/`panel-light`/`accent`/`accent-dark`/
 `text`/`text-muted`/`feed-bg`/`border`/`npc` → `var(--lc-*)`. Also owns:
+- `window.LC_MODE_DEFAULT_THEME` — the server's `MODE_DEFAULT_THEME` dict, injected as
+  JSON (`{{ MODE_DEFAULT_THEME_JSON | safe }}`, set via `templates.env.globals` in
+  `frontend.py`) so client-side code never hand-copies the mapping — see "Single-sourcing
+  MODE_DEFAULT_THEME to the client" below.
 - `window.lcApplyTheme(theme)` — instant client-side scheme swap (no reload) for the
-  top-bar quick picker; resolves `'auto'` via a **JS-side copy** of `MODE_DEFAULT_THEME`.
+  top-bar quick picker; resolves `'auto'` by reading `window.LC_MODE_DEFAULT_THEME`.
 - `window.lcToggleMinimapStyle()` — flips `minimap-graph`/`minimap-compass` on `<body>`
   and persists via `POST /settings/appearance`.
 - `<body class="bg-zinc-950 text-zinc-200 font-mono {{ prefs.body_classes }}">` — the one
@@ -138,21 +142,34 @@ shared swap-target ids (`#chronicle`, `#location`, `#minimap`, `#inventory`, `#p
 (listed in point 4 above) — cross-check against the real templates, not just the export
 READMEs, before wiring anything.
 
-## The 3-places gotcha
+## Single-sourcing MODE_DEFAULT_THEME to the client
 
-`MODE_DEFAULT_THEME` (layout → its tuned default scheme) is duplicated **three times**
-because two of the copies are client-side JS literals that must resolve `auto` without a
-round-trip:
-1. `preferences.py` — `MODE_DEFAULT_THEME` dict (the authoritative one; server-rendered
-   `resolved_theme` always goes through this).
-2. `templates/base.html` — inside `window.lcApplyTheme()`, a JS object literal.
-3. `templates/settings.html` — inside the settings form's Alpine `x-data`, `modePalette`,
-   used by `applyPreview()` for the live preview before Save.
+`MODE_DEFAULT_THEME` (layout → its tuned default scheme) needs to be resolvable
+**client-side without a round-trip**, for two instant-preview use cases: the top-bar
+quick picker (`lcApplyTheme()`) and the settings page's live preview before Save
+(`applyPreview()`). Until Sprint 67 this meant the dict was hand-copied into two JS
+object literals — a real, previously-shipped bug class, since nothing enforced the
+copies staying in sync (editing only `preferences.py` left both previews silently
+flashing the *old* default scheme for a layout).
 
-**If you add a layout or change any layout's default scheme, update all three.** Nothing
-enforces this at build time; a mismatch only shows up as the live preview or top-bar
-picker briefly flashing the wrong colours before the next full render. Grep
-`standard:'terminal'` (or the layout you're touching) to find all three call sites fast.
+**Fixed (Sprint 67): single-sourced, not hand-copied.** `frontend.py` sets
+`templates.env.globals["MODE_DEFAULT_THEME_JSON"] = json.dumps(MODE_DEFAULT_THEME)`
+right after constructing its `Jinja2Templates` instance (this is the templates instance
+that renders every `base.html`-extending page — `rendering.py` has its own separate
+`Jinja2Templates` instance, but it's only ever used for
+`get_template("partials/feed_items.html").render(...)`, never a full page, so it doesn't
+need the global too). `base.html`'s `<head>` script then does:
+```jinja
+window.LC_MODE_DEFAULT_THEME = {{ MODE_DEFAULT_THEME_JSON | safe }};
+```
+(`| safe` is required — FastAPI's `Jinja2Templates` autoescapes by default, so without it
+the JSON's `"` characters get HTML-entity-escaped into `&#34;` and the JS breaks.
+`MODE_DEFAULT_THEME`'s values are a hardcoded server constant, never user input, so
+`| safe` here is not an XSS risk.) Both `lcApplyTheme()` (`base.html`) and
+`applyPreview()` (`settings.html`) now read `window.LC_MODE_DEFAULT_THEME` instead of
+carrying their own literal — **there is exactly one place to edit** (`preferences.py`)
+when adding a layout or changing a default scheme; both client-side previews pick it up
+automatically on next page load.
 
 ## Persistence & picker flow
 
@@ -182,8 +199,10 @@ Three UI entry points, two backing routes:
    --lc-accent-strong: ...; --lc-text: ...; --lc-text-muted: ...; --lc-highlight: ...;
    --lc-npc: ...; }` block in `custom.css`'s "Selectable colour schemes" section. Do
    **not** set any `--lc-font-*` or size/spacing property here — that's a layout concern.
-3. If some layout should default to it, add a `MODE_DEFAULT_THEME` entry — **and update
-   the two JS copies** (see the 3-places gotcha above).
+3. If some layout should default to it, add a `MODE_DEFAULT_THEME` entry in
+   `preferences.py` — that's the only file to touch; both client-side previews read it
+   through the injected `window.LC_MODE_DEFAULT_THEME` global automatically (see
+   "Single-sourcing MODE_DEFAULT_THEME to the client" above).
 4. Add the option to any select loop that iterates `theme_options`/`THEMES` — this is
    automatic (`settings.html` and `topbar_appearance.html` both `{% for opt in
    theme_options %}`), so no template change needed there.
@@ -197,7 +216,9 @@ Three UI entry points, two backing routes:
 This is the bigger lift — a new arrangement usually means a new bespoke shell partial:
 
 1. Add the name to `LAYOUTS` in `preferences.py` and a `MODE_DEFAULT_THEME` entry (its
-   tuned default scheme) — **update all 3 places** (gotcha above).
+   tuned default scheme) — that single dict is all you need to touch; the client-side
+   previews read it via the injected `window.LC_MODE_DEFAULT_THEME` global (see
+   "Single-sourcing MODE_DEFAULT_THEME to the client" above).
 2. Decide: chronicle-only (no room/inventory/players panel, add to
    `MUD_CHRONICLE_LAYOUTS` in `session.py`) or panel-based (needs `#inventory`/
    `#quest-tracker`/room panel like Standard/Dock/E-reader)?
@@ -255,9 +276,10 @@ This is the bigger lift — a new arrangement usually means a new bespoke shell 
   switches scheme, defeating the whole point of the axis split.
 - Wrapping `partials/minimap.html`'s include in another bordered container — it's bare
   content by design (point 5 above); the surrounding layout template owns the one box.
-- Forgetting one of the 3 `MODE_DEFAULT_THEME` copies (preferences.py, `base.html`,
-  `settings.html`) when adding a layout or changing a default — causes a preview/topbar
-  flash-of-wrong-scheme, not a hard error, so it's easy to miss without grepping for it.
+- Reintroducing a hand-copied JS literal of `MODE_DEFAULT_THEME` (e.g. "just inline it,
+  it's faster") instead of reading `window.LC_MODE_DEFAULT_THEME` — this was a real bug
+  (three out-of-sync copies) fixed in Sprint 67 by injecting the dict once via
+  `templates.env.globals`; don't re-add a second source of truth.
 - Renaming a shared DOM id (`#feed`, `#minimap`, `#inventory`, `#quest-tracker`,
   `#command-input`, `#main-content`) inside one shell without checking `static/js/app.js`
   and the HTMX `hx-target`/OOB swap markers elsewhere — breaks live updates silently

@@ -10,6 +10,7 @@ Server-driven UI:
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 
@@ -50,6 +51,7 @@ from lorecraft.webui.player.preferences import (
     FONT_SCALES,
     LAYOUTS,
     MINIMAP_STYLES,
+    MODE_DEFAULT_THEME,
     THEMES,
     TIMESTAMP_FORMATS,
     TOGGLEABLE_PANELS,
@@ -94,6 +96,12 @@ log = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/webui/player/templates")
+# Single source of truth for the layout -> default-scheme mapping (Sprint 67):
+# injected into base.html as `window.LC_MODE_DEFAULT_THEME` so the top-bar
+# picker's and settings page's client-side "auto" preview read the same data
+# `resolve_preferences()` uses server-side, instead of hand-copied JS literals
+# that could drift from it.
+templates.env.globals["MODE_DEFAULT_THEME_JSON"] = json.dumps(MODE_DEFAULT_THEME)
 
 # Feature flag (Sprint 58): show the quick Theme/Layout pickers in the top nav
 # bar. Experimental — flip to False (or delete the flag, the

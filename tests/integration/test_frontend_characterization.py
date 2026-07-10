@@ -411,6 +411,40 @@ async def _test_game_screen_applies_theme_body_class() -> None:
     assert "theme-terminal" not in slate_html
 
 
+def test_mode_default_theme_injected_as_single_source_for_client_js() -> None:
+    anyio.run(_test_mode_default_theme_injected_as_single_source_for_client_js)
+
+
+async def _test_mode_default_theme_injected_as_single_source_for_client_js() -> None:
+    """`window.LC_MODE_DEFAULT_THEME` (Sprint 67) carries preferences.py's
+    MODE_DEFAULT_THEME to the client so lcApplyTheme() (base.html) and
+    applyPreview() (settings.html) resolve 'auto' from one source instead of
+    hand-copied JS literals that can drift out of sync."""
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        _, game_html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+        _, settings_html = await _http_get(
+            app, "/settings", cookies={"player_id": "player-1"}
+        )
+
+    for html in (game_html, settings_html):
+        assert "window.LC_MODE_DEFAULT_THEME = " in html
+        assert '"standard": "terminal"' in html
+        assert '"classic": "mono-green"' in html
+        # No hand-copied per-layout JS literal left over from before Sprint 67.
+        assert "standard:'terminal'" not in html
+
+
 def test_typography_fonts_loaded_and_feed_inherits_mode_font() -> None:
     anyio.run(_test_typography_fonts_loaded_and_feed_inherits_mode_font)
 

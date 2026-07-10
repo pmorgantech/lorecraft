@@ -28,6 +28,13 @@
     <link rel="stylesheet" href="/static/css/custom.css">
 
     <script>
+        // Layout -> default-scheme mapping (preferences.py's MODE_DEFAULT_THEME),
+        // injected once by the server so every client-side "auto" resolution
+        // (this file's lcApplyTheme, settings.html's applyPreview) reads the
+        // same data resolve_preferences() uses, instead of a hand-copied JS
+        // literal that can drift from it (Sprint 67).
+        window.LC_MODE_DEFAULT_THEME = {{ MODE_DEFAULT_THEME_JSON | safe }};
+
         // Instant colour-scheme swap for the top-bar appearance picker
         // (Sprint 58, feature-flagged). Swaps only the theme-* body class —
         // schemes are colours-only, so no reflow; persistence is handled
@@ -38,8 +45,7 @@
                 // "auto" scheme follows the current layout's tuned default.
                 var lc = [...b.classList].find(function(c){ return c.indexOf('layout-') === 0; });
                 var layout = lc ? lc.slice(7) : 'standard';
-                var map = {standard:'terminal','e-reader':'parchment',dock:'slate',immersive:'immersive',classic:'mono-green'};
-                theme = map[layout] || 'terminal';
+                theme = window.LC_MODE_DEFAULT_THEME[layout] || 'terminal';
             }
             [...b.classList].forEach(function(c) {
                 if (c.indexOf('theme-') === 0) b.classList.remove(c);

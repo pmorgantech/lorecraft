@@ -14,14 +14,15 @@
           x-data="{
             theme: '{{ prefs.theme }}',
             layout: '{{ prefs.layout }}',
-            modePalette: {standard:'terminal','e-reader':'parchment',dock:'slate',immersive:'immersive',classic:'mono-green'},
             applyPreview() {
               const b = document.body;
               [...b.classList].forEach(c => {
                 if (c.startsWith('theme-') || c.startsWith('layout-')) b.classList.remove(c);
               });
-              // 'auto' palette follows the mode's tuned default (see MODE_DEFAULT_THEME).
-              const palette = this.theme === 'auto' ? (this.modePalette[this.layout] || 'terminal') : this.theme;
+              // 'auto' palette follows the mode's tuned default — reads the
+              // server-injected window.LC_MODE_DEFAULT_THEME (base.html),
+              // the same MODE_DEFAULT_THEME resolve_preferences() uses.
+              const palette = this.theme === 'auto' ? (window.LC_MODE_DEFAULT_THEME[this.layout] || 'terminal') : this.theme;
               b.classList.add('theme-' + palette, 'layout-' + this.layout);
             }
           }">

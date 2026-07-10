@@ -17,8 +17,10 @@ bespoke shell CSS), `templates/base.html` (Tailwind semantic-colour config + bod
 wiring), and `templates/game.html` (dispatches to a bespoke shell partial per layout,
 e.g. `partials/game_dock.html`).
 
-The canonical file covers: the full token architecture, the `MODE_DEFAULT_THEME`
-"3-places gotcha" (duplicated in `preferences.py` + two JS literals — miss one and
-previews flash the wrong scheme), `MUD_CHRONICLE_LAYOUTS`, the bare-content convention
-for `partials/minimap.html`, step-by-step recipes for adding a scheme or a layout, the
-testing/live-verification recipe, and a list of previously-real bugs to not repeat.
+The canonical file covers: the full token architecture, how `MODE_DEFAULT_THEME` is
+single-sourced from `preferences.py` to the client via a server-injected
+`window.LC_MODE_DEFAULT_THEME` global (Sprint 67 — previously hand-copied into two JS
+literals that could drift out of sync), `MUD_CHRONICLE_LAYOUTS`, the bare-content
+convention for `partials/minimap.html`, step-by-step recipes for adding a scheme or a
+layout, the testing/live-verification recipe, and a list of previously-real bugs to not
+repeat.
