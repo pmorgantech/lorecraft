@@ -21,6 +21,17 @@
 > built world/housing, AI-assisted content, multi-protocol networking, world rollback) are
 > folded into the sections below rather than kept as a separate file. `wishlist3.md` is deleted
 > from this branch as fully superseded; `wishlist2.md` was never on this branch to begin with.
+>
+> **Doc-hygiene pass (2026-07-09):** the 2026-07-07 audit missed that Sprints 23, 25, 29, and 30
+> (inventory & equipment, exploration depth, transit systems, quests & puzzles) had *already*
+> shipped by the time this file's section headers were last touched — those four sections still
+> read "wanted next" / "top candidate" / "core pillar" as if unbuilt. Retitled to "✅ Shipped" with
+> only the genuinely-open sub-items (mostly the ones already dated 2026-07-08, added after those
+> sprints shipped) kept. Also fixed a false claim under *Trading & economy depth* (haggling/
+> dynamic pricing was already live in `economy/service.py`, not unbuilt) and removed a dangling
+> reference to a `genuine_gaps.md` file that was never created in this repo. **Lesson for future
+> passes:** cross-check against `roadmap_completed.md`'s sprint list, not just memory/git-log
+> skimming, before annotating something as open.
 
 ## Guiding stance: borrow selectively, don't clone
 
@@ -55,46 +66,15 @@ Each item below is tagged:
 
 ---
 
-## Featured idea: travel & transit systems 💚
+## Featured idea: travel & transit systems 💚 ✅ Shipped — Sprint 29
 
-**The single most-wanted item from this session.** Materia Magica's getting-around systems —
-**ferries, hot-air balloons, rail transit with tickets, and travel animations** — are a
-standout example of world-as-experience rather than world-as-grid. This is a great fit for
-Lorecraft's narrative, real-time, browser-based feel and doesn't depend on combat or economy.
-
-What it could include:
-
-- **Scheduled vehicles** — a ferry or balloon that departs on a world-clock cadence (built
-  naturally on the existing `SchedulerService` + `TIME_ADVANCED` tick). Miss the boat, wait
-  for the next one. The vehicle is a moving "room" whose exits change as it travels.
-- **Tickets as items** — buy/hold a ticket item; boarding checks for it (reuses the
-  existing item + condition system, and later the currency model). Route-specific tickets,
-  one-use vs. pass.
-- **Travel animation** — timed narrative beats streamed to the feed during transit
-  ("The balloon lifts above the rooftops…" → "Clouds thin; the coast comes into view…" →
-  arrival). A perfect consumer of the WS push + scheduler primitives already in place.
-- **Transit modes** — rail (fixed stops, fast), ferry (water-gated routes), balloon
-  (scenic, weather-affected?), maybe a fast-travel/recall for known destinations.
-- **Weather interplay** — balloon grounded in a storm; ferry delayed by fog. Ties into the
-  existing `clock/weather.py` state machine for emergent texture.
-
-Why it's attractive now: it's **mostly buildable on primitives Lorecraft already has**
-(scheduler, world clock, weather, items, conditions, WS push, moving-room concept) and
-delivers a lot of world personality without waiting on combat/economy. A minimal first cut
-(one scheduled ferry with a ticket check and a 3-beat travel animation) would be a strong,
-self-contained sprint and a showcase for the feature-registration pattern.
-
-**Now designed:** see [`transit_systems.md`](transit_systems.md) — multiple data-driven modes
-(ferry/rail/balloon/caravan), local vs. express stopping patterns, per-segment speed, minimap
-animation, ticket-gating, and weather delays, all driven by the existing scheduler + world clock.
-
-Resolved / remaining design questions:
-
-- Vehicle = a special `Room` (moving-room model) — passengers are its occupants; `board`/
-  `disembark` gate entry, no static exits. A lighter virtual-journey variant covers abstract
-  fast-travel. _(Resolved in the design doc.)_
-- Off-vehicle players _do_ see arrivals/departures and can watch the vehicle cross the minimap.
-- Tickets are items; free or quest-pass for now, priced once the [Sprint 28](roadmap.md#sprint-28--trading--economy) economy lands.
+**Was the single most-wanted item from the original 2026-07-03 planning session** — Materia
+Magica's ferries/balloons/rail-with-tickets/travel-animation. **Fully shipped** (see
+[`roadmap_completed.md`](roadmap_completed.md#sprint-29--transit--travel-systems)): data-driven
+transit lines (ferry/rail/balloon/caravan) in world YAML, a scheduler-driven vehicle state
+machine (`board`/`disembark`/`schedule`), ticket-item gating, minimap position animation via WS
+push, and weather grounding/delays. Design doc: [`transit_systems.md`](transit_systems.md).
+Remaining gap, if any: more world-content routes — the mechanism itself is done.
 
 ---
 
@@ -104,27 +84,24 @@ A deliberately large brainstorm of mechanics that serve the exploration / trade 
 puzzle pillars. Not everything here should be built — the point is a rich menu to pick from.
 Where possible, each notes what Lorecraft primitive it builds on.
 
-### Inventory & equipment 💚 (foundational — wanted next)
+### Inventory & equipment 💚 ✅ Shipped — Sprint 23 (one genuine gap remains)
 
-The most-requested near-term system. Needed before wear-slot-dependent content, trading depth,
-and most combat.
+**The core system shipped** (see
+[`roadmap_completed.md`](roadmap_completed.md#sprint-23--inventory--equipment)):
+`wear`/`remove`/`wield`/`unwield`/`equipment` commands, equipped-ness as a slot on the player's
+own item stack, encumbrance bands resolved at runtime from weight + `carry_bonus`
+(`game/encumbrance.py`), and containers (`put in`/`take from`, nesting, worn-container capacity,
+light/darkness gating). Lantern-oil-style fuel consumption also shipped separately as the `light`
+feature (`LightFuelService`). What's left:
 
-- **Wear / wield slots** — head, face, neck, shoulders/cloak, torso, back, arms, hands (×2 or
-  gloves), fingers (rings ×2), waist/belt, legs, feet, plus wielded main/off-hand and a
-  light-source slot. Items declare which slot(s) they occupy (data on the `Item` model);
-  `Player` gains an equipment map. `wear`/`remove`/`wield` commands. Equipped items grant
-  passive effects (traits, warmth, light, carry capacity, skill bonuses) — **not just combat
-  stats**, per the pillars.
-- **Encumbrance / carry weight** — items have weight; carrying too much slows travel and
-  drains fatigue faster. Makes bags and pack animals meaningful; creates trade-off decisions
-  during exploration. Keep it forgiving, not a spreadsheet.
-- **Containers / nested inventory** — bags, pouches, backpacks, chests. A container is an item
-  that holds items (recursive). Enables organization, weight reduction (a "bag of holding"),
-  and puzzle/quest stashes. Pairs with the deferred `open`/container modeling noted in Sprint 2.5.
-- **Attunement** — some gear must be attuned before its passive effects work (bound items
-  already exist — `Item.bound`, soulbound, can't drop/sell/trade — but attunement-before-use
-  is a separate, still-open mechanic). Protects quest integrity and adds a light gearing step.
-- **Consumables & charges** — potions, food, scrolls, lantern oil, tickets (ties to transit).
+- **Attunement** — some gear must be attuned before its passive effects work. Bound items exist
+  (`Item.bound`, soulbound, can't drop/sell/trade) but attunement-*before-use* is a distinct,
+  still-open mechanic — genuinely unbuilt (confirmed 2026-07-09: the "Marks & Attunements"
+  feature package is the unrelated Sprint 53 collectible-marks system, not gear attunement).
+  Protects quest integrity and adds a light gearing step.
+- **Consumables & charges beyond fuel** — potions, food, scrolls with limited charges (lantern
+  oil already works via `light`; a general charge-count mechanic on other consumable items is
+  still open).
 
 ### Character condition & survival 🤔 (fatigue / sleep — wanted as ideas)
 
@@ -171,36 +148,31 @@ Best implemented as pluggable modifiers via the existing registry pattern rather
   a knowledge-progression system parallel to leveling.
 - **Languages** — some NPCs/signs/books require a language; learning one is a quest reward.
 
-### Exploration depth 💚 (core pillar)
+### Exploration depth 💚 ✅ Shipped — Sprint 25 (a few genuine gaps remain)
 
-- **Discovery rewards** — finding a new room, landmark, or vista grants a tangible reward
-  (lore, a knowledge flag, a small progression tick). Exploration _is_ progression. Builds on
-  the existing minimap fog-of-war.
-- **Hidden exits & secret rooms** — perception/search-gated passages; `search` command;
-  trait/skill and fatigue interactions. Rewards attentive play.
-- **Cartography / player mapping** — the map fills in as you explore; a _cartographer_ trait or
-  bought maps reveal more; sellable/tradeable maps as goods (ties to trade).
-- **Terrain & travel** — room/exit terrain types (road, forest, mountain, water) affect travel
-  time, fatigue cost, and required skills/gear (climbing, swimming). Makes geography meaningful
-  and pairs with transit (roads are fast, wilderness is slow).
-- **Environmental storytelling** — rooms with examinable detail, readable objects (books,
-  inscriptions, signs), layered `examine` targets. Cheap, high-texture content.
-- **Environmental puzzle gates 💚 (2026-07-08)** — exploration blocked by a solvable obstacle
-  tied to terrain, not just a locked door: a collapsed bridge needing planks, a chasm needing a
-  climbing-skill check, a causeway only crossable at low tide. Builds on the same exit
-  `condition_flags` the lock/key mechanic already writes to, plus the already-shipped
-  celestial/tide state as another gating predicate — no new state, just more predicate types on
-  an existing seam.
-- **Dungeon complexity / z-levels 💚 (2026-07-08; foundation shipped Sprint 66)** — rooms
-  with real vertical structure (basements, towers, hidden floors), not just a flat room
-  graph. `Room.map_z` (default 0) now exists and the minimap/full-map filter to the current
-  floor, so multi-floor content can reuse `(map_x, map_y)` per floor without overlapping.
-  What remains is mostly a **content** gap (world YAML hasn't used vertical exits yet) plus a
-  region-map level selector / inter-level connection rendering — see `genuine_gaps.md` §3.
-- **Conditional / state-gated exits 🤔 (2026-07-08)** — an exit that only opens under a
-  condition: a secret door after collecting a key item, a portal open only at night, a bridge
-  that solidifies after a puzzle stage. Same `condition_flags` seam as environmental puzzle
-  gates above, just gated by a quest flag or the world clock instead of terrain.
+**Core system shipped** (see
+[`roadmap_completed.md`](roadmap_completed.md#sprint-25--exploration-depth)): discovery rewards
+(knowledge flags on finding new rooms), the `search` command with hidden-exit/secret-room reveal
+gated on perception/traits/light, room/exit `terrain` types affecting travel + required
+skill/gear, and a `journal` auto-log of discoveries. Cartography map-reveal is part of the
+Sprint 26 map UI. What's left, dated 2026-07-08 (added *after* Sprint 25 shipped, so these are
+genuinely new, not duplicates):
+
+- **Environmental puzzle gates 💚** — exploration blocked by a solvable obstacle tied to terrain,
+  not just a locked door: a collapsed bridge needing planks, a chasm needing a climbing-skill
+  check, a causeway only crossable at low tide. Builds on the same exit `condition_flags` the
+  lock/key mechanic already writes to, plus the already-shipped celestial/tide state as another
+  gating predicate — no new state, just more predicate types on an existing seam.
+- **Dungeon complexity / z-levels 💚 (foundation shipped Sprint 66)** — rooms with real vertical
+  structure (basements, towers, hidden floors), not just a flat room graph. `Room.map_z`
+  (default 0) now exists and the minimap/full-map filter to the current floor, so multi-floor
+  content can reuse `(map_x, map_y)` per floor without overlapping. What remains is purely a
+  **content** gap — `world_content/world.yaml` has zero `map_z` usage as of 2026-07-09 — plus a
+  region-map level selector / inter-level connection rendering, still undesigned.
+- **Conditional / state-gated exits 🤔** — an exit that only opens under a condition: a secret
+  door after collecting a key item, a portal open only at night, a bridge that solidifies after
+  a puzzle stage. Same `condition_flags` seam as environmental puzzle gates above, just gated by
+  a quest flag or the world clock instead of terrain.
 
 ### Trading & economy depth 💚 (core pillar — designed in `trade_economy.md`, roadmap Sprint 28)
 
@@ -210,10 +182,10 @@ Beyond the basic currency→shops→P2P ladder in _Gameplay systems_ below:
   trade loop is buy-low-here, sell-high-there. **This is the killer pairing with transit
   systems** — the ferry/rail network _is_ the trade network. Exploration feeds trade feeds
   exploration.
-- **Haggling / dynamic prices** — wire the already-shipped `bartering` skill and `reputation`
-  feature into an actual price-flex calculation (a `ModifierSource` emitting a `price.buy`/
-  `price.sell` modifier, feature-capped at a sane discount). The skill and reputation numbers
-  exist; they don't move prices yet.
+- ~~**Haggling / dynamic prices**~~ **Shipped as part of Sprint 28.** `EconomyService.buy_price()`
+  (`features/economy/service.py`) already applies both a bartering-skill discount
+  (`_barter_discount`) and a per-NPC reputation discount (`_rep_discount`), each capped, on top
+  of quality/region/demand multipliers — verified in code 2026-07-09.
 - **Caravans / trade routes / commissions** — deliver goods between towns for profit; escort or
   investigate when they go missing (quest hooks). A whole quest genre falls out of this. Reuses
   the moving-room/`MobileRouteService` machinery already built for passenger transit — a
@@ -254,33 +226,34 @@ Design intent noted 2026-07-03 (product owner). No dedicated design doc yet; the
 mechanics are specified in [`death_resurrection.md`](death_resurrection.md) §8. Sprint TBD —
 naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)) and combat ([Sprint 31](roadmap.md#sprint-31--combat-core-services-supporting-system)).
 
-### Quests & puzzles 💚 (core pillar)
+### Quests & puzzles 💚 ✅ Shipped — Sprint 30 (a few genuine gaps remain)
 
-- **Branching quests with consequences** — choices that change world state, NPC standing, and
-  later options — not linear fetch chains. The current stage/flag system is a start; extend
-  toward branch conditions and consequence side-effects (registry-friendly).
-- **Environmental & mechanism puzzles** — levers, pressure plates, sequenced switches, doors
-  keyed to items or knowledge. Needs the deferred item/room _state_ modeling (Sprint 2.5 note).
-- **Item-combination puzzles** — combine/apply items to solve problems (a craft-_like_ mechanic
-  framed as puzzle-solving rather than production grind).
-- **Riddles & lore puzzles** — answers gated by knowledge flags gathered through exploration.
-- **Investigation / detective quests 💚 (2026-07-08)** — gather clues across rooms/NPCs/items,
-  then synthesize them into a conclusion; a wrong conclusion fails or branches the quest
-  negatively. The discovery journal already stores the clues; the new piece is a synthesis
-  check — a quest-stage condition counting how many of a named clue-set the journal contains
-  before an "accuse"/"conclude" command succeeds.
-- **Escort quests 💚 (2026-07-08)** — guide an NPC through a route; if they're lost, delayed, or
-  (once combat ships) harmed, the quest can fail or branch. Reuses the already-shipped `follow`
-  command (Sprint 47) extended so an NPC can be the follower instead of only a player, gated by
-  ordinary quest-stage conditions (`npc_following:<id>`, `npc_present: false` = "you lost them").
-- **Cross-quest consequences 💚 (2026-07-08)** — one quest's choices visibly reshape a later
-  quest or NPC's dialogue (saved them → discount later; betrayed a faction → locked questline).
-  This is a **content discipline**, not a new mechanism: quest B's stage conditions read the
+**Core system shipped** (see
+[`roadmap_completed.md`](roadmap_completed.md#sprint-30--quests--puzzles-depth)): branching
+quests with consequence side-effects and NPC memory, environmental/mechanism puzzles
+(`turn`/`pull`/`activate` on `Item.mechanism_states`), item-combination puzzles
+(`Item.combination_side_effects` via `use X with Y`), and clock-driven timed quest events
+(`QuestTimerService`). Non-combat resolutions (stealth/persuasion/bribery) are the pillar's
+default framing throughout. What's left, dated 2026-07-08 (added *after* Sprint 30 shipped —
+genuinely new, not duplicates):
+
+- **Investigation / detective quests 💚** — gather clues across rooms/NPCs/items, then
+  synthesize them into a conclusion; a wrong conclusion fails or branches the quest negatively.
+  The discovery journal already stores the clues; the new piece is a synthesis check — a
+  quest-stage condition counting how many of a named clue-set the journal contains before an
+  "accuse"/"conclude" command succeeds.
+- **Escort quests 💚 (in progress — Sprint 68)** — guide an NPC through a route; if they're
+  lost, delayed, or (once combat ships) harmed, the quest can fail or branch. Reuses the
+  already-shipped `follow` command (Sprint 47) extended so an NPC can be the follower instead of
+  only a player, gated by ordinary quest-stage conditions (`npc_following:<id>`,
+  `npc_present: false` = "you lost them"). Confirmed 2026-07-09: no NPC-follower support exists
+  yet in `features/follow/`, so this is a genuine gap, not stale text.
+- **Cross-quest consequences 💚** — one quest's choices visibly reshape a later quest or NPC's
+  dialogue (saved them → discount later; betrayed a faction → locked questline). This is a
+  **content discipline**, not a new mechanism: quest B's stage conditions read the
   flags/NPC-memory keys quest A's side effects already wrote. Worth calling out explicitly as a
   pattern to author toward, since the primitives (flags, `npc_remembers`, side effects) already
   exist but aren't yet used *across* quests, only within one.
-- **Non-combat resolutions** — quests solvable by stealth, persuasion, bribery, or cleverness,
-  not only violence — central to the "combat is optional" pillar.
 
 ### Combat, reframed as a supporting system 🤔
 

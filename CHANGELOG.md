@@ -2,6 +2,21 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.55.5] - 2026-07-09
+
+### Fixed
+
+- **Roadmap/wishlist doc drift.** A sync check found `docs/roadmap.md` never logged the "Sprint
+  62" work (layout/scheme axis split, Standard+Dock rebuild, full Stats pane — shipped v0.54.0)
+  and its sprint-numbering ledger was stale; backfilled the missing entry and corrected the
+  ledger (61/63/64/65 retired to `wishlist.md`, 62/66/67 complete, 68 in progress). Separately,
+  `docs/wishlist.md` still framed four already-shipped pillars — Inventory & equipment
+  (Sprint 23), Exploration depth (Sprint 25), Travel & transit systems (Sprint 29), Quests &
+  puzzles (Sprint 30) — as "wanted next"/"top candidate" ideas; retitled to "✅ Shipped" and
+  trimmed to the genuinely-open sub-items. Also corrected a false claim (haggling/dynamic
+  pricing was already live in `economy/service.py`, not unbuilt) and removed a dangling
+  reference to a `genuine_gaps.md` file that doesn't exist in this repo.
+
 ## [0.55.4] - 2026-07-09
 
 ### Added
