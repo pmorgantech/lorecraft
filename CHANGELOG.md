@@ -2,6 +2,21 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.57.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A0.1 — vocabulary governance primitives (`engine/game/vocabulary.py`).**
+  First implementation step of the scripting/behavior engine (`docs/scripting_engine_design.md`
+  §8). Adds the self-describing descriptor types (`Subject`, `VocabKind`, `ParamSpec`,
+  `CapabilitySig`, `VocabEntry`) and the governed `Vocabulary` catalog: exact-name-collision
+  detection (a hard error, replacing the old silent overwrite), capability-signature
+  **duplication detection** (`Vocabulary.overlaps()` surfaces two differently-named entries that
+  resolve to the same job — the guard against accidental re-invention), category grouping, and
+  JSON serialization (the source for the future generated builder-guide API doc). Pure Tier 1
+  and additive — no existing registry migrated yet. 9 unit tests
+  (`tests/unit/test_vocabulary.py`).
+
 ## [0.56.1] - 2026-07-10
 
 ### Added
