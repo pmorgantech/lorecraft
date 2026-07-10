@@ -2,6 +2,18 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.55.4] - 2026-07-09
+
+### Added
+
+- **World roadmap & build plan (`docs/roadmap_world.md`).** Comprehensive roadmap for
+  building a rich multi-zone test world (Steampunk City Cogsworth, Ancient Forest Whisperwood,
+  Coastal Port Veridian) spanning 80+ rooms, 100+ items, 15+ NPCs with quests, and multiple
+  map levels. Identifies engine feature gaps (indoor/outdoor flag, spawn templates, zone-climate
+  binding, ambient events, NPC faction standing, day/night cycles) and proposes workarounds.
+  Four-phase build plan: skeleton zones, rich item inventory, NPC interaction, polish & thematic
+  consistency. Single source of truth for world-building priorities and success criteria.
+
 ## [0.55.3] - 2026-07-09
 
 ### Fixed
