@@ -15,7 +15,10 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from lorecraft.engine.scripting.vocabulary import Vocabulary
 
 import yaml
 from sqlalchemy.engine import Engine
@@ -204,6 +207,65 @@ def cmd_merge(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_scripting_vocabulary() -> "Vocabulary":
+    """Populate and return the process-global scripting catalog.
+
+    Descriptors register at *module import*, so we import the engine-core condition module and
+    every feature package (via ``discover_features``) to make sure the catalog is complete
+    before it's rendered. This is why the loader lives here in the composition layer and not in
+    ``engine/scripting/catalog.py`` (which must not import features).
+    """
+    import lorecraft.engine.game.command_conditions  # noqa: F401
+    import lorecraft.features.npc.dialogue_conditions  # noqa: F401
+    import lorecraft.features.npc.side_effects  # noqa: F401
+    from lorecraft.engine.scripting.vocabulary import global_vocabulary
+    from lorecraft.features.loader import discover_features
+
+    discover_features()
+    return global_vocabulary()
+
+
+def cmd_vocabulary(args: argparse.Namespace) -> int:
+    from lorecraft.engine.scripting import catalog
+
+    vocab = _load_scripting_vocabulary()
+
+    if args.out:
+        Path(args.out).write_text(catalog.render_markdown(vocab), encoding="utf-8")
+        print(
+            f"Wrote scripting vocabulary reference to {args.out} ({len(vocab)} entries)"
+        )
+        return 0
+
+    entries = vocab.all()
+    if args.category:
+        entries = [e for e in entries if e.category == args.category]
+
+    if args.json:
+        payload = {"entries": [e.to_json() for e in entries]}
+        print(json.dumps(payload, indent=2))
+        return 0
+
+    if not entries:
+        print(
+            f"No vocabulary entries{f' in category {args.category!r}' if args.category else ''}."
+        )
+        return 0
+
+    current: tuple[str, str] | None = None
+    for entry in entries:
+        key = (entry.kind.value, entry.category)
+        if key != current:
+            current = key
+            print(f"\n[{entry.kind.value}] {entry.category}")
+        params = ", ".join(p.name for p in entry.params) or "-"
+        print(f"  {entry.name:<24} {entry.subject.value:<7} ({params})  {entry.doc}")
+    for group in vocab.overlaps():
+        names = ", ".join(e.name for e in group)
+        print(f"\n⚠ overlap: {names} — all {group[0].capability}")
+    return 0
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     engine = _open_engine(args.db)
     with Session(engine) as session:
@@ -264,6 +326,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_stats = subparsers.add_parser("stats", help="Print entity counts from a DB")
     p_stats.add_argument("--db", required=True)
     p_stats.set_defaults(func=cmd_stats)
+
+    p_vocab = subparsers.add_parser(
+        "vocabulary", help="Show/generate the scripting vocabulary catalog"
+    )
+    p_vocab.add_argument("--category", help="Filter the listing to one category")
+    p_vocab.add_argument("--json", action="store_true", help="Emit the catalog as JSON")
+    p_vocab.add_argument(
+        "--out",
+        help="Write the full Markdown reference to this file (e.g. docs/scripting_api.md)",
+    )
+    p_vocab.set_defaults(func=cmd_vocabulary)
 
     return parser
 

@@ -2,6 +2,27 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.59.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A0.3 — generated vocabulary catalog + builder-guide reference.** The
+  self-describing descriptors now render to a builder-facing reference and a machine catalog:
+  - `docs/scripting_api.md` — a **generated** reference for the `when:`/`do:`/`behavior:`
+    vocabulary (grouped by kind → category, with subject, capability signature, and params).
+    Do not hand-edit; regenerate with `make scripting-docs`.
+  - `python -m lorecraft.tools.world_cli vocabulary [--category X] [--json] [--out FILE]` — the
+    authoritative catalog on the command line (also the doc generator via `--out`).
+  - A CI drift-check (`tests/unit/test_scripting_api_doc.py`) fails the build if the committed
+    doc is stale, and `AGENTS.md` gains the matching "regenerate on registration change" rule
+    (same shape as the `make ai-graph` rule).
+  - Pure Tier-1 renderer (`engine/scripting/catalog.py`); feature-importing catalog *loading*
+    lives in the CLI (composition layer), preserving the engine→features boundary.
+
+  **Where to look for scripting syntax/guidelines:** `docs/scripting_api.md` (the vocabulary
+  reference) and `docs/scripting_engine_design.md` (the design + authoring examples, §8 and
+  Appendix A).
+
 ## [0.58.0] - 2026-07-10
 
 ### Added

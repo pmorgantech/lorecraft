@@ -54,6 +54,11 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
 - Keep `docs/roadmap.md` updated with current implementation progress (it is the single source of truth for what's done and what's next — mark sprint/task checkboxes and update its "Current position" section rather than a separate status doc).
 - Keep `CHANGELOG.md` updated with meaningful, user-visible changes.
 - Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
+- After changing any scripting-vocabulary registration (a `register_spec(...)` call — a new or
+  edited condition/effect/behavior-mode descriptor), regenerate the builder-guide reference in
+  the **same commit**: `make scripting-docs` (rewrites `docs/scripting_api.md` from the live
+  catalog). A CI drift-check (`tests/unit/test_scripting_api_doc.py`) fails the build if it's
+  stale — same shape as the `make ai-graph` rule.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
 - Follow semver and bump the version with every commit, in the same commit as the change:
   each completed sprint is a minor bump (0.x.0); a bug fix or docs-only change is a patch

@@ -6,9 +6,15 @@ BASEDPYRIGHT ?= $(PYTHON) -m basedpyright
 PYTEST_WORKERS ?= auto
 PYTEST_PARALLEL_ARGS ?= -n $(PYTEST_WORKERS) --dist=loadfile
 
-.PHONY: test test-cov test-e2e test-simulation lint typecheck
+.PHONY: test test-cov test-e2e test-simulation lint typecheck scripting-docs
 ai-graph:
 	./scripts/graphify-refresh.sh
+
+# Regenerate the builder-guide scripting vocabulary reference from the live catalog.
+# Run this in the SAME commit that changes any scripting registration (register_spec) —
+# a CI drift-check (tests/unit/test_scripting_api_doc.py) fails the build if it's stale.
+scripting-docs:
+	$(PYTHON) -m lorecraft.tools.world_cli vocabulary --out docs/scripting_api.md
 
 test:
 	$(PYTEST) $(PYTEST_PARALLEL_ARGS)
