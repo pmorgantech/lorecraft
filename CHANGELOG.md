@@ -2,6 +2,21 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.62.0] - 2026-07-10
+
+### Added
+
+- **Scripting engine A1 — actor-less `WorldContext` surface (`engine/game/world_context.py`).**
+  The execution surface autonomous behavior (NPC agency, weather fronts, scheduled triggers)
+  needs to read/mutate world state, emit events, roll the seedable RNG, and narrate — with **no
+  acting player** (`docs/scripting_engine_design.md` §3.1). Realized as a structural
+  `WorldContext` protocol that `GameContext` already satisfies (a compile-time canary enforces
+  it), plus a concrete `StandaloneWorldContext` + `build_world_context()` factory for playerless
+  execution, and a `broadcast_room_async()` helper for fire-and-forget autonomous room
+  narration (the `asyncio.create_task` pattern, a no-op without a running loop). Chosen over a
+  dataclass base of the 370-edge `GameContext` god node: same "can't reach `.player`" guarantee,
+  zero churn on the command path. Gates A2–A6. 7 tests (`tests/unit/test_world_context.py`).
+
 ## [0.61.0] - 2026-07-10
 
 ### Changed
