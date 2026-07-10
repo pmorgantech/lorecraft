@@ -2,6 +2,23 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.56.1] - 2026-07-10
+
+### Added
+
+- **Scripting & behavior engine design proposal (`docs/scripting_engine_design.md`).** Design
+  for engine support of NPC/world scripting. Recommends *growing the existing* declarative
+  trigger→condition→side-effect substrate rather than adding Lua, via three Phase-A primitives:
+  an actor-less `WorldContext` (so scripts run without a player), an NPC agency loop
+  (`patrol`/`wander`/…), and declarative `on`/`when`/`do` trigger binding on rooms/items/NPCs/
+  exits. Includes a phased roadmap (A0–A6; a data-expressed behavior-tree DSL only if YAML pain
+  appears; never Lua), worked authoring examples (patrolling guard, map-giving wanderer,
+  trait/mark-reacting hunter, traveling weather fronts), a proposed condition/effect vocabulary,
+  and a vocabulary-governance section (§8): a self-describing, auto-discoverable registry with
+  capability-signature **duplication detection**, an auto-generated builder-guide scripting API
+  doc, and a one-canonical-name-per-capability rule (no aliases; existing drifted names
+  hard-renamed in place). Proposal only — not yet scheduled into `roadmap.md`.
+
 ## [0.56.0] - 2026-07-09 — Sprint 68 complete
 
 ### Added
