@@ -2,30 +2,77 @@
 
 This document describes the scaffolding and coordination strategy for parallel agent work in lorecraft.
 
+## Agent Roles
+
+Role-specific subagent definitions live in `.claude/agents/` (name, model, tool access, and
+system prompt per role). An Orchestrator fields requests and routes to the specialists below;
+specialists report back in the structured formats their own definition specifies.
+
+| Agent | File | Model | Owns |
+|---|---|---|---|
+| Orchestrator | `.claude/agents/orchestrator.md` | sonnet | Decomposition, routing, validation |
+| Research & Planning | `.claude/agents/research-planner.md` | opus | Precedent search, roadmap fit, risk flags |
+| Backend Engineer | `.claude/agents/backend-engineer.md` | opus | Engine/feature Python, tier boundaries |
+| Frontend Specialist | `.claude/agents/frontend-specialist.md` | sonnet | HTMX/Alpine/Tailwind webui |
+| Test & QA | `.claude/agents/test-qa.md` | haiku | Running suites, structured pass/fail |
+| Docs Writer | `.claude/agents/docs-writer.md` | sonnet | user_guide/admin_guide/roadmap/CHANGELOG entries |
+| Integrator | `.claude/agents/integrator.md` | haiku | Version bump, CHANGELOG dated headings, merge/tag |
+
+Only the Integrator touches version files and dated `CHANGELOG.md` headings — every other
+agent leaves those alone, consistent with the version/changelog coordination model below.
+
 ## Worktree Bootstrap
 
 Each agent spawns in an isolated `git worktree` with its own Python venv, database, and docs fixtures.
 
-### Setup (First-Time)
+### Setup (Automatic)
 
-When an agent enters a worktree, it runs:
+`.claude/hooks/session-start.sh` launches `scripts/bootstrap-worktree.sh` in the
+**background** (non-blocking) on every session start, so session start never waits
+on `pip install`. The script is idempotent — safe to fire every session:
+
+- **`.venv/`** — isolated Python environment; skipped if it already resolves
+  `import lorecraft` to this worktree (fast path once bootstrapped)
+- **`var/app.sqlite`** — empty database; **never recreated** if it already exists
+  (may hold in-progress session state)
+- **`docs/*.yaml`** — copy of world YAML fixtures from the primary tree; refreshed
+  every run (cheap, non-destructive)
+- **`.env.local`** — per-worktree config (from `.env.example`); only seeded if absent
+
+It never runs in the primary tree (which already has its own venv) — the hook
+checks that `.git` is a file, which is only true in a linked worktree.
+
+Progress is logged to `var/bootstrap.log`; current state is one word (plus a reason
+on failure) in `var/bootstrap-status`: `running`, `ready`, or `failed: <reason>`.
+
+### Manual invocation
+
+Still available as an escape hatch — to force a fixture refresh mid-session, retry
+after a failure, or bootstrap a worktree the hook hasn't reached yet:
 
 ```bash
 make bootstrap
-```
-
-or equivalently:
-
-```bash
+# or equivalently:
 ./scripts/bootstrap-worktree.sh
 ```
 
-This creates:
+### Waiting for background bootstrap
 
-- **`.venv/`** — isolated Python environment (never shared with primary tree or other worktrees)
-- **`var/app.sqlite`** — empty database for this agent's isolation
-- **`docs/*.yaml`** — copy of world YAML fixtures from primary tree (read-only snapshots)
-- **`.env.local`** — per-worktree config (from `.env.example` template)
+Don't assume the venv is ready just because a session has started — poll the status
+file, with a fallback to kicking it off yourself if the hook hasn't fired (e.g. a
+worktree that predates this setup):
+
+```bash
+for _ in $(seq 1 30); do
+  status=$(cat var/bootstrap-status 2>/dev/null || echo missing)
+  case "$status" in
+    ready) break ;;
+    failed*) echo "$status — see var/bootstrap.log"; break ;;
+    running) sleep 3 ;;
+    missing) bash scripts/bootstrap-worktree.sh >/dev/null 2>&1 & sleep 3 ;;
+  esac
+done
+```
 
 ### Verification
 
@@ -37,10 +84,14 @@ python -c "import lorecraft; print(lorecraft.__file__)"
 # Must print a path under this worktree, not under the primary tree
 ```
 
+If status is `failed` or the wait above times out, fall back to the
+`PYTHONPATH` borrow-trick below rather than blocking on a broken bootstrap.
+
 ## Testing from a Worktree
 
-After `make bootstrap`, the worktree's own `.venv` has an editable install of the
-worktree's source, so the plain Makefile targets work with no `PYTHONPATH` tricks:
+Once bootstrap is `ready` (auto-triggered, or run manually), the worktree's own
+`.venv` has an editable install of the worktree's source, so the plain Makefile
+targets work with no `PYTHONPATH` tricks:
 
 ```bash
 source .venv/bin/activate
@@ -173,7 +224,7 @@ src/lorecraft/             ← primary source tree (shared)
 
 | Target | When | Notes |
 |--------|------|-------|
-| `make bootstrap` | First-time worktree setup | Creates venv, db, .env.local, docs copy |
+| `make bootstrap` | Manual worktree setup/re-sync | Normally auto-triggered in the background by `session-start.sh`; idempotent — creates venv/db/.env.local if missing, always refreshes docs copy |
 | `make test` | Run unit tests | Uses whichever venv is active |
 | `make test-cov` | Unit tests + coverage gate | Required before PR merge |
 | `make test-e2e` | Browser e2e tests | Re-syncs docs/*.yaml from primary tree when run in a worktree |
@@ -187,10 +238,11 @@ src/lorecraft/             ← primary source tree (shared)
 # System/user: create worktree
 EnterWorktree(name="feature-scavenger-hunts")
 # → worktree on branch feature/scavenger-hunts from origin/main
+# → session-start.sh already kicked off bootstrap in the background
 
-# Agent: setup
+# Agent: wait for background bootstrap (see "Waiting for background bootstrap" above),
+# falling back to `make bootstrap` directly if var/bootstrap-status is missing/failed
 cd /path/to/worktree
-make bootstrap
 source .venv/bin/activate
 
 # Agent: verify isolation
@@ -220,10 +272,13 @@ gh pr create --title "Scavenger hunt events" --body "..."
 ## FAQ
 
 **Q: Can I share the `.venv` across worktrees?**
-A: No. An editable install (`pip install -e .`) points at exactly one tree, so a shared venv silently tests the wrong source. `make bootstrap` gives each worktree its own venv; the `PYTHONPATH` fallback exists only for un-bootstrapped worktrees.
+A: No. An editable install (`pip install -e .`) points at exactly one tree, so a shared venv silently tests the wrong source. Bootstrap (auto-triggered by `session-start.sh`, or run manually via `make bootstrap`) gives each worktree its own venv; the `PYTHONPATH` fallback exists only if bootstrap hasn't completed yet.
 
 **Q: What if docs/*.yaml change while I'm testing?**
-A: `make test-e2e` syncs from the primary tree before running. Unit tests use their copy (created at bootstrap); if you need fresh fixtures, re-run `make bootstrap`.
+A: `make test-e2e` syncs from the primary tree before running. Unit tests use whatever copy is currently in `docs/` — bootstrap refreshes it every time it runs (every session, in the background), so it's rarely more than one session stale; force an immediate refresh with `make bootstrap`.
+
+**Q: Why doesn't bootstrap just block session start until it's done?**
+A: `pip install -e ".[dev]"` can take well over a minute on a cold cache — blocking every session on that (including sessions that never touch Python) is a worse trade than a short poll-and-wait the first time an agent actually needs the venv. See "Waiting for background bootstrap" above.
 
 **Q: How do agents coordinate if they're on parallel branches?**
 A: They don't need to. Each agent:
