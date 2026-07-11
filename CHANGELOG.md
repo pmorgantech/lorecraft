@@ -4,6 +4,36 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.85.0] - 2026-07-11
+
+### Added
+
+- **Phase 2 world content — Keys & Special Items (roadmap_world.md P2.6).** Added 4 new
+  key-locked rooms across the new zones, each with a matching key item placed reachably in the
+  same change (world 100 -> 104 rooms, 185 -> 197 items):
+  - **Restricted Archive** (Cogsworth Academy) — spiral stair up from `library_main`,
+    `key_item_id: archive_vault_key`.
+  - **Foundry Strongroom** (Cogsworth Deep Foundry) — vault door down from
+    `steam_foundry_antechamber`, `key_item_id: foundry_strongroom_key`.
+  - **Bonded Store** (Port Veridian) — sealed door north from `shipyard_office`,
+    `key_item_id: bonded_store_key`.
+  - **Hollow Oak Cache** (Whisperwood) — concealed trunk door west from `old_oak_grove`,
+    `key_item_id: hollow_oak_key`.
+  - Plus a two-room puzzle (Weathered Bronze Idol + Standing-Stone Alcove via
+    `usable_with`/`combination_side_effects`), a Carved Bone Tablet, and 5 pure lore items
+    (dockmaster's diary, faded sea chart, ancient Veridian coin, foundrymaster's ledger, hermit's
+    field journal). Every new room has a return exit and is reachable from `village_square`.
+  - **Phase 3 coordination:** `archive_vault_key` is placed in the `dormitory` for now so the
+    archive is openable today; Phase 3 may relocate it to the Academy Headmaster's "restore the
+    archive" quest reward (`give_item`) — a NOTE marks the placement in `world_content/world.yaml`.
+  `world_cli validate` clean; reachability + tier-boundary green.
+
+### Notes
+
+- **Phase 2 complete.** The world now holds **197 items** across weapons, armor, utility/crafting,
+  consumables, trait-wearables, and keys/special — well past the 100+ Phase 2 target — and **8
+  key-locked exits** (4 pre-existing + 4 new), past the 5+ locked-door success criterion.
+
 ## [0.84.0] - 2026-07-11
 
 ### Added

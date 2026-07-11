@@ -367,13 +367,15 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 
 **Test:** Equip item; verify trait appears in `score` output; unequip; trait disappears. — 11 items added, one per thematically apt room across all zones. Trait names have no pre-registered `TraitDef` (out of scope for content), so they surface by name with an empty description; `world_cli validate` clean.
 
-#### P2.6 — Keys & Special Items (10+ items)
-- [ ] Gate keys, tower keys, vault keys, chest keys
-- [ ] Locked-door test: can't traverse without key; pick it up; traverse succeeds
-- [ ] Puzzle items (idols, crystals, tablets—used to solve quests)
-- [ ] Lore items (diary, map, ancient coin—picked up but no mechanical use; flavor)
+#### P2.6 — Keys & Special Items (10+ items) ✅ (2026-07-11, v0.85.0)
+- [x] Gate keys, tower keys, vault keys, chest keys (archive master-key, strongroom key, customs seal key, root-iron key — 4 new keys, each opening a new locked room)
+- [x] Locked-door test: can't traverse without key; pick it up; traverse succeeds (4 NEW locked exits added — Restricted Archive off `library_main`, Foundry Strongroom off `steam_foundry_antechamber`, Bonded Store off `shipyard_office`, Hollow Oak Cache off `old_oak_grove` — each key placed reachably before its door)
+- [x] Puzzle items (idols, crystals, tablets) (Weathered Bronze Idol + Standing-Stone Alcove via `usable_with`/`combination_side_effects`; Carved Bone Tablet)
+- [x] Lore items (diary, map, ancient coin — flavor only) (dockmaster's diary, faded sea chart, ancient Veridian coin, foundrymaster's ledger, hermit's field journal)
 
-**Test:** Use key on locked door; verify locked-door system works end-to-end.
+**Test:** Use key on locked door; verify locked-door system works end-to-end. — 4 new locked rooms (world 100→104 rooms), each with a return exit and reachable from `village_square`; `world_cli validate` clean.
+
+**Phase 3 coordination:** `archive_vault_key` is currently placed in the `dormitory` so the Restricted Archive is openable now; Phase 3 may relocate it to the Academy Headmaster's "restore the archive" quest reward (`give_item`). A NOTE in `world_content/world.yaml`'s `room_items` marks it.
 
 ---
 
@@ -581,9 +583,9 @@ Blocked Items. Don't build content that assumes this exists.
 
 - [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
-- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 185 items as of v0.84.0 (P2.1–P2.5 done); P2.6 keys/special still to come
+- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 197 items as of v0.85.0 (Phase 2 complete: P2.1–P2.6)
 - [ ] 15+ NPCs with dialogue and quests
-- [ ] 5+ locked doors requiring keys (puzzle component)
+- [x] 5+ locked doors requiring keys (puzzle component) — 8 key-locked exits as of v0.85.0 (4 pre-existing: inner_vault/good_key, sealed_vault/vault_root_key, warehouse_north/warehouse_vault_key, plus the vault-hall door; 4 new in P2.6: Restricted Archive, Foundry Strongroom, Bonded Store, Hollow Oak Cache)
 - [ ] Dark areas requiring light sources (caves, sewers)
 - [ ] At least 8 safe-rest zones
 - [ ] Thematic consistency: no "sci-fi" items in fantasy forest, etc.

@@ -604,6 +604,11 @@ rooms:
         target_room_id: academy_courtyard
       - direction: south
         target_room_id: alchemy_lab
+      # P2.6: the spiral stair up to the locked Restricted Archive
+      - direction: up
+        target_room_id: restricted_archive
+        locked: true
+        key_item_id: archive_vault_key
 
   - id: alchemy_lab
     name: Alchemy Laboratory
@@ -965,6 +970,11 @@ rooms:
     exits:
       - direction: up
         target_room_id: clockwork_tavern
+      # P2.6: the vault door down into the locked Foundry Strongroom
+      - direction: down
+        target_room_id: foundry_strongroom
+        locked: true
+        key_item_id: foundry_strongroom_key
 
   # -------------------------------------------------------------------------
   # AREA: whisperwood — Ancient Forest (Phase 1 Foundation)
@@ -1043,6 +1053,11 @@ rooms:
         target_room_id: shadow_thicket
       - direction: east
         target_room_id: twisted_hollow
+      # P2.6: a concealed door in the trunk into the locked Hollow Oak Cache
+      - direction: west
+        target_room_id: hollow_oak_cache
+        locked: true
+        key_item_id: hollow_oak_key
 
   - id: twisted_hollow
     name: Twisted Hollow
@@ -1622,6 +1637,11 @@ rooms:
     exits:
       - direction: south
         target_room_id: shipyard
+      # P2.6: the sealed door into the locked Bonded Store
+      - direction: north
+        target_room_id: bonded_store
+        locked: true
+        key_item_id: bonded_store_key
 
   - id: rope_walk
     name: The Rope Walk
@@ -2016,6 +2036,81 @@ rooms:
         target_room_id: babbling_stream
       - direction: east
         target_room_id: tide_pools
+
+  # -------------------------------------------------------------------------
+  # PHASE 2 (P2.6) — locked rooms gated by new key items
+  # -------------------------------------------------------------------------
+
+  - id: restricted_archive
+    name: Restricted Archive
+    indoor: true
+    description: >-
+      A narrow gallery of locked cases and chained folios, sealed away from the
+      public shelves below. Dust lies undisturbed in long grey drifts, and the
+      air is dry and papery and very still. Whatever the Academy keeps up here,
+      it does not mean for casual eyes to read it. A single shuttered window
+      admits one pale bar of light across the reading desk.
+    map_x: 16
+    map_y: 20
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: down
+        target_room_id: library_main
+
+  - id: foundry_strongroom
+    name: Foundry Strongroom
+    indoor: true
+    description: >-
+      Beyond the heavy vault door the roar of the furnaces drops to a muffled
+      rumble. Racks of finished ingots gleam dully in the strongroom's iron
+      light, and a great ledger-desk stands chained to the floor. This is where
+      the Deep Foundry keeps what it deems too valuable to leave on the floor —
+      or too dangerous.
+    map_x: 16
+    map_y: 19
+    map_z: -2
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: up
+        target_room_id: steam_foundry_antechamber
+
+  - id: bonded_store
+    name: Bonded Store
+    indoor: true
+    description: >-
+      A locked customs store where dutiable cargo waits under the harbormaster's
+      seal, stacked in numbered lots along a single dim aisle. The air is close
+      with the smell of tar, spice, and damp sacking. A tally-board on the wall
+      lists consignments in a cramped, careful hand, half of them scored through.
+    map_x: 35
+    map_y: 32
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: shipyard_office
+
+  - id: hollow_oak_cache
+    name: Hollow Oak Cache
+    description: >-
+      The vast, hollow trunk of a long-dead oak opens into a hidden chamber
+      barely tall enough to stand in, its walls smooth heartwood worn by patient
+      hands. Someone made a refuge of it once — a shelf of root, a ring of old
+      candle-stubs, a sense of secrets kept close. Grey daylight filters green
+      through a crack far overhead.
+    map_x: 29
+    map_y: 32
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    indoor: true
+    exits:
+      - direction: east
+        target_room_id: old_oak_grove
 
 # ---------------------------------------------------------------------------
 # Items
@@ -4301,6 +4396,158 @@ items:
       - type: warmth_bonus
         amount: 2
 
+  # --- P2.6 Keys (each opens a new locked exit added this pass) ---
+  - id: archive_vault_key
+    name: Archive Master-Key
+    description: >-
+      A long, elaborately warded key of dark iron, its bow cast as the Academy's
+      open-book sigil. It opens the spiral stair to the Restricted Archive above
+      the library — a key the Headmaster does not lend lightly.
+    takeable: true
+    tradeable: false
+    weight: 0.2
+    value: 0
+
+  - id: foundry_strongroom_key
+    name: Strongroom Key
+    description: >-
+      A blunt, heavy key of blackened steel, its teeth cut deep and its shaft
+      warm from the foundry air. It throws the great bolt on the strongroom's
+      vault door, down past the furnaces where the finished metal is kept.
+    takeable: true
+    tradeable: false
+    weight: 0.3
+    value: 0
+
+  - id: bonded_store_key
+    name: Customs Seal Key
+    description: >-
+      A stubby brass key threaded onto a loop of red-waxed cord and stamped with
+      the harbormaster's mark. It breaks the seal on the bonded store where
+      dutiable cargo waits, and losing it is a matter for the magistrate.
+    takeable: true
+    tradeable: false
+    weight: 0.1
+    value: 0
+
+  - id: hollow_oak_key
+    name: Root-Iron Key
+    description: >-
+      A small, curiously soft key that seems grown rather than forged, its metal
+      threaded through with a living green root. It fits the concealed door in
+      the old dead oak, where the forest keeps what it does not wish found.
+    takeable: true
+    tradeable: false
+    weight: 0.1
+    value: 0
+
+  # --- P2.6 Puzzle items ---
+  - id: bronze_idol
+    name: Weathered Bronze Idol
+    description: >-
+      A palm-sized idol of green-patinaed bronze, worn to a suggestion of a
+      hooded figure with its hands cupped before it. It is heavier than its size
+      admits, and its empty cupped hands seem to be waiting for something — or to
+      be set somewhere they belong.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 30
+    quality: fine
+    usable_with:
+      - idol_alcove
+    combination_side_effects:
+      idol_alcove:
+        set_flags: [bronze_idol_placed]
+        narrate_room: >-
+          The idol settles into the alcove with a soft grind of stone on stone,
+          and for a moment the standing stones seem to lean fractionally inward,
+          as if in acknowledgement.
+
+  - id: idol_alcove
+    name: Standing-Stone Alcove
+    description: >-
+      A niche cut into the base of the tallest standing stone, empty but shaped
+      precisely to cradle something small and heavy. The worn stone around it is
+      polished by generations of hands, and a faint spiral is incised above the
+      hollow.
+    takeable: false
+    tradeable: false
+    weight: 0.0
+
+  - id: carved_bone_tablet
+    name: Carved Bone Tablet
+    description: >-
+      A flat oblong of yellowed bone incised on both faces with dense, spiralling
+      script, some of it worn shallow by handling. No scholar in Cogsworth has
+      read it, though several have gone grey trying. It hums, very faintly,
+      against the palm.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 35
+    quality: fine
+
+  # --- P2.6 Lore items (pure flavor; no mechanical use) ---
+  - id: dockmasters_diary
+    name: Dockmaster's Diary
+    description: >-
+      A salt-swollen little book crammed with tide tables, cargo tallies, and the
+      occasional bitter aside about a captain who never paid. The last dozen pages
+      are blank, and the second-to-last simply reads: "gone out on the ebb."
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 10
+
+  - id: faded_sea_chart
+    name: Faded Sea Chart
+    description: >-
+      A rolled chart of the coast, its ink browned and its creases worn to holes.
+      Soundings and shoals are marked in a careful hand, and one cove far to the
+      south is ringed twice in red, with no explanation given.
+    takeable: true
+    tradeable: true
+    weight: 0.2
+    value: 15
+
+  - id: ancient_veridian_coin
+    name: Ancient Veridian Coin
+    description: >-
+      A thick, off-round coin of tarnished silver, stamped with a ship under full
+      sail and a legend in a script the port no longer uses. It predates the
+      current harbor by centuries, and turns up now and then in the tide-wrack,
+      bright and strange.
+    takeable: true
+    tradeable: true
+    weight: 0.1
+    value: 25
+    quality: fine
+
+  - id: foundrymasters_ledger
+    name: Foundrymaster's Ledger
+    description: >-
+      A soot-smudged ledger bound in scorched leather, its columns recording
+      pours, alloys, and tempers in a cramped, exacting hand. Every few pages a
+      note is struck through hard enough to tear the paper, beside a single word:
+      "flawed."
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 12
+
+  - id: hermits_field_journal
+    name: Hermit's Field Journal
+    description: >-
+      A twine-bound journal swollen with pressed leaves, charcoal sketches of
+      birds, and long observations on the forest's moods. The final entries grow
+      stranger — notes on lights among the stones, and a drawing of cupped bronze
+      hands.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 10
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -4850,6 +5097,54 @@ room_items:
     quantity: 1
   - room_id: steam_foundry_antechamber
     item_id: forgemasters_bracer
+    quantity: 1
+
+  # --- P2.6 Keys (each placed reachably, before its locked door) ---
+  # NOTE: archive_vault_key is placed in the dormitory for now so the Restricted
+  # Archive is openable today. Phase 3 may relocate it to the Academy
+  # Headmaster's "restore the archive" quest reward (give_item) — coordinate
+  # there before removing this placement.
+  - room_id: dormitory
+    item_id: archive_vault_key
+    quantity: 1
+  - room_id: steam_foundry_antechamber
+    item_id: foundry_strongroom_key
+    quantity: 1
+  - room_id: shipyard_office
+    item_id: bonded_store_key
+    quantity: 1
+  - room_id: twisted_hollow
+    item_id: hollow_oak_key
+    quantity: 1
+
+  # --- P2.6 Puzzle items ---
+  # bronze_idol waits inside the locked Hollow Oak Cache; the alcove it fits is
+  # in the monolith grove (use bronze_idol with idol_alcove -> sets a flag).
+  - room_id: hollow_oak_cache
+    item_id: bronze_idol
+    quantity: 1
+  - room_id: monolith_grove
+    item_id: idol_alcove
+    quantity: 1
+  - room_id: foundry_strongroom
+    item_id: carved_bone_tablet
+    quantity: 1
+
+  # --- P2.6 Lore items (flavor only) ---
+  - room_id: bonded_store
+    item_id: dockmasters_diary
+    quantity: 1
+  - room_id: lighthouse
+    item_id: faded_sea_chart
+    quantity: 1
+  - room_id: tide_pools
+    item_id: ancient_veridian_coin
+    quantity: 1
+  - room_id: foundry_strongroom
+    item_id: foundrymasters_ledger
+    quantity: 1
+  - room_id: hollow_oak_cache
+    item_id: hermits_field_journal
     quantity: 1
 
 # ---------------------------------------------------------------------------
