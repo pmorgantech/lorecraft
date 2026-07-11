@@ -49,6 +49,21 @@ issues:
   - player-report
   assigned_to: ''
   links: []
+- id: issue-39d3fcb8
+  type: feedback
+  title: Quest completion should reward XP
+  description: Quest should reward XP when completed.
+  created_by: player-1
+  created_at: '2026-07-11T12:49:51.256731Z'
+  updated_at: '2026-07-11T12:49:51.256731Z'
+  status: open
+  priority: normal
+  component: player-report
+  tags:
+  - player-report
+  - feedback
+  assigned_to: ''
+  links: []
 - id: issue-4d2dd39a
   type: bug
   title: test issue
@@ -91,6 +106,19 @@ issues:
   tags:
   - player-report
   - bug
+  assigned_to: ''
+  links: []
+- id: issue-58fac1f2
+  type: todo
+  title: Admin panel World navigation/filtering options
+  description: ''
+  created_by: admin
+  created_at: '2026-07-11T12:55:23.209952Z'
+  updated_at: '2026-07-11T12:55:23.209952Z'
+  status: open
+  priority: normal
+  component: webui/admin
+  tags: []
   assigned_to: ''
   links: []
 - id: issue-7502f412
@@ -145,6 +173,19 @@ issues:
   component: player-report
   tags:
   - player-report
+  assigned_to: ''
+  links: []
+- id: issue-d4569245
+  type: todo
+  title: Issues editing - change priority, edit desc
+  description: ''
+  created_by: admin
+  created_at: '2026-07-11T12:56:07.928835Z'
+  updated_at: '2026-07-11T12:56:07.928835Z'
+  status: open
+  priority: high
+  component: webui/admin
+  tags: []
   assigned_to: ''
   links: []
 - id: issue-fd64ee3e

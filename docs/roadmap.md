@@ -11,7 +11,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-10, v0.78.0)
+## Where things stand (2026-07-11, v0.90.2)
 
 **Everything through Sprint 70 is complete** and merged to main.
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
@@ -24,10 +24,16 @@ addressing, and the flag-condition canonicalization to `actor_has_flag`/`actor_l
 **Sprint 70** social emotes (`wave`, `point`) and the `quests` command have all shipped. Detail in
 [`roadmap_completed.md`](roadmap_completed.md) and [`../CHANGELOG.md`](../CHANGELOG.md).
 
-**Next: Sprint 71** — backlog items or new features (TBD). *(Out-of-band, v0.90.0: the
-`consumables` feature — `eat`/`drink`/`quaff` with one-shot `heal`/`apply_effect` item
-descriptors — closed the "no consumption mechanic" gap that Phase 2.4 world content had
-been blocked on; see `roadmap_world.md` P2.4.)*
+*(Out-of-band, v0.90.0: the `consumables` feature — `eat`/`drink`/`quaff` with one-shot
+`heal`/`apply_effect` item descriptors — closed the "no consumption mechanic" gap that Phase 2.4
+world content had been blocked on; see `roadmap_world.md` P2.4. Also out-of-band, v0.90.1–0.90.2:
+a world-content polish pass — P4.1 descriptive-writing upgrade of six flat Cogsworth rooms plus an
+NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and safe-rest audits,
+all of which found the existing 104-room world already correct. See `roadmap_world.md` and
+[`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
+
+**Next: Sprint 71** — backlog cleanup: admin UI + player-facing bugs. See
+[Sprint 71](#sprint-71--backlog-cleanup-admin-ui--player-facing-bugs) below.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -55,6 +61,21 @@ as **`wear`/`wield`** (equip) and **`remove`/`unwield`** (unequip) — no new wo
 |---|------|--------|
 | 70.1 | **Social emotes `wave` / `point`.** `wave [at <target>]` and `point at <target>` broadcast to the room; targets resolve to a co-located NPC or player by name, otherwise the raw text (so `point at sign` / `wave at the sky` work). SOCIAL-scoped. | [x] v0.78.0 — `commands/social.py`, `tests/unit/test_social_emotes_and_quests_command.py`. |
 | 70.2 | **Player `quests` command.** `quests` (alias `quest`) lists the player's quests with status; a multi-stage quest shows `stage N/M` and the current stage's objective; completed/failed are marked. Read-only (progression stays event-driven). | [x] v0.78.0 — `features/quests/commands.py` wired via `register_all_commands` (gated on the quests feature). |
+
+---
+
+## Sprint 71 — Backlog cleanup: admin UI + player-facing bugs
+
+**Goal:** small backlog items surfaced from admin console and player-facing use, mostly UI/presentation
+work, with one item blocked on a product decision.
+
+| # | Task | Status |
+|---|------|--------|
+| 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [ ] not started — waiting on frontend design |
+| 71.2 | **Admin World panel: zone + name filter.** Filter room list by zone dropdown (Cogsworth / Whisperwood / Port Veridian / Ashmoore) plus a dynamic name substring search as the admin types. | [ ] not started — frontend shaping the design; will flag if a new `/admin/world` query param is needed |
+| 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [ ] not started — waiting on rendering.py investigation |
+| 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [ ] not started |
+| 71.5 | **Quest XP rewards.** | [ ] **BLOCKED** — needs a product decision first: does Lorecraft have any leveling/XP progression system at all? If no, this may close as works-as-designed; if yes, it needs its own dedicated XP-system sprint before design work here can start. |
 
 ---
 
@@ -106,7 +127,8 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   itself (v0.57–0.70, branch `scripting_engine`) predates this ledger; it is tracked in
   `docs/scripting_engine_design.md`.
 - **Used (all complete):** 70 (social emotes & QoL commands — 70.1 emotes, 70.2 `quests` command, v0.78.0).
-- **Next new sprint: 71.** Don't recycle a number that appears here or in
+- **Used:** 71 (backlog cleanup: admin UI + player-facing bugs — 71.1–71.5, in progress).
+- **Next new sprint: 72.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
