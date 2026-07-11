@@ -20,6 +20,7 @@ Usage: ./start.sh [OPTIONS]
 
 Options:
   --init-dbs-if-missing   Create missing game/audit seed DBs before launch.
+  --no-init-dbs           Do not create missing game/audit seed DBs before launch.
   --init-dbs-only         Create missing game/audit seed DBs, then exit.
   --world-dir PATH        Directory containing world.yaml (default: world_content).
   --world PATH            World YAML file or directory used for game DB import.
@@ -38,7 +39,7 @@ repo_path() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    ---no-init-dbs)
+    --no-init-dbs)
       INIT_DBS_IF_MISSING=0
       shift
       ;;
@@ -152,8 +153,18 @@ if [[ ! -f "${SEED_GAME_DB}" || ! -f "${SEED_AUDIT_DB}" ]]; then
   exit 1
 fi
 
-cp "${SEED_GAME_DB}" "${RUNTIME_GAME_DB}"
-cp "${SEED_AUDIT_DB}" "${RUNTIME_AUDIT_DB}"
+reset_runtime_db() {
+  local seed_db="$1"
+  local runtime_db="$2"
+
+  # SQLite WAL mode leaves sidecar files beside the DB. A stale runtime WAL can
+  # be replayed against a freshly copied DB and make startup report corruption.
+  rm -f "${runtime_db}" "${runtime_db}-wal" "${runtime_db}-shm"
+  cp "${seed_db}" "${runtime_db}"
+}
+
+reset_runtime_db "${SEED_GAME_DB}" "${RUNTIME_GAME_DB}"
+reset_runtime_db "${SEED_AUDIT_DB}" "${RUNTIME_AUDIT_DB}"
 
 # --ws websockets-sansio: modern websockets API. uvicorn's default (auto) uses
 # the legacy API that websockets>=14 deprecates and will remove, which would
