@@ -252,6 +252,7 @@ regions). Tests: `tests/unit/test_world_loader.py`, `test_economy.py`, `test_npc
 | Sounds, GPT descriptions, online world-building | Wishlist |
 | ~~Player-facing bug reports~~ | **Done** — `report` one-liner (v0.12.0) + guided category→title→detail wizard (Sprint 33.1). Only the `report player <name>` moderation branch + an `Issue.target_player_id` field remain — see [`wishlist.md`](wishlist.md) → *Issue-report wizard*. |
 | Database inspector / state editor | Admin tool for advanced troubleshooting |
+| Admin UI: restart engine + optional DB wipe/reload from YAML | Added 2026-07-11. Lets an admin restart the running engine process from the browser and, optionally, wipe + reseed the database from `world_content/world.yaml` (reusing the `scripts/import_world.py --fresh` path) without shelling in. Motivation: testing updates pushed to `main` end-to-end. Needs a process-supervision hook (however the app process is currently managed/restarted — see `start.sh`) plus an admin-triggered wrapper around the existing reseed script; scope the restart mechanism first since it's the riskier half (killing/respawning the serving process from within a request handled by that same process). |
 | Multiplayer trade/transit test pass | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Multiplayer sim-test coverage* (was Sprint 65) |
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
 
