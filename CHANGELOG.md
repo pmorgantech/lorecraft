@@ -4,6 +4,21 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.82.0] - 2026-07-11
+
+### Added
+
+- **Phase 2 world content — Utility & Crafting (roadmap_world.md P2.3).** Added 33 utility and
+  crafting items (world 121 -> 154): tools (cross-peen hammer, iron pickaxe, shovel, pry bar,
+  brace drill, tin snips, fine jeweler's lockpick); light sources with `light: 1` (pitch torch,
+  brass hand lantern, beeswax candle, Whisperwood glowcap lantern, pocket glowstone); containers
+  with a `capacity` (leather backpack, canvas satchel, belt pouch, forager's basket); and crafting
+  materials (Cogsworth iron/steel/copper/brass ingots, nails, clockwork springs, assorted gears,
+  chain; Whisperwood oak plank, kindling, flax thread, raw crystal, beeswax, tanned hide, sinew
+  bowstring; Port tarred twine, mooring chain). Metals concentrate in the foundry antechamber,
+  wood/fiber/crystal in Whisperwood, cordage at the port. Placed via `room_items` and stocked into
+  Thorne's, Dealer Vex's, and Calloway's shops. `world_cli validate` clean; full suite green.
+
 ## [0.81.0] - 2026-07-11
 
 ### Added

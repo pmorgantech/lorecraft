@@ -337,15 +337,15 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 
 **Test:** Equip multiple armor pieces; inventory weight; wear/unequip. — 21 armor pieces added across `torso`/`head`/`hands`/`legs`/`feet`/`back`/`waist` slots; `world_cli validate` clean.
 
-#### P2.3 — Utility & Crafting (30+ items)
-- [ ] Tools: hammer, lockpick, wrench, shovel, pickaxe
-- [ ] Light sources: torch, lantern, candle, glow-stone (luminescent crystal)
-- [ ] Containers: backpack, pouch, satchel (weight/volume modifiers)
-- [ ] Crafting materials: wood, metal ingots, herbs, crystals, thread
-- [ ] Rope, chain, nails, springs, gears
-- [ ] Each item: rich lore (e.g., "Dwarven wrench—balanced for precision work")
+#### P2.3 — Utility & Crafting (30+ items) ✅ (2026-07-11, v0.82.0)
+- [x] Tools: hammer, lockpick, wrench, shovel, pickaxe (cross-peen hammer, jeweler's lockpick, iron pickaxe, shovel, pry bar, brace drill, tin snips — `mechanical_wrench` already existed)
+- [x] Light sources: torch, lantern, candle, glow-stone (pitch torch, brass hand lantern, beeswax candle, Whisperwood glowcap lantern, pocket glowstone — all `light: 1`)
+- [x] Containers: backpack, pouch, satchel (leather backpack `capacity: 30`, canvas satchel `15`, belt pouch `5`, forager's basket `12`)
+- [x] Crafting materials: wood, metal ingots, herbs, crystals, thread (iron/steel/copper/brass ingots, oak plank, raw crystal shard, flax thread, tanned hide, beeswax)
+- [x] Rope, chain, nails, springs, gears (tarred twine, mooring chain, iron chain, nail pouch, clockwork springs, assorted gears, sinew bowstring, kindling)
+- [x] Each item: rich lore, `weight`, `value`, thematic zone placement
 
-**Test:** Pick up multiple utility items; carry tests; light sources in dark rooms.
+**Test:** Pick up multiple utility items; carry tests; light sources in dark rooms. — 33 items added; metals in the Cogsworth foundry, wood/fiber/crystal in Whisperwood, cordage at Port; stocked into Thorne/Vex/Calloway. `world_cli validate` clean.
 
 #### P2.4 — Consumables & Potions (15+ items)
 - [ ] Healing potions (minor, standard, major)
@@ -580,7 +580,7 @@ Blocked Items. Don't build content that assumes this exists.
 
 - [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
-- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 121 items as of v0.81.0 (P2.1 weapons + P2.2 armor); further Phase 2 batches (utility/consumables/trait-wearables/keys) continue to grow it
+- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 154 items as of v0.82.0 (P2.1 weapons + P2.2 armor + P2.3 utility/crafting); further Phase 2 batches (consumables/trait-wearables/keys) continue to grow it
 - [ ] 15+ NPCs with dialogue and quests
 - [ ] 5+ locked doors requiring keys (puzzle component)
 - [ ] Dark areas requiring light sources (caves, sewers)

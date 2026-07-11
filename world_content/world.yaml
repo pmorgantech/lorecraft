@@ -3421,6 +3421,422 @@ items:
       - type: warmth_bonus
         amount: 2
 
+  # --- P2.3 Tools (Cogsworth smithy & foundry) ---
+  - id: blacksmith_hammer
+    name: Cross-Peen Hammer
+    description: >-
+      A blacksmith's hammer with a flat face and a wedge-shaped peen, its ash
+      handle burnished dark by a working grip. The head rings a clean, true note
+      when you tap it against iron — the sound of a tool that has never once
+      slipped.
+    takeable: true
+    tradeable: true
+    weight: 3.0
+    value: 20
+    category: utility
+
+  - id: iron_pickaxe
+    name: Iron Pickaxe
+    description: >-
+      A heavy pickaxe with one pointed end for breaking stone and one chisel end
+      for prying it loose. The haft is banded with iron where the head seats, and
+      the whole thing smells of rock dust and old sweat.
+    takeable: true
+    tradeable: true
+    weight: 4.0
+    value: 25
+    category: utility
+
+  - id: steel_shovel
+    name: Long-Handled Shovel
+    description: >-
+      A stout digging shovel with a rolled steel blade and a worn ash shaft. The
+      edge has been filed sharp on one side — the mark of someone who has cut a
+      lot of roots and expects to cut a lot more.
+    takeable: true
+    tradeable: true
+    weight: 3.5
+    value: 18
+    category: utility
+
+  - id: pry_bar
+    name: Iron Pry Bar
+    description: >-
+      A four-foot bar of forged iron, flattened and split at one end into a
+      goose-neck claw. It opens crates, lifts flagstones, and settles the
+      occasional stubborn door that would rather stay shut.
+    takeable: true
+    tradeable: true
+    weight: 2.5
+    value: 15
+    category: utility
+
+  - id: hand_drill_brace
+    name: Brace-and-Bit Hand Drill
+    description: >-
+      A wooden brace with a sweep handle and a chuck holding a spoon bit, driven
+      by the slow, patient crank of a craftsman's arm. It bores a clean hole
+      through oak or brass with no need for steam or spark.
+    takeable: true
+    tradeable: true
+    weight: 2.0
+    value: 22
+    category: utility
+
+  - id: tin_snips
+    name: Tin Snips
+    description: >-
+      A pair of stout, spring-loaded shears with short, hardened jaws, made for
+      cutting sheet metal into curves and corners. The handles are wrapped in
+      cord where the smith's own grip wore the paint away.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 14
+    category: utility
+
+  - id: jewelers_lockpick
+    name: Jeweler's Fine Lockpick
+    description: >-
+      A single, exquisitely thin pick with a turned bone handle, kept in a slip
+      of oiled felt. Where a full set brute-forces a lock, this one tool — in the
+      right fingers — coaxes it. Cogsworth's finest locksmith made only a few.
+    takeable: true
+    tradeable: true
+    weight: 0.2
+    value: 35
+    category: utility
+    quality: fine
+
+  # --- P2.3 Light sources ---
+  - id: pitch_torch
+    name: Pitch-Soaked Torch
+    description: >-
+      A length of hardwood bound at one end with rags soaked in black pitch. Lit,
+      it throws a smoky, guttering circle of orange light — enough to walk a dark
+      tunnel by, if you don't mind the soot and the smell.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 5
+    category: utility
+    light: 1
+
+  - id: brass_carry_lantern
+    name: Brass Hand Lantern
+    description: >-
+      A compact brass lantern with a ring handle and four little panes of soot-
+      smudged glass, made to hang from a belt or a nail. A twist of the base
+      raises the wick; it burns clean and steady where a torch only smokes.
+    takeable: true
+    tradeable: true
+    weight: 2.0
+    value: 28
+    category: utility
+    light: 1
+    quality: fine
+
+  - id: beeswax_candle
+    name: Beeswax Candle
+    description: >-
+      A slim, honey-colored candle of pure beeswax, far sweeter-smelling than
+      the tallow sort and slow to gutter. It sheds a small, warm light and a
+      faint scent of summer hives.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 3
+    category: utility
+    light: 1
+
+  - id: glowcap_lantern
+    name: Glowcap Lantern
+    description: >-
+      A forester's lantern with no flame at all — just a knot of living
+      luminescent fungus sealed behind glass, feeding on a pinch of damp moss.
+      It glows a cool, greenish light that never once threatens to set the woods
+      alight.
+    takeable: true
+    tradeable: true
+    weight: 1.5
+    value: 30
+    category: utility
+    light: 1
+    quality: fine
+
+  - id: pocket_glowstone
+    name: Pocket Glowstone
+    description: >-
+      A river-smoothed pebble that drank the light of the crystal caves and never
+      gave it back, shedding a faint blue glimmer from within. Cupped in the hand
+      on a black night, it is just bright enough to read a map by.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 20
+    category: utility
+    light: 1
+
+  # --- P2.3 Containers ---
+  - id: leather_backpack
+    name: Leather Backpack
+    description: >-
+      A roomy pack of thick harness leather with two buckled straps and a stiff
+      base that keeps its shape. It smells of neatsfoot oil and holds a
+      surprising amount without ever quite feeling full.
+    takeable: true
+    tradeable: true
+    weight: 2.0
+    value: 25
+    category: utility
+    capacity: 30.0
+
+  - id: canvas_satchel
+    name: Canvas Satchel
+    description: >-
+      A flat shoulder-satchel of waxed canvas with a single brass buckle, sized
+      for papers, tools, and a day's rations. The strap has been shortened and
+      re-stitched by at least three different hands.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 15
+    category: utility
+    capacity: 15.0
+
+  - id: belt_pouch
+    name: Drawstring Belt Pouch
+    description: >-
+      A small leather pouch that cinches shut on a waxed cord and loops onto a
+      belt. It carries coins, flint, and the small nameless oddments a traveler
+      never wants to be without.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 8
+    category: utility
+    capacity: 5.0
+
+  - id: foragers_basket
+    name: Forager's Basket
+    description: >-
+      A shallow basket woven from split willow, its handle bound with strips of
+      soft bark. Meant for herbs and mushrooms carried loose so they don't
+      crush, it still holds the green smell of the last gathering.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 10
+    category: utility
+    capacity: 12.0
+
+  # --- P2.3 Crafting materials: Cogsworth foundry (metal & mechanism) ---
+  - id: iron_ingot
+    name: Iron Ingot
+    description: >-
+      A rough grey bar of pig iron, still bearing the sand-mold's pebbled skin
+      and a foundry stamp on one flat. Heavy, plain, and the raw beginning of a
+      hundred more finished things.
+    takeable: true
+    tradeable: true
+    weight: 4.0
+    value: 12
+    category: trade_good
+
+  - id: steel_ingot
+    name: Steel Ingot
+    description: >-
+      A dense, blue-grey billet of crucible steel, its surface ground bright
+      enough to catch a smith's approving eye. It costs twice what iron does and
+      is worth every extra coin under the hammer.
+    takeable: true
+    tradeable: true
+    weight: 4.0
+    value: 20
+    category: trade_good
+
+  - id: copper_ingot
+    name: Copper Ingot
+    description: >-
+      A warm, ruddy bar of refined copper, soft enough to dent with a thumbnail.
+      It draws into wire, beats into sheet, and alloys into brass — the most
+      willing metal on the foundry floor.
+    takeable: true
+    tradeable: true
+    weight: 3.5
+    value: 10
+    category: trade_good
+
+  - id: brass_ingot
+    name: Brass Ingot
+    description: >-
+      A bright golden bar of cast brass, cool and heavy in the hand. Cogsworth
+      runs on the stuff — gears, fittings, lantern frames — and the foundry
+      pours it by the crate.
+    takeable: true
+    tradeable: true
+    weight: 3.5
+    value: 14
+    category: trade_good
+
+  - id: iron_nails_pouch
+    name: Pouch of Iron Nails
+    description: >-
+      A canvas pouch heavy with hand-cut iron nails in a jumble of sizes, from
+      tacks to spikes. A few are bent, most are true, and all of them will
+      outlast whatever they're driven into.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 4
+    category: trade_good
+
+  - id: clockwork_springs
+    name: Bundle of Clockwork Springs
+    description: >-
+      A small bundle of coiled and leaf springs in tempered steel, each one wound
+      with a maker's precise tension. Handle them carelessly and one will leap
+      from your fingers and be lost forever under the nearest bench.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 8
+    category: trade_good
+
+  - id: assorted_gears
+    name: Tin of Assorted Gears
+    description: >-
+      A dented tin rattling with brass and steel gears of every tooth-count,
+      sorted by no logic anyone alive can reconstruct. Somewhere in here is
+      exactly the cog you need, and finding it is half a tinker's craft.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 10
+    category: trade_good
+
+  - id: iron_chain_length
+    name: Length of Iron Chain
+    description: >-
+      A coil of stout iron chain, each link forge-welded and blacked against
+      rust. Good for hoisting, hauling, or binding — heavy work that a rope
+      would only fray and fail at.
+    takeable: true
+    tradeable: true
+    weight: 3.0
+    value: 9
+    category: trade_good
+
+  # --- P2.3 Crafting materials: Whisperwood (wood, fiber, crystal) ---
+  - id: seasoned_oak_plank
+    name: Seasoned Oak Plank
+    description: >-
+      A hand-planed board of well-dried oak, close-grained and honey-colored,
+      free of knots down its whole length. A woodworker would pay fairly for it;
+      a fire would be a crime against it.
+    takeable: true
+    tradeable: true
+    weight: 3.0
+    value: 6
+    category: trade_good
+
+  - id: bundle_of_kindling
+    name: Bundle of Kindling
+    description: >-
+      A faggot of dry twigs and split pine bound with a twist of bark, the sort
+      gathered by the armful before a cold night. It smells of resin and catches
+      a spark on the first try.
+    takeable: true
+    tradeable: true
+    weight: 2.0
+    value: 2
+    category: trade_good
+
+  - id: spool_of_flax_thread
+    name: Spool of Flax Thread
+    description: >-
+      A wooden spool wound with strong, waxed flaxen thread, pale gold and faintly
+      shining. It mends a torn seam, whips a rope's end, or lashes a fletching —
+      a small thing no traveler regrets carrying.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 5
+    category: trade_good
+
+  - id: raw_crystal_shard
+    name: Raw Crystal Shard
+    description: >-
+      A rough, unpolished shard of blue-green cavern crystal, cold and faintly
+      translucent, with a dull inner spark that has not yet been woken. Cut and
+      set, the crystal-cutters say, it might glow like the caverns themselves.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 15
+    category: trade_good
+
+  - id: wild_beeswax
+    name: Cake of Wild Beeswax
+    description: >-
+      A knobbled cake of forest beeswax, gold shading to brown, still faintly
+      fragrant with honey and smoke. Chandlers render it for candles and
+      woodworkers rub it into a finish; either way it is slow, sweet gold.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 4
+    category: trade_good
+
+  - id: tanned_hide
+    name: Tanned Deer Hide
+    description: >-
+      A supple, cream-colored hide, scraped and bark-tanned to a soft nap. Folded
+      and tied with a thong, it waits to become gloves, a jerkin, or the cover of
+      some book not yet written.
+    takeable: true
+    tradeable: true
+    weight: 2.0
+    value: 12
+    category: trade_good
+
+  - id: sinew_bowstring
+    name: Coiled Sinew Bowstring
+    description: >-
+      A bowstring twisted from dried and pounded deer sinew, waxed and looped at
+      both ends, coiled tight in a scrap of leather. It draws hard and true and
+      shrugs off the damp far better than any gut string.
+    takeable: true
+    tradeable: true
+    weight: 0.1
+    value: 6
+    category: trade_good
+
+  # --- P2.3 Crafting materials: Port Veridian (cordage & salvage) ---
+  - id: coil_of_tarred_twine
+    name: Coil of Tarred Twine
+    description: >-
+      A tidy coil of thin, tarred marline, black and sticky and impossibly
+      strong for its width. Sailors whip it round rope-ends and seize blocks
+      with it; ashore, it binds anything that must not come loose.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 4
+    category: trade_good
+
+  - id: iron_boat_chain
+    name: Heavy Mooring Chain
+    description: >-
+      A short run of massive galvanized chain, each link as thick as a thumb and
+      crusted with old salt. It once held a hull against a running tide and would
+      gladly do so again, given a bollard and a strong back.
+    takeable: true
+    tradeable: true
+    weight: 5.0
+    value: 12
+    category: trade_good
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -3767,6 +4183,105 @@ room_items:
     quantity: 1
   - room_id: net_mending_yard
     item_id: storm_hood
+    quantity: 1
+
+  # --- P2.3 Cogsworth: tools, light, metal stock ---
+  - room_id: smithy_district
+    item_id: blacksmith_hammer
+    quantity: 1
+  - room_id: smithy_district
+    item_id: tin_snips
+    quantity: 1
+  - room_id: smithy_district
+    item_id: iron_nails_pouch
+    quantity: 2
+  - room_id: smithy_district
+    item_id: iron_chain_length
+    quantity: 1
+  - room_id: steam_foundry_antechamber
+    item_id: iron_pickaxe
+    quantity: 1
+  - room_id: steam_foundry_antechamber
+    item_id: pry_bar
+    quantity: 1
+  - room_id: steam_foundry_antechamber
+    item_id: iron_ingot
+    quantity: 4
+  - room_id: steam_foundry_antechamber
+    item_id: steel_ingot
+    quantity: 2
+  - room_id: steam_foundry_antechamber
+    item_id: copper_ingot
+    quantity: 2
+  - room_id: steam_foundry_antechamber
+    item_id: brass_ingot
+    quantity: 2
+  - room_id: clockwork_tavern
+    item_id: brass_carry_lantern
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: hand_drill_brace
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: beeswax_candle
+    quantity: 3
+  - room_id: curiosity_shop
+    item_id: clockwork_springs
+    quantity: 2
+  - room_id: curiosity_shop
+    item_id: assorted_gears
+    quantity: 1
+  - room_id: sewer_junction_main
+    item_id: pitch_torch
+    quantity: 2
+  - room_id: market_row_west
+    item_id: canvas_satchel
+    quantity: 1
+  - room_id: grand_plaza
+    item_id: belt_pouch
+    quantity: 2
+  - room_id: market_row_east
+    item_id: steel_shovel
+    quantity: 1
+
+  # --- P2.3 Whisperwood: wood, fiber, crystal, forest light ---
+  - room_id: old_lumber_mill
+    item_id: seasoned_oak_plank
+    quantity: 2
+  - room_id: old_lumber_mill
+    item_id: bundle_of_kindling
+    quantity: 3
+  - room_id: hunter_lodge
+    item_id: glowcap_lantern
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: foragers_basket
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: spool_of_flax_thread
+    quantity: 2
+  - room_id: hunter_lodge
+    item_id: sinew_bowstring
+    quantity: 2
+  - room_id: hunter_lodge
+    item_id: tanned_hide
+    quantity: 1
+  - room_id: crystal_cavern
+    item_id: raw_crystal_shard
+    quantity: 3
+  - room_id: crystal_cavern
+    item_id: pocket_glowstone
+    quantity: 1
+  - room_id: mushroom_circle
+    item_id: wild_beeswax
+    quantity: 1
+
+  # --- P2.3 Port Veridian: cordage & salvage ---
+  - room_id: rope_walk
+    item_id: coil_of_tarred_twine
+    quantity: 3
+  - room_id: drydock
+    item_id: iron_boat_chain
     quantity: 1
 
 # ---------------------------------------------------------------------------
@@ -4339,6 +4854,21 @@ npcs:
           quantity: 2
         - item_id: steel_sabatons
           quantity: 2
+        # Phase 2 tools & metal stock
+        - item_id: blacksmith_hammer
+          quantity: -1
+        - item_id: steel_shovel
+          quantity: 3
+        - item_id: pry_bar
+          quantity: 2
+        - item_id: pitch_torch
+          quantity: -1
+        - item_id: iron_ingot
+          quantity: -1
+        - item_id: steel_ingot
+          quantity: -1
+        - item_id: brass_ingot
+          quantity: -1
     triggers:
       - on: encounter
         do:
@@ -4369,6 +4899,17 @@ npcs:
         - item_id: copper_wire_coil
           quantity: -1
         - item_id: gear_small_brass
+          quantity: -1
+        # Phase 2 fine tools & curiosities
+        - item_id: jewelers_lockpick
+          quantity: 1
+        - item_id: brass_carry_lantern
+          quantity: 2
+        - item_id: leather_backpack
+          quantity: 2
+        - item_id: canvas_satchel
+          quantity: 3
+        - item_id: assorted_gears
           quantity: -1
     triggers:
       - on: encounter
@@ -4496,6 +5037,11 @@ npcs:
           quantity: 5
         - item_id: coil_of_rope
           quantity: -1
+        # Phase 2 cordage & salvage
+        - item_id: coil_of_tarred_twine
+          quantity: -1
+        - item_id: iron_boat_chain
+          quantity: 4
     triggers:
       - on: encounter
         do:
