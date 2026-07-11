@@ -4548,6 +4548,19 @@ items:
     weight: 0.4
     value: 10
 
+  # --- P3.2 quest material ---
+  - id: brass_shavings
+    name: Twist of Brass Shavings
+    description: >-
+      A greasy paper twist packed with curls of bright brass, swept up from
+      beneath a smithy lathe. Fine enough to repack a worn bearing, sharp enough
+      to prick a careless thumb. It smells of hot metal and machine oil.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 6
+    category: trade_good
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -5100,13 +5113,10 @@ room_items:
     quantity: 1
 
   # --- P2.6 Keys (each placed reachably, before its locked door) ---
-  # NOTE: archive_vault_key is placed in the dormitory for now so the Restricted
-  # Archive is openable today. Phase 3 may relocate it to the Academy
-  # Headmaster's "restore the archive" quest reward (give_item) — coordinate
-  # there before removing this placement.
-  - room_id: dormitory
-    item_id: archive_vault_key
-    quantity: 1
+  # NOTE: archive_vault_key is NO LONGER floor-placed. As of P3.2 (v0.87.0) it is
+  # earned as the reward of Headmaster Cornelius's `restore_the_archive` quest
+  # (rewards.items give_item), so the Restricted Archive is opened by completing
+  # the quest rather than by picking the key up off a dorm floor.
   - room_id: steam_foundry_antechamber
     item_id: foundry_strongroom_key
     quantity: 1
@@ -5146,6 +5156,11 @@ room_items:
   - room_id: hollow_oak_cache
     item_id: hermits_field_journal
     quantity: 1
+
+  # --- P3.2 quest material: brass shavings for the Clockmaster's bearing ---
+  - room_id: smithy_district
+    item_id: brass_shavings
+    quantity: 3
 
 # ---------------------------------------------------------------------------
 # Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
@@ -5216,7 +5231,11 @@ dialogue_trees:
           - label: Tell me about the tower.
             next_node: tower_lore
           - label: Can I help with maintenance?
+            actor_lacks_flag: [tower_bearing_repaired]
             next_node: maintenance_quest
+          - label: The eastern bearing is repacked.
+            actor_has_flag: [tower_bearing_repaired]
+            next_node: bearing_thanks
           - label: Just looking around.
             side_effects:
               end_dialogue: true
@@ -5247,6 +5266,17 @@ dialogue_trees:
         text: Good. The smiths always have shavings. Return here when you have them.
         side_effects:
           end_dialogue: true
+      bearing_thanks:
+        text: >-
+          Grimlock takes the brass twist, weighs it in his palm, and gives a
+          single, satisfied nod. "Packed true. The tower will keep its time for
+          another decade on this. Take the watch—it's set to the tower's own beat.
+          A Clockmaster does not forget a debt of punctuality."
+        side_effects: {}
+        choices:
+          - label: The tower's in good hands. Farewell.
+            side_effects:
+              end_dialogue: true
 
   - id: blacksmith_dialogue
     root_node: greeting
@@ -5398,7 +5428,15 @@ dialogue_trees:
           - label: Tell me about this forest.
             next_node: forest_lore
           - label: Any work for someone new to these woods?
+            actor_lacks_flag: [mapped_north_trail]
             next_node: quest_offer
+          - label: I've been walking your trails.
+            npc_remembers: [elena_quest_given]
+            actor_lacks_flag: [mapped_north_trail]
+            next_node: quest_in_progress
+          - label: I've mapped the north trail for you.
+            actor_has_flag: [mapped_north_trail]
+            next_node: quest_done
           - label: Just passing through.
             side_effects:
               end_dialogue: true
@@ -5422,6 +5460,7 @@ dialogue_trees:
           back and tell me what you find. I'll make it worth your time."
         side_effects:
           start_quest: map_forest_trails
+          remember: [elena_quest_given]
         choices:
           - label: I'll map the trails for you.
             next_node: quest_accepted
@@ -5434,6 +5473,27 @@ dialogue_trees:
           the light goes strange. Come back safe."
         side_effects:
           end_dialogue: true
+      quest_in_progress:
+        text: >-
+          Elena nods slowly. "Good. Take your time—the trails don't reward hurry.
+          The old oak grove first, north of here. Come back when the light's
+          stopped playing tricks on you."
+        side_effects: {}
+        choices:
+          - label: I'll keep walking.
+            side_effects:
+              end_dialogue: true
+      quest_done:
+        text: >-
+          For the first time, the corner of her mouth lifts into something like a
+          real smile. "You walked the north trail and came back whole. Not
+          everyone does. The forest's got your measure now—it'll remember you,
+          same as I will."
+        side_effects: {}
+        choices:
+          - label: It was worth the walk.
+            side_effects:
+              end_dialogue: true
 
   - id: geomancer_shard_dialogue
     root_node: greeting
@@ -5449,7 +5509,11 @@ dialogue_trees:
           - label: What are you doing down here?
             next_node: hermit_lore
           - label: Tell me about the sealed door east of here.
+            actor_lacks_flag: [opened_sealed_vault]
             next_node: vault_lore
+          - label: I opened the sealed vault. I read the message.
+            actor_has_flag: [opened_sealed_vault]
+            next_node: vault_opened
           - label: I'll leave you to your work.
             side_effects:
               end_dialogue: true
@@ -5474,6 +5538,7 @@ dialogue_trees:
           a message. Whether you can read it is your affair, not mine."
         side_effects:
           start_quest: the_sealed_vault
+          remember: [shard_vault_told]
         choices:
           - label: I'll see what's inside.
             next_node: quest_accepted
@@ -5487,6 +5552,18 @@ dialogue_trees:
           asking something in return."
         side_effects:
           end_dialogue: true
+      vault_opened:
+        text: >-
+          Shard's crystal-flecked eyes open fully for the first time, and for a
+          long moment they simply regard you. "Then you carry it now, whether you
+          understand it or not. The forest asked, and you answered. That is more
+          than most manage." A pause. "Go gently. What you read will read you back,
+          in time."
+        side_effects: {}
+        choices:
+          - label: I'll remember that.
+            side_effects:
+              end_dialogue: true
 
   # --- Port Veridian dialogue trees (Phase 1) ---
   - id: captain_iris_dialogue
@@ -5499,7 +5576,11 @@ dialogue_trees:
         side_effects: {}
         choices:
           - label: Tell me about the cargo work.
+            actor_lacks_flag: [cargo_managed]
             next_node: cargo_talk
+          - label: The cargo's logged and moved.
+            actor_has_flag: [cargo_managed]
+            next_node: cargo_thanks
           - label: Any news from the sea?
             next_node: port_news
           - label: Just passing through.
@@ -5536,6 +5617,17 @@ dialogue_trees:
           one, that's not your business yet.
         side_effects:
           end_dialogue: true
+      cargo_thanks:
+        text: >-
+          Iris scans her manifest, then actually cracks a smile. "Every crate
+          logged and stowed before the next hull tied up. You've a dockhand's
+          instincts—rare in a wanderer. Keep the spyglass; a good pair of eyes
+          earns its keep on these docks. There's always more work when you want it."
+        side_effects: {}
+        choices:
+          - label: I'll be back for it. Fair winds, Captain.
+            side_effects:
+              end_dialogue: true
 
   - id: sal_dialogue
     root_node: greeting
@@ -5634,7 +5726,11 @@ dialogue_trees:
           - label: Tell me about the currents.
             next_node: navigation_lore
           - label: Do you need a scout?
+            actor_lacks_flag: [coast_scouted]
             next_node: scouting_quest
+          - label: I walked the shoreline for you.
+            actor_has_flag: [coast_scouted]
+            next_node: scouting_thanks
           - label: Just admiring the view.
             side_effects:
               end_dialogue: true
@@ -5668,6 +5764,17 @@ dialogue_trees:
           something behind.
         side_effects:
           end_dialogue: true
+      scouting_thanks:
+        text: >-
+          The Keeper listens without turning from the window, then nods once.
+          "So the storm shifted the sandbar again. I'll mark the new channel on my
+          chart. Take this pendant—sea-glass off my own sill. It'll remind you the
+          coast gives as much as it takes, if you know where to look."
+        side_effects: {}
+        choices:
+          - label: Thank you, Keeper.
+            side_effects:
+              end_dialogue: true
 
   - id: shipwright_dialogue
     root_node: greeting
@@ -5703,6 +5810,88 @@ dialogue_trees:
         side_effects: {}
         choices:
           - label: I'll remember that.
+            side_effects:
+              end_dialogue: true
+
+  # --- P3.2 Quest-giver NPC (new): Academy Headmaster ---
+  - id: headmaster_cornelius_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          An old man in a scholar's mantle stands amid toppled shelves, a broken
+          catalog-card trembling in one hand. He looks up with watery, stubborn
+          eyes. "You've caught the Academy at its lowest hour, I'm afraid. The
+          restricted archive was ransacked—its master index scattered to the
+          winds. Are you the sort who can put right what others break?"
+        side_effects: {}
+        choices:
+          - label: What happened to the archive?
+            next_node: archive_lore
+          - label: How can I help restore it?
+            actor_lacks_flag: [archive_restored]
+            next_node: restore_quest
+          - label: I recovered the index rubbing.
+            npc_remembers: [cornelius_task_given]
+            actor_lacks_flag: [archive_restored]
+            next_node: restore_progress
+          - label: The archive is open again.
+            actor_has_flag: [archive_restored]
+            next_node: restore_done
+          - label: I'll leave you to your work.
+            side_effects:
+              end_dialogue: true
+      archive_lore:
+        text: >-
+          "Three centuries of Aetheric scholarship, reduced in one night to a
+          snowdrift of loose cards. The vault door locked itself when the alarm
+          rang—a small mercy—but without the master index no one can find a thing
+          in there, nor even prove what's missing. The runes that keyed the old
+          catalog were copied, once, onto a standing stone in the Whisperwood."
+        side_effects: {}
+        choices:
+          - label: A stone rubbing could rebuild the index?
+            actor_lacks_flag: [archive_restored]
+            next_node: restore_quest
+          - label: A grim business. I should go.
+            side_effects:
+              end_dialogue: true
+      restore_quest:
+        text: >-
+          "You understand it exactly. Travel to the monolith grove in the
+          Whisperwood and take a rubbing of the old catalog-stone—the standing
+          stone still keeps the index runes. Bring it back and my archivists can
+          rebuild the catalog. Do this, and I will entrust you with the archive's
+          own key, and the freedom of its shelves."
+        side_effects:
+          start_quest: restore_the_archive
+          remember: [cornelius_task_given]
+        choices:
+          - label: I'll recover the rubbing.
+            side_effects:
+              end_dialogue: true
+          - label: I'll consider it.
+            side_effects:
+              end_dialogue: true
+      restore_progress:
+        text: >-
+          "The catalog-rubbing, from the monolith stone—yes. The moment it reaches
+          my archivists' hands the archive is as good as restored. Bring it
+          straight here; I'll not rest easy until it's done."
+        side_effects: {}
+        choices:
+          - label: I'm on my way.
+            side_effects:
+              end_dialogue: true
+      restore_done:
+        text: >-
+          Cornelius clasps your hand in both of his, his relief almost boyish.
+          "The index rebuilds itself as we speak—row by row, the archive wakes. A
+          scholar keeps his word: the vault key is yours, and these robes besides.
+          The restricted shelves are open to you now. Use them wisely."
+        side_effects: {}
+        choices:
+          - label: An honor, Headmaster.
             side_effects:
               end_dialogue: true
 
@@ -6148,6 +6337,26 @@ npcs:
           - narrate_room: "Calloway glances up from the half-built hull, a caulking mallet in hand."
 
   # -------------------------------------------------------------------------
+  # P3.2 — Quest-giver NPC (new): Academy Headmaster
+  # -------------------------------------------------------------------------
+
+  - id: headmaster_cornelius
+    name: Headmaster Cornelius
+    description: >-
+      An elderly scholar in a threadbare velvet mantle, stooped from decades bent
+      over lecterns. His hands tremble faintly, but his gaze is clear and stubborn.
+      He knows the shelf of every book in the Academy—and grieves each one now
+      missing from the ransacked archive.
+    home_room_id: library_main
+    current_room_id: library_main
+    dialogue_tree_id: headmaster_cornelius_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Headmaster Cornelius straightens from the scattered catalog-cards, hope flickering across his lined face."
+
+  # -------------------------------------------------------------------------
   # P3.1 — Shopkeeper NPCs (new): Academy alchemist + Canopy City quartermaster
   # -------------------------------------------------------------------------
 
@@ -6404,6 +6613,83 @@ quests:
         rewards:
           items: [rangers_boots, copper_coin]
           xp: 45
+
+  # --- P3.2 Quest-giver quests ---
+  - id: restore_the_archive
+    title: Restore the Archive
+    description: >-
+      The Academy's restricted archive was ransacked and its master index
+      scattered. Headmaster Cornelius needs a rubbing of the old catalog-stone in
+      the Whisperwood monolith grove to rebuild it. The archive vault key is his
+      to give in gratitude.
+    stages:
+      - id: recover_index_rubbing
+        description: Take a rubbing of the catalog-stone at the monolith grove and bring it to the Headmaster.
+        conditions:
+          - type: item_in_inventory
+            item_id: standing_stone_rubbing
+        completion_flags:
+          archive_restored: true
+        rewards:
+          items: [archive_vault_key, scholars_robes]
+          xp: 65
+
+  - id: repair_tower_bearing
+    title: The Eastern Bearing
+    description: >-
+      Clockmaster Grimlock needs brass shavings from the smithy district to
+      repack the clock tower's worn eastern bearing before it seizes.
+    stages:
+      - id: collect_brass_shavings
+        description: Gather a twist of brass shavings from the smithy district and bring it to the Clockmaster.
+        conditions:
+          - type: item_in_inventory
+            item_id: brass_shavings
+        completion_flags:
+          tower_bearing_repaired: true
+        rewards:
+          items: [pocket_watch_cogsworth, copper_coin]
+          xp: 60
+
+  - id: manage_cargo_shipments
+    title: Cargo and Manifests
+    description: >-
+      Captain Iris needs a hand logging and moving freight: get a feel for the
+      warehouse district, then haul a trade-goods crate to prove you can tell a
+      manifest from a mess.
+    stages:
+      - id: survey_warehouses
+        description: Walk the warehouse district and learn its layout.
+        conditions:
+          - type: room_visited
+            room_id: warehouse_district
+      - id: move_a_crate
+        description: Take up a trade-goods crate and haul it for the Captain.
+        conditions:
+          - type: item_in_inventory
+            item_id: trade_goods_crate
+        completion_flags:
+          cargo_managed: true
+        rewards:
+          items: [captains_spyglass, copper_coin]
+          xp: 55
+
+  - id: scout_coastal_waters
+    title: What the Storm Turned Up
+    description: >-
+      The Lighthouse Keeper wants the shoreline walked after the last storm—start
+      at the tide pools below the lighthouse and see what the sea left behind.
+    stages:
+      - id: walk_the_tide_pools
+        description: Walk the shoreline to the tide pools below the lighthouse.
+        conditions:
+          - type: room_visited
+            room_id: tide_pools
+        completion_flags:
+          coast_scouted: true
+        rewards:
+          items: [sea_glass_pendant, copper_coin]
+          xp: 40
 
 # ---------------------------------------------------------------------------
 # Transit lines — scheduled vehicles reached by `board` (not the walk graph)

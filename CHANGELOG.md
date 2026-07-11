@@ -4,7 +4,35 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-## [0.86.0] - 2026-07-11
+## [0.87.0] - 2026-07-11
+
+### Added
+
+- **Phase 3 world content — Quest-giver NPCs (roadmap_world.md P3.2).** Five quest-givers, four
+  new quests, and the three previously-dangling `start_quest` references now resolve (world 12 ->
+  13 NPCs, 8 -> 12 quests, +1 item):
+  - **Headmaster Cornelius** (new NPC, `library_main`) — quest `restore_the_archive` (rubbing of
+    the Whisperwood catalog-stone rebuilds the ransacked index), with full before/in-progress/after
+    dialogue gated on `npc_remembers` + the quest completion flag. Its reward `give_item`s the
+    `archive_vault_key` + scholar's robes.
+  - **repair_tower_bearing** (Clockmaster Grimlock) — closes the dangling reference; bring a twist
+    of the new `brass_shavings` item from the smithy; rewards the Cogsworth pocket watch. Added
+    an after-completion dialogue branch.
+  - **manage_cargo_shipments** (Captain Iris) — closes the dangling reference; survey the warehouse
+    district then haul a trade-goods crate; rewards a captain's spyglass. After-completion branch.
+  - **scout_coastal_waters** (Lighthouse Keeper) — closes the dangling reference; walk the tide
+    pools; rewards a sea-glass pendant. After-completion branch.
+  - **Ranger Elena** & **Geomancer Shard** (enriched) — three-state dialogue (before / in-progress
+    / after) reacting to their existing quests (`map_forest_trails`, `the_sealed_vault`) via
+    `npc_remembers`/`remember` and the quests' completion flags.
+- **`archive_vault_key` hand-off resolved.** Removed its stopgap `dormitory` floor placement; it is
+  now earned as the `restore_the_archive` reward, so the Restricted Archive is opened by completing
+  the Headmaster's quest rather than by finding the key on a dorm floor.
+
+### Notes
+
+- Reachability is unchanged by the key relocation: `check_room_reachability` traverses locked exits
+  regardless of key possession, so the Restricted Archive remains reachable in the graph model.
 
 ### Added
 

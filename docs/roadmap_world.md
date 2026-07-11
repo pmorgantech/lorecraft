@@ -375,7 +375,7 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 
 **Test:** Use key on locked door; verify locked-door system works end-to-end. — 4 new locked rooms (world 100→104 rooms), each with a return exit and reachable from `village_square`; `world_cli validate` clean.
 
-**Phase 3 coordination:** `archive_vault_key` is currently placed in the `dormitory` so the Restricted Archive is openable now; Phase 3 may relocate it to the Academy Headmaster's "restore the archive" quest reward (`give_item`). A NOTE in `world_content/world.yaml`'s `room_items` marks it.
+**Phase 3 coordination — RESOLVED (v0.87.0):** `archive_vault_key` was relocated out of the `dormitory` floor placement and is now earned as the reward of Headmaster Cornelius's `restore_the_archive` quest (`rewards.items` → `give_item`). The Restricted Archive is now opened by completing the quest.
 
 ---
 
@@ -398,18 +398,19 @@ Build NPC variety; add dialogue, quests, and flavor.
 
 **Test:** Talk to NPC; see dialogue; buy from shop; complete quest.
 
-#### P3.2 — Quest-giver NPCs (5+ unique)
-- [ ] Academy Headmaster (restore the archive)
-- [ ] Ranger Elena (map the forest)
-- [ ] Clockmaster (repair the tower)
-- [ ] Captain Iris (manage cargo shipments)
-- [ ] Geomancer Shard (seek the sealed vault)
+#### P3.2 — Quest-giver NPCs (5+ unique) ✅ (2026-07-11, v0.87.0)
+- [x] Academy Headmaster (restore the archive) — **new** `headmaster_cornelius`; quest `restore_the_archive` rewards the archive vault key + scholar's robes
+- [x] Ranger Elena (map the forest) — enriched with three-state before/in-progress/after dialogue around the existing `map_forest_trails`
+- [x] Clockmaster (repair the tower) — dangling `repair_tower_bearing` now defined (bring `brass_shavings`); after-completion dialogue added
+- [x] Captain Iris (manage cargo shipments) — dangling `manage_cargo_shipments` now defined (survey warehouses + haul a crate); after-completion dialogue added
+- [x] Geomancer Shard (seek the sealed vault) — enriched with before/after dialogue around the existing `the_sealed_vault`
+- [x] **Bonus:** Lighthouse Keeper's dangling `scout_coastal_waters` also defined (closes all three pre-existing dangling `start_quest` references)
 
 **For each quest:**
-- [ ] Clear objective description
-- [ ] Reward (coins, items, trait mark)
-- [ ] Dialogue before/after completion
-- [ ] Prerequisite quest or free-for-all
+- [x] Clear objective description
+- [x] Reward (coins-as-item, Phase 2 item, and/or xp; "trait mark" = a `grant_trait` wearable)
+- [x] Dialogue before/after completion (gated on `npc_remembers` and/or quest completion flags)
+- [x] Prerequisite quest or free-for-all (all free-for-all; started via dialogue `start_quest`)
 
 **Test:** Accept quest; complete objective (travel to location, collect item, etc.); turn in; receive reward.
 
