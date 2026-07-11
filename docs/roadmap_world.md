@@ -458,23 +458,64 @@ Blocked Items. Don't build content that assumes this exists.
 
 **Quality bar:** Descriptions should feel like a novel excerpt, not a game manual.
 
-#### P4.2 — Thematic Consistency
-- [ ] **Steampunk City:** brass, copper, steam, gears, industry
-- [ ] **Whisperwood:** mist, ancient stones, wildlife, growth, mystery
-- [ ] **Port Veridian:** salt, wood, rope, labor, trade
-- [ ] Room exits/connections make geographical sense
-- [ ] Items match zone aesthetic (no "steel gears" in forest floor)
+#### P4.2 — Thematic Consistency ✅ (2026-07-11, v0.90.2) — audit-only, no fixes needed
+- [x] **Steampunk City:** brass, copper, steam, gears, industry — confirmed throughout Cogsworth
+  prose and item set (ingots, gears, clockwork springs, brass fittings, foundry tools).
+- [x] **Whisperwood:** mist, ancient stones, wildlife, growth, mystery — confirmed; the zone holds
+  **zero** metal/gear items (crystals, mushrooms, herbs, hides, bows, fey tokens, oak/wood only).
+- [x] **Port Veridian:** salt, wood, rope, labor, trade — confirmed (rope, nets, fish, salvage,
+  tarred twine, boat chain, cutlass/harpoon).
+- [x] Room exits/connections make geographical sense — verified the three cross-zone connectors are
+  bidirectional with geographically-consistent opposite-direction exits: `old_trade_road`
+  (west↔`deep_forest`, south↔`market_row_west`), `forest_road` (north↔`smithy_district`,
+  east↔`west_trail`), `river_bend` (north↔`babbling_stream`, east↔`tide_pools`). All neighbor rooms
+  carry the reciprocal exit.
+- [x] Items match zone aesthetic (no "steel gears" in forest floor) — audited all 165 `room_items`
+  placements grouped by zone; no cross-contamination found (the example failure mode — metal/gears in
+  Whisperwood — does not occur). Nothing to relocate.
 
-#### P4.3 — Lighting & Atmosphere
-- [ ] Dark rooms: caves, undercity, some forest trails (light_level = 0)
-- [ ] Medium light: forest floor, port docks, academy corridors (light_level = 0.5)
-- [ ] Bright rooms: market, smithy, tower peak (light_level = 1)
-- [ ] Test navigation: can you see in dark rooms without torches? (flavor challenge)
+#### P4.3 — Lighting & Atmosphere ✅ (2026-07-11, v0.90.2) — audit-only, all correct
+**Note:** `Room.light_level` is int-only (0 or 1), *not* fractional — the "0.5/0.7 dappled" figures
+in the original sketch below are aspirational, never real schema values (documented in P1.2, commit
+`8ddd112`). The engine gates `take`/`drop`/etc. via `CommandCondition.REQUIRES_LIGHT`: `light_level == 0`
+blocks those verbs unless the actor carries a lit source (`command_conditions.py` `_light_check`).
+- [x] Dark rooms: caves, undercity, sewers, sealed vaults (light_level = 0) — confirmed all 14 dark
+  rooms are `0` and their prose reads dark: Ashmoore cave (`cave_chamber`/`cave_pool`/`cave_alcove`),
+  Cogsworth undercity (`sewer_junction_main` + 4 tunnels + `steam_foundry_antechamber`), Whisperwood
+  caves (`whisperwood_cave_entrance`, `limestone_passage`, `deep_passage`, `bone_chamber`,
+  `sealed_vault`). `deep_passage` explicitly reads "the glow fades… true, absolute dark" (correctly 0).
+- [x] Bright/normal rooms (light_level = 1) — confirmed the other 90 rooms are lit and read lit.
+  Spot-checked the bioluminescent-cave edge cases the roadmap flagged: `crystal_cavern` and
+  `underground_lake` are correctly `1` — their prose explicitly describes bioluminescent crystal glow,
+  not darkness. `cave_tunnel` is correctly `1` (prose: "not entirely dark — a faint phosphorescence")
+  and `cave_entrance` correctly `1` (daylight at the hillside mouth).
+- [x] Navigation challenge verified against the mechanism (not fractional): dark rooms block
+  take/drop without a carried light. **No misassignments found — zero light-level edits made.**
 
-#### P4.4 — Safe-Rest Zones
-- [ ] Mark 5–8 rooms as `safe_rest: true`
-- [ ] Thematic: inns, temples, scholar quarters, ranger lodges (not random)
-- [ ] Verify players can sleep there; can't in hostile areas
+#### P4.4 — Safe-Rest Zones ✅ (2026-07-11, v0.90.2) — audit-only, 9 rooms all justified
+- [x] Marked rooms as `safe_rest: true` — **9 rooms** (one over the 5–8 *estimate*; per the roadmap's
+  acceptance bar the real test is "thematically placed, not random", which 5–8 approximates rather than
+  caps). Each is a plausible rest location; none is a workshop/alley/hazard mistakenly tagged:
+  - `wandering_crow_inn` (Ashmoore inn) — an actual inn with a landlord.
+  - `tower_landing_2` (Cogsworth clock-tower observation deck) — cushioned benches "worn soft by
+    decades of quiet watchers"; roadmap-named safe-rest.
+  - `dormitory` (Academy student housing) — cots, common room, porter's bell keeps the peace; roadmap-named.
+  - `clockwork_manor` (wealthy merchant townhouse) — carpeted, secured by a heavy iron door; roadmap-named.
+  - `scholar_apartments` (faculty/senior-student residence) — quiet study wing; roadmap-named.
+  - `clockwork_tavern` (Cogsworth market tavern) — a tavern serving "hearty and reliable" food/drink;
+    a tavern is a canonical rest spot even though not in the original zone sketch. Thematically sound.
+  - `whispering_clearing` (Whisperwood central clearing, ancient standing stone) — roadmap-named.
+  - `hunter_lodge` (Canopy City ranger base) — "the safest, most solid-feeling place in the whole
+    treetop settlement"; roadmap-named.
+  - `maritime_tavern` (Port Veridian sailor tavern) — roadmap-named.
+- [x] Thematic: inns, taverns, scholar quarters, ranger lodges, a merchant manor, an observation deck
+  (not random) — confirmed; no hostile/hazardous room is tagged safe.
+- [x] Verify players can sleep there; can't (reliably) in hostile areas — mechanic read in
+  `features/fatigue/service.py` `sleep()`: in a `safe_rest` room `sleep` is a guaranteed full restore
+  (advances clock, dream flavor); **anywhere else it is a survival skill-check gamble** (cold-weather
+  penalty from insufficient warmth), and on failure the sleep is interrupted for only a partial,
+  dreamless rest. So non-safe-rest rooms are not *blocked* from sleeping but are unreliable/risky —
+  matching the "can't safely sleep in hostile areas" intent. No `safe_rest` flags added or removed.
 
 #### P4.5 — Weather Integration (if time)
 - [x] Coastal zones: occasionally foggy/stormy — **done via a traveling storm front, not zone climate.** Added `coastal_squall` to `world_content/weather_fronts.yaml` (`path: [port_veridian, coast_road, whisperwood]`, `room_effect: storm_lashed`, autumn/winter): it rolls a per-hour chance, sweeps the coast → river connector → forest, lashes outdoor rooms in each zone, and auto-skips `indoor: true` interiors. This is content on the existing front mechanism — there is still no per-zone climate model (see Blocked Items §3).
@@ -618,10 +659,15 @@ both `whisperwood_meadow_clearing` and `whisperwood_cave_entrance` are now safe 
 - [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 197 items as of v0.85.0 (Phase 2 complete: P2.1–P2.6)
 - [x] 15+ NPCs with dialogue and quests — **29 NPCs** as of v0.89.0 (Phase 3 complete: 5 shopkeepers, 6 quest-givers, 13 flavor/lore, 3 scheduled-movement, plus Phase 1 NPCs); 12 quests total
 - [x] 5+ locked doors requiring keys (puzzle component) — 8 key-locked exits as of v0.85.0 (4 pre-existing: inner_vault/good_key, sealed_vault/vault_root_key, warehouse_north/warehouse_vault_key, plus the vault-hall door; 4 new in P2.6: Restricted Archive, Foundry Strongroom, Bonded Store, Hollow Oak Cache)
-- [ ] Dark areas requiring light sources (caves, sewers)
-- [ ] At least 8 safe-rest zones
-- [ ] Thematic consistency: no "sci-fi" items in fantasy forest, etc.
-- [ ] All items, NPCs, and rooms described in prose (not placeholder text)
+- [x] Dark areas requiring light sources (caves, sewers) — 14 rooms `light_level: 0`; verified against
+  `REQUIRES_LIGHT` gating (P4.3, v0.90.2)
+- [x] At least 8 safe-rest zones — **9 safe-rest rooms**, all thematically justified (P4.4, v0.90.2):
+  `wandering_crow_inn`, `tower_landing_2`, `dormitory`, `clockwork_manor`, `scholar_apartments`,
+  `clockwork_tavern`, `whispering_clearing`, `hunter_lodge`, `maritime_tavern`
+- [x] Thematic consistency: no "sci-fi" items in fantasy forest, etc. — audited all zones; no
+  cross-zone item/aesthetic contamination (P4.2, v0.90.2)
+- [x] All items, NPCs, and rooms described in prose (not placeholder text) — confirmed; no placeholder
+  text anywhere. Six flat Cogsworth rooms + one NPC upgraded (P4.1, v0.90.1); rest already met the bar
 - [x] Full traversal test passing (can visit every room from every other room) — automated regression: `tests/tools/test_world_content_reachability.py` runs `check_room_reachability` over the real `world_content/world.yaml` from the `village_square` seed; the only expected-unreachable rooms are transit vehicle rooms (board-only), derived generically from `transit.lines[].vehicle_room_id`
 - [x] No orphaned rooms (every room has at least 2 exits; dead ends exist but can exit) — asserted by the same test: every room has ≥1 exit except transit vehicle rooms (`harbor_ferry_deck`, board/disembark only). Note the "≥2 exits" wording is aspirational; the enforced invariant is "≥1 exit (no dead-end with no way out)", matching the roadmap's own "dead ends exist but can exit" definition
 - [ ] CI lint/validation passing (world YAML well-formed; all room IDs unique; all exit targets exist)

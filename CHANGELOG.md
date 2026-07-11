@@ -4,6 +4,26 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.90.2] - 2026-07-11
+
+### Changed
+
+- **World polish P4.2 / P4.3 / P4.4 — thematic, lighting, and safe-rest audits
+  (`docs/roadmap_world.md` tracking only; no `world_content/world.yaml` changes needed).** All three
+  sub-tasks audited the existing 104-room world and found it already correct, so no content edits were
+  required — the roadmap checkboxes and Success Criteria are ticked with the findings documented:
+  - **P4.2 (thematic consistency):** all 165 `room_items` placements audited by zone — no cross-zone
+    contamination (Whisperwood holds zero metal/gear items; Cogsworth holds all the brass/ingots; Port
+    all rope/salt/fish). The three cross-zone connectors (`old_trade_road`, `forest_road`, `river_bend`)
+    verified bidirectional with geographically-consistent opposite-direction exits.
+  - **P4.3 (lighting):** all 14 `light_level: 0` rooms confirmed genuinely dark in prose and gated by
+    `REQUIRES_LIGHT`; the bioluminescent edge cases (`crystal_cavern`, `underground_lake`) confirmed
+    correctly `light_level: 1`. Zero misassignments — no light-level edits.
+  - **P4.4 (safe-rest):** all 9 `safe_rest: true` rooms confirmed thematic rest locations (inns,
+    taverns, lodges, scholar quarters, merchant manor, observation deck); one over the 5–8 estimate is
+    acceptable per the "thematically placed, not random" bar. Sleep mechanic re-verified in
+    `features/fatigue/service.py`. No flags added or removed.
+
 ## [0.90.1] - 2026-07-11
 
 ### Changed
