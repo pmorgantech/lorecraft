@@ -72,7 +72,7 @@ work, with one item blocked on a product decision.
 | # | Task | Status |
 |---|------|--------|
 | 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [x] done — `webui/admin/index.html` (per-row priority `<select>` mirroring the status select; description `<textarea>` + Save in the detail row), `tests/e2e/test_admin_issues.py` (2 new e2e cases). Awaiting version bump/CHANGELOG entry from the integrator. |
-| 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [ ] not started — design ready (2026-07-11); do backend schema split first, then the client-side filter |
+| 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [x] 71.2a-e done (schema split + admin filter UI, branch `sprint-71-2-zone-room-type-split`); 71.2f (test-file updates) remains — awaiting version bump/CHANGELOG from the integrator |
 | 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [ ] not started — waiting on rendering.py investigation |
 | 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [ ] not started |
 | 71.5 | **Quest XP rewards.** | [ ] **BLOCKED** — needs a product decision first: does Lorecraft have any leveling/XP progression system at all? If no, this may close as works-as-designed; if yes, it needs its own dedicated XP-system sprint before design work here can start. |
@@ -222,9 +222,13 @@ regions). Tests: `tests/unit/test_world_loader.py`, `test_economy.py`, `test_npc
   green.*
 - [x] 71.2d — Repoint remaining geographic consumers to `zone` (`resolve_ref`, admin grouping, `npc_ai`,
   `npc/side_effects`). *Success: teleport `ashmoore.<room>` resolves; npc/side-effect tests green.*
-- [ ] 71.2e — Admin World panel: add `zone` (+`room_type`) to `GET /admin/world/rooms`; client-side zone
+- [x] 71.2e — Admin World panel: add `zone` (+`room_type`) to `GET /admin/world/rooms`; client-side zone
   dropdown + live name-substring filter, usable together. *Success: dropdown lists the 4 zones; typing
-  narrows live; no new query param.*
+  narrows live; no new query param.* Done — `webui/admin/index.html`: `#w-filter-zone` select (all zones +
+  the 4 named zones, `onchange`) and `#w-search` input (`oninput`, cached `allRooms` + `renderRooms()`,
+  mirroring the Help tab's `h-search`/`renderHelp()` idiom) filter together before the existing zone-grouped
+  render; `#w-count` mirrors the Issues tab's `#i-count` "N shown · M hidden" convention. No e2e coverage
+  existed or was added for the admin World panel (gap, flagged for 71.2f/follow-up).
 - [ ] 71.2f — Update the 7 test files; add a zone-qualified `ashmoore.<room>` `resolve_ref` case.
   *Success: `make test` green.*
 

@@ -289,9 +289,19 @@
 
       <!-- World -->
       <div id="tab-world" class="tab-panel">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h2>Rooms</h2>
-          <button onclick="loadRooms()">↻ Refresh</button>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+          <h2 style="display:flex;align-items:baseline;gap:0.5rem;">Rooms <span id="w-count" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+            <select id="w-filter-zone" style="width:135px;" title="Filter by zone" onchange="renderRooms()">
+              <option value="">all zones</option>
+              <option value="ashmoore">ashmoore</option>
+              <option value="cogsworth">cogsworth</option>
+              <option value="whisperwood">whisperwood</option>
+              <option value="port_veridian">port_veridian</option>
+            </select>
+            <input id="w-search" placeholder="filter by name" style="width:160px;" oninput="renderRooms()" />
+            <button onclick="loadRooms()">↻ Refresh</button>
+          </div>
         </div>
         <div id="world-layout">
           <div class="room-list panel">
@@ -994,25 +1004,44 @@ async function showCrashDetail(id) {
 // World
 // ────────────────────────────────────────
 
+let allRooms = [];
+
 async function loadRooms() {
   const rooms = await api("GET", "/admin/world/rooms");
+  allRooms = Array.isArray(rooms) ? rooms : [];
+  renderRooms();
+}
+
+function renderRooms() {
   const tbody = document.getElementById("rooms-tbody");
   tbody.innerHTML = "";
-  if (!Array.isArray(rooms)) return;
+
+  const zone = document.getElementById("w-filter-zone").value;
+  const q = (document.getElementById("w-search").value || "").trim().toLowerCase();
+  let rooms = allRooms;
+  if (zone) rooms = rooms.filter(r => r.zone === zone);
+  if (q)    rooms = rooms.filter(r => (r.name || "").toLowerCase().includes(q));
+
+  const countEl = document.getElementById("w-count");
+  if (countEl) {
+    const hidden = allRooms.length - rooms.length;
+    countEl.textContent = `${rooms.length} shown` + (hidden > 0 ? ` · ${hidden} hidden` : "");
+  }
+
   // Group by zone; zones alphabetical, rooms by name within a zone.
   const byZone = {};
   for (const r of rooms) {
-    const zone = r.zone || "(no zone)";
-    (byZone[zone] = byZone[zone] || []).push(r);
+    const z = r.zone || "(no zone)";
+    (byZone[z] = byZone[z] || []).push(r);
   }
-  for (const zone of Object.keys(byZone).sort()) {
+  for (const z of Object.keys(byZone).sort()) {
     const header = document.createElement("tr");
     header.innerHTML =
       `<td colspan="4" style="background:rgba(255,176,0,0.08);color:var(--amber);font-weight:bold;">`
-      + `${esc(zone)} <span style="color:var(--text-dim);font-weight:normal;">(${byZone[zone].length})</span></td>`;
+      + `${esc(z)} <span style="color:var(--text-dim);font-weight:normal;">(${byZone[z].length})</span></td>`;
     tbody.appendChild(header);
-    byZone[zone].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    for (const r of byZone[zone]) {
+    byZone[z].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    for (const r of byZone[z]) {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td style="font-family:monospace;color:var(--amber)">${esc(r.id)}</td>
