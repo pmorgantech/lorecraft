@@ -478,6 +478,483 @@ rooms:
       - direction: east
         target_room_id: cave_chamber
 
+  # -------------------------------------------------------------------------
+  # AREA: cogsworth — Steampunk City (Phase 1 Foundation)
+  # -------------------------------------------------------------------------
+
+  # --- Level 2: Clock Tower Peak ---
+  - id: clock_tower_peak
+    name: Clock Tower Peak
+    description: >-
+      The spire climbs impossibly high, piercing the clouds. At its apex, the great
+      clock mechanism ticks in perfect rhythm, visible through glass panels. Steam vents
+      hiss from pressure regulators. Below you sprawls Cogsworth in miniature—brass rooftops,
+      copper spires, smoke from a hundred chimneys. A vast city built upward and inward.
+    map_x: 15
+    map_y: 20
+    map_z: 2
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: clockworks_chamber
+      - direction: down
+        target_room_id: tower_landing_2
+
+  - id: clockworks_chamber
+    name: The Clockworks Chamber
+    indoor: true
+    description: >-
+      Immense brass and iron gears dominate this circular chamber, each the size of a wagon wheel.
+      The rhythmic ticking is deafening—a heartbeat that measures out the city's hours. Oil drips
+      from bearing points. The smell of machine oil and hot metal fills your lungs. At the chamber's
+      apex, the escapement clicks with metronomic precision.
+    map_x: 15
+    map_y: 21
+    map_z: 2
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: clock_tower_peak
+      - direction: down
+        target_room_id: tower_landing_2
+
+  - id: tower_landing_2
+    name: Tower Observation Deck
+    indoor: true
+    description: >-
+      Polished brass railings line a circular platform beneath a domed glass ceiling.
+      A fixed telescope points toward the distant horizon. The view is breathtaking—
+      you can see three valleys from here. Safe seating areas invite quiet observation.
+      Stairs descend further into the tower's depths.
+    map_x: 15
+    map_y: 20
+    map_z: 2
+    area_id: cogsworth
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: up
+        target_room_id: clock_tower_peak
+      - direction: down
+        target_room_id: tower_landing_1
+
+  - id: tower_landing_1
+    name: Tower Landing
+    indoor: true
+    description: >-
+      A transition point where the tower widens into an observation gallery. Stairs
+      descend further, and archways open to the academy courtyard. Below, the market
+      sprawls like a chessboard of commerce and life.
+    map_x: 15
+    map_y: 20
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: up
+        target_room_id: tower_landing_2
+      - direction: down
+        target_room_id: grand_plaza
+      - direction: west
+        target_room_id: academy_courtyard
+
+  # --- Level 1: Academy & Residences ---
+  - id: academy_courtyard
+    name: Academy Courtyard
+    description: >-
+      A sprawling quadrangle of stone, surrounded by ivy-covered buildings. Lecture posters
+      flap from notice boards. Students huddle in corners, debating invisible theories.
+      Fountains fed by steam-pressure lines spray water in precise arcs. The air smells
+      of brass polish and learning.
+    map_x: 14
+    map_y: 20
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: library_main
+      - direction: north
+        target_room_id: alchemy_lab
+      - direction: south
+        target_room_id: artifice_workshop
+      - direction: down
+        target_room_id: grand_plaza
+      - direction: west
+        target_room_id: dormitory
+
+  - id: library_main
+    name: Academy Library
+    indoor: true
+    description: >-
+      Soaring shelves climb toward a vaulted ceiling. Thousands of volumes—leather-bound,
+      cloth-covered, ancient scrolls in brass cases—fill every space. A spiral staircase
+      leads up to the second level. The smell is paper, leather, and old knowledge.
+    map_x: 15
+    map_y: 20
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: academy_courtyard
+      - direction: south
+        target_room_id: alchemy_lab
+
+  - id: alchemy_lab
+    name: Alchemy Laboratory
+    indoor: true
+    description: >-
+      Glass vessels bubble with colorful liquids. Alembics and retorts crowd every
+      workbench. The air is thick with exotic scents—sulfur, copper, something floral
+      and rare. Careful notes line the walls in copper-plate handwriting. A professor
+      in singed robes tends a furnace.
+    map_x: 14
+    map_y: 21
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: library_main
+      - direction: west
+        target_room_id: academy_courtyard
+      - direction: south
+        target_room_id: artifice_workshop
+
+  - id: artifice_workshop
+    name: Artifice Workshop
+    indoor: true
+    description: >-
+      Half-built constructs stand in various states of assembly—articulated limbs,
+      glass eyes, clockwork hearts. Copper wire, gears, and components clutter the benches.
+      A peculiar humming emanates from a powered lathe in the corner. The workshop is
+      organized chaos.
+    map_x: 14
+    map_y: 19
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: alchemy_lab
+      - direction: east
+        target_room_id: academy_courtyard
+
+  - id: dormitory
+    name: Academy Dormitory
+    indoor: true
+    description: >-
+      Student quarters arranged along narrow corridors. Each room holds a narrow bed,
+      desk, and shelf for personal effects. A common room at the center offers a place
+      to gather. The dormitory is clean, quiet, and secure.
+    map_x: 13
+    map_y: 20
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: east
+        target_room_id: academy_courtyard
+
+  - id: clockwork_manor
+    name: Clockwork Manor
+    indoor: true
+    description: >-
+      A wealthy merchant's townhouse, its facade ornate with brass fittings and
+      mechanical details. Inside, the halls are lined with expensive furnishings.
+      A heavy iron door marks the main entrance; a smaller passage connects to
+      the street outside.
+    map_x: 16
+    map_y: 21
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: south
+        target_room_id: scholar_apartments
+      - direction: down
+        target_room_id: market_row_west
+
+  - id: scholar_apartments
+    name: Scholar Apartments
+    indoor: true
+    description: >-
+      Modest but comfortable apartments for faculty and advanced students. The halls are lined
+      with doors, each leading to private quarters. Common areas include a study and reading room.
+    map_x: 16
+    map_y: 20
+    map_z: 1
+    area_id: cogsworth
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: north
+        target_room_id: clockwork_manor
+      - direction: south
+        target_room_id: academy_courtyard
+      - direction: down
+        target_room_id: market_row_west
+
+  # --- Level 0: Market District ---
+  - id: grand_plaza
+    name: Grand Plaza
+    description: >-
+      The heart of Cogsworth—a sprawling square of polished stone radiating from a central
+      fountain. Steam rises from geothermal vents. The city's iconic clock tower looms overhead,
+      its mechanisms visible in the tower glass. Crowds bustle between market stalls, shops, and
+      food vendors. The smell of commerce and industry fills the air.
+    map_x: 15
+    map_y: 20
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: up
+        target_room_id: tower_landing_1
+      - direction: north
+        target_room_id: academy_courtyard
+      - direction: east
+        target_room_id: market_row_east
+      - direction: west
+        target_room_id: market_row_west
+      - direction: south
+        target_room_id: smithy_district
+      - direction: down
+        target_room_id: sewer_junction_main
+
+  - id: market_row_east
+    name: Market Row East
+    description: >-
+      A row of market stalls sheltered by canvas canopies in faded colors. Vendors hawk
+      produce, spices, and exotic goods. The air is thick with the mingled scents of fresh
+      food, spices, and coal smoke.
+    map_x: 16
+    map_y: 20
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: grand_plaza
+      - direction: east
+        target_room_id: curiosity_shop
+      - direction: south
+        target_room_id: smithy_district
+
+  - id: market_row_west
+    name: Market Row West
+    description: >-
+      Artisan stalls line this side of the plaza—weavers, jewelers, and crafts merchants display
+      their wares. The quality of goods here is noticeably higher than the eastern row.
+    map_x: 14
+    map_y: 20
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: grand_plaza
+      - direction: west
+        target_room_id: warehouse_storage
+      - direction: south
+        target_room_id: smithy_district
+      - direction: up
+        target_room_id: scholar_apartments
+
+  - id: smithy_district
+    name: Smithy District
+    description: >-
+      Multiple forges operate simultaneously, their chimneys belching black smoke. The
+      ring of hammers on anvils creates a rhythm that throbs through the street. The
+      heat from the furnaces radiates outward. Vendors and smiths crowd the street,
+      buying and selling metal goods.
+    map_x: 15
+    map_y: 19
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: market_row_east
+      - direction: west
+        target_room_id: market_row_west
+      - direction: up
+        target_room_id: grand_plaza
+      - direction: east
+        target_room_id: curiosity_shop
+
+  - id: curiosity_shop
+    name: Curiosity Emporium
+    indoor: true
+    description: >-
+      A cramped shop crammed with impossible things—automatons, strange mechanical devices,
+      rare books, and artifacts of unclear provenance. The owner, a thin figure with knowing
+      eyes, sits at a cluttered desk. Everything here has a story. Most of them are true.
+    map_x: 16
+    map_y: 19
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: smithy_district
+      - direction: south
+        target_room_id: clockwork_tavern
+
+  - id: clockwork_tavern
+    name: The Brass Anchor Tavern
+    indoor: true
+    description: >-
+      A merchant's tavern thick with cigar smoke and conversation. The bar is polished
+      brass, the floor is sawdust and spilled ale. The clientele includes traders, artisans,
+      and city officials. Food and drink are hearty and reliable.
+    map_x: 16
+    map_y: 18
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: north
+        target_room_id: curiosity_shop
+      - direction: down
+        target_room_id: steam_foundry_antechamber
+
+  - id: warehouse_storage
+    name: Warehouse District
+    indoor: true
+    description: >-
+      A cavernous storage facility filled with crates, barrels, and bundles wrapped in
+      cloth. The smell of stored goods—wood, rope, canvas—fills the space. Cargo is
+      sorted and organized with mechanical precision.
+    map_x: 13
+    map_y: 20
+    map_z: 0
+    area_id: cogsworth
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: market_row_west
+      - direction: north
+        target_room_id: scholar_apartments
+
+  # --- Level -1: Undercity Sewers ---
+  - id: sewer_junction_main
+    name: Sewer Junction
+    description: >-
+      A massive circular chamber where four sewers converge. Grates overhead let in dim
+      light and the sound of the city above. Steam vents hiss from maintenance pipes.
+      Echoing water drips from stalactites of mineral deposits. The air is damp and smells
+      of industry and necessity. Wrought-iron railings run along dangerous edges.
+    map_x: 15
+    map_y: 20
+    map_z: -1
+    area_id: cogsworth
+    light_level: 0
+    exits:
+      - direction: up
+        target_room_id: grand_plaza
+      - direction: north
+        target_room_id: sewer_tunnel_north
+      - direction: east
+        target_room_id: sewer_tunnel_east
+      - direction: west
+        target_room_id: sewer_tunnel_west
+      - direction: south
+        target_room_id: sewer_tunnel_south
+
+  - id: sewer_tunnel_north
+    name: Northern Sewer Tunnel
+    description: >-
+      A long passage of stone and flowing water. The tunnel slopes gently downward,
+      following the ancient logic of drainage. Maintenance alcoves line the walls.
+      In places, the tunnel floor is slick with slime and minerals.
+    map_x: 15
+    map_y: 21
+    map_z: -1
+    area_id: cogsworth
+    light_level: 0
+    exits:
+      - direction: south
+        target_room_id: sewer_junction_main
+      - direction: east
+        target_room_id: sewer_tunnel_east
+
+  - id: sewer_tunnel_east
+    name: Eastern Sewer Tunnel
+    description: >-
+      This tunnel connects the junction to the industrial district above. The smell
+      here is of coal and industry—waste products from the forges and mills. The water
+      runs black in places.
+    map_x: 16
+    map_y: 20
+    map_z: -1
+    area_id: cogsworth
+    light_level: 0
+    exits:
+      - direction: west
+        target_room_id: sewer_junction_main
+      - direction: north
+        target_room_id: sewer_tunnel_north
+      - direction: south
+        target_room_id: sewer_tunnel_south
+
+  - id: sewer_tunnel_west
+    name: Western Sewer Tunnel
+    description: >-
+      A narrower passage connecting to the western residential district. Maintenance
+      workers occasionally pass through here. The walls are marked with worn chalk—
+      measurements and dates indicating regular inspections.
+    map_x: 14
+    map_y: 20
+    map_z: -1
+    area_id: cogsworth
+    light_level: 0
+    exits:
+      - direction: east
+        target_room_id: sewer_junction_main
+      - direction: south
+        target_room_id: sewer_tunnel_south
+
+  - id: sewer_tunnel_south
+    name: Southern Sewer Tunnel
+    description: >-
+      A major feeder line flowing with runoff from the smithy district above. The
+      sound of rushing water echoes in this tunnel. Steam rises from hot-water lines.
+    map_x: 15
+    map_y: 19
+    map_z: -1
+    area_id: cogsworth
+    light_level: 0
+    exits:
+      - direction: north
+        target_room_id: sewer_junction_main
+      - direction: west
+        target_room_id: sewer_tunnel_west
+      - direction: east
+        target_room_id: sewer_tunnel_east
+
+  - id: steam_foundry_antechamber
+    name: Steam Foundry Antechamber
+    indoor: true
+    description: >-
+      Heavy iron doors mark the entrance to the deep foundry below. The air here is
+      already hot and shimmers with heat distortion. A sign warns of extreme temperatures.
+      Workers in protective gear move carefully through this space.
+    map_x: 16
+    map_y: 18
+    map_z: -1
+    area_id: cogsworth
+    light_level: 0
+    exits:
+      - direction: up
+        target_room_id: clockwork_tavern
+
 # ---------------------------------------------------------------------------
 # Items
 # ---------------------------------------------------------------------------
@@ -894,6 +1371,181 @@ items:
     takeable: true
     tradeable: false
 
+  # --- Cogsworth: Weapons (Phase 1) ---
+  - id: iron_sword_cog
+    name: Steel-Forged Sword
+    description: >-
+      A blade of blue steel, forged in the depths of Cogsworth's foundry. The
+      metal still holds faint warmth from the anvil. The pommel is wrapped in
+      leather and set with a small brass gear.
+    takeable: true
+    tradeable: true
+    value: 60
+    category: weapon
+    quality: fine
+
+  - id: brass_dagger_cog
+    name: Brass Dagger
+    description: >-
+      A small blade of polished brass, sharp enough to be dangerous. The hilt
+      is wrapped with copper wire for grip. More ornamental than practical,
+      but still deadly in trained hands.
+    takeable: true
+    tradeable: true
+    value: 25
+    category: weapon
+    quality: common
+
+  - id: mechanical_wrench
+    name: Mechanical Wrench
+    description: >-
+      A tool more than a weapon, but weighted like a club. Industrial craftsmanship
+      marks every edge. Could crack bone as easily as it tightens a bolt.
+    takeable: true
+    tradeable: true
+    value: 15
+    category: trade_good
+
+  # --- Cogsworth: Armor (Phase 1) ---
+  - id: leather_coat_cog
+    name: Reinforced Leather Coat
+    description: >-
+      A heavy leather coat reinforced with brass buckles and studs. The leather
+      is tooled with geometric patterns reminiscent of clock gears.
+    takeable: true
+    tradeable: true
+    value: 45
+    category: armor
+    quality: fine
+
+  - id: brass_helm
+    name: Polished Brass Helm
+    description: >-
+      A helmet of bright brass, polished to mirror shine. The visor can be raised
+      or lowered. A small gear-shaped emblem is mounted on the crown.
+    takeable: true
+    tradeable: true
+    value: 35
+    category: armor
+    quality: fine
+
+  - id: scholar_robes_cog
+    name: Indigo Scholar Robes
+    description: >-
+      Academic robes in deep indigo, trimmed with silver thread. The hem is
+      embroidered with mathematical symbols. Once worn by an Academy professor.
+    takeable: true
+    tradeable: true
+    value: 20
+    category: trade_good
+
+  # --- Cogsworth: Light Sources & Tools ---
+  - id: oil_lantern
+    name: Brass Oil Lantern
+    description: >-
+      A polished brass lantern with multiple panes of clear glass. Designed to
+      shed maximum light with minimal oil consumption. The mechanical shutter
+      can be precisely adjusted.
+    takeable: true
+    tradeable: true
+    value: 30
+    category: trade_good
+
+  - id: brass_key_tower
+    name: Tower Maintenance Key
+    description: >-
+      A large brass key etched with clock-tower symbols. This is a working key
+      used by the tower's maintenance staff.
+    takeable: true
+    tradeable: false
+
+  - id: lockpicks_set
+    name: Lockpick Set
+    description: >-
+      A set of finely crafted lockpicks in a leather case. Each tool is precisely
+      shaped and balanced. The mark of a master craftsman from Cogsworth's finest
+      locksmith workshop.
+    takeable: true
+    tradeable: true
+    value: 40
+    category: trade_good
+
+  - id: copper_wire_coil
+    name: Copper Wire Coil
+    description: >-
+      A tightly wound coil of pure copper wire, half a yard in length. Valuable
+      for both craft work and electrical experiments. Very flexible.
+    takeable: true
+    tradeable: true
+    value: 12
+    category: trade_good
+
+  - id: gear_small_brass
+    name: Small Brass Gear
+    description: >-
+      A precision-cut gear of polished brass, about the size of your palm. It's
+      perfectly balanced and would mesh precisely with other gears. A curious
+      souvenir or valuable component.
+    takeable: true
+    tradeable: true
+    value: 18
+    category: trade_good
+
+  # --- Cogsworth: Trade Goods & Consumables ---
+  - id: oil_can_industrial
+    name: Industrial Oil Can
+    description: >-
+      A sealed metal can of high-grade machine oil. The label bears Cogsworth's
+      seal and a date stamp from this year. Essential for machinery maintenance.
+    takeable: true
+    tradeable: true
+    value: 8
+    category: trade_good
+
+  - id: ale_brass_barrel
+    name: Cogsworth Ale
+    description: >-
+      A tankard of dark, robust ale brewed in a Cogsworth brewery. The flavor
+      has notes of copper and smoke. Warming and potent.
+    takeable: true
+    tradeable: true
+    value: 5
+    category: trade_good
+
+  - id: mechanical_components
+    name: Bag of Mechanical Components
+    description: >-
+      A cloth bag filled with bolts, springs, small gears, and screws. Useful
+      for tinkerers and craftspeople. The exact contents are a bit mysterious.
+    takeable: true
+    tradeable: true
+    value: 22
+    category: trade_good
+
+  # --- Cogsworth: Rare/Collectible ---
+  - id: pocket_watch_cogsworth
+    name: Cogsworth Pocket Watch
+    description: >-
+      An intricate pocket watch with a face of white enamel and hands of gold.
+      The case is engraved with the city's skyline. It keeps perfect time,
+      synchronized with the great clock tower above.
+    takeable: true
+    tradeable: true
+    value: 150
+    category: trade_good
+    quality: superior
+
+  - id: blueprint_scroll
+    name: Rolled Blueprint
+    description: >-
+      A tightly rolled scroll of technical drawings—architectural plans for
+      some wing of the Academy. The ink is precise and the measurements exact.
+      Valuable to the right collector.
+    takeable: true
+    tradeable: true
+    value: 50
+    category: trade_good
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -1119,6 +1771,120 @@ dialogue_trees:
           end_dialogue: true
         choices: []
 
+  # --- Cogsworth NPCs ---
+  - id: clockmaster_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          The tower keeps Cogsworth on time. A responsibility that admits no error.
+          What brings you to the clockworks?
+        side_effects: {}
+        choices:
+          - label: Tell me about the tower.
+            next_node: tower_lore
+          - label: Can I help with maintenance?
+            next_node: maintenance_quest
+          - label: Just looking around.
+            side_effects:
+              end_dialogue: true
+      tower_lore:
+        text: >-
+          This tower has marked the hours for three centuries without fail. Every gear,
+          every escapement, every balance wheel is a work of precision. The mechanism is
+          alive in its own way—it breathes with steam and speaks in ticks.
+        side_effects: {}
+        choices:
+          - label: That's fascinating.
+            side_effects:
+              end_dialogue: true
+      maintenance_quest:
+        text: >-
+          The eastern bearing is wearing thin. If you can bring me brass shavings from
+          the smithy district, I can repack the bearing properly. It's dangerous work if
+          the tower stops.
+        side_effects:
+          start_quest: repair_tower_bearing
+        choices:
+          - label: I'll find those shavings for you.
+            next_node: quest_accepted
+          - label: That sounds risky. Never mind.
+            side_effects:
+              end_dialogue: true
+      quest_accepted:
+        text: Good. The smiths always have shavings. Return here when you have them.
+        side_effects:
+          end_dialogue: true
+
+  - id: blacksmith_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          You've got an eye for good steel, or you wouldn't be here. What can I forge for you?
+        side_effects: {}
+        choices:
+          - label: Show me your wares.
+            next_node: browse_shop
+          - label: Do you take commissions?
+            next_node: commission_work
+          - label: Just browsing.
+            side_effects:
+              end_dialogue: true
+      browse_shop:
+        text: >-
+          I've got iron, steel, and a few pieces I'm particularly proud of. Everything
+          here can take an edge sharp enough to split hairs. Fair prices too.
+        side_effects: {}
+        choices:
+          - label: I'll look around.
+            side_effects:
+              end_dialogue: true
+      commission_work:
+        text: >-
+          I take commissions for special work. Bring me rare materials and coin, and
+          I'll craft something that'll outlast you. That's the Cogsworth promise.
+        side_effects: {}
+        choices:
+          - label: I'll remember that.
+            side_effects:
+              end_dialogue: true
+
+  - id: dealer_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Everything here has a story. Most of them are true. Everything has a price—
+          and all prices are negotiable.
+        side_effects: {}
+        choices:
+          - label: What's your stock?
+            next_node: browse_curiosities
+          - label: I'm looking for something specific.
+            next_node: hunting
+          - label: I'm just looking.
+            side_effects:
+              end_dialogue: true
+      browse_curiosities:
+        text: >-
+          Rare automatons, books from before the kingdom, artifacts of unknown purpose.
+          If it's strange and valuable, I probably have it or can find it.
+        side_effects: {}
+        choices:
+          - label: Fascinating. What else do you have?
+            side_effects:
+              end_dialogue: true
+      hunting:
+        text: >-
+          Tell me what you seek, and I'll tell you if I have it or if it can be found.
+          The rarer the item, the more interesting the price negotiation.
+        side_effects: {}
+        choices:
+          - label: I'll think about it.
+            side_effects:
+              end_dialogue: true
+
 npcs:
   - id: innkeeper
     name: Mira the Innkeeper
@@ -1158,6 +1924,86 @@ npcs:
     bank:
       name: The Wandering Crow's Strongbox
 
+  # -------------------------------------------------------------------------
+  # AREA: cogsworth — Steampunk City (Phase 1 Foundation)
+  # -------------------------------------------------------------------------
+
+  - id: clockmaster_grimlock
+    name: Clockmaster Grimlock
+    description: >-
+      An elderly human with oil-stained robes and a single gear-shaped monocle. His
+      eyes are sharp, his bearing precise. He has the demeanor of someone for whom
+      time is not a negotiable commodity.
+    home_room_id: clock_tower_peak
+    current_room_id: clock_tower_peak
+    dialogue_tree_id: clockmaster_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "The Clockmaster glances up from his work, scrutinizing you with mechanical precision."
+
+  - id: blacksmith_thorne
+    name: Blacksmith Thorne
+    description: >-
+      A broad-shouldered dwarf with soot-stained hands and hammer-calluses. His beard
+      is braided with copper wire. The heat of the forge follows him like an aura.
+    home_room_id: smithy_district
+    current_room_id: smithy_district
+    dialogue_tree_id: blacksmith_dialogue
+    behavior: defensive
+    shop:
+      name: Thorne's Smithy
+      buys_categories: [weapon, armor, trade_good]
+      sell_ratio: 0.6
+      starting_coins: 500
+      stock:
+        - item_id: iron_sword_cog
+          quantity: 3
+        - item_id: brass_dagger_cog
+          quantity: 5
+        - item_id: leather_coat_cog
+          quantity: 2
+        - item_id: brass_helm
+          quantity: 2
+        - item_id: mechanical_wrench
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "The smithy's proprietor looks up from his work, hammer held loosely."
+
+  - id: dealer_vex
+    name: Dealer Vex
+    description: >-
+      A rail-thin merchant with ink-stained fingers and a knowing smile. His eyes seem
+      to catalog everything they see, assessing value both material and immaterial.
+      A collector of impossible things.
+    home_room_id: curiosity_shop
+    current_room_id: curiosity_shop
+    dialogue_tree_id: dealer_dialogue
+    behavior: defensive
+    shop:
+      name: Dealer Vex's Emporium
+      buys_categories: [trade_good, armor, weapon]
+      sell_ratio: 0.7
+      starting_coins: 1000
+      stock:
+        - item_id: pocket_watch_cogsworth
+          quantity: 1
+        - item_id: blueprint_scroll
+          quantity: 2
+        - item_id: lockpicks_set
+          quantity: 1
+        - item_id: copper_wire_coil
+          quantity: -1
+        - item_id: gear_small_brass
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "The dealer's eyes flicker in your direction, assessing."
+
 economy:
   regions:
     - area_id: town
@@ -1166,6 +2012,8 @@ economy:
       region_mult: 1.15
     - area_id: cave
       region_mult: 1.25
+    - area_id: cogsworth
+      region_mult: 1.1
 
 quests:
   - id: investigate_lights
