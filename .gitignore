@@ -235,6 +235,7 @@ test_dbs/
 *.db-shm
 .claude
 !.claude/
+!.claude/agents
 !.claude/skills/
 !.claude/skills/kindle-doc-weaver/
 !.claude/skills/kindle-doc-weaver/SKILL.md
