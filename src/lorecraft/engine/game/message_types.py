@@ -16,11 +16,17 @@ from enum import Enum
 class MessageType(str, Enum):
     """Where a `GameContext.say()` message fits in the output taxonomy.
 
-    Deliberately small (eight entries) — see the module docstring. `SYSTEM`
+    Deliberately small (nine entries) — see the module docstring. `SYSTEM`
     is the default for `say()` calls that haven't been given a more specific
     type; it is not itself a signal to style distinctly (most of the engine's
     existing narration defaults here), whereas the others are meaningful
     routing/filtering hooks once call sites opt in.
+
+    `HELP` tags the `help` command's documentation output (Sprint 71.4) — a
+    distinct, cross-cutting *reference* category (not gameplay narration, a
+    warning, or a per-feature hint), so the frontend can style command/topic
+    listings with bold/color without any markup leaking into engine-adjacent
+    text.
     """
 
     ROOM_EVENT = "room_event"
@@ -30,6 +36,7 @@ class MessageType(str, Enum):
     QUEST = "quest"
     WARNING = "warning"
     HINT = "hint"
+    HELP = "help"
     SYSTEM = "system"
 
 

@@ -230,24 +230,33 @@ def register_meta_commands(
         in_combat = bool(ctx.player.active_combat_session_id)
         topics = HelpRepo(ctx.session)
 
+        # All the `help` command's documentation output is tagged HELP so the
+        # frontend can style it (bold/color) distinctly — Sprint 71.4. The one
+        # exception is the "no such topic id" branch below, which is a genuine
+        # WARNING (an error, not reference content).
         if not first:
             # In a modal context (dialogue/combat) the scoped list is more
             # useful; otherwise show the curated quick-start set.
             if in_dialogue or in_combat:
-                ctx.say("\n".join(_build_help_lines(registry, ctx)))
+                ctx.say("\n".join(_build_help_lines(registry, ctx)), MessageType.HELP)
             else:
-                ctx.say("\n".join(_build_curated_help(registry, ctx)))
+                ctx.say("\n".join(_build_curated_help(registry, ctx)), MessageType.HELP)
         elif first in ("commands", "all"):
-            ctx.say("\n".join(_build_commands_by_category(registry, ctx)))
+            ctx.say(
+                "\n".join(_build_commands_by_category(registry, ctx)), MessageType.HELP
+            )
         elif first in ("topics", "topic"):
             # `help topics [search]` — the topic index, optionally filtered.
             matches = topics.search(rest) if rest else topics.all_topics()
-            ctx.say("\n".join(_render_topic_list(list(matches), query=rest)))
+            ctx.say(
+                "\n".join(_render_topic_list(list(matches), query=rest)),
+                MessageType.HELP,
+            )
         elif first.isdigit():
             # `help <id>` — a topic by its numeric id.
             topic = topics.get(int(first))
             if topic is not None:
-                ctx.say("\n".join(_render_topic(topic)))
+                ctx.say("\n".join(_render_topic(topic)), MessageType.HELP)
             else:
                 ctx.say(
                     f"No help topic with id {first}. Type 'help topics' to list them.",
@@ -262,14 +271,16 @@ def register_meta_commands(
                     f"See also help topic [{same_named.id}] {same_named.name}: "
                     f"'help {same_named.id}'."
                 )
-            ctx.say("\n".join(lines))
+            ctx.say("\n".join(lines), MessageType.HELP)
         else:
             # Not a command — try a topic by name, else fall through to a hint.
             topic = topics.by_name(first)
             if topic is not None:
-                ctx.say("\n".join(_render_topic(topic)))
+                ctx.say("\n".join(_render_topic(topic)), MessageType.HELP)
             else:
-                ctx.say("\n".join(_build_command_help(registry, first)))
+                ctx.say(
+                    "\n".join(_build_command_help(registry, first)), MessageType.HELP
+                )
 
     @registry.register(
         "quit",

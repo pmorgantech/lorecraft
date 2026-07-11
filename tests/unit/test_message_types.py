@@ -40,7 +40,7 @@ class TestMessage:
 
 class TestMessageType:
     def test_taxonomy_is_small_and_named(self) -> None:
-        """Pins the eight-entry taxonomy so a future PR adding a one-off
+        """Pins the nine-entry taxonomy so a future PR adding a one-off
         type notices the list grew (matches the `EventBus`/`ChatScope`
         discipline of a small, deliberate vocabulary)."""
         assert {member.value for member in MessageType} == {
@@ -51,5 +51,6 @@ class TestMessageType:
             "quest",
             "warning",
             "hint",
+            "help",
             "system",
         }

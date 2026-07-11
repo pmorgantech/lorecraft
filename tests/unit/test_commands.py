@@ -305,6 +305,42 @@ def test_help_unknown_numeric_topic_id() -> None:
     assert "no help topic with id 999" in ctx.messages[0].lower()
 
 
+def test_help_output_is_tagged_with_help_message_type() -> None:
+    """Sprint 71.4: every `help` documentation branch tags its `ctx.say()`
+    with `MessageType.HELP` so the frontend can style it (bold/color) without
+    any markup in engine-adjacent text. The genuine error branch (unknown
+    topic id) stays `WARNING`."""
+    from lorecraft.engine.game.message_types import MessageType
+
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_all_commands(registry)
+
+    with Session(engine) as session:
+        _load_topics(session)
+        ctx = _build_context(session)
+
+        # Each help documentation branch, in turn.
+        registry.get("help").handler(None, ctx)  # curated quick-start
+        registry.get("help").handler("commands", ctx)  # grouped list
+        registry.get("help").handler("topics", ctx)  # topic index
+        registry.get("help").handler("1", ctx)  # topic by id
+        registry.get("help").handler("look", ctx)  # command detail
+        registry.get("help").handler("combat", ctx)  # topic by name
+        registry.get("help").handler("flibbertigibbet", ctx)  # not-found detail
+
+    assert all(m.type == MessageType.HELP for m in ctx.messages), [
+        (m[:20], m.type.value) for m in ctx.messages
+    ]
+
+    # The unknown-topic-id branch is an error, not reference content.
+    with Session(engine) as session:
+        warn_ctx = _build_context(session)
+        registry.get("help").handler("999", warn_ctx)
+    assert warn_ctx.messages[0].type == MessageType.WARNING
+
+
 def _build_context(
     session: Session, *, player: Player | None = None, room: Room | None = None
 ) -> GameContext:
