@@ -15,6 +15,7 @@ specialists report back in the structured formats their own definition specifies
 | Backend Engineer | `.claude/agents/backend-engineer.md` | opus | Engine/feature Python, tier boundaries |
 | Frontend Specialist | `.claude/agents/frontend-specialist.md` | sonnet | HTMX/Alpine/Tailwind webui |
 | Test & QA | `.claude/agents/test-qa.md` | haiku | Running suites, structured pass/fail |
+| Pytest Writer | `.claude/agents/pytest-writer.md` | sonnet | Authoring/splitting pytest suites (unit/integration/e2e), test performance, anti-reward-hacking review |
 | Docs Writer | `.claude/agents/docs-writer.md` | sonnet | user_guide/admin_guide/roadmap/CHANGELOG entries |
 | Integrator | `.claude/agents/integrator.md` | haiku | Version bump, CHANGELOG dated headings, merge/tag |
 
