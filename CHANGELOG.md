@@ -4,6 +4,23 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.79.1] - 2026-07-11
+
+### Fixed
+
+- **Indoor tagging: 5 Cogsworth sewer rooms now correctly `indoor: true`.**
+  `sewer_junction_main` and `sewer_tunnel_north`/`east`/`west`/`south` are underground
+  spaces that were missing the flag, leaving them inconsistent with their sibling
+  `steam_foundry_antechamber` and with Ashmoore's `cave_tunnel`/`cave_chamber`. They now
+  suppress weather narration like every other interior. A sweep of Cogsworth, Whisperwood,
+  and Port Veridian confirmed full, correct indoor/outdoor coverage across all 4 zones
+  (30+ rooms tagged appropriately). Content-only change; `Room.indoor` is unchanged.
+- **`docs/roadmap_world.md`: corrected a stale "decision needed" note.** The Blocked
+  Items §1 and task P4.6 claimed indoor/outdoor needed a naming-convention/comment
+  workaround pending schema work. `Room.indoor: bool` has been a real Tier 1 schema field
+  since Sprint 69 (v0.72.0); the doc now reflects that the field is live and supersedes the
+  obsolete "Option B" plan.
+
 ## [0.79.0] - 2026-07-11
 
 ### Added

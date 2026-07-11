@@ -852,6 +852,7 @@ rooms:
   # --- Level -1: Undercity Sewers ---
   - id: sewer_junction_main
     name: Sewer Junction
+    indoor: true
     description: >-
       A massive circular chamber where four sewers converge. Grates overhead let in dim
       light and the sound of the city above. Steam vents hiss from maintenance pipes.
@@ -876,6 +877,7 @@ rooms:
 
   - id: sewer_tunnel_north
     name: Northern Sewer Tunnel
+    indoor: true
     description: >-
       A long passage of stone and flowing water. The tunnel slopes gently downward,
       following the ancient logic of drainage. Maintenance alcoves line the walls.
@@ -893,6 +895,7 @@ rooms:
 
   - id: sewer_tunnel_east
     name: Eastern Sewer Tunnel
+    indoor: true
     description: >-
       This tunnel connects the junction to the industrial district above. The smell
       here is of coal and industry—waste products from the forges and mills. The water
@@ -912,6 +915,7 @@ rooms:
 
   - id: sewer_tunnel_west
     name: Western Sewer Tunnel
+    indoor: true
     description: >-
       A narrower passage connecting to the western residential district. Maintenance
       workers occasionally pass through here. The walls are marked with worn chalk—
@@ -929,6 +933,7 @@ rooms:
 
   - id: sewer_tunnel_south
     name: Southern Sewer Tunnel
+    indoor: true
     description: >-
       A major feeder line flowing with runoff from the smithy district above. The
       sound of rushing water echoes in this tunnel. Steam rises from hot-water lines.

@@ -33,7 +33,7 @@
 
 | Feature | Support | Notes |
 |---------|---------|-------|
-| **Indoor/outdoor** | No explicit flag yet | **DECISION NEEDED:** should we add `indoor: bool` to Room schema? Weather/spawns should depend on it. (Likely Tier 1 / roadmap future sprint.) |
+| **Indoor/outdoor** | ✅ `Room.indoor: bool` — real Tier 1 field (shipped Sprint 69, v0.72.0) | Live in `engine/models/world.py` and world YAML; weather narration (ambient + storms) is suppressed where `indoor: true`. Documented in `.agents/skills/worldbuilding/SKILL.md`. All 4 zones tagged (30+ rooms); see Blocked Items §1 for the closed gap. |
 | **Random spawns** | Scheduler-based | Can schedule NPC spawns; respawn rates not yet modeled in world YAML. (Likely needs a spawn template table.) |
 | **Climate/biome** | Weather exists but not tied to zones | A forest should have rain/fog; a desert dry heat. No zone-climate mapping yet. (Minor content work, depends on indoor flag.) |
 | **Treasure/loot** | Items can be placed in rooms | No randomized loot tables yet. (Tier 2 feature, probably Sprint 16+ backlog.) |
@@ -469,23 +469,21 @@ Blocked Items. Don't build content that assumes this exists.
 - [ ] City: clear/overcast (not weather-sensitive underground)
 - [ ] Test transit: blocked by weather on specific routes (e.g., ship departure in storm)
 
-#### P4.6 — Indoor/Outdoor Tagging (DECISION)
-- [ ] [ ] **OPTION A:** Add `indoor: bool` field to Room schema (requires sprint work)
-- [ ] **OPTION B:** Rely on naming convention / manual tagging in comments for now
-- [ ] **DECISION:** Default to Option B for v0.1 of world branch; revisit if weather-tie needs it
+#### P4.6 — Indoor/Outdoor Tagging — ✅ DONE (real field, not a workaround)
+- [x] **RESOLVED:** `Room.indoor: bool` is a real, shipped Tier 1 schema field (Sprint 69, v0.72.0). No naming-convention/comment workaround is needed — set `indoor: true` directly on interior rooms in world YAML.
+- [x] All 4 zones tagged (30+ rooms); a content pass closed the one gap (5 Cogsworth sewer rooms) and confirmed full, correct coverage.
 
-**Note:** This task depends on architecture decision (see **Blocked Items** section).
+**Note:** This *supersedes* the earlier "Option B: naming convention" decision — the field exists; use it. See **Blocked Items §1**.
 
 ---
 
 ## Blocked Items & Dependencies
 
 ### 1. **Indoor/Outdoor Flag**
-**Status:** ⚠️ Design decision needed
-**Impact:** Weather effects, spawn logic, future day-cycle NPC behavior
-**Engine work needed:** Add `indoor: bool` field to `Room` model; thread through world YAML, migration, etc. (Tier 1 enhancement, ~Sprint 16+)
-**Workaround:** Use `area_id` naming convention (e.g., `undercity_` prefix = indoor) or explicit comments.
-**Decision:** Use naming convention for now; mark rooms with `# indoor` comments for future conversion.
+**Status:** ✅ Resolved — real field shipped (Sprint 69, v0.72.0)
+**Impact:** Weather effects (ambient + storm narration is suppressed indoors), spawn logic, future day-cycle NPC behavior
+**Mechanism:** `Room.indoor: bool` is a live Tier 1 schema field in `src/lorecraft/engine/models/world.py`, threaded through world YAML and documented in `.agents/skills/worldbuilding/SKILL.md`. Set `indoor: true` on sheltered interiors (inns, cellars, shops, vaults, caves, sewers). No naming-convention or comment workaround is needed — the earlier "Option B" plan is obsolete.
+**Coverage pass (v0.79.1):** (a) Closed the one tagging gap found — 5 Cogsworth underground sewer rooms (`sewer_junction_main`, `sewer_tunnel_north/east/west/south`) that were missing `indoor: true` despite matching their sibling `steam_foundry_antechamber` and Ashmoore's `cave_tunnel`/`cave_chamber`. (b) Swept all rooms across Cogsworth, Whisperwood, and Port Veridian and confirmed full, correct indoor/outdoor coverage (30+ rooms tagged appropriately; open plazas/courtyards/trails/docks/yards left outdoor). A few treetop-settlement rooms (`hunter_lodge`, `healer_nest`, `elder_tree_hub`) are intentionally left outdoor — they are a uniformly open-air canopy village with wind/weather cues in their descriptions.
 
 ### 2. **Spawn / Respawn Rates**
 **Status:** ⚠️ Partial support
