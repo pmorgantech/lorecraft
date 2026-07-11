@@ -1172,6 +1172,9 @@ const ISSUE_STATUSES = ["open", "in-progress", "resolved", "deferred", "duplicat
 // Terminal-ish statuses hidden by default so the list shows actionable work.
 const ISSUE_STATUS_HIDDEN_DEFAULT = ["resolved", "deferred"];
 const PRIORITY_RANK = { critical: 0, high: 1, normal: 2, low: 3 };
+// Same value set + order as the #i-filter-priority options — single source
+// of truth so the per-row editable select doesn't hardcode a second list.
+const ISSUE_PRIORITIES = Object.keys(PRIORITY_RANK);
 const ISSUE_PREFS_KEY = "lc_admin_issue_prefs";
 
 // View prefs (which statuses to hide + sort order), persisted across reloads.
@@ -1263,7 +1266,6 @@ async function loadIssues() {
     countEl.textContent = `${issues.length} shown` + (hidden > 0 ? ` · ${hidden} hidden` : "");
   }
 
-  const statusColor = {open: "amber", "in-progress": "amber", resolved: "green", deferred: "gray", duplicate: "gray"};
   const COLSPAN = 10;
   if (issues.length === 0) {
     const tr = document.createElement("tr");
@@ -1287,7 +1289,12 @@ async function loadIssues() {
             `<option value="${s}" ${s === i.status ? "selected" : ""}>${s}</option>`).join("")}
         </select>
       </td>
-      <td>${badge(i.priority, statusColor[i.status] || "gray")}</td>
+      <td>
+        <select onchange="updateIssuePriority('${esc(i.id)}', this.value)" style="width:auto;">
+          ${ISSUE_PRIORITIES.map(p =>
+            `<option value="${p}" ${p === i.priority ? "selected" : ""}>${p}</option>`).join("")}
+        </select>
+      </td>
       <td style="color:var(--text-dim)">${esc(i.component)}</td>
       <td style="color:var(--text-dim)">${esc(i.created_by) || "&mdash;"}</td>
       <td class="issue-date" data-epoch="${i.created_at || 0}" style="color:var(--text-dim);white-space:nowrap;" title="${esc(fmtDateTime(i.created_at))}">${esc(renderIssueDate(i.created_at))}</td>
@@ -1308,7 +1315,13 @@ async function loadIssues() {
       <td></td>
       <td colspan="${COLSPAN - 1}" style="background:var(--panel-2, #14161c);">
         <div style="padding:0.5rem 0.25rem;display:grid;gap:0.4rem;">
-          <div><b style="color:var(--text-dim);font-size:0.75rem;">DESCRIPTION</b><div style="white-space:pre-wrap;">${esc(i.description) || '<span style="color:var(--text-dim)">(no description)</span>'}</div></div>
+          <div>
+            <label for="issue-desc-${i.id}" style="color:var(--text-dim);font-size:0.75rem;">DESCRIPTION</label>
+            <textarea id="issue-desc-${i.id}" placeholder="(no description)" style="width:100%;min-height:70px;white-space:pre-wrap;">${esc(i.description)}</textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:0.25rem;">
+              <button onclick="saveIssueDescription('${esc(i.id)}')">Save</button>
+            </div>
+          </div>
           <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
             <div><b style="color:var(--text-dim);font-size:0.75rem;">OPENED BY</b><br>${esc(i.created_by) || "&mdash;"}</div>
             <div><b style="color:var(--text-dim);font-size:0.75rem;">ASSIGNED TO</b><br>${esc(i.assigned_to) || "&mdash;"}</div>
@@ -1350,6 +1363,19 @@ async function createIssue() {
 
 async function updateIssueStatus(issueId, status) {
   const r = await api("PUT", `/admin/issues/${issueId}`, {status});
+  if (r.detail) showError(r.detail);
+  else loadIssues();
+}
+
+async function updateIssuePriority(issueId, priority) {
+  const r = await api("PUT", `/admin/issues/${issueId}`, {priority});
+  if (r.detail) showError(r.detail);
+  else loadIssues();
+}
+
+async function saveIssueDescription(issueId) {
+  const description = document.getElementById(`issue-desc-${issueId}`).value;
+  const r = await api("PUT", `/admin/issues/${issueId}`, {description});
   if (r.detail) showError(r.detail);
   else loadIssues();
 }

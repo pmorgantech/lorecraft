@@ -71,7 +71,7 @@ work, with one item blocked on a product decision.
 
 | # | Task | Status |
 |---|------|--------|
-| 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [ ] not started — waiting on frontend design |
+| 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [x] done — `webui/admin/index.html` (per-row priority `<select>` mirroring the status select; description `<textarea>` + Save in the detail row), `tests/e2e/test_admin_issues.py` (2 new e2e cases). Awaiting version bump/CHANGELOG entry from the integrator. |
 | 71.2 | **Admin World panel: zone + name filter.** Filter room list by zone dropdown (Cogsworth / Whisperwood / Port Veridian / Ashmoore) plus a dynamic name substring search as the admin types. | [ ] not started — frontend shaping the design; will flag if a new `/admin/world` query param is needed |
 | 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [ ] not started — waiting on rendering.py investigation |
 | 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [ ] not started |
