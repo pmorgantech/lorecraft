@@ -955,6 +955,539 @@ rooms:
       - direction: up
         target_room_id: clockwork_tavern
 
+  # -------------------------------------------------------------------------
+  # AREA: whisperwood — Ancient Forest (Phase 1 Foundation)
+  #
+  # Note on light_level: the engine's RoomData.light_level field is an int
+  # (0 = dark / needs a light source, 1 = lit) — see src/lorecraft/world/
+  # validator.py. The roadmap's fractional 0.5/0.7 "dappled" figures are
+  # descriptive flavor only; every room below uses the nearest valid int
+  # (1 = lit for dappled/canopy/crystal-lit rooms, 0 = dark for the
+  # unlit deep cave rooms).
+  # -------------------------------------------------------------------------
+
+  # --- Forest Floor (map_z: 0) ---
+  - id: whispering_clearing
+    name: Whispering Clearing
+    description: >-
+      A perfectly round clearing at the heart of the wood, floored in soft moss and
+      ringed by trees so old their bark has gone silver-grey. At its center leans a
+      weathered standing stone, taller than a person, carved with spirals worn nearly
+      smooth by centuries of rain. The forest here seems to hold its breath — even the
+      wind moves quietly, as if not to interrupt. Trails lead away in all four directions,
+      and a rope ladder climbs into the canopy far overhead.
+    map_x: 30
+    map_y: 30
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: north
+        target_room_id: north_trail
+      - direction: south
+        target_room_id: south_trail
+      - direction: east
+        target_room_id: east_trail
+      - direction: west
+        target_room_id: west_trail
+      - direction: up
+        target_room_id: elder_tree_hub
+
+  - id: north_trail
+    name: North Trail
+    description: >-
+      The trail narrows as it climbs, and the canopy thickens overhead until the
+      daylight arrives only in scattered coins on the forest floor. The birdsong here
+      is thinner than at the clearing, and the undergrowth crowds close on either side.
+      Something about the quiet makes you want to walk a little faster.
+    map_x: 30
+    map_y: 31
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: whispering_clearing
+      - direction: north
+        target_room_id: old_oak_grove
+
+  - id: old_oak_grove
+    name: Old Oak Grove
+    description: >-
+      Massive oaks stand in a loose ring here, their trunks wider than a wagon and
+      gnarled into shapes that almost — almost — look deliberate. Roots heave up
+      through the soil like the knuckles of something buried. The grey light filtering
+      down through the ancient canopy has a cold, submerged quality, and the grove
+      carries the unmistakable sense of being watched by something patient.
+    map_x: 30
+    map_y: 32
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: north_trail
+      - direction: north
+        target_room_id: shadow_thicket
+      - direction: east
+        target_room_id: twisted_hollow
+
+  - id: twisted_hollow
+    name: Twisted Hollow
+    description: >-
+      A short spur off the grove ends in a hollow where the roots of a dead oak have
+      grown into knots and loops that defy any natural explanation. The air is
+      unnaturally still, and no birds sing here. Whatever curiosity draws travelers off
+      the main trail rarely lingers long once they arrive.
+    map_x: 31
+    map_y: 32
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: old_oak_grove
+
+  - id: shadow_thicket
+    name: Shadow Thicket
+    description: >-
+      The trail all but vanishes into a wall of thorned brush and black-barked trees
+      that seem to lean inward, blotting out what little light survives this far
+      north. Every snapped twig sounds too loud. A narrow gap in the brush drops away
+      into darkness — the mouth of a cave sinking beneath the thicket's roots. Few
+      travelers report going further than this and fewer still recommend it.
+    map_x: 30
+    map_y: 33
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: old_oak_grove
+      - direction: down
+        target_room_id: cave_entrance
+
+  - id: south_trail
+    name: South Trail
+    description: >-
+      The trail opens gently as it heads south, the trees thinning and the light
+      growing warmer with every step. Wildlife sounds change from the wary rustle of
+      the deep wood to the busier hum of open country — insects, distant birdsong,
+      the smell of sun-warmed grass just ahead.
+    map_x: 30
+    map_y: 29
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: whispering_clearing
+      - direction: south
+        target_room_id: meadow_clearing
+
+  - id: meadow_clearing
+    name: Meadow Clearing
+    description: >-
+      A wide, sun-drenched meadow opens where the forest breaks apart. Tall grass
+      ripples in the breeze, dotted with clover and the first scattered wildflowers.
+      Bees drone lazily between blossoms, and the whole clearing feels like a held
+      breath of summer tucked inside the older, colder wood behind you.
+    map_x: 30
+    map_y: 28
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: south_trail
+      - direction: south
+        target_room_id: wildflower_glade
+      - direction: west
+        target_room_id: fern_hollow
+
+  - id: fern_hollow
+    name: Fern Hollow
+    description: >-
+      A shaded pocket just off the meadow, floor to canopy in soft green ferns that
+      brush against your legs as you walk. Water beads on every frond after rain and
+      never quite seems to dry. It is a quiet, unremarkable, entirely peaceful place
+      to sit and do nothing for a while.
+    map_x: 29
+    map_y: 28
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: meadow_clearing
+
+  - id: wildflower_glade
+    name: Wildflower Glade
+    description: >-
+      Color explodes across this glade in a riot of blossoms — violet, gold, and
+      deep crimson blooms crowd every open patch of ground. Butterflies drift between
+      them in unhurried loops. Of everywhere the forest has to offer, this may be the
+      single most beautiful spot, and it knows it.
+    map_x: 30
+    map_y: 27
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: meadow_clearing
+      - direction: south
+        target_room_id: babbling_stream
+
+  - id: babbling_stream
+    name: Babbling Stream
+    description: >-
+      A clear, cold stream chatters over smooth stones here, cutting a shallow
+      channel through mossy banks. Sunlight sparkles on the moving water, and small
+      fish dart between the rocks. It is the kind of place that makes a very
+      convincing argument for stopping to rest.
+    map_x: 30
+    map_y: 26
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: wildflower_glade
+
+  - id: east_trail
+    name: East Trail
+    description: >-
+      A thin mist clings to the ground along this trail no matter the hour, curling
+      around exposed roots and pooling in the hollows. The trees here grow in oddly
+      deliberate rows, as if planted rather than grown, and the trail forks ahead
+      toward two very different kinds of strange.
+    map_x: 31
+    map_y: 30
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: whispering_clearing
+      - direction: north
+        target_room_id: monolith_grove
+      - direction: south
+        target_room_id: mushroom_circle
+
+  - id: monolith_grove
+    name: Monolith Grove
+    description: >-
+      A cluster of standing stones rises from the mist here, each taller than the
+      standing stone at the clearing and etched with spirals, angular script, and
+      symbols that match nothing in any book you've read. The stones hum faintly if
+      you press an ear to them — or perhaps that's only the wind finding the gaps.
+    map_x: 31
+    map_y: 31
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: east_trail
+
+  - id: mushroom_circle
+    name: Mushroom Circle
+    description: >-
+      A near-perfect ring of pale mushrooms grows here, spaced with a regularity
+      that unsettles more than it charms. Old stories call these fairy rings and
+      warn against stepping inside after dusk. By daylight it looks harmless enough —
+      almost.
+    map_x: 31
+    map_y: 29
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: east_trail
+
+  - id: west_trail
+    name: West Trail
+    description: >-
+      The trail west carries a faint, out-of-place sound on the wind — the creak of
+      old timber, the groan of rusted iron. Nature is doing its slow work of reclaiming
+      whatever lies ahead, but hasn't quite finished the job.
+    map_x: 29
+    map_y: 30
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: whispering_clearing
+      - direction: north
+        target_room_id: old_lumber_mill
+      - direction: south
+        target_room_id: flooded_quarry
+
+  - id: old_lumber_mill
+    name: Old Lumber Mill
+    description: >-
+      A collapsed timber mill sags under decades of moss and creeping vine, its
+      waterwheel long stilled and half-swallowed by the forest floor. Saw blades
+      have rusted into lace. Someone worked hard here once, and then, for reasons
+      lost to time, simply stopped. The melancholy is almost a physical weight.
+    map_x: 29
+    map_y: 31
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: west_trail
+
+  - id: flooded_quarry
+    name: Flooded Quarry
+    description: >-
+      An old stone quarry has filled with dark, still water, its cut walls dropping
+      sheer beneath the surface with no visible bottom. The edges are slick stone,
+      unmarked and unguarded — a careless step here would be a very long way down.
+    map_x: 29
+    map_y: 29
+    map_z: 0
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: west_trail
+
+  # --- Canopy City (map_z: 1) ---
+  - id: elder_tree_hub
+    name: Elder Tree Hub
+    description: >-
+      A vast, hollowed elder tree forms the heart of the treetop settlement, its
+      inner walls smoothed by generations of hands and carved with growth-rings of
+      lantern-hooks and shelving. Rope bridges radiate outward from its many
+      doorways toward the platforms beyond, swaying gently in the wind. Wind chimes
+      made of bone and glass sound softly overhead.
+    map_x: 30
+    map_y: 30
+    map_z: 1
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: down
+        target_room_id: whispering_clearing
+      - direction: north
+        target_room_id: weaver_platform
+      - direction: south
+        target_room_id: hunter_lodge
+      - direction: east
+        target_room_id: merchant_branch
+      - direction: west
+        target_room_id: healer_nest
+
+  - id: weaver_platform
+    name: Weaver's Platform
+    description: >-
+      A broad platform lashed between three great boughs, strung overhead with
+      looms and hanging skeins of dyed thread that sway like slow-motion banners.
+      Feathers, seeds, and woven scraps litter the floor. The whole platform smells
+      of cedar and fresh dye.
+    map_x: 30
+    map_y: 31
+    map_z: 1
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: elder_tree_hub
+
+  - id: hunter_lodge
+    name: Hunter's Lodge
+    description: >-
+      A sturdy lodge built into the fork of an ancient bough, hung with coiled
+      rope, traveling packs, and the antlers of animals long since released back to
+      the wood. A banked fire pit smokes gently in one corner. It is the safest,
+      most solid-feeling place in the whole treetop settlement.
+    map_x: 30
+    map_y: 29
+    map_z: 1
+    area_id: whisperwood
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: north
+        target_room_id: elder_tree_hub
+
+  - id: merchant_branch
+    name: Merchant Branch
+    description: >-
+      A wide bough has been decked over with planking to form a trading post, its
+      rails hung with woven baskets, coils of rope, and small clay jars of honey
+      and salve. Wind-worn banners mark out stalls that shift and reopen with the
+      seasons.
+    map_x: 31
+    map_y: 30
+    map_z: 1
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: elder_tree_hub
+
+  - id: healer_nest
+    name: Healer's Nest
+    description: >-
+      A round, nest-like chamber woven from supple branches and lined with dried
+      moss, hung with bundles of drying herbs and rows of small clay jars. The air
+      is thick with the green, bitter smell of tonics in the making. It feels like
+      being tucked inside something alive.
+    map_x: 29
+    map_y: 30
+    map_z: 1
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: elder_tree_hub
+
+  # --- Cave System: Level -1 ---
+  - id: cave_entrance
+    name: Cave Entrance
+    indoor: true
+    description: >-
+      A narrow gap beneath the thicket's roots widens into a low stone mouth,
+      cool air sighing out of the dark. Ancient root-tendrils have grown down
+      through cracks in the ceiling, groping blindly toward the black water
+      somewhere below. The forest's noise vanishes the moment you step inside.
+    map_x: 30
+    map_y: 33
+    map_z: -1
+    area_id: whisperwood
+    light_level: 0
+    exits:
+      - direction: up
+        target_room_id: shadow_thicket
+      - direction: north
+        target_room_id: limestone_passage
+
+  - id: limestone_passage
+    name: Limestone Passage
+    indoor: true
+    description: >-
+      The passage narrows between walls of pale, water-carved limestone, ribbed
+      with drip-formed ridges. Stalactites hang low enough to catch an unwary
+      head, and every footstep and breath returns as a soft echo from somewhere
+      deeper in.
+    map_x: 30
+    map_y: 34
+    map_z: -1
+    area_id: whisperwood
+    light_level: 0
+    exits:
+      - direction: south
+        target_room_id: cave_entrance
+      - direction: north
+        target_room_id: crystal_cavern
+
+  - id: crystal_cavern
+    name: Crystal Cavern
+    indoor: true
+    description: >-
+      The passage opens without warning into a vast chamber lit by its own
+      light — clusters of pale, bioluminescent crystal jut from every wall and
+      ceiling, casting a soft blue-green glow across still pools and glittering
+      mineral veins. It is the most beautiful place in the entire cave system,
+      and clearly, from the carefully arranged stones near its center, someone
+      lives here.
+    map_x: 30
+    map_y: 35
+    map_z: -1
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: limestone_passage
+      - direction: east
+        target_room_id: underground_lake
+      - direction: down
+        target_room_id: deep_passage
+
+  - id: underground_lake
+    name: Underground Lake
+    indoor: true
+    description: >-
+      A broad, shallow lake fills this chamber, its surface lit by the crystal
+      glow spilling in from the cavern behind you. Pale, eyeless fish glide
+      beneath the surface, and the far shore is lost in shadow. Ripples spread
+      from unseen movement somewhere out in the dark water.
+    map_x: 31
+    map_y: 35
+    map_z: -1
+    area_id: whisperwood
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: crystal_cavern
+
+  # --- Cave System: Level -2 ---
+  - id: deep_passage
+    name: Deep Passage
+    indoor: true
+    description: >-
+      The way down narrows sharply, the air turning colder and heavier with
+      every step. The bioluminescent glow of the cavern above fades quickly
+      here, giving way to true, absolute dark. The silence has a weight to it,
+      like the whole mountain is listening.
+    map_x: 30
+    map_y: 35
+    map_z: -2
+    area_id: whisperwood
+    light_level: 0
+    exits:
+      - direction: up
+        target_room_id: crystal_cavern
+      - direction: east
+        target_room_id: bone_chamber
+
+  - id: bone_chamber
+    name: Bone Chamber
+    indoor: true
+    description: >-
+      A wide chamber floored in fine white silt, littered with the bones and
+      fossils of creatures no living scholar could name. Ribcages the size of
+      market stalls curve up out of the ground like the frames of collapsed
+      buildings. A heavy stone door, carved with the same spirals as the
+      standing stone above, is set into the eastern wall.
+    map_x: 31
+    map_y: 35
+    map_z: -2
+    area_id: whisperwood
+    light_level: 0
+    exits:
+      - direction: west
+        target_room_id: deep_passage
+      - direction: east
+        target_room_id: sealed_vault
+        locked: true
+        key_item_id: vault_root_key
+
+  - id: sealed_vault
+    name: Sealed Vault
+    indoor: true
+    description: >-
+      Beyond the stone door, the vault is a small, close chamber, its walls
+      carved floor to ceiling with the same spiral script found throughout the
+      forest above. Whatever the vault was built to hold is long gone, but the
+      carvings themselves feel like the real treasure — a message left by
+      whoever raised the standing stones, waiting a very long time to be read.
+    map_x: 32
+    map_y: 35
+    map_z: -2
+    area_id: whisperwood
+    light_level: 0
+    exits:
+      - direction: west
+        target_room_id: bone_chamber
+
 # ---------------------------------------------------------------------------
 # Items
 # ---------------------------------------------------------------------------
@@ -1546,6 +2079,94 @@ items:
     value: 50
     category: trade_good
 
+  # --- Whisperwood: forest-themed items (Phase 1) ---
+  - id: silverleaf_herb
+    name: Silverleaf Sprig
+    description: >-
+      A sprig of broad, silver-backed leaves with a sharp, clean scent. Herbalists
+      prize it for tonics and poultices; it grows thick in sunlit clearings.
+    takeable: true
+    tradeable: true
+    value: 6
+    category: trade_good
+
+  - id: moonspore_mushroom
+    name: Cluster of Moonspore Mushrooms
+    description: >-
+      Pale, faintly luminous mushrooms that grow in tight clusters, said to sprout
+      only where fairy rings have stood. They give off a cool, silvery light
+      in full darkness.
+    takeable: true
+    tradeable: true
+    value: 10
+    category: trade_good
+
+  - id: faewrought_token
+    name: Faewrought Token
+    description: >-
+      A small wooden disc, carved on both faces with spirals too fine and too
+      regular for any hand tool you recognize. It is warm to the touch, and
+      seems to turn very slightly to face whoever is looking at it.
+    takeable: true
+    tradeable: true
+    value: 15
+    category: trade_good
+    quality: fine
+
+  - id: luminous_cavern_crystal
+    name: Luminous Cavern Crystal
+    description: >-
+      A fist-sized shard of pale blue-green crystal, broken from a cluster deep
+      in the caves below the forest. It glows faintly of its own accord, bright
+      enough to read by in a truly dark room.
+    takeable: true
+    tradeable: true
+    value: 40
+    category: trade_good
+    light: 1
+
+  - id: standing_stone_rubbing
+    name: Standing-Stone Rubbing
+    description: >-
+      A sheet of bark-paper pressed against carved stone and rubbed with charcoal
+      until the spiral script beneath emerged in ghostly white lines. Whoever made
+      this was trying very hard to remember something.
+    takeable: true
+    tradeable: false
+    category: trade_good
+
+  - id: driftwood_talisman
+    name: Driftwood Talisman
+    description: >-
+      A small charm whittled from grey, water-smoothed driftwood salvaged from
+      the old lumber mill's ruin. Simple, unpolished work, but carried with
+      obvious care by whoever left it behind.
+    takeable: true
+    tradeable: true
+    value: 8
+    category: trade_good
+
+  - id: streamworn_agate
+    name: Streamworn Agate
+    description: >-
+      A smooth, banded stone pulled from the bed of a clear forest stream, its
+      surface polished glass-smooth by years of moving water. Bands of amber
+      and grey swirl through its center.
+    takeable: true
+    tradeable: true
+    value: 5
+    category: trade_good
+
+  - id: vault_root_key
+    name: Root-Bound Iron Key
+    description: >-
+      An old iron key, its bow wrapped and fused with a living root grown
+      slowly around the metal over what must have been decades. It still turns
+      freely despite its strange growth, as though the forest itself decided
+      to keep it safe rather than let it rust.
+    takeable: true
+    tradeable: false
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -1713,6 +2334,33 @@ room_items:
     quantity: 1
   - room_id: cave_alcove
     item_id: ancient_coin
+    quantity: 1
+
+  # Whisperwood: forest-themed item placements (Phase 1)
+  - room_id: meadow_clearing
+    item_id: silverleaf_herb
+    quantity: 3
+  - room_id: mushroom_circle
+    item_id: moonspore_mushroom
+    quantity: 2
+  - room_id: monolith_grove
+    item_id: faewrought_token
+    quantity: 1
+  - room_id: monolith_grove
+    item_id: standing_stone_rubbing
+    quantity: 1
+  - room_id: old_lumber_mill
+    item_id: driftwood_talisman
+    quantity: 1
+  - room_id: babbling_stream
+    item_id: streamworn_agate
+    quantity: 2
+  - room_id: crystal_cavern
+    item_id: luminous_cavern_crystal
+    quantity: 1
+  # Vault key hidden in the crystal cavern, per roadmap_world.md 2.3.
+  - room_id: crystal_cavern
+    item_id: vault_root_key
     quantity: 1
 
 # ---------------------------------------------------------------------------
@@ -1885,6 +2533,111 @@ dialogue_trees:
             side_effects:
               end_dialogue: true
 
+  # --- Whisperwood NPCs ---
+  - id: ranger_elena_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Elena looks up from a coil of rope, her wolf-grey eye tracking you head to
+          foot. The other eye is missing entirely, the socket closed over an old
+          scar that pulls the corner of her mouth into a permanent half-frown. "Not
+          many wander this deep without a reason. What brings you to the clearing?"
+        side_effects: {}
+        choices:
+          - label: Tell me about this forest.
+            next_node: forest_lore
+          - label: Any work for someone new to these woods?
+            next_node: quest_offer
+          - label: Just passing through.
+            side_effects:
+              end_dialogue: true
+      forest_lore:
+        text: >-
+          "Four trails, four moods," she says, nodding toward the paths radiating
+          from the clearing. "North gets dark fast — mind the thicket. South's
+          gentle, good walking. East plays tricks on you near the stones. West...
+          west just makes you sad. Old mill, flooded quarry. Something happened
+          there once and the forest hasn't forgotten it."
+        side_effects: {}
+        choices:
+          - label: Thanks for the warning.
+            side_effects:
+              end_dialogue: true
+      quest_offer:
+        text: >-
+          "Truth is, nobody's properly mapped these trails in a generation. I know
+          them by feel, not by any chart worth trusting. Walk them for me — the old
+          oak grove, the wildflower glade, the monolith stones, the mill — and come
+          back and tell me what you find. I'll make it worth your time."
+        side_effects:
+          start_quest: map_forest_trails
+        choices:
+          - label: I'll map the trails for you.
+            next_node: quest_accepted
+          - label: Maybe another time.
+            side_effects:
+              end_dialogue: true
+      quest_accepted:
+        text: >-
+          "Good. Start at the old oak grove, north of here — you'll know it when
+          the light goes strange. Come back safe."
+        side_effects:
+          end_dialogue: true
+
+  - id: geomancer_shard_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A figure sits cross-legged among the crystal clusters, skin threaded through
+          with faint veins of the same blue-green light. Shard does not open their
+          eyes. "The stone remembers what the root forgets, and the root remembers
+          what the stone forgets. You are neither, and yet you are here. Speak."
+        side_effects: {}
+        choices:
+          - label: What are you doing down here?
+            next_node: hermit_lore
+          - label: Tell me about the sealed door east of here.
+            next_node: vault_lore
+          - label: I'll leave you to your work.
+            side_effects:
+              end_dialogue: true
+      hermit_lore:
+        text: >-
+          "Listening. The crystal grows a hair's width in a hundred years, and in
+          that hair's width it carries every word ever spoken near it. I am merely
+          patient enough to hear the echo." A faint smile. "You are not patient.
+          That is not an insult. It is an observation."
+        side_effects: {}
+        choices:
+          - label: Tell me about the sealed door east of here.
+            next_node: vault_lore
+          - label: I should go.
+            side_effects:
+              end_dialogue: true
+      vault_lore:
+        text: >-
+          "The bone chamber holds a door the forest itself locked, long before your
+          kind or mine kept histories. The key was left where the light lives —
+          you may already have passed it. What waits beyond is not treasure. It is
+          a message. Whether you can read it is your affair, not mine."
+        side_effects:
+          start_quest: the_sealed_vault
+        choices:
+          - label: I'll see what's inside.
+            next_node: quest_accepted
+          - label: Not today.
+            side_effects:
+              end_dialogue: true
+      quest_accepted:
+        text: >-
+          "East of the bone chamber, then. Bring nothing you are not willing to
+          leave behind — the forest is generous, but it does not give without
+          asking something in return."
+        side_effects:
+          end_dialogue: true
+
 npcs:
   - id: innkeeper
     name: Mira the Innkeeper
@@ -2004,6 +2757,42 @@ npcs:
         do:
           - narrate_room: "The dealer's eyes flicker in your direction, assessing."
 
+  # -------------------------------------------------------------------------
+  # AREA: whisperwood — Ancient Forest (Phase 1 Foundation)
+  # -------------------------------------------------------------------------
+
+  - id: ranger_elena
+    name: Ranger Elena
+    description: >-
+      A lean, weathered woman in forest-green leathers, a longbow slung across her
+      back. One eye is a pale wolf-grey; the other socket is closed over, marked by
+      a scar that pulls faintly at her mouth. She moves through the clearing like
+      she's memorized every root and stone in it.
+    home_room_id: whispering_clearing
+    current_room_id: whispering_clearing
+    dialogue_tree_id: ranger_elena_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Elena's grey eye finds you immediately, tracking your approach across the clearing."
+
+  - id: geomancer_shard
+    name: Geomancer Shard
+    description: >-
+      A crystal-touched sage who sits so still among the cavern's glowing clusters
+      that they are easy to mistake for another formation. Faint veins of
+      blue-green light trace beneath their skin, pulsing gently in time with the
+      crystals around them. They speak rarely, and never plainly.
+    home_room_id: crystal_cavern
+    current_room_id: crystal_cavern
+    dialogue_tree_id: geomancer_shard_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Shard's eyes open slowly, crystal-flecked and unhurried, and fix on you."
+
 economy:
   regions:
     - area_id: town
@@ -2014,6 +2803,8 @@ economy:
       region_mult: 1.25
     - area_id: cogsworth
       region_mult: 1.1
+    - area_id: whisperwood
+      region_mult: 1.05
 
 quests:
   - id: investigate_lights
@@ -2030,3 +2821,35 @@ quests:
           investigated_market: true
         rewards:
           xp: 50
+
+  - id: map_forest_trails
+    title: Map the Forest Trails
+    description: >-
+      Ranger Elena asked you to walk the forest's trails and report what lies
+      along them, starting with the old oak grove north of the clearing.
+    stages:
+      - id: visit_old_oak_grove
+        description: Follow the north trail to the old oak grove.
+        conditions:
+          - type: room_visited
+            room_id: old_oak_grove
+        completion_flags:
+          mapped_north_trail: true
+        rewards:
+          xp: 40
+
+  - id: the_sealed_vault
+    title: The Sealed Vault
+    description: >-
+      Geomancer Shard spoke of a stone door in the bone chamber, locked by the
+      forest itself, and a key hidden somewhere in the crystal cavern's glow.
+    stages:
+      - id: open_the_vault
+        description: Find the root-bound key and open the sealed vault east of the bone chamber.
+        conditions:
+          - type: room_visited
+            room_id: sealed_vault
+        completion_flags:
+          opened_sealed_vault: true
+        rewards:
+          xp: 60
