@@ -540,12 +540,15 @@ gameplay bug with no trace. So the rename splits by safety:
   cleanly now. The command and dialogue registries both register the one canonical name (a
   legal, non-colliding "same predicate, two surfaces" — enabled by the catalog's idempotent
   same-capability registration; see `Vocabulary.register`).
-- **Flag family + colon-string→map → A2, validator-guarded.** The `flag_set`/`flag_not_set`/
-  `required_flags`/`forbidden_flags`/`set_flags` rename is deferred until A2 wires the §8.5
-  validator into the world load path. With the validator active, a missed rename in
-  `world.yaml` becomes a **fail-closed load error**, not a silent fail-open no-op — the correct
-  order is *validator first, then rename*. Until then the catalog still *reports* the flag-
-  family overlaps (the drift stays visible, just not yet removed).
+- **Flag family → `actor_has_flag`/`actor_lacks_flag` (Sprint 69, done).** The condition drift
+  (`flag_set`/`flag_not_set` on the command surface, `required_flags`/`forbidden_flags` on the
+  dialogue surface) collapsed to the one §8.4 canonical name per capability, registered on both
+  surfaces (idempotent same-capability, like the reputation pair). The catalog's overlap report
+  is now empty. Done safely *after* A2 wired the §8.5 validator into the load path, so any missed
+  rename would surface as a fail-closed load error — though the audit held: there were zero uses
+  in `world_content/`. Intentionally left as-is: the `set_flags`/`clear_flags` **effects** (already
+  imperative-verb form, no capability duplicate) and the separate quest-stage condition registry
+  (`{type: flag_set, …}`, not part of the `when:`/`do:` catalog).
 - **Feature-enable-time descriptors → follow-up.** Registrations that run in a feature's
   `register()` (reputation, follow, npc_memory, …) only enter the generated catalog once the
   doc generator *enables* features rather than merely importing them; until then A0.5's

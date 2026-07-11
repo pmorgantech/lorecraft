@@ -1,9 +1,10 @@
 """A0.2 — the three scripting registries publish descriptors to the shared catalog.
 
 Importing the registry modules must populate ``global_vocabulary()`` with a self-describing
-:class:`VocabEntry` for every built-in condition/effect (not just a bare handler string), and
-the capability-signature duplication check must surface the historical flag-family drift that
-A0.5 will rename away. See ``docs/scripting_engine_design.md`` §8.
+:class:`VocabEntry` for every built-in condition/effect (not just a bare handler string). The
+historical flag-family drift the capability-duplication check used to surface was renamed away
+in Sprint 69 (`actor_has_flag`/`actor_lacks_flag`), so the catalog now reports no overlaps. See
+``docs/scripting_engine_design.md`` §8.
 """
 
 from __future__ import annotations
@@ -18,13 +19,13 @@ _COMMAND_CONDITIONS = (
     "requires_light",
     "not_in_combat",
     "in_combat",
-    "flag_set",
-    "flag_not_set",
+    "actor_has_flag",
+    "actor_lacks_flag",
     "item_in_inventory",
     "object_present",
     "npc_present",
 )
-_DIALOGUE_CONDITIONS = ("required_flags", "forbidden_flags")
+_DIALOGUE_CONDITIONS = ("actor_has_flag", "actor_lacks_flag")
 
 
 def test_side_effect_builtins_are_catalogued_and_wired() -> None:
@@ -58,15 +59,23 @@ def test_dialogue_condition_builtins_are_catalogued_and_wired() -> None:
         assert name in registry, f"{name} handler not wired"
 
 
-def test_catalog_detects_the_flag_family_drift() -> None:
-    """The self-check surfaces exactly the two known synonym pairs A0.5 will rename.
+def test_flag_family_is_canonicalized_with_no_overlaps() -> None:
+    """Sprint 69 killed the flag-family drift (§8.6).
 
-    `flag_set` (command) and `required_flags` (dialogue) both mean "actor has flag"; likewise
-    `flag_not_set`/`forbidden_flags`. These share a capability signature under different names —
-    the drift ``docs/scripting_engine_design.md`` §8.6 exists to kill.
+    `flag_set`/`required_flags` (and the `_not`/`forbidden` variants) collapsed to the one §8.4
+    canonical name per capability — `actor_has_flag` / `actor_lacks_flag` — registered on *both*
+    the command and dialogue surfaces (a legal same-capability, two-surface pair via the
+    catalog's idempotent registration). The old drifted names are retired, and the
+    duplicate-detection self-check now reports **no** capability overlaps.
     """
-    groups = {tuple(e.name for e in group) for group in global_vocabulary().overlaps()}
-    assert ("flag_set", "required_flags") in groups
-    assert ("flag_not_set", "forbidden_flags") in groups
-    # And no *other* accidental duplicates among the migrated built-ins.
-    assert len(groups) == 2
+    assert global_vocabulary().overlaps() == []
+    for retired in ("flag_set", "flag_not_set", "required_flags", "forbidden_flags"):
+        assert global_vocabulary().get(retired) is None, f"{retired} should be retired"
+    for name in ("actor_has_flag", "actor_lacks_flag"):
+        assert global_vocabulary().get(name) is not None
+        assert name in command_conditions.get_registry(), (
+            f"{name} not on command surface"
+        )
+        assert name in dialogue_conditions.get_registry(), (
+            f"{name} not on dialogue surface"
+        )

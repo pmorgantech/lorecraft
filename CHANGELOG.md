@@ -2,6 +2,22 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.75.0] - 2026-07-10
+
+### Changed
+
+- **Scripting flag-condition vocabulary canonicalized (Sprint 69.8, Phase A tech-debt #1).** The
+  drifted `when:` flag conditions — `flag_set`/`required_flags` and `flag_not_set`/`forbidden_flags`
+  (the same capability under different names across the command and dialogue surfaces) — collapse
+  to one canonical name per capability: **`actor_has_flag`** and **`actor_lacks_flag`** (§8.4
+  convention), registered on both surfaces with a byte-identical descriptor. The generated
+  `docs/scripting_api.md` now reports **no capability overlaps**. Dialogue choices gate with
+  `actor_has_flag: [flags]` / `actor_lacks_flag: [flags]`; command conditions use
+  `actor_has_flag:<flag>`. No content migration was needed (zero uses in `world_content/`), and the
+  fail-closed load validator would catch any straggler. **Unchanged** (intentionally): the
+  `set_flags`/`clear_flags` **effects** (already imperative-verb form, no duplicate) and the separate
+  quest-stage condition registry (`{type: flag_set, …}`, not part of the `when:`/`do:` catalog).
+
 ## [0.74.0] - 2026-07-10
 
 ### Added

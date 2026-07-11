@@ -81,6 +81,16 @@ class ParamSpec:
         }
 
 
+# Shared so the `actor_has_flag`/`actor_lacks_flag` conditions register a byte-identical
+# descriptor on both the command and dialogue surfaces (the catalog keeps one entry per name;
+# an identical descriptor makes the generated doc independent of module import order).
+FLAG_PARAM = ParamSpec(
+    "flag",
+    "flag | list[str]",
+    doc="Flag name(s): a single flag (command, colon-string) or a list, all of which must match (dialogue).",
+)
+
+
 @dataclass(frozen=True)
 class CapabilitySig:
     """The dedup key: two entries with an equal signature do the same job.

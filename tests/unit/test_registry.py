@@ -34,7 +34,9 @@ def test_registry_blocks_disabled_room_command() -> None:
 def test_registry_evaluates_parameterized_flag_conditions() -> None:
     registry = CommandRegistry()
 
-    @registry.register("open", conditions=[f"{CommandCondition.FLAG_SET}:cave_open"])
+    @registry.register(
+        "open", conditions=[f"{CommandCondition.ACTOR_HAS_FLAG}:cave_open"]
+    )
     def open_(noun, ctx):
         raise AssertionError("handler should not run")
 

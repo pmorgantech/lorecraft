@@ -35,7 +35,7 @@ def test_render_json_is_valid_and_matches_catalog() -> None:
     vocab = _load_scripting_vocabulary()
     payload = json.loads(catalog.render_json(vocab))
     names = {e["name"] for e in payload["entries"]}
-    assert {"set_flags", "flag_set", "required_flags"} <= names
+    assert {"set_flags", "actor_has_flag", "actor_lacks_flag"} <= names
 
 
 def test_vocabulary_cli_json_runs(capsys) -> None:  # type: ignore[no-untyped-def]

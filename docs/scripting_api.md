@@ -7,7 +7,7 @@ The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC
 engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry
 shows its subject role, capability signature, and parameters.
 
-_18 entries._
+_16 entries._
 
 ## Conditions (`when:`)
 
@@ -41,41 +41,23 @@ The room is lit, or the actor carries a lit light source.
 
 ### flags
 
-#### `flag_not_set`
+#### `actor_has_flag`
 
-The named flag is not set on the actor.
-
-- **Subject:** `actor`
-- **Capability:** `flags/<flag>` · `lacks`
-- **Params:**
-  - `flag` (`flag`, required) — Flag name (colon-string param).
-
-#### `flag_set`
-
-The named flag is set on the actor.
+The actor has the named flag(s) set.
 
 - **Subject:** `actor`
 - **Capability:** `flags/<flag>` · `has`
 - **Params:**
-  - `flag` (`flag`, required) — Flag name (colon-string param).
+  - `flag` (`flag | list[str]`, required) — Flag name(s): a single flag (command, colon-string) or a list, all of which must match (dialogue).
 
-#### `forbidden_flags`
+#### `actor_lacks_flag`
 
-None of the named flags are set on the actor.
+The actor does not have the named flag(s) set.
 
 - **Subject:** `actor`
 - **Capability:** `flags/<flag>` · `lacks`
 - **Params:**
-  - `flags` (`list[str]`, required) — Flag names that must all be clear.
-
-#### `required_flags`
-
-All named flags are set on the actor.
-
-- **Subject:** `actor`
-- **Capability:** `flags/<flag>` · `has`
-- **Params:**
-  - `flags` (`list[str]`, required) — Flag names that must all be set.
+  - `flag` (`flag | list[str]`, required) — Flag name(s): a single flag (command, colon-string) or a list, all of which must match (dialogue).
 
 ### inventory
 
@@ -194,11 +176,3 @@ Start a quest for the actor at its first stage (no-op if already started).
 - **Capability:** `quests/quest` · `start`
 - **Params:**
   - `quest_id` (`quest_id`, required) — Quest to start.
-
-## ⚠ Capability overlaps
-
-These names share a capability signature — likely duplicates to reconcile to one
-canonical name (`docs/scripting_engine_design.md` §8.3):
-
-- `flag_not_set`, `forbidden_flags` — all `actor:flags:<flag>:lacks`
-- `flag_set`, `required_flags` — all `actor:flags:<flag>:has`

@@ -27,9 +27,12 @@ That file is the single source of truth. Before writing a condition or effect na
 
 Current vocabulary (verify against the generated doc — this is a snapshot, not the source):
 
-- **Conditions (`when:`)** — `flag_set`, `flag_not_set`, `required_flags`, `forbidden_flags`,
+- **Conditions (`when:`)** — `actor_has_flag`, `actor_lacks_flag` (the canonical flag
+  predicates — command surface takes a single colon-string flag, dialogue surface takes a list),
   `actor_reputation_at_least`, `item_in_inventory`, `npc_present`, `object_present`,
-  `requires_light`, `in_combat`, `not_in_combat`. Dialogue-only: `moon_phase_is`.
+  `requires_light`, `in_combat`, `not_in_combat`. Dialogue-only: `moon_phase_is`. (Quest-stage
+  conditions are a *separate* registry using `{type: flag_set, flag: …}` — don't confuse them
+  with the `when:` vocabulary here.)
 - **Effects (`do:` / dialogue `side_effects:`)** — `narrate_room`, `narrate_zone`,
   `apply_effect`, `set_flags`, `clear_flags`, `give_item`, `start_quest`, `end_dialogue`,
   `adjust_reputation`.
@@ -64,7 +67,7 @@ Rooms **and** NPCs carry a `triggers:` list. Each entry is `{on, when?, do}`:
 triggers:
   - on: encounter                     # the synthetic event that fires this
     when:                             # optional AND-ed conditions (omit = always)
-      forbidden_flags: [met_mira]
+      actor_lacks_flag: [met_mira]
     do:                               # ordered effects
       - narrate_room: "Mira glances up and gives you a nod of welcome."
       - set_flags: [met_mira]

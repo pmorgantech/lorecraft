@@ -185,8 +185,8 @@ def _visible_choices_for_flags(
     choices = node.get("choices", [])
     visible: list[JsonObject] = []
     for choice in choices:  # type: ignore[union-attr]
-        required = choice.get("required_flags", [])
-        forbidden = choice.get("forbidden_flags", [])
+        required = choice.get("actor_has_flag", [])
+        forbidden = choice.get("actor_lacks_flag", [])
         if all(player_flags.get(str(flag)) for flag in required):
             if not any(player_flags.get(str(flag)) for flag in forbidden):
                 visible.append(choice)  # type: ignore[arg-type]

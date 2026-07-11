@@ -89,18 +89,18 @@ dialogue_trees:
         choices:
           - label: "I need a weapon."
             next_node: weapons
-            required_flags: []
-            forbidden_flags: []
+            actor_has_flag: []
+            actor_lacks_flag: []
             side_effects: {}
           - label: "Just browsing."
             next_node: browsing
-            required_flags: []
-            forbidden_flags: []
+            actor_has_flag: []
+            actor_lacks_flag: []
             side_effects: {}
           - label: "Farewell."
             next_node: null  # null ends dialogue
-            required_flags: []
-            forbidden_flags: []
+            actor_has_flag: []
+            actor_lacks_flag: []
             side_effects: {}
 
       weapons:
@@ -156,8 +156,8 @@ Each choice has:
 |-------|------|-------------|
 | `label` | string | Player sees this text as the option |
 | `next_node` | string or null | Node to transition to; `null` ends dialogue |
-| `required_flags` | array | Player must have ALL these flags to see this choice |
-| `forbidden_flags` | array | Player must NOT have ANY of these to see this choice |
+| `actor_has_flag` | array | Player must have ALL these flags to see this choice |
+| `actor_lacks_flag` | array | Player must NOT have ANY of these to see this choice |
 | `side_effects` | object | Actions triggered when choosing this option |
 
 ### Side Effects
@@ -189,7 +189,7 @@ side_effects:
 
 ### NPC Memory (Sprint 30.1)
 
-Player flags (`set_flags`/`required_flags`) are global — one flag means the same thing to
+Player flags (`set_flags`/`actor_has_flag`) are global — one flag means the same thing to
 every NPC. NPC memory is scoped **per (player, NPC)**: the same key, e.g. `"helped"`, can be
 true for Thor and false for Mira, without inventing `helped_thor`/`helped_mira` flags.
 
@@ -211,7 +211,7 @@ dialogue_trees:
 ```
 
 `remember` accepts a list of keys (sets each to `true`) or a `{key: value}` dict for explicit
-values. `npc_remembers` is a dialogue condition (like `required_flags`) — all listed keys must
+values. `npc_remembers` is a dialogue condition (like `actor_has_flag`) — all listed keys must
 be remembered for the NPC currently being talked to. The same `npc_remembers` type is also a
 quest condition (see below), where the NPC must be named explicitly since there's no "current
 conversation" outside dialogue.
@@ -228,7 +228,7 @@ dialogue_trees:
         choices:
           - label: "Do you have any rare items?"
             next_node: rare_items
-            required_flags: ["merchant_quest_active"]
+            actor_has_flag: ["merchant_quest_active"]
           - label: "Goodbye."
             next_node: null
 
@@ -486,7 +486,7 @@ dialogue_trees:
         choices:
           - label: "I am here to break the curse."
             next_node: hope
-            required_flags: ["curse_quest_active"]
+            actor_has_flag: ["curse_quest_active"]
           - label: "Leave me."
             next_node: null
 

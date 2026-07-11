@@ -35,7 +35,7 @@ from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 
-# Importing these registers the built-in vocabulary (required_flags / set_flags / …) that the
+# Importing these registers the built-in vocabulary (actor_has_flag / set_flags / …) that the
 # triggers below reference and the loader validates against.
 from lorecraft.features.npc import dialogue_conditions, side_effects
 
@@ -142,7 +142,7 @@ def test_encounter_when_gates_the_effect(session: Session) -> None:
                 on="encounter",
                 entity_type="npc",
                 entity_id=NPC_ID,
-                when={"required_flags": ["vip"]},
+                when={"actor_has_flag": ["vip"]},
                 do={"set_flags": ["greeted"]},
             )
         ]
@@ -202,7 +202,7 @@ def test_any_group_one_true_member_passes(session: Session) -> None:
                 on="encounter",
                 entity_type="npc",
                 entity_id=NPC_ID,
-                when={"any": [{"required_flags": ["a"]}, {"required_flags": ["b"]}]},
+                when={"any": [{"actor_has_flag": ["a"]}, {"actor_has_flag": ["b"]}]},
                 do={"set_flags": ["hit"]},
             )
         ]
@@ -222,7 +222,7 @@ def test_all_group_requires_every_member(session: Session) -> None:
                 on="encounter",
                 entity_type="npc",
                 entity_id=NPC_ID,
-                when={"all": [{"required_flags": ["a"]}, {"required_flags": ["b"]}]},
+                when={"all": [{"actor_has_flag": ["a"]}, {"actor_has_flag": ["b"]}]},
                 do={"set_flags": ["hit"]},
             )
         ]
@@ -261,7 +261,7 @@ def test_parse_trigger_accepts_known_names() -> None:
         NPC_ID,
         {
             "on": "encounter",
-            "when": {"required_flags": ["vip"]},
+            "when": {"actor_has_flag": ["vip"]},
             "do": {"set_flags": ["ok"]},
         },
         vocab=global_vocabulary(),

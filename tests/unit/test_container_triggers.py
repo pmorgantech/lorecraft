@@ -157,7 +157,7 @@ def test_when_gate_on_container_trigger(session: Session) -> None:
             on="item_stored",
             entity_type="item",
             entity_id=CHEST,
-            when={"required_flags": ["attuned"]},
+            when={"actor_has_flag": ["attuned"]},
             do=[{"apply_effect": {"target": "stored_item", "effect": "hexed"}}],
         ),
     )

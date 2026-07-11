@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.scripting.vocabulary import (
+    FLAG_PARAM,
     CapabilitySig,
     ParamSpec,
     Subject,
@@ -133,13 +134,13 @@ def _in_combat_check(parameter: str, ctx: "GameContext") -> ConditionResult:
     return ConditionResult(True)
 
 
-def _flag_set_check(parameter: str, ctx: "GameContext") -> ConditionResult:
+def _actor_has_flag_check(parameter: str, ctx: "GameContext") -> ConditionResult:
     if not parameter or not ctx.player.flags.get(parameter):
         return ConditionResult(False, "You can't do that yet.")
     return ConditionResult(True)
 
 
-def _flag_not_set_check(parameter: str, ctx: "GameContext") -> ConditionResult:
+def _actor_lacks_flag_check(parameter: str, ctx: "GameContext") -> ConditionResult:
     if parameter and ctx.player.flags.get(parameter):
         return ConditionResult(False, "You can't do that anymore.")
     return ConditionResult(True)
@@ -236,31 +237,35 @@ _registry.register_spec(
     ),
     _in_combat_check,
 )
+# `actor_has_flag`/`actor_lacks_flag` register on BOTH the command and dialogue surfaces with an
+# IDENTICAL descriptor (see features/npc/dialogue_conditions.py) — same capability, so the
+# catalog's idempotent registration keeps one entry. The descriptor must match byte-for-byte on
+# both sides or the generated `docs/scripting_api.md` would depend on import order.
 _registry.register_spec(
     _condition(
-        "flag_set",
+        "actor_has_flag",
         subject=Subject.ACTOR,
         category="flags",
         domain="flags",
         attribute="<flag>",
         op="has",
-        doc="The named flag is set on the actor.",
-        params=(ParamSpec("flag", "flag", doc="Flag name (colon-string param)."),),
+        doc="The actor has the named flag(s) set.",
+        params=(FLAG_PARAM,),
     ),
-    _flag_set_check,
+    _actor_has_flag_check,
 )
 _registry.register_spec(
     _condition(
-        "flag_not_set",
+        "actor_lacks_flag",
         subject=Subject.ACTOR,
         category="flags",
         domain="flags",
         attribute="<flag>",
         op="lacks",
-        doc="The named flag is not set on the actor.",
-        params=(ParamSpec("flag", "flag", doc="Flag name (colon-string param)."),),
+        doc="The actor does not have the named flag(s) set.",
+        params=(FLAG_PARAM,),
     ),
-    _flag_not_set_check,
+    _actor_lacks_flag_check,
 )
 _registry.register_spec(
     _condition(

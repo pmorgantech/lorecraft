@@ -60,7 +60,9 @@ class ContextCommandData(BaseModel):
     help: str = ""
     say: str = ""  # message shown to the actor when the verb fires
     side_effects: dict[str, object] = Field(default_factory=dict)
-    requires: str | None = None  # optional extra condition string, e.g. "flag_set:x"
+    requires: str | None = (
+        None  # optional extra condition string, e.g. "actor_has_flag:x"
+    )
 
     @model_validator(mode="after")
     def _does_something(self) -> "ContextCommandData":
@@ -171,8 +173,8 @@ class DialogueChoiceData(BaseModel):
 
     label: str
     next_node: str | None = None
-    required_flags: list[str] = Field(default_factory=list)
-    forbidden_flags: list[str] = Field(default_factory=list)
+    actor_has_flag: list[str] = Field(default_factory=list)
+    actor_lacks_flag: list[str] = Field(default_factory=list)
     side_effects: dict[str, object] = Field(default_factory=dict)
 
 

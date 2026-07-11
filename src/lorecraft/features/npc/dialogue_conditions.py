@@ -12,8 +12,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from lorecraft.engine.scripting.vocabulary import (
+    FLAG_PARAM,
     CapabilitySig,
-    ParamSpec,
     Subject,
     VocabEntry,
     VocabKind,
@@ -32,7 +32,7 @@ ConditionPredicate = Callable[[JsonObject, "GameContext"], bool]
 class ConditionRegistry:
     """Registry of dialogue condition predicates.
 
-    Built-in conditions (required_flags, forbidden_flags) are registered
+    Built-in conditions (actor_has_flag, actor_lacks_flag) are registered
     at module load. New predicates can be registered without touching
     dialogue.py, enabling level checks, item checks, quest state, etc.
     """
@@ -84,53 +84,52 @@ class ConditionRegistry:
 _registry = ConditionRegistry()
 
 
-def _required_flags_satisfied(data: JsonObject, ctx: "GameContext") -> bool:
-    """Check that all required flags are set."""
+def _actor_has_flag(data: JsonObject, ctx: "GameContext") -> bool:
+    """Check that all named flags are set on the actor."""
     for flag in data:  # type: ignore[union-attr]
         if not ctx.player.flags.get(str(flag)):
             return False
     return True
 
 
-def _forbidden_flags_clear(data: JsonObject, ctx: "GameContext") -> bool:
-    """Check that no forbidden flags are set."""
+def _actor_lacks_flag(data: JsonObject, ctx: "GameContext") -> bool:
+    """Check that none of the named flags are set on the actor."""
     for flag in data:  # type: ignore[union-attr]
         if ctx.player.flags.get(str(flag)):
             return False
     return True
 
 
-# NOTE: `required_flags`/`forbidden_flags` intentionally share a capability signature with
-# command_conditions' `flag_set`/`flag_not_set` — that is the historical flag-family drift
-# (§8.6). Registering honest signatures makes `Vocabulary.overlaps()` surface the pair; the
-# hard rename to one canonical name lands in A0.5.
+# `actor_has_flag`/`actor_lacks_flag` are the §8.4 canonical names for the actor-flag
+# capability, shared with command_conditions' identically-named predicates (same capability
+# signature, two authoring surfaces — the catalog's idempotent same-capability registration
+# makes that legal, exactly like `actor_reputation_at_least`). The dialogue surface accepts a
+# list of flags (all must match); the command surface takes a single colon-string flag.
+# The descriptor must be byte-identical to the command surface's (command_conditions.py) so the
+# catalog's idempotent same-capability registration yields one import-order-independent entry.
 _registry.register_spec(
     VocabEntry(
-        name="required_flags",
+        name="actor_has_flag",
         kind=VocabKind.CONDITION,
         subject=Subject.ACTOR,
         category="flags",
-        doc="All named flags are set on the actor.",
+        doc="The actor has the named flag(s) set.",
         capability=CapabilitySig(Subject.ACTOR, "flags", "<flag>", "has"),
-        params=(
-            ParamSpec("flags", "list[str]", doc="Flag names that must all be set."),
-        ),
+        params=(FLAG_PARAM,),
     ),
-    _required_flags_satisfied,
+    _actor_has_flag,
 )
 _registry.register_spec(
     VocabEntry(
-        name="forbidden_flags",
+        name="actor_lacks_flag",
         kind=VocabKind.CONDITION,
         subject=Subject.ACTOR,
         category="flags",
-        doc="None of the named flags are set on the actor.",
+        doc="The actor does not have the named flag(s) set.",
         capability=CapabilitySig(Subject.ACTOR, "flags", "<flag>", "lacks"),
-        params=(
-            ParamSpec("flags", "list[str]", doc="Flag names that must all be clear."),
-        ),
+        params=(FLAG_PARAM,),
     ),
-    _forbidden_flags_clear,
+    _actor_lacks_flag,
 )
 
 

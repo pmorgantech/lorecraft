@@ -213,7 +213,7 @@ commands (aliases; `commands/inventory.py`) advance `state["mechanism"]["index"]
 wrapping at the end. When the new index's state name has an entry in
 `mechanism_side_effects`, it's applied once via the shared `npc/side_effects.py` registry —
 almost always `set_flags`, which every existing gate (`Exit.condition_flags`, dialogue
-`required_flags`, quest `flag_set` conditions) already reads. This makes solving a mechanism
+`actor_has_flag`, quest `flag_set` conditions) already reads. This makes solving a mechanism
 a **one-way trigger**, not a live "must currently be in state X" check — turning a dial away
 from its solved position does not un-set the flag. Combination-lock puzzles (several levers
 in the right order) need no new engine surface: each lever's `mechanism_side_effects` sets its

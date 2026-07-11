@@ -40,15 +40,15 @@ _TREE_DATA = {
                 {
                     "label": "Tell me the news.",
                     "next_node": "news",
-                    "required_flags": [],
-                    "forbidden_flags": [],
+                    "actor_has_flag": [],
+                    "actor_lacks_flag": [],
                     "side_effects": {"set_flags": ["asked_news"]},
                 },
                 {
                     "label": "Goodbye.",
                     "next_node": None,
-                    "required_flags": [],
-                    "forbidden_flags": [],
+                    "actor_has_flag": [],
+                    "actor_lacks_flag": [],
                     "side_effects": {"end_dialogue": True},
                 },
             ],
@@ -256,7 +256,7 @@ def test_end_clears_flags_and_update() -> None:
     assert ctx.updates.get("dialogue") is None
 
 
-def test_required_flags_hide_gated_choice() -> None:
+def test_actor_has_flag_hide_gated_choice() -> None:
     e = _engine()
     with Session(e) as session:
         player = _seed(session)
@@ -273,15 +273,15 @@ def test_required_flags_hide_gated_choice() -> None:
                                 {
                                     "label": "Secret option",
                                     "next_node": None,
-                                    "required_flags": ["has_secret"],
-                                    "forbidden_flags": [],
+                                    "actor_has_flag": ["has_secret"],
+                                    "actor_lacks_flag": [],
                                     "side_effects": {},
                                 },
                                 {
                                     "label": "Plain option",
                                     "next_node": None,
-                                    "required_flags": [],
-                                    "forbidden_flags": [],
+                                    "actor_has_flag": [],
+                                    "actor_lacks_flag": [],
                                     "side_effects": {},
                                 },
                             ],

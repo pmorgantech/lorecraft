@@ -630,8 +630,8 @@ class CommandCondition(str, Enum):
     NOT_IN_COMBAT = "not_in_combat"
     IN_COMBAT = "in_combat"
     HAS_COMBAT_TARGET = "has_combat_target"
-    FLAG_SET = "flag_set"           # parameterized: FLAG_SET:cave_open
-    FLAG_NOT_SET = "flag_not_set"
+    ACTOR_HAS_FLAG = "actor_has_flag"   # parameterized: ACTOR_HAS_FLAG:cave_open
+    ACTOR_LACKS_FLAG = "actor_lacks_flag"
     ITEM_IN_INVENTORY = "item_in_inventory"
     NPC_PRESENT = "npc_present"
 

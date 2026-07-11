@@ -43,8 +43,8 @@ _THOR_TREE = {
                 {
                     "label": "I fixed your bellows.",
                     "next_node": "thanked",
-                    "required_flags": [],
-                    "forbidden_flags": [],
+                    "actor_has_flag": [],
+                    "actor_lacks_flag": [],
                     "side_effects": {"remember": ["helped"]},
                 },
                 {

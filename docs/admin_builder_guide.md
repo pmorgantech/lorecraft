@@ -268,7 +268,7 @@ onto them three ways:
 2. **Command conditions** — gate any verb with `conditions: ["moon_phase_is:full"]` or
    `["tide_is:low"]` (fails closed, with an in-fiction reason).
 
-3. **Dialogue conditions** — put the key directly on a choice, like `required_flags`:
+3. **Dialogue conditions** — put the key directly on a choice, like `actor_has_flag`:
 
    ```yaml
    - label: The moon is full tonight. Does the creek change with it?
@@ -306,7 +306,7 @@ Give an **item or NPC its own verbs** that appear and work only when that object
         say: You trace the worn relief and piece out the eroded words...
         side_effects:             # any handler on the shared side-effect registry
           set_flags: [lore:chapel_wheel]
-        # requires: flag_set:some_flag   # optional extra gate
+        # requires: actor_has_flag:some_flag   # optional extra gate
 ```
 
 - Verbs on an **item** are gated `object_present:<id>` (room or inventory); on an **NPC**,

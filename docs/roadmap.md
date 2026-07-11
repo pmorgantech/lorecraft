@@ -192,6 +192,7 @@ commit + version bump.
 | 69.5 | **Zone-qualified teleport addressing.** Teleport accepts a bare room id/name **or** `zone.room` (e.g. `town.inner_vault`), resolving ambiguous names by `area_id`. No schema change (uses existing `area_id`); integer room IDs intentionally **not** pursued. | [x] v0.73.0 — `RoomRepo.resolve_ref`, `webui/admin/routers/players.py`, `tests/unit/test_room_ref_resolution.py`. |
 | 69.6 | **Admin world-clock auto-refresh.** The admin dashboard's clock panel refreshes periodically so time/weather update without a manual reload. | [x] v0.74.0 — `webui/admin/index.html` (5s poll of the Clock tab). |
 | 69.7 | **Admin World panel grouped by zone.** Room list in the admin World tab grouped by `area_id` instead of a flat list. | [x] v0.74.0 — `webui/admin/index.html` + `indoor` in `GET /admin/world/rooms`. |
+| 69.8 | **Flag-family rename (Phase A tech-debt #1).** Collapse the `when:`-condition drift `flag_set`/`required_flags` + `flag_not_set`/`forbidden_flags` to the one §8.4 canonical name per capability — `actor_has_flag`/`actor_lacks_flag` — registered on both command and dialogue surfaces. Catalog overlap report now empty. Zero `world_content/` uses (code+test+docs only); validator-guarded. Left as-is: `set_flags`/`clear_flags` effects (no duplicate) and the separate quest-stage `{type: flag_set}` registry. | [x] `command_conditions.py`, `registry.py` enum, `dialogue_conditions.py`, `dialogue.py`, `world/validator.py`; regenerated `docs/scripting_api.md`; updated worldbuilding skill + dialogue docs. |
 
 ---
 
@@ -199,7 +200,6 @@ commit + version bump.
 
 | Item | Notes |
 |------|-------|
-| Scripting flag-family rename (Phase A tech-debt #1) | Collapse the drifted flag vocabulary (`flag_set`/`required_flags`, `flag_not_set`/`forbidden_flags`, `set_flags`) to one canonical name per capability (§8.6). Deliberately deferred: the runtime is fail-open, so a missed rename in world YAML silently no-ops. **Now safe** — the load-path validator (`engine/scripting/validator.py`) is fail-closed, so do the rename + a `world.yaml` content migration together and let `world_cli validate` catch stragglers. |
 | Scripting catalog generator enables features (Phase A tech-debt #2) | `docs/scripting_api.md` is generated after `discover_features()` (import only), so feature-**enable**-time vocabulary (reputation's `actor_reputation_at_least`/`adjust_reputation`, escort, …) is missing from the doc. Fix: have the generator invoke each `FeatureManifest.register_fn` (with a stub/no-op state) after discovery so the catalog reflects the full enabled vocabulary. |
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | Mobile chat tab-collapse polish | Cosmetic leftover from Sprint 45.3 (finished by Sprint 52 otherwise) — on small screens the chat pane should collapse into a tab rather than stack. Purely responsive/CSS. |
