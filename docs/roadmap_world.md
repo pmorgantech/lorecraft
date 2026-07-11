@@ -269,31 +269,35 @@ Level -2:
 
 Focus: Build the world structure, test room/NPC/item basics across all zones.
 
-#### P1.1 — Steampunk City core skeleton
-- [ ] Steampunk City: Clock Tower (4 rooms)
-- [ ] Steampunk City: Market District (5 rooms)
-- [ ] Steampunk City: Undercity Sewers (6 rooms, dark)
-- [ ] Add 5–8 test NPCs (shopkeepers, quest-givers, flavor)
-- [ ] Create 20–30 basic items (tools, goods, currency-equivalents)
-- [ ] Map exits carefully; test full traversal in-game
+#### P1.1 — Steampunk City core skeleton ✅ (2026-07-10, v0.76.0)
+- [x] Steampunk City: Clock Tower (4 rooms — Tower Peak, Clockworks Chamber, 2 landings)
+- [x] Steampunk City: Market District (6 rooms — Grand Plaza, Market Row E/W, Smithy, Curiosity Shop, Tavern)
+- [x] Steampunk City: Undercity Sewers (6 rooms, dark — junction + 4 tunnels + foundry antechamber)
+- [x] Add 3 test NPCs (Clockmaster Grimlock, Blacksmith Thorne, Dealer Vex — shopkeepers/quest-givers; below the 5–8 target, revisit in Phase 3)
+- [x] Create 15 basic items (weapons, armor, tools, trade goods — below the 20–30 target, revisit in Phase 2)
+- [x] Map exits carefully; `world_cli validate` passing (23 rooms added, all refs resolved)
 
-**Verification:** Can navigate all three levels, meet NPCs, inspect items.
+**Verification:** Can navigate all four levels (z=2..-1), meet NPCs, inspect items. Manual in-game traversal test still outstanding.
 
-#### P1.2 — Whisperwood core skeleton
-- [ ] Whisperwood: Forest Floor central clearing + 4 main trails
-- [ ] Whisperwood: Canopy City (3–4 rooms)
-- [ ] Whisperwood: Cave entrance + crystal cavern
-- [ ] Add 4–6 Whisperwood NPCs
-- [ ] Create forest-themed items (herbs, feathers, crystals)
+#### P1.2 — Whisperwood core skeleton ✅ (2026-07-10, v0.77.0)
+- [x] Whisperwood: Forest Floor central clearing + 4 main trails (16 rooms total)
+- [x] Whisperwood: Canopy City (5 rooms)
+- [x] Whisperwood: Cave entrance + crystal cavern (7 rooms across 2 levels, incl. locked sealed_vault)
+- [x] Add 2 Whisperwood NPCs (Ranger Elena, Geomancer Shard — below the 4–6 target, revisit in Phase 3)
+- [x] Create 8 forest-themed items (herbs, mushrooms, crystals, Fey token, lore items)
 
-**Verification:** Forest is navigable; lighting works (dark caves need torches).
+**Verification:** `world_cli validate` passing (28 rooms added, all refs resolved). Lighting: caves dark (0) except crystal_cavern/underground_lake lit; note engine's `light_level` is int-only (0/1), so the roadmap's fractional 0.5/0.7 "dappled" figures were mapped to the nearest valid value — see commit `8ddd112`. Manual in-game traversal test still outstanding.
 
-#### P1.3 — Port Veridian skeleton
-- [ ] Port Veridian: Docks, Tavern, Warehouse, Lighthouse (6 rooms)
-- [ ] Add 3–4 port NPCs
-- [ ] Create nautical items (rope, fish, salvage)
+#### P1.3 — Port Veridian skeleton ✅ (2026-07-10, v0.77.0)
+- [x] Port Veridian: Docks, Tavern, Warehouse, Lighthouse (22 rooms — expanded well past the original 6-room sketch: docks hub + shipyard cluster + fisherfolk cluster + warehouse cluster incl. locked vault + promenade/tavern/lighthouse loop)
+- [x] Add 4 port NPCs (Captain Iris, Tavern Keeper Sal, Lighthouse Keeper, Shipwright Calloway)
+- [x] Create 11 nautical items (rope, netting, salvage, sea glass, warehouse key, tavern fare)
 
-**Verification:** Port is integrated; can trade with vendors.
+**Verification:** `world_cli validate` passing (22 rooms added, all refs resolved). Port is a self-contained zone (not yet interconnected with Cogsworth/Whisperwood — see Phase 4/zone-linking note). Manual in-game trade test still outstanding.
+
+**Phase 1 world totals (after merge, commit `925ba90`):** 96 rooms, 78 items, 10 NPCs, 3 quests
+across 4 zones (town, wilderness, cave — Ashmoore — plus cogsworth, whisperwood, port_veridian).
+Zones are currently disjoint (no cross-zone exits yet); linking them is deferred to a later pass.
 
 ---
 
