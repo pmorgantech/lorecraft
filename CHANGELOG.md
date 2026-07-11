@@ -9,6 +9,17 @@ All notable changes to Lorecraft will be documented in this file.
 - **Multi-agent worktree scaffolding.** New `scripts/bootstrap-worktree.sh` (+ `make bootstrap`) gives each agent worktree its own `.venv`, empty `var/app.sqlite`, `docs/*.yaml` copy, and `.env.local`. `make test-e2e` now re-syncs `docs/*.yaml` from the primary tree when run inside a worktree. Design + workflow (conventional commits, agent-created PRs, merge-time version/changelog automation via a future GitHub Action) documented in `docs/multi-agent-workflow.md`; AGENTS.md gains a multi-agent scaffolding section. The automated release action itself is not implemented yet — manual version bumps remain in force until it lands.
 - **Per-role subagent definitions** in `.claude/agents/` (orchestrator, research-planner, backend-engineer, frontend-specialist, test-qa, docs-writer, integrator) — model/tool/prompt config per role, referenced from `docs/multi-agent-workflow.md`.
 
+## [0.76.0] - 2026-07-10
+
+### Added
+
+- **World roadmap Phase 1: Cogsworth steampunk city.** 23 new rooms across 4 vertical
+  levels (Clock Tower Peak, Academy of Aetheric Arts, Market District, Undercity Sewers)
+  in a new `cogsworth` zone (`world_content/world.yaml`). Three NPCs with shops and
+  branching dialogue (Clockmaster Grimlock, Blacksmith Thorne, Dealer Vex) and 15
+  zone-themed items (weapons, armor, tools, trade goods). First of three zones in
+  `docs/roadmap_world.md` Phase 1 foundation build (Cogsworth/Whisperwood/Port Veridian).
+
 ## [0.75.0] - 2026-07-10
 
 ### Changed
