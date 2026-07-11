@@ -24,7 +24,10 @@ addressing, and the flag-condition canonicalization to `actor_has_flag`/`actor_l
 **Sprint 70** social emotes (`wave`, `point`) and the `quests` command have all shipped. Detail in
 [`roadmap_completed.md`](roadmap_completed.md) and [`../CHANGELOG.md`](../CHANGELOG.md).
 
-**Next: Sprint 71** — backlog items or new features (TBD).
+**Next: Sprint 71** — backlog items or new features (TBD). *(Out-of-band, v0.90.0: the
+`consumables` feature — `eat`/`drink`/`quaff` with one-shot `heal`/`apply_effect` item
+descriptors — closed the "no consumption mechanic" gap that Phase 2.4 world content had
+been blocked on; see `roadmap_world.md` P2.4.)*
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred

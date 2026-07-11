@@ -148,6 +148,31 @@ class InventoryService:
             return None
         return matches[0]
 
+    def find_carried_item(
+        self, query: str, ctx: GameContext, *, verb: str
+    ) -> tuple[ItemStack, Item] | None:
+        """Resolve one *carried* (loose) item + its stack, or ``None`` after
+        messaging the player. Shared find→disambiguate step reused by verbs that
+        act on a held item (e.g. eat/drink in the consumables feature), mirroring
+        the resolution `give_item` does inline."""
+        matches = ctx.item_repo.search_player_items(ctx.player.id, query)
+        item = self._resolve_single(
+            ctx,
+            verb=verb,
+            query=query,
+            matches=matches,
+            item_of=lambda m: m,
+            not_found_msg="You don't have that.",
+        )
+        if item is None:
+            return None
+        stacks = ctx.item_repo.player_stacks_matching(ctx.player.id, query)
+        loose = [stack for stack, candidate in stacks if candidate.id == item.id]
+        if not loose:
+            ctx.say("You don't have that.", MessageType.WARNING)
+            return None
+        return loose[0], item
+
     def _do_take(
         self, ctx: GameContext, stack: ItemStack, item: Item, count: int
     ) -> None:

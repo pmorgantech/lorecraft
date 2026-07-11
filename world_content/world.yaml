@@ -3932,9 +3932,11 @@ items:
     value: 12
     category: trade_good
 
-  # --- P2.4 Potions & remedies (flavor-only: no engine consumption effect;
-  #     see roadmap P2.4 note — no registered apply_effect key exists for these,
-  #     so they are lore/inventory items, not mechanically consumable) ---
+  # --- P2.4 Potions & remedies (consumable via `drink`/`quaff`; healing
+  #     potions restore the `hp` meter, buff potions apply a timed EffectDef
+  #     registered by the `consumables` feature — see docs/inventory_equipment.md).
+  #     Flavor-only remedies below (luckwater, antidote) have no engine effect
+  #     yet: there is no luck stat or status-ailment system to key them to. ---
   - id: minor_healing_draught
     name: Minor Healing Draught
     description: >-
@@ -3946,6 +3948,11 @@ items:
     weight: 0.3
     value: 20
     category: drink
+    effects:
+      - type: heal
+        meter: hp
+        amount: 15
+        message: The warmth spreads through you and the worst of your hurts ease.
 
   - id: healing_tonic
     name: Healing Tonic
@@ -3959,6 +3966,11 @@ items:
     value: 40
     category: drink
     quality: fine
+    effects:
+      - type: heal
+        meter: hp
+        amount: 40
+        message: A deep, knitting warmth closes your wounds.
 
   - id: major_healing_elixir
     name: Major Healing Elixir
@@ -3972,6 +3984,11 @@ items:
     value: 90
     category: drink
     quality: superior
+    effects:
+      - type: heal
+        meter: hp
+        amount: 80
+        message: Radiant heat floods your body and your wounds seal over.
 
   - id: stamina_restorative
     name: Stamina Restorative
@@ -3984,6 +4001,11 @@ items:
     weight: 0.3
     value: 15
     category: drink
+    effects:
+      - type: heal
+        meter: fatigue
+        amount: 40
+        message: A second wind chases the ache from your legs.
 
   - id: clarity_philter
     name: Philter of Clarity
@@ -3997,6 +4019,13 @@ items:
     value: 30
     category: drink
     quality: fine
+    effects:
+      - type: apply_effect
+        effect_key: keen_minded
+        duration_ticks: 60
+        payload:
+          amount: 2
+        message: The fog lifts from your mind and your senses sharpen.
 
   - id: draught_of_vigor
     name: Draught of Vigor
@@ -4009,6 +4038,13 @@ items:
     weight: 0.3
     value: 30
     category: drink
+    effects:
+      - type: apply_effect
+        effect_key: fortified
+        duration_ticks: 60
+        payload:
+          amount: 2
+        message: Fire runs through your arms; you feel suddenly strong.
 
   - id: luckwater_vial
     name: Vial of Luckwater

@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from lorecraft.features.npc.dialogue import DialogueService
 from lorecraft.features.bank.service import BankService
 from lorecraft.features.character.service import CharacterInfoService
+from lorecraft.features.consumables.service import ConsumableService
 from lorecraft.features.economy.service import EconomyService
 from lorecraft.features.exploration.service import ExplorationService
 from lorecraft.features.fatigue.service import FatigueService
@@ -34,6 +35,7 @@ from lorecraft.features.trading.service import TradeService
 _FEATURE_GATED_SERVICES: dict[str, tuple[str, type]] = {
     "movement": ("movement", MovementService),
     "inventory": ("inventory", InventoryService),
+    "consumables": ("consumables", ConsumableService),
     "dialogue": ("npc", DialogueService),
     "quest": ("quests", QuestService),
     "character_info": ("character", CharacterInfoService),
@@ -68,6 +70,7 @@ class ServiceContainer:
     # owning feature is disabled.
     movement: MovementService | None = field(default_factory=MovementService)
     inventory: InventoryService | None = field(default_factory=InventoryService)
+    consumables: ConsumableService | None = field(default_factory=ConsumableService)
     dialogue: DialogueService | None = field(default_factory=DialogueService)
     quest: QuestService | None = field(default_factory=QuestService)
     character_info: CharacterInfoService | None = field(

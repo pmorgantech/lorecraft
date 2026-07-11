@@ -4,6 +4,36 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.90.0] - 2026-07-11
+
+### Added
+
+- **Consumable items — `eat` / `drink` / `quaff` (new `consumables` Tier 2 feature).** The 20+
+  `category: food` / `category: drink` items in `world_content/world.yaml` were inert; there was no
+  consume mechanism. New `features/consumables/` package:
+  - `eat <item>` (gates on `category: food`), `drink`/`quaff <item>` (gate on `category: drink`).
+    Wrong category → "You can't eat/drink that."; a successful consume destroys exactly one unit,
+    messages the actor and the room, and fires the item's one-shot effects. Held-item resolution
+    reuses `InventoryService` (new public `find_carried_item` seam) so disambiguation matches the
+    other item verbs.
+  - Two new **one-shot-on-consume** `Item.effects` descriptor types, dispatched by
+    `features/consumables/effects.py` (separate from the equip-time modifier compiler in
+    `features/items/effects.py`):
+    - `{type: heal, meter: <key>, amount: <n>, message?}` — instant `MeterService.adjust` on a
+      generic meter (`hp`, `fatigue`, …).
+    - `{type: apply_effect, effect_key: <key>, duration_ticks?, payload?, message?}` — timed
+      `EffectService.apply` buff on the drinker.
+  - Two new positive buff `EffectDef`s (`features/consumables/buffs.py`): `fortified` (+strength)
+    and `keen_minded` (+perception); magnitude from `payload.amount` (default +2), surfaced through
+    the shared §3.5 modifier resolver.
+  - Content wiring: `minor_healing_draught`/`healing_tonic`/`major_healing_elixir` heal `hp`
+    (15/40/80, graduated), `stamina_restorative` heals `fatigue` (40), `clarity_philter` applies
+    `keen_minded`, `draught_of_vigor` applies `fortified`. Plain food/drink (bread, ale, water, …)
+    stay effect-free. `luckwater_vial` and `antidote_phial` remain flavor-only (no luck stat /
+    status-ailment system to key them to). `nightshade_poison` stays `category: trade_good`, so it
+    is not drinkable — poisons remain lore items, not consumables.
+  - `tools/validators.py` content-lint now recognises and field-checks `heal`/`apply_effect`.
+
 ## [0.89.1] - 2026-07-11
 
 ### Fixed

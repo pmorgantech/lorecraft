@@ -18,6 +18,7 @@ from lorecraft.features.follow.commands import register_follow_commands
 from lorecraft.features.context_commands.commands import register_context_commands
 from lorecraft.features.hunts.commands import register_hunt_commands
 from lorecraft.features.marks.commands import register_mark_commands
+from lorecraft.features.consumables.commands import register_consumable_commands
 from lorecraft.features.economy.commands import register_economy_commands
 from lorecraft.features.exploration.commands import register_exploration_commands
 from lorecraft.features.inventory.commands import register_inventory_commands
@@ -70,6 +71,9 @@ def register_all_commands(
     if services.inventory is not None:
         with registry.category("inventory"):
             register_inventory_commands(registry, services.inventory)
+    if services.consumables is not None:
+        with registry.category("inventory"):
+            register_consumable_commands(registry, services.consumables)
     if services.dialogue is not None:
         with registry.category("social"):
             register_social_commands(registry, services.dialogue)

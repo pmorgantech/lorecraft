@@ -387,6 +387,13 @@ runtime — equipment bonuses are resolved live, never stored on the player:
 | `carry_bonus` | `amount` | Extends carry capacity (e.g. a worn backpack) |
 | `grant_trait` | `trait` | Grants a named trait while equipped |
 | `warmth_bonus` | `amount` | Adds resolved warmth while equipped — offsets cold-weather sleep risk (see Safe Rest above) |
+| `heal` | `meter`, `amount`, `message?` | **One-shot on consume** (`eat`/`drink`): instantly adjusts a meter (`hp`, `fatigue`, …) by `amount`. Only fires on a `food`/`drink` item. |
+| `apply_effect` | `effect_key`, `duration_ticks?`, `payload?`, `message?` | **One-shot on consume**: applies a timed active effect (buff) to the drinker. Buff keys registered by the `consumables` feature: `fortified` (+strength), `keen_minded` (+perception); `payload.amount` sets magnitude (default 2). |
+
+The `heal`/`apply_effect` descriptors are **one-shot** — they fire once when the item is
+eaten or drunk (and one unit is destroyed), unlike the equip-time bonuses above which apply
+continuously while worn. They only take effect on an item with `category: food` (eaten) or
+`category: drink` (drunk/quaffed).
 
 ```yaml
 - id: worn_backpack
@@ -395,6 +402,16 @@ runtime — equipment bonuses are resolved live, never stored on the player:
   capacity: 40
   effects:
     - { type: carry_bonus, amount: 40 }
+
+- id: healing_tonic
+  category: drink
+  effects:
+    - { type: heal, meter: hp, amount: 40, message: "Warmth closes your wounds." }
+
+- id: draught_of_vigor
+  category: drink
+  effects:
+    - { type: apply_effect, effect_key: fortified, duration_ticks: 60, payload: { amount: 2 } }
 ```
 
 ### Shops

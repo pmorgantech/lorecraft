@@ -350,12 +350,12 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 #### P2.4 — Consumables & Potions (15+ items) ✅ (2026-07-11, v0.83.0)
 - [x] Healing potions (minor, standard, major) (minor healing draught, healing tonic, major healing elixir)
 - [x] Stamina/fatigue remedies (stamina restorative)
-- [x] Buff potions (temporary strength, clarity, luck) (draught of vigor, philter of clarity, vial of luckwater — flavor-only)
-- [x] Poisons (flavor; can't be consumed, but lore-rich) (nightshade extract; antidote phial as its counter)
+- [x] Buff potions (temporary strength, clarity, luck) (draught of vigor → `fortified`, philter of clarity → `keen_minded`; vial of luckwater flavor-only — no luck stat to key it to)
+- [x] Poisons (flavor; can't be consumed, but lore-rich) (nightshade extract kept `category: trade_good`, so not drinkable; antidote phial flavor-only — no status-ailment system to cure)
 - [x] Food: bread, cheese, fruit, fish, stew (crusty loaf, farmhouse cheese, apples, smoked sausage, venison stew, forest berries, honeycomb — plus existing fish)
 - [x] Drink: water, ale, wine, elixir (spring water, brown ale, red wine, hot cider)
 
-**Test:** Consume potions (if mechanic exists); verify effect application. If no consumption, at least test inventory. — **No consumption mechanic exists** (no registered `apply_effect` key for drinking); 20 items authored as flavor/inventory items only, no `apply_effect` hookup. `world_cli validate` clean.
+**Test:** Consume potions (if mechanic exists); verify effect application. — **Consumption mechanic now exists (v0.90.0):** the `consumables` Tier 2 feature adds `eat`/`drink`/`quaff` and the one-shot `heal`/`apply_effect` item descriptors. Healing potions restore `hp` (15/40/80), the stamina restorative restores `fatigue` (40), and the two buff potions apply the new `fortified`/`keen_minded` EffectDefs. Plain food/drink stay flavor-effect-free by design. `world_cli validate` clean; unit + command tests in `tests/unit/test_consumables.py`.
 
 #### P2.5 — Wearables with Traits (10+ items) ✅ (2026-07-11, v0.84.0)
 - [x] Blessed Amulet (grants "Blessed" trait) — `slot: neck`

@@ -176,6 +176,9 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
         "carry_bonus",
         "grant_trait",
         "warmth_bonus",
+        # One-shot-on-consume descriptors (eat/drink), see features/consumables.
+        "heal",
+        "apply_effect",
     }
     stats = {"strength", "agility", "vitality", "intellect", "presence", "fortitude"}
 
@@ -239,6 +242,21 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
                 if not isinstance(effect.get("amount"), (int, float)):
                     result.errors.append(
                         f"item {item.id!r} effect {i} (warmth_bonus) missing numeric 'amount' field"
+                    )
+            elif effect_type == "heal":
+                if not isinstance(effect.get("meter"), str):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (heal) missing string 'meter' field"
+                    )
+                if not isinstance(effect.get("amount"), (int, float)):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (heal) missing numeric 'amount' field"
+                    )
+            elif effect_type == "apply_effect":
+                if not isinstance(effect.get("effect_key"), str):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (apply_effect) missing string "
+                        "'effect_key' field"
                     )
 
     return result

@@ -94,6 +94,27 @@ Each descriptor `type` is registered with a compiler to Tier 1 terms (§9): `sta
 source, not a modifier. Unknown descriptor types are a **content-lint error**, not a runtime
 fallthrough.
 
+The descriptors above are **continuous** — they apply while the item is equipped. A second
+family of descriptors is **one-shot on consume**, handled by the `consumables` feature's
+dispatcher (`features/consumables/effects.py`) rather than the equip-time compiler; they fire
+once when a `food`/`drink` item is `eat`/`drink`/`quaff`-ed, and one unit is destroyed:
+
+| Type | Fields | Effect |
+|------|--------|--------|
+| `heal` | `meter`, `amount`, `message?` | Instantly adjusts a meter (`MeterService.adjust`) — e.g. `hp` for healing potions, `fatigue` for a stamina restorative. `meter` is generic. |
+| `apply_effect` | `effect_key`, `duration_ticks?`, `payload?`, `message?` | Applies a timed active effect (`EffectService.apply`) to the drinker — a buff potion. Buff `effect_key`s the feature registers: `fortified` (+strength), `keen_minded` (+perception). `payload.amount` sets the magnitude (default +2). |
+
+```yaml
+- id: minor_healing_draught
+  category: drink
+  effects:
+    - { type: heal, meter: hp, amount: 15 }
+- id: clarity_philter
+  category: drink
+  effects:
+    - { type: apply_effect, effect_key: keen_minded, duration_ticks: 60, payload: { amount: 2 } }
+```
+
 ---
 
 ## 4. Layer B — Equipment slots
