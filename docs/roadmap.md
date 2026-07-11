@@ -11,19 +11,20 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-10, v0.75.0)
+## Where things stand (2026-07-10, v0.78.0)
 
-**Everything through Sprint 69 is complete** and merged to local `develop`/`scripting_engine`.
+**Everything through Sprint 70 is complete** and merged to main.
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
 client themes/layouts band (58–60, 62), multi-level map (66), the webui-theming skill (67), escort
 quests (68), and the **Phase A scripting engine** (v0.57–0.70) plus its **Sprint 69** world-building
 polish (weather-narration voice, indoor rooms, the world-building agent skill, zone-qualified
-addressing, and the flag-condition canonicalization to `actor_has_flag`/`actor_lacks_flag`) have all
-shipped. Detail in [`roadmap_completed.md`](roadmap_completed.md) and [`../CHANGELOG.md`](../CHANGELOG.md).
+addressing, and the flag-condition canonicalization to `actor_has_flag`/`actor_lacks_flag`), and
+**Sprint 70** social emotes (`wave`, `point`) and the `quests` command have all shipped. Detail in
+[`roadmap_completed.md`](roadmap_completed.md) and [`../CHANGELOG.md`](../CHANGELOG.md).
 
-**Active: Sprint 70** — social emotes & quality-of-life commands (see below).
+**Next: Sprint 71** — backlog items or new features (TBD).
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -101,7 +102,7 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   admin clock auto-refresh, admin World-by-zone, flag-condition rename). The Phase A scripting engine
   itself (v0.57–0.70, branch `scripting_engine`) predates this ledger; it is tracked in
   `docs/scripting_engine_design.md`.
-- **In progress:** 70 (social emotes & QoL commands — 70.1 emotes, 70.2 `quests` command, v0.78.0).
+- **Used (all complete):** 70 (social emotes & QoL commands — 70.1 emotes, 70.2 `quests` command, v0.78.0).
 - **Next new sprint: 71.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
