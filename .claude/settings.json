@@ -10,5 +10,12 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git fetch *)",
+      "Bash(source /home/petem/src/Gamedev/lorecraft/.venv/bin/activate)",
+      "mcp__graphify__get_neighbors"
+    ]
   }
 }
