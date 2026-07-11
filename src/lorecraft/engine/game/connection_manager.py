@@ -89,6 +89,11 @@ class ConnectionManager:
     def players_in_room(self, room_id: str) -> list[str]:
         return sorted(self._room_players.get(room_id, set()))
 
+    def occupied_rooms(self) -> list[str]:
+        """Rooms with at least one connected player — lets a world-level broadcast
+        (e.g. weather narration) touch only rooms that actually have an audience."""
+        return sorted(room for room, players in self._room_players.items() if players)
+
     def connected_player_ids(self) -> list[str]:
         """Every currently-connected player — the P2ALL chat recipient set
         (Sprint 52.3), letting the broadcast step filter per-recipient

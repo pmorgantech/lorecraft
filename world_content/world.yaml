@@ -57,6 +57,7 @@ rooms:
 
   - id: wandering_crow_inn
     name: The Wandering Crow Inn
+    indoor: true
     description: >-
       Low timbers, candle-grease on every surface, and the permanent perfume of
       spilled ale. A stuffed crow mounted above the hearth regards you with
@@ -77,6 +78,7 @@ rooms:
 
   - id: inn_cellar
     name: The Inn Cellar
+    indoor: true
     description: >-
       Brick-arched and cool, smelling of damp earth and old barrels. Rows of
       casks line the walls, each daubed with a chalk mark. A single tallow
@@ -93,6 +95,7 @@ rooms:
 
   - id: blacksmith_forge
     name: Forge and Hammer
+    indoor: true
     description: >-
       The forge exhales a wave of heat before you even cross the threshold. A
       barrel of black water hisses where hot metal cools. Tools hang on pegs
@@ -115,6 +118,7 @@ rooms:
 
   - id: key_gallery
     name: Locksmith's Gallery
+    indoor: true
     description: >-
       Pegboards and shallow trays display a confusing spread of keys, locks,
       blades, and curios — many names differ by only a word or two. The
@@ -132,6 +136,7 @@ rooms:
 
   - id: vault_hall
     name: The Vault Hall
+    indoor: true
     description: >-
       A narrow stone antechamber. A heavy iron door fills the east wall, its
       lock stout and cold — it needs the right key. Two keys have been left on
@@ -150,6 +155,7 @@ rooms:
 
   - id: inner_vault
     name: The Inner Vault
+    indoor: true
     description: >-
       Beyond the iron door, the vault is a bare, quiet room of close-fitted
       stone. Whatever it once guarded is long gone. The only way out is back
@@ -183,6 +189,7 @@ rooms:
 
   - id: alchemist_shop
     name: "Mira's Curious Remedies"
+    indoor: true
     description: >-
       The shelves climb floor to ceiling and every inch is occupied: glass
       bottles of amber, violet, and cloudy white; bundles of dried fungi
@@ -391,6 +398,7 @@ rooms:
 
   - id: cave_tunnel
     name: The Winding Tunnel
+    indoor: true
     description: >-
       The ceiling drops to shoulder height and you are obliged to watch your
       footing on the slick limestone. The tunnel is not entirely dark — a faint
@@ -411,6 +419,7 @@ rooms:
 
   - id: cave_chamber
     name: The Stone Chamber
+    indoor: true
     description: >-
       The tunnel opens into a natural chamber perhaps thirty feet across.
       Stalactites fringe the ceiling like stone teeth. A cold draught comes
@@ -434,6 +443,7 @@ rooms:
 
   - id: cave_pool
     name: The Underground Pool
+    indoor: true
     description: >-
       The chamber floor gives way without warning to a pool of still, perfectly
       clear water. The bottom, visible twelve feet down, is white sand and
@@ -452,6 +462,7 @@ rooms:
 
   - id: cave_alcove
     name: The Hidden Alcove
+    indoor: true
     description: >-
       You squeeze through the crack and find yourself in a low space, the
       ceiling so close it presses on your thoughts. Someone has been here

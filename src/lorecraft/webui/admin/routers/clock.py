@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 
 from lorecraft.webui.admin.auth import Observer, Superadmin
+from lorecraft.engine.game.events import Event, GameEvent
 from lorecraft.engine.repos.room_repo import RoomRepo
 
 router = APIRouter(tags=["admin"])
@@ -119,7 +120,26 @@ async def set_weather(
         clock = RoomRepo(session).world_clock()
         if clock is None:
             raise HTTPException(status_code=503, detail="World clock not initialized")
+        previous_weather = clock.weather
+        season = clock.current_season
+        day = clock.current_day
         clock.weather = body.weather
         session.add(clock)
         session.commit()
+
+    # Announce the change the same way the automatic daily roll does, so a manual
+    # admin weather change also reaches players' feeds (weather narration voice).
+    if body.weather != previous_weather:
+        state.bus.emit(
+            Event(
+                GameEvent.WEATHER_CHANGED,
+                {
+                    "previous_weather": previous_weather,
+                    "weather": body.weather,
+                    "season": season,
+                    "day": day,
+                },
+            ),
+            None,
+        )
     return {"weather": body.weather}

@@ -40,6 +40,7 @@ async def list_rooms(request: Request, _: Observer) -> list[dict[str, Any]]:
             "map_y": r.map_y,
             "map_z": r.map_z,
             "area_id": r.area_id,
+            "indoor": r.indoor,
             "is_active": r.is_active,
             "fallback_room_id": r.fallback_room_id,
             "light_level": r.light_level,

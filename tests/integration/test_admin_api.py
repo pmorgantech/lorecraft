@@ -15,6 +15,7 @@ from sqlmodel import Session, create_engine
 
 from lorecraft.webui.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
+from lorecraft.engine.game.events import GameEvent
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player
@@ -260,6 +261,42 @@ async def _test_teleport() -> None:
         player = session.get(Player, "player-1")
     assert player is not None
     assert player.current_room_id == "market_stalls"
+
+
+def test_teleport_emits_player_moved_for_enter_exit_behaviour() -> None:
+    anyio.run(_test_teleport_emits_player_moved)
+
+
+async def _test_teleport_emits_player_moved() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        payloads: list[Any] = []
+        app.state.lorecraft.bus.on(
+            GameEvent.PLAYER_MOVED,
+            lambda event, ctx: payloads.append(event.payload),
+        )
+        with Session(game_engine) as session:
+            before = session.get(Player, "player-1")
+            assert before is not None
+            origin = before.current_room_id
+
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/players/player-1/teleport",
+            body={"room_id": "market_stalls"},
+            token=token,
+        )
+        assert status == 200
+
+    assert len(payloads) == 1
+    assert payloads[0]["player_id"] == "player-1"
+    assert payloads[0]["from_room_id"] == origin
+    assert payloads[0]["to_room_id"] == "market_stalls"
 
 
 def test_set_player_flags_merges_flags() -> None:
@@ -535,6 +572,41 @@ async def _test_set_weather() -> None:
         assert status == 200
         _, clock = await _http(app, "GET", "/admin/clock", token=token)
     assert clock["weather"] == "blizzard"
+
+
+def test_set_weather_emits_weather_changed_for_narration() -> None:
+    anyio.run(_test_set_weather_emits_event)
+
+
+async def _test_set_weather_emits_event() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        payloads: list[Any] = []
+        app.state.lorecraft.bus.on(
+            GameEvent.WEATHER_CHANGED,
+            lambda event, ctx: payloads.append(event.payload),
+        )
+        _, clock = await _http(app, "GET", "/admin/clock", token=token)
+        before = clock["weather"]
+        target = "blizzard" if before != "blizzard" else "clear"
+
+        status, _ = await _http(
+            app, "POST", "/admin/clock/weather", body={"weather": target}, token=token
+        )
+        assert status == 200
+        # Re-setting the same weather must stay silent (no non-event announcement).
+        status, _ = await _http(
+            app, "POST", "/admin/clock/weather", body={"weather": target}, token=token
+        )
+        assert status == 200
+
+    assert len(payloads) == 1
+    assert payloads[0]["weather"] == target
+    assert payloads[0]["previous_weather"] == before
 
 
 # ---------------------------------------------------------------------------

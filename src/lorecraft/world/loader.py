@@ -73,6 +73,7 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 version=room.version,
                 terrain=room.terrain,
                 safe_rest=room.safe_rest,
+                indoor=room.indoor,
                 triggers=cast(list[JsonObject], room.triggers),
             )
         )
@@ -356,6 +357,7 @@ def export_world_document(session: Session) -> WorldDocument:
             version=room.version,
             terrain=room.terrain,
             safe_rest=room.safe_rest,
+            indoor=room.indoor,
             triggers=cast(list[dict[str, object]], room.triggers),
             exits=[
                 ExitData(

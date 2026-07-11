@@ -293,6 +293,11 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
             connection.execute(
                 text("ALTER TABLE room ADD COLUMN map_z INTEGER NOT NULL DEFAULT 0")
             )
+    if "indoor" not in room_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE room ADD COLUMN indoor BOOLEAN NOT NULL DEFAULT 0")
+            )
 
     if "npc" in inspect(engine).get_table_names():
         npc_columns = {column["name"] for column in inspect(engine).get_columns("npc")}

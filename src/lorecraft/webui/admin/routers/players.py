@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -9,9 +10,14 @@ from pydantic import BaseModel
 from sqlmodel import Session, col, select
 
 from lorecraft.webui.admin.auth import Moderator, Observer
+from lorecraft.engine.game.broadcast import broadcast_command_effects
+from lorecraft.engine.game.context import build_game_context
+from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
-from lorecraft.engine.models.world import Room
+from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.observability import bind_transaction_context
 
 router = APIRouter(tags=["admin"])
 
@@ -100,20 +106,68 @@ async def teleport_player(
     player_id: str, body: _TeleportBody, request: Request, _: Moderator
 ) -> dict[str, str]:
     state = _state(request)
-    with Session(state.game_engine) as session:
+    with (
+        Session(state.game_engine) as session,
+        Session(state.audit_engine) as audit_session,
+    ):
         player = session.get(Player, player_id)
         if player is None:
             raise HTTPException(status_code=404, detail="Player not found")
-        target = session.get(Room, body.room_id)
+        # Accept an exact room id, a room name, or a zone-qualified `zone.room`
+        # (e.g. `town.inner_vault`) — see RoomRepo.resolve_ref.
+        target = RoomRepo(session).resolve_ref(body.room_id)
         if target is None:
-            raise HTTPException(status_code=404, detail="Target room not found")
+            raise HTTPException(
+                status_code=404, detail="Target room not found (or name is ambiguous)"
+            )
+        target_id = target.id
+
         old_room = player.current_room_id
-        player.current_room_id = body.room_id
-        if body.room_id not in player.visited_rooms:
-            player.visited_rooms = player.visited_rooms + [body.room_id]
-        session.add(player)
+        player.current_room_id = target_id
+        if target_id not in player.visited_rooms:
+            player.visited_rooms = player.visited_rooms + [target_id]
+
+        # Route the teleport through the same PLAYER_MOVED machinery a normal walk
+        # uses, so room enter/exit behaviour actually fires — encounter triggers,
+        # quest/mark progression, follow, and the admin dashboard's live location —
+        # instead of silently swapping the field and leaving every client out of sync.
+        session_id = f"admin-teleport-{int(time.time() * 1000)}"
+        transaction = TransactionContext.create(
+            actor_id=player.id, correlation_id=session_id
+        )
+        ctx = build_game_context(
+            session,
+            player,
+            target,
+            bus=state.bus,
+            manager=state.manager,
+            transaction=transaction,
+            session_id=session_id,
+            rng=state.rng,
+            meters=state.meters,
+            effects=state.effects,
+            clock=RoomRepo(session).world_clock(),
+            audit_session=audit_session,
+            commit_state=session.commit,
+            commit_audit=audit_session.commit,
+            rollback_state=session.rollback,
+        )
+        state.manager.move_player(player_id, old_room, target_id)
+        with bind_transaction_context(
+            transaction.transaction_id, transaction.correlation_id
+        ):
+            ctx.emit(
+                GameEvent.PLAYER_MOVED,
+                player_id=player_id,
+                from_room_id=old_room,
+                to_room_id=target_id,
+                direction="",
+            )
         session.commit()
-        # Capture before session closes
+        audit_session.commit()
+
+        # The actor's own client renders the new room from this payload; other
+        # occupants and the admin dashboard resync via broadcast_command_effects.
         room_payload: dict[str, Any] = {
             "id": target.id,
             "name": target.name,
@@ -123,11 +177,12 @@ async def teleport_player(
             "map_z": target.map_z,
             "exits": [],
         }
-    state.manager.move_player(player_id, old_room, body.room_id)
+        await broadcast_command_effects(state.manager, ctx, pre_room_id=old_room)
+
     await state.manager.send_to_player(
         player_id, {"type": "room_change", "room": room_payload}
     )
-    return {"status": "teleported", "player_id": player_id, "room_id": body.room_id}
+    return {"status": "teleported", "player_id": player_id, "room_id": target_id}
 
 
 class _FlagsBody(BaseModel):

@@ -684,6 +684,10 @@ function refreshIfActive(name) {
   if (panel && panel.classList.contains("active") && TAB_LOADERS[name]) TAB_LOADERS[name]();
 }
 
+// The world clock advances in real time (scaled by time-ratio), so poll it while the
+// Clock tab is open — the reading otherwise sits at whatever it was when last loaded.
+setInterval(() => refreshIfActive("clock"), 5000);
+
 // ────────────────────────────────────────
 // Dashboard
 // ────────────────────────────────────────
@@ -995,14 +999,28 @@ async function loadRooms() {
   const tbody = document.getElementById("rooms-tbody");
   tbody.innerHTML = "";
   if (!Array.isArray(rooms)) return;
+  // Group by zone (area_id); zones alphabetical, rooms by name within a zone.
+  const byZone = {};
   for (const r of rooms) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td style="font-family:monospace;color:var(--amber)">${esc(r.id)}</td>
-      <td>${esc(r.name)}</td>
-      <td>${r.is_active ? badge("active","green") : badge("inactive","gray")}</td>
-      <td><button onclick='editRoom(${JSON.stringify(JSON.stringify(r))})'>Edit</button></td>`;
-    tbody.appendChild(tr);
+    const zone = r.area_id || "(no zone)";
+    (byZone[zone] = byZone[zone] || []).push(r);
+  }
+  for (const zone of Object.keys(byZone).sort()) {
+    const header = document.createElement("tr");
+    header.innerHTML =
+      `<td colspan="4" style="background:rgba(255,176,0,0.08);color:var(--amber);font-weight:bold;">`
+      + `${esc(zone)} <span style="color:var(--text-dim);font-weight:normal;">(${byZone[zone].length})</span></td>`;
+    tbody.appendChild(header);
+    byZone[zone].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    for (const r of byZone[zone]) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="font-family:monospace;color:var(--amber)">${esc(r.id)}</td>
+        <td>${esc(r.name)}${r.indoor ? ' <span title="indoor" style="color:var(--text-dim)">⌂</span>' : ''}</td>
+        <td>${r.is_active ? badge("active","green") : badge("inactive","gray")}</td>
+        <td><button onclick='editRoom(${JSON.stringify(JSON.stringify(r))})'>Edit</button></td>`;
+      tbody.appendChild(tr);
+    }
   }
 }
 

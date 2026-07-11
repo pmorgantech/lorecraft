@@ -179,7 +179,8 @@ class WeatherFrontService:
                     )
         text = on_enter or f"A {front.storm_id.replace('_', ' ')} rolls in."
         for room in rooms:
-            broadcast_room_async(self._manager, room.id, text)
+            if not room.indoor:  # sheltered interiors don't see the storm
+                broadcast_room_async(self._manager, room.id, text)
 
     def _leave_zone(self, session: Session, front: _ActiveFront) -> None:
         for effect_id in front.applied_effect_ids:
@@ -188,7 +189,8 @@ class WeatherFrontService:
         if front.on_leave:
             zone = front.path[front.zone_index]
             for room in RoomRepo(session).rooms_in_area(zone):
-                broadcast_room_async(self._manager, room.id, front.on_leave)
+                if not room.indoor:  # sheltered interiors don't see the storm
+                    broadcast_room_async(self._manager, room.id, front.on_leave)
 
     def _expire(self, session: Session, front: _ActiveFront) -> None:
         self._leave_zone(session, front)

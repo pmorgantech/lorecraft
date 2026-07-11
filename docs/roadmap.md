@@ -176,10 +176,31 @@ pluggable quest-condition/side-effect registries (Sprint 30.1) rather than addin
 
 ---
 
+## Sprint 69 — Scripting-engine world-building polish
+
+**Goal:** make the Phase A scripting engine (weather fronts, triggers, spawns — branch
+`scripting_engine`, v0.57–0.70) usable and consistent from a builder's chair, and fix the
+correctness gaps found while play-validating it. Small, reviewable changes; each row is its own
+commit + version bump.
+
+| # | Task | Status |
+|---|------|--------|
+| 69.1 | **Ambient weather narration voice.** `WEATHER_CHANGED` announces the transition to players' feeds ("A light rain begins to fall."); the admin `POST /admin/clock/weather` endpoint now emits `WEATHER_CHANGED` (previously silent). | [x] v0.71.0 — `features/weather/handlers.py`, `webui/admin/routers/clock.py`, `tests/unit/test_weather_narration.py`. |
+| 69.2 | **Admin teleport fires room enter/exit behaviour.** Teleport routed through a real `GameContext` + `PLAYER_MOVED` + `broadcast_command_effects`, so encounter triggers, quest/mark progression, `follow`, and the admin dashboard's live location fire instead of a silent field swap. | [x] v0.71.1 — `webui/admin/routers/players.py`, `tests/integration/test_admin_api.py`. |
+| 69.3 | **Indoor vs. outdoor rooms.** `Room.indoor` flag (additive migration); ambient weather voice and storm fronts skip sheltered interiors; demo world marks 11 interiors indoor. | [x] v0.72.0 — `engine/models/world.py`, `db.py`, `world/{validator,loader}.py`, `features/weather/{handlers,fronts}.py`, `connection_manager.occupied_rooms()`. |
+| 69.4 | **World-building agent skill.** `.agents/skills/worldbuilding/` (+ `.claude/` pointer): authoritative guide to rooms/NPCs/triggers/dialogue/weather/spawns and the generated `docs/scripting_api.md` vocabulary, so any "create an NPC / scripted event" prompt consults how scripting actually works. | [x] |
+| 69.5 | **Zone-qualified teleport addressing.** Teleport accepts a bare room id/name **or** `zone.room` (e.g. `town.inner_vault`), resolving ambiguous names by `area_id`. No schema change (uses existing `area_id`); integer room IDs intentionally **not** pursued. | [x] v0.73.0 — `RoomRepo.resolve_ref`, `webui/admin/routers/players.py`, `tests/unit/test_room_ref_resolution.py`. |
+| 69.6 | **Admin world-clock auto-refresh.** The admin dashboard's clock panel refreshes periodically so time/weather update without a manual reload. | [x] v0.74.0 — `webui/admin/index.html` (5s poll of the Clock tab). |
+| 69.7 | **Admin World panel grouped by zone.** Room list in the admin World tab grouped by `area_id` instead of a flat list. | [x] v0.74.0 — `webui/admin/index.html` + `indoor` in `GET /admin/world/rooms`. |
+
+---
+
 ## Backlog
 
 | Item | Notes |
 |------|-------|
+| Scripting flag-family rename (Phase A tech-debt #1) | Collapse the drifted flag vocabulary (`flag_set`/`required_flags`, `flag_not_set`/`forbidden_flags`, `set_flags`) to one canonical name per capability (§8.6). Deliberately deferred: the runtime is fail-open, so a missed rename in world YAML silently no-ops. **Now safe** — the load-path validator (`engine/scripting/validator.py`) is fail-closed, so do the rename + a `world.yaml` content migration together and let `world_cli validate` catch stragglers. |
+| Scripting catalog generator enables features (Phase A tech-debt #2) | `docs/scripting_api.md` is generated after `discover_features()` (import only), so feature-**enable**-time vocabulary (reputation's `actor_reputation_at_least`/`adjust_reputation`, escort, …) is missing from the doc. Fix: have the generator invoke each `FeatureManifest.register_fn` (with a stub/no-op state) after discovery so the catalog reflects the full enabled vocabulary. |
 | Offline/IRL commands (`/system`, `@someone`) | Parser scope distinction; after core commands stable |
 | Mobile chat tab-collapse polish | Cosmetic leftover from Sprint 45.3 (finished by Sprint 52 otherwise) — on small screens the chat pane should collapse into a tab rather than stack. Purely responsive/CSS. |
 | Async event-bus support | When webhooks/external integrations need it (audit §3.2) |
@@ -217,7 +238,10 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   testing, PvP consent — 62 was reclaimed for the unrelated axis-split work above since combat
   stayed shelved), 65 (multiplayer trade/transit tests). Don't reuse 61/63/64/65 for unrelated
   work — restore under fresh numbers if that work returns.
-- **Next new sprint: 69.** Don't recycle a number that appears here or in
+- **In progress:** 69 (scripting-engine world-building polish — 69.1–69.4 shipped v0.71.0–0.72.0;
+  69.5–69.7 queued). The Phase A scripting engine itself (v0.57–0.70, branch `scripting_engine`)
+  predates this ledger; it is tracked in `docs/scripting_engine_design.md`.
+- **Next new sprint: 70.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---

@@ -26,6 +26,9 @@ class Room(SQLModel, table=True):
         "normal"  # affects travel gating; see game/terrain.py's TerrainRegistry
     )
     safe_rest: bool = False  # inns/camps: `sleep` here is reliable, never interrupted
+    indoor: bool = (
+        False  # interiors (vaults, cellars): weather narration is suppressed here
+    )
     # Declarative on/when/do trigger hooks (scripting engine A2): each is a raw
     # {on, when?, do} dict, parsed+validated by scripting.triggers.parse_trigger at load
     # and bound to the live event bus by scripting_wiring.build_trigger_service.

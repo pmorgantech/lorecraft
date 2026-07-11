@@ -42,6 +42,7 @@ class RoomData(BaseModel):
     version: int = 1
     terrain: str = "normal"
     safe_rest: bool = False
+    indoor: bool = False
     exits: list[ExitData] = Field(default_factory=list)
     # Declarative on/when/do trigger hooks (scripting engine A2). Raw dicts here; validated
     # against the vocabulary catalog by `parse_trigger` at world load (fail-closed).

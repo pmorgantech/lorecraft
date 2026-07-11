@@ -2,6 +2,70 @@
 
 All notable changes to Lorecraft will be documented in this file.
 
+## [0.74.0] - 2026-07-10
+
+### Added
+
+- **Admin World panel grouped by zone.** The admin console's room list is now grouped by
+  `area_id` (zone) with per-zone headers and counts, sorted by room name within each zone;
+  indoor rooms are flagged with a `⌂` marker (`Room.indoor` is now included in
+  `GET /admin/world/rooms`).
+- **Admin world-clock auto-refresh.** The clock panel now polls every 5s while the Clock tab is
+  open, so the day/time/season/weather readout tracks the advancing world clock without a manual
+  reload.
+
+## [0.73.0] - 2026-07-10
+
+### Added
+
+- **World-building agent skill.** `.agents/skills/worldbuilding/` (with a `.claude/skills/`
+  pointer) — an authoritative guide to authoring rooms, NPCs, `{on, when?, do}` triggers,
+  dialogue trees, weather fronts, and spawns against the Phase A scripting engine, anchored on
+  the generated `docs/scripting_api.md` vocabulary. Any prompt to create an NPC or scripted event
+  should consult it first.
+- **Zone-qualified room addressing for admin teleport.** `POST /admin/players/{id}/teleport`
+  now accepts an exact room id, a room **name** (case-insensitive), or a zone-qualified
+  `zone.room` (e.g. `town.inner_vault`) — the last disambiguates rooms that share a name.
+  Backed by a reusable `RoomRepo.resolve_ref()`; uses the existing `area_id` (no integer room
+  ids, no schema change).
+
+## [0.72.0] - 2026-07-10
+
+### Added
+
+- **Indoor vs. outdoor rooms; weather narration is suppressed indoors.** `Room` gains an
+  `indoor` flag (set per room in world YAML; additive SQLite migration defaults existing rooms
+  to outdoor). The ambient weather voice and the traveling storm fronts now skip sheltered
+  interiors — a player in the `inner_vault` no longer sees "A light rain begins to fall." The
+  demo world marks its inns, cellars, forges, shops, vaults, and cave interiors as indoor
+  (11 rooms). Weather narration also only touches rooms that currently have an audience
+  (`ConnectionManager.occupied_rooms()`).
+
+## [0.71.1] - 2026-07-10
+
+### Fixed
+
+- **Admin teleport now fires room enter/exit behaviour.** `POST /admin/players/{id}/teleport`
+  previously just overwrote `current_room_id` and sent the player a bare room payload — no
+  `PLAYER_MOVED` event, so encounter triggers, quest/mark progression, `follow`, and the admin
+  dashboard's live player location never updated and other occupants' panels went stale. The
+  endpoint now routes the move through a real `GameContext`, emits `PLAYER_MOVED`, and reuses
+  `broadcast_command_effects`, so a teleport behaves like a normal walk into the room.
+
+## [0.71.0] - 2026-07-10
+
+### Added
+
+- **Ambient weather narration voice.** A `WEATHER_CHANGED` event now announces the transition
+  to every connected player's feed (e.g. "A light rain begins to fall.", "The clouds part and
+  the sky clears."). This fires for both the automatic daily weather roll and manual changes from
+  the admin console — the admin `POST /admin/clock/weather` endpoint now emits `WEATHER_CHANGED`
+  (previously it silently set the field), so setting weather in the admin UI is now visible in
+  game. Per-weather lines live in `WEATHER_NARRATION` (`features/weather/handlers.py`); a new
+  `broadcast_global_async` engine helper mirrors `broadcast_room_async` for world-level events.
+  Re-setting the current weather stays silent. Note this is distinct from the traveling
+  `WeatherFrontService` storms, which narrate per-zone as they move.
+
 ## [0.70.0] - 2026-07-10
 
 ### Added

@@ -159,7 +159,7 @@ def create_app(
             bus=bus,
             time_ratio=resolved_settings.world_time_ratio,
         )
-        register_weather_handlers(bus, resolved_game_engine, rng=app_rng)
+        register_weather_handlers(bus, resolved_game_engine, manager, rng=app_rng)
         register_celestial_handlers(bus)
         _load_celestial_content(resolved_settings.celestial_yaml_path)
         register_tide_gate_handlers(bus, resolved_game_engine)
