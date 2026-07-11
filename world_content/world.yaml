@@ -5260,6 +5260,12 @@ dialogue_trees:
             next_node: browse_shop
           - label: Do you take commissions?
             next_node: commission_work
+          - label: I can bring you rare materials. Interested?
+            actor_lacks_flag: [thorne_commission_done]
+            next_node: rare_commission
+          - label: I brought that crystal you wanted.
+            actor_has_flag: [thorne_commission_done]
+            next_node: rare_commission_thanks
           - label: Just browsing.
             side_effects:
               end_dialogue: true
@@ -5281,6 +5287,32 @@ dialogue_trees:
           - label: I'll remember that.
             side_effects:
               end_dialogue: true
+      rare_commission:
+        text: >-
+          Thorne sets down his hammer and looks you dead in the eye. "There's one
+          thing I've never had enough of—raw crystal, the kind that grows wild in
+          the caverns under Whisperwood. Bring me a shard, unbroken, and I'll forge
+          you a bracer that laughs at a smith's fire. Deal?"
+        side_effects:
+          start_quest: thornes_rare_commission
+        choices:
+          - label: I'll bring you a crystal shard.
+            side_effects:
+              end_dialogue: true
+          - label: Not worth the trip.
+            side_effects:
+              end_dialogue: true
+      rare_commission_thanks:
+        text: >-
+          "Look at that." Thorne holds the shard to the forge-light, and for a
+          moment his soot-black face glows crystal-blue. "Wear the bracer with my
+          compliments. Cogsworth steel and cavern crystal—nothing you'll meet out
+          there is forged half so well."
+        side_effects: {}
+        choices:
+          - label: My thanks, Thorne.
+            side_effects:
+              end_dialogue: true
 
   - id: dealer_dialogue
     root_node: greeting
@@ -5295,6 +5327,12 @@ dialogue_trees:
             next_node: browse_curiosities
           - label: I'm looking for something specific.
             next_node: hunting
+          - label: You buy rare finds? I might have a lead.
+            actor_lacks_flag: [found_impossible_thing]
+            next_node: collector_commission
+          - label: I found the coin you were after.
+            actor_has_flag: [found_impossible_thing]
+            next_node: collector_thanks
           - label: I'm just looking.
             side_effects:
               end_dialogue: true
@@ -5314,6 +5352,34 @@ dialogue_trees:
         side_effects: {}
         choices:
           - label: I'll think about it.
+            side_effects:
+              end_dialogue: true
+      collector_commission:
+        text: >-
+          Vex leans in, voice dropping to a conspirator's hush. "There is a coin—
+          Veridian mint, struck before the harbor silted over and the old port
+          drowned. They say the tide still turns one up in the pools below the
+          lighthouse, once in a blue moon. Bring me that coin and I'll pay you in
+          something far stranger than money."
+        side_effects:
+          start_quest: find_impossible_thing
+        choices:
+          - label: An old coin? I'll find it.
+            side_effects:
+              remember: [vex_coin_hunt]
+              end_dialogue: true
+          - label: Sounds like a fool's errand.
+            side_effects:
+              end_dialogue: true
+      collector_thanks:
+        text: >-
+          Vex turns the ancient coin over once, twice, and something almost like
+          joy crosses that ledger-cold face. "Perfect. Cold as a drowned man's
+          purse and twice as old. Keep the cloak—it's helped stranger folk than
+          you slip out of tighter rooms."
+        side_effects: {}
+        choices:
+          - label: A pleasure doing business.
             side_effects:
               end_dialogue: true
 
@@ -5484,6 +5550,12 @@ dialogue_trees:
             next_node: story_exchange
           - label: What are you selling?
             next_node: browse_shop
+          - label: Got any work for a wandering ear?
+            actor_lacks_flag: [sal_stories_gathered]
+            next_node: story_quest
+          - label: I've walked where your tales pointed me.
+            actor_has_flag: [sal_stories_gathered]
+            next_node: story_quest_thanks
           - label: Is it true the tide runs strange under a full moon?
             moon_phase_is: full
             next_node: moon_lore
@@ -5521,6 +5593,32 @@ dialogue_trees:
             - lore:port_veridian_moon_tide
         choices:
           - label: Thanks for the warning, Sal.
+            side_effects:
+              end_dialogue: true
+      story_quest:
+        text: >-
+          Sal wipes down the bar, grinning. "Tell you what—a tavern lives on
+          tales, and mine are going stale. Walk out to the tide pools where the
+          old port drowned, then climb the lighthouse and see the coast the way
+          the Keeper does. Come back with what you saw, and the next round's on
+          me—and a bottle besides."
+        side_effects:
+          start_quest: sals_sea_stories
+        choices:
+          - label: I'll gather your stories.
+            side_effects:
+              end_dialogue: true
+          - label: Maybe later.
+            side_effects:
+              end_dialogue: true
+      story_quest_thanks:
+        text: >-
+          "The drowned port and the lighthouse both, eh? That's a proper tale."
+          Sal slides a dark bottle across the bar. "Here—the good wine, not the
+          rum I water down for the regulars. You've earned an honest pour."
+        side_effects: {}
+        choices:
+          - label: Much obliged, Sal.
             side_effects:
               end_dialogue: true
 
@@ -5605,6 +5703,125 @@ dialogue_trees:
         side_effects: {}
         choices:
           - label: I'll remember that.
+            side_effects:
+              end_dialogue: true
+
+  # --- P3.1 Shopkeeper NPCs (new) ---
+  - id: professor_aldwin_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A stooped man in stained lab robes looks up from a bubbling alembic,
+          spectacles fogged with vapor. "Ah—a visitor! Mind the green flask, it
+          bites. I am Aldwin, and this is the finest alchemy lab in Cogsworth,
+          whatever Mirabel's students may tell you. What do you need?"
+        side_effects: {}
+        choices:
+          - label: Show me your remedies.
+            next_node: browse_potions
+          - label: Do you need anything gathered?
+            actor_lacks_flag: [aldwin_ingredients_done]
+            next_node: ingredient_quest
+          - label: I've brought your ingredients.
+            actor_has_flag: [aldwin_ingredients_done]
+            next_node: ingredient_thanks
+          - label: Just curious.
+            side_effects:
+              end_dialogue: true
+      browse_potions:
+        text: >-
+          "Healing draughts, tonics, a philter or two for a clear head—all brewed
+          by my own hand, all honestly labeled, which is more than the city
+          apothecaries can say. Help yourself; the prices are on the shelf."
+        side_effects: {}
+        choices:
+          - label: I'll take a look.
+            side_effects:
+              end_dialogue: true
+      ingredient_quest:
+        text: >-
+          Aldwin's eyes light up. "As it happens—yes! My reagent stores are bare.
+          I need silverleaf, the pale herb that grows in the Whisperwood meadows,
+          and a moonspore mushroom from the fairy rings out east. Bring me both
+          and I'll brew you something worth the walk."
+        side_effects:
+          start_quest: aldwin_ingredients
+        choices:
+          - label: I'll gather them for you.
+            side_effects:
+              end_dialogue: true
+          - label: Perhaps another day.
+            side_effects:
+              end_dialogue: true
+      ingredient_thanks:
+        text: >-
+          "Silverleaf and moonspore, both fresh—wonderful!" He presses two vials
+          into your hands, one glowing faintly. "A healing elixir and a philter of
+          clarity, as promised. Come back any time you find something that grows
+          where it shouldn't."
+        side_effects: {}
+        choices:
+          - label: Thank you, Professor.
+            side_effects:
+              end_dialogue: true
+
+  - id: hunter_sage_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A broad-shouldered woman in oiled leathers sits mending a snare, a
+          half-dozen packs and coils of rope hung on the lodge wall behind her.
+          "New face. If you're headed into the deep wood you'll want gear that
+          won't quit on you. I'm Sage—quartermaster, tracker, and the last word on
+          what you'll need out there. Speak up."
+        side_effects: {}
+        choices:
+          - label: Show me your supplies.
+            next_node: browse_supplies
+          - label: Any scouting work going?
+            actor_lacks_flag: [sage_scouting_done]
+            next_node: scout_quest
+          - label: I've scouted the eastern stones.
+            actor_has_flag: [sage_scouting_done]
+            next_node: scout_thanks
+          - label: Just passing through.
+            side_effects:
+              end_dialogue: true
+      browse_supplies:
+        text: >-
+          "Packs, satchels, cloaks that shed the rain, lanterns that don't gutter
+          in a wind—everything a body needs to come home from the Whisperwood with
+          all its fingers. Take your pick; I don't sell junk."
+        side_effects: {}
+        choices:
+          - label: I'll browse the gear.
+            side_effects:
+              end_dialogue: true
+      scout_quest:
+        text: >-
+          Sage sets down her mending. "The eastern trails have been quiet—too
+          quiet. Walk out to the monolith grove and the mushroom circle beyond,
+          and tell me nothing's stirring among the old stones. Do that and a good
+          pair of boots is yours; you'll have earned them."
+        side_effects:
+          start_quest: sage_scout_stones
+        choices:
+          - label: I'll scout the eastern stones.
+            side_effects:
+              end_dialogue: true
+          - label: Not today.
+            side_effects:
+              end_dialogue: true
+      scout_thanks:
+        text: >-
+          "Both stones walked and nothing amiss—good. That's a weight off." She
+          tosses you a supple pair of ranger's boots. "Broken in and quiet on the
+          trail. Wear them well, and keep your eyes on those stones."
+        side_effects: {}
+        choices:
+          - label: Thank you, Sage.
             side_effects:
               end_dialogue: true
 
@@ -5930,6 +6147,98 @@ npcs:
         do:
           - narrate_room: "Calloway glances up from the half-built hull, a caulking mallet in hand."
 
+  # -------------------------------------------------------------------------
+  # P3.1 — Shopkeeper NPCs (new): Academy alchemist + Canopy City quartermaster
+  # -------------------------------------------------------------------------
+
+  - id: professor_aldwin
+    name: Professor Aldwin
+    description: >-
+      A stooped, elderly alchemist in scorch-marked robes, his spectacles forever
+      fogged with the vapors of his own experiments. His fingertips are stained a
+      dozen colors, and he smells faintly of sulphur and lavender. He talks to his
+      apparatus rather more than to people.
+    home_room_id: alchemy_lab
+    current_room_id: alchemy_lab
+    dialogue_tree_id: professor_aldwin_dialogue
+    behavior: defensive
+    shop:
+      name: Aldwin's Reagent Shelf
+      buys_categories: [drink, trade_good]
+      sell_ratio: 0.5
+      starting_coins: 600
+      stock:
+        - item_id: minor_healing_draught
+          quantity: -1
+        - item_id: healing_tonic
+          quantity: 8
+        - item_id: major_healing_elixir
+          quantity: 3
+        - item_id: stamina_restorative
+          quantity: -1
+        - item_id: clarity_philter
+          quantity: 5
+        - item_id: draught_of_vigor
+          quantity: 4
+        - item_id: antidote_phial
+          quantity: 6
+        - item_id: luckwater_vial
+          quantity: 2
+        - item_id: flask_of_spring_water
+          quantity: -1
+        - item_id: silverleaf_herb
+          quantity: 10
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Professor Aldwin peers over his fogged spectacles, an alembic hissing beside him."
+
+  - id: hunter_sage
+    name: Hunter Sage
+    description: >-
+      A broad-shouldered woman in oiled leathers, quiet-footed even indoors, with
+      a tracker's habit of scanning every doorway. A necklace of carved bone
+      whistles hangs at her throat—one note, she says, for each beast she's called.
+      She speaks plainly and wastes nothing, words included.
+    home_room_id: hunter_lodge
+    current_room_id: hunter_lodge
+    dialogue_tree_id: hunter_sage_dialogue
+    behavior: defensive
+    shop:
+      name: Sage's Quartermastery
+      buys_categories: [utility, armor, trade_good]
+      sell_ratio: 0.55
+      starting_coins: 450
+      stock:
+        - item_id: leather_backpack
+          quantity: 4
+        - item_id: canvas_satchel
+          quantity: 5
+        - item_id: foragers_basket
+          quantity: 3
+        - item_id: belt_pouch
+          quantity: -1
+        - item_id: hooded_forest_cloak
+          quantity: 3
+        - item_id: bark_woven_boots
+          quantity: 3
+        - item_id: deerskin_gloves
+          quantity: 4
+        - item_id: glowcap_lantern
+          quantity: 3
+        - item_id: pitch_torch
+          quantity: -1
+        - item_id: coil_of_rope
+          quantity: -1
+        - item_id: flask_of_spring_water
+          quantity: -1
+        - item_id: hardtack_biscuit
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Sage looks up from her mending, taking your measure in a single glance."
+
 economy:
   regions:
     - area_id: town
@@ -5992,6 +6301,109 @@ quests:
           opened_sealed_vault: true
         rewards:
           xp: 60
+
+  # --- P3.1 Shopkeeper quest offers ---
+  - id: find_impossible_thing
+    title: A Coin for the Collector
+    description: >-
+      Dealer Vex covets an ancient Veridian coin, struck before the old port
+      drowned. They say the tide still turns one up in the pools below the
+      lighthouse.
+    stages:
+      - id: recover_ancient_coin
+        description: Find the ancient Veridian coin in the tide pools below the lighthouse and bring it to Vex.
+        conditions:
+          - type: item_in_inventory
+            item_id: ancient_veridian_coin
+        completion_flags:
+          found_impossible_thing: true
+        rewards:
+          items: [rogues_cloak, copper_coin]
+          xp: 45
+
+  - id: thornes_rare_commission
+    title: Cavern Crystal for the Forge
+    description: >-
+      Blacksmith Thorne wants an unbroken raw crystal shard from the caverns
+      beneath Whisperwood, to forge a bracer that laughs at a smith's fire.
+    stages:
+      - id: gather_crystal_shard
+        description: Recover a raw crystal shard from the crystal cavern and bring it to Thorne.
+        conditions:
+          - type: item_in_inventory
+            item_id: raw_crystal_shard
+        completion_flags:
+          thorne_commission_done: true
+        rewards:
+          items: [forgemasters_bracer, copper_coin]
+          xp: 55
+
+  - id: aldwin_ingredients
+    title: Ingredients for the Lab
+    description: >-
+      Professor Aldwin's reagent stores are bare. He needs silverleaf from the
+      Whisperwood meadows and a moonspore mushroom from the eastern fairy rings.
+    stages:
+      - id: gather_silverleaf
+        description: Pick silverleaf herb in the Whisperwood meadows.
+        conditions:
+          - type: item_in_inventory
+            item_id: silverleaf_herb
+      - id: gather_moonspore
+        description: Gather a moonspore mushroom from the mushroom circle east of the clearing.
+        conditions:
+          - type: item_in_inventory
+            item_id: moonspore_mushroom
+        completion_flags:
+          aldwin_ingredients_done: true
+        rewards:
+          items: [major_healing_elixir, clarity_philter]
+          xp: 50
+
+  - id: sals_sea_stories
+    title: Tales for the Salted Anchor
+    description: >-
+      Tavern Keeper Sal wants fresh sea stories: walk out to the drowned port's
+      tide pools, then climb the lighthouse and see the coast as the Keeper does.
+    stages:
+      - id: visit_tide_pools
+        description: Walk out to the tide pools where the old port drowned.
+        conditions:
+          - type: room_visited
+            room_id: tide_pools
+      - id: visit_lighthouse
+        description: Climb the lighthouse for a view of the coast.
+        conditions:
+          - type: room_visited
+            room_id: lighthouse
+        completion_flags:
+          sal_stories_gathered: true
+        rewards:
+          items: [bottle_of_wine, copper_coin]
+          xp: 40
+
+  - id: sage_scout_stones
+    title: The Eastern Stones
+    description: >-
+      Hunter Sage wants the quiet eastern trails scouted—the monolith grove and
+      the mushroom circle beyond—to be sure nothing is stirring among the old
+      stones.
+    stages:
+      - id: scout_monolith_grove
+        description: Scout the monolith grove east of the clearing.
+        conditions:
+          - type: room_visited
+            room_id: monolith_grove
+      - id: scout_mushroom_circle
+        description: Continue to the mushroom circle and check the fairy rings.
+        conditions:
+          - type: room_visited
+            room_id: mushroom_circle
+        completion_flags:
+          sage_scouting_done: true
+        rewards:
+          items: [rangers_boots, copper_coin]
+          xp: 45
 
 # ---------------------------------------------------------------------------
 # Transit lines — scheduled vehicles reached by `board` (not the walk graph)

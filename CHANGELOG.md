@@ -4,7 +4,26 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-## [0.85.0] - 2026-07-11
+## [0.86.0] - 2026-07-11
+
+### Added
+
+- **Phase 3 world content — Shopkeeper NPCs (roadmap_world.md P3.1).** Five shopkeepers now
+  offer dialogue depth, a quest, and a stocked shop (world 10 -> 12 NPCs, 3 -> 8 quests):
+  - **Dealer Vex** (enriched) — new collector-commission branch offering `find_impossible_thing`
+    (recover the ancient Veridian coin from the tide pools; rewards a rogue's cloak), with
+    before/after dialogue gated on the quest's completion flag.
+  - **Blacksmith Thorne** (enriched) — new `thornes_rare_commission` (bring a raw crystal shard
+    from the caverns; rewards a forgemaster's bracer), before/after dialogue.
+  - **Professor Aldwin** (new NPC, `alchemy_lab`) — a 10-line potion/reagent shop and an
+    ingredient-hunt quest `aldwin_ingredients` (silverleaf + moonspore; rewards an elixir and a
+    clarity philter).
+  - **Tavern Keeper Sal** (enriched) — new information quest `sals_sea_stories` (visit the tide
+    pools then the lighthouse; rewards a bottle of wine) atop his existing food/drink shop.
+  - **Hunter Sage** (new NPC, `hunter_lodge`) — a 12-line travel-supply shop and scouting quest
+    `sage_scout_stones` (monolith grove + mushroom circle; rewards ranger's boots).
+  - All shop stock and quest rewards reference existing Phase 1/Phase 2 item ids; `world_cli
+    validate` clean; reachability + tier-boundary green.
 
 ### Added
 

@@ -383,18 +383,18 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 
 Build NPC variety; add dialogue, quests, and flavor.
 
-#### P3.1 — Shopkeeper NPCs (5+ unique)
-- [ ] Dealer (Curiosity Shop, Cogsworth): sells rare items; unique banter
-- [ ] Blacksmith (Smithy, Cogsworth): sells weapons/armor; gives crafting quests
-- [ ] Herbalist (Alchemy Lab, Academy): sells potions; ingredient-hunting quests
-- [ ] Tavern Keeper (Port Veridian): sells food/drink; story-exchange quests
-- [ ] Ranger Quartermaster (Canopy City): sells travel supplies; scouting quests
+#### P3.1 — Shopkeeper NPCs (5+ unique) ✅ (2026-07-11, v0.86.0)
+- [x] Dealer (Curiosity Shop, Cogsworth): sells rare items; unique banter — `dealer_vex` enriched with collector-commission branch + `find_impossible_thing` quest
+- [x] Blacksmith (Smithy, Cogsworth): sells weapons/armor; gives crafting quests — `blacksmith_thorne` enriched with `thornes_rare_commission`
+- [x] Herbalist (Alchemy Lab, Academy): sells potions; ingredient-hunting quests — **new** `professor_aldwin` (10-item potion shop + `aldwin_ingredients`)
+- [x] Tavern Keeper (Port Veridian): sells food/drink; story-exchange quests — `tavern_keeper_sal` enriched with `sals_sea_stories`
+- [x] Ranger Quartermaster (Canopy City): sells travel supplies; scouting quests — **new** `hunter_sage` (12-item travel shop + `sage_scout_stones`)
 
 **For each NPC:**
-- [ ] 3–5 unique dialogue lines
-- [ ] Emoji/appearance descriptor
-- [ ] Quest offer (simple: "bring me X"; medium: "explore Y"; complex: multi-step)
-- [ ] Shop inventory (5–10 items each)
+- [x] 3–5 unique dialogue lines
+- [x] Emoji/appearance descriptor
+- [x] Quest offer (simple: "bring me X"; medium: "explore Y"; complex: multi-step)
+- [x] Shop inventory (5–10 items each)
 
 **Test:** Talk to NPC; see dialogue; buy from shop; complete quest.
 
