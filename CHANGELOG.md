@@ -4,6 +4,23 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.90.1] - 2026-07-11
+
+### Changed
+
+- **World polish P4.1 — descriptive writing pass (`world_content/world.yaml`).** Audit-and-upgrade
+  pass over all 104 rooms, 198 items, and 29 NPCs against the roadmap quality bar (rooms 50–150
+  words, sensory, show-don't-tell; items 1–3 tactile sentences; NPCs appearance + memorable detail).
+  Baseline was already strong across Whisperwood, Port Veridian, and the Ashmoore sample; the genuine
+  outliers were six early-built (P1.1) Cogsworth rooms that read flat, tell-y, or manual-like. Rewrote
+  them in-voice with steampunk sensory detail (brass, copper, steam, gears), each now 77–98 words:
+  `sewer_tunnel_south`, `market_row_west`, `scholar_apartments`, `dormitory`, `clockwork_manor`,
+  `tower_landing_2`. Gave the Ashmoore innkeeper Mira a memorable detail (cellar keys; never writes a
+  tab yet never misremembers one). The 8 sub-10-word item descriptions are intentionally terse
+  disambiguation/puzzle keys (near-identical text *is* the vault-hall puzzle) and were deliberately
+  left unchanged; the other 190 items and 28 NPCs already met the bar. No structural, exit, or flag
+  changes; `world_cli validate` clean (104 rooms, 198 items, 29 NPCs, 12 quests).
+
 ## [0.90.0] - 2026-07-11
 
 ### Added

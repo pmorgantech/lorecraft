@@ -443,11 +443,18 @@ Blocked Items. Don't build content that assumes this exists.
 
 ### Phase 4: World Polish & Advanced Features (Week 4+)
 
-#### P4.1 — Descriptive Writing Pass
-- [ ] Room descriptions: vivid, sensory, 50–150 words each
-- [ ] Item descriptions: unique, evocative, 1–3 sentences
-- [ ] NPC descriptions: appearance, demeanor, memorable details
-- [ ] **NO** placeholder text ("a generic sword"); every item has character
+#### P4.1 — Descriptive Writing Pass ✅ (2026-07-11, v0.90.1)
+- [x] Room descriptions: vivid, sensory, 50–150 words each — audit found the baseline already strong
+  (Whisperwood/Port/Ashmoore all vivid and near-bar). Upgraded the six genuine outliers, all
+  early-built (P1.1) Cogsworth rooms that read flat/tell-y/manual-like, to 77–98 words in-voice:
+  `sewer_tunnel_south`, `market_row_west`, `scholar_apartments`, `dormitory`, `clockwork_manor`,
+  `tower_landing_2`. (Tight-but-vivid rooms in the 36–49w range were left as-is, not padded for count.)
+- [x] Item descriptions: unique, evocative, 1–3 sentences — 190/198 already met the bar; the 8
+  sub-10-word entries are intentionally terse disambiguation/puzzle keys (near-identical text is the
+  vault-hall puzzle mechanic) and were deliberately left unchanged.
+- [x] NPC descriptions: appearance, demeanor, memorable details — 28/29 already excellent; gave the
+  Ashmoore innkeeper Mira a memorable detail (cellar keys; never writes a tab yet never misremembers one).
+- [x] **NO** placeholder text ("a generic sword"); every item has character — confirmed none present.
 
 **Quality bar:** Descriptions should feel like a novel excerpt, not a game manual.
 

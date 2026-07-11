@@ -526,10 +526,13 @@ rooms:
     name: Tower Observation Deck
     indoor: true
     description: >-
-      Polished brass railings line a circular platform beneath a domed glass ceiling.
-      A fixed telescope points toward the distant horizon. The view is breathtaking—
-      you can see three valleys from here. Safe seating areas invite quiet observation.
-      Stairs descend further into the tower's depths.
+      Polished brass railings ring a circular platform beneath a dome of leaded glass,
+      each pane so clean the sky seems to press right against your face. A great fixed
+      telescope on a geared mount can be swung to follow the horizon, its brass tube
+      still warm where the last stargazer's hands rested. From up here the city falls
+      away in tiers of smoking chimneys, and beyond it three green valleys open one
+      after another into the haze. Cushioned benches curve along the rail, worn soft
+      by decades of quiet watchers; a spiral stair descends into the tower's depths.
     map_x: 15
     map_y: 20
     map_z: 2
@@ -654,9 +657,13 @@ rooms:
     name: Academy Dormitory
     indoor: true
     description: >-
-      Student quarters arranged along narrow corridors. Each room holds a narrow bed,
-      desk, and shelf for personal effects. A common room at the center offers a place
-      to gather. The dormitory is clean, quiet, and secure.
+      Student quarters run off a narrow central corridor, each cell furnished alike:
+      a cot, a fold-down desk scarred with generations of penknife initials, and a
+      shelf sagging under borrowed textbooks. A round common room anchors the middle,
+      where a battered samovar keeps tea hot at all hours and a corkboard bristles
+      with lecture notices, lost-and-found chits, and one very old missing-cat poster.
+      A porter's brass bell by the door keeps the peace after curfew; the place is
+      warm, orderly, and about as safe as anywhere in Cogsworth.
     map_x: 13
     map_y: 20
     map_z: 1
@@ -671,10 +678,13 @@ rooms:
     name: Clockwork Manor
     indoor: true
     description: >-
-      A wealthy merchant's townhouse, its facade ornate with brass fittings and
-      mechanical details. Inside, the halls are lined with expensive furnishings.
-      A heavy iron door marks the main entrance; a smaller passage connects to
-      the street outside.
+      A wealthy merchant's townhouse where the wealth is worn on the outside: a
+      facade crusted with brass scrollwork, a doorknocker cast as a snarling gear-toothed
+      lion, and window boxes irrigated by their own tiny clockwork pumps. Inside,
+      thick carpet swallows every footfall, oil portraits of stern ancestors watch
+      from the stairwell, and a grandfather clock the height of two men ticks with
+      a slow, expensive gravity. A heavy iron door secures the main entrance; a discreet
+      servants' passage lets out to the street below.
     map_x: 16
     map_y: 21
     map_z: 1
@@ -691,8 +701,13 @@ rooms:
     name: Scholar Apartments
     indoor: true
     description: >-
-      Modest but comfortable apartments for faculty and advanced students. The halls are lined
-      with doors, each leading to private quarters. Common areas include a study and reading room.
+      A quiet residential wing for faculty and senior students, its corridor lined
+      with numbered doors and the occasional pinned notice about overdue library
+      books. A shared study opens off the middle of the hall: worn leather armchairs
+      drawn up to a cold brass stove, a wall of pigeonholes stuffed with correspondence,
+      and a reading lamp left burning over an abandoned game of chess. The air smells
+      of pipe tobacco, ink, and the faint ozone tang that clings to anyone who works
+      the aetheric benches downstairs.
     map_x: 16
     map_y: 20
     map_z: 1
@@ -756,8 +771,13 @@ rooms:
   - id: market_row_west
     name: Market Row West
     description: >-
-      Artisan stalls line this side of the plaza—weavers, jewelers, and crafts merchants display
-      their wares. The quality of goods here is noticeably higher than the eastern row.
+      Artisan stalls line the western arc of the plaza beneath striped brass-poled
+      awnings—weavers throwing shuttles through half-finished bolts, a jeweler bent
+      over a loupe setting chips of polished gearwork into brooches, a clockmaker
+      winding a display of chiming automata that all strike the hour a half-second
+      apart. The chatter of haggling mixes with the whir of demonstration mechanisms.
+      Everything on show here has been finished twice: once for function, once for
+      the eye of a buyer who can afford both.
     map_x: 14
     map_y: 20
     map_z: 0
@@ -940,8 +960,12 @@ rooms:
     name: Southern Sewer Tunnel
     indoor: true
     description: >-
-      A major feeder line flowing with runoff from the smithy district above. The
-      sound of rushing water echoes in this tunnel. Steam rises from hot-water lines.
+      The great southern feeder swallows the runoff of the smithy district above,
+      and the water arrives here still warm, curling steam off its black surface.
+      It roars through a brick culvert wide enough to stand in, the sound doubling
+      and redoubling off the vaulted stone until it fills the skull. Copper hot-water
+      lines run overhead, sweating and ticking as they cool, and every wet surface
+      throws back a dull coppery sheen when a light is brought near.
     map_x: 15
     map_y: 19
     map_z: -1
@@ -6455,7 +6479,9 @@ npcs:
   - id: innkeeper
     name: Mira the Innkeeper
     description: >-
-      A stout woman who surveys the room with a practiced eye.
+      A stout woman who surveys the room with a practiced eye, a ring of cellar keys
+      jingling at her hip. She never writes a tab down, yet has never once misremembered
+      what a guest owes.
     home_room_id: wandering_crow_inn
     current_room_id: wandering_crow_inn
     dialogue_tree_id: innkeeper_dialogue
