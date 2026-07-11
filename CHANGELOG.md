@@ -4,6 +4,29 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.84.0] - 2026-07-11
+
+### Added
+
+- **Phase 2 world content — Trait-wearables (roadmap_world.md P2.5).** Added 11 equippable items
+  (world 174 -> 185) each carrying an `effects: [{type: grant_trait, ...}]` descriptor that
+  surfaces in the `score`/`traits` command while worn: Blessed Amulet (Blessed), Scholar's Robes
+  of Insight (Learned), Rogue's Shadowed Cloak (Stealthy), Ranger's Swift Boots (Swift), Sailor's
+  Seaworthy Ring (Seaworthy), plus six more — Artificer's Fine Gloves (Precise + `skill_bonus`
+  tinkering), Fey-Touched Cloak (Fey-Touched), Circlet of Focus (Focused + `stat_bonus` intellect),
+  Warden's Signet (Warden), Tideglass Pendant (Tidebound), and Forgemaster's Bracer (Ironhide +
+  `warmth_bonus`). Each is placed one-per-room in a thematically apt reachable location across all
+  zones. `world_cli validate` clean; full suite green.
+
+### Notes
+
+- These trait names have **no pre-registered `TraitDef`** in `features/traits/standard.py` (that's
+  Python-registered engine content, out of scope for a pure world-content task), so the trait
+  registry surfaces each by name with an empty description line — expected and documented in the
+  roadmap P2.5 guidance, not a gap. No `src/` code was touched. The stat_bonus/skill_bonus/
+  warmth_bonus riders use the validator's known stat set and are real Modifiers via the existing
+  `compile_item_modifiers` path.
+
 ## [0.83.0] - 2026-07-11
 
 ### Added

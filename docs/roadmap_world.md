@@ -357,14 +357,15 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 
 **Test:** Consume potions (if mechanic exists); verify effect application. If no consumption, at least test inventory. — **No consumption mechanic exists** (no registered `apply_effect` key for drinking); 20 items authored as flavor/inventory items only, no `apply_effect` hookup. `world_cli validate` clean.
 
-#### P2.5 — Wearables with Traits (10+ items)
-- [ ] Blessed Amulet (grants "Blessed" trait)
-- [ ] Scholar's Robes (grants "Learned" trait)
-- [ ] Rogue's Cloak (grants "Stealthy" trait)
-- [ ] Ranger's Boots (grants "Swift" trait)
-- [ ] Sailor's Ring (grants "Seaworthy" trait)
+#### P2.5 — Wearables with Traits (10+ items) ✅ (2026-07-11, v0.84.0)
+- [x] Blessed Amulet (grants "Blessed" trait) — `slot: neck`
+- [x] Scholar's Robes (grants "Learned" trait) — Scholar's Robes of Insight, `slot: torso`
+- [x] Rogue's Cloak (grants "Stealthy" trait) — Rogue's Shadowed Cloak, `slot: back`
+- [x] Ranger's Boots (grants "Swift" trait) — Ranger's Swift Boots, `slot: feet`
+- [x] Sailor's Ring (grants "Seaworthy" trait) — `slot: finger`
+- [x] Plus 6 more: Artificer's Fine Gloves (Precise + skill_bonus), Fey-Touched Cloak, Circlet of Focus (Focused + stat_bonus), Warden's Signet, Tideglass Pendant, Forgemaster's Bracer (Ironhide + warmth_bonus)
 
-**Test:** Equip item; verify trait appears in `score` output; unequip; trait disappears.
+**Test:** Equip item; verify trait appears in `score` output; unequip; trait disappears. — 11 items added, one per thematically apt room across all zones. Trait names have no pre-registered `TraitDef` (out of scope for content), so they surface by name with an empty description; `world_cli validate` clean.
 
 #### P2.6 — Keys & Special Items (10+ items)
 - [ ] Gate keys, tower keys, vault keys, chest keys
@@ -580,7 +581,7 @@ Blocked Items. Don't build content that assumes this exists.
 
 - [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
-- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 174 items as of v0.83.0 (P2.1 weapons + P2.2 armor + P2.3 utility/crafting + P2.4 consumables); further Phase 2 batches (trait-wearables/keys) continue to grow it
+- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 185 items as of v0.84.0 (P2.1–P2.5 done); P2.6 keys/special still to come
 - [ ] 15+ NPCs with dialogue and quests
 - [ ] 5+ locked doors requiring keys (puzzle component)
 - [ ] Dark areas requiring light sources (caves, sewers)

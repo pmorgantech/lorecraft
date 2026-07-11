@@ -4086,6 +4086,221 @@ items:
     value: 4
     category: drink
 
+  # --- P2.5 Trait-wearables (grant_trait surfaces in `score`/`traits` while
+  #     equipped; the trait names below have no pre-registered TraitDef, so they
+  #     display by name with an empty description — expected, see roadmap P2.5) ---
+  - id: blessed_amulet
+    name: Blessed Amulet
+    description: >-
+      A worn silver medallion on a fine chain, its face bearing a sun-in-splendor
+      device rubbed nearly smooth by generations of thumbs. It is faintly warm
+      even on the coldest morning, as though something kind still watches through
+      it.
+    takeable: true
+    tradeable: true
+    slot: neck
+    wearable: true
+    weight: 0.2
+    value: 60
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Blessed
+
+  - id: scholars_robes
+    name: Scholar's Robes of Insight
+    description: >-
+      Heavy robes of midnight wool, the deep hood and long sleeves stitched with
+      constellations in faded silver thread. To wear them is to feel the quiet
+      weight of every scholar who wore them before and left a little of their
+      learning behind.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 2.0
+    value: 55
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Learned
+
+  - id: rogues_cloak
+    name: Rogue's Shadowed Cloak
+    description: >-
+      A cloak of dark, matte cloth that seems to drink the lamplight rather than
+      reflect it, its hem weighted so it never flares to catch an eye. Wrapped
+      in it, you find yourself instinctively stepping where the shadows are
+      deepest.
+    takeable: true
+    tradeable: true
+    slot: back
+    wearable: true
+    weight: 1.5
+    value: 55
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Stealthy
+
+  - id: rangers_boots
+    name: Ranger's Swift Boots
+    description: >-
+      Soft, high-laced boots of supple green leather, their soles worn thin and
+      silent from a lifetime of trails. They seem to find the sure step on their
+      own, carrying a walker faster and quieter than boots have any right to.
+    takeable: true
+    tradeable: true
+    slot: feet
+    wearable: true
+    weight: 1.0
+    value: 55
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Swift
+
+  - id: sailors_ring
+    name: Sailor's Seaworthy Ring
+    description: >-
+      A heavy ring of tarnished sea-silver set with a chip of blue-green glass,
+      carved on the inner band with a line of soundings only its wearer can
+      read. Old salts swear it keeps a body sure-footed on a heaving deck.
+    takeable: true
+    tradeable: true
+    slot: finger
+    wearable: true
+    weight: 0.1
+    value: 50
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Seaworthy
+
+  - id: artificers_gloves
+    name: Artificer's Fine Gloves
+    description: >-
+      Close-fitting gloves of thin kidskin with brass thimble-caps sewn over each
+      fingertip, worn shiny at the joints. They lend the hands an uncanny,
+      unhurried steadiness — the sort a watchmaker would trade a year's wages for.
+    takeable: true
+    tradeable: true
+    slot: hands
+    wearable: true
+    weight: 0.5
+    value: 65
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Precise
+      - type: skill_bonus
+        skill: tinkering
+        amount: 1
+
+  - id: fey_touched_cloak
+    name: Fey-Touched Cloak
+    description: >-
+      A cloak woven of some grey-green fiber that shifts colour like leaf-shadow
+      when you move, hemmed with tiny brass bells that never seem to ring. The
+      forest folk left it, they say, for one who did them an unremembered
+      kindness.
+    takeable: true
+    tradeable: true
+    slot: back
+    wearable: true
+    weight: 1.0
+    value: 60
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Fey-Touched
+
+  - id: crown_of_focus
+    name: Circlet of Focus
+    description: >-
+      A slender circlet of woven brass wire with a single small lens of ground
+      quartz set at the brow. Worn, it lends the thoughts a cool, narrow clarity,
+      as though the whole clamouring world had politely agreed to wait its turn.
+    takeable: true
+    tradeable: true
+    slot: head
+    wearable: true
+    weight: 0.5
+    value: 55
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Focused
+      - type: stat_bonus
+        stat: intellect
+        amount: 1
+
+  - id: warden_signet
+    name: Warden's Signet
+    description: >-
+      A broad iron signet ring stamped with the sigil of an old forest wardenry,
+      the device a spread oak over crossed arrows. It sits heavy on the hand and
+      carries the quiet authority of a charge kept faithfully for a very long
+      time.
+    takeable: true
+    tradeable: true
+    slot: finger
+    wearable: true
+    weight: 0.1
+    value: 50
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Warden
+
+  - id: tideglass_pendant
+    name: Tideglass Pendant
+    description: >-
+      A teardrop of pale, wave-worn glass wound in silver wire and hung on a cord
+      of braided sinew. Held to the ear, some swear, it carries the far hush of
+      surf; worn, it settles the stomach against the worst of a swell.
+    takeable: true
+    tradeable: true
+    slot: neck
+    wearable: true
+    weight: 0.2
+    value: 45
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Tidebound
+
+  - id: forgemasters_bracer
+    name: Forgemaster's Bracer
+    description: >-
+      A single broad bracer of blackened, heat-scarred leather riveted with
+      brass, made to guard a smith's forearm from spark and slag. Buckled on, it
+      lends a stubborn, anvil-steady resolve — and shrugs off a good deal of heat
+      besides.
+    takeable: true
+    tradeable: true
+    slot: hands
+    wearable: true
+    weight: 1.0
+    value: 55
+    category: armor
+    quality: fine
+    effects:
+      - type: grant_trait
+        trait: Ironhide
+      - type: warmth_bonus
+        amount: 2
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -4601,6 +4816,41 @@ room_items:
   - room_id: babbling_stream
     item_id: flask_of_spring_water
     quantity: 2
+
+  # --- P2.5 Trait-wearables (one each, in thematically apt reachable rooms) ---
+  - room_id: ruined_chapel
+    item_id: blessed_amulet
+    quantity: 1
+  - room_id: library_main
+    item_id: scholars_robes
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: rogues_cloak
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: rangers_boots
+    quantity: 1
+  - room_id: lighthouse
+    item_id: sailors_ring
+    quantity: 1
+  - room_id: artifice_workshop
+    item_id: artificers_gloves
+    quantity: 1
+  - room_id: monolith_grove
+    item_id: fey_touched_cloak
+    quantity: 1
+  - room_id: academy_courtyard
+    item_id: crown_of_focus
+    quantity: 1
+  - room_id: whispering_clearing
+    item_id: warden_signet
+    quantity: 1
+  - room_id: fisherfolk_dock
+    item_id: tideglass_pendant
+    quantity: 1
+  - room_id: steam_foundry_antechamber
+    item_id: forgemasters_bracer
+    quantity: 1
 
 # ---------------------------------------------------------------------------
 # Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
