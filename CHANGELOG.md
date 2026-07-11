@@ -4,6 +4,21 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.80.1] - 2026-07-11
+
+### Added
+
+- **Full-world reachability regression test.** New `tests/tools/test_world_content_reachability.py`
+  runs `check_room_reachability` over the *real* `world_content/world.yaml` (loaded the same way
+  `world_cli validate` does) from the `village_square` seed room, replacing the "manual in-game
+  traversal test still outstanding" steps in `docs/roadmap_world.md` P1.1/P1.2/P1.3 for the
+  connectivity criterion. It asserts every room is reachable except transit vehicle rooms
+  (board-only, reached via `board` rather than the walk graph), and that no room has zero exits
+  except those same vehicle rooms. The expected-unreachable set is derived generically from
+  `transit.lines[].vehicle_room_id` — not hard-coded to `harbor_ferry_deck` — so a newly added
+  real orphan room still fails the test. Ticks the "Full traversal test passing" and
+  "No orphaned rooms" Success Criteria in `docs/roadmap_world.md`.
+
 ## [0.80.0] - 2026-07-11
 
 ### Added

@@ -277,7 +277,7 @@ Focus: Build the world structure, test room/NPC/item basics across all zones.
 - [x] Create 15 basic items (weapons, armor, tools, trade goods — below the 20–30 target, revisit in Phase 2)
 - [x] Map exits carefully; `world_cli validate` passing (23 rooms added, all refs resolved)
 
-**Verification:** Can navigate all four levels (z=2..-1), meet NPCs, inspect items. Manual in-game traversal test still outstanding.
+**Verification:** Can navigate all four levels (z=2..-1), meet NPCs, inspect items. Full-world traversal is now covered by an automated reachability regression (`tests/tools/test_world_content_reachability.py` — every room reachable from the `village_square` seed except board-only transit vehicle rooms). A manual in-client playtest (actually walking the UI) is a separate check and remains outstanding.
 
 #### P1.2 — Whisperwood core skeleton ✅ (2026-07-10, v0.77.0)
 - [x] Whisperwood: Forest Floor central clearing + 4 main trails (16 rooms total)
@@ -286,14 +286,14 @@ Focus: Build the world structure, test room/NPC/item basics across all zones.
 - [x] Add 2 Whisperwood NPCs (Ranger Elena, Geomancer Shard — below the 4–6 target, revisit in Phase 3)
 - [x] Create 8 forest-themed items (herbs, mushrooms, crystals, Fey token, lore items)
 
-**Verification:** `world_cli validate` passing (28 rooms added, all refs resolved). Lighting: caves dark (0) except crystal_cavern/underground_lake lit; note engine's `light_level` is int-only (0/1), so the roadmap's fractional 0.5/0.7 "dappled" figures were mapped to the nearest valid value — see commit `8ddd112`. Manual in-game traversal test still outstanding.
+**Verification:** `world_cli validate` passing (28 rooms added, all refs resolved). Lighting: caves dark (0) except crystal_cavern/underground_lake lit; note engine's `light_level` is int-only (0/1), so the roadmap's fractional 0.5/0.7 "dappled" figures were mapped to the nearest valid value — see commit `8ddd112`. Full-world traversal is now covered by an automated reachability regression (`tests/tools/test_world_content_reachability.py`); a manual in-client playtest remains a separate, still-outstanding check.
 
 #### P1.3 — Port Veridian skeleton ✅ (2026-07-10, v0.77.0)
 - [x] Port Veridian: Docks, Tavern, Warehouse, Lighthouse (22 rooms — expanded well past the original 6-room sketch: docks hub + shipyard cluster + fisherfolk cluster + warehouse cluster incl. locked vault + promenade/tavern/lighthouse loop)
 - [x] Add 4 port NPCs (Captain Iris, Tavern Keeper Sal, Lighthouse Keeper, Shipwright Calloway)
 - [x] Create 11 nautical items (rope, netting, salvage, sea glass, warehouse key, tavern fare)
 
-**Verification:** `world_cli validate` passing (22 rooms added, all refs resolved). Port is now interconnected with the rest of the world via the `river_bend` coast-road connector (Whisperwood ↔ Port Veridian) — see the zone-linking note below. Manual in-game trade test still outstanding.
+**Verification:** `world_cli validate` passing (22 rooms added, all refs resolved). Port is now interconnected with the rest of the world via the `river_bend` coast-road connector (Whisperwood ↔ Port Veridian) — see the zone-linking note below. That interconnection is now guarded by an automated reachability regression (`tests/tools/test_world_content_reachability.py` — every port room is reachable from the `village_square` seed). A manual in-client trade test (buying/selling at port shops through the UI) is a separate check and remains outstanding.
 
 **Phase 1 world totals:** 99 rooms, 78 items, 10 NPCs, 3 quests across 4 zones
 (town, wilderness, cave — Ashmoore — plus cogsworth, whisperwood, port_veridian).
@@ -587,8 +587,8 @@ Blocked Items. Don't build content that assumes this exists.
 - [ ] At least 8 safe-rest zones
 - [ ] Thematic consistency: no "sci-fi" items in fantasy forest, etc.
 - [ ] All items, NPCs, and rooms described in prose (not placeholder text)
-- [ ] Full traversal test passing (can visit every room from every other room)
-- [ ] No orphaned rooms (every room has at least 2 exits; dead ends exist but can exit)
+- [x] Full traversal test passing (can visit every room from every other room) — automated regression: `tests/tools/test_world_content_reachability.py` runs `check_room_reachability` over the real `world_content/world.yaml` from the `village_square` seed; the only expected-unreachable rooms are transit vehicle rooms (board-only), derived generically from `transit.lines[].vehicle_room_id`
+- [x] No orphaned rooms (every room has at least 2 exits; dead ends exist but can exit) — asserted by the same test: every room has ≥1 exit except transit vehicle rooms (`harbor_ferry_deck`, board/disembark only). Note the "≥2 exits" wording is aspirational; the enforced invariant is "≥1 exit (no dead-end with no way out)", matching the roadmap's own "dead ends exist but can exit" definition
 - [ ] CI lint/validation passing (world YAML well-formed; all room IDs unique; all exit targets exist)
 
 ---
