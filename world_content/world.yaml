@@ -2821,6 +2821,606 @@ items:
     value: 3
     category: trade_good
 
+  # =========================================================================
+  # PHASE 2 — Rich Item Inventory (roadmap_world.md Phase 2)
+  # =========================================================================
+
+  # --- P2.1 Cogsworth: Weapons (smithy & foundry) ---
+  - id: steel_longsword_cog
+    name: Cogsworth Longsword
+    description: >-
+      A long, straight blade of blued steel, its fuller running clean from
+      guard to point. The crossguard is cast in the shape of two meshing gears,
+      and the leather-wrapped grip is still faintly warm, as though the foundry
+      never quite let it cool.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 3.5
+    value: 75
+    category: weapon
+    quality: fine
+
+  - id: iron_battleaxe_cog
+    name: Foundry Battleaxe
+    description: >-
+      A single-bitted axe with a broad, slightly curved edge and a haft of
+      banded iron. It is heavy enough to split a shield and plain enough that
+      no one would mistake it for ornament. A worker's weapon, honest and grim.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 5.0
+    value: 48
+    category: weapon
+
+  - id: spiked_warmace_cog
+    name: Riveted War Mace
+    description: >-
+      A brutal head of flanged iron mounted on a short steel shaft, every flange
+      filed to a chisel edge. It has no elegance and asks for none — it is built
+      to fold armor inward and leave the wearer to consider the consequences.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 6.0
+    value: 55
+    category: weapon
+
+  - id: footmans_spear_cog
+    name: Footman's Spear
+    description: >-
+      A plain ash shaft the height of a tall man, capped with a leaf-shaped
+      steel head kept oiled against rust. Cheap to make and simple to use, it is
+      the weapon that fills the front rank when the city guard musters.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 3.0
+    value: 32
+    category: weapon
+
+  - id: brass_pike_cog
+    name: Long Brass-Shod Pike
+    description: >-
+      An unwieldy length of pike, its butt and head sheathed in polished brass
+      against the damp. Useless in a corridor and murderous in a square, it
+      leans in the smithy rack more as a curiosity than a ready sale.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 5.5
+    value: 42
+    category: weapon
+
+  - id: clockwork_crossbow
+    name: Clockwork Crossbow
+    description: >-
+      A crossbow with a geared cocking lever built into the tiller, so a child
+      could span it and a soldier could span it fast. The mechanism ticks softly
+      when you draw it back, like a watch counting down to something unpleasant.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 4.0
+    value: 95
+    category: weapon
+    quality: fine
+
+  - id: gearwork_saber
+    name: Gearwork Saber
+    description: >-
+      A curved dueling saber with a swept brass hilt worked into interlocking
+      cogs. The blade is light, fast, and etched along the spine with a maker's
+      mark from one of Cogsworth's oldest forges. A gentleman's killing tool.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 2.8
+    value: 85
+    category: weapon
+    quality: fine
+
+  - id: crude_cleaver
+    name: Crude Iron Cleaver
+    description: >-
+      A heavy, square-edged cleaver that began life in a butcher's block and
+      never fully left. The iron is pitted and the edge is more enthusiasm than
+      craft, but it swings with an ugly, decisive weight.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 2.5
+    value: 18
+    category: weapon
+
+  - id: hunting_knife_cog
+    name: Bracket-Steel Hunting Knife
+    description: >-
+      A stout, single-edged knife with a spine thick enough to pry with and a
+      belly ground for skinning. The horn handle is riveted through in three
+      places. A tool first and a weapon only when it has to be.
+    takeable: true
+    tradeable: true
+    slot: off_hand
+    weight: 0.6
+    value: 16
+    category: weapon
+
+  - id: throwing_dagger_cog
+    name: Balanced Throwing Dagger
+    description: >-
+      A slim, needle-pointed dagger weighted so it turns true from the hand. It
+      is one of a set, though the others are long lost; a thin groove near the
+      pommel once held a matching pair's marking.
+    takeable: true
+    tradeable: true
+    slot: off_hand
+    weight: 0.5
+    value: 14
+    category: weapon
+
+  # --- P2.1 Whisperwood: Weapons (ranger & hunter) ---
+  - id: rangers_longbow
+    name: Ranger's Yew Longbow
+    description: >-
+      A tall bow of close-grained yew, the belly and back chosen from the same
+      stave so the wood fights itself into power. The grip is bound in worn
+      green leather, and it smells of beeswax and pine resin.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 1.5
+    value: 68
+    category: weapon
+    quality: fine
+
+  - id: yew_shortbow
+    name: Hunter's Shortbow
+    description: >-
+      A compact bow made for the close, cluttered shooting of deep forest, where
+      a longbow would only tangle in the branches. Practical, unadorned, and
+      quiet in the draw.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 1.2
+    value: 40
+    category: weapon
+
+  - id: hunters_hatchet
+    name: Hunter's Hatchet
+    description: >-
+      A small hand-axe with a bearded blade, equally at home splitting kindling
+      or dressing a carcass. The head is snugged onto a hickory haft worn pale
+      and smooth where a thumb has ridden it for years.
+    takeable: true
+    tradeable: true
+    slot: off_hand
+    weight: 1.5
+    value: 22
+    category: weapon
+
+  - id: flint_knife
+    name: Knapped Flint Knife
+    description: >-
+      A short blade of dark, knapped flint lashed into a bone handle with sinew.
+      Crude by city standards, but the edge is keener than any steel and the
+      craft is far, far older. The forest folk still favor it.
+    takeable: true
+    tradeable: true
+    slot: off_hand
+    weight: 0.4
+    value: 9
+    category: weapon
+
+  - id: carved_quarterstaff
+    name: Carved Quarterstaff
+    description: >-
+      A head-high staff of seasoned rowan, its length worn glassy by the hands
+      that walked with it and carved along one end with a winding line of leaves.
+      A walking stick, a bridge-tester, and, at need, a blur of hard wood.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 2.0
+    value: 28
+    category: weapon
+
+  # --- P2.1 Port Veridian: Weapons (dockside & shipboard) ---
+  - id: sailors_cutlass
+    name: Sailor's Cutlass
+    description: >-
+      A short, heavy-bladed cutlass with a basket guard pitted by sea air. It is
+      built for the cramped, ugly work of a boarding action, where a long blade
+      is a liability and a broad one settles the argument.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 2.2
+    value: 45
+    category: weapon
+
+  - id: boarding_axe
+    name: Boarding Axe
+    description: >-
+      A wicked tool with an axe blade on one side and a curved spike on the
+      other — the spike for hulls and rigging, the blade for whatever objects.
+      The handle is wrapped in tarred cord against a wet grip.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 3.0
+    value: 40
+    category: weapon
+
+  - id: fishermans_gaff
+    name: Fisherman's Gaff
+    description: >-
+      A long pole ending in a broad, barbed steel hook, meant for hauling a heavy
+      catch over the gunwale. In a tight spot on a crowded dock, it has ended
+      more than one dispute that had nothing to do with fish.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 2.0
+    value: 20
+    category: weapon
+
+  - id: rigging_knife
+    name: Rigging Knife
+    description: >-
+      A stubby, sheepsfoot-bladed knife on a lanyard, its blunt tip meant to
+      keep a sailor from stabbing himself when the deck heaves. It parts wet
+      rope in a single draw and lives on every working seaman's belt.
+    takeable: true
+    tradeable: true
+    slot: off_hand
+    weight: 0.5
+    value: 14
+    category: weapon
+
+  - id: whalers_harpoon
+    name: Whaler's Harpoon
+    description: >-
+      A long iron harpoon with a toggling barb and a hank of line still knotted
+      to its ring. It is far too much weapon for anything that walks on land,
+      which is exactly why it hangs where the tavern's rowdiest can see it.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 4.0
+    value: 35
+    category: weapon
+
+  - id: belaying_pin_club
+    name: Belaying Pin
+    description: >-
+      A turned length of hardwood that belongs in a pin-rail, holding a line
+      fast — but every sailor knows its second use. Smooth, blunt, and always
+      conveniently to hand when a bar-room disagreement turns physical.
+    takeable: true
+    tradeable: true
+    slot: off_hand
+    weight: 1.5
+    value: 10
+    category: weapon
+
+  # --- P2.2 Cogsworth: Armor (smithy & foundry) ---
+  - id: chainmail_hauberk_cog
+    name: Riveted Chainmail Hauberk
+    description: >-
+      A knee-length shirt of riveted iron rings, each link closed by hand at a
+      Cogsworth bench. It hangs with a heavy, liquid weight and whispers like
+      coins when you move. Proof against a slash, if not a good clean thrust.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 12.0
+    value: 80
+    category: armor
+    quality: fine
+
+  - id: iron_plate_cuirass
+    name: Iron Plate Cuirass
+    description: >-
+      A breast-and-back of hammered iron plate, articulated at the sides with
+      sliding lames so a wearer can still draw breath and swing. It is
+      punishingly heavy and stops nearly everything short of a foundry press.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 18.0
+    value: 120
+    category: armor
+    quality: superior
+
+  - id: studded_leather_jerkin
+    name: Studded Leather Jerkin
+    description: >-
+      A sleeveless jerkin of thick boiled leather set with rows of iron studs.
+      Light, quiet, and cheap enough that half the market district's hired
+      muscle wears one under their coats.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 6.0
+    value: 40
+    category: armor
+
+  - id: brass_scale_shirt_cog
+    name: Brass Scale Shirt
+    description: >-
+      A shirt of small overlapping brass scales laced onto a leather backing,
+      each scale catching the light like a fish's flank. More showy than a plain
+      hauberk, and favored by those who like to be seen surviving.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 10.0
+    value: 70
+    category: armor
+    quality: fine
+
+  - id: brass_gauntlets
+    name: Articulated Brass Gauntlets
+    description: >-
+      A pair of gauntlets built from dozens of hinged brass plates, so finely
+      jointed you could still pick a lock while wearing them. The maker signed
+      the cuff of the left one in a hand almost too small to read.
+    takeable: true
+    tradeable: true
+    slot: hands
+    wearable: true
+    weight: 2.0
+    value: 32
+    category: armor
+    quality: fine
+
+  - id: iron_greaves
+    name: Iron Greaves
+    description: >-
+      Shin-guards of shaped iron, buckled at the calf with worn leather straps.
+      They are dented along the front where they have already done their job at
+      least once for whoever wore them last.
+    takeable: true
+    tradeable: true
+    slot: legs
+    wearable: true
+    weight: 5.0
+    value: 35
+    category: armor
+
+  - id: steel_sabatons
+    name: Steel Sabatons
+    description: >-
+      Segmented steel foot-armor that clanks like a dropped toolbox and turns a
+      stubbed toe into someone else's broken one. Heavy going on a ladder, but
+      a comfort in a press of bodies.
+    takeable: true
+    tradeable: true
+    slot: feet
+    wearable: true
+    weight: 3.0
+    value: 26
+    category: armor
+
+  - id: workmans_apron
+    name: Heavy Leather Work Apron
+    description: >-
+      A blackened leather apron scarred with a thousand small burns and spark-
+      pits, its pockets stiff with soot. Not armor, exactly, but it has saved
+      more foundry hides than any breastplate on the wall.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 2.0
+    value: 12
+    category: armor
+
+  - id: riveted_belt
+    name: Riveted Toolbelt
+    description: >-
+      A broad belt of doubled leather bristling with iron loops, hooks, and
+      riveted pouches. It carries the weight of a working day and cinches down
+      tight enough to double as light protection across the waist.
+    takeable: true
+    tradeable: true
+    slot: waist
+    wearable: true
+    weight: 1.0
+    value: 15
+    category: armor
+
+  # --- P2.2 Whisperwood: Armor (ranger & forest) ---
+  - id: ranger_leather_cuirass
+    name: Ranger's Leather Cuirass
+    description: >-
+      A supple cuirass of oiled greenwood-tanned leather, mottled in browns and
+      greys so it fades against bark and shadow. Light enough for a long day's
+      walking and quiet enough for the last few steps of a stalk.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 5.0
+    value: 45
+    category: armor
+    quality: fine
+
+  - id: hooded_forest_cloak
+    name: Hooded Forest Cloak
+    description: >-
+      A long cloak of undyed wool, its deep hood lined to break the shape of a
+      face in the gloom. Burrs and old pine needles are worked so deep into the
+      weave they have become part of the pattern.
+    takeable: true
+    tradeable: true
+    slot: back
+    wearable: true
+    weight: 2.0
+    value: 30
+    category: armor
+    effects:
+      - type: warmth_bonus
+        amount: 2
+
+  - id: deerskin_gloves
+    name: Deerskin Gloves
+    description: >-
+      Soft, close-fitting gloves of smoke-tanned deerskin, worn thin at the
+      fingertips from bowstrings and buckles. They keep just enough feeling in
+      the hands for delicate work on a cold morning.
+    takeable: true
+    tradeable: true
+    slot: hands
+    wearable: true
+    weight: 0.5
+    value: 15
+    category: armor
+
+  - id: bark_woven_boots
+    name: Bark-Woven Boots
+    description: >-
+      Odd, sturdy boots with soles of layered bark and uppers of tight-woven
+      bast fiber. They shed water, grip wet root and mossy stone, and leave a
+      print no city cobbler would recognize.
+    takeable: true
+    tradeable: true
+    slot: feet
+    wearable: true
+    weight: 1.0
+    value: 18
+    category: armor
+
+  - id: woven_grass_hat
+    name: Wide Woven-Grass Hat
+    description: >-
+      A broad, conical hat plaited from dried marsh grass, light as a thought
+      and wide enough to shed both sun and drizzle. It smells of hay and river
+      mud and does nothing at all to stop a blade.
+    takeable: true
+    tradeable: true
+    slot: head
+    wearable: true
+    weight: 0.3
+    value: 6
+    category: armor
+
+  - id: leaf_scale_vest
+    name: Leaf-Scale Vest
+    description: >-
+      A curious vest sewn with hundreds of small, lacquered wooden scales,
+      overlapping like the leaves of a fern. Fey-work, the forest folk say,
+      though it turns a claw or a thorn as well as any tinker's mail.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 4.0
+    value: 50
+    category: armor
+    quality: fine
+
+  # --- P2.2 Port Veridian: Armor (dockside & seagoing) ---
+  - id: oilskin_coat
+    name: Tarred Oilskin Coat
+    description: >-
+      A long coat of canvas soaked stiff with oil and tar until it turned near
+      waterproof, cracking loudly at every elbow. It stinks of the harbor and
+      keeps a body dry through the worst a squall can throw.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 3.0
+    value: 35
+    category: armor
+    effects:
+      - type: warmth_bonus
+        amount: 3
+
+  - id: sailors_wool_cap
+    name: Sailor's Wool Cap
+    description: >-
+      A snug, close-knit cap of oiled wool, pulled down over the ears against a
+      cold watch. It has been darned so many times it is more darn than cap, but
+      it has never once let the wet in.
+    takeable: true
+    tradeable: true
+    slot: head
+    wearable: true
+    weight: 0.3
+    value: 8
+    category: armor
+    effects:
+      - type: warmth_bonus
+        amount: 1
+
+  - id: dock_workers_boots
+    name: Dock Worker's Boots
+    description: >-
+      Heavy, square-toed boots with iron-shod soles, built to shrug off a
+      dropped crate and grip a slick loading plank. The leather is salt-stained
+      to the ankle and stiff as a board below it.
+    takeable: true
+    tradeable: true
+    slot: feet
+    wearable: true
+    weight: 1.5
+    value: 15
+    category: armor
+
+  - id: salvaged_breastplate
+    name: Salvaged Breastplate
+    description: >-
+      A dented iron breastplate fished from a wreck and hammered roughly back
+      into shape, its old owner's crest half worn away by the sea. It patches
+      over one shoulder with a plate of a different, brighter metal.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 14.0
+    value: 60
+    category: armor
+
+  - id: canvas_work_gloves
+    name: Canvas Work Gloves
+    description: >-
+      Stiff sailcloth gloves with leather patches sewn across the palms, meant
+      for hauling wet line without flaying your hands to the bone. Cheap,
+      ubiquitous, and always drying on some hook near a stove.
+    takeable: true
+    tradeable: true
+    slot: hands
+    wearable: true
+    weight: 0.4
+    value: 6
+    category: armor
+
+  - id: storm_hood
+    name: Weighted Storm Hood
+    description: >-
+      A deep hood of doubled oilcloth with a lead-shot hem, so a gale can't tear
+      it back off your head. Wearing it, you hear the world as a muffled roar
+      and your own breath very close.
+    takeable: true
+    tradeable: true
+    slot: head
+    wearable: true
+    weight: 0.5
+    value: 12
+    category: armor
+    effects:
+      - type: warmth_bonus
+        amount: 2
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -3071,6 +3671,103 @@ room_items:
   - room_id: tide_pools
     item_id: sea_glass_shard
     quantity: 2
+
+  # =========================================================================
+  # PHASE 2 placements
+  # =========================================================================
+
+  # --- P2.1/P2.2 Cogsworth: loose weapons & armor (smithy/foundry) ---
+  - room_id: smithy_district
+    item_id: crude_cleaver
+    quantity: 1
+  - room_id: smithy_district
+    item_id: throwing_dagger_cog
+    quantity: 2
+  - room_id: steam_foundry_antechamber
+    item_id: iron_greaves
+    quantity: 1
+  - room_id: steam_foundry_antechamber
+    item_id: workmans_apron
+    quantity: 2
+  - room_id: market_row_west
+    item_id: riveted_belt
+    quantity: 1
+  - room_id: market_row_west
+    item_id: brass_scale_shirt_cog
+    quantity: 1
+
+  # --- P2.1/P2.2 Whisperwood: loose ranger/forest gear ---
+  - room_id: whispering_clearing
+    item_id: rangers_longbow
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: yew_shortbow
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: ranger_leather_cuirass
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: hooded_forest_cloak
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: hunters_hatchet
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: bark_woven_boots
+    quantity: 1
+  - room_id: hunter_lodge
+    item_id: deerskin_gloves
+    quantity: 1
+  - room_id: monolith_grove
+    item_id: carved_quarterstaff
+    quantity: 1
+  - room_id: monolith_grove
+    item_id: flint_knife
+    quantity: 1
+  - room_id: mushroom_circle
+    item_id: leaf_scale_vest
+    quantity: 1
+  - room_id: mushroom_circle
+    item_id: woven_grass_hat
+    quantity: 1
+
+  # --- P2.1/P2.2 Port Veridian: loose dockside/seagoing gear ---
+  - room_id: shipyard
+    item_id: sailors_cutlass
+    quantity: 1
+  - room_id: shipyard
+    item_id: boarding_axe
+    quantity: 1
+  - room_id: drydock
+    item_id: salvaged_breastplate
+    quantity: 1
+  - room_id: drydock
+    item_id: rigging_knife
+    quantity: 1
+  - room_id: maritime_tavern
+    item_id: whalers_harpoon
+    quantity: 1
+  - room_id: maritime_tavern
+    item_id: belaying_pin_club
+    quantity: 1
+  - room_id: docks_main
+    item_id: fishermans_gaff
+    quantity: 1
+  - room_id: docks_main
+    item_id: dock_workers_boots
+    quantity: 1
+  - room_id: fisherfolk_dock
+    item_id: oilskin_coat
+    quantity: 1
+  - room_id: fisherfolk_dock
+    item_id: sailors_wool_cap
+    quantity: 1
+  - room_id: net_mending_yard
+    item_id: canvas_work_gloves
+    quantity: 1
+  - room_id: net_mending_yard
+    item_id: storm_hood
+    quantity: 1
 
 # ---------------------------------------------------------------------------
 # Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
@@ -3616,6 +4313,32 @@ npcs:
           quantity: 2
         - item_id: mechanical_wrench
           quantity: -1
+        # Phase 2 weapons
+        - item_id: steel_longsword_cog
+          quantity: 2
+        - item_id: gearwork_saber
+          quantity: 1
+        - item_id: iron_battleaxe_cog
+          quantity: 2
+        - item_id: spiked_warmace_cog
+          quantity: 2
+        - item_id: footmans_spear_cog
+          quantity: 4
+        - item_id: clockwork_crossbow
+          quantity: 1
+        - item_id: hunting_knife_cog
+          quantity: 5
+        # Phase 2 armor
+        - item_id: chainmail_hauberk_cog
+          quantity: 1
+        - item_id: iron_plate_cuirass
+          quantity: 1
+        - item_id: studded_leather_jerkin
+          quantity: 3
+        - item_id: brass_gauntlets
+          quantity: 2
+        - item_id: steel_sabatons
+          quantity: 2
     triggers:
       - on: encounter
         do:

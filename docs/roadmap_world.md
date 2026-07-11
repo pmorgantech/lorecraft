@@ -317,25 +317,25 @@ All connectors are open (no locks), outdoor, `terrain: road`, and reachable from
 
 Build a diverse inventory of item *types* and *instances* that test the engine's item system.
 
-#### P2.1 — Weapons (20+ items)
-- [ ] Swords: iron, steel, decorated, crude, enchanted-flavor
-- [ ] Axes, maces, spears, pikes
-- [ ] Bows, crossbows (ranged)
-- [ ] Daggers, knives (off-hand)
-- [ ] Each weapon: unique description, weight, rarity tier
+#### P2.1 — Weapons (20+ items) ✅ (2026-07-11, v0.81.0)
+- [x] Swords: iron, steel, decorated, crude, enchanted-flavor (Cogsworth longsword, gearwork saber, crude cleaver, sailor's cutlass)
+- [x] Axes, maces, spears, pikes (foundry battleaxe, riveted war mace, footman's spear, brass pike, boarding axe, hunter's hatchet)
+- [x] Bows, crossbows (ranged) (clockwork crossbow, ranger's longbow, hunter's shortbow)
+- [x] Daggers, knives (off-hand) (hunting knife, throwing dagger, flint knife, rigging knife, belaying pin)
+- [x] Each weapon: unique description, `weight`, `quality` tier, `value`, `slot: main_hand`/`off_hand`
 
 **Guidance:** Item descriptions should evoke the world (e.g., "A steel blade forged in Cogsworth's foundry, still warm from the anvil").
 
-**Test:** Equip weapons; drop/pick up; verify weight calculations work.
+**Test:** Equip weapons; drop/pick up; verify weight calculations work. — 21 weapons added, `world_cli validate` clean; stocked into Thorne's smithy + placed loose across all three new zones.
 
-#### P2.2 — Armor (20+ items)
-- [ ] Leather gear (light)
-- [ ] Chain mail (medium)
-- [ ] Plate armor (heavy)
-- [ ] Cloaks, hats, boots (wearable; some grant trait effects)
-- [ ] Each armor: AC/defense value equivalent (if combat exists; else lore-stat)
+#### P2.2 — Armor (20+ items) ✅ (2026-07-11, v0.81.0)
+- [x] Leather gear (light) (studded leather jerkin, ranger's leather cuirass, work apron)
+- [x] Chain mail (medium) (riveted chainmail hauberk, brass scale shirt, leaf-scale vest)
+- [x] Plate armor (heavy) (iron plate cuirass, salvaged breastplate, iron greaves, steel sabatons, brass gauntlets)
+- [x] Cloaks, hats, boots (wearable; hooded forest cloak, storm hood, oilskin coat, sailor's cap — several grant a `warmth_bonus` effect)
+- [x] Each armor: `wearable: true`, appropriate `slot`, `weight`, `value`
 
-**Test:** Equip multiple armor pieces; inventory weight; wear/unequip.
+**Test:** Equip multiple armor pieces; inventory weight; wear/unequip. — 21 armor pieces added across `torso`/`head`/`hands`/`legs`/`feet`/`back`/`waist` slots; `world_cli validate` clean.
 
 #### P2.3 — Utility & Crafting (30+ items)
 - [ ] Tools: hammer, lockpick, wrench, shovel, pickaxe
@@ -580,7 +580,7 @@ Blocked Items. Don't build content that assumes this exists.
 
 - [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
-- [ ] 100+ unique items (weapons, armor, utility, consumables, keys, lore)
+- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 121 items as of v0.81.0 (P2.1 weapons + P2.2 armor); further Phase 2 batches (utility/consumables/trait-wearables/keys) continue to grow it
 - [ ] 15+ NPCs with dialogue and quests
 - [ ] 5+ locked doors requiring keys (puzzle component)
 - [ ] Dark areas requiring light sources (caves, sewers)

@@ -4,6 +4,22 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-07-11
+
+### Added
+
+- **Phase 2 world content — Weapons & Armor (roadmap_world.md P2.1 + P2.2).** Added 21 weapons
+  and 21 armor pieces (42 new items) to `world_content/world.yaml`, taking the world from 79 to
+  121 items — past the 100+ Phase 2 target. Weapons span swords, axes, maces, spears, pikes,
+  bows, crossbows, daggers and knives with `slot: main_hand`/`off_hand`, plausible `weight`,
+  `quality` tiers and `value`; armor spans chain/plate/leather torso pieces, gauntlets, greaves,
+  sabatons, cloaks, hats and boots (`wearable: true` with `torso`/`head`/`hands`/`legs`/`feet`/
+  `back`/`waist` slots), several carrying a `warmth_bonus` effect. Themed by zone: Cogsworth
+  smithy/foundry (steel and brass), Whisperwood ranger/forest gear, Port Veridian dockside and
+  seagoing kit. Placed via `room_items` across all three new zones and stocked into Blacksmith
+  Thorne's smithy shop. `world_cli validate` clean (0 warnings); reachability + tier-boundary
+  tests green.
+
 ## [0.80.1] - 2026-07-11
 
 ### Added
