@@ -167,6 +167,47 @@ in a random area room via the seeded RNG (runs replay faithfully).
 5. If you added a *new* condition/effect/behavior descriptor in `src/`, run `make scripting-docs`
    in the same commit (CI drift-check enforces it) and add unit tests.
 
+## Merging parallel zone-building branches (git gotcha)
+
+When multiple agents build separate zones in parallel (each in its own worktree, each
+appending rooms/items/npcs/dialogue_trees/room_items/economy.regions/quests to the same
+`world_content/world.yaml`), combining their branches with a plain `git merge` is
+**unreliable, even with `-X histogram` or `-X patience`**. Every zone's addition lands at the
+same insertion point (right before the next top-level key), and the file is full of short
+lines that repeat across dozens of unrelated entries — `light_level: 1`, `exits:`,
+`- direction: north`, `side_effects: {}`. Git's line-based diff can lock onto these as false
+alignment points instead of treating each zone's block as atomic, and *interleave* two
+unrelated records — for example, splicing one NPC's dialogue-choice label directly onto
+another zone's unrelated dialogue node's text. The output can still be syntactically valid
+YAML with every ID resolvable, so `world_cli validate` passes clean on a genuinely corrupted
+merge — the validator checks structure and references, not narrative coherence.
+
+**Recipe: structural section-merge**, done once per top-level YAML key (`rooms:`, `items:`,
+`room_items:`, `dialogue_trees:`, `npcs:`, `economy:`, `quests:`), instead of trusting `git
+merge`'s conflict resolution:
+
+1. Get the full file text at three points: the shared base commit (before any zone branch
+   diverged), and each zone branch's tip (each is base + that zone's own pure-addition diff).
+2. For each top-level key, slice out that section's lines (from the key to the next
+   top-level key, or EOF for the last one) in all three versions.
+3. For each zone, compute the **common prefix** and **common suffix** between the base
+   section and that zone's section (both computed line-by-line). Since each zone only adds
+   lines and never edits existing ones, `prefix_len + suffix_len` should equal the base
+   section's total length exactly — **verify this before trusting the split**; if it doesn't
+   match, that zone's branch touched existing content and needs manual review, not this
+   recipe.
+4. That zone's actual added content is the slice between the prefix and the suffix.
+5. Reassemble each section as: `prefix + zoneA_added + zoneB_added + ... + suffix`, then
+   concatenate all reassembled sections (plus the file header before `rooms:`) into the final
+   file.
+
+A short Python script doing exactly this (list-of-lines slicing, no YAML parsing needed —
+parsing and re-serializing with a YAML library risks reformatting the hand-authored
+`>-` description blocks and losing comments) is faster and more reliable here than resolving
+conflict markers by hand. After merging, run `world_cli validate` **and** spot-check at least
+one multi-line dialogue/description block from each merged zone directly in the file — the
+validator won't catch a splice, only a human skim will.
+
 ## Key source files (for engine-side changes)
 
 - `src/lorecraft/engine/scripting/` — `vocabulary.py` (descriptors + global catalog),

@@ -17,6 +17,31 @@ Action release-bot replaces this manual step.
 `docs/multi-agent-workflow.md`) before `make test-cov`/`make typecheck`, rather than assuming
 the venv is already isolated to this worktree.
 
+## Where you work: never the shared primary tree
+
+Merging is exactly the job that tempts a shortcut — `cd` into the primary tree
+(repo root) and run `git merge`/`commit` directly on `main`. **Don't.** That checkout is
+shared: any concurrent agent session without its own worktree can have it checked out to a
+different branch at any moment, and your command silently applies to whatever's checked out
+*then*, not the branch you think you're on. This already happened once — a fast-forward
+merge intended for `main` landed on `develop` instead because another session had switched
+the shared checkout in between two of the same agent's commands. See AGENTS.md "The shared
+primary-tree checkout race" for the full incident.
+
+Always do integration work in a dedicated, disposable worktree instead:
+
+```bash
+git worktree add /tmp/integrate-<task> main   # isolated checkout, no race possible
+cd /tmp/integrate-<task>
+# ... merge, bump version, edit CHANGELOG.md, commit — this *is* main, directly ...
+cd - && git worktree remove /tmp/integrate-<task>
+```
+
+If `git` refuses a checkout or a `branch -f` because the branch is "already checked out
+elsewhere," that is not an obstacle to force past — it means another session is using it.
+Stop and report to the Orchestrator/user rather than forcing it, and never force-move a
+branch pointer other than the one you were explicitly asked to integrate.
+
 ## Pre-merge checklist (block on any failure)
 
 - [ ] `make test-cov` passes (coverage gate, currently 80%)
@@ -42,7 +67,11 @@ matching the existing changelog format exactly (don't reformat surrounding entri
 ## Merge
 
 Per `docs/multi-agent-workflow.md`'s branching model: sub-agents work on feature branches in
-their own worktrees and open a PR rather than pushing directly. Your job:
+their own worktrees and open a PR rather than pushing directly. **That said**, when the user
+hasn't asked for a push or a PR in this session, default to local-only integration (merge/commit
+to local `main`, no `git push`) per the repo's standing "don't push without being asked"
+convention — treat the PR-based flow as what happens once the user actually wants this shared
+with `origin`, not a mandatory step for every local integration.
 
 1. Confirm the branch is rebased on current `origin/main` (or `develop`, if that's the target
    — ask the Orchestrator which if unclear).
@@ -50,6 +79,26 @@ their own worktrees and open a PR rather than pushing directly. Your job:
 3. Merge (or prepare the PR body summarizing changes) — never force-push, never merge with a
    red checklist item.
 4. Tag the release: `git tag v<new-version>`.
+
+### Merging multiple branches that append to the same data file
+
+When two or more agent branches each append new entries to the *same* large, repetitively
+structured file — most commonly several world-building agents all adding zones to
+`world_content/world.yaml` — git's default line-based 3-way merge can misalign on short lines
+that repeat across many entries (`light_level: 1`, `exits:`, `- direction: north`,
+`side_effects: {}`) and interleave two unrelated records instead of cleanly concatenating each
+branch's block. This can happen even with `-X histogram`/`-X patience`. Worse, the result can
+still be syntactically valid YAML with resolvable IDs — `world_cli validate` passes clean even
+though a dialogue node got spliced with an unrelated one from another zone. Don't trust a green
+validator alone as proof the merge was correct.
+
+See [`.agents/skills/worldbuilding/SKILL.md`](../../.agents/skills/worldbuilding/SKILL.md)
+section "Merging parallel zone-building branches" for the structural section-merge recipe
+(extract each branch's true added content per top-level YAML key via common-prefix/suffix
+matching against the shared base, verify it accounts for 100% of the base, then reassemble) —
+use it instead of trusting `git merge`'s conflict resolution for this file. After any such
+merge, spot-check at least one multi-line dialogue/description block from each merged branch
+by hand, not just the validator's exit code.
 
 ## On failure
 

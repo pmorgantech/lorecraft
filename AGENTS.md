@@ -142,3 +142,52 @@ PYTHONPATH="$PWD/src" python -m basedpyright            # typecheck the worktree
 - **e2e/live-server tests:** point the app's content mirrors at a temp dir in the fixture
   (`issues_yaml_path`/`news_yaml_path`/`help_yaml_path` → `tmp_path`) so a run can't export
   test data into the repo's `docs/*.yaml`. `PYTHONPATH="$PWD/src"` still applies.
+
+### The shared primary-tree checkout race (git commands, not just Python)
+
+The primary working tree (repo root, `/home/petem/src/Gamedev/lorecraft`) has exactly **one**
+working-directory checkout, shared by every concurrent agent session that hasn't been given
+its own `.claude/worktrees/<name>` — and even sessions that *have* one will sometimes `cd`
+into the primary tree out of habit to run a `git` command. That checkout's HEAD is mutable
+shared state: another concurrent session can (and, in practice, will) `git checkout` it to a
+different branch between your commands, with no lock and no warning.
+
+**Concretely, this happened:** an agent `cd`'d into the primary tree to commit a
+Cogsworth world-content change on `main`, which succeeded. Between that commit and a later
+`git merge --ff-only <branch>` run the same way, a *different* concurrent session checked out
+`develop` in that same shared directory. The merge command — still reasoning "I'm on main" —
+silently fast-forwarded whatever branch happened to be checked out at that moment (`develop`),
+not `main`. Nothing errored; `main` was simply left one commit behind, and `develop` gained a
+commit nobody intended to put there. Untangling it required read-only forensics (`git reflog`,
+`git merge-base --is-ancestor`) to prove no work was lost, then careful, user-confirmed
+ref repairs — all avoidable.
+
+**Rule:** never run `git commit` / `merge` / `checkout` / `reset` / `switch` by `cd`-ing into
+the primary tree's root directory. This applies even for "just a quick fix-up commit" —
+that's exactly the situation that caused the incident above.
+
+**Fix — dedicated scratch worktree.** Any task that needs to read or write a *shared* branch
+(typically local `main`) — merging multiple agents' branches together, bumping the version,
+moving a `CHANGELOG.md` entry under a dated heading — should do it in its own disposable
+worktree, never the primary tree's checkout:
+
+```bash
+git worktree add /tmp/<scratch-name> main   # isolated checkout of main, no race possible
+cd /tmp/<scratch-name>
+# ... do the integration work, commit directly (this *is* main — no separate merge step needed) ...
+cd - && git worktree remove /tmp/<scratch-name>   # clean up when done
+```
+
+Git itself enforces one useful safety rail here: it refuses to check out (or `branch -f`) a
+branch that's already checked out somewhere else. Treat that refusal as a signal that another
+session is using it — don't force past it (`git worktree remove --force`, `branch -f` from
+elsewhere) without confirming with the user first, since the branch pointer may be something
+another concurrent agent is actively relying on.
+
+**Version-bump collisions are a related, accepted risk.** Two branches built concurrently by
+different sessions can independently claim the same "next" version number (each is blind to
+the other's in-flight work) — this has happened in practice (two unrelated branches both
+claiming `v0.76.0`). It's not something a single agent can prevent unilaterally; whoever
+integrates/merges those branches together is the one who discovers and resolves the collision
+by renumbering one of them. Don't try to pre-empt it by scanning every open branch before every
+bump — just bump against your own branch's ancestry, and expect the integrator to reconcile.

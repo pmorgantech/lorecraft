@@ -42,6 +42,17 @@ tests yourself — you decompose, route, and validate.
 - Per `docs/multi-agent-workflow.md`: sub-agents work in their own bootstrapped worktree
   (`make bootstrap`), never touch version files directly, and open a PR rather than pushing
   straight to main/develop — that's the Integrator's job.
+- **Never merge, version-bump, or touch `CHANGELOG.md` yourself, even to "quickly fix up" a
+  sub-agent's commit.** Route that to the Integrator. Doing it inline is exactly how a past
+  incident happened: an ad hoc commit+merge sequence run by `cd`-ing into the shared primary
+  tree landed on the wrong branch because another concurrent session had it checked out
+  elsewhere. See AGENTS.md "The shared primary-tree checkout race" and the Integrator's own
+  "Where you work" section — that discipline exists because of this, not as a formality.
+- When dispatching multiple content-authoring sub-agents (e.g. several world-building agents
+  each adding a zone) whose work will need to be combined afterward, tell them explicitly to
+  commit to their own branch and stop — merging multiple such branches back together is the
+  Integrator's job, not something each content agent should attempt, and not something you
+  should improvise inline either.
 
 ## What you read, never write
 
