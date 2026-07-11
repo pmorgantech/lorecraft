@@ -75,6 +75,37 @@
     background-color: rgba(63, 63, 70, 0.15);
 }
 
+/* `help` command output (MessageType.HELP → `msg-help`, Sprint 71.4): render
+   command/topic reference text as a distinct, bold accent-colored block so
+   it reads as reference material rather than blending into narration. Uses
+   the theme's --lc-accent token (not a hardcoded color) so it repaints
+   correctly across every colour scheme, same as the rest of this file.
+   Two specificity/cascade traps here, confirmed with a live browser (an
+   e2e run, not just static reading):
+   1. A plain `.msg.msg-<type>` class rule loses outright to feed_items.html's
+      `#feed .msg, .msg { border-left: 2px solid transparent; }` (an ID
+      selector beats any number of classes) — the reason that file's own
+      msg-quest/msg-warning/msg-tell/msg-combat/msg-hint rules never
+      visibly render today. The `#feed` prefix below matches that ID so
+      this rule is actually in the running.
+   2. Even with that fixed, `help` messages always carry the base `type:
+      "narrative"` too (frontend.py's per-turn feed builder), so the div is
+      `.msg.narrative.msg-help` — and feed_items.html separately defines
+      `#feed .msg.narrative { border-left-color: #3b82f6; }` at the *same*
+      specificity as `#feed .msg.msg-help`. Equal specificity is broken by
+      source order, and that inline `<style>` block renders later in the
+      DOM than this linked stylesheet, so it wins the tie. `!important`
+      here (already an established override pattern in this file — see
+      `.high-contrast`/`.reduced-motion` below) is what actually settles it,
+      robust to whichever base `type` class `msg-help` ends up paired with. */
+#feed .msg.msg-help {
+    border-left-color: var(--lc-accent) !important;
+    font-weight: 600;
+}
+#feed .msg.msg-help .text-zinc-200 {
+    color: var(--lc-accent);
+}
+
 /* Panel headers */
 .panel-header {
     letter-spacing: 0.5px;

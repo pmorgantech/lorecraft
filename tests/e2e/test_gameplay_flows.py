@@ -74,6 +74,28 @@ def test_help_output_preserves_line_breaks(page: Any, live_server: str) -> None:
     assert white_space == "pre-line"
 
 
+def test_help_output_gets_bold_accent_styling(page: Any, live_server: str) -> None:
+    """Sprint 71.4: `help`'s documentation output is tagged
+    `MessageType.HELP` (`msg_type: "help"`), which the feed templates turn
+    into an additive `msg-help` class on the `.msg` div (Sprint 56 hook).
+    Confirms the CSS actually renders it distinctly (bold) — not just that
+    the class string is present — since a same-file base rule for `.msg`
+    (`#feed .msg, .msg { border-left: 2px solid transparent; }`) carries an
+    ID selector that would otherwise beat a plain `.msg.msg-help` class rule
+    on specificity and silently no-op it."""
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+
+    send_command(page, "help commands")
+
+    message = page.locator("#feed .msg.msg-help", has_text="All commands")
+    message.wait_for()
+    font_weight = message.evaluate("el => getComputedStyle(el).fontWeight")
+    # Browsers normalize named weights ("bold") to numeric ("700"); either
+    # form clears "normal"/400.
+    assert font_weight not in ("normal", "400")
+
+
 def test_new_character_starts_in_village_square(page: Any, live_server: str) -> None:
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
