@@ -11,17 +11,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-11, v0.90.2)
+## Where things stand (2026-07-11, v0.91.0)
 
-**Everything through Sprint 70 is complete** and merged to main.
+**Everything through Sprint 71 is complete** and merged to main.
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
 client themes/layouts band (58–60, 62), multi-level map (66), the webui-theming skill (67), escort
 quests (68), and the **Phase A scripting engine** (v0.57–0.70) plus its **Sprint 69** world-building
 polish (weather-narration voice, indoor rooms, the world-building agent skill, zone-qualified
-addressing, and the flag-condition canonicalization to `actor_has_flag`/`actor_lacks_flag`), and
-**Sprint 70** social emotes (`wave`, `point`) and the `quests` command have all shipped. Detail in
+addressing, and the flag-condition canonicalization to `actor_has_flag`/`actor_lacks_flag`),
+**Sprint 70** social emotes (`wave`, `point`) and the `quests` command, and **Sprint 71** backlog
+cleanup (admin Issues editable priority/description, Room schema zone/room_type split + admin World
+filter, player map shape stability, help command styling) have all shipped. Detail in
 [`roadmap_completed.md`](roadmap_completed.md) and [`../CHANGELOG.md`](../CHANGELOG.md).
 
 *(Out-of-band, v0.90.0: the `consumables` feature — `eat`/`drink`/`quaff` with one-shot
@@ -32,8 +34,8 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
-**Next: Sprint 71** — backlog cleanup: admin UI + player-facing bugs. See
-[Sprint 71](#sprint-71--backlog-cleanup-admin-ui--player-facing-bugs) below.
+**Next: Sprint 72** — scheduled for foundation stabilization and Sprint 70+ tech-debt backlog. See
+[Sprint numbering](#sprint-numbering-avoid-duplicates) below for the active ledger.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -71,10 +73,10 @@ work, with one item blocked on a product decision.
 
 | # | Task | Status |
 |---|------|--------|
-| 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [x] done — `webui/admin/index.html` (per-row priority `<select>` mirroring the status select; description `<textarea>` + Save in the detail row), `tests/e2e/test_admin_issues.py` (2 new e2e cases). Awaiting version bump/CHANGELOG entry from the integrator. |
-| 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [x] 71.2a-e done (schema split + admin filter UI, branch `sprint-71-2-zone-room-type-split`); 71.2f (test-file updates) remains — awaiting version bump/CHANGELOG from the integrator |
-| 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [ ] not started — waiting on rendering.py investigation |
-| 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [ ] not started |
+| 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [x] v0.91.0 — `webui/admin/index.html` (per-row priority `<select>` mirroring the status select; description `<textarea>` + Save in the detail row), `tests/e2e/test_admin_issues.py` (2 new e2e cases, commit `853425e`). |
+| 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [x] v0.91.0 — All 71.2a-f complete (schema split `zone`/`room_type`, economy re-keyed, weather dedup guard, admin filter UI, test updates; branch `sprint-71-2-zone-room-type-split`, commits `2e9f466`, `7e90bf4`). |
+| 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [x] v0.91.0 — z-level filtering verified correct (regression test added `test_frontend_map.py`); fixed shape-stability bug where tie-break was non-deterministic (now sorts by distance + room_id), commit `2e9f466`. |
+| 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [x] v0.91.0 — Backend `MessageType.HELP` tag (`c29fea1`) + frontend `.msg-help` CSS styling with `--lc-accent` token + e2e regression test (`357c533`, branch `sprint-71-4-help-formatting`). |
 | 71.5 | **Quest XP rewards.** | [ ] **BLOCKED** — needs a product decision first: does Lorecraft have any leveling/XP progression system at all? If no, this may close as works-as-designed; if yes, it needs its own dedicated XP-system sprint before design work here can start. |
 
 ---
@@ -290,7 +292,7 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   itself (v0.57–0.70, branch `scripting_engine`) predates this ledger; it is tracked in
   `docs/scripting_engine_design.md`.
 - **Used (all complete):** 70 (social emotes & QoL commands — 70.1 emotes, 70.2 `quests` command, v0.78.0).
-- **Used:** 71 (backlog cleanup: admin UI + player-facing bugs — 71.1–71.5, in progress).
+- **Used (all complete):** 71 (backlog cleanup: admin UI + player-facing bugs — 71.1–71.4 done, 71.5 blocked; v0.91.0: admin Issues editable priority/description, Room zone/room_type split, admin World filter, player map shape stability, help styling).
 - **Next new sprint: 72.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 

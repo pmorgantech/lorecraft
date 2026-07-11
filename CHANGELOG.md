@@ -4,6 +4,30 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.91.0] - 2026-07-11
+
+### Added
+
+- **Sprint 71.1 — Admin Issues panel: editable priority + description.** The backend PUT endpoint
+  already accepted both fields; this adds the SPA UI: per-row priority `<select>` (mirroring the
+  existing status select's PUT + reload pattern), and a description `<textarea>` + Save button in the
+  issue detail row. Priority values derive from the existing `PRIORITY_RANK` map (avoiding duplication).
+  Two e2e test cases cover the new priority select and description save round-trip.
+
+### Changed
+
+- **Sprint 71.2 — Room schema split: `area_id` → `zone` + `room_type` (with admin World filter UI and economy re-keying).** The conflated `Room.area_id` field (which mixed geographic zones, room kinds, and connector singletons) is replaced by two orthogonal fields:
+  - `zone: str | None` — geographic/thematic, exactly 4 values: `ashmoore`, `cogsworth`, `whisperwood`, `port_veridian`. Powers zone-qualified teleport addressing, admin World grouping/filter, npc_ai wander bounds, weather fronts, and economy region pricing.
+  - `room_type: str | None` — universal room-kind taxonomy: `{cave, wilderness, town}` (open-ended, expect future values like `road`). Describes *what kind of room* it is across all zones.
+
+  Cascading changes: `RoomRepo.resolve_ref`, `rooms_in_area`, admin GET/PUT/POST world endpoints, npc_ai, npc side_effects, and weather fronts all repoint to `zone`. Economy pricing re-keyed to `zone` (RegionPricing PK → `zone`; collapsed Ashmoore to one row at 1.0 multiplier). Weather fronts gain a runtime dedup-adjacent guard to prevent duplicate leave/re-enter narration. `world_content/world.yaml` updated with zone/room_type mappings (all 104+ rooms + 4 connectors). Seven test files updated; all 1294+ tests green.
+
+  Admin World panel now adds a client-side zone dropdown (all zones + each of the 4 named zones, filterable together with the existing name-substring search) to filter the room list.
+
+- **Sprint 71.3 — Player map rendering: z-level filtering + shape stability.** The z-level filtering was already correct (regression test added). Fixed a non-deterministic shape-stability bug where equidistant room candidates were truncated based on set iteration order; now sorts by (distance, room_id) so the plotted set is stable across renders.
+
+- **Sprint 71.4 — Help command: styled output (bold / accent color).** Backend tags help output with `MessageType.HELP` (no markup leaking into engine-adjacent text). Frontend adds `.msg-help` CSS rule styling with the theme's `--lc-accent` token, correctly cascading over feed_items.html ID-selector rules (required `!important` override). E2e regression test confirms computed font-weight across all color schemes.
+
 ## [0.90.2] - 2026-07-11
 
 ### Changed
