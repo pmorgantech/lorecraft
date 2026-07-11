@@ -1488,6 +1488,418 @@ rooms:
       - direction: west
         target_room_id: bone_chamber
 
+  # -------------------------------------------------------------------------
+  # AREA: port_veridian — Coastal Settlement (Phase 1 Foundation)
+  # -------------------------------------------------------------------------
+
+  # --- Docks (central hub) ---
+  - id: docks_main
+    name: Docks Main
+    description: >-
+      The beating heart of Port Veridian. Cargo cranes creak overhead, hauling
+      netted pallets from the holds of tall-masted traders. Dock workers shout
+      over each other in a dozen accents, rolling barrels and hefting crates
+      down worn gangplanks. Gulls wheel and scream above the pilings, and the
+      salt air carries tar, brine, and fish.
+    map_x: 35
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: docks_north
+      - direction: south
+        target_room_id: docks_south
+      - direction: west
+        target_room_id: warehouse_district
+      - direction: east
+        target_room_id: harbor_promenade
+
+  - id: docks_north
+    name: North Dock
+    description: >-
+      The newer of the two loading docks, its timbers still pale and unweathered.
+      Coils of fresh rope hang from iron cleats, and a chalk board nailed to a
+      post lists incoming ships by name and berth number. A path curves west
+      toward the sound of a rope-maker's wheel, and north toward the shipyard's
+      scaffolding.
+    map_x: 35
+    map_y: 31
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: docks_main
+      - direction: north
+        target_room_id: shipyard
+      - direction: west
+        target_room_id: rope_walk
+
+  - id: docks_south
+    name: South Dock
+    description: >-
+      The older, weather-beaten dock, its pilings green with algae below the
+      waterline. Fishing skiffs are tied up two and three deep, and drying
+      lines strung between posts flutter with the day's laundry. The path
+      south leads toward the fisherfolk's homes.
+    map_x: 35
+    map_y: 29
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: docks_main
+      - direction: south
+        target_room_id: fisherfolk_quarter
+
+  # --- Shipyard cluster ---
+  - id: shipyard
+    name: Port Veridian Shipyard
+    description: >-
+      A half-finished hull looms on wooden scaffolding, ribs of raw timber
+      exposed to the sky. Sawdust and wood shavings carpet the ground, and
+      the rhythmic knock of caulking mallets echoes off the surrounding
+      warehouses. Rolls of canvas sailcloth are stacked against a shed wall.
+    map_x: 35
+    map_y: 32
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: docks_north
+      - direction: east
+        target_room_id: drydock
+      - direction: north
+        target_room_id: shipyard_office
+
+  - id: drydock
+    name: Drydock
+    description: >-
+      A stripped hull rests in a cradle of timber props, its planking pried
+      open for repair. Salvaged fittings — cleats, deadeyes, corroded
+      chainplates — are sorted into crates for reuse. The smell of tar and
+      wet wood is thick here.
+    map_x: 36
+    map_y: 32
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: shipyard
+
+  - id: shipyard_office
+    name: Shipyard Office
+    indoor: true
+    description: >-
+      A cramped, cluttered office papered with hull plans and shipping
+      manifests. A single oil lamp burns low over a desk buried under
+      unpaid invoices. Everything smells faintly of pitch.
+    map_x: 34
+    map_y: 32
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: shipyard
+
+  - id: rope_walk
+    name: The Rope Walk
+    description: >-
+      A long, narrow yard where hemp fibers are twisted into cordage on a
+      creaking wheel-and-drum contraption. Coils of finished rope hang from
+      pegs along the fence in graduated thicknesses, from twine to hawser.
+    map_x: 34
+    map_y: 31
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: docks_north
+
+  # --- Fisherfolk quarter ---
+  - id: fisherfolk_quarter
+    name: Fisherfolk Quarter
+    description: >-
+      A cluster of weathered cottages huddled close together, their roofs
+      patched with tar-paper and driftwood. Nets are strung between houses
+      to dry, and the smell of fish and woodsmoke hangs in the air. Children
+      chase each other between the wash-lines.
+    map_x: 35
+    map_y: 28
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: docks_south
+      - direction: west
+        target_room_id: fisherfolk_row
+      - direction: east
+        target_room_id: fisherfolk_dock
+
+  - id: fisherfolk_row
+    name: Fisherfolk Row
+    description: >-
+      A narrow lane between leaning cottages, strung overhead with lines of
+      salted fish set out to cure. Old-timers sit on stoops mending gear,
+      trading gossip in low voices. A side path leads down toward the
+      net-mending yard.
+    map_x: 34
+    map_y: 28
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: fisherfolk_quarter
+      - direction: south
+        target_room_id: net_mending_yard
+
+  - id: fisherfolk_dock
+    name: Fisherfolk's Landing
+    description: >-
+      A small private pier where the fisherfolk's own boats are moored,
+      little more than dinghies compared to the traders at the main docks.
+      Buckets of the day's catch sit in the shade, packed with kelp to keep
+      cool.
+    map_x: 36
+    map_y: 28
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: fisherfolk_quarter
+
+  - id: net_mending_yard
+    name: Net-Mending Yard
+    description: >-
+      An open yard strewn with tangled nets in every stage of repair. Wooden
+      needles threaded with tarred twine lie in baskets, and floats of cork
+      and glass are sorted into crates by size. The steady click of shuttle
+      needles never quite stops.
+    map_x: 34
+    map_y: 27
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: fisherfolk_row
+
+  # --- Warehouse district ---
+  - id: warehouse_district
+    name: Warehouse District
+    description: >-
+      Rows of squat timber warehouses stand shoulder to shoulder, their loading
+      doors thrown open to receive cargo from the docks. Handcarts rattle over
+      cobbles rutted by decades of iron-shod wheels. A heavy padlocked door to
+      the north stands apart from the rest — clearly guarding something more
+      valuable than fish crates.
+    map_x: 33
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: docks_main
+      - direction: north
+        target_room_id: warehouse_north
+        locked: true
+        key_item_id: warehouse_vault_key
+      - direction: south
+        target_room_id: warehouse_south
+      - direction: west
+        target_room_id: customs_house
+
+  - id: warehouse_north
+    name: Locked Warehouse
+    indoor: true
+    description: >-
+      A private storeroom, cooler and darker than the others. Crates here
+      bear no merchant's mark, only a stenciled number. Whatever is stored
+      in this warehouse, someone has gone to considerable trouble to keep
+      it under lock and key.
+    map_x: 33
+    map_y: 31
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: warehouse_district
+
+  - id: warehouse_south
+    name: Warehouse Floor
+    indoor: true
+    description: >-
+      A cavernous storage hall stacked to the rafters with crated trade
+      goods bound for the city. A clerk's ledger desk sits near the door,
+      untended. Dust motes drift through shafts of light from high, grimy
+      windows.
+    map_x: 33
+    map_y: 29
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: warehouse_district
+
+  - id: customs_house
+    name: Customs House
+    indoor: true
+    description: >-
+      A small, stuffy office where an overworked clerk stamps manifests and
+      levies tariffs on incoming cargo. Shelves of ledgers line the walls,
+      each labeled by year. A brass scale for weighing goods sits on the
+      counter.
+    map_x: 32
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: warehouse_district
+
+  # --- Harbor promenade, tavern, market ---
+  - id: harbor_promenade
+    name: Harbor Promenade
+    description: >-
+      A cobbled walkway running along the waterline, popular with off-duty
+      sailors and townsfolk alike. Benches face the harbor, and a row of
+      lampposts wait for dusk. The lighthouse is visible to the east, its
+      beam not yet needed in the daylight.
+    map_x: 37
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: docks_main
+      - direction: north
+        target_room_id: fishmonger_stall
+      - direction: south
+        target_room_id: maritime_tavern
+      - direction: east
+        target_room_id: breakwater
+
+  - id: fishmonger_stall
+    name: Fishmonger's Stall
+    description: >-
+      A weathered wooden stall heaped with the morning's catch, laid out on
+      crushed ice and beds of kelp. The fishmonger calls out prices in a
+      hoarse, practiced sing-song, waving off the gulls circling for scraps.
+    map_x: 37
+    map_y: 31
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: harbor_promenade
+
+  - id: maritime_tavern
+    name: The Salted Anchor
+    indoor: true
+    description: >-
+      A low-beamed tavern thick with pipe smoke and the smell of frying fish.
+      Fishing nets and ship's lanterns hang from the rafters as decoration,
+      and a mounted swordfish presides over the bar. Sailors of every stripe
+      trade stories over tankards of dark rum.
+    map_x: 37
+    map_y: 29
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    safe_rest: true
+    exits:
+      - direction: north
+        target_room_id: harbor_promenade
+      - direction: down
+        target_room_id: tavern_cellar
+
+  - id: tavern_cellar
+    name: Salted Anchor Cellar
+    indoor: true
+    description: >-
+      A cool stone cellar beneath the tavern, lined with casks of rum and
+      barrels of salted provisions. A single lantern swings gently from a
+      hook, though no draft explains the motion. Old crew manifests are
+      tacked to a support post, their ink long faded.
+    map_x: 37
+    map_y: 28
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: up
+        target_room_id: maritime_tavern
+
+  # --- Lighthouse & shoreline ---
+  - id: breakwater
+    name: The Breakwater
+    description: >-
+      A long spine of fitted stone blocks stretches out into the harbor
+      mouth, waves breaking white against its seaward face. The wind is
+      sharper out here, and spray mists everything within reach. The
+      lighthouse rises at the far end.
+    map_x: 38
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: harbor_promenade
+      - direction: east
+        target_room_id: lighthouse
+      - direction: south
+        target_room_id: tide_pools
+
+  - id: lighthouse
+    name: Port Veridian Lighthouse
+    indoor: true
+    description: >-
+      A whitewashed stone tower rises high above the breakwater, its great
+      lamp housed behind thick glass at the top of a tightly spiraling
+      stair. Charts of the coastline and shipping lanes cover every wall of
+      the ground floor, marked with pins and notes in a careful hand.
+    map_x: 39
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: breakwater
+
+  - id: tide_pools
+    name: Tide Pools
+    description: >-
+      A shelf of dark rock pocked with shallow pools, left behind by the
+      retreating tide. Anemones and small crabs shelter in the shadows, and
+      the rock is scattered with fragments of sea glass, tumbled smooth by
+      years in the surf.
+    map_x: 38
+    map_y: 29
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: breakwater
+
 # ---------------------------------------------------------------------------
 # Items
 # ---------------------------------------------------------------------------
@@ -2167,6 +2579,120 @@ items:
     takeable: true
     tradeable: false
 
+  # --- Port Veridian: nautical/maritime items (Phase 1) ---
+  - id: coil_of_rope
+    name: Coil of Rope
+    description: >-
+      A tightly wound coil of tarred hemp rope, thick as a thumb. Sturdy
+      enough for hauling cargo or lashing down a deck load in a storm.
+    takeable: true
+    tradeable: true
+    value: 6
+    category: trade_good
+
+  - id: fishing_net
+    name: Fishing Net
+    description: >-
+      A wide net of tarred twine, weighted along one edge with lead sinkers
+      and buoyed along the other with cork floats. A few knots are still
+      being mended.
+    takeable: true
+    tradeable: true
+    value: 10
+    category: trade_good
+
+  - id: salted_fish
+    name: Salted Fish
+    description: >-
+      A split, salted fillet, dried stiff and silvery. Keeps for months at
+      sea without spoiling, though it could use a good soak before eating.
+    takeable: true
+    tradeable: true
+    value: 3
+    category: food
+
+  - id: sea_glass_shard
+    name: Sea-Glass Shard
+    description: >-
+      A frosted shard of green glass, tumbled smooth and rounded by years
+      in the surf. Worthless as trade goods, but pretty enough to pocket.
+    takeable: true
+    tradeable: true
+    value: 5
+    category: trade_good
+
+  - id: ship_salvage_scrap
+    name: Ship Salvage Scrap
+    description: >-
+      A bundle of scavenged fittings — bent deadeyes, a corroded cleat, a
+      length of chain — pried from a wreck and sorted for reuse. Useful raw
+      material for anyone handy with a forge.
+    takeable: true
+    tradeable: true
+    value: 14
+    category: trade_good
+
+  - id: trade_goods_crate
+    name: Crate of Trade Goods
+    description: >-
+      A stout wooden crate, nailed shut and stenciled with a merchant's mark.
+      Whatever cargo it carries, it has already changed hands more than once.
+    takeable: true
+    tradeable: true
+    value: 20
+    category: trade_good
+
+  - id: warehouse_vault_key
+    name: Warehouse Vault Key
+    description: >-
+      A heavy iron key, cold to the touch, stamped with a number rather than
+      a name. It fits the padlocked door on the north side of the warehouse
+      district.
+    takeable: true
+    tradeable: false
+
+  - id: spiced_rum
+    name: Spiced Rum
+    description: >-
+      A dark, syrupy rum poured from an unlabeled bottle behind the bar.
+      Tastes of molasses, clove, and something the tavern keeper won't name.
+    takeable: true
+    tradeable: true
+    value: 6
+    category: drink
+
+  - id: hardtack_biscuit
+    name: Hardtack Biscuit
+    description: >-
+      A dense, unleavened biscuit, baked hard enough to survive a long
+      voyage. Best softened in stew or coffee before attempting to bite it.
+    takeable: true
+    tradeable: true
+    value: 2
+    category: food
+
+  - id: chowder_bowl
+    name: Bowl of Fish Chowder
+    description: >-
+      A steaming bowl of thick, creamy chowder, packed with chunks of fish
+      and potato. A tavern specialty, and worth the walk to the docks alone.
+    takeable: true
+    tradeable: true
+    value: 4
+    category: food
+
+  - id: captains_spyglass
+    name: Captain's Spyglass
+    description: >-
+      A brass spyglass, its lenses carefully kept despite the tarnish on
+      its casing. Extended, it brings the horizon sharply into focus — a
+      lighthouse keeper's most trusted tool.
+    takeable: true
+    tradeable: true
+    value: 45
+    category: trade_good
+    quality: fine
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -2362,6 +2888,58 @@ room_items:
   - room_id: crystal_cavern
     item_id: vault_root_key
     quantity: 1
+
+  # --- Port Veridian ---
+  # Docks Main — rope and netting for the loading crews
+  - room_id: docks_main
+    item_id: coil_of_rope
+    quantity: 2
+  - room_id: docks_main
+    item_id: fishing_net
+    quantity: 1
+
+  # Warehouse District — the vault key, reachable before the locked door
+  - room_id: warehouse_district
+    item_id: warehouse_vault_key
+    quantity: 1
+
+  # Net-Mending Yard
+  - room_id: net_mending_yard
+    item_id: fishing_net
+    quantity: 2
+
+  # Fisherfolk's Landing — the day's catch
+  - room_id: fisherfolk_dock
+    item_id: salted_fish
+    quantity: 3
+
+  # Drydock — salvaged fittings
+  - room_id: drydock
+    item_id: ship_salvage_scrap
+    quantity: 2
+
+  # Warehouse Floor & Customs House — trade cargo
+  - room_id: warehouse_south
+    item_id: trade_goods_crate
+    quantity: 2
+  - room_id: customs_house
+    item_id: trade_goods_crate
+    quantity: 1
+
+  # Salted Anchor tavern — a loose bowl for flavor beyond Sal's shop stock
+  - room_id: maritime_tavern
+    item_id: chowder_bowl
+    quantity: 1
+
+  # Lighthouse — the keeper's own spyglass
+  - room_id: lighthouse
+    item_id: captains_spyglass
+    quantity: 1
+
+  # Tide Pools — sea glass left by the tide
+  - room_id: tide_pools
+    item_id: sea_glass_shard
+    quantity: 2
 
 # ---------------------------------------------------------------------------
 # Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
@@ -2638,6 +3216,192 @@ dialogue_trees:
         side_effects:
           end_dialogue: true
 
+  # --- Port Veridian dialogue trees (Phase 1) ---
+  - id: captain_iris_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          The docks never sleep, and neither do I. What do you need — cargo,
+          a berth, or just directions?
+        side_effects: {}
+        choices:
+          - label: Tell me about the cargo work.
+            next_node: cargo_talk
+          - label: Any news from the sea?
+            next_node: port_news
+          - label: Just passing through.
+            side_effects:
+              end_dialogue: true
+      cargo_talk:
+        text: >-
+          Every crate that comes off those ships needs to be logged, sorted,
+          and moved before the next hull ties up. I could use another set of
+          hands who can tell a manifest from a mess. Interested?
+        side_effects:
+          start_quest: manage_cargo_shipments
+        choices:
+          - label: I'll lend a hand.
+            next_node: quest_accepted
+          - label: Maybe another time.
+            side_effects:
+              end_dialogue: true
+      port_news:
+        text: >-
+          Trade's been good since the spring thaw. Word is a warehouse on
+          the north row has been locked up tight for weeks — nobody's saying
+          why, and I haven't got the key to ask.
+        side_effects:
+          set_flags:
+            - lore:port_veridian_trade
+        choices:
+          - label: Interesting. Thanks, Captain.
+            side_effects:
+              end_dialogue: true
+      quest_accepted:
+        text: >-
+          Good. Start by getting a feel for the warehouses — mind the locked
+          one, that's not your business yet.
+        side_effects:
+          end_dialogue: true
+
+  - id: sal_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Welcome to the Salted Anchor. Sit, drink, and if you're lucky I'll
+          tell you a tale worth the coin.
+        side_effects: {}
+        choices:
+          - label: What's the tale tonight?
+            next_node: story_exchange
+          - label: What are you selling?
+            next_node: browse_shop
+          - label: Is it true the tide runs strange under a full moon?
+            moon_phase_is: full
+            next_node: moon_lore
+          - label: Just resting here, thanks.
+            side_effects:
+              end_dialogue: true
+      story_exchange:
+        text: >-
+          Sal leans on the bar. "Heard tell of a wreck out past the
+          breakwater — cargo still down there, if you believe the drunks who
+          swear they've seen the mast at low tide."
+        side_effects:
+          set_flags:
+            - lore:sal_wreck_tale
+        choices:
+          - label: I'll keep an eye out.
+            side_effects:
+              end_dialogue: true
+      browse_shop:
+        text: >-
+          Rum, chowder, hardtack — whatever keeps a sailor upright. Prices
+          are fair, and I don't water the rum, whatever they say.
+        side_effects: {}
+        choices:
+          - label: I'll look at your stock.
+            side_effects:
+              end_dialogue: true
+      moon_lore:
+        text: >-
+          Sal's voice drops. "Full moon tide pulls hard past the breakwater
+          — pools open up around the tide pools that you won't see any other
+          night. Just don't get caught out there when it turns."
+        side_effects:
+          set_flags:
+            - lore:port_veridian_moon_tide
+        choices:
+          - label: Thanks for the warning, Sal.
+            side_effects:
+              end_dialogue: true
+
+  - id: lighthouse_keeper_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          The lamp's been lit every night for thirty years and it'll be lit
+          tonight too. What brings you up all those stairs?
+        side_effects: {}
+        choices:
+          - label: Tell me about the currents.
+            next_node: navigation_lore
+          - label: Do you need a scout?
+            next_node: scouting_quest
+          - label: Just admiring the view.
+            side_effects:
+              end_dialogue: true
+      navigation_lore:
+        text: >-
+          The channel looks clear from up here, but there's a sandbar that
+          shifts with every storm. More than one captain's learned that the
+          hard way. I chart what I can, but the sea doesn't hold still.
+        side_effects:
+          set_flags:
+            - lore:port_veridian_currents
+        choices:
+          - label: Good to know.
+            side_effects:
+              end_dialogue: true
+      scouting_quest:
+        text: >-
+          As it happens — I could use someone to walk the shoreline and tell
+          me what the last storm turned up. My knees aren't what they were.
+        side_effects:
+          start_quest: scout_coastal_waters
+        choices:
+          - label: I'll scout the shoreline for you.
+            next_node: quest_accepted
+          - label: Not right now.
+            side_effects:
+              end_dialogue: true
+      quest_accepted:
+        text: >-
+          Much obliged. Start at the tide pools — the sea always leaves
+          something behind.
+        side_effects:
+          end_dialogue: true
+
+  - id: shipwright_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Careful where you step — half this yard is scaffolding and the
+          other half is splinters. What can I do for you?
+        side_effects: {}
+        choices:
+          - label: Show me your salvage.
+            next_node: browse_salvage
+          - label: Can you repair ships?
+            next_node: repair_talk
+          - label: Just looking.
+            side_effects:
+              end_dialogue: true
+      browse_salvage:
+        text: >-
+          Everything in that drydock came off a wreck or a scrapped hull.
+          Good fittings, if you know what to do with them. Cheaper than
+          buying new from the city smiths.
+        side_effects: {}
+        choices:
+          - label: I'll take a look.
+            side_effects:
+              end_dialogue: true
+      repair_talk:
+        text: >-
+          Given enough timber, tar, and time, I can put most anything back
+          to sea-worthy. This yard's been under construction longer than
+          I'd like to admit — good help is hard to find in a port town.
+        side_effects: {}
+        choices:
+          - label: I'll remember that.
+            side_effects:
+              end_dialogue: true
+
 npcs:
   - id: innkeeper
     name: Mira the Innkeeper
@@ -2793,6 +3557,96 @@ npcs:
         do:
           - narrate_room: "Shard's eyes open slowly, crystal-flecked and unhurried, and fix on you."
 
+  # -------------------------------------------------------------------------
+  # AREA: port_veridian — Coastal Settlement (Phase 1 Foundation)
+  # -------------------------------------------------------------------------
+
+  - id: captain_iris
+    name: Captain Iris
+    description: >-
+      A weathered woman in a long oilskin coat, a boarding manifest tucked
+      permanently under one arm. She watches the loading crews with a
+      hawk's eye and misses nothing that crosses her docks.
+    home_room_id: docks_main
+    current_room_id: docks_main
+    dialogue_tree_id: captain_iris_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Captain Iris looks up from her manifest, sizing you up in a glance."
+
+  - id: tavern_keeper_sal
+    name: Tavern Keeper Sal
+    description: >-
+      A broad, sun-browned man with a laugh that carries across the room and
+      a scar over one eyebrow he'll explain differently every time you ask.
+      He knows every rumor that passes through the Salted Anchor.
+    home_room_id: maritime_tavern
+    current_room_id: maritime_tavern
+    dialogue_tree_id: sal_dialogue
+    behavior: defensive
+    shop:
+      name: The Salted Anchor's Bar
+      buys_categories: [food, drink, trade_good]
+      sell_ratio: 0.5
+      starting_coins: 300
+      stock:
+        - item_id: spiced_rum
+          quantity: -1
+        - item_id: hardtack_biscuit
+          quantity: -1
+        - item_id: chowder_bowl
+          quantity: 10
+        - item_id: salted_fish
+          quantity: 6
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Sal raises a tankard in greeting from behind the bar."
+
+  - id: lighthouse_keeper
+    name: The Lighthouse Keeper
+    description: >-
+      A spare, quiet woman with sun-creased eyes fixed permanently on the
+      horizon. She speaks little and watches much, as if the sea might
+      change its mind the moment she looks away.
+    home_room_id: lighthouse
+    current_room_id: lighthouse
+    dialogue_tree_id: lighthouse_keeper_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "The Keeper turns from the window, spyglass still in hand."
+
+  - id: shipwright_calloway
+    name: Shipwright Mara Calloway
+    description: >-
+      A wiry, sun-freckled woman with sawdust permanently caught in her
+      braid. She talks about hulls the way other people talk about old
+      friends, and squints at every plank like it's lied to her before.
+    home_room_id: shipyard
+    current_room_id: shipyard
+    dialogue_tree_id: shipwright_dialogue
+    behavior: defensive
+    shop:
+      name: Calloway's Salvage
+      buys_categories: [trade_good]
+      sell_ratio: 0.6
+      starting_coins: 400
+      stock:
+        - item_id: ship_salvage_scrap
+          quantity: -1
+        - item_id: trade_goods_crate
+          quantity: 5
+        - item_id: coil_of_rope
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Calloway glances up from the half-built hull, a caulking mallet in hand."
+
 economy:
   regions:
     - area_id: town
@@ -2805,6 +3659,8 @@ economy:
       region_mult: 1.1
     - area_id: whisperwood
       region_mult: 1.05
+    - area_id: port_veridian
+      region_mult: 0.95
 
 quests:
   - id: investigate_lights
