@@ -54,7 +54,7 @@ def _seed(session: Session) -> None:
             description="d",
             map_x=0,
             map_y=0,
-            area_id="market_district",
+            zone="market_district",
         )
     )
     session.add(
@@ -382,7 +382,7 @@ class TestRegionalPricing:
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         _cmd_engine, ctx, session = built
-        session.add(RegionPricing(area_id="market_district", region_mult=1.5))
+        session.add(RegionPricing(zone="market_district", region_mult=1.5))
         session.commit()
 
         service = EconomyService()
@@ -398,7 +398,7 @@ class TestRegionalPricing:
         _cmd_engine, ctx, session = built
         session.add(
             RegionPricing(
-                area_id="market_district", region_mult=1.0, bias={"salt_sack": 0.5}
+                zone="market_district", region_mult=1.0, bias={"salt_sack": 0.5}
             )
         )
         session.commit()

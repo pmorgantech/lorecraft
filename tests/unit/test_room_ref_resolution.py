@@ -27,18 +27,28 @@ def engine() -> Engine:  # type: ignore[misc]
                 description="d",
                 map_x=0,
                 map_y=0,
-                area_id="town",
+                zone="ashmoore",
+            )
+        )
+        session.add(
+            Room(
+                id="village_square",
+                name="The Village Square of Ashmoore",
+                description="d",
+                map_x=1,
+                map_y=1,
+                zone="ashmoore",
             )
         )
         # A name deliberately shared across two zones — only zone-qualifying disambiguates.
         session.add(
             Room(
-                id="town_chapel",
+                id="ashmoore_chapel",
                 name="The Chapel",
                 description="d",
                 map_x=1,
                 map_y=0,
-                area_id="town",
+                zone="ashmoore",
             )
         )
         session.add(
@@ -48,7 +58,7 @@ def engine() -> Engine:  # type: ignore[misc]
                 description="d",
                 map_x=2,
                 map_y=0,
-                area_id="wilderness",
+                zone="whisperwood",
             )
         )
         session.commit()
@@ -70,11 +80,16 @@ def test_bare_name_case_insensitive(engine: Engine) -> None:
 
 
 def test_zone_qualified_by_id(engine: Engine) -> None:
-    assert _resolve(engine, "town.inner_vault") == "inner_vault"
+    assert _resolve(engine, "ashmoore.inner_vault") == "inner_vault"
+
+
+def test_zone_qualified_teleport_by_id(engine: Engine) -> None:
+    # The canonical admin/teleport form: `zone.room_id` against a real zone value.
+    assert _resolve(engine, "ashmoore.village_square") == "village_square"
 
 
 def test_zone_qualified_by_name(engine: Engine) -> None:
-    assert _resolve(engine, "wilderness.The Chapel") == "wild_chapel"
+    assert _resolve(engine, "whisperwood.The Chapel") == "wild_chapel"
 
 
 def test_ambiguous_bare_name_is_unresolved(engine: Engine) -> None:
@@ -82,10 +97,10 @@ def test_ambiguous_bare_name_is_unresolved(engine: Engine) -> None:
 
 
 def test_zone_qualifier_disambiguates_shared_name(engine: Engine) -> None:
-    assert _resolve(engine, "town.The Chapel") == "town_chapel"
+    assert _resolve(engine, "ashmoore.The Chapel") == "ashmoore_chapel"
 
 
 def test_unknown_ref_is_none(engine: Engine) -> None:
     assert _resolve(engine, "nowhere") is None
-    assert _resolve(engine, "town.nowhere") is None
+    assert _resolve(engine, "ashmoore.nowhere") is None
     assert _resolve(engine, "") is None

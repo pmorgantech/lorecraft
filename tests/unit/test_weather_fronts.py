@@ -38,13 +38,13 @@ def engine() -> Engine:  # type: ignore[misc]
     create_tables(game_engine=eng, audit_engine=create_engine("sqlite://"))
     with Session(eng) as session:
         session.add(
-            Room(id="w1", name="Glade", description="d", map_x=0, map_y=0, area_id=Z1)
+            Room(id="w1", name="Glade", description="d", map_x=0, map_y=0, zone=Z1)
         )
         session.add(
-            Room(id="w2", name="Thicket", description="d", map_x=1, map_y=0, area_id=Z1)
+            Room(id="w2", name="Thicket", description="d", map_x=1, map_y=0, zone=Z1)
         )
         session.add(
-            Room(id="p1", name="Docks", description="d", map_x=2, map_y=0, area_id=Z2)
+            Room(id="p1", name="Docks", description="d", map_x=2, map_y=0, zone=Z2)
         )
         session.add(
             WorldClock(
@@ -159,3 +159,45 @@ def test_zero_chance_never_activates(engine: Engine) -> None:
     _service(engine, bus, _config(chance=0.0))
     _hour(bus)
     assert _room_effects(engine, "w1") == []
+
+
+def test_adjacent_duplicate_zones_do_not_re_narrate(
+    engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sprint 71.2 dedup guard: a path with adjacent duplicates (as the area_id->zone
+    value-swap produces, e.g. ``[ashmoore, ashmoore]``) must collapse to a single zone
+    so the front never fires a redundant leave->re-enter over the same rooms.
+    """
+    from lorecraft.features.weather import fronts as fronts_module
+
+    narrations: list[str] = []
+    monkeypatch.setattr(
+        fronts_module,
+        "broadcast_room_async",
+        lambda _manager, _room_id, text: narrations.append(text),
+    )
+
+    config: JsonObject = {
+        "storms": {
+            "fey_tempest": {
+                "chance": 1.0,
+                "seasons": ["spring"],
+                "duration_ticks": 3,
+                "travel_ticks": 1,
+                "path": [Z1, Z1],  # adjacent duplicate after the zone value-swap
+                "room_effect": "storm_lashed",
+                "on_enter": "The sky darkens.",
+                "on_leave": "The storm passes.",
+            }
+        }
+    }
+    bus = EventBus()
+    _service(engine, bus, config)
+    _hour(bus)  # activate over the (deduped) single zone
+    _hour(bus)  # would have travelled Z1->Z1 without the guard
+    _hour(bus)
+
+    # on_enter fires once per room in the zone (w1, w2) — never a second time from a
+    # spurious re-enter; on_leave stays silent while the front is still active.
+    assert narrations.count("The sky darkens.") == 2
+    assert narrations.count("The storm passes.") == 0

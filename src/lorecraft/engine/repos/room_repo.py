@@ -24,9 +24,9 @@ class RoomRepo(Repository[Room, str]):
         statement = select(Exit).where(Exit.room_id == room_id)
         return self.session.exec(statement).all()
 
-    def rooms_in_area(self, area_id: str) -> Sequence[Room]:
+    def rooms_in_area(self, zone: str) -> Sequence[Room]:
         """All rooms in a zone (scripting engine A5: weather fronts, zone narration)."""
-        return self.session.exec(select(Room).where(Room.area_id == area_id)).all()
+        return self.session.exec(select(Room).where(Room.zone == zone)).all()
 
     def resolve_ref(self, ref: str) -> Room | None:
         """Resolve a human-typed room reference to a room, or ``None`` if not unique.
@@ -51,14 +51,14 @@ class RoomRepo(Repository[Room, str]):
         if "." in ref:
             zone, tail = (part.strip() for part in ref.split(".", 1))
             zoned_by_id = self.get(tail)
-            if zoned_by_id is not None and zoned_by_id.area_id == zone:
+            if zoned_by_id is not None and zoned_by_id.zone == zone:
                 return zoned_by_id
 
         folded = tail.casefold()
         matches = [
             room
             for room in self.session.exec(select(Room)).all()
-            if room.name.casefold() == folded and (zone is None or room.area_id == zone)
+            if room.name.casefold() == folded and (zone is None or room.zone == zone)
         ]
         return matches[0] if len(matches) == 1 else None
 

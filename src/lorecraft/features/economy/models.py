@@ -38,9 +38,12 @@ class ShopStock(SQLModel, table=True):
 
 
 class RegionPricing(SQLModel, table=True):
-    """Per-area price multiplier + per-good bias (Sprint 28.2, trade_economy.md §5)."""
+    """Per-zone price multiplier + per-good bias (Sprint 28.2, trade_economy.md §5).
 
-    area_id: str = Field(primary_key=True)
+    Keyed on ``Room.zone`` since Sprint 71.2 (the old ``area_id`` split).
+    """
+
+    zone: str = Field(primary_key=True)
     region_mult: float = 1.0
     bias: JsonObject = Field(
         default_factory=dict, sa_column=Column(JSON)

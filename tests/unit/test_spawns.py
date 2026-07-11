@@ -27,12 +27,10 @@ def engine() -> Engine:  # type: ignore[misc]
     create_tables(game_engine=eng, audit_engine=create_engine("sqlite://"))
     with Session(eng) as session:
         session.add(
-            Room(id="w1", name="Glade", description="d", map_x=0, map_y=0, area_id=AREA)
+            Room(id="w1", name="Glade", description="d", map_x=0, map_y=0, zone=AREA)
         )
         session.add(
-            Room(
-                id="w2", name="Thicket", description="d", map_x=1, map_y=0, area_id=AREA
-            )
+            Room(id="w2", name="Thicket", description="d", map_x=1, map_y=0, zone=AREA)
         )
         session.add(
             NPC(

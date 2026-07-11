@@ -175,18 +175,18 @@ def _handle_narrate_room(data: JsonValue, ctx: "GameContext") -> None:  # type: 
 def _handle_narrate_zone(data: JsonValue, ctx: "GameContext") -> None:  # type: ignore[misc]
     """Broadcast a line to every room in a zone (scripting engine A5).
 
-    ``{narrate_zone: "text"}`` uses the actor's current area; ``{narrate_zone: {area, text}}``
-    targets an explicit ``area_id``.
+    ``{narrate_zone: "text"}`` uses the actor's current zone; ``{narrate_zone: {area, text}}``
+    targets an explicit ``zone``.
     """
     from lorecraft.engine.game.world_context import broadcast_room_async
 
     if isinstance(data, str):
         text: str = data
-        area = ctx.room.area_id
+        area = ctx.room.zone
     elif isinstance(data, dict):
         text = str(data.get("text", ""))
         raw_area = data.get("area")
-        area = raw_area if isinstance(raw_area, str) else ctx.room.area_id
+        area = raw_area if isinstance(raw_area, str) else ctx.room.zone
     else:
         return
     if not text or not area:

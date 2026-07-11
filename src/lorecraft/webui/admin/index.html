@@ -999,10 +999,10 @@ async function loadRooms() {
   const tbody = document.getElementById("rooms-tbody");
   tbody.innerHTML = "";
   if (!Array.isArray(rooms)) return;
-  // Group by zone (area_id); zones alphabetical, rooms by name within a zone.
+  // Group by zone; zones alphabetical, rooms by name within a zone.
   const byZone = {};
   for (const r of rooms) {
-    const zone = r.area_id || "(no zone)";
+    const zone = r.zone || "(no zone)";
     (byZone[zone] = byZone[zone] || []).push(r);
   }
   for (const zone of Object.keys(byZone).sort()) {

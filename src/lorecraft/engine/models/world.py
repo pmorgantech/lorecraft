@@ -15,7 +15,15 @@ class Room(SQLModel, table=True):
     map_x: int
     map_y: int
     map_z: int = 0  # floor/level; minimap filters to current_room.map_z (Sprint 66)
-    area_id: str | None = None
+    # Sprint 71.2: the old conflated `area_id` split into two orthogonal fields.
+    # `zone` — geographic/thematic, user-facing; 4 values (ashmoore, cogsworth,
+    # whisperwood, port_veridian). Powers zone-qualified teleport addressing,
+    # rooms_in_area, admin World grouping, npc_ai wander bounds, weather fronts,
+    # and economy region pricing.
+    zone: str | None = None
+    # `room_type` — universal room-kind taxonomy (cave|wilderness|town, growing);
+    # what kind of room it is, applied across all zones (not per-zone).
+    room_type: str | None = None
     is_active: bool = True
     fallback_room_id: str | None = None
     flags: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

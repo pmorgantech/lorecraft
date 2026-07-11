@@ -140,7 +140,7 @@ class NpcBehaviorService:
         area = ai.get("area")
         if isinstance(area, str) and area:
             targets = [
-                room_id for room_id in targets if _room_area(session, room_id) == area
+                room_id for room_id in targets if _room_zone(session, room_id) == area
             ]
         if not targets:
             return None
@@ -162,6 +162,6 @@ def _as_int(value: object, default: int) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else default
 
 
-def _room_area(session: Session, room_id: str) -> str | None:
+def _room_zone(session: Session, room_id: str) -> str | None:
     room = session.get(Room, room_id)
-    return room.area_id if room is not None else None
+    return room.zone if room is not None else None

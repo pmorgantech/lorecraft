@@ -97,7 +97,7 @@ class EconomyService:
     def _region_mult_and_bias(
         self, ctx: GameContext, item_id: str
     ) -> tuple[float, float]:
-        region = EconomyRepo(ctx.session).region_for_area(ctx.room.area_id)
+        region = EconomyRepo(ctx.session).region_for_zone(ctx.room.zone)
         if region is None:
             return 1.0, 1.0
         bias = region.bias.get(item_id, 1.0)

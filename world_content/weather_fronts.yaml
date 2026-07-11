@@ -8,7 +8,7 @@ storms:
     seasons: [spring, autumn]
     duration_ticks: {min: 3, max: 6}
     travel_ticks: 2         # hours before the front rolls on to the next zone
-    path: [town, wilderness]
+    path: [ashmoore, ashmoore]
     room_effect: storm_lashed
     on_enter: "Dark clouds gather overhead and a cold rain begins to fall."
     on_leave: "The rain eases and the clouds thin to a pale grey."
@@ -21,7 +21,7 @@ storms:
     seasons: [autumn, winter]
     duration_ticks: {min: 4, max: 8}
     travel_ticks: 2
-    path: [port_veridian, coast_road, whisperwood]
+    path: [port_veridian, port_veridian, whisperwood]
     room_effect: storm_lashed
     on_enter: "A grey wall of rain sweeps in off the sea, and the wind rises to a salt-laced howl."
     on_leave: "The squall blows itself out, leaving the leaves dripping and the air washed clean."

@@ -72,10 +72,168 @@ work, with one item blocked on a product decision.
 | # | Task | Status |
 |---|------|--------|
 | 71.1 | **Admin Issues panel: editable priority + description.** Backend PUT endpoint already accepts both fields; needs the admin SPA form/UI work. | [x] done — `webui/admin/index.html` (per-row priority `<select>` mirroring the status select; description `<textarea>` + Save in the detail row), `tests/e2e/test_admin_issues.py` (2 new e2e cases). Awaiting version bump/CHANGELOG entry from the integrator. |
-| 71.2 | **Admin World panel: zone + name filter.** Filter room list by zone dropdown (Cogsworth / Whisperwood / Port Veridian / Ashmoore) plus a dynamic name substring search as the admin types. | [ ] not started — frontend shaping the design; will flag if a new `/admin/world` query param is needed |
+| 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [ ] not started — design ready (2026-07-11); do backend schema split first, then the client-side filter |
 | 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [ ] not started — waiting on rendering.py investigation |
 | 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [ ] not started |
 | 71.5 | **Quest XP rewards.** | [ ] **BLOCKED** — needs a product decision first: does Lorecraft have any leveling/XP progression system at all? If no, this may close as works-as-designed; if yes, it needs its own dedicated XP-system sprint before design work here can start. |
+
+---
+
+### Sprint 71.2 design — Room `zone`/`room_type` split + admin World filter
+
+> **Provenance — THREE same-day correction passes (2026-07-11). This is the FINAL, implementable version.**
+> (1) **Lost-design reconstruction fix.** Originally drafted in another worktree session and *lost* before it
+> reached this file (confirmed gone — not in any worktree, stash, or history). Reconstructed from memory
+> 2026-07-11, then corrected against live code.
+> (2) **User product decision (same day)**: weather fronts key off `zone` not `room_type`; `room_type` is a
+> small *universal* room-kind taxonomy, not a byte-for-byte rename of `area_id`.
+> (3) **User final decisions (same day)** resolving the two open items: **`room_type` values are
+> `{cave, wilderness, town}`** (user "keep wilderness" — reverses the informal "forest"; open-ended, expect
+> more, e.g. a future `road` kind), scope confirmed **universal** across all ~104 rooms; **economy keys off
+> `zone` alone** (option (i)); **weather uses a runtime dedup-adjacent guard** (not YAML path shortening).
+> All open items are now resolved and this section is **ready for backend implementation.** One number — the
+> collapsed `ashmoore` economy multiplier — carries a *recommended* value (1.0) pending a rubber-stamp; it is
+> explicitly **non-blocking** (71.2b may proceed).
+
+**Problem.** `Room.area_id: str | None` (`src/lorecraft/engine/models/world.py`) conflates two independent
+meanings. `world_content/world.yaml` uses **9 distinct values**, not 4:
+
+- *Ashmoore-era rooms* encode a **kind**: `town` (x11), `wilderness` (x8), `cave` (x6). (Geographically in
+  Ashmoore — e.g. `village_square` is "The Village Square of Ashmoore" — but `ashmoore` never appears as an
+  `area_id` value.)
+- *Sprint 69 rooms* encode a **geographic zone**: `cogsworth` (x27), `whisperwood` (x30), `port_veridian` (x25).
+- *Connector rooms* each carry a **singleton**: `trade_road`, `forest_road`, `coast_road` (`old_trade_road`,
+  `forest_road`, `river_bend`).
+
+**The split (two orthogonal fields on `Room`):**
+
+- `zone: str | None = None` — **geographic/thematic, user-facing.** Exactly **4** values:
+  `ashmoore`, `cogsworth`, `whisperwood`, `port_veridian`. Powers `RoomRepo.resolve_ref` zone-qualified
+  teleport addressing, `rooms_in_area`, the admin World grouping+filter, `features/npc_ai/service.py` wander
+  bounds, `features/npc/side_effects.py` zone-targeted effects, **weather fronts, and economy region pricing.**
+- `room_type: str | None = None` — **universal room-kind taxonomy.** Small, open-ended set
+  `{cave, wilderness, town}` "for now" (expect more, e.g. a future `road` kind for connector rooms).
+  Describes *what kind of room* it is, applied across **all** zones — NOT each zone as its own value. This is a
+  genuine per-room reclassification (content authoring), not a mechanical rename.
+
+**`zone` mapping — the 4-value geographic fold** (every current `area_id` value → `zone`):
+
+| current `area_id` | rooms | → `zone` |
+|---|---|---|
+| `town` | Ashmoore starter (x11) | `ashmoore` |
+| `wilderness` | Ashmoore (x8) | `ashmoore` |
+| `cave` | Ashmoore (x6) | `ashmoore` |
+| `cogsworth` | Cogsworth (x27) | `cogsworth` |
+| `whisperwood` | Whisperwood (x30) | `whisperwood` |
+| `port_veridian` | Port Veridian (x25) | `port_veridian` |
+| `trade_road` (`old_trade_road`) | connector | `cogsworth` |
+| `forest_road` (`forest_road`) | connector | `whisperwood` |
+| `coast_road` (`river_bend`) | connector | `port_veridian` |
+
+**Connector target zones confirmed correct** (each road assigned to the zone it leads *toward* travelling
+outward from Ashmoore).
+
+**`room_type` — universal kind taxonomy `{cave, wilderness, town}` (growing).** Applied to all ~104 rooms
+across all 4 zones (scope confirmed by the user). cogsworth/whisperwood/port_veridian rooms are NOT
+`room_type=<zone-name>`; each gets a kind (a Cogsworth street = `town`; a Whisperwood glade = `wilderness`; a
+Port Veridian dock = `town`; a cave chamber = `cave`).
+- Ashmoore maps mechanically from today's `area_id`: `town`→`town`, `wilderness`→`wilderness`, `cave`→`cave`.
+- **The other 3 zones + connectors need fresh per-room kind authoring** — a *content* task across the world,
+  not a mechanical rename. Connector roads fit none of `{cave, wilderness, town}`; a future `road` kind is the
+  likely home for them (consistent with the open-ended set). For 71.2 they may take the nearest existing kind
+  (e.g. `wilderness`) or be left `None` until `road` lands — author's discretion, since nothing keys off a
+  connector's `room_type` once economy moves to `zone` (below).
+
+---
+
+**RESOLVED — OPEN ITEM A → weather: `zone` keying + runtime dedup-adjacent guard.**
+Verified in `src/lorecraft/features/weather/fronts.py`: `_activate()` copies the YAML `path:` verbatim, no
+dedup (L116); `_advance_fronts()` advances `zone_index` every `travel_ticks` with no consecutive-equal guard
+(L150). **Decision:** weather fronts key off `zone`; `weather_fronts.yaml`'s `path:` lists get a
+**straightforward mechanical value-swap** from old area_id values to zone values — **leaving adjacent
+duplicates literal in the YAML** (no hand shortening, no extending to new zones), and a **small runtime
+dedup-adjacent guard** in `fronts.py` collapses consecutive-equal entries at run time so no redundant
+`_leave_zone`→`_enter_zone` narration fires. Concretely:
+- `spring_squall` `[town, wilderness]` → `[ashmoore, ashmoore]` (kept as a literal 2-entry list).
+- `coastal_squall` `[port_veridian, coast_road, whisperwood]` → `[port_veridian, port_veridian, whisperwood]`
+  (kept as a literal 3-entry list).
+The guard (collapse consecutive-equal `front.path` entries — cleanest in `_activate()` after the value-swap
+load, so `zone_index` stepping in `_advance_fronts()` never lands on an adjacent duplicate) is the only new
+engineering. No content decision about single-zone-vs-travel — the paths are a pure value-swap.
+
+**RESOLVED — OPEN ITEM B → economy keys off `zone` alone (option (i)).**
+Verified: `RegionPricing.area_id` PK (`features/economy/models.py`), `EconomyRepo.region_for_area`,
+`service.py`'s `ctx.room.area_id` lookup; `economy.regions` today prices 6 area_id values. **Decision:**
+economy region pricing keys off `zone` (4 zones); the composite and dedicated-field options are **off the
+table**. Consequences:
+- cogsworth/whisperwood/port_veridian keep their existing multipliers unchanged (1.1 / 1.05 / 0.95) — those
+  were already zone-level.
+- Ashmoore's three area_id rows (`town` 1.0, `wilderness` 1.15, `cave` 1.25) **collapse into one
+  `ashmoore` row.** The within-Ashmoore gradient is dropped, as intended.
+- **Recommended `ashmoore` region_mult = `1.0` (pending rubber-stamp; NON-BLOCKING — 71.2b may proceed).**
+  Rationale, data-grounded: Ashmoore has exactly **one** shop — the innkeeper at `wandering_crow_inn`, an
+  `area_id: town` room priced 1.0 today. No shop sits in any `wilderness` or `cave` room, so those two
+  multipliers (1.15 / 1.25) are **inert** — they never apply to a transaction. Setting `ashmoore = 1.0`
+  therefore preserves *actual player-facing prices with zero change*, and keeps the starter zone at the clean
+  baseline. (If the intent were to preserve an average regional *price level* rather than shop-location
+  fidelity, the room-count-weighted mean would be ~1.108 — but that would *raise* the innkeeper's prices, so
+  it is not recommended.)
+- `world/validator.py`'s economy check (L504-508) must validate region keys against the set of room `zone`
+  values (4) instead of `area_id`.
+
+---
+
+**`area_id` disposition — removed outright (clean replace, no back-compat alias).** Pre-1.0, single world
+file, no Alembic (the world DB is derived state reseeded from `world.yaml` via `world/loader.py`); a lingering
+half-renamed field is the half-done seam AGENTS.md warns against. Migration: change the model, change
+loader/validator, reseed from `world.yaml`.
+
+**Admin filter — client-side, no new query param.** `GET /admin/world/rooms`
+(`webui/admin/routers/world.py`) already returns the full room list unpaginated; add `zone` (and `room_type`)
+to each room dict. The zone dropdown + live name-substring search are pure client-side JS over that response
+(`webui/admin/index.html` ~L1002-1015 already groups by `area_id` — repoint to `zone`).
+
+**Call sites to update in lockstep** (grepped 2026-07-11): `engine/models/world.py` (field split),
+`engine/repos/room_repo.py` (`resolve_ref`, `rooms_in_area` — geographic + weather + economy now all key
+`zone`), `features/weather/fronts.py` + `world_content/weather_fronts.yaml` (value-swap paths to `zone` +
+runtime dedup guard), `features/economy/{models,repo,service}.py` + `economy.regions` in world.yaml (zone
+keying; RegionPricing PK renamed to `zone`), `features/npc_ai/service.py` (L167 — **no** world content sets
+`ai.area` today, so zero content impact), `features/npc/side_effects.py` (L185-189 — verify no content relies
+on the old town/wilderness default), `webui/admin/routers/world.py` (GET/PUT/POST bodies+response),
+`webui/admin/index.html` (grouping + filter UI), `world/validator.py` (`RoomData` fields + economy check vs
+`zone`), `world/loader.py` (round-trip), `world_content/world.yaml` (room `zone`+`room_type` + economy
+regions). Tests: `tests/unit/test_world_loader.py`, `test_economy.py`, `test_npc_ai.py`,
+`test_weather_fronts.py`, `test_room_ref_resolution.py`, `test_spawns.py`, `test_phase_a_acceptance.py`.
+
+**Proposed tasks:**
+
+- [x] 71.2a — Schema split: add `zone` + `room_type` on `Room`; remove `area_id`. Apply the `zone` fold
+  (table above) and the Ashmoore `room_type` mapping (`town`/`wilderness`/`cave` unchanged); reseed.
+  *Success: `world.yaml` rooms carry 4 `zone` values; loader round-trips clean.*
+- [x] 71.2b — Author `room_type` `{cave, wilderness, town}` for cogsworth/whisperwood/port_veridian (and
+  connectors — nearest kind or `None`); re-key economy pricing to `zone` (RegionPricing PK → `zone`;
+  `region_for_area`/`service.py` lookups → `ctx.room.zone`); collapse Ashmoore to one `ashmoore` row at
+  `region_mult 1.0` (recommended); update `world/validator.py` economy check to validate against `zone`.
+  *Success: every room has a `room_type`; economy prices resolve via `zone`; cogsworth/whisperwood/
+  port_veridian prices unchanged; `test_economy.py` green.*
+- [x] 71.2c — Repoint weather fronts to `zone`; value-swap `weather_fronts.yaml` paths to zone values
+  (adjacent duplicates left literal); add the runtime dedup-adjacent guard in `fronts.py`. *Success:
+  `spring_squall`/`coastal_squall` fire with no duplicate leave/re-enter narration; `test_weather_fronts.py`
+  green.*
+- [x] 71.2d — Repoint remaining geographic consumers to `zone` (`resolve_ref`, admin grouping, `npc_ai`,
+  `npc/side_effects`). *Success: teleport `ashmoore.<room>` resolves; npc/side-effect tests green.*
+- [ ] 71.2e — Admin World panel: add `zone` (+`room_type`) to `GET /admin/world/rooms`; client-side zone
+  dropdown + live name-substring filter, usable together. *Success: dropdown lists the 4 zones; typing
+  narrows live; no new query param.*
+- [ ] 71.2f — Update the 7 test files; add a zone-qualified `ashmoore.<room>` `resolve_ref` case.
+  *Success: `make test` green.*
+
+**Remaining flagged item (non-blocking rubber-stamp):**
+
+- The collapsed **`ashmoore` economy `region_mult`** is *recommended* at **1.0** (rationale above: Ashmoore's
+  sole shop is a `town`/1.0 room; the `wilderness`/`cave` multipliers were inert). Awaiting a rubber-stamp or
+  override — 71.2b proceeds with 1.0 unless the user says otherwise. Everything else in OPEN ITEMS A and B is
+  finally decided.
 
 ---
 

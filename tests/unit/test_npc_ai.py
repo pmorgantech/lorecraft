@@ -40,7 +40,7 @@ def engine() -> Engine:  # type: ignore[misc]
                 description="d",
                 map_x=0,
                 map_y=0,
-                area_id="town",
+                zone="town",
             )
         )
         session.add(
@@ -50,7 +50,7 @@ def engine() -> Engine:  # type: ignore[misc]
                 description="d",
                 map_x=1,
                 map_y=0,
-                area_id="town",
+                zone="town",
             )
         )
         session.add(Exit(room_id=ROOM_A, direction="east", target_room_id=ROOM_B))
@@ -148,7 +148,7 @@ def test_wander_confined_to_area(engine: Engine) -> None:
                 description="d",
                 map_x=0,
                 map_y=1,
-                area_id="wild",
+                zone="wild",
             )
         )
         session.add(Exit(room_id=ROOM_A, direction="down", target_room_id="cave"))

@@ -30,10 +30,10 @@ class EconomyRepo:
     def save(self, stock: ShopStock) -> None:
         self.session.add(stock)
 
-    def region_for_area(self, area_id: str | None) -> RegionPricing | None:
-        if area_id is None:
+    def region_for_zone(self, zone: str | None) -> RegionPricing | None:
+        if zone is None:
             return None
-        return self.session.get(RegionPricing, area_id)
+        return self.session.get(RegionPricing, zone)
 
     def all_restockable_stock(self) -> list[ShopStock]:
         """Every ShopStock row with a restock schedule -- services/restock.py's sweep."""

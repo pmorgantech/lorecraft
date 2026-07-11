@@ -64,7 +64,8 @@ def import_world(document: WorldDocument, session: Session) -> None:
                 map_x=room.map_x,
                 map_y=room.map_y,
                 map_z=room.map_z,
-                area_id=room.area_id,
+                zone=room.zone,
+                room_type=room.room_type,
                 is_active=room.is_active,
                 fallback_room_id=room.fallback_room_id,
                 flags=cast(JsonObject, room.flags),
@@ -257,7 +258,7 @@ def _import_economy(session: Session, economy: EconomyConfigData) -> None:
     for region in economy.regions:
         session.merge(
             RegionPricing(
-                area_id=region.area_id,
+                zone=region.zone,
                 region_mult=region.region_mult,
                 bias=cast(JsonObject, region.bias),
             )
@@ -348,7 +349,8 @@ def export_world_document(session: Session) -> WorldDocument:
             map_x=room.map_x,
             map_y=room.map_y,
             map_z=room.map_z,
-            area_id=room.area_id,
+            zone=room.zone,
+            room_type=room.room_type,
             is_active=room.is_active,
             fallback_room_id=room.fallback_room_id,
             flags=cast(dict[str, object], room.flags),
@@ -483,7 +485,7 @@ def export_world_document(session: Session) -> WorldDocument:
         EconomyConfigData(
             regions=[
                 RegionPricingData(
-                    area_id=region.area_id,
+                    zone=region.zone,
                     region_mult=region.region_mult,
                     bias=cast(dict[str, float], region.bias),
                 )

@@ -216,7 +216,8 @@ rooms:
     description: Salt air and gulls.
     map_x: 0
     map_y: 0
-    area_id: coast
+    zone: coast
+    room_type: town
 items:
   - id: salt_sack
     name: Sack of Salt
@@ -225,7 +226,7 @@ items:
     tradeable: true
 economy:
   regions:
-    - area_id: coast
+    - zone: coast
       region_mult: 0.8
       bias: { salt_sack: 0.5 }
 """,
@@ -245,7 +246,7 @@ economy:
 
         document = export_world_document(session)
         assert document.economy is not None
-        assert document.economy.regions[0].area_id == "coast"
+        assert document.economy.regions[0].zone == "coast"
         assert document.economy.regions[0].bias == {"salt_sack": 0.5}
 
 
@@ -267,8 +268,8 @@ def test_world_validator_rejects_missing_exit_target() -> None:
         )
 
 
-def test_world_validator_rejects_region_with_missing_area_id() -> None:
-    with pytest.raises(WorldValidationError, match="missing area_id"):
+def test_world_validator_rejects_region_with_missing_zone() -> None:
+    with pytest.raises(WorldValidationError, match="missing zone"):
         validate_world_document(
             {
                 "rooms": [
@@ -278,10 +279,10 @@ def test_world_validator_rejects_region_with_missing_area_id() -> None:
                         "description": "A warm room.",
                         "map_x": 0,
                         "map_y": 0,
-                        "area_id": "town",
+                        "zone": "ashmoore",
                     }
                 ],
-                "economy": {"regions": [{"area_id": "highlands"}]},
+                "economy": {"regions": [{"zone": "highlands"}]},
             }
         )
 

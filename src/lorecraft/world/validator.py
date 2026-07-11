@@ -33,7 +33,8 @@ class RoomData(BaseModel):
     map_x: int
     map_y: int
     map_z: int = 0
-    area_id: str | None = None
+    zone: str | None = None
+    room_type: str | None = None
     is_active: bool = True
     fallback_room_id: str | None = None
     flags: dict[str, object] = Field(default_factory=dict)
@@ -261,7 +262,7 @@ class QuestData(BaseModel):
 class RegionPricingData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    area_id: str
+    zone: str
     region_mult: float = 1.0
     bias: dict[str, float] = Field(default_factory=dict)  # item_id -> price multiplier
 
@@ -501,16 +502,14 @@ def validate_world_document(data: object) -> WorldDocument:
                     )
 
     if document.economy is not None:
-        area_ids = {room.area_id for room in document.rooms if room.area_id is not None}
+        zones = {room.zone for room in document.rooms if room.zone is not None}
         for region in document.economy.regions:
-            if region.area_id not in area_ids:
-                errors.append(
-                    f"economy region references missing area_id {region.area_id}"
-                )
+            if region.zone not in zones:
+                errors.append(f"economy region references missing zone {region.zone}")
             for biased_item_id in region.bias:
                 if biased_item_id not in item_ids:
                     errors.append(
-                        f"economy region {region.area_id} bias references missing item {biased_item_id}"
+                        f"economy region {region.zone} bias references missing item {biased_item_id}"
                     )
 
     if document.transit is not None:

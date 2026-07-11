@@ -52,7 +52,7 @@ def _seed(engine: Engine) -> None:
                     description="d",
                     map_x=i,
                     map_y=0,
-                    area_id=AREA,
+                    zone=AREA,
                 )
             )
         # a simple ring of exits so wander/adjacency is valid

@@ -39,7 +39,8 @@ async def list_rooms(request: Request, _: Observer) -> list[dict[str, Any]]:
             "map_x": r.map_x,
             "map_y": r.map_y,
             "map_z": r.map_z,
-            "area_id": r.area_id,
+            "zone": r.zone,
+            "room_type": r.room_type,
             "indoor": r.indoor,
             "is_active": r.is_active,
             "fallback_room_id": r.fallback_room_id,
@@ -58,7 +59,8 @@ class _RoomBody(BaseModel):
     map_x: int | None = None
     map_y: int | None = None
     map_z: int | None = None
-    area_id: str | None = None
+    zone: str | None = None
+    room_type: str | None = None
     is_active: bool | None = None
     fallback_room_id: str | None = None
     light_level: int | None = None
@@ -91,8 +93,10 @@ async def update_room(
             room.map_y = body.map_y
         if body.map_z is not None:
             room.map_z = body.map_z
-        if body.area_id is not None:
-            room.area_id = body.area_id
+        if body.zone is not None:
+            room.zone = body.zone
+        if body.room_type is not None:
+            room.room_type = body.room_type
         if body.is_active is not None:
             room.is_active = body.is_active
         if body.fallback_room_id is not None:
@@ -117,7 +121,8 @@ class _CreateRoomBody(BaseModel):
     map_x: int
     map_y: int
     map_z: int = 0
-    area_id: str | None = None
+    zone: str | None = None
+    room_type: str | None = None
     light_level: int = 1
 
 
@@ -139,7 +144,8 @@ async def create_room(
             map_x=body.map_x,
             map_y=body.map_y,
             map_z=body.map_z,
-            area_id=body.area_id,
+            zone=body.zone,
+            room_type=body.room_type,
             light_level=body.light_level,
         )
         session.add(room)

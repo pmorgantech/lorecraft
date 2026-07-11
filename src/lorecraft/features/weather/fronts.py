@@ -114,6 +114,11 @@ class WeatherFrontService:
     ) -> None:
         raw_path = spec.get("path")
         path = [str(z) for z in raw_path] if isinstance(raw_path, list) else []
+        # Sprint 71.2: after the area_id->zone value-swap, YAML paths may carry
+        # adjacent duplicates (e.g. spring_squall [ashmoore, ashmoore]). Collapse
+        # consecutive-equal entries so _advance_fronts never fires a redundant
+        # _leave_zone->_enter_zone over the same room set.
+        path = _dedup_adjacent(path)
         if not path:
             return
         front = _ActiveFront(
@@ -194,6 +199,15 @@ class WeatherFrontService:
 
     def _expire(self, session: Session, front: _ActiveFront) -> None:
         self._leave_zone(session, front)
+
+
+def _dedup_adjacent(path: list[str]) -> list[str]:
+    """Collapse consecutive-equal entries in a front path (Sprint 71.2)."""
+    deduped: list[str] = []
+    for zone in path:
+        if not deduped or deduped[-1] != zone:
+            deduped.append(zone)
+    return deduped
 
 
 def _opt_str(value: object) -> str | None:

@@ -43,7 +43,8 @@ rooms:
       through the old gate.
     map_x: 4
     map_y: 8
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -67,7 +68,8 @@ rooms:
       through the door to the east.
     map_x: 3
     map_y: 8
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -87,7 +89,8 @@ rooms:
       The stair back up to the inn groans with every draft.
     map_x: 3
     map_y: 7
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: up
@@ -106,7 +109,8 @@ rooms:
       gallery.
     map_x: 4
     map_y: 9
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -126,7 +130,8 @@ rooms:
       east into the vault hall.
     map_x: 4
     map_y: 10
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -143,7 +148,8 @@ rooms:
       a shelf here: one plainly cut to fit, one clearly the wrong shape.
     map_x: 5
     map_y: 10
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -162,7 +168,8 @@ rooms:
       west through the door.
     map_x: 6
     map_y: 10
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -179,7 +186,8 @@ rooms:
       glass-stoppered bottles of the apothecary.
     map_x: 5
     map_y: 8
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -199,7 +207,8 @@ rooms:
       pine. She does not look up when you enter, but she knows you are here.
     map_x: 5
     map_y: 9
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -218,7 +227,8 @@ rooms:
       rutted track and plunges south into the treeline.
     map_x: 4
     map_y: 7
-    area_id: town
+    zone: ashmoore
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -241,7 +251,8 @@ rooms:
       close and the light turns greenish and unreliable.
     map_x: 4
     map_y: 6
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -265,7 +276,8 @@ rooms:
       creek. West returns you to the forest road.
     map_x: 5
     map_y: 6
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: west
@@ -284,7 +296,8 @@ rooms:
       back to the east.
     map_x: 3
     map_y: 6
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: east
@@ -302,7 +315,8 @@ rooms:
       small islet — passable only when the water is low.
     map_x: 5
     map_y: 5
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -326,7 +340,8 @@ rooms:
       possible, if unpleasant.
     map_x: 5
     map_y: 4
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       # Wading back is always possible — the gate is one-way by design so the
@@ -346,7 +361,8 @@ rooms:
       are west through the ruined doorway.
     map_x: 6
     map_y: 5
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: west
@@ -364,7 +380,8 @@ rooms:
       rocky hillside with a dark opening in it.
     map_x: 4
     map_y: 5
-    area_id: wilderness
+    zone: ashmoore
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -390,7 +407,8 @@ rooms:
       The forest lies back to the north; the darkness descends below.
     map_x: 4
     map_y: 4
-    area_id: cave
+    zone: ashmoore
+    room_type: cave
     light_level: 1
     exits:
       - direction: north
@@ -411,7 +429,8 @@ rooms:
       mouth is back up behind you; the tunnel descends further south.
     map_x: 4
     map_y: 3
-    area_id: cave
+    zone: ashmoore
+    room_type: cave
     light_level: 1
     exits:
       - direction: up
@@ -432,7 +451,8 @@ rooms:
       now. The tunnel leads back north.
     map_x: 4
     map_y: 2
-    area_id: cave
+    zone: ashmoore
+    room_type: cave
     light_level: 0
     disabled_commands: []
     exits:
@@ -456,7 +476,8 @@ rooms:
       to the west.
     map_x: 5
     map_y: 2
-    area_id: cave
+    zone: ashmoore
+    room_type: cave
     light_level: 0
     exits:
       - direction: west
@@ -474,7 +495,8 @@ rooms:
       or may be counting. The chamber is back through the crack to the east.
     map_x: 3
     map_y: 2
-    area_id: cave
+    zone: ashmoore
+    room_type: cave
     light_level: 0
     exits:
       - direction: east
@@ -495,7 +517,8 @@ rooms:
     map_x: 15
     map_y: 20
     map_z: 2
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -514,7 +537,8 @@ rooms:
     map_x: 15
     map_y: 21
     map_z: 2
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -536,7 +560,8 @@ rooms:
     map_x: 15
     map_y: 20
     map_z: 2
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -555,7 +580,8 @@ rooms:
     map_x: 15
     map_y: 20
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: up
@@ -576,7 +602,8 @@ rooms:
     map_x: 14
     map_y: 20
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -600,7 +627,8 @@ rooms:
     map_x: 15
     map_y: 20
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -624,7 +652,8 @@ rooms:
     map_x: 14
     map_y: 21
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -645,7 +674,8 @@ rooms:
     map_x: 14
     map_y: 19
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -667,7 +697,8 @@ rooms:
     map_x: 13
     map_y: 20
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -688,7 +719,8 @@ rooms:
     map_x: 16
     map_y: 21
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -711,7 +743,8 @@ rooms:
     map_x: 16
     map_y: 20
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -733,7 +766,8 @@ rooms:
     map_x: 15
     map_y: 20
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: up
@@ -758,7 +792,8 @@ rooms:
     map_x: 16
     map_y: 20
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -781,7 +816,8 @@ rooms:
     map_x: 14
     map_y: 20
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -805,7 +841,8 @@ rooms:
     map_x: 15
     map_y: 19
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -829,7 +866,8 @@ rooms:
     map_x: 16
     map_y: 19
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -847,7 +885,8 @@ rooms:
     map_x: 16
     map_y: 18
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -866,7 +905,8 @@ rooms:
     map_x: 13
     map_y: 20
     map_z: 0
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -886,7 +926,8 @@ rooms:
     map_x: 15
     map_y: 20
     map_z: -1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: cave
     light_level: 0
     exits:
       - direction: up
@@ -910,7 +951,8 @@ rooms:
     map_x: 15
     map_y: 21
     map_z: -1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: cave
     light_level: 0
     exits:
       - direction: south
@@ -928,7 +970,8 @@ rooms:
     map_x: 16
     map_y: 20
     map_z: -1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: cave
     light_level: 0
     exits:
       - direction: west
@@ -948,7 +991,8 @@ rooms:
     map_x: 14
     map_y: 20
     map_z: -1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: cave
     light_level: 0
     exits:
       - direction: east
@@ -969,7 +1013,8 @@ rooms:
     map_x: 15
     map_y: 19
     map_z: -1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: cave
     light_level: 0
     exits:
       - direction: north
@@ -989,7 +1034,8 @@ rooms:
     map_x: 16
     map_y: 18
     map_z: -1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 0
     exits:
       - direction: up
@@ -1024,7 +1070,8 @@ rooms:
     map_x: 30
     map_y: 30
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     safe_rest: true
     exits:
@@ -1049,7 +1096,8 @@ rooms:
     map_x: 30
     map_y: 31
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: south
@@ -1068,7 +1116,8 @@ rooms:
     map_x: 30
     map_y: 32
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: south
@@ -1093,7 +1142,8 @@ rooms:
     map_x: 31
     map_y: 32
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: west
@@ -1110,7 +1160,8 @@ rooms:
     map_x: 30
     map_y: 33
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: south
@@ -1128,7 +1179,8 @@ rooms:
     map_x: 30
     map_y: 29
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1146,7 +1198,8 @@ rooms:
     map_x: 30
     map_y: 28
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1166,7 +1219,8 @@ rooms:
     map_x: 29
     map_y: 28
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: east
@@ -1182,7 +1236,8 @@ rooms:
     map_x: 30
     map_y: 27
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1200,7 +1255,8 @@ rooms:
     map_x: 30
     map_y: 26
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1218,7 +1274,8 @@ rooms:
     map_x: 31
     map_y: 30
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: west
@@ -1238,7 +1295,8 @@ rooms:
     map_x: 31
     map_y: 31
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: south
@@ -1254,7 +1312,8 @@ rooms:
     map_x: 31
     map_y: 29
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1269,7 +1328,8 @@ rooms:
     map_x: 29
     map_y: 30
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: east
@@ -1291,7 +1351,8 @@ rooms:
     map_x: 29
     map_y: 31
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: south
@@ -1306,7 +1367,8 @@ rooms:
     map_x: 29
     map_y: 29
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1324,7 +1386,8 @@ rooms:
     map_x: 30
     map_y: 30
     map_z: 1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: town
     light_level: 1
     exits:
       - direction: down
@@ -1348,7 +1411,8 @@ rooms:
     map_x: 30
     map_y: 31
     map_z: 1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -1364,7 +1428,8 @@ rooms:
     map_x: 30
     map_y: 29
     map_z: 1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -1381,7 +1446,8 @@ rooms:
     map_x: 31
     map_y: 30
     map_z: 1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -1397,7 +1463,8 @@ rooms:
     map_x: 29
     map_y: 30
     map_z: 1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -1415,7 +1482,8 @@ rooms:
     map_x: 30
     map_y: 33
     map_z: -1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 0
     exits:
       - direction: up
@@ -1434,7 +1502,8 @@ rooms:
     map_x: 30
     map_y: 34
     map_z: -1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 0
     exits:
       - direction: south
@@ -1455,7 +1524,8 @@ rooms:
     map_x: 30
     map_y: 35
     map_z: -1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 1
     exits:
       - direction: south
@@ -1476,7 +1546,8 @@ rooms:
     map_x: 31
     map_y: 35
     map_z: -1
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 1
     exits:
       - direction: west
@@ -1494,7 +1565,8 @@ rooms:
     map_x: 30
     map_y: 35
     map_z: -2
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 0
     exits:
       - direction: up
@@ -1514,7 +1586,8 @@ rooms:
     map_x: 31
     map_y: 35
     map_z: -2
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 0
     exits:
       - direction: west
@@ -1536,7 +1609,8 @@ rooms:
     map_x: 32
     map_y: 35
     map_z: -2
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: cave
     light_level: 0
     exits:
       - direction: west
@@ -1558,7 +1632,8 @@ rooms:
     map_x: 35
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -1581,7 +1656,8 @@ rooms:
     map_x: 35
     map_y: 31
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -1601,7 +1677,8 @@ rooms:
     map_x: 35
     map_y: 29
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -1620,7 +1697,8 @@ rooms:
     map_x: 35
     map_y: 32
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -1640,7 +1718,8 @@ rooms:
     map_x: 36
     map_y: 32
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -1656,7 +1735,8 @@ rooms:
     map_x: 34
     map_y: 32
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -1676,7 +1756,8 @@ rooms:
     map_x: 34
     map_y: 31
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -1693,7 +1774,8 @@ rooms:
     map_x: 35
     map_y: 28
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -1713,7 +1795,8 @@ rooms:
     map_x: 34
     map_y: 28
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -1731,7 +1814,8 @@ rooms:
     map_x: 36
     map_y: 28
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -1747,7 +1831,8 @@ rooms:
     map_x: 34
     map_y: 27
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -1765,7 +1850,8 @@ rooms:
     map_x: 33
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -1790,7 +1876,8 @@ rooms:
     map_x: 33
     map_y: 31
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -1807,7 +1894,8 @@ rooms:
     map_x: 33
     map_y: 29
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: north
@@ -1824,7 +1912,8 @@ rooms:
     map_x: 32
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: east
@@ -1841,7 +1930,8 @@ rooms:
     map_x: 37
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -1862,7 +1952,8 @@ rooms:
     map_x: 37
     map_y: 31
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -1879,7 +1970,8 @@ rooms:
     map_x: 37
     map_y: 29
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     safe_rest: true
     exits:
@@ -1899,7 +1991,8 @@ rooms:
     map_x: 37
     map_y: 28
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: up
@@ -1916,7 +2009,8 @@ rooms:
     map_x: 38
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: west
@@ -1937,7 +2031,8 @@ rooms:
     map_x: 39
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: west
@@ -1953,7 +2048,8 @@ rooms:
     map_x: 38
     map_y: 29
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: wilderness
     light_level: 1
     exits:
       - direction: north
@@ -1972,7 +2068,8 @@ rooms:
     map_x: 34
     map_y: 30
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     indoor: false
 
@@ -1995,7 +2092,7 @@ rooms:
     map_x: 9
     map_y: 13
     map_z: 0
-    area_id: trade_road
+    zone: cogsworth
     light_level: 1
     indoor: false
     terrain: road
@@ -2023,7 +2120,7 @@ rooms:
     map_x: 22
     map_y: 25
     map_z: 0
-    area_id: forest_road
+    zone: whisperwood
     light_level: 1
     indoor: false
     terrain: road
@@ -2051,7 +2148,7 @@ rooms:
     map_x: 34
     map_y: 27
     map_z: 0
-    area_id: coast_road
+    zone: port_veridian
     light_level: 1
     indoor: false
     terrain: road
@@ -2077,7 +2174,8 @@ rooms:
     map_x: 16
     map_y: 20
     map_z: 1
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: down
@@ -2095,7 +2193,8 @@ rooms:
     map_x: 16
     map_y: 19
     map_z: -2
-    area_id: cogsworth
+    zone: cogsworth
+    room_type: town
     light_level: 1
     exits:
       - direction: up
@@ -2112,7 +2211,8 @@ rooms:
     map_x: 35
     map_y: 32
     map_z: 0
-    area_id: port_veridian
+    zone: port_veridian
+    room_type: town
     light_level: 1
     exits:
       - direction: south
@@ -2129,7 +2229,8 @@ rooms:
     map_x: 29
     map_y: 32
     map_z: 0
-    area_id: whisperwood
+    zone: whisperwood
+    room_type: wilderness
     light_level: 1
     indoor: true
     exits:
@@ -7119,17 +7220,17 @@ npcs:
 
 economy:
   regions:
-    - area_id: town
+    # Sprint 71.2: economy pricing keys off `zone`. Ashmoore's former town/
+    # wilderness/cave rows collapsed into one row at the baseline 1.0 (its sole
+    # shop — the innkeeper — sat in a town/1.0 room; the wilderness/cave
+    # multipliers never applied to a transaction).
+    - zone: ashmoore
       region_mult: 1.0
-    - area_id: wilderness
-      region_mult: 1.15
-    - area_id: cave
-      region_mult: 1.25
-    - area_id: cogsworth
+    - zone: cogsworth
       region_mult: 1.1
-    - area_id: whisperwood
+    - zone: whisperwood
       region_mult: 1.05
-    - area_id: port_veridian
+    - zone: port_veridian
       region_mult: 0.95
 
 quests:

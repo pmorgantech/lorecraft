@@ -74,7 +74,14 @@ def build_map_data(
                 continue
             d = abs((r.map_x or 0) - cx) + abs((r.map_y or 0) - cy)
             cands.append((d, r, rid in visited))
-    cands.sort(key=lambda item: item[0])
+    # Sort by distance, then room id as a deterministic tiebreak (shape
+    # stability, Sprint 71.3): `known_ids` is a set, so keying on distance alone
+    # left equidistant rooms ordered by non-deterministic set iteration — which
+    # made *which* rooms survive the room-cap truncation below jump between
+    # renders. The id tiebreak keeps the plotted set (and thus the map's shape)
+    # stable as the candidate set changes. (Also avoids comparing Room objects,
+    # which are unorderable.)
+    cands.sort(key=lambda item: (item[0], item[1].id))
     limit = 60 if full else 7
     nearby = []
     for _, r, is_visited in cands[:limit]:
