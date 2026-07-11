@@ -1092,7 +1092,7 @@ rooms:
       - direction: south
         target_room_id: old_oak_grove
       - direction: down
-        target_room_id: cave_entrance
+        target_room_id: whisperwood_cave_entrance
 
   - id: south_trail
     name: South Trail
@@ -1110,9 +1110,9 @@ rooms:
       - direction: north
         target_room_id: whispering_clearing
       - direction: south
-        target_room_id: meadow_clearing
+        target_room_id: whisperwood_meadow_clearing
 
-  - id: meadow_clearing
+  - id: whisperwood_meadow_clearing
     name: Meadow Clearing
     description: >-
       A wide, sun-drenched meadow opens where the forest breaks apart. Tall grass
@@ -1146,7 +1146,7 @@ rooms:
     light_level: 1
     exits:
       - direction: east
-        target_room_id: meadow_clearing
+        target_room_id: whisperwood_meadow_clearing
 
   - id: wildflower_glade
     name: Wildflower Glade
@@ -1162,7 +1162,7 @@ rooms:
     light_level: 1
     exits:
       - direction: north
-        target_room_id: meadow_clearing
+        target_room_id: whisperwood_meadow_clearing
       - direction: south
         target_room_id: babbling_stream
 
@@ -1380,7 +1380,7 @@ rooms:
         target_room_id: elder_tree_hub
 
   # --- Cave System: Level -1 ---
-  - id: cave_entrance
+  - id: whisperwood_cave_entrance
     name: Cave Entrance
     indoor: true
     description: >-
@@ -1414,7 +1414,7 @@ rooms:
     light_level: 0
     exits:
       - direction: south
-        target_room_id: cave_entrance
+        target_room_id: whisperwood_cave_entrance
       - direction: north
         target_room_id: crystal_cavern
 
@@ -4731,7 +4731,7 @@ room_items:
     quantity: 1
 
   # Whisperwood: forest-themed item placements (Phase 1)
-  - room_id: meadow_clearing
+  - room_id: whisperwood_meadow_clearing
     item_id: silverleaf_herb
     quantity: 3
   - room_id: mushroom_circle

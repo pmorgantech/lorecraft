@@ -4,6 +4,20 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.89.1] - 2026-07-11
+
+### Fixed
+
+- **Duplicate room ids `meadow_clearing` / `cave_entrance` (roadmap_world.md Blocked Items §7).**
+  Each id appeared as a room `id:` twice in `world_content/world.yaml` — once in Ashmoore, once in
+  Whisperwood (distinct physical rooms) — so YAML last-wins made every exit / `room_items` /
+  schedule reference ambiguous. Renamed Whisperwood's copies to `whisperwood_meadow_clearing` and
+  `whisperwood_cave_entrance` and repointed all Whisperwood-side references (both `id:` defs, the
+  meadow exits from `south_trail`/`fern_hollow`/`wildflower_glade`, the cave exits from
+  `shadow_thicket`/`limestone_passage`, and the `silverleaf_herb` placement). Ashmoore's originals
+  and the `deep_delver` mark in `marks.yaml` (Ashmoore cave) are unchanged. `world_cli validate`
+  now reports zero duplicate ids at 104 rooms with all references resolved.
+
 ## [0.89.0] - 2026-07-11
 
 ### Added

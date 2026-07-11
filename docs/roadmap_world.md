@@ -531,25 +531,27 @@ Blocked Items. Don't build content that assumes this exists.
 **Current workaround:** All NPCs available 24/7; no time-based variant behavior.
 **Plan:** Out of scope; noted for future flavor enhancement.
 
-### 7. **Duplicate room ids (`meadow_clearing`, `cave_entrance`)**
-**Status:** ⚠️ Pre-existing Phase 1 authoring defect — discovered during Phase 3 (2026-07-11), NOT
-introduced by it.
-**What it is:** Two room ids each appear as an `id:` **twice** in `world_content/world.yaml` —
+### 7. **Duplicate room ids (`meadow_clearing`, `cave_entrance`) — ✅ RESOLVED (2026-07-11)**
+**Status:** ✅ Fixed. Whisperwood's two colliding rooms were renamed; no duplicate ids remain in
+`world_content/world.yaml`.
+**What it was:** Two room ids each appeared as an `id:` **twice** in `world_content/world.yaml` —
 once in the Ashmoore wilderness zone and once in Whisperwood (different physical rooms, identical
-ids): `meadow_clearing` and `cave_entrance`. YAML/loader take the last-wins entry, so any exit,
-`room_items`, `NPC.schedule`, or `room_visited` quest condition that references either id resolves
-ambiguously — you cannot be sure which physical room is meant.
-**Impact:** Content correctness (not a crash) — e.g. `silverleaf_herb` is placed in a
-`meadow_clearing`, and one of the two is the intended forest meadow. Reachability/validation still
-pass because both ids resolve to *a* room.
-**Workaround used in Phase 3:** New content deliberately avoids both ids. The Forest Scout
-(P3.4) and all P3.x forest quests/dialogue target unambiguous forest ids only
-(`whispering_clearing`, `old_oak_grove`, `wildflower_glade`, `monolith_grove`, `mushroom_circle`,
-`babbling_stream`).
-**Follow-up fix (out of scope for Phase 3):** a dedicated cross-zone id rename — rename one copy
-of each (e.g. Whisperwood's to `whisperwood_meadow_clearing` / `whisperwood_cave_entrance`) and
-update every `target_room_id`/`room_id`/exit reference in *both* zones in the same change. Riskier
-than it looks (must touch both zones' exits + room_items); worth its own small task.
+ids): `meadow_clearing` and `cave_entrance`. YAML/loader took the last-wins entry, so any exit,
+`room_items`, `NPC.schedule`, or `room_visited` quest condition that referenced either id resolved
+ambiguously.
+**Fix applied:** Whisperwood's copies were renamed to `whisperwood_meadow_clearing` and
+`whisperwood_cave_entrance` (Ashmoore's originals kept their unprefixed ids). Every Whisperwood-side
+reference was repointed in the same change: the two `id:` definitions, four meadow exits
+(`south_trail` south, `fern_hollow` east, `wildflower_glade` north) plus the cave exits
+(`shadow_thicket` down, `limestone_passage` south), and the `silverleaf_herb` `room_items` placement.
+The Ashmoore-side references (including the `deep_delver` mark in `marks.yaml`, which is about the
+Ashmoore cave) were left untouched. `world_cli validate` stays clean at 104 rooms with all
+references resolved and zero duplicate ids.
+**Historical color (was the Phase 3 workaround):** While the collision existed, new Phase 3 content
+deliberately avoided both ids — the Forest Scout (P3.4) and all P3.x forest quests/dialogue targeted
+unambiguous forest ids only (`whispering_clearing`, `old_oak_grove`, `wildflower_glade`,
+`monolith_grove`, `mushroom_circle`, `babbling_stream`). That avoidance is no longer a constraint;
+both `whisperwood_meadow_clearing` and `whisperwood_cave_entrance` are now safe to reference directly.
 
 ---
 
