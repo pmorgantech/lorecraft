@@ -3837,6 +3837,255 @@ items:
     value: 12
     category: trade_good
 
+  # --- P2.4 Potions & remedies (flavor-only: no engine consumption effect;
+  #     see roadmap P2.4 note — no registered apply_effect key exists for these,
+  #     so they are lore/inventory items, not mechanically consumable) ---
+  - id: minor_healing_draught
+    name: Minor Healing Draught
+    description: >-
+      A small vial of rose-colored liquid, corked and sealed with a dab of green
+      wax. It smells of crushed herbs and honey, and warms the hand faintly
+      through the glass — a field remedy for cuts and bruises.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 20
+    category: drink
+
+  - id: healing_tonic
+    name: Healing Tonic
+    description: >-
+      A stoppered flask of deep amber tonic, thick as syrup and bitter on the
+      nose. A physician's proper draught, brewed to knit a real wound rather than
+      merely take the sting from a scrape.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 40
+    category: drink
+    quality: fine
+
+  - id: major_healing_elixir
+    name: Major Healing Elixir
+    description: >-
+      A heavy crystal phial of luminous crimson elixir that seems to hold a
+      slow, coiling light of its own. Rare and dearly bought, it is the sort of
+      thing kept for the night everything goes wrong.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 90
+    category: drink
+    quality: superior
+
+  - id: stamina_restorative
+    name: Stamina Restorative
+    description: >-
+      A fizzing green cordial that smells sharply of mint and citrus peel. A
+      mouthful is said to chase the ache from tired legs and put a second wind
+      into a long day's march.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 15
+    category: drink
+
+  - id: clarity_philter
+    name: Philter of Clarity
+    description: >-
+      A vial of pale, faintly silver liquid, so clear it seems to sharpen the
+      light passing through it. Scholars swear a sip cuts through mental fog,
+      though physicians only raise an eyebrow at the claim.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 30
+    category: drink
+    quality: fine
+
+  - id: draught_of_vigor
+    name: Draught of Vigor
+    description: >-
+      A muddy red draught that smells of iron and raw spirits, sold with a wink
+      and a warning. The taverns claim it puts fire in the arm; the healers
+      claim it mostly puts a fool on the floor.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 30
+    category: drink
+
+  - id: luckwater_vial
+    name: Vial of Luckwater
+    description: >-
+      A tiny bottle of water dipped, they say, from a spring on the night of a
+      full moon, with a single silver hair coiled inside. Whether it brings
+      fortune or only the belief in it, buyers rarely complain either way.
+    takeable: true
+    tradeable: true
+    weight: 0.2
+    value: 25
+    category: drink
+    quality: fine
+
+  - id: antidote_phial
+    name: Antidote Phial
+    description: >-
+      A slim phial of chalky white suspension that must be shaken before use, its
+      cork banded with a warning stripe of red. A broad remedy against the
+      common poisons a traveler is unlucky enough to meet.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 18
+    category: drink
+
+  - id: nightshade_poison
+    name: Phial of Nightshade Extract
+    description: >-
+      A squat black bottle sealed with wax and marked with a crude skull, its
+      contents a dark, oily distillate of deadly nightshade. Purely a curiosity
+      here — a grim souvenir, not a thing anyone sensible would open.
+    takeable: true
+    tradeable: true
+    weight: 0.2
+    value: 15
+    category: trade_good
+
+  # --- P2.4 Food ---
+  - id: crusty_loaf
+    name: Crusty Bread Loaf
+    description: >-
+      A round loaf with a dark, blistered crust that shatters at a squeeze and a
+      soft, warm crumb within. Still faintly steaming, it fills the air around it
+      with the plain, perfect smell of a baker's morning.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 3
+    category: food
+
+  - id: wheel_of_cheese
+    name: Wheel of Farmhouse Cheese
+    description: >-
+      A small waxed wheel of hard yellow cheese, firm and crumbling and sharp
+      enough to make the tongue tingle. Cut a wedge and it keeps for weeks; a
+      traveler's staple that never quite gets boring.
+    takeable: true
+    tradeable: true
+    weight: 1.0
+    value: 6
+    category: food
+
+  - id: basket_of_apples
+    name: Basket of Apples
+    description: >-
+      A little basket of small, russet-skinned apples, tart and crisp and
+      speckled with the odd bruise. They rattle pleasantly when carried and
+      vanish faster than anyone means them to.
+    takeable: true
+    tradeable: true
+    weight: 1.5
+    value: 5
+    category: food
+
+  - id: smoked_sausage
+    name: Smoked Sausage
+    description: >-
+      A coil of dark, hard-smoked sausage on a loop of string, glistening with
+      fat and flecked with pepper. It keeps without spoiling and rewards a slow
+      chew with a deep, smoky richness.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 4
+    category: food
+
+  - id: venison_stew_bowl
+    name: Bowl of Venison Stew
+    description: >-
+      A wooden bowl of thick, dark stew, chunks of forest venison falling apart
+      among roots and wild onion. It steams richly and tastes of woodsmoke and a
+      long, cold day's hunting well ended.
+    takeable: true
+    tradeable: true
+    weight: 0.6
+    value: 5
+    category: food
+
+  - id: forest_berries
+    name: Handful of Forest Berries
+    description: >-
+      A double handful of ripe wild berries — blackberry, whortleberry, a few
+      scarlet ones no one can name — carried in a twist of broad leaf. Sweet,
+      sharp, and staining everything they touch a cheerful purple.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 3
+    category: food
+
+  - id: honeycomb
+    name: Piece of Wild Honeycomb
+    description: >-
+      A dripping golden slab of wild honeycomb, its wax cells heavy with dark
+      forest honey. Sticky beyond all reason and worth every bit of the mess,
+      it tastes of a hundred summer flowers at once.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 6
+    category: food
+
+  # --- P2.4 Drink ---
+  - id: flask_of_spring_water
+    name: Flask of Spring Water
+    description: >-
+      A battered tin flask of cold, clean water drawn from a hill spring, still
+      tasting faintly of stone and moss. Unglamorous and entirely essential on
+      any road longer than an afternoon.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 1
+    category: drink
+
+  - id: tankard_of_ale
+    name: Tankard of Brown Ale
+    description: >-
+      A dented pewter tankard brimming with dark, nutty brown ale, a finger of
+      foam clinging to the rim. Honest tavern stuff — not fine, but exactly what
+      a tired traveler's throat is asking for.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 3
+    category: drink
+
+  - id: bottle_of_wine
+    name: Bottle of Red Wine
+    description: >-
+      A dusty green bottle of dark valley red, the cork sound and the label long
+      since soaked away. Whatever vintage it is, it has been waiting patiently
+      in some cellar for a reason to be opened.
+    takeable: true
+    tradeable: true
+    weight: 0.8
+    value: 10
+    category: drink
+
+  - id: hot_cider
+    name: Mug of Hot Spiced Cider
+    description: >-
+      A clay mug of steaming apple cider, mulled with clove and a broken cinnamon
+      stick still bobbing in it. It scalds the fingers pleasantly and drives the
+      cold clean out of a body in three swallows.
+    takeable: true
+    tradeable: true
+    weight: 0.5
+    value: 4
+    category: drink
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -4283,6 +4532,75 @@ room_items:
   - room_id: drydock
     item_id: iron_boat_chain
     quantity: 1
+
+  # --- P2.4 Potions & remedies (Cogsworth Academy alchemy lab & curiosity shop) ---
+  - room_id: alchemy_lab
+    item_id: minor_healing_draught
+    quantity: 2
+  - room_id: alchemy_lab
+    item_id: healing_tonic
+    quantity: 1
+  - room_id: alchemy_lab
+    item_id: clarity_philter
+    quantity: 1
+  - room_id: alchemy_lab
+    item_id: antidote_phial
+    quantity: 1
+  - room_id: alchemy_lab
+    item_id: stamina_restorative
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: major_healing_elixir
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: luckwater_vial
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: draught_of_vigor
+    quantity: 1
+  - room_id: curiosity_shop
+    item_id: nightshade_poison
+    quantity: 1
+
+  # --- P2.4 Food & drink: Cogsworth market & tavern ---
+  - room_id: market_row_east
+    item_id: crusty_loaf
+    quantity: 3
+  - room_id: market_row_east
+    item_id: wheel_of_cheese
+    quantity: 2
+  - room_id: market_row_east
+    item_id: basket_of_apples
+    quantity: 2
+  - room_id: clockwork_tavern
+    item_id: tankard_of_ale
+    quantity: 4
+  - room_id: clockwork_tavern
+    item_id: smoked_sausage
+    quantity: 2
+  - room_id: clockwork_tavern
+    item_id: hot_cider
+    quantity: 3
+  - room_id: wandering_crow_inn
+    item_id: bottle_of_wine
+    quantity: 1
+
+  # --- P2.4 Food & drink: Whisperwood forage & healer ---
+  - room_id: healer_nest
+    item_id: venison_stew_bowl
+    quantity: 2
+  - room_id: healer_nest
+    item_id: stamina_restorative
+    quantity: 1
+  - room_id: mushroom_circle
+    item_id: forest_berries
+    quantity: 2
+  - room_id: mushroom_circle
+    item_id: honeycomb
+    quantity: 1
+  - room_id: babbling_stream
+    item_id: flask_of_spring_water
+    quantity: 2
 
 # ---------------------------------------------------------------------------
 # Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
@@ -4911,6 +5229,13 @@ npcs:
           quantity: 3
         - item_id: assorted_gears
           quantity: -1
+        # Phase 2 curiosity remedies
+        - item_id: minor_healing_draught
+          quantity: 5
+        - item_id: healing_tonic
+          quantity: 2
+        - item_id: luckwater_vial
+          quantity: 1
     triggers:
       - on: encounter
         do:
@@ -4995,6 +5320,19 @@ npcs:
           quantity: 10
         - item_id: salted_fish
           quantity: 6
+        # Phase 2 food & drink
+        - item_id: crusty_loaf
+          quantity: -1
+        - item_id: wheel_of_cheese
+          quantity: -1
+        - item_id: smoked_sausage
+          quantity: -1
+        - item_id: tankard_of_ale
+          quantity: -1
+        - item_id: bottle_of_wine
+          quantity: 8
+        - item_id: hot_cider
+          quantity: -1
     triggers:
       - on: encounter
         do:

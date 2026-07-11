@@ -347,15 +347,15 @@ Build a diverse inventory of item *types* and *instances* that test the engine's
 
 **Test:** Pick up multiple utility items; carry tests; light sources in dark rooms. — 33 items added; metals in the Cogsworth foundry, wood/fiber/crystal in Whisperwood, cordage at Port; stocked into Thorne/Vex/Calloway. `world_cli validate` clean.
 
-#### P2.4 — Consumables & Potions (15+ items)
-- [ ] Healing potions (minor, standard, major)
-- [ ] Stamina/fatigue remedies
-- [ ] Buff potions (temporary strength, clarity, luck)
-- [ ] Poisons (flavor; can't be consumed, but lore-rich)
-- [ ] Food: bread, cheese, fruit, fish, stew
-- [ ] Drink: water, ale, wine, elixir
+#### P2.4 — Consumables & Potions (15+ items) ✅ (2026-07-11, v0.83.0)
+- [x] Healing potions (minor, standard, major) (minor healing draught, healing tonic, major healing elixir)
+- [x] Stamina/fatigue remedies (stamina restorative)
+- [x] Buff potions (temporary strength, clarity, luck) (draught of vigor, philter of clarity, vial of luckwater — flavor-only)
+- [x] Poisons (flavor; can't be consumed, but lore-rich) (nightshade extract; antidote phial as its counter)
+- [x] Food: bread, cheese, fruit, fish, stew (crusty loaf, farmhouse cheese, apples, smoked sausage, venison stew, forest berries, honeycomb — plus existing fish)
+- [x] Drink: water, ale, wine, elixir (spring water, brown ale, red wine, hot cider)
 
-**Test:** Consume potions (if mechanic exists); verify effect application. If no consumption, at least test inventory.
+**Test:** Consume potions (if mechanic exists); verify effect application. If no consumption, at least test inventory. — **No consumption mechanic exists** (no registered `apply_effect` key for drinking); 20 items authored as flavor/inventory items only, no `apply_effect` hookup. `world_cli validate` clean.
 
 #### P2.5 — Wearables with Traits (10+ items)
 - [ ] Blessed Amulet (grants "Blessed" trait)
@@ -580,7 +580,7 @@ Blocked Items. Don't build content that assumes this exists.
 
 - [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
-- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 154 items as of v0.82.0 (P2.1 weapons + P2.2 armor + P2.3 utility/crafting); further Phase 2 batches (consumables/trait-wearables/keys) continue to grow it
+- [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 174 items as of v0.83.0 (P2.1 weapons + P2.2 armor + P2.3 utility/crafting + P2.4 consumables); further Phase 2 batches (trait-wearables/keys) continue to grow it
 - [ ] 15+ NPCs with dialogue and quests
 - [ ] 5+ locked doors requiring keys (puzzle component)
 - [ ] Dark areas requiring light sources (caves, sewers)

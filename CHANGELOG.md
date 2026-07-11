@@ -4,6 +4,27 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.83.0] - 2026-07-11
+
+### Added
+
+- **Phase 2 world content — Consumables & Potions (roadmap_world.md P2.4).** Added 20 consumable
+  items (world 154 -> 174): healing potions (minor draught / tonic / major elixir), a stamina
+  restorative, buff philters (clarity, vigor, luckwater), an antidote, a flavor-only nightshade
+  poison, food (bread, cheese, apples, sausage, venison stew, forest berries, honeycomb) and
+  drink (spring water, brown ale, red wine, hot cider). Potions cluster in the Cogsworth Academy
+  alchemy lab and Dealer Vex's curiosity shop; food/drink in the Cogsworth market and tavern,
+  Whisperwood forage/healer, and Tavern Keeper Sal's bar stock. `world_cli validate` clean; full
+  suite green.
+
+### Notes
+
+- **Potions are flavor/inventory items, not mechanically consumable.** There is no registered
+  `apply_effect` key wired for a "drink potion → heal/buff" path in `world_content/*.yaml`, so
+  per the roadmap P2.4 guidance these were authored as lore items (rich descriptions, `value`,
+  `weight`, `drink`/`trade_good` categories) with **no** `apply_effect` hookup. Wiring an actual
+  consumption effect would be new engine/feature work, out of scope for a pure-content task.
+
 ## [0.82.0] - 2026-07-11
 
 ### Added
