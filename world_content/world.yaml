@@ -6369,6 +6369,52 @@ dialogue_trees:
             side_effects:
               end_dialogue: true
 
+  # --- P3.4 Scheduled-movement NPCs (minimal flavor trees) ---
+  - id: dock_worker_bram_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A thick-armed dockhand pauses with a crate on one shoulder, sweat
+          beading under his cap. "Can't stop long—Iris'll have my hide if the
+          north dock's not clear by the tide. Mornings I'm on the quay, evenings
+          I'm hauling to the warehouses. Story of my life."
+        side_effects: {}
+        choices:
+          - label: Don't let me keep you.
+            side_effects:
+              end_dialogue: true
+
+  - id: night_watch_holt_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A broad watchman in a dented brass helm gives you a slow, measuring look
+          and a jerk of his chin. "Move along, citizen. Plaza by day, the smithy
+          quarter after dark—somebody's got to keep the lamps honest. Nothing here
+          that won't keep till morning."
+        side_effects: {}
+        choices:
+          - label: Evening, watchman.
+            side_effects:
+              end_dialogue: true
+
+  - id: forest_scout_wren_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A lean scout in mottled green crouches to read a scuff in the moss, her
+          bow unstrung across her back. "Sage has me walking the loop—clearing at
+          dawn, the old oak by midday, the glade come evening. Keeps the trails
+          honest. You'll find me wherever the light is, if you need me."
+        side_effects: {}
+        choices:
+          - label: Safe trails, scout.
+            side_effects:
+              end_dialogue: true
+
 npcs:
   - id: innkeeper
     name: Mira the Innkeeper
@@ -6953,6 +6999,61 @@ npcs:
     current_room_id: healer_nest
     dialogue_tree_id: healer_moss_dialogue
     behavior: passive
+
+  # -------------------------------------------------------------------------
+  # P3.4 — Scheduled-movement NPCs. `schedule` teleports current_room_id to
+  # target_room_id on the world clock's HOUR_CHANGED event (not a walked path).
+  # -------------------------------------------------------------------------
+
+  - id: dock_worker_bram
+    name: Bram the Dockhand
+    description: >-
+      A thick-armed longshoreman with a permanent stoop from a lifetime of crates
+      and a cap gone grey with salt. He works the quay by morning and the
+      warehouses by evening, and grumbles about both.
+    home_room_id: docks_main
+    current_room_id: docks_main
+    dialogue_tree_id: dock_worker_bram_dialogue
+    behavior: passive
+    schedule:
+      - game_hour: 8
+        target_room_id: docks_main
+      - game_hour: 18
+        target_room_id: warehouse_district
+
+  - id: night_watch_holt
+    name: Watchman Holt
+    description: >-
+      A broad, unhurried watchman in a dented brass helm, keys and a shuttered
+      lantern at his belt. He keeps the grand plaza by day and the smithy quarter
+      after dark, and has waved off more trouble than he's ever had to chase.
+    home_room_id: grand_plaza
+    current_room_id: grand_plaza
+    dialogue_tree_id: night_watch_holt_dialogue
+    behavior: defensive
+    schedule:
+      - game_hour: 8
+        target_room_id: grand_plaza
+      - game_hour: 20
+        target_room_id: smithy_district
+
+  - id: forest_scout_wren
+    name: Scout Wren
+    description: >-
+      A lean, quiet-footed scout in mottled green, one of Hunter Sage's rangers.
+      She walks a daily circuit of the forest-floor clearings, reading the moss
+      and the light, and is never quite where you last saw her.
+    home_room_id: whispering_clearing
+    current_room_id: whispering_clearing
+    dialogue_tree_id: forest_scout_wren_dialogue
+    behavior: passive
+    schedule:
+      - game_hour: 6
+        target_room_id: whispering_clearing
+      - game_hour: 12
+        target_room_id: old_oak_grove
+      - game_hour: 18
+        target_room_id: wildflower_glade
 
 economy:
   regions:

@@ -4,7 +4,29 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-## [0.88.0] - 2026-07-11
+## [0.89.0] - 2026-07-11
+
+### Added
+
+- **Phase 3 world content — NPC Movement (roadmap_world.md P3.4).** 3 new scheduled-movement NPCs
+  (world 26 -> 29 NPCs), each relocating via `NPC.schedule` on the world clock's `HOUR_CHANGED`
+  event (instant teleport, the only wired NPC-movement primitive — no `ai:` patrol):
+  - **Bram the Dockhand** (`dock_worker_bram`) — `docks_main` (hr 8) → `warehouse_district` (hr 18).
+  - **Watchman Holt** (`night_watch_holt`) — `grand_plaza` (hr 8) → `smithy_district` (hr 20) after dark.
+  - **Scout Wren** (`forest_scout_wren`) — cycles `whispering_clearing` (hr 6) → `old_oak_grove`
+    (hr 12) → `wildflower_glade` (hr 18); all unambiguous forest ids.
+  - Each carries the mandatory `dialogue_tree_id` (a minimal flavor tree). `world_cli validate`
+    clean; reachability + tier-boundary green.
+- **Phase 3 complete.** The world now has **29 NPCs** (past the 15+ success criterion) and **12
+  quests** across three zones — 5 shopkeepers, 6 quest-givers, 13 flavor/lore, 3 movement, plus
+  Phase 1 NPCs.
+
+### Notes
+
+- **Documented a pre-existing Phase 1 defect (roadmap_world.md Blocked Items §7): duplicate room
+  ids** `meadow_clearing` and `cave_entrance` each appear twice in `world_content/world.yaml`
+  (Ashmoore + Whisperwood). Not introduced or fixed here — all new Phase 3 content deliberately
+  avoids both ids. Flagged for a dedicated cross-zone id-rename follow-up.
 
 ### Added
 

@@ -428,10 +428,10 @@ Build NPC variety; add dialogue, quests, and flavor.
 #### P3.4 — NPC Movement (3+ NPCs) — **scope corrected, see Blocked Items**
 True room-list/loop **patrol** requires new glue on top of `MobileRouteService` (unwired for
 NPCs today — see Blocked Items). Zone-wide roam requires new logic entirely (not built). For
-v1 of this world, scope down to what's actually wired:
-- [ ] Dock Worker — `NPC.schedule` relocates docks → warehouse at set game-hours (teleport, not a walked loop)
-- [ ] Night Guard — `NPC.schedule` relocates city streets → guardhouse after dark
-- [ ] Forest Scout — `NPC.schedule` relocates between 2–3 clearings across the day
+v1 of this world, scope down to what's actually wired: ✅ (2026-07-11, v0.89.0)
+- [x] Dock Worker — `dock_worker_bram` relocates `docks_main` (hr 8) → `warehouse_district` (hr 18)
+- [x] Night Guard — `night_watch_holt` relocates `grand_plaza` (hr 8) → `smithy_district` (hr 20) after dark
+- [x] Forest Scout — `forest_scout_wren` cycles `whispering_clearing` (hr 6) → `old_oak_grove` (hr 12) → `wildflower_glade` (hr 18); unambiguous ids only (avoids the duplicate `meadow_clearing`, see Blocked Items §7)
 
 **Stretch (blocked on engine work):** true patrol (visibly walking a room loop, broadcast to
 players present) needs NPC-specific `RouteHooks` built against `MobileRouteService` first — see
@@ -531,6 +531,26 @@ Blocked Items. Don't build content that assumes this exists.
 **Current workaround:** All NPCs available 24/7; no time-based variant behavior.
 **Plan:** Out of scope; noted for future flavor enhancement.
 
+### 7. **Duplicate room ids (`meadow_clearing`, `cave_entrance`)**
+**Status:** ⚠️ Pre-existing Phase 1 authoring defect — discovered during Phase 3 (2026-07-11), NOT
+introduced by it.
+**What it is:** Two room ids each appear as an `id:` **twice** in `world_content/world.yaml` —
+once in the Ashmoore wilderness zone and once in Whisperwood (different physical rooms, identical
+ids): `meadow_clearing` and `cave_entrance`. YAML/loader take the last-wins entry, so any exit,
+`room_items`, `NPC.schedule`, or `room_visited` quest condition that references either id resolves
+ambiguously — you cannot be sure which physical room is meant.
+**Impact:** Content correctness (not a crash) — e.g. `silverleaf_herb` is placed in a
+`meadow_clearing`, and one of the two is the intended forest meadow. Reachability/validation still
+pass because both ids resolve to *a* room.
+**Workaround used in Phase 3:** New content deliberately avoids both ids. The Forest Scout
+(P3.4) and all P3.x forest quests/dialogue target unambiguous forest ids only
+(`whispering_clearing`, `old_oak_grove`, `wildflower_glade`, `monolith_grove`, `mushroom_circle`,
+`babbling_stream`).
+**Follow-up fix (out of scope for Phase 3):** a dedicated cross-zone id rename — rename one copy
+of each (e.g. Whisperwood's to `whisperwood_meadow_clearing` / `whisperwood_cave_entrance`) and
+update every `target_room_id`/`room_id`/exit reference in *both* zones in the same change. Riskier
+than it looks (must touch both zones' exits + room_items); worth its own small task.
+
 ---
 
 ## Content Writing Guidelines
@@ -587,7 +607,7 @@ Blocked Items. Don't build content that assumes this exists.
 - [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
 - [x] 100+ unique items (weapons, armor, utility, consumables, keys, lore) — 197 items as of v0.85.0 (Phase 2 complete: P2.1–P2.6)
-- [ ] 15+ NPCs with dialogue and quests
+- [x] 15+ NPCs with dialogue and quests — **29 NPCs** as of v0.89.0 (Phase 3 complete: 5 shopkeepers, 6 quest-givers, 13 flavor/lore, 3 scheduled-movement, plus Phase 1 NPCs); 12 quests total
 - [x] 5+ locked doors requiring keys (puzzle component) — 8 key-locked exits as of v0.85.0 (4 pre-existing: inner_vault/good_key, sealed_vault/vault_root_key, warehouse_north/warehouse_vault_key, plus the vault-hall door; 4 new in P2.6: Restricted Archive, Foundry Strongroom, Bonded Store, Hollow Oak Cache)
 - [ ] Dark areas requiring light sources (caves, sewers)
 - [ ] At least 8 safe-rest zones
