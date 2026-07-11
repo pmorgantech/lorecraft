@@ -4,8 +4,18 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.79.0] - 2026-07-11
+
 ### Added
 
+- **World zone linking: all four zones now form one traversable graph.** Three new
+  single-room connectors (each in its own `area_id`) join the previously disjoint zones,
+  all reachable from `village_square`: `old_trade_road` (`trade_road`) links Ashmoore's
+  `deep_forest` to Cogsworth's `market_row_west`; `forest_road` (`forest_road`) links
+  Cogsworth's `smithy_district` to Whisperwood's `west_trail`; `river_bend` (`coast_road`)
+  links Whisperwood's `babbling_stream` to Port Veridian's `tide_pools` via a riverside
+  footbridge. All connectors are open (no locks), outdoor, `terrain: road`; `world_cli
+  validate` reports zero reachability warnings.
 - **Multi-agent worktree scaffolding.** New `scripts/bootstrap-worktree.sh` (+ `make bootstrap`) gives each agent worktree its own `.venv`, empty `var/app.sqlite`, `docs/*.yaml` copy, and `.env.local`. `make test-e2e` now re-syncs `docs/*.yaml` from the primary tree when run inside a worktree. Design + workflow (conventional commits, agent-created PRs, merge-time version/changelog automation via a future GitHub Action) documented in `docs/multi-agent-workflow.md`; AGENTS.md gains a multi-agent scaffolding section. The automated release action itself is not implemented yet — manual version bumps remain in force until it lands.
 - **Per-role subagent definitions** in `.claude/agents/` (orchestrator, research-planner, backend-engineer, frontend-specialist, test-qa, docs-writer, integrator) — model/tool/prompt config per role, referenced from `docs/multi-agent-workflow.md`.
 

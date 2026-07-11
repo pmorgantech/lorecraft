@@ -293,11 +293,23 @@ Focus: Build the world structure, test room/NPC/item basics across all zones.
 - [x] Add 4 port NPCs (Captain Iris, Tavern Keeper Sal, Lighthouse Keeper, Shipwright Calloway)
 - [x] Create 11 nautical items (rope, netting, salvage, sea glass, warehouse key, tavern fare)
 
-**Verification:** `world_cli validate` passing (22 rooms added, all refs resolved). Port is a self-contained zone (not yet interconnected with Cogsworth/Whisperwood — see Phase 4/zone-linking note). Manual in-game trade test still outstanding.
+**Verification:** `world_cli validate` passing (22 rooms added, all refs resolved). Port is now interconnected with the rest of the world via the `river_bend` coast-road connector (Whisperwood ↔ Port Veridian) — see the zone-linking note below. Manual in-game trade test still outstanding.
 
-**Phase 1 world totals (after merge, commit `925ba90`):** 96 rooms, 78 items, 10 NPCs, 3 quests
-across 4 zones (town, wilderness, cave — Ashmoore — plus cogsworth, whisperwood, port_veridian).
-Zones are currently disjoint (no cross-zone exits yet); linking them is deferred to a later pass.
+**Phase 1 world totals:** 99 rooms, 78 items, 10 NPCs, 3 quests across 4 zones
+(town, wilderness, cave — Ashmoore — plus cogsworth, whisperwood, port_veridian).
+
+**Zone linking (done, v0.79.0):** the four zones now form one traversable graph via three
+single-room connectors, each in its own `area_id`:
+
+- `old_trade_road` (`area_id: trade_road`) — an old cobbled trade road linking Ashmoore's
+  `deep_forest` (wilderness) to Cogsworth's `market_row_west`.
+- `forest_road` (`area_id: forest_road`) — a quiet road linking Cogsworth's `smithy_district`
+  to Whisperwood's `west_trail`.
+- `river_bend` (`area_id: coast_road`) — a riverside footbridge where the forest stream runs
+  out to the coast, linking Whisperwood's `babbling_stream` to Port Veridian's `tide_pools`.
+
+All connectors are open (no locks), outdoor, `terrain: road`, and reachable from
+`village_square`; `world_cli validate` reports zero reachability warnings.
 
 ---
 
@@ -565,7 +577,7 @@ Blocked Items. Don't build content that assumes this exists.
 
 ## Success Criteria
 
-- [ ] All three zones (City, Forest, Port) are navigable from end to end
+- [x] All three zones (City, Forest, Port) are navigable from end to end
 - [ ] 80+ unique rooms across all zones (minimum 30 per zone)
 - [ ] 100+ unique items (weapons, armor, utility, consumables, keys, lore)
 - [ ] 15+ NPCs with dialogue and quests

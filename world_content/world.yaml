@@ -371,6 +371,8 @@ rooms:
         target_room_id: forest_path
       - direction: south
         target_room_id: cave_entrance
+      - direction: east
+        target_room_id: old_trade_road
 
   # -------------------------------------------------------------------------
   # AREA: cave — The Hill Caves
@@ -765,6 +767,8 @@ rooms:
         target_room_id: smithy_district
       - direction: up
         target_room_id: scholar_apartments
+      - direction: north
+        target_room_id: old_trade_road
 
   - id: smithy_district
     name: Smithy District
@@ -787,6 +791,8 @@ rooms:
         target_room_id: grand_plaza
       - direction: east
         target_room_id: curiosity_shop
+      - direction: south
+        target_room_id: forest_road
 
   - id: curiosity_shop
     name: Curiosity Emporium
@@ -1155,6 +1161,8 @@ rooms:
     exits:
       - direction: north
         target_room_id: wildflower_glade
+      - direction: south
+        target_room_id: river_bend
 
   - id: east_trail
     name: East Trail
@@ -1226,6 +1234,8 @@ rooms:
         target_room_id: old_lumber_mill
       - direction: south
         target_room_id: flooded_quarry
+      - direction: west
+        target_room_id: forest_road
 
   - id: old_lumber_mill
     name: Old Lumber Mill
@@ -1899,6 +1909,93 @@ rooms:
     exits:
       - direction: north
         target_room_id: breakwater
+      - direction: west
+        target_room_id: river_bend
+
+  # -------------------------------------------------------------------------
+  # AREA: trade_road — connector linking Ashmoore's wilderness to Cogsworth
+  # -------------------------------------------------------------------------
+
+  - id: old_trade_road
+    name: The Old Trade Road
+    description: >-
+      Ancient cobbles, heaved and cracked by centuries of frost and root, thread
+      between two worlds. Behind you to the west the deep forest closes ranks,
+      its oaks leaning over the verge as if to reclaim the paving stone by stone.
+      Ahead to the south the trees fall away and the road firms into honest packed
+      dirt, running toward a haze of coal-smoke where Cogsworth's gate-towers catch
+      the light. Wheel-ruts worn glassy-smooth speak of the caravans that still
+      make this crossing, and a weathered milestone — its carved distances long
+      since scoured blank — leans in the weeds where forest law gives way to city
+      tolls.
+    map_x: 9
+    map_y: 13
+    map_z: 0
+    area_id: trade_road
+    light_level: 1
+    indoor: false
+    terrain: road
+    exits:
+      - direction: west
+        target_room_id: deep_forest
+      - direction: south
+        target_room_id: market_row_west
+
+  # -------------------------------------------------------------------------
+  # AREA: forest_road — connector linking Cogsworth to Whisperwood
+  # -------------------------------------------------------------------------
+
+  - id: forest_road
+    name: The Forest Road
+    description: >-
+      The city's clamor thins to nothing along this quiet stretch of road. To the
+      north the smithy district's forge-smoke still smudges the sky, and the ring
+      of distant hammers carries faintly on the breeze. Southward and east the way
+      narrows as the first outlying trees of Whisperwood crowd close, their leaves
+      whispering a welcome — or a warning. The road here is old and patient,
+      packed hard by generations of feet and cartwheels, its verges soft with moss
+      and wildflowers that no city gardener ever planted. A wooden signpost, its
+      paint flaked to grey, points the way toward the woods.
+    map_x: 22
+    map_y: 25
+    map_z: 0
+    area_id: forest_road
+    light_level: 1
+    indoor: false
+    terrain: road
+    exits:
+      - direction: north
+        target_room_id: smithy_district
+      - direction: east
+        target_room_id: west_trail
+
+  # -------------------------------------------------------------------------
+  # AREA: coast_road — connector linking Whisperwood to Port Veridian
+  # -------------------------------------------------------------------------
+
+  - id: river_bend
+    name: The River Bend
+    description: >-
+      The forest stream you have been following swings wide here, broadening as it
+      leaves the trees behind and hurries toward the sound of surf. A footbridge of
+      lashed planks carries the riverside path across the water, its rope rails
+      silvered by salt spray. Upstream to the north the babbling shallows vanish
+      back into Whisperwood's green shade; downstream and east the banks turn to
+      shingle and the air grows briny, gulls wheeling above where the river gives
+      itself up to the tide-pools of the coast. Reeds nod along the margins, and a
+      heron stands motionless in the current, patient as the crossing itself.
+    map_x: 34
+    map_y: 27
+    map_z: 0
+    area_id: coast_road
+    light_level: 1
+    indoor: false
+    terrain: road
+    exits:
+      - direction: north
+        target_room_id: babbling_stream
+      - direction: east
+        target_room_id: tide_pools
 
 # ---------------------------------------------------------------------------
 # Items
