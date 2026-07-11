@@ -4,6 +4,34 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.80.0] - 2026-07-11
+
+### Added
+
+- **Harbor Ferry: the first weather-blockable transit line.** Added the first `transit:`
+  section to `world_content/world.yaml`. The **Harbor Ferry** (`harbor_ferry`, mode `ferry`)
+  runs `docks_main → breakwater` across Port Veridian's harbor mouth from an open-deck vehicle
+  room, `harbor_ferry_deck` (`indoor: false`, boarded via `board`, not part of the walk graph).
+  It is `weather_sensitive: true` with `blocking_weather: [thunderstorm, heavy_rain, blizzard]`,
+  so `TransitService.may_depart` grounds it when the global `WorldClock.weather` turns dangerous.
+  New ticket item `harbor_ferry_token` (a brass ferry token; 3 placed at `docks_main`).
+- **`coastal_squall` storm front covering the coastal/forest zones.** Added a new traveling
+  weather front to `world_content/weather_fronts.yaml` with `path: [port_veridian, coast_road,
+  whisperwood]`, `room_effect: storm_lashed`, autumn/winter seasons. It rolls a per-hour chance,
+  sweeps sea → river connector → forest lashing outdoor rooms in each zone, and auto-skips
+  `indoor: true` interiors — giving the new zones occasional storms without any per-zone climate
+  model. `spring_squall` (town/wilderness) is unchanged.
+
+### Notes
+
+- These use the *existing, already-built* content hooks (traveling fronts + `weather_sensitive`
+  transit). Weather remains a single **global** `WorldClock.weather` value: there is still no
+  per-zone climate model (e.g. "Whisperwood always rainier than Cogsworth"), which would be new
+  Tier 2 engine work and stays out of scope. `docs/roadmap_world.md` Phase 4.5 and Blocked
+  Items §3 are updated to record exactly what this pass covered versus what remains blocked.
+- Ambient weather narration is a separate broadcast line (`narrate_weather_outdoors`) that
+  already skips `indoor: true` rooms; no room `description:` fields were touched.
+
 ## [0.79.1] - 2026-07-11
 
 ### Fixed

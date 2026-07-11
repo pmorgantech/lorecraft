@@ -1917,6 +1917,21 @@ rooms:
       - direction: west
         target_room_id: river_bend
 
+  # --- Harbor Ferry vehicle room (reached only by `board`, not walked into) ---
+  - id: harbor_ferry_deck
+    name: Harbor Ferry Deck
+    description: >-
+      The open deck of a stout little ferry, its planks scrubbed pale and slick
+      with spray. A single mast carries a furled sail, and a coil of mooring line
+      sits ready by the gunwale. There is no shelter here — passengers ride under
+      open sky, at the mercy of the harbor's moods.
+    map_x: 34
+    map_y: 30
+    map_z: 0
+    area_id: port_veridian
+    light_level: 1
+    indoor: false
+
   # -------------------------------------------------------------------------
   # AREA: trade_road — connector linking Ashmoore's wilderness to Cogsworth
   # -------------------------------------------------------------------------
@@ -2795,6 +2810,17 @@ items:
     category: trade_good
     quality: fine
 
+  - id: harbor_ferry_token
+    name: Brass Ferry Token
+    description: >-
+      A thick brass disc stamped with a wave and a gull, worn smooth at the
+      rim by many hands. The ferryman takes one for passage across the harbor
+      mouth and drops it in his tin.
+    takeable: true
+    tradeable: true
+    value: 3
+    category: trade_good
+
 # ---------------------------------------------------------------------------
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
@@ -2992,13 +3018,16 @@ room_items:
     quantity: 1
 
   # --- Port Veridian ---
-  # Docks Main — rope and netting for the loading crews
+  # Docks Main — rope and netting for the loading crews, and a ferry token
   - room_id: docks_main
     item_id: coil_of_rope
     quantity: 2
   - room_id: docks_main
     item_id: fishing_net
     quantity: 1
+  - room_id: docks_main
+    item_id: harbor_ferry_token
+    quantity: 3
 
   # Warehouse District — the vault key, reachable before the locked door
   - room_id: warehouse_district
@@ -3811,3 +3840,24 @@ quests:
           opened_sealed_vault: true
         rewards:
           xp: 60
+
+# ---------------------------------------------------------------------------
+# Transit lines — scheduled vehicles reached by `board` (not the walk graph)
+# ---------------------------------------------------------------------------
+
+transit:
+  lines:
+    # Harbor Ferry — runs the harbor mouth between the docks and the breakwater.
+    # Weather-sensitive: grounded when the global weather turns dangerous, since
+    # its deck (harbor_ferry_deck) is open to the sky (indoor: false).
+    - id: harbor_ferry
+      name: Harbor Ferry
+      mode: ferry
+      service_type: local
+      vehicle_room_id: harbor_ferry_deck
+      ticket_item_id: harbor_ferry_token
+      weather_sensitive: true
+      blocking_weather: [thunderstorm, heavy_rain, blizzard]
+      stops:
+        - { room_id: docks_main, sequence: 0, dwell_ticks: 5, travel_ticks: 20 }
+        - { room_id: breakwater, sequence: 1, dwell_ticks: 5, travel_ticks: 0 }

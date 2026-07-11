@@ -464,10 +464,10 @@ Blocked Items. Don't build content that assumes this exists.
 - [ ] Verify players can sleep there; can't in hostile areas
 
 #### P4.5 — Weather Integration (if time)
-- [ ] Coastal zones: occasionally foggy/stormy
-- [ ] Forest: rainy/misty common
-- [ ] City: clear/overcast (not weather-sensitive underground)
-- [ ] Test transit: blocked by weather on specific routes (e.g., ship departure in storm)
+- [x] Coastal zones: occasionally foggy/stormy — **done via a traveling storm front, not zone climate.** Added `coastal_squall` to `world_content/weather_fronts.yaml` (`path: [port_veridian, coast_road, whisperwood]`, `room_effect: storm_lashed`, autumn/winter): it rolls a per-hour chance, sweeps the coast → river connector → forest, lashes outdoor rooms in each zone, and auto-skips `indoor: true` interiors. This is content on the existing front mechanism — there is still no per-zone climate model (see Blocked Items §3).
+- [ ] Forest: rainy/misty common — **not changed; nothing to do at content level.** Weather is a single *global* `WorldClock.weather` value; there is no per-zone climate hook to make Whisperwood reliably rainier than Cogsworth. The `coastal_squall` front above gives the forest *occasional* coastal storms, but "misty/rainy common" would require new Tier 2 zone-climate code (Blocked Items §3), which is out of scope.
+- [ ] City: clear/overcast (not weather-sensitive underground) — **not changed; same reason.** No zone-specific content is possible for this without a climate model; Cogsworth already benefits from ambient global weather being suppressed in its `indoor: true` sewers/interiors (Room.indoor, P4.6). Left unchecked deliberately — nothing zone-specific actually changed here.
+- [x] Test transit: blocked by weather on specific routes (e.g., ship departure in storm) — **done.** Added the first `transit:` section in `world_content/world.yaml`: the **Harbor Ferry** (`harbor_ferry`) runs `docks_main → breakwater` from an open-deck vehicle room (`harbor_ferry_deck`, `indoor: false`), `weather_sensitive: true`, `blocking_weather: [thunderstorm, heavy_rain, blizzard]`. Grounding is enforced by `TransitService.may_depart` against the global `WorldClock.weather`. Ticket item `harbor_ferry_token` (3 placed at the docks).
 
 #### P4.6 — Indoor/Outdoor Tagging — ✅ DONE (real field, not a workaround)
 - [x] **RESOLVED:** `Room.indoor: bool` is a real, shipped Tier 1 schema field (Sprint 69, v0.72.0). No naming-convention/comment workaround is needed — set `indoor: true` directly on interior rooms in world YAML.
@@ -494,12 +494,15 @@ Blocked Items. Don't build content that assumes this exists.
 **Plan:** Phase 1–3 uses static NPCs; consider spawn templates in Phase 4 if desired.
 
 ### 3. **Climate/Zone Weather Binding**
-**Status:** ⚠️ Partial support
-**Current:** Global weather exists; transit lines can block on weather.
-**Missing:** Zone-level climate (e.g., "forest always rainy", "city mostly clear", "desert hot/dry").
-**Engine work needed:** Zone climate data + conditional weather transitions (Tier 2 feature)
-**Workaround:** Manually manage global weather; accept global state for v0.1.
-**Plan:** Phase 4 content may include hardcoded weather management if valuable for testing.
+**Status:** ⚠️ Partial support — two *content-level* hooks now exercised for the new zones (v0.80.0); true zone climate still unbuilt.
+**Current:** Global weather exists (single `WorldClock.weather`). Two data-driven hooks give *content-level* zone flavor without a real climate model:
+- **Traveling storm fronts** (`world_content/weather_fronts.yaml`): a front declares an ordered `path:` of `area_id`s and rolls a per-hour chance; on a hit it applies `room_effect: storm_lashed` and narrates zone-by-zone, skipping `indoor: true` rooms. Fronts now cover the new zones — `coastal_squall` runs `port_veridian → coast_road → whisperwood` (in addition to the town/wilderness `spring_squall`).
+- **Weather-blockable transit** (`transit:` in `world_content/world.yaml`): `TransitLine.weather_sensitive` + `blocking_weather` grounds a line when global weather matches. First live use: the **Harbor Ferry** grounds on `thunderstorm`/`heavy_rain`/`blizzard`.
+
+**What this pass covered (v0.80.0):** a real per-zone storm-front *path* through the coastal/forest zones + one weather-blockable transit line. Both are *content on existing engine mechanisms* — no new engine code.
+**Still genuinely missing (out of scope):** true zone-level climate — e.g. "Whisperwood is *always* rainier than Cogsworth", "the desert runs hot/dry". Global weather remains a single value; a front is a transient traveling event, **not** a standing per-zone bias.
+**Engine work needed:** Zone climate data + conditional/biased weather transitions (a new **Tier 2** feature — do NOT build under a content task).
+**Workaround:** Use traveling fronts for transient zone storms and `weather_sensitive` transit for grounding; accept global baseline weather otherwise.
 
 ### 4. **Ambient / Timed Room Events**
 **Status:** ❌ Not supported
