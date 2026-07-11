@@ -357,11 +357,14 @@ whether the vehicle is currently there.
 talk mira        — start a conversation (also: speak)
 1                 — pick reply #1 (or: choice 1, choose 1)
 bye               — end the conversation (also: farewell, goodbye)
+quests            — list your quests, their status, and current objective (also: quest)
 ```
 
 The dialogue overlay shows the NPC's current line and numbered choices — click a choice
 button or type its number. Some choices start or advance quests; check the **Quests**
-panel in the right sidebar to see what you're currently tracking and what to do next.
+panel in the right sidebar — or type `quests` — to see what you're currently tracking and
+what to do next. For a multi-stage quest, `quests` shows which stage you're on (`stage 2/3`)
+and that stage's objective; finished quests are marked completed (or failed).
 
 ## Chat & Social
 
@@ -369,6 +372,8 @@ panel in the right sidebar to see what you're currently tracking and what to do 
 say hello           — speak aloud; everyone in the room sees it
 tell <player> <msg> — private message to an online player (alias: whisper)
 newbie <msg>        — speak on the world-wide Newbie channel
+wave                — wave to the room; `wave at <someone>` to wave at a target
+point at <target>   — point at a person, creature, or thing (e.g. `point at sign`)
 ```
 
 Chat travels on **channels** with different reach: `say` stays in your room, `tell` goes

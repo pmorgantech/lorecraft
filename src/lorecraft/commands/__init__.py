@@ -21,6 +21,7 @@ from lorecraft.features.marks.commands import register_mark_commands
 from lorecraft.features.economy.commands import register_economy_commands
 from lorecraft.features.exploration.commands import register_exploration_commands
 from lorecraft.features.inventory.commands import register_inventory_commands
+from lorecraft.features.quests.commands import register_quest_commands
 from lorecraft.commands.meta import register_meta_commands
 from lorecraft.features.movement.commands import register_movement_commands
 from lorecraft.commands.news import register_news_commands
@@ -72,6 +73,9 @@ def register_all_commands(
     if services.dialogue is not None:
         with registry.category("social"):
             register_social_commands(registry, services.dialogue)
+    if services.quest is not None:
+        with registry.category("quests"):
+            register_quest_commands(registry)
     if services.character_info is not None:
         with registry.category("character"):
             register_character_commands(registry, services.character_info)

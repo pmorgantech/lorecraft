@@ -29,6 +29,29 @@ NEWBIE_CHANNEL = Channel(
 )
 
 
+def _resolve_emote_target(noun: str | None, ctx: GameContext) -> str | None:
+    """Best-effort display name for an emote target, or ``None`` for a targetless emote.
+
+    Resolves (in order) an NPC in the room, then a player in the room, by name; otherwise
+    returns the raw text so a player can `point at sign` / `wave at the sky` freely. A leading
+    ``at`` (``point at sign``) is stripped.
+    """
+    if not noun:
+        return None
+    text = noun.strip()
+    if text.lower().startswith("at "):
+        text = text[3:].strip()
+    if not text:
+        return None
+    npc = ctx.npc_repo.find_in_room(ctx.room.id, text)
+    if npc is not None:
+        return npc.name
+    other = ctx.player_repo.by_username(text)
+    if other is not None and other.current_room_id == ctx.room.id:
+        return other.username
+    return text
+
+
 def register_social_commands(
     registry: CommandRegistry, dialogue_service: DialogueService | None = None
 ) -> None:
@@ -140,6 +163,33 @@ def register_social_commands(
 
     for topic_channel in channel_registry.topic_channels():
         _register_topic_verb(topic_channel)
+
+    @registry.register(
+        "wave",
+        scope=CommandScope.SOCIAL,
+        help="wave [at <someone>] — wave, optionally at someone or something",
+    )
+    def wave_command(noun: str | None, ctx: GameContext) -> None:
+        target = _resolve_emote_target(noun, ctx)
+        if target is None:
+            ctx.say("You wave.")
+            ctx.tell_room(f"{ctx.player.username} waves.")
+        else:
+            ctx.say(f"You wave at {target}.")
+            ctx.tell_room(f"{ctx.player.username} waves at {target}.")
+
+    @registry.register(
+        "point",
+        scope=CommandScope.SOCIAL,
+        help="point at <someone/something> — point at a target",
+    )
+    def point_command(noun: str | None, ctx: GameContext) -> None:
+        target = _resolve_emote_target(noun, ctx)
+        if target is None:
+            ctx.say("Point at what?", MessageType.WARNING)
+            return
+        ctx.say(f"You point at {target}.")
+        ctx.tell_room(f"{ctx.player.username} points at {target}.")
 
     @registry.register(
         "bye",
