@@ -4,7 +4,27 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-## [0.87.0] - 2026-07-11
+## [0.88.0] - 2026-07-11
+
+### Added
+
+- **Phase 3 world content — Flavor / Lore NPCs (roadmap_world.md P3.3).** 13 new questless
+  atmosphere NPCs (world 13 -> 26 NPCs), each with a unique minimal dialogue tree, spread across
+  all four zones:
+  - **Cogsworth undercity:** `vagrant_pike` (`sewer_junction_main`), `vagrant_needle`
+    (`sewer_tunnel_west`) — buried-city history and foundry rumor.
+  - **Cogsworth Academy:** `scholar_finch`, `scholar_dabble` (`academy_courtyard`) — archive-
+    robbery gossip and thesis panic.
+  - **Port Veridian:** `sailor_bright`, `sailor_gull` (`maritime_tavern`) — sea tales and a
+    seasick first voyage.
+  - **Whisperwood Fey:** `fey_wisp`, `fey_gloam` (`mushroom_circle`), `fey_thornkin`
+    (`monolith_grove`) — cryptic warnings about the rings and stones.
+  - **Whisperwood caves:** `skeleton_keeper` (`bone_chamber`) — pure atmosphere; an `encounter`
+    trigger and a single silent-pass dialogue node, no true conversation.
+  - **Whisperwood Canopy City:** `weaver_thistle` (`weaver_platform`), `elder_oakwhisper`
+    (`elder_tree_hub`), `healer_moss` (`healer_nest`) — artisan, steward, and healer color.
+  - All flavor NPCs are `behavior: passive`, placed in existing reachable rooms; `world_cli
+    validate` clean; reachability + tier-boundary green.
 
 ### Added
 

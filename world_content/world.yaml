@@ -6014,6 +6014,361 @@ dialogue_trees:
             side_effects:
               end_dialogue: true
 
+  # --- P3.3 Flavor / Lore NPCs (no quests, just color) ---
+
+  # Cogsworth undercity — vagrants who trade in old city history
+  - id: vagrant_pike_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A gaunt man huddled in a nest of stolen sacking looks up, eyes bright in
+          the grate-light. "Careful where you tread, friend. These tunnels were
+          streets once, before the city grew a floor over its own head. Whole
+          districts down here, if you know the old ways."
+        side_effects: {}
+        choices:
+          - label: What districts?
+            next_node: old_city
+          - label: Mind yourself.
+            side_effects:
+              end_dialogue: true
+      old_city:
+        text: >-
+          "Lamp-Row. Tanner's Fall. The Cistern Market, where they sold light in
+          jars." He taps a rusted grate fondly. "All of it paved over when the
+          steam-works came. The city forgets. We don't—we live in what it forgot."
+        side_effects: {}
+        choices:
+          - label: A strange inheritance. Farewell.
+            side_effects:
+              end_dialogue: true
+
+  - id: vagrant_needle_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A wiry woman sorting salvaged copper by lantern-light doesn't stop
+          working as she speaks. "You hear that? Steam in the old pipes. They say
+          it's just pressure. I say the foundry never truly went cold—something
+          down deep still stokes it."
+        side_effects: {}
+        choices:
+          - label: You believe that?
+            next_node: foundry_tale
+          - label: Just passing.
+            side_effects:
+              end_dialogue: true
+      foundry_tale:
+        text: >-
+          "I believe what keeps me warm on a wet night, and those pipes never
+          chill." She finally looks up. "Go down far enough and the dark gets a
+          heartbeat. Most folk turn back before they hear it. Wiser ones don't go
+          at all."
+        side_effects: {}
+        choices:
+          - label: I'll bear that in mind.
+            side_effects:
+              end_dialogue: true
+
+  # Cogsworth Academy — courtyard scholars trading gossip
+  - id: scholar_finch_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A young scholar with ink on her collar leans conspiratorially close.
+          "You didn't hear it from me, but they say the Headmaster hasn't slept
+          since the archive was ransacked. Half the faculty thinks it was an
+          inside job. The other half won't say what they think at all."
+        side_effects: {}
+        choices:
+          - label: Who would rob an archive?
+            next_node: gossip
+          - label: I'll not repeat it.
+            side_effects:
+              end_dialogue: true
+      gossip:
+        text: >-
+          "Someone who wanted a thing found, not stolen—why else scatter the
+          index and leave the shelves? That's my theory." She straightens quickly.
+          "But I'm a first-year. Nobody listens to first-years. More's the pity."
+        side_effects: {}
+        choices:
+          - label: I'm listening. Thank you.
+            side_effects:
+              end_dialogue: true
+
+  - id: scholar_dabble_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A stout, breathless student clutches a stack of lecture notes to his
+          chest. "Aetheric Resonance at the third bell, and I've read none of it.
+          Don't suppose you understand harmonic decay? No? Neither do I, and I've
+          a thesis due on it."
+        side_effects: {}
+        choices:
+          - label: Good luck with the thesis.
+            next_node: cheer
+          - label: Best get reading, then.
+            side_effects:
+              end_dialogue: true
+      cheer:
+        text: >-
+          "Luck! Ha. In this place luck is what we call it when the maths finally
+          agree with you." He manages a wan grin. "If you see Professor Aldwin,
+          tell him I'm coming for the reagents I'm owed. He'll know."
+        side_effects: {}
+        choices:
+          - label: I'll pass it along.
+            side_effects:
+              end_dialogue: true
+
+  # Port Veridian — tavern sailors spinning sea stories
+  - id: sailor_bright_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A ruddy old sailor with a gull feather in his cap raises his tankard.
+          "Sit, sit. I've sailed the coast forty years and I'll tell you true—the
+          sea keeps its own ledger, and it always collects. Ask any man who's
+          rounded the breakwater in a blow."
+        side_effects: {}
+        choices:
+          - label: What's the strangest thing you've seen?
+            next_node: sea_tale
+          - label: Enjoy your drink.
+            side_effects:
+              end_dialogue: true
+      sea_tale:
+        text: >-
+          "Lights under the water off the old port, moving against the current.
+          Whole crew saw 'em. We didn't drop anchor that night, and we didn't
+          speak of it neither—till now, and only 'cause you're buying. You are
+          buying, aren't you?"
+        side_effects: {}
+        choices:
+          - label: Next round's on me. Thanks for the tale.
+            side_effects:
+              end_dialogue: true
+
+  - id: sailor_gull_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A young deckhand nurses a chowder in the corner, still green around the
+          gills. "First real voyage last week. They didn't tell me the horizon
+          moves. Thought I had my sea-legs. Turns out I'd only borrowed them."
+        side_effects: {}
+        choices:
+          - label: It gets easier.
+            next_node: reassure
+          - label: Rest up, sailor.
+            side_effects:
+              end_dialogue: true
+      reassure:
+        text: >-
+          "That's what Sal keeps saying. Then he laughs." He manages a smile.
+          "Still—I'd not trade it. There's a moment at dawn watch, sea flat as
+          glass and pink as the inside of a shell, makes the whole green misery
+          worth it."
+        side_effects: {}
+        choices:
+          - label: Fair winds to you.
+            side_effects:
+              end_dialogue: true
+
+  # Whisperwood — Fey creatures, cryptic and green
+  - id: fey_wisp_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A pale mote of light hovers at eye height, resolving, when you squint,
+          into a tiny winged figure. Its voice is the sound of dew dropping from a
+          leaf. "Lost-thing, found-thing, walking-thing. You wear your name on the
+          outside. How very loud of you."
+        side_effects: {}
+        choices:
+          - label: Do you have a name?
+            next_node: riddle
+          - label: I'll leave you be.
+            side_effects:
+              end_dialogue: true
+      riddle:
+        text: >-
+          "I have seven, and none, and one I only whisper to the moss." It spirals
+          once around your head. "Give the rings a wide berth at moonrise, loud-one.
+          What dances there does not always let its dancers leave."
+        side_effects: {}
+        choices:
+          - label: I'll remember that.
+            side_effects:
+              end_dialogue: true
+
+  - id: fey_thornkin_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Something the shape of a child made of bark and bramble crouches atop a
+          standing stone, regarding you with eyes like two black sloe-berries. "You
+          touch the stones with your looking. They feel it, you know. They have
+          felt every looker since the ice."
+        side_effects: {}
+        choices:
+          - label: What are the stones?
+            next_node: stone_lore
+          - label: I meant no harm.
+            side_effects:
+              end_dialogue: true
+      stone_lore:
+        text: >-
+          "Doors. Fences. Teeth. Depends which way you're walking." It bares a
+          mouthful of thorns in something that might be a smile. "One remembers a
+          rubbing taken, long ago. It has been waiting to be read back. Mind you
+          don't wake what the reading wakes."
+        side_effects: {}
+        choices:
+          - label: I'll tread carefully.
+            side_effects:
+              end_dialogue: true
+
+  - id: fey_gloam_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          In the hush of the mushroom ring, a long-limbed shadow uncurls from
+          beneath a toadstool cap, more suggestion than shape. "Twilight-walker.
+          You are early, or late, or both. Time pools strangely in the rings.
+          Mind you drink none of it."
+        side_effects: {}
+        choices:
+          - label: How would I drink time?
+            next_node: warning
+          - label: I'll keep to the path.
+            side_effects:
+              end_dialogue: true
+      warning:
+        text: >-
+          "Eat the pale caps and an hour becomes a hundred years, and the forest
+          keeps the difference. Many a merry dancer we have here who came in for
+          one song." The shadow settles. "Go home while home still knows your
+          face, walker."
+        side_effects: {}
+        choices:
+          - label: Sound advice. Farewell.
+            side_effects:
+              end_dialogue: true
+
+  # Whisperwood caves — the Skeleton Keeper (pure atmosphere, no true conversation)
+  - id: skeleton_keeper_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Propped against the far wall of the bone chamber sits a skeleton in the
+          rotted remains of a warden's coat, a rusted lantern hooked on one
+          finger-bone. It does not move. It does not speak. And yet you cannot
+          shake the certainty that it is, somehow, keeping watch—and has counted
+          you as you entered.
+        side_effects: {}
+        choices:
+          - label: Bow your head and pass in silence.
+            side_effects:
+              end_dialogue: true
+
+  # Whisperwood Canopy City — artisan, steward, and healer color
+  - id: weaver_thistle_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A slight woman sits at a loom strung between two living branches, her
+          fingers never pausing. "Welcome to the high boughs. I weave the wind's
+          patterns—see how the cloth shifts? Half my art is thread, half is
+          knowing which way the canopy will sway."
+        side_effects: {}
+        choices:
+          - label: What do you make?
+            next_node: craft
+          - label: It's beautiful work.
+            side_effects:
+              end_dialogue: true
+      craft:
+        text: >-
+          "Cloaks that shed the mist, bridge-ropes that sing before they fray to
+          warn you, blankets for the cold that lives up here at night." She ties
+          off a thread with her teeth. "Everything a bough-dweller needs, and
+          nothing that doesn't belong to the trees."
+        side_effects: {}
+        choices:
+          - label: A fine trade. Farewell.
+            side_effects:
+              end_dialogue: true
+
+  - id: elder_oakwhisper_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          An ancient figure sits in the hollow of the great elder-tree, bark and
+          skin grown nearly indistinguishable with the years. "Down-walker. Few
+          climb to the high hollow. The trees told me you were coming before the
+          rope-bridge did. Sit, if you like. I have all the time the roots do."
+        side_effects: {}
+        choices:
+          - label: How long have you lived here?
+            next_node: steward_lore
+          - label: I won't keep you, Elder.
+            side_effects:
+              end_dialogue: true
+      steward_lore:
+        text: >-
+          "Long enough to have planted the bridge you crossed as a seed. The
+          canopy is not built, down-walker—it is grown, and tended, and asked
+          permission of. Remember that below, where your people build first and
+          ask never."
+        side_effects: {}
+        choices:
+          - label: I'll remember. Thank you, Elder.
+            side_effects:
+              end_dialogue: true
+
+  - id: healer_moss_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A calm, moss-cloaked woman grinds herbs in a bowl carved from a burl,
+          her hut fragrant with drying leaves. "Come in, come in—mind the low
+          branch. You've the look of someone who's walked farther than they've
+          rested. The forest has a cure for that, if you'll let it."
+        side_effects: {}
+        choices:
+          - label: What do you brew?
+            next_node: remedies
+          - label: Just resting my feet.
+            side_effects:
+              end_dialogue: true
+      remedies:
+        text: >-
+          "Salves for the trail-sore, tonics for the fevered, a tea that quiets
+          bad dreams." She taps the burl-bowl. "All of it grown within a day's
+          walk. Silverleaf and moonspore, mostly—the same the city professors pay
+          a fortune for and can't grow half so well."
+        side_effects: {}
+        choices:
+          - label: The forest provides. Thank you.
+            side_effects:
+              end_dialogue: true
+
 npcs:
   - id: innkeeper
     name: Mira the Innkeeper
@@ -6447,6 +6802,157 @@ npcs:
       - on: encounter
         do:
           - narrate_room: "Sage looks up from her mending, taking your measure in a single glance."
+
+  # -------------------------------------------------------------------------
+  # P3.3 — Flavor / Lore NPCs (no quests, unique color, spread across 4 zones)
+  # -------------------------------------------------------------------------
+
+  - id: vagrant_pike
+    name: Pike the Tunnel-Dweller
+    description: >-
+      A gaunt man wrapped in layers of stolen sacking, his face lit sharp by the
+      grate-light. He speaks of the buried city as if it were still bustling, and
+      knows every forgotten door in the undercity.
+    home_room_id: sewer_junction_main
+    current_room_id: sewer_junction_main
+    dialogue_tree_id: vagrant_pike_dialogue
+    behavior: passive
+
+  - id: vagrant_needle
+    name: Needle
+    description: >-
+      A wiry woman forever sorting salvaged copper by lantern-light, quick-fingered
+      and quicker-eyed. She swears the deep foundry never truly went cold and warms
+      her hands at pipes that ought to be chill.
+    home_room_id: sewer_tunnel_west
+    current_room_id: sewer_tunnel_west
+    dialogue_tree_id: vagrant_needle_dialogue
+    behavior: passive
+
+  - id: scholar_finch
+    name: Scholar Finch
+    description: >-
+      A young academic with ink permanently smudged along her collar and an
+      insatiable appetite for faculty gossip. She has a theory about the archive
+      robbery and no one senior enough to take it seriously.
+    home_room_id: academy_courtyard
+    current_room_id: academy_courtyard
+    dialogue_tree_id: scholar_finch_dialogue
+    behavior: passive
+
+  - id: scholar_dabble
+    name: Student Dabble
+    description: >-
+      A stout, perpetually breathless student buried under a landslide of lecture
+      notes. He is always late, always unread, and always somehow cheerful about
+      his impending academic doom.
+    home_room_id: academy_courtyard
+    current_room_id: academy_courtyard
+    dialogue_tree_id: scholar_dabble_dialogue
+    behavior: passive
+
+  - id: sailor_bright
+    name: Old Bright
+    description: >-
+      A ruddy, weather-cured sailor with a gull feather in his cap and forty years
+      of coast in his squint. His stories cost a round of drinks and are worth at
+      least half of it.
+    home_room_id: maritime_tavern
+    current_room_id: maritime_tavern
+    dialogue_tree_id: sailor_bright_dialogue
+    behavior: passive
+
+  - id: sailor_gull
+    name: Young Gull
+    description: >-
+      A green-gilled deckhand fresh off his first real voyage, still startled that
+      the horizon moves. Seasick, homesick, and quietly, stubbornly in love with
+      the sea anyway.
+    home_room_id: maritime_tavern
+    current_room_id: maritime_tavern
+    dialogue_tree_id: sailor_gull_dialogue
+    behavior: passive
+
+  - id: fey_wisp
+    name: A Drifting Wisp
+    description: >-
+      A pale mote of light that resolves, when you squint, into a tiny winged
+      figure. It speaks in the sound of dew dropping from a leaf and finds your
+      solidity faintly rude.
+    home_room_id: mushroom_circle
+    current_room_id: mushroom_circle
+    dialogue_tree_id: fey_wisp_dialogue
+    behavior: passive
+
+  - id: fey_thornkin
+    name: A Thornkin
+    description: >-
+      Something the shape of a child made of bark and bramble, perched atop a
+      standing stone. Its sloe-black eyes hold the patience of things that have
+      watched since the ice withdrew.
+    home_room_id: monolith_grove
+    current_room_id: monolith_grove
+    dialogue_tree_id: fey_thornkin_dialogue
+    behavior: passive
+
+  - id: fey_gloam
+    name: A Gloaming Shade
+    description: >-
+      A long-limbed shadow that uncurls from beneath a toadstool cap, more
+      suggestion than shape. It counts the hours in a currency you would be unwise
+      to spend.
+    home_room_id: mushroom_circle
+    current_room_id: mushroom_circle
+    dialogue_tree_id: fey_gloam_dialogue
+    behavior: passive
+
+  - id: skeleton_keeper
+    name: The Skeleton Keeper
+    description: >-
+      A skeleton in the rotted remains of a warden's coat, propped against the
+      chamber wall with a rusted lantern hooked on one finger-bone. It never moves
+      and never speaks—yet you are certain it keeps watch, and has counted you.
+    home_room_id: bone_chamber
+    current_room_id: bone_chamber
+    dialogue_tree_id: skeleton_keeper_dialogue
+    behavior: passive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "The Skeleton Keeper does not stir, and yet the empty sockets seem to follow you across the chamber."
+
+  - id: weaver_thistle
+    name: Weaver Thistle
+    description: >-
+      A slight woman at a loom strung between two living branches, her fingers
+      never pausing. Half her art is thread and half is knowing which way the
+      canopy will sway.
+    home_room_id: weaver_platform
+    current_room_id: weaver_platform
+    dialogue_tree_id: weaver_thistle_dialogue
+    behavior: passive
+
+  - id: elder_oakwhisper
+    name: Elder Oakwhisper
+    description: >-
+      An ancient figure seated in the hollow of the great elder-tree, bark and
+      skin grown nearly indistinguishable with the years. The trees announce
+      visitors to Oakwhisper before the rope-bridges do.
+    home_room_id: elder_tree_hub
+    current_room_id: elder_tree_hub
+    dialogue_tree_id: elder_oakwhisper_dialogue
+    behavior: passive
+
+  - id: healer_moss
+    name: Healer Moss
+    description: >-
+      A calm, moss-cloaked woman grinding herbs in a burl-carved bowl, her hut
+      fragrant with drying leaves. She grows within a day's walk what the city
+      professors pay a fortune to import.
+    home_room_id: healer_nest
+    current_room_id: healer_nest
+    dialogue_tree_id: healer_moss_dialogue
+    behavior: passive
 
 economy:
   regions:

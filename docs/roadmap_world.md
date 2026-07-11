@@ -414,12 +414,14 @@ Build NPC variety; add dialogue, quests, and flavor.
 
 **Test:** Accept quest; complete objective (travel to location, collect item, etc.); turn in; receive reward.
 
-#### P3.3 — Flavor/Lore NPCs (10+)
-- [ ] Vagrants in sewers (tell city history)
-- [ ] Scholars in academy courtyard (gossip)
-- [ ] Sailors in tavern (sea stories)
-- [ ] Fey creatures in forest (cryptic remarks)
-- [ ] Lighthouse Keeper (weather observations)
+#### P3.3 — Flavor/Lore NPCs (10+) ✅ (2026-07-11, v0.88.0) — 13 new
+- [x] Vagrants in sewers (tell city history) — `vagrant_pike`, `vagrant_needle`
+- [x] Scholars in academy courtyard (gossip) — `scholar_finch`, `scholar_dabble`
+- [x] Sailors in tavern (sea stories) — `sailor_bright`, `sailor_gull`
+- [x] Fey creatures in forest (cryptic remarks) — `fey_wisp`, `fey_gloam`, `fey_thornkin`
+- [x] Skeleton Keeper in bone chamber (pure atmosphere, silent) — `skeleton_keeper`
+- [x] Canopy City color (artisan/steward/healer) — `weaver_thistle`, `elder_oakwhisper`, `healer_moss`
+- [x] Lighthouse Keeper (weather observations) — already present (Phase 1) with navigation lore + now a scouting quest (P3.2)
 
 **For each:** 2–3 unique lines, no quest, just color. Verify they appear/disappear as expected.
 
