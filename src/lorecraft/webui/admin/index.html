@@ -106,6 +106,12 @@
     #world-layout { display: flex; gap: 1rem; min-height: 0; flex: 1; }
     #world-layout .room-list { flex: 1; min-height: 0; overflow: auto; }
     #room-editor-panel { width: 320px; flex-shrink: 0; display: none; overflow: auto; }
+    #world-danger-zone {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+      background: #2a0000; border: 1px solid var(--danger); border-radius: 4px;
+      padding: 0.5rem 0.75rem; margin: 0.5rem 0;
+    }
+    #w-reseed-status { font-size: 0.8rem; min-height: 1.2em; margin-bottom: 0.25rem; }
     #room-editor-panel .field { margin-bottom: 0.6rem; }
     #room-editor-panel label { display: block; color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.25rem; }
 
@@ -303,6 +309,14 @@
             <button onclick="loadRooms()">↻ Refresh</button>
           </div>
         </div>
+        <div id="world-danger-zone">
+          <div>
+            <strong style="color:var(--danger);">Danger zone</strong>
+            <span style="color:var(--text-dim);font-size:0.8rem;"> — wipes all rooms, items, NPCs, and quests, then reseeds from <code>world.yaml</code>. Irreversible.</span>
+          </div>
+          <button id="w-reseed-btn" class="danger" onclick="reseedWorld()">↻ Wipe &amp; reseed from world.yaml</button>
+        </div>
+        <div id="w-reseed-status" role="status" aria-live="polite"></div>
         <div id="world-layout">
           <div class="room-list panel">
             <table>
@@ -556,9 +570,25 @@
 const state = {
   accessToken: sessionStorage.getItem("lc_admin_token") || "",
   username:    sessionStorage.getItem("lc_admin_user")  || "",
+  role:        decodeJwtRole(sessionStorage.getItem("lc_admin_token") || ""),
   editingRoom: null,
   ws: null,
 };
+
+// Admin JWTs are not encrypted, just signed — the role claim is readable
+// client-side without the secret. This is a UI convenience only (hide/disable
+// role-gated controls so a lesser role doesn't hit a silent 403); the server
+// re-checks the role on every request regardless (see webui/admin/auth.py).
+function decodeJwtRole(token) {
+  if (!token) return "";
+  try {
+    const payload = token.split(".")[1];
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json).role || "";
+  } catch (_) {
+    return "";
+  }
+}
 
 // ────────────────────────────────────────
 // Auth
@@ -587,6 +617,7 @@ async function doLogin() {
     }
     state.accessToken = resp.access_token;
     state.username = u;
+    state.role = decodeJwtRole(resp.access_token);
     sessionStorage.setItem("lc_admin_token", resp.access_token);
     sessionStorage.setItem("lc_admin_user", u);
     showAdmin();
@@ -610,6 +641,7 @@ function logout() {
   sessionStorage.removeItem("lc_admin_token");
   sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
+  state.role = "";
   if (state.ws) { state.ws.close(); state.ws = null; }
   showLoginScreen();
 }
@@ -626,6 +658,7 @@ function sessionExpired() {
   sessionStorage.removeItem("lc_admin_token");
   sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
+  state.role = "";
   if (state.ws) { state.ws.close(); state.ws = null; }
   showLoginScreen();
   document.getElementById("l-error").textContent =
@@ -636,6 +669,7 @@ function showAdmin() {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("admin-screen").style.display  = "flex";
   document.getElementById("admin-user-label").textContent = state.username;
+  updateWorldDangerZoneUI();
   loadDashboard();
   connectAdminWs();
 }
@@ -1007,9 +1041,58 @@ async function showCrashDetail(id) {
 let allRooms = [];
 
 async function loadRooms() {
+  updateWorldDangerZoneUI();
   const rooms = await api("GET", "/admin/world/rooms");
   allRooms = Array.isArray(rooms) ? rooms : [];
   renderRooms();
+}
+
+// Reseed is superadmin-only server-side (Superadmin dependency in
+// admin/routers/world.py); mirror that here so a lesser role sees a disabled,
+// clearly-labeled button instead of firing the request and hitting a 403.
+function updateWorldDangerZoneUI() {
+  const btn = document.getElementById("w-reseed-btn");
+  if (!btn) return;
+  const isSuperadmin = state.role === "superadmin";
+  btn.disabled = !isSuperadmin;
+  btn.title = isSuperadmin
+    ? "Wipe all rooms, items, NPCs, and quests and reseed from world.yaml. Irreversible."
+    : "Requires superadmin role";
+}
+
+async function reseedWorld() {
+  if (state.role !== "superadmin") return; // belt-and-braces; button is disabled for this role
+  const confirmed = confirm(
+    "This will PERMANENTLY WIPE all rooms, items, NPCs, and quests in the database " +
+    "and reseed everything from world.yaml. Players in a deleted room will be relocated " +
+    "to the configured start room. This cannot be undone.\n\nProceed?"
+  );
+  if (!confirmed) return;
+
+  const statusEl = document.getElementById("w-reseed-status");
+  const btn = document.getElementById("w-reseed-btn");
+  btn.disabled = true;
+  statusEl.style.color = "var(--text-dim)";
+  statusEl.textContent = "Reseeding world from world.yaml…";
+  try {
+    const result = await api("POST", "/admin/world/reseed");
+    if (result && result.status === "reseeded") {
+      statusEl.style.color = "var(--phosphor)";
+      statusEl.textContent =
+        `Reseeded: ${result.rooms} rooms, ${result.items} items, ${result.room_items} room-items, ` +
+        `${result.npcs} NPCs, ${result.quests} quests. ${result.relocated_players} player(s) relocated.`;
+      loadRooms();
+    } else if (result && result.detail) {
+      // 422 (invalid world.yaml) or 404 (missing file) — both leave the DB untouched.
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = `Reseed failed — nothing was touched: ${result.detail}`;
+    } else {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = "Reseed failed: unexpected response from server.";
+    }
+  } finally {
+    updateWorldDangerZoneUI();
+  }
 }
 
 function renderRooms() {

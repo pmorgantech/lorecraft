@@ -8,10 +8,13 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
-from lorecraft.webui.admin.auth import Observer, WorldBuilder
+from lorecraft.webui.admin.auth import Observer, Superadmin, WorldBuilder
 from lorecraft.models.changeset import ConflictScanResult
 from lorecraft.engine.models.world import Item, NPC, Room
 from lorecraft.engine.repos.meter_repo import MeterRepo
+from lorecraft.world.bootstrap import resolve_world_yaml_path
+from lorecraft.world.reseed import reseed_world_from_yaml
+from lorecraft.world.validator import WorldValidationError
 from lorecraft.world.versioning import VersioningService
 
 router = APIRouter(tags=["admin"])
@@ -19,6 +22,55 @@ router = APIRouter(tags=["admin"])
 
 def _state(request: Request) -> Any:
     return request.app.state.lorecraft
+
+
+# ---------------------------------------------------------------------------
+# Destructive ops: full DB wipe + reseed from world.yaml (Sprint 72.2)
+# ---------------------------------------------------------------------------
+
+
+class _ReseedResponse(BaseModel):
+    status: str
+    rooms: int
+    items: int
+    room_items: int
+    npcs: int
+    quests: int
+    relocated_players: int
+
+
+@router.post("/world/reseed")
+async def reseed_world(request: Request, _: Superadmin) -> _ReseedResponse:
+    """Wipe all authored world content and reseed it from `world.yaml`.
+
+    Destructive and superadmin-gated. The YAML is validated *before* anything is
+    deleted, so a malformed `world.yaml` returns 422 and leaves the DB untouched
+    rather than half-applying. Players stranded in a now-deleted room are moved
+    to the configured seed start room (see `reseed_world_from_yaml`).
+    """
+    state = _state(request)
+    world_path = resolve_world_yaml_path(state.settings.world_yaml_path)
+    if not world_path.is_file():
+        raise HTTPException(
+            status_code=404, detail=f"World YAML not found: {world_path}"
+        )
+    try:
+        result = reseed_world_from_yaml(
+            state.game_engine, world_path, settings=state.settings
+        )
+    except WorldValidationError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"world.yaml is invalid: {exc}"
+        ) from exc
+    return _ReseedResponse(
+        status="reseeded",
+        rooms=result.rooms,
+        items=result.items,
+        room_items=result.room_items,
+        npcs=result.npcs,
+        quests=result.quests,
+        relocated_players=result.relocated_players,
+    )
 
 
 # ---------------------------------------------------------------------------
