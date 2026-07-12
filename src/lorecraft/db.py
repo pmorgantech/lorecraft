@@ -7,12 +7,14 @@ not Tier 1 engine infra, so ``test_tier_boundaries.py`` does not gate it. The
 scanner mechanism is *Tier-1 in character* — opinion-free reflection that knows
 only *how* to diff-and-``ALTER``, never *what* a column means for any feature.
 
-The one caveat is the ``_ROOM_AREA_ID_TO_ZONE`` fold-map used by the Sprint 71.2
-``room.area_id`` data migration: it embeds Sprint 71.2 world-content literals
-directly here. That is accepted as a **bounded, self-clearing, one-shot
-historical migration constant** (it transforms *past* data to a *known* target
-state — it is not runtime branching on room IDs) and is a deliberate, documented
-exception, not clean Tier 1. Once ``area_id`` is dropped it becomes dead code.
+The one caveat is the two fold-maps (``_ROOM_AREA_ID_TO_ZONE`` /
+``_REGIONPRICING_AREA_ID_TO_ZONE``) used by the Sprint 71.2 ``area_id`` data
+migrations: they embed Sprint 71.2 world-content literals directly here. That is
+accepted as a **bounded, self-clearing, one-shot historical migration constant**
+(it transforms *past* data to a *known* target state — it is not runtime
+branching on room IDs) and is a deliberate, documented exception, not clean
+Tier 1. Once ``area_id`` is dropped (room) and the ``regionpricing`` table
+rebuilt, both fold-maps become dead code.
 """
 
 from __future__ import annotations
@@ -139,6 +141,9 @@ _ROOM_TYPE_DERIVABLE_AREA_IDS: frozenset[str] = frozenset(
     {"town", "wilderness", "cave"}
 )
 
+# RegionPricing shares the same geographic fold as rooms.
+_REGIONPRICING_AREA_ID_TO_ZONE: Mapping[str, str] = _ROOM_AREA_ID_TO_ZONE
+
 
 def database_url(database_path_or_url: str) -> str:
     if database_path_or_url == ":memory:":
@@ -249,6 +254,9 @@ def create_game_tables(engine: Engine) -> None:
     # additive pass, which will already have added room.zone / room.room_type as
     # empty nullable columns to fold the legacy area_id into.
     _migrate_room_area_id(engine)
+    # RegionPricing area_id(PK) → zone(PK) table-rebuild (Sprint 75.4). A PK
+    # rename can't go through ALTER, so it needs a full rebuild of its own.
+    _migrate_regionpricing_area_id(engine)
 
 
 def create_audit_tables(engine: Engine) -> None:
@@ -454,3 +462,73 @@ def _migrate_room_area_id(engine: Engine) -> None:
         # DB-only-column warning does not fire on every startup forever.
         connection.execute(text("ALTER TABLE room DROP COLUMN area_id"))
     logger.info("room-migration: folded area_id → zone/room_type and dropped area_id")
+
+
+def _migrate_regionpricing_area_id(engine: Engine) -> None:
+    """Rebuild ``regionpricing`` from ``area_id`` PK to ``zone`` PK (Sprint 75.4).
+
+    ``zone`` is the PRIMARY KEY, so neither ``ADD COLUMN … PRIMARY KEY`` nor
+    ``DROP COLUMN area_id`` is possible in SQLite — this needs the classic
+    table-rebuild. Guarded on the live table still carrying an ``area_id`` column
+    (a no-op on a fresh / already-migrated DB).
+
+    The fold collapses Ashmoore's three source rows onto one ``zone='ashmoore'``
+    PK, so grouping on the *folded* value is mandatory. Per OPEN ITEM B, the
+    collapsed ``ashmoore`` row's ``region_mult`` is forced to ``1.0`` explicitly
+    (matching §71.2's decision — Ashmoore's only shop is a ``town``/1.0 room, and
+    the ``wilderness``/``cave`` multipliers were inert) rather than trusting an
+    arbitrary aggregate row-pick. Rebuild-with-fold (OPEN ITEM C) keeps prices
+    correct on an in-place legacy upgrade with no reseed.
+    """
+    if engine.dialect.name != "sqlite":
+        return
+
+    inspector = inspect(engine)
+    if "regionpricing" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("regionpricing")}
+    if "area_id" not in columns:
+        return  # already zone-keyed (fresh or already-migrated)
+
+    with engine.begin() as connection:
+        rows = connection.execute(
+            text("SELECT area_id, region_mult, bias FROM regionpricing")
+        ).all()
+
+        # zone -> (region_mult, bias_json). Fold in Python so the Ashmoore
+        # region_mult can be forced to 1.0 deterministically (OPEN ITEM B) and
+        # the collapsed bias is chosen deterministically (prefer the `town`
+        # source row — Ashmoore's only shop — else first-seen).
+        folded: dict[str, tuple[float, str]] = {}
+        for area_id, region_mult, bias in rows:
+            zone = _REGIONPRICING_AREA_ID_TO_ZONE.get(area_id, area_id)
+            bias_json = bias if bias is not None else "{}"
+            if zone == "ashmoore":
+                if zone not in folded or area_id == "town":
+                    folded[zone] = (1.0, bias_json)
+            else:
+                folded[zone] = (float(region_mult), bias_json)
+
+        connection.execute(
+            text(
+                "CREATE TABLE regionpricing_new ("
+                "zone VARCHAR NOT NULL PRIMARY KEY, "
+                "region_mult FLOAT NOT NULL DEFAULT 1.0, "
+                "bias JSON NOT NULL DEFAULT '{}')"
+            )
+        )
+        for zone, (region_mult, bias_json) in folded.items():
+            connection.execute(
+                text(
+                    "INSERT INTO regionpricing_new (zone, region_mult, bias) "
+                    "VALUES (:zone, :region_mult, :bias)"
+                ),
+                {"zone": zone, "region_mult": region_mult, "bias": bias_json},
+            )
+        connection.execute(text("DROP TABLE regionpricing"))
+        connection.execute(
+            text("ALTER TABLE regionpricing_new RENAME TO regionpricing")
+        )
+    logger.info(
+        "regionpricing-migration: rebuilt with zone PK (%d zone rows)", len(folded)
+    )
