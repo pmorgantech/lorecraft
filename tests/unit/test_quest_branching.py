@@ -10,7 +10,7 @@ from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.features.quests.models import Quest
 from lorecraft.engine.models.world import Room, WorldClock
 from lorecraft.features.npc.dialogue import _start_quest
@@ -143,6 +143,7 @@ def _seed_branching_quest(session: Session, *, visited_rooms: list[str]) -> Play
     session.add(_branching_quest())
     player = _player(visited_rooms=visited_rooms)
     session.add(player)
+    session.add(PlayerStats(player_id="p1", level=1, xp=0, xp_to_next=100))
     return player
 
 

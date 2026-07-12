@@ -16,20 +16,16 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
+from lorecraft.features.progression.rewards import apply_rewards
 from lorecraft.features.quests import conditions as quest_conditions
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
-from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
     from lorecraft.features.quests.models import PlayerQuestProgress, Quest
-
-
-def _carries(ctx: "GameContext", item_id: str) -> bool:
-    return ctx.stack_repo.quantity_of(Location("player", ctx.player.id), item_id) > 0
 
 
 def _current_epoch(ctx: "GameContext") -> float:
@@ -193,11 +189,22 @@ class QuestService:
         return quest_conditions.get_registry().evaluate_all(conditions, ctx)
 
     def _award_rewards(self, rewards: JsonObject, ctx: "GameContext") -> None:
-        for item_id in rewards.get("items") or []:  # type: ignore[union-attr]
-            item = ctx.item_repo.get(str(item_id))
-            if item and not _carries(ctx, str(item_id)):
-                ctx.item_location.spawn(str(item_id), Location("player", ctx.player.id))
+        """Grant a stage's rewards via the Tier 2 interpreter, then narrate.
+
+        The interpreter owns the reward vocabulary and all balance numbers
+        (items/xp/coins/skill_points, config-driven level-up payouts); this only
+        turns the returned `RewardOutcome` into feed lines. Because
+        `_complete_quest` calls this per completed stage, multi-stage quests
+        award incrementally for free — no special-casing here.
+        """
+        outcome = apply_rewards(ctx, rewards)
+        for item_id in outcome.items_spawned:
+            item = ctx.item_repo.get(item_id)
+            if item is not None:
                 ctx.say(f"You receive {item.name}.")
-        xp = rewards.get("xp")
-        if xp:
-            ctx.say(f"You gain {xp} experience.")
+        if outcome.coins_granted:
+            ctx.say(f"You receive {outcome.coins_granted} coins.")
+        if outcome.xp_granted:
+            ctx.say(f"You gain {outcome.xp_granted} experience.")
+        if outcome.level_up is not None and outcome.level_up.leveled_up:
+            ctx.say(f"You reach level {outcome.level_up.new_level}!", MessageType.QUEST)

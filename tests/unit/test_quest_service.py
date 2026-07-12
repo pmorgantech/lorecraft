@@ -10,10 +10,12 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.player import Player, PlayerStats
+from lorecraft.features.progression.models import ProgressionConfig
 from lorecraft.features.quests.models import PlayerQuestProgress, Quest
-from lorecraft.engine.models.world import Room
+from lorecraft.engine.models.world import Item, Room
 from lorecraft.features.npc.dialogue import _start_quest
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
@@ -50,6 +52,7 @@ def _seed(session: Session, *, visited_rooms: list[str] | None = None) -> Player
         visited_rooms=visited_rooms or ["tavern"],
     )
     session.add(player)
+    session.add(PlayerStats(player_id="p1", level=1, xp=0, xp_to_next=100))
     session.add(
         Quest(
             id="q1",
@@ -227,3 +230,61 @@ def test_check_progression_flag_set_condition() -> None:
         session.commit()
 
     assert any("completed" in m for m in ctx.messages)
+
+
+def test_completing_quest_mutates_xp_coins_and_inventory() -> None:
+    # 73.6: quest rewards now flow through the Tier 2 reward interpreter and
+    # actually mutate player state (previously xp was only narrated, not banked).
+    e = _engine()
+    with Session(e) as session:
+        session.add(
+            Room(
+                id="tavern", name="Tavern", description="A warm room.", map_x=0, map_y=0
+            )
+        )
+        session.add(
+            Room(id="square", name="Square", description="Busy.", map_x=1, map_y=0)
+        )
+        player = Player(
+            id="p3",
+            username="hero3",
+            current_room_id="tavern",
+            respawn_room_id="tavern",
+            visited_rooms=["tavern", "square"],
+        )
+        session.add(player)
+        session.add(PlayerStats(player_id="p3", level=1, xp=0, xp_to_next=1000))
+        session.add(Item(id="gem", name="a shining gem", description="It sparkles."))
+        session.add(
+            ProgressionConfig(
+                base=1000, step=0, coins_per_level=25, skill_points_per_level=1
+            )
+        )
+        session.add(
+            Quest(
+                id="q_reward",
+                title="Rich Reward",
+                description="Visit the square.",
+                stages=[
+                    {
+                        "id": "stage1",
+                        "description": "Visit the square.",
+                        "conditions": [{"type": "room_visited", "room_id": "square"}],
+                        "completion_flags": {},
+                        "rewards": {"xp": 40, "coins": 30, "items": ["gem"]},
+                    }
+                ],
+            )
+        )
+        session.commit()
+        ctx = _ctx(session, player)
+        _start_quest("q_reward", ctx)
+        session.commit()
+
+        QuestService().check_progression(Event(GameEvent.PLAYER_MOVED, {}), ctx)
+        session.commit()
+
+        stats = PlayerRepo(session).stats("p3")
+        assert stats is not None and stats.xp == 40
+        assert LedgerService().balance_of(session, "player", "p3") == 30
+        assert StackRepo(session).quantity_of(Location("player", "p3"), "gem") == 1

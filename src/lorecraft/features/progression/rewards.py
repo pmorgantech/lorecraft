@@ -32,8 +32,9 @@ from lorecraft.engine.game.leveling import (
     apply_stat_deltas,
     award_xp,
 )
+from lorecraft.errors import ValidationError
 from lorecraft.features.progression.repo import ProgressionRepo
-from lorecraft.types import JsonObject
+from lorecraft.types import JsonObject, JsonValue
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
@@ -66,9 +67,27 @@ class RewardOutcome:
     level_up: LevelUpResult | None = None
 
 
+def _as_int(value: JsonValue) -> int:
+    """Coerce a reward amount to int, rejecting non-integer config values loudly.
+
+    ``bool`` is excluded even though it subclasses ``int`` — ``coins: true`` is a
+    config typo, not a quantity.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValidationError(
+            f"reward amount must be an integer, got {value!r}",
+            code="validation_reward_amount",
+        )
+    return value
+
+
 def _coins_amount(rewards: JsonObject) -> int:
     """Total coins requested, summing the canonical key and its tolerated alias."""
-    return int(rewards.get(_COINS_KEY) or 0) + int(rewards.get(_MONEY_ALIAS) or 0)
+    total = 0
+    for key in (_COINS_KEY, _MONEY_ALIAS):
+        if key in rewards:
+            total += _as_int(rewards[key])
+    return total
 
 
 def _carries(ctx: GameContext, item_id: str) -> bool:
@@ -97,12 +116,14 @@ def apply_rewards(ctx: GameContext, rewards: JsonObject) -> RewardOutcome:
 
     # items -> Tier 1 spawn. Preserve the prior quest behavior: skip an unknown
     # item id or one the player already carries rather than erroring.
-    for raw_id in rewards.get(_ITEMS_KEY) or []:
-        item_id = str(raw_id)
-        if ctx.item_repo.get(item_id) is None or _carries(ctx, item_id):
-            continue
-        ctx.item_location.spawn(item_id, Location("player", player_id))
-        items_spawned.append(item_id)
+    raw_items = rewards.get(_ITEMS_KEY)
+    if isinstance(raw_items, list):
+        for raw_id in raw_items:
+            item_id = str(raw_id)
+            if ctx.item_repo.get(item_id) is None or _carries(ctx, item_id):
+                continue
+            ctx.item_location.spawn(item_id, Location("player", player_id))
+            items_spawned.append(item_id)
 
     # coins -> Tier 1 ledger.credit (the only sanctioned way coins enter play).
     coins = _coins_amount(rewards)
@@ -115,7 +136,7 @@ def apply_rewards(ctx: GameContext, rewards: JsonObject) -> RewardOutcome:
     # can't hold xp, and a world with no ProgressionConfig has no curve — in the
     # latter case xp is banked without progression, mirroring pre-Sprint-73
     # behavior so an unconfigured world's rewards/discovery don't break.
-    xp_amount = int(rewards.get(_XP_KEY) or 0)
+    xp_amount = _as_int(rewards[_XP_KEY]) if _XP_KEY in rewards else 0
     if xp_amount > 0:
         stats = ctx.player_repo.stats(player_id)
         if stats is not None:
@@ -140,7 +161,7 @@ def apply_rewards(ctx: GameContext, rewards: JsonObject) -> RewardOutcome:
                     _accumulate(stat_deltas_applied, sub.stat_deltas_applied)
 
     # any remaining key -> numeric PlayerStats delta (Tier 1 whitelist validates).
-    deltas = {k: int(v) for k, v in rewards.items() if k not in _SPECIAL_KEYS}
+    deltas = {k: _as_int(v) for k, v in rewards.items() if k not in _SPECIAL_KEYS}
     if deltas:
         stats = ctx.player_repo.stats(player_id)
         if stats is not None:
