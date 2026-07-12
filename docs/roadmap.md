@@ -38,6 +38,8 @@ all of which found the existing 104-room world already correct. See `roadmap_wor
 
 **Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a mechanism/policy split per the 2026-07-12 correction: **Tier 1** provides the generic, data-driven leveling mechanism — detect threshold crossings, apply an arbitrary reward payload to player properties — while **Tier 2 `features/progression/`** owns the opinionated, **admin-tunable** policy of what each level rewards [coins + skill points], plus the unified quest/level-up reward interpreter), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points on a data-driven tree that unlocks abilities in **all three flavors** — active utility verbs like `forage`/`sense`/`pick`, passive modifiers, and interaction/dialogue unlocks; ability-scope fork resolved 2026-07-12). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.6**.
 
+**Also design-complete (2026-07-12): [Sprint 75 — SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration](#sprint-75--sqlite-additive-column-auto-migration--sprint-712-pk-rename-data-migration).** A generic reflection-based scanner to replace the ~14 hand-written `_ensure_sqlite_compat_columns` shims and cover the ~22 currently-unshimmed additive columns, plus deliberate data migrations for the two Sprint 71.2 PK-adjacent renames (`regionpricing.area_id`→`zone`, `room.area_id`→`zone`/`room_type`) that Sprint 71.2 itself never built `db.py` handling for. Foundation-band infrastructure (data-integrity / startup-robustness), not a feature — design-complete does **not** mean built; every 75.x task is still `[ ]`.
+
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
 **scheduler-commit batching (37.1)** + **concurrency/threading gate (38)** — the measured wall was
@@ -642,6 +644,168 @@ in the Sprint 73 design section above; none are changed by the active-verbs deci
 
 ---
 
+## Sprint 75 — SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration
+
+**Goal (design complete, not yet built).** Replace the ~14 hand-written per-column
+`_ensure_sqlite_compat_columns` shims in `db.py` with a generic reflection-based additive-column
+auto-migration scanner covering the ~22 currently-unshimmed additive columns, and add deliberate
+data migrations for the two Sprint 71.2 PK-adjacent renames (`regionpricing.area_id`→`zone`,
+`room.area_id`→`zone`/`room_type`) that Sprint 71.2 itself never touched `db.py` for. This is
+foundation-band infrastructure hardening (data-integrity / startup-robustness) — **not a feature** —
+squarely inside the "foundation before features" mandate. **A design decision being finalized here
+is not the same as it being built:** every task below starts `[ ]` not started; nothing in this
+section has shipped.
+
+| # | Task | Status |
+|---|------|--------|
+| 75.1 | **Generic reflection additive-column scanner in `db.py`.** New `_ensure_additive_columns(engine)` replacing the body of `_ensure_sqlite_compat_columns`: for each model in `GAME_TABLE_MODELS`, diff `model.__table__.columns` against live reflected columns; for each column missing from the live table, `ALTER TABLE … ADD COLUMN` with a type derived from `col.type.compile(dialect=…)` and a **`DEFAULT` derived from the actual pydantic field default** (`model.model_fields[name].default` / `.default_factory`, not a naive type-zero table — this is load-bearing, see design section); **skip + WARNING-log** any missing column that is part of the primary key (SQLite can't `ADD` a PK column via `ALTER` — this is exactly `regionpricing.zone`, handed off to 75.4); for any DB-only column absent from the model, **WARN, never drop/alter** (strictly additive contract; DB-only columns are the rename/drop signal handled deliberately in 75.3/75.4). **Tier 1 in character, composition-layer in placement** (see OPEN ITEM A below). *Success: a legacy DB missing any of the ~22 unshimmed additive columns upgrades cleanly on startup; test-matrix items 1 + 4 + 6 (75.5) green.* — tunable: N/A (schema infra, no game-balance dial). | [ ] |
+| 75.2 | **Delete the 14 hand-written per-column shim blocks** (including the just-landed Sprint 73 `skill_points` shim), subsumed by 75.1 by construction (recommended: subsume, don't run-alongside — two sources of truth for the same fact is the exact "someone forgot to add a shim" bug that motivated this sprint). Retain a regression test asserting the previously-hand-shimmed columns still get added after the hand code is deleted, so the deletion can't silently regress. **Tier 1 in character, composition-layer in placement.** *Success: `db.py`'s compat body is the generic scanner only; previously-shimmed columns still added.* — tunable: N/A. | [ ] |
+| 75.3 | **Room `area_id`→`zone`/`room_type` in-place data migration.** Runs after 75.1 (which will already have added `room.zone`/`room.room_type` as nullable columns, orphaned from `area_id`). `_migrate_room_area_id(engine)`: if the legacy `area_id` column is still present, `UPDATE room SET zone = …` applying the §71.2 fold table **verbatim** (town/wilderness/cave→`ashmoore`; cogsworth/whisperwood/port_veridian→themselves; `old_trade_road`→`cogsworth`, `forest_road`→`whisperwood`, `river_bend`→`port_veridian`); `room_type` is mechanically derivable **only** for the three Ashmoore kinds (`UPDATE room SET room_type = area_id WHERE area_id IN ('town','wilderness','cave') AND room_type IS NULL`) — the other zones' `room_type` was per-room authoring in 71.2b, not derivable, and stays NULL, matching §71.2's stance exactly. **Warranted even though rooms are reseed-derived**, because admin can `POST`/`PUT` rooms (`webui/admin/routers/world.py`), so a legacy DB can hold admin-authored rooms not in `world.yaml` that a reseed will never fix. **Recommend DROP `area_id` after copy** (SQLite 3.45 supports `DROP COLUMN` on this non-PK, non-indexed column) — a lingering half-renamed column is the "half-done seam" AGENTS.md warns against, and leaving it means the 75.1 scanner's DB-only-column WARNING fires on every startup forever; dropping it makes the migration self-clearing and idempotent. Guard the DROP on the column's presence. **Tier 1 in character, composition-layer in placement, with the bounded content-literal caveat (OPEN ITEM A).** *Success: test-matrix item 2 (75.5) green; migration idempotent.* — tunable: N/A. | [ ] |
+| 75.4 | **RegionPricing `area_id`→`zone` PK table-rebuild migration.** `zone` is the PRIMARY KEY, so neither `ADD COLUMN … PRIMARY KEY` nor `DROP COLUMN area_id` is possible in SQLite — requires the classic rebuild, guarded on "does the live `regionpricing` table still have an `area_id` column": (1) `CREATE TABLE regionpricing_new (zone VARCHAR PRIMARY KEY, region_mult FLOAT NOT NULL DEFAULT 1.0, bias JSON NOT NULL DEFAULT '{}')`; (2) `INSERT … SELECT <fold(area_id)>, region_mult, bias FROM regionpricing GROUP BY <fold(area_id)>` — the `GROUP BY` on the folded value is **mandatory** (the fold collapses Ashmoore's three source rows into one `ashmoore` PK and would otherwise raise a PK collision); (3) `DROP TABLE regionpricing; ALTER TABLE regionpricing_new RENAME TO regionpricing`. Resolves **OPEN ITEM B** (force `ashmoore`'s `region_mult` to `1.0` explicitly in the fold, rather than relying on `GROUP BY`'s arbitrary row-pick which could otherwise grab the wilderness/cave multiplier) and **OPEN ITEM C** (rebuild-with-fold vs. drop-and-recreate-empty — recommend rebuild-with-fold; see design section for the full fork). **Tier 1 in character, composition-layer in placement.** *Success: test-matrix item 3 (75.5) green; OPEN ITEMs B and C resolved per the stated recommendations.* — tunable: N/A. | [ ] |
+| 75.5 | **`tests/unit/test_db_migrations.py` — full test matrix.** Against a temp-file SQLite engine (not `:memory:`, so `ALTER`/rebuild round-trips through real reflection): (1) parametrized additive-column upgrade with an explicit hardcoded-default subset (`item.quality → 'common'`, `room.terrain → 'normal'`, JSON `'[]'`/`'{}'` factories, a nullable `NULL` case) to catch the type-zero-vs-field-default bug that pure reflection parity would tautologically hide; (2) Room data round-trip parametrized over the full §71.2 fold table + `area_id` dropped afterward; (3) RegionPricing rebuild round-trip (six legacy rows → four zone-keyed rows, Ashmoore collapsed to `1.0`, `zone` reported as PK by reflection); (4) warn-but-don't-drop for a DB-only column (`caplog`); (5) idempotency (second run issues no `ALTER`/rebuild); (6) non-SQLite dialect early-return guard (preserve existing behavior). **Test.** *Success: `make test` green; the previously-untested `_ensure_*` path is now covered.* — tunable: N/A. | [ ] |
+
+### Sprint 75 design — additive-column scanner, PK-rename migrations & tier placement
+
+> **Provenance.** Research + design 2026-07-12, verified against the `sprint-73-progression` worktree
+> tip (`2dd499b`) in its own venv (SQLAlchemy `2.0.51`, SQLite `3.45.1`). Design-only — nothing in
+> this section is built. Open items are surfaced with a recommendation, not silently decided.
+
+**Precedent.** `src/lorecraft/db.py`'s `_ensure_sqlite_compat_columns` is the existing hand-maintained
+pattern — 14 per-column `if "x" not in cols: ALTER TABLE … ADD COLUMN` blocks. Most recent hand
+example: the Sprint 73 `skill_points` shim (commit `99d3ef9`). Sprint 71.2 (`docs/roadmap.md` §71.2)
+is the canonical `area_id`→`zone` fold table and the Ashmoore economy-collapse rule — but **the
+71.2 commits (`2e9f466`/`7e90bf4`) did not touch `db.py` at all**; 71.2 relied entirely on
+reseed-from-`world.yaml`, shipping **zero** compat/migration handling for that rename. So the (b)
+migrations below are net-new; there is no partial handling to build on or dedup against.
+
+**Fit to roadmap.** Sprint 75 was confirmed free (70–74 all claimed). This is pure foundation-band
+infrastructure hardening (data-integrity / startup-robustness), squarely inside the "foundation
+before features" mandate — not a feature jump-ahead.
+
+**Environment facts (verified in the sprint-73-progression tree's venv).** SQLAlchemy `2.0.51`,
+SQLite `3.45.1`. SQLite 3.45 **supports `ALTER TABLE … DROP COLUMN`** (added in 3.35.0) for plain
+non-PK, non-indexed columns — relevant to the `area_id` disposition in 75.3. It still **cannot**
+`ADD` a PRIMARY KEY column via `ALTER`, nor `DROP` a PK column — relevant to `regionpricing` (75.4).
+
+**Risks.**
+- **Tier-placement framing needed correction** — see OPEN ITEM A below. `db.py` is **not** `engine/`;
+  it lives at `src/lorecraft/db.py` and **already imports `lorecraft.features.*`** (bank, economy,
+  npc, quests, trading, reputation, transit, npc_memory in `GAME_TABLE_MODELS`). It is a
+  **composition-layer** module, not Tier 1 engine infra, so `tests/unit/test_tier_boundaries.py`
+  does not gate it the way it gates `engine/`.
+- **Content values leaking into infra.** The two fold-maps encode world-content-specific literals
+  (`ashmoore`, `cogsworth`, `old_trade_road`, …) inside `db.py`. As a one-shot historical migration
+  constant this is defensible, but it is **not** "no feature-specific opinion" — flagged, not
+  silently accepted (see OPEN ITEM A).
+- **`regionpricing.zone` is a PRIMARY KEY** — the generic scanner cannot and must not touch it; it
+  requires a full table-rebuild migration (75.4), the single hardest piece of this sprint.
+- **Coverage gap.** There is essentially no test coverage for `_ensure_sqlite_compat_columns` today
+  (it grew 14 blocks with no dedicated legacy-DB upgrade test). This sprint closes that gap as a
+  first-class deliverable (75.5), not an afterthought.
+
+**(a) The reflection-based additive-column scanner (75.1–75.2).** Mechanism
+(`_ensure_additive_columns(engine)`): early-return on non-SQLite; for each model in
+`GAME_TABLE_MODELS`, skip tables not yet reflected (brand-new DBs already got the full schema);
+diff `model.__table__.columns` (authoritative names + type + nullable + PK membership) against
+live reflected columns. **`model − live` → ADD**, skipping and WARNING-logging any PK-member column
+(the clean seam handed to 75.4). **Default derivation is load-bearing — derive from the actual
+pydantic field default, not a type-zero table.** Read `model.model_fields[name]`: if `field.default`
+is set, use it; elif `field.default_factory` is not `None`, call it and `json.dumps` (correctly
+distinguishing `'[]'` list factories from `'{}'` dict factories rather than guessing by name); else,
+for a `NOT NULL` column with no declared default, fall back to type-zero. Why it matters:
+`quality: str = "common"` and `terrain: str = "normal"` must emit `DEFAULT 'common'`/`DEFAULT
+'normal'`, not `''` — a naive str→`''` table would silently corrupt these two on every legacy
+upgrade. **`live − model` → WARN, never drop/alter** — the strictly-additive contract; a DB-only
+column is the rename/drop signal (exactly `room.area_id` and legacy `regionpricing.area_id`), out
+of scope for the generic scanner and handled deliberately in 75.3/75.4.
+
+**Decision — subsume, don't run-alongside (recommended, 75.2).** Delete all 14 hand-written blocks
+and let the generic scanner cover them by construction: every current hand entry is a plain
+additive column the scanner expresses exactly, and keeping both is two sources of truth for the same
+fact — the exact recurring "someone forgot to add a shim" bug that spawned this sprint. Retain a
+regression test asserting the previously-hand-shimmed columns still get added after deletion. The
+one thing the scanner must **not** subsume is `regionpricing.zone` (PK) — it never appeared in the
+hand code and belongs to 75.4.
+
+**(b) The two PK-rename data migrations (75.3–75.4).** These run **after** `_ensure_additive_columns`
+(which will already have added `room.zone`/`room.room_type` as nullable columns, leaving them NULL
+and `area_id` orphaned — the gap these deliberate steps close).
+
+*Room (`area_id` → `zone` + `room_type`, 75.3) — in-place, no rebuild needed.* `area_id` is nullable,
+non-PK, non-indexed; `zone`/`room_type` are nullable non-PK. `_migrate_room_area_id(engine)` folds
+`area_id` into `zone` verbatim per §71.2, derives `room_type` only for the three Ashmoore kinds
+(the other zones' `room_type` was per-room authoring, not derivable), and drops `area_id` after copy
+once SQLite 3.45's `DROP COLUMN` support is confirmed available. Warranted despite rooms being
+reseed-derived because admin `POST`/`PUT` on rooms (`webui/admin/routers/world.py`) can produce
+admin-authored rows not in `world.yaml` that a reseed will never fix.
+
+*RegionPricing (`area_id` PK → `zone` PK, 75.4) — full table rebuild.* `zone` is the PK, so neither
+`ADD COLUMN … PRIMARY KEY` nor `DROP COLUMN area_id` is possible; use the classic SQLite rebuild
+(new table → folded+grouped `INSERT` → drop old → rename new), guarded on the live table still
+having an `area_id` column. The `GROUP BY` on the folded value is mandatory to avoid a PK collision
+from Ashmoore's three source rows collapsing to one `ashmoore` row.
+
+**OPEN ITEM A — tier-placement correction.** The originating request framed this work as "belongs
+in `db.py`, which is Tier 1 engine infra." **That framing is inaccurate and should not be committed
+as written.** `db.py` lives at `src/lorecraft/db.py` (top-level), not under `engine/`, and it
+**already imports `lorecraft.features.*`** across `GAME_TABLE_MODELS` — making it a
+**composition-layer** module (allowed to import both engine and features), not a Tier 1 engine
+module; `tests/unit/test_tier_boundaries.py` does not apply to it the way it applies to `engine/`.
+→ **Recommendation:** state it accurately — **the scanner mechanism is Tier-1 *in character***
+(opinion-free reflection; knows *how* to diff+ALTER, encodes no feature's opinion about *what* a
+column means) and introduces no new feature import, so it adds zero coupling. **The two fold-maps
+are the caveat** — they embed world-content literals directly in `db.py`, which is not "no
+feature-specific opinion." Accept this as a **bounded, one-shot historical migration constant**
+(it transforms *past* data to a *known* target state; it is not runtime branching on room IDs,
+which the design principles forbid), but document it as a **deliberate, self-clearing exception**,
+not as clean Tier 1 — once `area_id` is dropped (room, 75.3) and the table rebuilt
+(regionpricing, 75.4), both fold-maps become dead code removable in a later cleanup.
+
+**OPEN ITEM B — the Ashmoore-collapse `region_mult` value.** The rebuild's `GROUP BY` picks *one*
+row's `region_mult` for the collapsed `ashmoore` row. §71.2 rubber-stamped `ashmoore = 1.0` (the
+`town` row's value, and the only Ashmoore room with a shop). → **Recommend forcing `ashmoore` to
+`1.0` explicitly** in the fold rather than relying on `GROUP BY`'s arbitrary row-pick (which could
+grab the 1.15 `wilderness` or 1.25 `cave` mult). Today all three Ashmoore rows would fold identically
+in player-facing terms because no shop sits in a wilderness/cave room, but forcing `1.0` matches
+§71.2's documented decision and is collision-proof regardless of row order.
+
+**OPEN ITEM C — rebuild-with-fold vs. drop-and-recreate-empty for `regionpricing`.** Unlike `room`,
+`regionpricing` has **no admin-authoring path** (verified: `region_for_zone` is a pure `session.get`;
+pricing is YAML-seeded from `economy.regions`, reseed-only). So its rows are always reproducible by
+a reseed, and a simpler migration would be: drop the old-schema table and let `_create_model_tables`
+recreate it empty with the `zone` PK, deferring repopulation to the next economy reseed. →
+**Recommend rebuild-with-fold (the 75.4 steps) anyway**, because the startup `SELECT zone` crash
+happens *before* any reseed is guaranteed to run, and rebuild-with-fold is the only option that
+keeps economy prices correct on a legacy DB upgraded **in place without a reseed** — the entire
+justification for building real data migration rather than "just ADD COLUMN and orphan the data."
+Drop-empty would leave every zone at the model default `1.0` until someone remembers to reseed.
+
+**(d) Test matrix.** See task 75.5 above for the full six-item matrix (parametrized additive-column
+upgrade with hardcoded-default assertions, Room fold round-trip, RegionPricing rebuild round-trip,
+warn-but-don't-drop, idempotency, non-SQLite guard).
+
+**Sequencing note (for the eventual Backend Engineer).** Build this on a branch based off
+`sprint-73-progression`'s current tip (`2dd499b`), not off `main`. Both Sprint 73 and Sprint 75 edit
+`_ensure_sqlite_compat_columns` in `db.py`; basing off the sprint-73 tip means Sprint 75's "delete
+the hand shims" change sits cleanly on top of Sprint 73's `skill_points` shim commit (`99d3ef9`)
+instead of conflicting with it during a later rebase/merge. Sprint 75 is scope-separate from
+Sprint 73 (progression) — do not fold it into the Sprint 73 branch's own work.
+
+**Tunability note.** None of Sprint 75's tasks are game-balance dials — this is schema/migration
+infrastructure, with no reward amount, price, or curve to tune. Every task's tunable classification
+is "N/A — schema infra"; there is no live-tunable knob to invent here.
+
+**Files referenced (design analysis, sprint-73-progression worktree — implementation base once
+picked up; do not confuse with this session's own worktree):**
+- `src/lorecraft/db.py` (scanner target; current hand-shim body)
+- `src/lorecraft/engine/models/world.py` (Room/Item/NPC additive fields)
+- `src/lorecraft/engine/models/player.py` (Player/PlayerStats/SaveSlot additive fields)
+- `src/lorecraft/features/economy/models.py` (`RegionPricing`, `zone` PK)
+- `src/lorecraft/features/economy/repo.py` (`region_for_zone` — no admin-authoring path)
+- `src/lorecraft/webui/admin/routers/world.py` (admin room POST/PUT — why 75.3 is warranted)
+- `docs/roadmap.md` §71.2 (fold table + Ashmoore collapse) and §73 design (format model for this
+  section)
+
 ---
 
 ## Backlog
@@ -711,7 +875,14 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   **74-OI-1 RESOLVED 2026-07-12**: build all three ability flavors — active utility verbs [first-class],
   passive modifiers, interaction unlocks — data-driven; new **74-OI-5**: ability verbs live in their
   thematic feature, not `progression`).
-- **Next new sprint: 75.** Don't recycle a number that appears here or in
+- **In design: 75** (SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration —
+  design-complete, not yet built; 75.1 generic reflection additive-column scanner, 75.2 delete the 14
+  hand-written shims, 75.3 Room `area_id`→`zone`/`room_type` in-place migration, 75.4 RegionPricing
+  `area_id`→`zone` PK table-rebuild migration, 75.5 full test matrix; foundation-band infra, not a
+  feature; OPEN ITEMs A [tier-placement correction: composition-layer, not Tier 1 engine, with a
+  bounded content-literal exception], B [force Ashmoore `region_mult` to 1.0], C [rebuild-with-fold
+  over drop-empty for `regionpricing`] all surfaced with a recommendation, none silently decided).
+- **Next new sprint: 76.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
