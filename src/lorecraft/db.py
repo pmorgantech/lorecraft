@@ -6,18 +6,25 @@ module (it already imports ``lorecraft.features.*`` across ``GAME_TABLE_MODELS``
 not Tier 1 engine infra, so ``test_tier_boundaries.py`` does not gate it. The
 scanner mechanism is *Tier-1 in character* — opinion-free reflection that knows
 only *how* to diff-and-``ALTER``, never *what* a column means for any feature.
+
+The one caveat is the ``_ROOM_AREA_ID_TO_ZONE`` fold-map used by the Sprint 71.2
+``room.area_id`` data migration: it embeds Sprint 71.2 world-content literals
+directly here. That is accepted as a **bounded, self-clearing, one-shot
+historical migration constant** (it transforms *past* data to a *known* target
+state — it is not runtime branching on room IDs) and is a deliberate, documented
+exception, not clean Tier 1. Once ``area_id`` is dropped it becomes dead code.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from pydantic_core import PydanticUndefined
-from sqlalchemy import Column, Table, event, inspect, text
+from sqlalchemy import Column, Table, bindparam, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
@@ -109,6 +116,28 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent, CrashReport)
 
 logger = logging.getLogger(__name__)
+
+# Sprint 71.2 fold: every legacy ``Room.area_id`` value → the 4-value ``zone``.
+# Read verbatim from docs/roadmap.md §71.2 (the canonical fold table). Ashmoore's
+# three kinds collapse to one zone; connectors fold to the zone they lead toward.
+# Bounded, one-shot historical migration constant (see module docstring).
+_ROOM_AREA_ID_TO_ZONE: Mapping[str, str] = {
+    "town": "ashmoore",
+    "wilderness": "ashmoore",
+    "cave": "ashmoore",
+    "cogsworth": "cogsworth",
+    "whisperwood": "whisperwood",
+    "port_veridian": "port_veridian",
+    "old_trade_road": "cogsworth",
+    "forest_road": "whisperwood",
+    "river_bend": "port_veridian",
+}
+
+# ``room_type`` is mechanically derivable only for the three Ashmoore kinds
+# (§71.2: the other zones' room_type was per-room authoring, not derivable).
+_ROOM_TYPE_DERIVABLE_AREA_IDS: frozenset[str] = frozenset(
+    {"town", "wilderness", "cave"}
+)
 
 
 def database_url(database_path_or_url: str) -> str:
@@ -216,6 +245,10 @@ def create_game_tables(engine: Engine) -> None:
     # Generic additive-column auto-migration (Sprint 75.1) — brings a legacy DB
     # missing any additive model column up to schema without hand-written shims.
     _ensure_additive_columns(engine)
+    # Deliberate Sprint 71.2 room data migration (Sprint 75.3). Runs *after* the
+    # additive pass, which will already have added room.zone / room.room_type as
+    # empty nullable columns to fold the legacy area_id into.
+    _migrate_room_area_id(engine)
 
 
 def create_audit_tables(engine: Engine) -> None:
@@ -366,3 +399,58 @@ def _add_column(
     with engine.begin() as connection:
         connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {clause}"))
     logger.info("additive-migration: added column %s.%s", table_name, column.name)
+
+
+def _migrate_room_area_id(engine: Engine) -> None:
+    """Fold the legacy ``room.area_id`` into ``zone`` / ``room_type`` (Sprint 75.3).
+
+    Runs after ``_ensure_additive_columns`` (which will already have added
+    ``room.zone`` / ``room.room_type`` as empty nullable columns). If the legacy
+    ``area_id`` column is still present, fold it into ``zone`` verbatim per the
+    §71.2 table, derive ``room_type`` only for the three Ashmoore kinds (the other
+    zones' room_type was per-room authoring, not derivable), then **DROP**
+    ``area_id`` so the migration is self-clearing and idempotent — a second run
+    finds no ``area_id`` and no-ops. In-place (no rebuild): ``area_id`` is a
+    plain nullable, non-PK, non-indexed column.
+
+    Warranted despite rooms being reseed-derived because admin ``POST``/``PUT``
+    on rooms can produce admin-authored rows not in ``world.yaml`` that a reseed
+    would never fix.
+    """
+    if engine.dialect.name != "sqlite":
+        return
+
+    inspector = inspect(engine)
+    if "room" not in inspector.get_table_names():
+        return
+    room_columns = {col["name"] for col in inspector.get_columns("room")}
+    if "area_id" not in room_columns:
+        return  # already migrated (or a fresh zone/room_type schema)
+
+    with engine.begin() as connection:
+        for area_id, zone in _ROOM_AREA_ID_TO_ZONE.items():
+            connection.execute(
+                text(
+                    "UPDATE room SET zone = :zone "
+                    "WHERE area_id = :area_id AND zone IS NULL"
+                ),
+                {"zone": zone, "area_id": area_id},
+            )
+        # room_type derivable only for the three Ashmoore kinds (§71.2).
+        connection.execute(
+            text(
+                "UPDATE room SET room_type = area_id "
+                "WHERE area_id IN :kinds AND room_type IS NULL"
+            ).bindparams(
+                bindparam(
+                    "kinds",
+                    tuple(sorted(_ROOM_TYPE_DERIVABLE_AREA_IDS)),
+                    expanding=True,
+                )
+            )
+        )
+        # Drop the now-orphaned legacy column (SQLite ≥3.35 DROP COLUMN; the repo
+        # runs 3.45). Makes the rename self-clearing so the 75.1 scanner's
+        # DB-only-column warning does not fire on every startup forever.
+        connection.execute(text("ALTER TABLE room DROP COLUMN area_id"))
+    logger.info("room-migration: folded area_id → zone/room_type and dropped area_id")
