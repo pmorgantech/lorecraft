@@ -22,6 +22,13 @@ from typing import TYPE_CHECKING
 
 from lorecraft.engine.game import command_conditions
 from lorecraft.engine.game.command_conditions import ConditionResult
+from lorecraft.engine.scripting.vocabulary import (
+    CapabilitySig,
+    ParamSpec,
+    Subject,
+    VocabEntry,
+    VocabKind,
+)
 from lorecraft.features.npc import dialogue_conditions, side_effects
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
@@ -30,6 +37,62 @@ if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
 
 _reputation = ReputationService()
+
+# Shared params describing the target both authoring surfaces address: the command
+# surface encodes them as a `<target_type>:<target_id>:<min>` colon-string, the
+# dialogue surface as a `{target_type, target_id, min}` map.
+_TARGET_PARAMS = (
+    ParamSpec(
+        "target_type",
+        "str",
+        doc="Kind of entity whose standing is checked, e.g. 'npc' or 'faction' "
+        "(command: colon-string field 1; dialogue: map key).",
+    ),
+    ParamSpec(
+        "target_id",
+        "str",
+        doc="Id of the target within that type "
+        "(command: colon-string field 2; dialogue: map key).",
+    ),
+)
+
+# One canonical descriptor for the standing gate, registered on BOTH the command and
+# dialogue condition surfaces (same capability, two authoring surfaces — the catalog's
+# idempotent same-capability registration keeps a single entry, mirroring
+# `actor_has_flag`/`actor_lacks_flag`). The descriptor must be identical on both sides so
+# the generated `docs/scripting_api.md` is independent of import order.
+_REPUTATION_AT_LEAST_SPEC = VocabEntry(
+    name="actor_reputation_at_least",
+    kind=VocabKind.CONDITION,
+    subject=Subject.ACTOR,
+    category="reputation",
+    doc="The actor's standing with a target is at least the given minimum.",
+    capability=CapabilitySig(Subject.ACTOR, "reputation", "standing", "at_least"),
+    params=(
+        *_TARGET_PARAMS,
+        ParamSpec(
+            "min",
+            "int",
+            doc="Minimum standing required "
+            "(command: colon-string field 3; dialogue: 'min' map key).",
+        ),
+    ),
+)
+
+_ADJUST_REPUTATION_SPEC = VocabEntry(
+    name="adjust_reputation",
+    kind=VocabKind.EFFECT,
+    subject=Subject.ACTOR,
+    category="reputation",
+    doc="Change the actor's standing with a target by a signed amount.",
+    capability=CapabilitySig(Subject.ACTOR, "reputation", "standing", "adjust"),
+    params=(
+        *_TARGET_PARAMS,
+        ParamSpec(
+            "delta", "int", doc="Signed standing change to apply ('delta' map key)."
+        ),
+    ),
+)
 
 
 def _reputation_at_least(parameter: str, ctx: "GameContext") -> ConditionResult:
@@ -85,16 +148,23 @@ def register() -> None:
     Called by the `reputation` feature's manifest (`lorecraft/features/
     reputation`) when the feature is enabled — no longer a module-level import
     side effect, so disabling the feature actually leaves these unregistered.
-    Idempotent: re-registering the same names simply overwrites.
+    Idempotent: re-registering the same name+capability is a harmless no-op in
+    the shared catalog (see `Vocabulary.register`).
 
-    The command and dialogue registries both register the one canonical name
-    `actor_reputation_at_least` (§8.6); they're separate registries, so the shared name is not
-    a collision — it's the same predicate on two authoring surfaces.
+    Uses `register_spec` (not the bare `register`) so both `actor_reputation_at_least`
+    and `adjust_reputation` publish a self-describing `VocabEntry` into the shared
+    scripting catalog — this is what makes them appear in the generated
+    `docs/scripting_api.md` (§8). The command and dialogue registries both register the
+    one canonical name `actor_reputation_at_least` (§8.6) with an identical descriptor;
+    they're separate registries, so the shared name is not a collision — it's the same
+    predicate on two authoring surfaces.
     """
-    command_conditions.get_registry().register(
-        "actor_reputation_at_least", _reputation_at_least
+    command_conditions.get_registry().register_spec(
+        _REPUTATION_AT_LEAST_SPEC, _reputation_at_least
     )
-    dialogue_conditions.get_registry().register(
-        "actor_reputation_at_least", _reputation_at_least_dialogue
+    dialogue_conditions.get_registry().register_spec(
+        _REPUTATION_AT_LEAST_SPEC, _reputation_at_least_dialogue
     )
-    side_effects.get_registry().register("adjust_reputation", _handle_adjust_reputation)
+    side_effects.get_registry().register_spec(
+        _ADJUST_REPUTATION_SPEC, _handle_adjust_reputation
+    )

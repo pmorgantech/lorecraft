@@ -14,11 +14,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from lorecraft.engine.scripting.vocabulary import Vocabulary
+    from lorecraft.services.container import ServiceContainer
+    from lorecraft.state import AppState
 
 import yaml
 from sqlalchemy.engine import Engine
@@ -211,19 +214,61 @@ def cmd_merge(args: argparse.Namespace) -> int:
 def _load_scripting_vocabulary() -> "Vocabulary":
     """Populate and return the process-global scripting catalog.
 
-    Descriptors register at *module import*, so we import the engine-core condition module and
-    every feature package (via ``discover_features``) to make sure the catalog is complete
-    before it's rendered. This is why the loader lives here in the composition layer and not in
+    Two registration lifetimes feed the catalog and both must fire before it's rendered:
+
+    * **Import-time** descriptors register as a side effect of importing the engine-core
+      condition module and every feature package (via ``discover_features``). This catches
+      every module-level ``register_spec(...)`` call.
+    * **Enable-time** descriptors only register when a feature is *wired* — its manifest's
+      ``register_fn(state)`` runs (e.g. ``reputation``'s ``actor_reputation_at_least`` /
+      ``adjust_reputation``, registered inside ``features/reputation/conditions.py::register``).
+      ``discover_features`` imports but does not enable, so we additionally wire every
+      discovered feature here with a minimal doc-generation stand-in for ``AppState``.
+
+    This is why the loader lives here in the composition layer and not in
     ``engine/scripting/catalog.py`` (which must not import features).
     """
     import lorecraft.engine.game.command_conditions  # noqa: F401
     import lorecraft.features.npc.dialogue_conditions  # noqa: F401
     import lorecraft.features.npc.side_effects  # noqa: F401
     from lorecraft.engine.scripting.vocabulary import global_vocabulary
-    from lorecraft.features.loader import discover_features
+    from lorecraft.features.loader import (
+        discover_features,
+        load_features,
+        wire_features,
+    )
 
-    discover_features()
+    discovered = discover_features()
+    # Wire in dependency order so a feature is enabled only after its dependencies
+    # (``load_features`` validates + orders the full discovered set).
+    ordered = load_features(list(discovered), registry=discovered)
+    wire_features(_doc_gen_app_state(), ordered)
     return global_vocabulary()
+
+
+def _doc_gen_app_state() -> "AppState":
+    """Build a minimal ``AppState`` stand-in for one-shot vocabulary doc generation.
+
+    Feature ``register_fn``s registering scripting vocabulary only read
+    ``state.services`` during enablement (e.g. ``follow`` checks
+    ``state.services.follow`` before wiring its escort conditions); none of AppState's
+    other fields — DB engines, the event bus, the connection manager — are touched on
+    the registration path. So we supply a fully-populated :class:`ServiceContainer` and
+    nothing else, avoiding the heavy real-app bootstrap (DB, web host) for a pure
+    catalog render. If a future feature's ``register_fn`` reads more of ``AppState`` at
+    enable time, the doc-drift test (``test_scripting_api_doc``) will surface the crash
+    and this stub should grow the missing field.
+    """
+    from lorecraft.services.container import ServiceContainer
+
+    return cast("AppState", _DocGenState(services=ServiceContainer()))
+
+
+@dataclass
+class _DocGenState:
+    """The only ``AppState`` surface a feature's ``register_fn`` reads at enable time."""
+
+    services: ServiceContainer
 
 
 def cmd_vocabulary(args: argparse.Namespace) -> int:

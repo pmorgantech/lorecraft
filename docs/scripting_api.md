@@ -7,7 +7,7 @@ The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC
 engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry
 shows its subject role, capability signature, and parameters.
 
-_16 entries._
+_18 entries._
 
 ## Conditions (`when:`)
 
@@ -89,6 +89,19 @@ The named item is in the current room or held by the actor.
 - **Capability:** `presence/item` · `has`
 - **Params:**
   - `item_id` (`item_id`, required) — Item id (colon-string param).
+
+### reputation
+
+#### `actor_reputation_at_least`
+
+The actor's standing with a target is at least the given minimum.
+
+- **Subject:** `actor`
+- **Capability:** `reputation/standing` · `at_least`
+- **Params:**
+  - `target_type` (`str`, required) — Kind of entity whose standing is checked, e.g. 'npc' or 'faction' (command: colon-string field 1; dialogue: map key).
+  - `target_id` (`str`, required) — Id of the target within that type (command: colon-string field 2; dialogue: map key).
+  - `min` (`int`, required) — Minimum standing required (command: colon-string field 3; dialogue: 'min' map key).
 
 ## Effects (`do:`)
 
@@ -176,3 +189,16 @@ Start a quest for the actor at its first stage (no-op if already started).
 - **Capability:** `quests/quest` · `start`
 - **Params:**
   - `quest_id` (`quest_id`, required) — Quest to start.
+
+### reputation
+
+#### `adjust_reputation`
+
+Change the actor's standing with a target by a signed amount.
+
+- **Subject:** `actor`
+- **Capability:** `reputation/standing` · `adjust`
+- **Params:**
+  - `target_type` (`str`, required) — Kind of entity whose standing is checked, e.g. 'npc' or 'faction' (command: colon-string field 1; dialogue: map key).
+  - `target_id` (`str`, required) — Id of the target within that type (command: colon-string field 2; dialogue: map key).
+  - `delta` (`int`, required) — Signed standing change to apply ('delta' map key).
