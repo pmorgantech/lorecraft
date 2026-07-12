@@ -1,12 +1,23 @@
-"""Database engine and table initialization helpers."""
+"""Database engine and table initialization helpers.
+
+The reflection-based additive-column auto-migration scanner below lives here
+rather than under ``engine/`` deliberately: ``db.py`` is a **composition-layer**
+module (it already imports ``lorecraft.features.*`` across ``GAME_TABLE_MODELS``),
+not Tier 1 engine infra, so ``test_tier_boundaries.py`` does not gate it. The
+scanner mechanism is *Tier-1 in character* — opinion-free reflection that knows
+only *how* to diff-and-``ALTER``, never *what* a column means for any feature.
+"""
 
 from __future__ import annotations
 
+import json
+import logging
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import event, inspect, text
+from pydantic_core import PydanticUndefined
+from sqlalchemy import Column, Table, event, inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import SQLModel, create_engine
 
@@ -96,6 +107,8 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
 )
 
 AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent, CrashReport)
+
+logger = logging.getLogger(__name__)
 
 
 def database_url(database_path_or_url: str) -> str:
@@ -200,7 +213,9 @@ def create_tables(
 
 def create_game_tables(engine: Engine) -> None:
     _create_model_tables(engine, GAME_TABLE_MODELS)
-    _ensure_sqlite_compat_columns(engine)
+    # Generic additive-column auto-migration (Sprint 75.1) — brings a legacy DB
+    # missing any additive model column up to schema without hand-written shims.
+    _ensure_additive_columns(engine)
 
 
 def create_audit_tables(engine: Engine) -> None:
@@ -213,135 +228,141 @@ def _create_model_tables(engine: Engine, models: Sequence[type[SQLModel]]) -> No
         table.create(engine, checkfirst=True)
 
 
-def _ensure_sqlite_compat_columns(engine: Engine) -> None:
+def _sql_default_literal(value: object) -> str:
+    """Render a Python default value as a SQLite ``DEFAULT`` clause literal.
+
+    Containers (list/dict, i.e. JSON columns) are ``json.dumps``-ed so a list
+    factory yields ``'[]'`` and a dict factory ``'{}'``. ``bool`` is checked
+    before ``int`` (it is a subclass) so ``False``/``True`` render as ``0``/``1``.
+    """
+    if isinstance(value, (list, dict)):
+        return f"'{json.dumps(value)}'"
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("'", "''")
+        return f"'{escaped}'"
+    # No other scalar default types occur in the game models; be explicit.
+    raise TypeError(f"unsupported default value type for SQL literal: {value!r}")
+
+
+def _type_zero_literal(column: Column[Any]) -> str:
+    """Fallback ``DEFAULT`` for a NOT NULL column that declares no field default.
+
+    ``ALTER TABLE … ADD COLUMN`` of a ``NOT NULL`` column on a non-empty table
+    requires a default; without a declared one we fall back to the type's zero
+    value (empty string / 0 / 0.0 / 0-as-false) so the ADD succeeds.
+    """
+    try:
+        python_type = column.type.python_type
+    except (NotImplementedError, AttributeError):
+        return "''"
+    if python_type is str:
+        return "''"
+    if python_type is bool:
+        return "0"
+    if python_type is int:
+        return "0"
+    if python_type is float:
+        return "0.0"
+    return "''"
+
+
+def _field_default_literal(model: type[SQLModel], column: Column[Any]) -> str | None:
+    """The SQL ``DEFAULT`` literal derived from a model's pydantic field default.
+
+    Load-bearing (Sprint 75 design): the default must come from the *actual*
+    field default, not a naive type-zero table, or string-typed defaults like
+    ``item.quality = 'common'`` / ``room.terrain = 'normal'`` would silently
+    become ``''`` on every legacy upgrade. Returns ``None`` when the field has no
+    concrete default (nullable-with-no-default columns get no ``DEFAULT``).
+    """
+    field = model.model_fields.get(column.name)
+    if field is None:
+        return None
+    if field.default_factory is not None:
+        return _sql_default_literal(field.default_factory())  # type: ignore[call-arg]
+    if field.default is not PydanticUndefined and field.default is not None:
+        return _sql_default_literal(field.default)
+    return None
+
+
+def _ensure_additive_columns(engine: Engine) -> None:
+    """Generic reflection-based additive-column auto-migration (Sprint 75.1).
+
+    For every model in ``GAME_TABLE_MODELS`` diff the model's authoritative
+    columns against the live reflected columns and reconcile strictly additively:
+
+    - **model − live → ``ADD COLUMN``**, with a type from
+      ``col.type.compile(dialect=…)`` and a ``DEFAULT`` derived from the actual
+      pydantic field default (see ``_field_default_literal``). A missing column
+      that is part of the **primary key** is *skipped with a WARNING* — SQLite
+      cannot ``ADD`` a PK column via ``ALTER`` (this is exactly
+      ``regionpricing.zone``, handed to ``_migrate_regionpricing_area_id``).
+    - **live − model → WARN, never drop/alter** — the strictly-additive
+      contract; a DB-only column is the rename/drop signal handled deliberately
+      by the 75.3 / 75.4 migrations, out of scope for the generic scanner.
+
+    A no-op on non-SQLite backends.
+    """
     if engine.dialect.name != "sqlite":
         return
 
-    columns = {column["name"] for column in inspect(engine).get_columns("saveslot")}
-    if "visited_rooms" not in columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE saveslot "
-                    "ADD COLUMN visited_rooms JSON NOT NULL DEFAULT '[]'"
+    inspector = inspect(engine)
+    live_tables = set(inspector.get_table_names())
+
+    for model in GAME_TABLE_MODELS:
+        table: Table = getattr(model, "__table__")
+        table_name = table.name
+        if table_name not in live_tables:
+            # Brand-new DBs already got the full schema from _create_model_tables.
+            continue
+
+        live_columns = {col["name"] for col in inspector.get_columns(table_name)}
+        model_columns = {col.name for col in table.columns}
+
+        for column in table.columns:
+            if column.name in live_columns:
+                continue
+            if column.primary_key:
+                logger.warning(
+                    "additive-migration: skipping missing PK column %s.%s "
+                    "(cannot ADD a PRIMARY KEY column via ALTER; handled by a "
+                    "dedicated table-rebuild migration if applicable)",
+                    table_name,
+                    column.name,
                 )
-            )
-    if "discovered_items" not in columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE saveslot "
-                    "ADD COLUMN discovered_items JSON NOT NULL DEFAULT '[]'"
-                )
+                continue
+            _add_column(engine, model, table_name, column)
+
+        # Strictly-additive contract: report, never remove, live-only columns.
+        for orphan in sorted(live_columns - model_columns):
+            logger.warning(
+                "additive-migration: DB column %s.%s is absent from the model; "
+                "leaving it untouched (strictly-additive contract — drops/renames "
+                "are handled by dedicated migrations, never the generic scanner)",
+                table_name,
+                orphan,
             )
 
-    # Player.discovered_items (Sprint 46) — additive; existing player rows
-    # default to an empty discovery list rather than erroring on SELECT.
-    player_columns = {
-        column["name"] for column in inspect(engine).get_columns("player")
-    }
-    if "discovered_items" not in player_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE player "
-                    "ADD COLUMN discovered_items JSON NOT NULL DEFAULT '[]'"
-                )
-            )
 
-    item_columns = {column["name"] for column in inspect(engine).get_columns("item")}
-    if "aliases" not in item_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text("ALTER TABLE item ADD COLUMN aliases JSON NOT NULL DEFAULT '[]'")
-            )
+def _add_column(
+    engine: Engine, model: type[SQLModel], table_name: str, column: Column[Any]
+) -> None:
+    """Issue a single ``ALTER TABLE … ADD COLUMN`` for a model-declared column."""
+    type_str = column.type.compile(dialect=engine.dialect)
+    default_literal = _field_default_literal(model, column)
+    if default_literal is None and not column.nullable:
+        default_literal = _type_zero_literal(column)
 
-    if "mechanism_states" not in item_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE item "
-                    "ADD COLUMN mechanism_states JSON NOT NULL DEFAULT '[]'"
-                )
-            )
-    if "mechanism_side_effects" not in item_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE item "
-                    "ADD COLUMN mechanism_side_effects JSON NOT NULL DEFAULT '{}'"
-                )
-            )
-    if "combination_side_effects" not in item_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE item "
-                    "ADD COLUMN combination_side_effects JSON NOT NULL DEFAULT '{}'"
-                )
-            )
-    if "context_commands" not in item_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text(
-                    "ALTER TABLE item "
-                    "ADD COLUMN context_commands JSON NOT NULL DEFAULT '{}'"
-                )
-            )
+    clause = f'"{column.name}" {type_str}'
+    if not column.nullable:
+        clause += " NOT NULL"
+    if default_literal is not None:
+        clause += f" DEFAULT {default_literal}"
 
-    room_columns = {column["name"] for column in inspect(engine).get_columns("room")}
-    if "map_z" not in room_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text("ALTER TABLE room ADD COLUMN map_z INTEGER NOT NULL DEFAULT 0")
-            )
-    if "indoor" not in room_columns:
-        with engine.begin() as connection:
-            connection.execute(
-                text("ALTER TABLE room ADD COLUMN indoor BOOLEAN NOT NULL DEFAULT 0")
-            )
-
-    if "npc" in inspect(engine).get_table_names():
-        npc_columns = {column["name"] for column in inspect(engine).get_columns("npc")}
-        if "context_commands" not in npc_columns:
-            with engine.begin() as connection:
-                connection.execute(
-                    text(
-                        "ALTER TABLE npc "
-                        "ADD COLUMN context_commands JSON NOT NULL DEFAULT '{}'"
-                    )
-                )
-        if "following_player_id" not in npc_columns:
-            with engine.begin() as connection:
-                connection.execute(
-                    text("ALTER TABLE npc ADD COLUMN following_player_id TEXT")
-                )
-
-    # PlayerStats.skill_points (Sprint 73) — additive; pre-existing playerstats
-    # rows default to zero banked skill points rather than erroring on SELECT.
-    if "playerstats" in inspect(engine).get_table_names():
-        playerstats_columns = {
-            column["name"] for column in inspect(engine).get_columns("playerstats")
-        }
-        if "skill_points" not in playerstats_columns:
-            with engine.begin() as connection:
-                connection.execute(
-                    text(
-                        "ALTER TABLE playerstats "
-                        "ADD COLUMN skill_points INTEGER NOT NULL DEFAULT 0"
-                    )
-                )
-
-    if "playerquestprogress" in inspect(engine).get_table_names():
-        quest_columns = {
-            column["name"]
-            for column in inspect(engine).get_columns("playerquestprogress")
-        }
-        if "stage_started_epoch" not in quest_columns:
-            with engine.begin() as connection:
-                connection.execute(
-                    text(
-                        "ALTER TABLE playerquestprogress "
-                        "ADD COLUMN stage_started_epoch REAL"
-                    )
-                )
+    with engine.begin() as connection:
+        connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {clause}"))
+    logger.info("additive-migration: added column %s.%s", table_name, column.name)
