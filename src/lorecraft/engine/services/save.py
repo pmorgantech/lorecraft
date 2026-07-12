@@ -336,6 +336,7 @@ def _stats_snapshot(ctx: GameContext, stats: PlayerStats | None) -> JsonObject:
         "level": stats.level,
         "xp": stats.xp,
         "xp_to_next": stats.xp_to_next,
+        "skill_points": stats.skill_points,
         "skills": dict(stats.skills),
         # v2 (Sprint 19): runtime hp lives in Meter("player", id, "hp"), not
         # PlayerStats.current_hp (deleted). See _apply_stats_snapshot for the
@@ -363,6 +364,7 @@ def _apply_stats_snapshot(ctx: GameContext, snapshot: JsonObject) -> None:
         "level",
         "xp",
         "xp_to_next",
+        "skill_points",
     ):
         value = snapshot.get(field)
         if isinstance(value, int):

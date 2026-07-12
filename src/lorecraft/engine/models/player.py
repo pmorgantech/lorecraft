@@ -48,6 +48,11 @@ class PlayerStats(SQLModel, table=True):
     level: int = 1
     xp: int = 0
     xp_to_next: int = 100
+    # Skill-point currency (Sprint 73): earned from level-ups and quest rewards,
+    # banked until Sprint 74's skill tree spends it. Mutated generically via
+    # engine.game.leveling.apply_stat_deltas; the per-level earn rate is Tier 2
+    # policy (features/progression config), not an engine constant.
+    skill_points: int = 0
     skills: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     # Innate traits (Sprint 19 adds the column; Tier 2 populates it — empty by default).
     traits: list[str] = Field(default_factory=list, sa_column=Column(JSON))

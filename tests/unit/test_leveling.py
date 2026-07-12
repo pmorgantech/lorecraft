@@ -150,6 +150,12 @@ def test_apply_stat_deltas_updates_whitelisted_fields() -> None:
     assert stats.strength == 13
 
 
+def test_apply_stat_deltas_updates_skill_points() -> None:
+    stats = _stats(skill_points=1)
+    apply_stat_deltas(stats, {"skill_points": 2})
+    assert stats.skill_points == 3
+
+
 def test_apply_stat_deltas_rejects_unknown_property() -> None:
     stats = _stats()
     with pytest.raises(ValidationError):

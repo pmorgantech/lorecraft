@@ -90,6 +90,45 @@ def test_save_slot_service_preserves_and_loads_player_owned_state() -> None:
     assert manager.players_in_room("tavern") == ["player-1"]
 
 
+def test_fresh_player_stats_have_zero_skill_points() -> None:
+    assert PlayerStats(player_id="fresh").skill_points == 0
+
+
+def test_save_slot_round_trips_skill_points() -> None:
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+    manager = ConnectionManager()
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        player = _seed_save_world(game_session)
+        stats = game_session.get(PlayerStats, "player-1")
+        assert stats is not None
+        stats.skill_points = 7
+        game_session.add(stats)
+        game_session.commit()
+        ctx = _build_context(game_session, audit_session, player, manager)
+
+        SaveSlotService().save("slot1", ctx)
+        game_session.commit()
+
+        # Spend it all, then restore the save.
+        stats.skill_points = 0
+        game_session.add(stats)
+        game_session.commit()
+
+        SaveSlotService().load("slot1", ctx)
+        game_session.commit()
+
+        reloaded = game_session.get(PlayerStats, "player-1")
+        save_slot = game_session.exec(select(SaveSlot)).first()
+
+    assert reloaded is not None
+    assert reloaded.skill_points == 7
+    assert save_slot is not None
+    assert save_slot.stats_snapshot["skill_points"] == 7
+
+
 def test_session_safety_grace_reconnect_and_expiry_are_audited() -> None:
     game_engine = create_engine("sqlite://")
     audit_engine = create_engine("sqlite://")
