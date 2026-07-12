@@ -10,6 +10,7 @@ from lorecraft.features.exploration.rules import (
     mark_exit_discovered,
 )
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
+from lorecraft.features.progression.rewards import apply_rewards
 from lorecraft.features.skills.service import SkillService
 
 # A routine search; a room author could later vary this per-room via terrain
@@ -59,6 +60,8 @@ class ExplorationService:
                 MessageType.HINT,
             )
 
-        stats = ctx.player_repo.stats(ctx.player.id)
-        if stats is not None:
-            stats.xp += DISCOVERY_XP
+        # Route the discovery reward through the Tier 2 interpreter so a
+        # threshold-crossing discovery also fires the config-driven level-up
+        # payout — no duplicated leveling math here. DISCOVERY_XP stays
+        # exploration's own policy value; the interpreter owns the curve.
+        apply_rewards(ctx, {"xp": DISCOVERY_XP})

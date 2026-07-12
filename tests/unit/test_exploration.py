@@ -20,6 +20,7 @@ from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.world import Exit, Item, Room
 from lorecraft.engine.models.player import Player, PlayerStats
+from lorecraft.features.progression.models import ProgressionConfig
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -184,6 +185,31 @@ class TestSearch:
                 stats_after = session.get(PlayerStats, ctx.player.id)
                 assert stats_after is not None
                 assert stats_after.xp > xp_before
+                return
+        pytest.fail("no seed produced a successful search in 50 tries")
+
+    def test_search_discovery_that_levels_grants_configured_payout(self) -> None:
+        # 73.8: discovery XP now flows through apply_rewards, so a discovery that
+        # crosses a level threshold also credits the config-driven level-up
+        # payout (coins + skill_points), not just XP. base=DISCOVERY_XP(5) -> the
+        # single discovery award crosses exactly one level.
+        for seed in range(50):
+            cmd_engine, ctx, session = _build_engine_and_ctx(rng_seed=seed)
+            session.add(
+                ProgressionConfig(
+                    base=5, step=0, coins_per_level=10, skill_points_per_level=1
+                )
+            )
+            session.commit()
+            cmd_engine.handle_command("search", ctx)
+            if any("hidden passage" in m for m in ctx.messages):
+                stats = session.get(PlayerStats, ctx.player.id)
+                assert stats is not None
+                assert stats.level == 2  # one level crossed
+                assert stats.skill_points == 1  # skill_points_per_level * 1
+                assert (
+                    LedgerService().balance_of(session, "player", ctx.player.id) == 10
+                )
                 return
         pytest.fail("no seed produced a successful search in 50 tries")
 
