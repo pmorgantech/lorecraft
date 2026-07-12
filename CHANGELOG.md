@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.92.3] - 2026-07-12
+
+### Docs
+
+- **research-planner no longer writes `docs/roadmap.md` directly** — it hands its design
+  analysis to Docs Writer to commit, matching the tool split (Docs Writer has `Edit`/`Write`,
+  research-planner never did). Orchestrator's routing and Docs Writer's own definition updated
+  to run Docs Writer once after Research (write up the plan) and again after implementation
+  (mark it done).
+- Clarified Sprint 73's admin-tunable phasing note in three places: "RESOLVED" refers to the
+  *scope decision* (keep 73.4 in the sprint plan), not to the feature being built — 73.3/73.4
+  are still `[ ]` not started.
+
 ## [0.92.2] - 2026-07-12
 
 ### Docs
