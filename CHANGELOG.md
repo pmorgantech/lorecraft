@@ -4,6 +4,49 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.92.0] - 2026-07-12
+
+### Added
+
+- **Sprint 72.1 — Scripting catalog generator enables features (Phase A tech-debt).** The
+  `docs/scripting_api.md` generator (`_load_scripting_vocabulary()` in `src/lorecraft/tools/world_cli.py`)
+  now enables every discovered feature via a lightweight doc-gen `AppState` stand-in, so enable-time
+  vocabulary (e.g. reputation conditions registered via `register_fn`) appears in the catalog. The
+  `features/reputation/conditions.py` module migrated its enable-time registrations from plain
+  `register()` to `register_spec()` so `actor_reputation_at_least` and `adjust_reputation` now appear
+  in the scripting API documentation (18 entries total). Regenerate via `make scripting-docs`.
+
+- **Sprint 72.2 — Admin DB wipe + reseed from `world.yaml`.** New `POST /admin/world/reseed` endpoint
+  wipes all authored world content and reseeds from the configured `world.yaml`. Superadmin-gated,
+  audit-logged (`GameEvent.WORLD_RESEEDED`), with validation before any deletion so a malformed YAML
+  returns 422 and leaves the DB untouched. Players stranded in a now-deleted room are relocated to the
+  configured seed start room. The admin Web panel adds a "Danger zone" button in the World tab (confirm-gated)
+  driving this endpoint. Reuses the same `scripts/import_world.py --fresh` path that `start.sh` uses
+  to build the seed DB. Three new test suites (`test_world_reseed.py`, `test_admin_world_reseed.py`,
+  `test_admin_world_reseed_ui.py`).
+
+- **Sprint 72.3 — Admin engine restart via process supervision.** A new `scripts/supervisor.py` process
+  supervisor launches `uvicorn` as a child, watches for a restart sentinel, and performs a graceful
+  SIGTERM → wait for lifespan shutdown → relaunch cycle **without** re-running the DB reseed, so live
+  runtime state (player positions, sessions, world mutations) survives a restart. The admin Web panel
+  adds a "System" tab with a "Request Restart" button (superadmin, confirm-gated, audit-logged) that
+  writes the sentinel; an "armed?" badge reflects whether the supervisor is actually watching. New
+  `lorecraft.ops` package (`RestartControl`, `coldboot`) + admin `/ops/restart` endpoint + `start.sh`
+  restructured to cold-boot once (seed DB init) then launch the supervisor in a relaunch loop.
+  `LORECRAFT_NO_SUPERVISOR=1` bypasses the supervisor for bare-uvicorn dev. Regression test (`test_supervisor.py`)
+  proves a restart never wipes live DB state; a crash-recovery guard caps restart storms.
+
+- **Sprint 72.4 — Mobile chat tab-collapse polish.** On small screens, the chat pane now collapses
+  into its own "Chat" tab in the Standard layout's tab bar, isolated from the Feed tab. Reduces
+  vertical stack and improves UX on narrow viewports.
+
+### Changed
+
+- **Admin documentation expanded:** `docs/admin_builder_guide.md` now documents the System tab's
+  graceful restart mechanism (how supervision works, the armed indicator, crash recovery); the World
+  tab's reseed feature is described as a "Danger zone" action with safety gates. Configuration reference
+  updated with `LORECRAFT_CONTROL_DIR` (supervisor control socket directory, default `/tmp/lorecraft-control`).
+
 ## [0.91.1] - 2026-07-12
 
 ### Docs
