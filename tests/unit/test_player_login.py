@@ -6,8 +6,9 @@ from __future__ import annotations
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
-from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import Room
+from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
@@ -51,6 +52,39 @@ def test_first_login_creates_account() -> None:
         assert result.created is True
         assert result.player.username == "newplayer"
         assert result.player.current_room_id == _START_ROOM
+
+
+def test_new_character_has_readable_default_stats_row() -> None:
+    """A genuinely new character (real creation path, no hand-seeded fixture)
+    has a readable, persisted PlayerStats row with the model's defaults.
+
+    Regression for the Sprint 73 bug: character creation never wrote a first
+    PlayerStats row, so `.stats()` returned None and every gated XP/reward grant
+    silently no-opped for new players. `PlayerRepo.stats()` now get-or-creates.
+    """
+    engine = _engine()
+    with Session(engine) as session:
+        room_repo = RoomRepo(session)
+        result = login_or_register(
+            session, room_repo, "freshling", "Hunter2pw", start_room=_START_ROOM
+        )
+        session.commit()
+        player_id = result.player.id
+        # No creation path seeded a stats row eagerly...
+        assert session.get(PlayerStats, player_id) is None
+        # ...but the first read materializes one with model defaults.
+        stats = PlayerRepo(session).stats(player_id)
+        assert stats.level == 1
+        assert stats.xp == 0
+        assert stats.xp_to_next == 100
+        assert stats.skill_points == 0
+        assert stats.strength == 10 and stats.fortitude == 10
+        session.commit()
+
+    # And it persists across sessions rather than being re-created transiently.
+    with Session(engine) as session:
+        persisted = session.get(PlayerStats, player_id)
+        assert persisted is not None and persisted.level == 1
 
 
 def test_second_login_verifies_password() -> None:

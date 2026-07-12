@@ -163,7 +163,25 @@ def test_skill_points_reward_applies_stat_delta() -> None:
         outcome = apply_rewards(ctx, {"skill_points": 3})
 
         assert outcome.stat_deltas_applied == {"skill_points": 3}
-        assert PlayerRepo(session).stats("p1").skill_points == 3  # type: ignore[union-attr]
+        assert PlayerRepo(session).stats("p1").skill_points == 3
+
+
+def test_xp_reward_lands_for_player_with_no_pre_seeded_stats_row() -> None:
+    # Regression (Sprint 73 bug): no creation path writes a player's first
+    # PlayerStats row, so every reward/XP grant -- gated on "stats present" --
+    # silently no-opped for a genuinely new character. `PlayerRepo.stats()` now
+    # get-or-creates the row, so the grant lands with no hand-seeded fixture.
+    with Session(_engine()) as session:
+        player = _seed(session, config=_config(base=100), with_stats=False)
+        assert session.get(PlayerStats, "p1") is None  # truly absent to start
+        ctx = _ctx(session, player)
+
+        outcome = apply_rewards(ctx, {"xp": 150})
+
+        assert outcome.xp_granted == 150
+        assert outcome.level_up is not None and outcome.level_up.levels_gained == 1
+        stats = PlayerRepo(session).stats("p1")
+        assert stats.level == 2 and stats.xp == 50
 
 
 def test_xp_reward_awards_without_leveling_below_threshold() -> None:

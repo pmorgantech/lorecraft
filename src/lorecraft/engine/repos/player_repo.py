@@ -20,8 +20,26 @@ class PlayerRepo(Repository[Player, str]):
         statement = select(Player).where(Player.username == username)
         return self.session.exec(statement).first()
 
-    def stats(self, player_id: str) -> PlayerStats | None:
-        return self.session.get(PlayerStats, player_id)
+    def stats(self, player_id: str) -> PlayerStats:
+        """Return the player's stats row, lazily creating it on first access.
+
+        Every real player is entitled to exactly one PlayerStats row, but no
+        creation path writes one eagerly -- character creation, the dev/seed
+        helpers, and save-load all leave it absent (an empty stats snapshot
+        round-trips to another empty snapshot). This get-or-create is the single
+        point that guarantees the row exists, so downstream reward/XP grants,
+        which are gated on "stats present", always have somewhere to land. The
+        row uses the model's own defaults (level 1, 0 xp, base stats) -- engine
+        defaults, not any feature's balance policy, so this stays Tier 1
+        mechanism. Existing players missing the row are auto-healed on first
+        read; the staged row persists with the surrounding unit of work.
+        """
+        existing = self.session.get(PlayerStats, player_id)
+        if existing is not None:
+            return existing
+        created = PlayerStats(player_id=player_id)
+        self.session.add(created)
+        return created
 
     def save_stats(self, stats: PlayerStats) -> PlayerStats:
         self.session.add(stats)
