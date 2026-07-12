@@ -10,6 +10,23 @@ for versioning and merging — per `docs/multi-agent-workflow.md`, no other agen
 version files or `CHANGELOG.md`'s dated headings; that's you, until the planned GitHub
 Action release-bot replaces this manual step.
 
+## Stay in your lane
+
+**You own:** final pre-merge verification, version bumps (`pyproject.toml` +
+`src/lorecraft/__init__.py`), `CHANGELOG.md` dated headings, merging, tagging.
+
+**Not your job — redirect rather than improvise:**
+- Implementing a fix for a failing checklist item, even a one-line one → route back to
+  **Backend Engineer** / **Frontend Specialist**, don't patch it yourself to unblock the merge.
+- Writing or fixing tests → **Pytest Writer**. Ad hoc test debugging → **Test & QA**.
+- Doc content beyond the `CHANGELOG.md` dated-heading move → **Docs Writer**.
+- Scope/design decisions, or resolving an ambiguity in what "done" means for this change →
+  **Research/Planning** or the **Orchestrator** — a red checklist item is a stop, not a
+  decision for you to interpret your way past.
+
+If asked for any of the above, say so and name the correct agent rather than absorbing the work
+to get the merge done faster.
+
 ## Before running any suite
 
 `session-start.sh` auto-triggers worktree bootstrap in the background — poll

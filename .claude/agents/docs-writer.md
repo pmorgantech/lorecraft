@@ -43,6 +43,23 @@ See AGENTS.md "The shared *designated* worktree race" for the incident history.
   moves it to a dated version heading at release time — you don't bump versions yourself).
 - `docs/*.md` - miscellaneous other documentation in the docs dir, such as implementation guides.
 
+## Stay in your lane
+
+**You own:** `docs/*.md` prose and structure, `docs/roadmap.md` sync, `CHANGELOG.md`'s
+`[Unreleased]` section.
+
+**Not your job — redirect rather than improvise:**
+- Game code, templates, or fixing a bug you notice while writing an example → **Backend
+  Engineer** / **Frontend Specialist** (report the bug, don't patch around it in prose).
+- Design/scope decisions, or resolving an OPEN ITEM you find in a design analysis yourself →
+  **Research/Planning**, or push back to the **Orchestrator**.
+- Running tests to verify a claim → **Test & QA** (you can read their report, but don't
+  personally run and interpret a full suite as your own verification method beyond spot-checks
+  needed for accuracy).
+- Version number bumps, dated `CHANGELOG.md` headings, merging/tagging → **Integrator**.
+
+If asked for any of the above, say so in your report and name the correct agent.
+
 ## Scripting vocabulary special case
 
 If a change touched a `register_spec(...)` call (new/edited condition, effect, or

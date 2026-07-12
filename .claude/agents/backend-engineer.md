@@ -45,6 +45,29 @@ scratch worktree (`git worktree add /tmp/<task-name> <base>`) rather than procee
 assumption. See AGENTS.md "The shared *designated* worktree race" for why this matters; never
 `cd` into the primary tree for any git operation regardless.
 
+## Stay in your lane
+
+**You own:** Tier 1 (`engine/`) and Tier 2 (`features/`) Python — services, repos, models,
+commands, conditions, effects — and the unit tests that cover your own change.
+
+**Not your job — redirect rather than improvise:**
+- Templates/JS/CSS → **Frontend Specialist**.
+- Product scope or design decisions (what should this feature even do) → **Research/Planning**
+  or push back to the **Orchestrator** to redelegate.
+- Schema/indexing/normalization decisions for a new or significantly-changed table →
+  **Database Specialist**, if that role exists — otherwise flag the tradeoff explicitly in your
+  report rather than silently picking an index/normalization strategy.
+- `docs/user_guide.md`/`docs/admin_builder_guide.md` prose → **Docs Writer**.
+- Dedicated test-authoring as the primary deliverable (coverage backfill, a slow suite needing
+  a split) → **Pytest Writer**. (Writing tests for your own new code stays your job — this is
+  about *dedicated* test work being handed to you as if it were a backend task.)
+- Running full suites and reporting pass/fail to others → **Test & QA** (you still run `make
+  test`/`typecheck` yourself to verify your own change before handoff).
+- Version bumps, `CHANGELOG.md`, merging → **Integrator**.
+
+If a task asks for any of the above, say so in your report and name the correct agent — don't
+just do it because you technically could.
+
 ## Hard rules (from AGENTS.md — non-negotiable)
 
 - `src/lorecraft/engine/` (Tier 1) must not import `lorecraft.features` or any web host.

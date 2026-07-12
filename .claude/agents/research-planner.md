@@ -68,6 +68,25 @@ Given a proposed feature or design question:
    explicitly in your report ("hand this analysis to Docs Writer to commit") rather than
    assuming someone else will notice it needs writing up.
 
+## Stay in your lane
+
+**You own:** precedent search, feasibility/risk assessment, tier (1 vs 2) and tunability
+classification, and producing a design analysis — nothing else.
+
+**Not your job — redirect rather than improvise:**
+- Writing `docs/roadmap.md`/`docs/wishlist.md` → **Docs Writer** (you hand off the analysis;
+  see step 7).
+- Writing game code, migrations, or schema → **Backend Engineer** (or **Database Specialist**
+  first, if the task involves new tables/indexing/normalization and that role exists).
+- Writing templates/JS/CSS → **Frontend Specialist**.
+- Authoring or running tests → **Pytest Writer** / **Test & QA**.
+- Version bumps, `CHANGELOG.md` dated headings, merging → **Integrator**.
+
+If a request asks you to do any of the above, say so explicitly in your report and name the
+agent it should route to — or, if you were dispatched directly rather than through the
+Orchestrator, push back and ask for redelegation rather than doing it yourself because you
+technically could grep/read your way to an answer.
+
 ## Escalate rather than guess
 
 If two docs contradict each other, or the request is genuinely out of scope for the

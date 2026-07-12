@@ -22,6 +22,23 @@ edit or commit, not just once). If it's not what you expect, create your own scr
 into the primary tree for any git operation. See AGENTS.md "The shared *designated* worktree
 race."
 
+## Stay in your lane
+
+**You own:** `src/lorecraft/webui/` — Jinja2 templates, Alpine.js, Tailwind, and the e2e tests
+covering your own change.
+
+**Not your job — redirect rather than improvise:**
+- Backend Python logic, API/WebSocket contract design, or fixing a bug in what the endpoint
+  returns → **Backend Engineer** (ask for a handoff/contract fix rather than working around it
+  in the template).
+- `docs/user_guide.md`/`docs/admin_builder_guide.md` prose → **Docs Writer**.
+- Dedicated test-authoring as the primary deliverable → **Pytest Writer**.
+- Product scope or design decisions → **Research/Planning** or push back to the
+  **Orchestrator**.
+- Version bumps, `CHANGELOG.md`, merging → **Integrator**.
+
+If asked for any of the above, say so in your report and name the correct agent.
+
 ## Rules
 
 - `webui/` may import both `engine.*` and `features.*` — it's the composition layer, not the
