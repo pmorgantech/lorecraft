@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.92.1] - 2026-07-12
+
+### Fixed
+
+- **Admin console: tab bar overflow silently hid newer tabs (e.g. Sprint 72's System tab) on
+  narrower windows.** `#tab-bar` had no horizontal scroll, and its ancestor `#admin-body` clips
+  overflow, so as more tabs accumulated across sprints, the newest ones fell off the edge with no
+  scrollbar or any visual cue that they existed — reported live on a phone (Sprint 72's System tab
+  was invisible even after widening the browser). Fixed with `overflow-x: auto` on `#tab-bar` and
+  `flex-shrink: 0` on `.tab` so labels scroll into view instead of being squashed or clipped. New
+  regression test (`tests/e2e/test_admin_tab_bar.py`) pins this at a narrow viewport and confirms
+  the last tab is both visible and clickable after scrolling.
+
 ## [0.92.0] - 2026-07-12
 
 ### Added
