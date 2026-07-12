@@ -4,6 +4,88 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.94.0] - 2026-07-12
+
+### Added
+
+- **Sprint 73 — Generalized rewards + XP/leveling core.** A complete real progression system split
+  cleanly along the mechanism/policy (Tier 1/Tier 2) line:
+  - **Tier 1 leveling mechanism** (`engine/game/leveling.py`): data-driven, opinion-free; accepts an
+    arbitrary `LevelCurve` value object and applies arbitrary stat deltas, knowing nothing about
+    coins or skill points. Provides `xp_for_level(curve, level)`, `award_xp(stats, amount, curve)`
+    returning `LevelUpResult(leveled_up, old_level, new_level, levels_gained)`, and
+    `apply_stat_deltas(stats, deltas)` for whitelisted numeric `PlayerStats` fields.
+  - **Tier 2 progression config** (`features/progression/`): a DB-backed `ProgressionConfig`
+    singleton (mirroring `WorldClock` pattern) holding both the curve params (`base`, `step`) and
+    the per-level reward policy (`coins_per_level`, `skill_points_per_level`). YAML-seeded from
+    `world.yaml`'s `progression:` section for data-driven authoring; live-editable via new
+    `GET`/`POST /admin/progression/config` endpoint — no reseed or restart needed.
+  - **Unified reward interpreter** (`features/progression/rewards.py`): a single `apply_rewards(ctx, rewards)`
+    call interprets the reward vocabulary (`items`, `xp`, `coins`, `skill_points`) and dispatches
+    each to the appropriate Tier 1 mechanism or service (`item_location.spawn`, `ledger.credit`,
+    `leveling.award_xp`, `leveling.apply_stat_deltas`). Returns `RewardOutcome` for callers to
+    narrate without re-deriving.
+  - **`PlayerStats.skill_points` field**: new earn-side currency granting points at each level-up
+    (amount configured in `ProgressionConfig`). Spendable in Sprint 74's skill tree.
+  - **Rewired quest rewards** (`features/quests/service.py`): quest `_award_rewards` now pipes all
+    rewards through the interpreter, so authored `rewards.xp`/`coins`/`items`/`skill_points` in
+    `world.yaml` now genuinely apply (previously only `items` worked; `xp`/`coins`/`skill_points`
+    were silently discarded). Closes Sprint 71.5 (`issue-39d3fcb8`). Multi-stage quests award
+    incrementally per-stage.
+  - **Discovery XP mechanism** (`features/exploration/service.py`): replaced inline XP grant with
+    `apply_rewards(ctx, {"xp": DISCOVERY_XP})` call, so a threshold-crossing discovery now triggers
+    level-up rewards (coins + skill points at configured rate).
+  - **Level-up feedback** (frontend + backend): new `MessageType.LEVEL` feed line on level-up with
+    distinct `.msg-level` CSS styling; live-render of `skill_points` and re-render of Stats pane on
+    level-up; new `GameEvent.PLAYER_LEVELED_UP` audit event.
+  - **Critical fix**: new characters never got a `PlayerStats` row across four creation call sites
+    (`webui/player/auth.py`, `rendering.py`, `frontend.py`, `world/bootstrap.py`), causing all
+    reward/XP grants to genuinely new players to silently fail. Fixed by making `PlayerRepo.stats()`
+    get-or-create instead of get-or-`None`.
+- **Admin Progression config form** (`webui/admin/`): new Progression tab with live-editable form for
+  curve params and per-level rewards; changes take effect immediately with no reseed/restart.
+- **Player UI: live stats + level-up display**: Stats pane now shows `skill_points`; level-up
+  refreshes pane dynamically and displays feed line.
+
+### Changed
+
+- **Sprint 75 — SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration.** Foundation-band
+  infrastructure hardening (data-integrity / startup-robustness):
+  - **Generic reflection-based additive-column scanner** (replaces ~14 hand-written shims): `_ensure_additive_columns(engine)`
+    diffs `SQLAlchemy` model columns against live reflected columns; for each missing column, `ALTER TABLE … ADD COLUMN`
+    with type derived from `col.type.compile()` and `DEFAULT` derived from actual pydantic field default (not type-zero,
+    critical for fields like `quality: str = "common"` that must not corrupt to `''`). Skips and warns on PK-member
+    columns (handled by 75.4) and DB-only columns (rename/drop signal, never altered). Subsumes Sprint 73's `skill_points`
+    shim and the previous 13 hand-written blocks, closing the recurring "someone forgot to add a shim" bug.
+  - **Room `area_id` → `zone`/`room_type` in-place data migration** (`_migrate_room_area_id(engine)`): applies Sprint 71.2's
+    fold table (town/wilderness/cave→`ashmoore`; cogsworth/whisperwood/port_veridian→themselves; connector rooms to their
+    zones); derives `room_type` only for the three Ashmoore kinds (other zones' `room_type` is per-room authoring, stays NULL).
+    Drops legacy `area_id` column after copy (SQLite 3.45+ supports `DROP COLUMN` for non-PK columns), making the migration
+    idempotent and self-clearing.
+  - **RegionPricing `area_id` PK → `zone` PK table-rebuild migration** (`_migrate_regionpricing_area_id_to_zone(engine)`):
+    classic SQLite rebuild (new table → `INSERT … SELECT` with folded values + `GROUP BY` on fold to collapse Ashmoore's three
+    source rows into one `ashmoore` PK at `region_mult = 1.0` → `DROP` old → `RENAME` new). Guards on the legacy `area_id`
+    column still existing.
+  - **Full test matrix** (`tests/unit/test_db_migrations.py`): parametrized tests for additive-column upgrade with explicit
+    hardcoded-default subset, Room round-trip over full fold table, RegionPricing rebuild verification, DB-only-column warning,
+    idempotency, and non-SQLite early-return guard.
+
+### Docs
+
+- **User guide**: "Experience & Leveling" section documenting how XP is earned (discovery + quests) and what each level grants
+  (coins + skill points).
+- **Admin builder guide**: "Quest rewards and the progression system" subsection covering the reward vocabulary
+  (`items`, `xp`, `coins`, `skill_points`), the YAML `progression:` section for seeding curve + per-level policy, and live-tuning
+  per-level rewards via the new Progression admin tab without reseed/restart. Panel Tour entry added.
+- **Fixed stale dialogue/NPC/quests examples**: removed unsupported `reputation` key from reward examples in
+  `docs/dialogue_npcs_quests.md` (dead since Sprint 73.6 made the interpreter strict to the real vocabulary).
+
+### Backlog
+
+- **Sprint 73 non-blocking follow-ups** (tracked for deferred cleanup): ~8 stale defensive-fallback comments in `session.py`
+  and `save.py`; a low-probability first-access race on `PlayerRepo.stats()`; `tests/e2e/test_progression_ui.py` still
+  manually seeds `PlayerStats` though the fix makes it unnecessary.
+
 ## [0.93.0] - 2026-07-12
 
 ### Added

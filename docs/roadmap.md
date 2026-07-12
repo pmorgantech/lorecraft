@@ -11,10 +11,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-12, v0.93.0 on main; Sprints 73 & 75 implementation-complete pending integration)
+## Where things stand (2026-07-12, v0.94.0 on main; Sprints 73 & 75 merged)
 
-**Everything through Sprint 72 is merged to main** (currently at v0.93.0, which also includes two
-out-of-band agent-tooling releases unrelated to game features — see `../CHANGELOG.md`).
+**Everything through Sprint 75 is merged to main** (currently at v0.94.0, which ships Sprints 73
+and 75 — see `../CHANGELOG.md`).
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -47,8 +47,7 @@ threshold crossings, apply an arbitrary reward payload to player properties — 
 (`features/progression/`) owns the opinionated, **admin-tunable** policy of what each level
 rewards (coins + skill points), plus the unified quest/level-up reward interpreter. Resolves the
 long-standing "does Lorecraft have leveling?" question (**yes**) and delivers Sprint 71.5 (quest
-XP rewards) as Sprint 73.6. **Not yet merged to main / version-bumped** — that's the Integrator's
-next step.
+XP rewards) as Sprint 73.6. **Merged to main as v0.94.0.**
 
 **[Sprint 75 — SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration](#sprint-75--sqlite-additive-column-auto-migration--sprint-712-pk-rename-data-migration)
 is also implementation-complete** — all of 75.1–75.5 shipped as commits on branch
@@ -58,7 +57,7 @@ hand-written `_ensure_sqlite_compat_columns` shims and covering the ~22 previous
 additive columns, plus deliberate data migrations for the two Sprint 71.2 PK-adjacent renames
 (`regionpricing.area_id`→`zone`, `room.area_id`→`zone`/`room_type`) that Sprint 71.2 itself never
 built `db.py` handling for. Foundation-band infrastructure (data-integrity / startup-robustness),
-not a feature. **Not yet merged to main / version-bumped** — same Integrator step as Sprint 73.
+not a feature. **Merged to main as v0.94.0.**
 
 **Next up: [Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)**
 (design complete, not yet started) — the skill-point *sink* Sprint 73 set up: spending points
