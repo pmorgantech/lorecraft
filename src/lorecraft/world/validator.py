@@ -274,6 +274,21 @@ class EconomyConfigData(BaseModel):
     regions: list[RegionPricingData] = Field(default_factory=list)
 
 
+class ProgressionConfigData(BaseModel):
+    """`world.yaml` `progression:` section — XP-curve params + per-level rewards.
+
+    All four are required: the game-balance numbers live here (authored, data-
+    driven), never as Python defaults in the engine.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    base: int
+    step: int
+    coins_per_level: int
+    skill_points_per_level: int
+
+
 class TransitStopData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -318,6 +333,7 @@ class WorldDocument(BaseModel):
     dialogue_trees: list[DialogueTreeData] = Field(default_factory=list)
     quests: list[QuestData] = Field(default_factory=list)
     economy: EconomyConfigData | None = None
+    progression: ProgressionConfigData | None = None
     transit: TransitConfigData | None = None
 
 

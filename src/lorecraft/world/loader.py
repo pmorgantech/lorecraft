@@ -12,6 +12,7 @@ from lorecraft.features.bank.models import Bank
 from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
+from lorecraft.features.progression.models import ProgressionConfig
 from lorecraft.features.quests.models import Quest
 from lorecraft.features.transit.models import TransitLine, TransitStop
 from lorecraft.engine.models.world import Exit, Item, NPC, Room
@@ -31,6 +32,7 @@ from lorecraft.world.validator import (
     ItemData,
     NpcData,
     NpcScheduleEntryData,
+    ProgressionConfigData,
     QuestData,
     QuestStageData,
     RegionPricingData,
@@ -193,8 +195,30 @@ def import_world(document: WorldDocument, session: Session) -> None:
 
     if document.economy is not None:
         _import_economy(session, document.economy)
+    if document.progression is not None:
+        _import_progression(session, document.progression)
     if document.transit is not None:
         _import_transit(session, document.transit)
+
+
+def _import_progression(session: Session, progression: ProgressionConfigData) -> None:
+    """Upsert the singleton `ProgressionConfig` row from authored YAML data."""
+    existing = session.exec(select(ProgressionConfig)).first()
+    if existing is None:
+        session.add(
+            ProgressionConfig(
+                base=progression.base,
+                step=progression.step,
+                coins_per_level=progression.coins_per_level,
+                skill_points_per_level=progression.skill_points_per_level,
+            )
+        )
+    else:
+        existing.base = progression.base
+        existing.step = progression.step
+        existing.coins_per_level = progression.coins_per_level
+        existing.skill_points_per_level = progression.skill_points_per_level
+        session.add(existing)
 
 
 def _import_transit(session: Session, transit: TransitConfigData) -> None:
@@ -496,6 +520,18 @@ def export_world_document(session: Session) -> WorldDocument:
         else None
     )
 
+    progression_row = session.exec(select(ProgressionConfig)).first()
+    progression = (
+        ProgressionConfigData(
+            base=progression_row.base,
+            step=progression_row.step,
+            coins_per_level=progression_row.coins_per_level,
+            skill_points_per_level=progression_row.skill_points_per_level,
+        )
+        if progression_row is not None
+        else None
+    )
+
     lines = session.exec(select(TransitLine)).all()
     transit = (
         TransitConfigData(
@@ -543,5 +579,6 @@ def export_world_document(session: Session) -> WorldDocument:
         dialogue_trees=dialogue_tree_data,
         quests=quest_data,
         economy=economy,
+        progression=progression,
         transit=transit,
     )

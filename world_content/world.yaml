@@ -7233,6 +7233,16 @@ economy:
     - zone: port_veridian
       region_mult: 0.95
 
+# Sprint 73: XP/leveling policy (data-driven, admin-tunable). `base`/`step` feed
+# the Tier 1 LevelCurve (cost to reach level n+1 = base + step*(n-1)); the reward
+# fields say what crossing one level grants. Live-editable via the admin console
+# (POST /admin/progression/config) with no restart.
+progression:
+  base: 100
+  step: 50
+  coins_per_level: 25
+  skill_points_per_level: 1
+
 quests:
   - id: investigate_lights
     title: Lights in the Square

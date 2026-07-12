@@ -42,6 +42,7 @@ from lorecraft.engine.models.world import (
     WorldClock,
     WorldMeta,
 )
+from lorecraft.features.progression.models import ProgressionConfig
 from lorecraft.features.quests.models import PlayerQuestProgress, Quest
 from lorecraft.features.trading.models import PvpConsent, TradeOffer
 from lorecraft.features.reputation.models import Reputation
@@ -67,6 +68,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     DialogueTree,
     Quest,
     PlayerQuestProgress,
+    ProgressionConfig,
     CombatSession,
     Changeset,
     ChangesetItem,
