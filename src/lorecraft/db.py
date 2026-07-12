@@ -509,6 +509,14 @@ def _migrate_regionpricing_area_id(engine: Engine) -> None:
             else:
                 folded[zone] = (float(region_mult), bias_json)
 
+        # Drop-first (not CREATE … IF NOT EXISTS): SQLite autocommits DDL outside
+        # a transaction, so a crash between this CREATE and the final rename can
+        # leave a stray `regionpricing_new` behind after rollback restores the
+        # original table. On the next boot the guard re-triggers and a bare CREATE
+        # would fail with "table already exists", bricking every subsequent start.
+        # Dropping first is safer than IF NOT EXISTS, which could reuse a stale
+        # leftover of the wrong schema.
+        connection.execute(text("DROP TABLE IF EXISTS regionpricing_new"))
         connection.execute(
             text(
                 "CREATE TABLE regionpricing_new ("

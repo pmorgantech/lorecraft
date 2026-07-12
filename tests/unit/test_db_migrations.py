@@ -304,6 +304,27 @@ def test_regionpricing_rebuild_is_idempotent(tmp_path: Path) -> None:
     assert [(r.zone, r.region_mult) for r in result] == [("cogsworth", 1.1)]
 
 
+def test_regionpricing_rebuild_recovers_from_stray_new_table(tmp_path: Path) -> None:
+    # A crash between the CREATE and the final rename can leave `regionpricing_new`
+    # behind after a rollback restores the original table. The next boot re-runs
+    # the migration; a bare CREATE would fail with "table already exists" and brick
+    # every subsequent start. Drop-first must let the rebuild complete regardless of
+    # the leftover's (here deliberately wrong) schema.
+    engine = _file_engine(tmp_path)
+    _seed_legacy_regionpricing(engine, [("cogsworth", 1.1, '{"copper_coin": 1.2}')])
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE regionpricing_new (bogus VARCHAR)"))
+
+    _migrate_regionpricing_area_id(engine)
+
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT zone, region_mult FROM regionpricing")).all()
+    assert [(r.zone, r.region_mult) for r in result] == [("cogsworth", 1.1)]
+    pk = inspect(engine).get_pk_constraint("regionpricing")["constrained_columns"]
+    assert pk == ["zone"]
+    assert "regionpricing_new" not in inspect(engine).get_table_names()
+
+
 # --- 4. Warn-but-don't-drop for a DB-only column -----------------------------
 
 
