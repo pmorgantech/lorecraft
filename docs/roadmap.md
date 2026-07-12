@@ -36,7 +36,7 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
-**Next: Sprint 73** — (planning in progress). See the backlog and roadmap sections below.
+**Next: Sprint 73** — **XP & leveling progression** (design complete; see [Sprint 73](#sprint-73--xp--leveling-progression) below). Resolves the long-standing "does Lorecraft have leveling?" product question (**yes**, decided 2026-07-12) and unblocks Sprint 71.5 (quest XP rewards).
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -78,7 +78,7 @@ work, with one item blocked on a product decision.
 | 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [x] v0.91.0 — All 71.2a-f complete (schema split `zone`/`room_type`, economy re-keyed, weather dedup guard, admin filter UI, test updates; branch `sprint-71-2-zone-room-type-split`, commits `2e9f466`, `7e90bf4`). |
 | 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [x] v0.91.0 — z-level filtering verified correct (regression test added `test_frontend_map.py`); fixed shape-stability bug where tie-break was non-deterministic (now sorts by distance + room_id), commit `2e9f466`. |
 | 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [x] v0.91.0 — Backend `MessageType.HELP` tag (`c29fea1`) + frontend `.msg-help` CSS styling with `--lc-accent` token + e2e regression test (`357c533`, branch `sprint-71-4-help-formatting`). |
-| 71.5 | **Quest XP rewards.** | [ ] **BLOCKED** — needs a product decision first: does Lorecraft have any leveling/XP progression system at all? If no, this may close as works-as-designed; if yes, it needs its own dedicated XP-system sprint before design work here can start. |
+| 71.5 | **Quest XP rewards.** | [ ] **UNBLOCKED → scoped into Sprint 73.** Product decision (2026-07-12): Lorecraft **does** have XP/leveling progression, so this is no longer blocked. The dedicated design now exists — see [Sprint 73 — XP & leveling progression](#sprint-73--xp--leveling-progression) below; implementation is **Sprint 73.2** (wire `_award_rewards` to actually apply quest `rewards.xp`). Closes when 73.2 ships. |
 
 ---
 
@@ -428,6 +428,82 @@ model is missing today; B's appeal is real but only if 72.3 is scoped as a throw
 
 ---
 
+## Sprint 73 — XP & leveling progression
+
+**Goal:** turn the currently-inert `Player.level`/`xp` scorekeeping fields into a real, if
+deliberately modest, progression system — and in doing so deliver Sprint 71.5's quest-XP ask
+(`issue-39d3fcb8`). **Product decision (2026-07-12): Lorecraft *does* have leveling.** Combat is
+still shelved to [`wishlist.md`](wishlist.md), so this sprint builds progression *without* combat
+stat-scaling: XP accumulates, players cross level thresholds on a gentle curve, and each level-up is
+surfaced as a milestone. Whether a level-up *also* grants a mechanical perk is the one open fork —
+see [Sprint 73 design](#sprint-73-design--xp-curve-tier-placement--the-level-up-perk-fork) below.
+
+**Verified starting state (2026-07-12).** `PlayerStats` (`engine/models/player.py` L36–50) already
+carries `level: int = 1`, `xp: int = 0`, `xp_to_next: int = 100`. XP accrues in exactly **one** place
+today — `features/exploration/service.py` L62–64 does `stats.xp += DISCOVERY_XP` (`DISCOVERY_XP = 5`)
+on a search discovery — and **no level-up logic exists anywhere**: `level` never leaves `1`, and
+nothing reads it to gate or scale behaviour (grep-confirmed). Quest completion **does not** award XP:
+`_award_rewards` (`features/quests/service.py` L195–203) reads `rewards.get("xp")` but only emits a
+cosmetic `ctx.say("You gain N experience.")` — it never mutates `stats.xp`. World content already
+authors quest XP values (`world_content/world.yaml`: **12** stage rewards, 40–65 each, **605 XP
+total**), so the data exists and is simply discarded today.
+
+| # | Task | Status |
+|---|------|--------|
+| 73.1 | **Tier 1 leveling core (pure curve + rollover).** New `src/lorecraft/engine/game/leveling.py`, mirroring the pure-helper shape of `engine/game/checks.py::skill_check`. Exposes `xp_for_level(level) -> int` (the threshold curve) and `award_xp(stats: PlayerStats, amount: int) -> LevelUpResult`, which adds XP, rolls the level forward across **one or more** thresholds in a loop, updates `xp_to_next`, and returns a small result object (`levels_gained`, `new_level`, `leveled_up`). **Curve:** `xp_for_level(L) = BASE + STEP·(L-1)` with `BASE=100`, `STEP=50` (linear per-level cost → quadratic cumulative: L2=100, L3=+150, L4=+200, L5=+250). Calibration: the current 605-XP quest budget plus discovery XP lands a completionist around **level 4–5**, a sensible early-content ceiling; constants are module-level tunables (a formula, not per-room branching — the data-driven rule is respected). **Pure: no session/IO/`ctx`**, so both Tier 2 callers share one curve. Unit tests: single-level, multi-level rollover in one award, exact-threshold boundary, zero/negative-amount guard. | [ ] |
+| 73.2 | **Award quest XP (delivers Sprint 71.5 / `issue-39d3fcb8`).** `features/quests/service.py::_award_rewards` (L195–203): replace the cosmetic `ctx.say(...)`-only `xp` branch with a real `award_xp(stats, xp)` call (fetch `stats` via `ctx.player_repo.stats(...)`, add to session), then narrate the result (73.4). Because `_complete_quest` (L153) already calls `_award_rewards(stage.rewards)` **per stage** (L164), multi-stage quests award their XP incrementally as each stage completes — the partial-per-stage model falls out for free, no extra work. Success: completing a quest with `rewards.xp` raises `stats.xp`/`level`; the 605 XP already in `world.yaml` becomes live. Closes Sprint 71.5. | [ ] |
+| 73.3 | **Route discovery XP through the shared helper.** `features/exploration/service.py` L62–64 currently does `stats.xp += DISCOVERY_XP` inline, bypassing any level-up. Replace with `award_xp(stats, DISCOVERY_XP)` so discoveries share the one curve and can trigger a level-up. No duplicated threshold math. Success: search-discovery XP flows through 73.1; a discovery that crosses a threshold levels the player up. | [ ] |
+| 73.4 | **Level-up feedback (feed message + event + live stats).** When `award_xp` reports `leveled_up`, the calling feature emits a feed line via `ctx.say(f"You reach level {new_level}!", MessageType.<progression>)` — mirroring Sprint 71.4's `MessageType.HELP` addition: add a small `MessageType.LEVEL` + `.msg-level` CSS token if a distinct colour is wanted, else reuse `SYSTEM` — `ctx.push_update(...)` the Stats pane (already renders `level`/`xp`/`xp_to_next`: `partials/stats_panel.html` L44–45, `webui/player/session.py` L494–495), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`, `engine/game/events.py` L38). Narration/event stay in the Tier 2 callers (or a tiny shared Tier 2 helper) so Tier 1's `leveling.py` stays presentation-free. | [ ] |
+| 73.5 | **Docs.** `docs/user_guide.md` (score/leveling — how XP is earned, that levels are milestones); `docs/admin_builder_guide.md` (quest `rewards.xp` is now functional + the curve constants). No `scripting_api.md` regeneration needed unless a new `register_spec` lands (none planned). | [ ] |
+
+### Sprint 73 design — XP curve, tier placement & the level-up perk fork
+
+> **Provenance.** Research + design 2026-07-12 (branch `sprint-73-leveling-design`, based on
+> `2b3253b`/v0.92.1). Design-only: no engine/feature code shipped here. The starting-state facts
+> above are verified against the live tree. One genuine product fork (what a level-up *does*) is
+> surfaced below with a recommendation, **not** silently decided — same shape as the Sprint 72.3
+> restart fork.
+
+**Tier placement (resolved — follows existing precedent, not a fork).** `Player`/`PlayerStats` with
+`level`/`xp`/`xp_to_next` are **Tier 1** (`engine/models/player.py`). Two **Tier 2** features
+(exploration, quests) must award XP, and the current precedent is already that a Tier 2 feature
+mutates the Tier 1 `PlayerStats` directly — `exploration/service.py` does `stats.xp += …` on a
+`ctx.player_repo.stats()` object. Duplicating the *curve* across both features would drift, so the
+threshold math belongs in **one Tier 1 pure helper** (`engine/game/leveling.py`), exactly as
+`skill_check` lives in `engine/game/checks.py` and is called from features. The helper stays pure
+(mutates the passed `PlayerStats`, returns a result); presentation (`ctx.say`, `push_update`,
+`queue_event`) stays in the Tier 2 callers. **No new tier boundary, no engine→feature import** — and
+the existing `tests/unit/test_tier_boundaries.py` guard continues to hold.
+
+**OPEN ITEM — what does a level-up actually *do*?** Combat is shelved, so there are no combat stats
+to scale; a level is currently a pure number. Three framings:
+
+- **(a) Milestone recognition (cosmetic).** Levels are a visible progress marker on `score` + the
+  Stats pane, plus a level-up feed line. No mechanical gating. Honest about what it is; ships as
+  73.1–73.5 with **zero content retrofit**.
+- **(b) Gate existing content by level** (shop goods / zones / dialogue options). **Flagged as a
+  scope risk:** nothing is level-gated today, so this means retrofitting `world.yaml` content and
+  adding level conditions — a much larger, content-heavy ask that would balloon the sprint.
+- **(c) A small non-combat mechanical perk.** The cleanest available hook is **carry capacity**:
+  `features/encumbrance/rules.py::resolve_carry_capacity` already composes `carry_base(strength)`
+  with the **modifier registry** (`engine/game/modifiers.py`), so a per-level `carry_capacity`
+  modifier slots in **with no new schema** and no combat coupling. A cosmetic **title** on `score`
+  is an even lighter alternative.
+
+**Recommendation:** ship **(a)** as the Sprint 73 core (73.1–73.5) — it is the honest MVP and needs
+no content retrofit — and treat **(c) / carry-capacity** as the fastest *optional* follow-on **if**
+the user wants a level to be mechanically felt (roughly a day: register a level-scaled modifier + a
+test). **Explicitly reject (b)** for this sprint as a scope explosion. This is a product preference,
+not a correctness question; if the user picks (c) it becomes **73.6 — level-scaled carry-capacity
+modifier** rather than being silently folded in.
+
+**Follow-on XP sources (out of scope — flagged, not built).** Once 73.1's helper exists, first-time
+zone discovery, puzzle solves, and escort-quest completion are natural additional `award_xp` callers.
+Deliberately deferred: a first version awarding XP from **quests + the existing discovery source** is
+sufficient; retrofitting every system in one sprint is over-scope.
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -478,7 +554,10 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 - **Used (all complete):** 72 (backlog cleanup: tooling tech-debt + admin ops + mobile polish —
   72.1 scripting-catalog feature-enable + `register_spec` migration, 72.2 admin DB wipe/reseed from
   `world.yaml`, 72.3 admin engine restart + process supervision, 72.4 mobile chat tab-collapse; v0.92.0).
-- **Next new sprint: 73.** Don't recycle a number that appears here or in
+- **In design: 73** (XP & leveling progression — 73.1 Tier 1 leveling core, 73.2 quest XP [delivers
+  71.5 / `issue-39d3fcb8`], 73.3 exploration reroute, 73.4 level-up UX, 73.5 docs; one OPEN ITEM:
+  cosmetic milestone vs. a carry-capacity perk — see the Sprint 73 design section).
+- **Next new sprint: 74.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
