@@ -494,6 +494,10 @@ def stats_snapshot(
     out["level"] = stats.level
     out["xp"] = stats.xp
     out["xp_to_next"] = stats.xp_to_next
+    # Sprint 73.9: surface unspent skill points in the Stats/Score readout.
+    # Phase 1 wired skill_points into save/load only; this is the display
+    # projection the Stats-pane template renders (like level/xp above).
+    out["skill_points"] = stats.skill_points
 
     # Effective traits — innate + granted (equipment, active effects), the
     # same view the `traits` command shows.

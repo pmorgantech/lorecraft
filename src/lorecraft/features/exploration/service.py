@@ -10,6 +10,7 @@ from lorecraft.features.exploration.rules import (
     mark_exit_discovered,
 )
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
+from lorecraft.features.progression.feedback import narrate_level_up
 from lorecraft.features.progression.rewards import apply_rewards
 from lorecraft.features.skills.service import SkillService
 
@@ -64,4 +65,8 @@ class ExplorationService:
         # threshold-crossing discovery also fires the config-driven level-up
         # payout — no duplicated leveling math here. DISCOVERY_XP stays
         # exploration's own policy value; the interpreter owns the curve.
-        apply_rewards(ctx, {"xp": DISCOVERY_XP})
+        # The returned outcome must be narrated (Sprint 73.9): otherwise a
+        # discovery that crosses a level silently grants the payout but says
+        # nothing. Reuse the same feedback path the quest turn-in uses.
+        outcome = apply_rewards(ctx, {"xp": DISCOVERY_XP})
+        narrate_level_up(ctx, outcome)

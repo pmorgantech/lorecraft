@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
+from lorecraft.features.progression.feedback import narrate_level_up
 from lorecraft.features.progression.rewards import apply_rewards
 from lorecraft.features.quests import conditions as quest_conditions
 from lorecraft.features.quests.repo import QuestRepo
@@ -206,5 +207,7 @@ class QuestService:
             ctx.say(f"You receive {outcome.coins_granted} coins.")
         if outcome.xp_granted:
             ctx.say(f"You gain {outcome.xp_granted} experience.")
-        if outcome.level_up is not None and outcome.level_up.leveled_up:
-            ctx.say(f"You reach level {outcome.level_up.new_level}!", MessageType.QUEST)
+        # Dedicated LEVEL feed line + PLAYER_LEVELED_UP event + Stats-pane push
+        # (Sprint 73.9), shared with the discovery path so a level-up narrates
+        # consistently no matter what granted the XP.
+        narrate_level_up(ctx, outcome)

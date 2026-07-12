@@ -213,6 +213,33 @@ class TestSearch:
                 return
         pytest.fail("no seed produced a successful search in 50 tries")
 
+    def test_search_discovery_that_levels_narrates_and_emits_event(self) -> None:
+        # 73.9: a discovery that crosses a level threshold must not silently grant
+        # the payout — it emits a LEVEL feed line and a PLAYER_LEVELED_UP event,
+        # the same as a quest turn-in. Previously the discovery path discarded its
+        # RewardOutcome and narrated nothing.
+        from lorecraft.engine.game.events import Event, GameEvent
+        from lorecraft.engine.game.message_types import MessageType
+
+        for seed in range(50):
+            cmd_engine, ctx, session = _build_engine_and_ctx(rng_seed=seed)
+            session.add(
+                ProgressionConfig(
+                    base=5, step=0, coins_per_level=10, skill_points_per_level=1
+                )
+            )
+            session.commit()
+            leveled: list[Event] = []
+            ctx.bus.on(GameEvent.PLAYER_LEVELED_UP, lambda e, _c: leveled.append(e))
+            cmd_engine.handle_command("search", ctx)
+            if any("hidden passage" in m for m in ctx.messages):
+                level_lines = [m for m in ctx.messages if m.type == MessageType.LEVEL]
+                assert level_lines == ["You reach level 2!"]
+                assert len(leveled) == 1
+                assert leveled[0].payload["new_level"] == 2
+                return
+        pytest.fail("no seed produced a successful search in 50 tries")
+
 
 class TestTerrainGating:
     def test_movement_blocked_below_required_skill(self) -> None:

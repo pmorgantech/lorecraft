@@ -16,7 +16,7 @@ from enum import Enum
 class MessageType(str, Enum):
     """Where a `GameContext.say()` message fits in the output taxonomy.
 
-    Deliberately small (nine entries) — see the module docstring. `SYSTEM`
+    Deliberately small (ten entries) — see the module docstring. `SYSTEM`
     is the default for `say()` calls that haven't been given a more specific
     type; it is not itself a signal to style distinctly (most of the engine's
     existing narration defaults here), whereas the others are meaningful
@@ -27,6 +27,11 @@ class MessageType(str, Enum):
     warning, or a per-feature hint), so the frontend can style command/topic
     listings with bold/color without any markup leaking into engine-adjacent
     text.
+
+    `LEVEL` tags the "You reach level N!" line a reward grant emits when XP
+    crosses a threshold (Sprint 73.9). A dedicated type — not reused `SYSTEM`
+    or `QUEST`, since a level-up can come from a discovery too — so the
+    frontend can style/celebrate it distinctly.
     """
 
     ROOM_EVENT = "room_event"
@@ -37,6 +42,7 @@ class MessageType(str, Enum):
     WARNING = "warning"
     HINT = "hint"
     HELP = "help"
+    LEVEL = "level"
     SYSTEM = "system"
 
 

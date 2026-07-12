@@ -36,6 +36,7 @@ class GameEvent(StrEnum):
     PLAYER_ATTACKED = "player_attacked"
     NPC_ATTACKED = "npc_attacked"
     SKILL_IMPROVED = "skill_improved"
+    PLAYER_LEVELED_UP = "player_leveled_up"
     QUEST_UPDATED = "quest_updated"
     QUEST_COMPLETED = "quest_completed"
     QUEST_FAILED = "quest_failed"
