@@ -28,13 +28,11 @@ sys.path.insert(0, str(repo_root / "src"))
 from sqlmodel import Session, create_engine, select  # noqa: E402
 
 from lorecraft.db import create_tables  # noqa: E402
-from lorecraft.features.npc.models import DialogueTree  # noqa: E402
-from lorecraft.engine.models.items import ItemStack  # noqa: E402
 from lorecraft.engine.models.player import Player  # noqa: E402
-from lorecraft.features.quests.models import PlayerQuestProgress, Quest  # noqa: E402
-from lorecraft.engine.models.world import Exit, Item, NPC, Room, WorldMeta  # noqa: E402
+from lorecraft.engine.models.world import Room, WorldMeta  # noqa: E402
 from lorecraft.engine.repos.stack_repo import StackRepo  # noqa: E402
 from lorecraft.world.loader import load_world_yaml  # noqa: E402
+from lorecraft.world.reseed import reseed_world_from_yaml  # noqa: E402
 from lorecraft.config import Settings, load_settings  # noqa: E402
 from lorecraft.world.bootstrap import ensure_seed_player  # noqa: E402
 
@@ -44,31 +42,6 @@ def _resolve_world_path(path: str) -> Path:
     if candidate.is_dir():
         return candidate / "world.yaml"
     return candidate
-
-
-def _wipe_world(session: Session) -> None:
-    """Delete world content (rooms, items, NPCs, dialogue, quests)."""
-    for progress in session.exec(select(PlayerQuestProgress)).all():
-        session.delete(progress)
-    for npc in session.exec(select(NPC)).all():
-        session.delete(npc)
-    for tree in session.exec(select(DialogueTree)).all():
-        session.delete(tree)
-    for quest in session.exec(select(Quest)).all():
-        session.delete(quest)
-    for stack in session.exec(
-        select(ItemStack).where(ItemStack.owner_type == "room")
-    ).all():
-        session.delete(stack)
-    for ex in session.exec(select(Exit)).all():
-        session.delete(ex)
-    session.flush()
-    for item in session.exec(select(Item)).all():
-        session.delete(item)
-    for room in session.exec(select(Room)).all():
-        session.delete(room)
-    session.flush()
-    print("  Wiped existing world data.")
 
 
 def main() -> None:
@@ -114,23 +87,30 @@ def main() -> None:
                 "Use --fresh to wipe and re-import, or point --db at a new file."
             )
 
-        if args.fresh:
-            _wipe_world(session)
-
-        # Ensure WorldMeta singleton
-        if session.exec(select(WorldMeta)).first() is None:
-            session.add(WorldMeta(schema_version=1))
-            session.flush()
-
-        print("Importing world YAML …")
-        doc = load_world_yaml(world_path, session)
-        session.commit()
-
-    print(
-        f"  Imported {len(doc.rooms)} rooms, {len(doc.items)} items, "
-        f"{len(doc.room_items)} room placements, {len(doc.npcs)} npcs, "
-        f"{len(doc.quests)} quests."
-    )
+    print("Importing world YAML …")
+    if args.fresh:
+        # Delegate the wipe + reimport to the shared reseed path so the CLI and
+        # the admin endpoint can never drift on what "fresh" means. Dev players
+        # are reset separately below, so no `settings` relocation is passed here.
+        result = reseed_world_from_yaml(game_engine, world_path)
+        print("  Wiped existing world data.")
+        print(
+            f"  Imported {result.rooms} rooms, {result.items} items, "
+            f"{result.room_items} room placements, {result.npcs} npcs, "
+            f"{result.quests} quests."
+        )
+    else:
+        with Session(game_engine) as session:
+            if session.exec(select(WorldMeta)).first() is None:
+                session.add(WorldMeta(schema_version=1))
+                session.flush()
+            doc = load_world_yaml(world_path, session)
+            session.commit()
+        print(
+            f"  Imported {len(doc.rooms)} rooms, {len(doc.items)} items, "
+            f"{len(doc.room_items)} room placements, {len(doc.npcs)} npcs, "
+            f"{len(doc.quests)} quests."
+        )
 
     seed_settings = Settings(
         seed_player_id="player-1",
