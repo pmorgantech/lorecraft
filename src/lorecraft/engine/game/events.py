@@ -50,6 +50,7 @@ class GameEvent(StrEnum):
     PLAYER_DISCONNECTED = "player_disconnected"
     PLAYER_RECONNECTED = "player_reconnected"
     WORLD_CHANGESET_PROMOTED = "world_changeset_promoted"
+    ENGINE_RESTART_REQUESTED = "engine_restart_requested"
     SAVE_LOADED = "save_loaded"
     COMBAT_TICK_DUE = "combat_tick_due"
     NPC_MOVE_DUE = "npc_move_due"

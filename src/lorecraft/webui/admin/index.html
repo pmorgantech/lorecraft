@@ -168,6 +168,7 @@
       <div class="tab" data-tab="news"       onclick="showTab('news')">News</div>
       <div class="tab" data-tab="help"       onclick="showTab('help')">Help</div>
       <div class="tab" data-tab="accounts"   onclick="showTab('accounts')">Accounts</div>
+      <div class="tab" data-tab="system"     onclick="showTab('system')">System</div>
     </div>
 
     <div id="tab-panels">
@@ -560,6 +561,26 @@
         </div>
       </div>
 
+      <!-- System -->
+      <div id="tab-system" class="tab-panel">
+        <h2>System</h2>
+        <div class="panel" style="max-width:520px;">
+          <h2 style="display:flex;align-items:center;gap:0.5rem;">
+            Engine Restart <span id="sys-armed-badge"></span>
+          </h2>
+          <div id="sys-restart-meta" style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.5rem;"></div>
+          <p style="color:var(--text-dim);font-size:0.85rem;">
+            Requests a graceful restart of the running engine. The supervisor
+            SIGTERMs the server (players re-attach via the reconnect grace period)
+            and relaunches it without wiping live runtime state.
+          </p>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button id="sys-restart-btn" onclick="requestRestart()">⟳ Request Restart</button>
+            <button onclick="loadSystem()">↻</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /tab-panels -->
   </div><!-- /admin-body -->
 </div><!-- /admin-screen -->
@@ -713,7 +734,7 @@ const TAB_LOADERS = {
   dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
   crashes: loadCrashes, world: loadRooms,
   changesets: loadChangesets, clock: loadClock, issues: loadIssues,
-  news: loadNews, help: loadHelp, accounts: loadAccounts
+  news: loadNews, help: loadHelp, accounts: loadAccounts, system: loadSystem
 };
 
 function showTab(name) {
@@ -1274,6 +1295,38 @@ async function setTimeRatio() {
 async function setWeather() {
   await api("POST", "/admin/clock/weather", {weather: document.getElementById("weather-select").value});
   loadClock();
+}
+
+// ────────────────────────────────────────
+// System (engine restart)
+// ────────────────────────────────────────
+
+async function loadSystem() {
+  const s = await api("GET", "/admin/ops/restart");
+  const badge = document.getElementById("sys-armed-badge");
+  const meta = document.getElementById("sys-restart-meta");
+  const btn = document.getElementById("sys-restart-btn");
+  if (s && s.armed) {
+    badge.innerHTML = `<span class="badge badge-green">armed</span>`;
+    const age = s.heartbeat_age != null ? ` (heartbeat ${s.heartbeat_age.toFixed(1)}s ago)` : "";
+    meta.textContent = `Supervisor pid ${s.pid ?? "?"} is watching${age}.`;
+    btn.disabled = false;
+  } else {
+    badge.innerHTML = `<span class="badge badge-amber">not armed</span>`;
+    meta.textContent = "No supervisor is listening — restart requests will be rejected.";
+    btn.disabled = true;
+  }
+}
+
+async function requestRestart() {
+  if (!confirm("Request a graceful engine restart now? Players briefly disconnect and reconnect.")) return;
+  const resp = await api("POST", "/admin/ops/restart", {confirm: true});
+  if (resp && resp.status === "restart_requested") {
+    showError("Restart requested — the engine will restart shortly.");
+  } else if (resp && resp.detail) {
+    showError(resp.detail);
+  }
+  loadSystem();
 }
 
 // ────────────────────────────────────────
