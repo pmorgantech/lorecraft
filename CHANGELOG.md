@@ -4,6 +4,33 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.93.0] - 2026-07-12
+
+### Added
+
+- **Database Specialist and Code Reviewer agents.** Two new advisory-only sub-agents (no
+  `Edit`/`Write` — they report findings, Backend Engineer/Frontend Specialist apply the fix):
+  Database Specialist reviews schema/indexing/normalization/query patterns for a change that
+  touches `engine/models`/`features/*/models`; Code Reviewer reviews idiomatic Python, code
+  smells, and security (OWASP-adjacent) issues for every code change.
+- **Orchestrator's "implementation gate."** Every code change now passes Database Specialist
+  (conditional on schema touch) → Code Reviewer → Test & QA before reaching the Integrator, with
+  any blocking finding routed back to the implementer and the failing stage re-checking the fix.
+  Integrator no longer re-tests ad hoc on a red checklist item — it routes back through the same
+  gate, with Test & QA doing the re-verification.
+- **Orchestrator pipeline timing/stats.** Tracks duration and retry count per dispatched
+  sub-agent (from each `Agent`/`SendMessage` response's `usage` block), surfaced in periodic
+  check-ins during long-running work and in the final summary.
+
+### Docs
+
+- All 8 existing agent definitions gained an explicit "Stay in your lane" section (what they
+  own, what to redirect elsewhere and to whom) so a sub-agent asked to do out-of-scope work has
+  a clear instruction to redirect or push back to the Orchestrator, rather than improvising
+  because it technically has the tool access to attempt it.
+- `docs/multi-agent-workflow.md`'s agent roster table and implementation-gate summary updated
+  to match.
+
 ## [0.92.3] - 2026-07-12
 
 ### Docs
