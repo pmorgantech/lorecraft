@@ -12,6 +12,7 @@ from lorecraft.db import (
     configure_sqlite_engine,
     create_audit_tables,
     create_game_engine,
+    create_game_tables,
     create_tables,
 )
 
@@ -38,6 +39,42 @@ def test_create_audit_tables_initializes_only_audit_schema() -> None:
     audit_tables = set(inspect(audit_engine).get_table_names())
     assert audit_tables == {model.__tablename__ for model in AUDIT_TABLE_MODELS}
     assert not ({model.__tablename__ for model in GAME_TABLE_MODELS} & audit_tables)
+
+
+def test_compat_shim_adds_skill_points_to_legacy_playerstats() -> None:
+    # Simulate a var/app.sqlite created before PlayerStats.skill_points (Sprint 73):
+    # a playerstats table missing the column. create_game_tables' checkfirst leaves
+    # the pre-existing table alone, so the compat shim is the only path that adds it.
+    engine = create_engine("sqlite://")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE playerstats ("
+                "player_id TEXT PRIMARY KEY, "
+                "strength INTEGER NOT NULL DEFAULT 10, "
+                "level INTEGER NOT NULL DEFAULT 1, "
+                "xp INTEGER NOT NULL DEFAULT 0)"
+            )
+        )
+        conn.execute(
+            text("INSERT INTO playerstats (player_id) VALUES ('legacy-player')")
+        )
+
+    assert "skill_points" not in {
+        c["name"] for c in inspect(engine).get_columns("playerstats")
+    }
+
+    create_game_tables(engine)
+
+    columns = {c["name"] for c in inspect(engine).get_columns("playerstats")}
+    assert "skill_points" in columns
+    with engine.connect() as conn:
+        value = conn.execute(
+            text(
+                "SELECT skill_points FROM playerstats WHERE player_id = 'legacy-player'"
+            )
+        ).scalar()
+    assert value == 0
 
 
 def test_pool_kwargs_empty_for_sqlite() -> None:

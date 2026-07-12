@@ -317,6 +317,21 @@ def _ensure_sqlite_compat_columns(engine: Engine) -> None:
                     text("ALTER TABLE npc ADD COLUMN following_player_id TEXT")
                 )
 
+    # PlayerStats.skill_points (Sprint 73) — additive; pre-existing playerstats
+    # rows default to zero banked skill points rather than erroring on SELECT.
+    if "playerstats" in inspect(engine).get_table_names():
+        playerstats_columns = {
+            column["name"] for column in inspect(engine).get_columns("playerstats")
+        }
+        if "skill_points" not in playerstats_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "ALTER TABLE playerstats "
+                        "ADD COLUMN skill_points INTEGER NOT NULL DEFAULT 0"
+                    )
+                )
+
     if "playerquestprogress" in inspect(engine).get_table_names():
         quest_columns = {
             column["name"]
