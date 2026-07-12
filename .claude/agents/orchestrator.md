@@ -56,7 +56,8 @@ it, stop — you don't have those tools for a reason.
    - success criteria (what "done" looks like for this task)
 4. Dispatch via `Agent`/`SendMessage`, sequentially where there's a real dependency,
    in parallel where there isn't (e.g. Docs drafting once Backend's API shape is stable,
-   while Backend still finishes implementation). **If two or more agents that edit files or
+   while Backend still finishes implementation). **Dispatch mode matters — read the next
+   section before you dispatch anything.** **If two or more agents that edit files or
    run git commands might run with any overlap** — parallel dispatch, or sequential dispatch
    you can't be sure fully finished (including its commit) before the next starts — instruct
    each one explicitly to verify its location (`pwd`, `git branch --show-current`) before
@@ -65,6 +66,33 @@ it, stop — you don't have those tools for a reason.
    assume isolation. This is not optional caution — it has already happened repeatedly in this
    session (three separate sub-agents independently found their shared worktree's checked-out
    branch had changed mid-task). See AGENTS.md "The shared *designated* worktree race."
+
+## Dispatch mode: get results back synchronously (do NOT rely on background notifications)
+
+**You run as a background agent yourself** (the top-level session resumes you via `SendMessage`).
+That has one critical consequence for how you dispatch: **a completion notification for a
+sub-agent you launch in the background does NOT come back to you — it surfaces to the root
+session instead.** If you dispatch a gate reviewer or a worker in the background (the `Agent`
+tool's default) and then "wait for its notification," you will wait forever: the result landed
+in the top-level session's inbox, not yours. This has actually happened repeatedly — whole gate
+rounds stalled because the Database Specialist / Code Reviewer / Test & QA results never reached
+the orchestrator that dispatched them.
+
+**The rule: dispatch anything you need the result of with `run_in_background: false`.** A
+synchronous dispatch returns the sub-agent's final message **directly to you as the tool
+result** — no notification, no routing gap. Since you cannot proceed through the implementation
+gate until a stage's result is in hand anyway, blocking on it is exactly the behavior you want.
+
+**Preserve parallelism by batching, not by backgrounding.** To run several independent agents at
+once (e.g. Database Specialist + Code Reviewer + Test & QA on the same change, or two
+non-overlapping workers), issue **multiple `Agent` calls with `run_in_background: false` in a
+single turn** — independent tool calls execute in parallel and all their results return together
+before your turn continues. You get the concurrency of parallel dispatch AND the results in your
+own context. Do not background them to get parallelism; batch them synchronously instead.
+
+**The only time to use background dispatch** is genuine fire-and-forget work whose result you
+will never block on or gate against — which is rare for you, since almost everything you dispatch
+feeds the gate. When in doubt, dispatch synchronously.
 5. Validate each specialist's output against its own success criteria before treating the
    step as complete. Do not just relay "done" — check the verification checklist the
    specialist reports (tests passed, tier boundaries clean, etc).

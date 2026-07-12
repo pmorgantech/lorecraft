@@ -11,9 +11,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-12, v0.92.0)
+## Where things stand (2026-07-12, v0.93.0 on main; Sprints 73 & 75 implementation-complete pending integration)
 
-**Everything through Sprint 72 is complete** and merged to main.
+**Everything through Sprint 72 is merged to main** (currently at v0.93.0, which also includes two
+out-of-band agent-tooling releases unrelated to game features — see `../CHANGELOG.md`).
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -36,7 +37,33 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
-**Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a mechanism/policy split per the 2026-07-12 correction: **Tier 1** provides the generic, data-driven leveling mechanism — detect threshold crossings, apply an arbitrary reward payload to player properties — while **Tier 2 `features/progression/`** owns the opinionated, **admin-tunable** policy of what each level rewards [coins + skill points], plus the unified quest/level-up reward interpreter), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points on a data-driven tree that unlocks abilities in **all three flavors** — active utility verbs like `forage`/`sense`/`pick`, passive modifiers, and interaction/dialogue unlocks; ability-scope fork resolved 2026-07-12). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.6**.
+**[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)
+is implementation-complete** — all of 73.1–73.10 shipped as commits on branch
+`sprint-73-progression` (full task-level detail in that section's table above), plus a critical
+fix found in review (new characters never got a `PlayerStats` row — see that section's callout
+row). Delivers a real XP/leveling system split along the mechanism/policy (Tier 1/Tier 2) line:
+**Tier 1** (`engine/game/leveling.py`) is the generic, data-driven leveling mechanism — detect
+threshold crossings, apply an arbitrary reward payload to player properties — while **Tier 2**
+(`features/progression/`) owns the opinionated, **admin-tunable** policy of what each level
+rewards (coins + skill points), plus the unified quest/level-up reward interpreter. Resolves the
+long-standing "does Lorecraft have leveling?" question (**yes**) and delivers Sprint 71.5 (quest
+XP rewards) as Sprint 73.6. **Not yet merged to main / version-bumped** — that's the Integrator's
+next step.
+
+**[Sprint 75 — SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration](#sprint-75--sqlite-additive-column-auto-migration--sprint-712-pk-rename-data-migration)
+is also implementation-complete** — all of 75.1–75.5 shipped as commits on branch
+`sprint-75-db-migration` (full task-level detail in that section's table above), plus two
+hardening fixes found in review. A generic reflection-based scanner replacing the ~14
+hand-written `_ensure_sqlite_compat_columns` shims and covering the ~22 previously-unshimmed
+additive columns, plus deliberate data migrations for the two Sprint 71.2 PK-adjacent renames
+(`regionpricing.area_id`→`zone`, `room.area_id`→`zone`/`room_type`) that Sprint 71.2 itself never
+built `db.py` handling for. Foundation-band infrastructure (data-integrity / startup-robustness),
+not a feature. **Not yet merged to main / version-bumped** — same Integrator step as Sprint 73.
+
+**Next up: [Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)**
+(design complete, not yet started) — the skill-point *sink* Sprint 73 set up: spending points
+earned this sprint on a data-driven tree that unlocks abilities in all three flavors (active
+utility verbs, passive modifiers, interaction/dialogue unlocks).
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -78,7 +105,7 @@ work, with one item blocked on a product decision.
 | 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [x] v0.91.0 — All 71.2a-f complete (schema split `zone`/`room_type`, economy re-keyed, weather dedup guard, admin filter UI, test updates; branch `sprint-71-2-zone-room-type-split`, commits `2e9f466`, `7e90bf4`). |
 | 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [x] v0.91.0 — z-level filtering verified correct (regression test added `test_frontend_map.py`); fixed shape-stability bug where tie-break was non-deterministic (now sorts by distance + room_id), commit `2e9f466`. |
 | 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [x] v0.91.0 — Backend `MessageType.HELP` tag (`c29fea1`) + frontend `.msg-help` CSS styling with `--lc-accent` token + e2e regression test (`357c533`, branch `sprint-71-4-help-formatting`). |
-| 71.5 | **Quest XP rewards.** | [ ] **UNBLOCKED → scoped into Sprint 73.** Product decision (2026-07-12): Lorecraft **does** have XP/leveling progression, so this is no longer blocked. The dedicated design now exists — see [Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core) below; implementation is **Sprint 73.6** (rewire `_award_rewards` onto the new generalized reward path so quest `rewards.xp` — and now `coins`/`skill_points` — actually apply). Closes when 73.6 ships. |
+| 71.5 | **Quest XP rewards.** | [x] **Closed by Sprint 73.6.** Product decision (2026-07-12): Lorecraft **does** have XP/leveling progression, unblocking this item. Implemented as commit `5bf8fa5` on branch `sprint-73-progression` — `features/quests/service.py::_award_rewards` now calls the Sprint 73 reward interpreter (`apply_rewards`), so quest `rewards.xp` (and `coins`/`skill_points`) genuinely apply instead of being discarded. See [Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core) below. |
 
 ---
 
@@ -467,23 +494,26 @@ YAML edit + reseed (or Sprint 72.2's `POST /admin/world/reseed`). See the admin-
 
 | # | Task | Status |
 |---|------|--------|
-| 73.1 | **Tier 1 generic leveling *mechanism* (data-driven, policy-free).** New `src/lorecraft/engine/game/leveling.py`, pure like `engine/game/checks.py::skill_check`. It provides "the ability to do things," not opinions: (a) a **data-driven curve value object** `LevelCurve` — holds the threshold data (`base`, `step`, or an explicit `thresholds` list), **passed in as data**, not hardcoded module constants; `xp_for_level(curve, level) -> int`. (b) `award_xp(stats: PlayerStats, amount: int, curve: LevelCurve) -> LevelUpResult(leveled_up, old_level, new_level, levels_gained)` — adds XP, rolls `level` across **one or more** thresholds per the passed curve, updates `xp_to_next`, and returns how many levels crossed. It grants **nothing** beyond xp/level and **does not know** coins/skill-points exist — the caller decides per-level rewards. (c) a generic property applier `apply_stat_deltas(stats, deltas: Mapping[str, int])` — the "update an array of player properties" mechanism: validate each key is a known numeric `PlayerStats` field (whitelist: `xp`, `skill_points`, future stat points) and apply the int delta; reject unknown keys. **Pure: no session/IO/`ctx`, no coins (ledger) / items.** Unit tests: single/multi-level rollover, exact-threshold boundary, zero/negative guard, unknown-property rejection, curve driven by passed data. | [ ] |
-| 73.2 | **`PlayerStats.skill_points` field (the earn-side currency).** Add `skill_points: int = 0` to `PlayerStats`. Earned this sprint (quests + level-ups), **spent** in Sprint 74's tree — banks until then. Include in the `stats_snapshot` save/load path and admin reseed. Success: fresh player has `skill_points=0`; round-trips through save/load. | [ ] |
-| 73.3 | **Tier 2 progression *config* (data-driven **and** admin-tunable).** New `features/progression/` package: a DB-backed `ProgressionConfig` **singleton row** (mirroring the `WorldClock` pattern) holding **both** the curve params (`base`, `step`) **and** the per-level reward *policy* (`coins_per_level`, `skill_points_per_level`). **Seeded from a `progression:` section in `world.yaml`** at import (mirror `_import_economy`, and add it to `export_world_document` so live edits round-trip back to YAML) — data-driven defaults, authorable. Tier 2 reads this row and constructs the Tier 1 `LevelCurve` from its params. This is the "malleable opinionated bit." Success: config seeds from YAML; changing `coins_per_level` there + reseed changes level-up payouts with no code edit. | [ ] |
-| 73.4 | **Admin-tunable endpoint (live, no restart) — the "tunable by an admin" ask.** `GET`/`POST /admin/progression/config` mirroring `POST /admin/clock/time-ratio` (`webui/admin/routers/clock.py`): read + edit the 73.3 `ProgressionConfig` row live, commit, and (if any value is cached in the runtime) push it — no reseed, no restart. Admin `index.html` form hook + an e2e/integration test. **Confirmed in-sprint (user, 2026-07-12)** — not a stretch goal. | [ ] |
-| 73.5 | **Tier 2 reward *interpreter* (policy → Tier 1 mechanism dispatch).** In `features/progression/`, `apply_rewards(ctx, rewards: JsonObject) -> RewardOutcome` interprets the reward **vocabulary** (`items`/`xp`/`coins`/`skill_points`) and dispatches each to a Tier 1 mechanism: `items` → `ctx.item_location.spawn`; `coins` → `ctx.ledger.credit`; `xp` → `leveling.award_xp` with the curve built from 73.3 config; `skill_points` (and future numeric props) → `leveling.apply_stat_deltas`. **The vocabulary lives here (Tier 2), not in Tier 1** — "which keys count as rewards" is a policy/content choice (see design note). Canonical key **`coins`** (matches `CoinBalance`; `money` tolerated as alias). Returns `RewardOutcome` (amounts granted + any `LevelUpResult`) so callers narrate without re-deriving. Unit tests per key + a combined bundle. | [ ] |
-| 73.6 | **Rewire quest rewards onto the interpreter (delivers Sprint 71.5 / `issue-39d3fcb8`).** Replace `features/quests/service.py::_award_rewards` (L195–203) with a single `apply_rewards(ctx, rewards)` call, then narrate (73.9). Quests just *supply the payload* (the authored reward dict); it owns no reward mechanism. Because `_complete_quest` calls `_award_rewards` **per stage**, multi-stage quests award incrementally for free. Success: `world.yaml`'s 605 quest XP goes live; `rewards.coins`/`rewards.skill_points` now function. Closes Sprint 71.5. | [ ] |
-| 73.7 | **Level-up rewards = pure Tier 2 policy read (no hardcoded amounts).** When 73.1's `award_xp` reports `levels_gained > 0`, `features/progression/` reads the 73.3 config's `coins_per_level`/`skill_points_per_level`, builds `{"coins": coins_per_level·levels_gained, "skill_points": skill_points_per_level·levels_gained}`, and applies it via the 73.5 interpreter. **No magic constants in code** — the numbers come from the admin-tunable config. Success: crossing a threshold credits coins + skill points at the *configured* rate; changing the rate via 73.4 changes payouts live. | [ ] |
-| 73.8 | **Route discovery XP through the mechanism.** `features/exploration/service.py` L62–64's inline `stats.xp += DISCOVERY_XP` bypasses level-up. Replace with `apply_rewards(ctx, {"xp": DISCOVERY_XP})` (or `award_xp` with the config curve) so a threshold-crossing discovery also triggers 73.7's payout. No duplicated threshold math. | [ ] |
-| 73.9 | **Level-up feedback (feed message + event + live stats).** On `leveled_up`, the Tier 2 caller emits a feed line (add `MessageType.LEVEL` + `.msg-level` CSS, mirroring Sprint 71.4's `MessageType.HELP`, or reuse `SYSTEM`), `ctx.push_update`s the Stats pane (extend `partials/stats_panel.html` / `webui/player/session.py` to show `skill_points`), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`). Presentation stays in Tier 2 so Tier 1's `leveling.py` stays IO-free. | [ ] |
-| 73.10 | **Docs.** `docs/user_guide.md` (how XP is earned; levels pay coins + skill points). `docs/admin_builder_guide.md` (quest `rewards` supports `xp`/`coins`/`items`/`skill_points`; the `world.yaml` `progression:` section; **how to live-tune per-level rewards + the curve from the admin console** [73.4]). No `scripting_api.md` regen (no new `register_spec`). | [ ] |
+| 73.1 | **Tier 1 generic leveling *mechanism* (data-driven, policy-free).** New `src/lorecraft/engine/game/leveling.py`, pure like `engine/game/checks.py::skill_check`. It provides "the ability to do things," not opinions: (a) a **data-driven curve value object** `LevelCurve` — holds the threshold data (`base`, `step`, or an explicit `thresholds` list), **passed in as data**, not hardcoded module constants; `xp_for_level(curve, level) -> int`. (b) `award_xp(stats: PlayerStats, amount: int, curve: LevelCurve) -> LevelUpResult(leveled_up, old_level, new_level, levels_gained)` — adds XP, rolls `level` across **one or more** thresholds per the passed curve, updates `xp_to_next`, and returns how many levels crossed. It grants **nothing** beyond xp/level and **does not know** coins/skill-points exist — the caller decides per-level rewards. (c) a generic property applier `apply_stat_deltas(stats, deltas: Mapping[str, int])` — the "update an array of player properties" mechanism: validate each key is a known numeric `PlayerStats` field (whitelist: `xp`, `skill_points`, future stat points) and apply the int delta; reject unknown keys. **Pure: no session/IO/`ctx`, no coins (ledger) / items.** Unit tests: single/multi-level rollover, exact-threshold boundary, zero/negative guard, unknown-property rejection, curve driven by passed data. | [x] Shipped as commit `aa20e38` on branch `sprint-73-progression`. |
+| 73.2 | **`PlayerStats.skill_points` field (the earn-side currency).** Add `skill_points: int = 0` to `PlayerStats`. Earned this sprint (quests + level-ups), **spent** in Sprint 74's tree — banks until then. Include in the `stats_snapshot` save/load path and admin reseed. Success: fresh player has `skill_points=0`; round-trips through save/load. | [x] Shipped as commit `70ed9f4` on branch `sprint-73-progression`. A hand-written sqlite-compat column shim for the new field followed as commit `99d3ef9` — **since superseded** by Sprint 75's generic reflection-based scanner (75.1/75.2 deleted this shim along with the other 13 hand-written ones; see [Sprint 75](#sprint-75--sqlite-additive-column-auto-migration--sprint-712-pk-rename-data-migration) below). |
+| 73.3 | **Tier 2 progression *config* (data-driven **and** admin-tunable).** New `features/progression/` package: a DB-backed `ProgressionConfig` **singleton row** (mirroring the `WorldClock` pattern) holding **both** the curve params (`base`, `step`) **and** the per-level reward *policy* (`coins_per_level`, `skill_points_per_level`). **Seeded from a `progression:` section in `world.yaml`** at import (mirror `_import_economy`, and add it to `export_world_document` so live edits round-trip back to YAML) — data-driven defaults, authorable. Tier 2 reads this row and constructs the Tier 1 `LevelCurve` from its params. This is the "malleable opinionated bit." Success: config seeds from YAML; changing `coins_per_level` there + reseed changes level-up payouts with no code edit. | [x] Shipped as commit `eeb6226` on branch `sprint-73-progression`. Import-time bounds validation (`base > 0`, rest `>= 0`) added separately in commit `565b77b`. |
+| 73.4 | **Admin-tunable endpoint (live, no restart) — the "tunable by an admin" ask.** `GET`/`POST /admin/progression/config` mirroring `POST /admin/clock/time-ratio` (`webui/admin/routers/clock.py`): read + edit the 73.3 `ProgressionConfig` row live, commit, and (if any value is cached in the runtime) push it — no reseed, no restart. Admin `index.html` form hook + an e2e/integration test. **Confirmed in-sprint (user, 2026-07-12)** — not a stretch goal. | [x] Backend shipped as commit `64db1d4`, admin console form shipped as commit `8857515`, both on branch `sprint-73-progression`. |
+| 73.5 | **Tier 2 reward *interpreter* (policy → Tier 1 mechanism dispatch).** In `features/progression/`, `apply_rewards(ctx, rewards: JsonObject) -> RewardOutcome` interprets the reward **vocabulary** (`items`/`xp`/`coins`/`skill_points`) and dispatches each to a Tier 1 mechanism: `items` → `ctx.item_location.spawn`; `coins` → `ctx.ledger.credit`; `xp` → `leveling.award_xp` with the curve built from 73.3 config; `skill_points` (and future numeric props) → `leveling.apply_stat_deltas`. **The vocabulary lives here (Tier 2), not in Tier 1** — "which keys count as rewards" is a policy/content choice (see design note). Canonical key **`coins`** (matches `CoinBalance`; `money` tolerated as alias). Returns `RewardOutcome` (amounts granted + any `LevelUpResult`) so callers narrate without re-deriving. Unit tests per key + a combined bundle. | [x] Shipped as commit `9fabd64` on branch `sprint-73-progression` (bundled with 73.7's level-up payout). A malformed non-list `items` reward value now warns instead of silently no-op'ing (commit `236c05d`). |
+| 73.6 | **Rewire quest rewards onto the interpreter (delivers Sprint 71.5 / `issue-39d3fcb8`).** Replace `features/quests/service.py::_award_rewards` (L195–203) with a single `apply_rewards(ctx, rewards)` call, then narrate (73.9). Quests just *supply the payload* (the authored reward dict); it owns no reward mechanism. Because `_complete_quest` calls `_award_rewards` **per stage**, multi-stage quests award incrementally for free. Success: `world.yaml`'s 605 quest XP goes live; `rewards.coins`/`rewards.skill_points` now function. Closes Sprint 71.5. | [x] Shipped as commit `5bf8fa5` on branch `sprint-73-progression`. Closes Sprint 71.5 / `issue-39d3fcb8` — see the 71.5 row above. |
+| 73.7 | **Level-up rewards = pure Tier 2 policy read (no hardcoded amounts).** When 73.1's `award_xp` reports `levels_gained > 0`, `features/progression/` reads the 73.3 config's `coins_per_level`/`skill_points_per_level`, builds `{"coins": coins_per_level·levels_gained, "skill_points": skill_points_per_level·levels_gained}`, and applies it via the 73.5 interpreter. **No magic constants in code** — the numbers come from the admin-tunable config. Success: crossing a threshold credits coins + skill points at the *configured* rate; changing the rate via 73.4 changes payouts live. | [x] Shipped as commit `9fabd64` on branch `sprint-73-progression` (bundled with 73.5's reward interpreter — the level-up payout is the interpreter recursively applying its own `{coins, skill_points}` payload). |
+| 73.8 | **Route discovery XP through the mechanism.** `features/exploration/service.py` L62–64's inline `stats.xp += DISCOVERY_XP` bypasses level-up. Replace with `apply_rewards(ctx, {"xp": DISCOVERY_XP})` (or `award_xp` with the config curve) so a threshold-crossing discovery also triggers 73.7's payout. No duplicated threshold math. | [x] Shipped as commit `2dd499b` on branch `sprint-73-progression`. |
+| 73.9 | **Level-up feedback (feed message + event + live stats).** On `leveled_up`, the Tier 2 caller emits a feed line (add `MessageType.LEVEL` + `.msg-level` CSS, mirroring Sprint 71.4's `MessageType.HELP`, or reuse `SYSTEM`), `ctx.push_update`s the Stats pane (extend `partials/stats_panel.html` / `webui/player/session.py` to show `skill_points`), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`). Presentation stays in Tier 2 so Tier 1's `leveling.py` stays IO-free. | [x] Backend feedback plumbing shipped as commit `d038f01`; frontend Stats-pane live-render + level-up re-render shipped as commit `ea48c25`; distinct `.msg-level` feed styling shipped as commit `172ca71` — all on branch `sprint-73-progression`. |
+| 73.10 | **Docs.** `docs/user_guide.md` (how XP is earned; levels pay coins + skill points). `docs/admin_builder_guide.md` (quest `rewards` supports `xp`/`coins`/`items`/`skill_points`; the `world.yaml` `progression:` section; **how to live-tune per-level rewards + the curve from the admin console** [73.4]). No `scripting_api.md` regen (no new `register_spec`). | [x] Shipped as commit `e094f2e` (this worktree, docs-only). `docs/user_guide.md` gained an "Experience & Leveling" section + `score` command entry; `docs/admin_builder_guide.md` gained a "Quest rewards and the progression system" subsection (reward vocabulary, `progression:` YAML, live-tuning via the new Progression admin tab) plus a Panel Tour row; `docs/dialogue_npcs_quests.md`'s stale `rewards` examples (an unsupported `reputation` key, dead since Sprint 73.6 made the interpreter strict) corrected to the real vocabulary. |
+| — | **Critical fix found in review (not a numbered task): new characters never got a `PlayerStats` row.** Discovered by the Frontend Specialist while building 73.4/73.9's UI: **no code path created `PlayerStats` for a new player** — not character creation, not save/load — across all four creation call sites (`webui/player/auth.py`, `rendering.py`, `frontend.py`, `world/bootstrap.py`). Every reward/XP grant to a genuinely new character silently no-op'd (`apply_rewards` reads `ctx.player_repo.stats(player_id)` and treats `None` as "can't hold XP," per its own docstring) — this would have shipped broken for any player who didn't happen to inherit a pre-seeded stats row. Fixed by making `PlayerRepo.stats()` get-or-create instead of get-or-`None`. | [x] Shipped as commit `c3b818a` on branch `sprint-73-progression`. Non-blocking follow-ups (stale defensive-fallback comments left at ~8 call sites, a low-probability first-access race, and a test that still seeds a stats row unnecessarily) are tracked in the Backlog table below. |
 
 ### Sprint 73 design — the mechanism/policy (Tier 1/Tier 2) split, admin-tunability & naming
 
 > **Provenance.** Research + design 2026-07-12 (branch `sprint-73-leveling-design`, based on
 > `2b3253b`/v0.92.1), **revised for the 2026-07-12 mechanism/policy architectural correction**.
-> Design-only. Facts verified against the live tree. Forks surfaced with a recommendation, not
-> silently decided.
+> Design-only at the time of writing. Facts verified against the live tree. Forks surfaced with a
+> recommendation, not silently decided. **Since implemented in full** — see the Sprint 73 task
+> table above for shipped commits; the "not yet built" / `[ ]` language throughout this design
+> section reflects the state *at design time* and is kept as historical record, not current status.
 
 **The Tier 1/Tier 2 boundary (resolved per the correction) — concrete signatures.** The old draft
 conflated mechanism and policy (it hardcoded "level-up pays coins + skill points" and a `BASE=100/STEP=50`
@@ -642,6 +672,169 @@ in the Sprint 73 design section above; none are changed by the active-verbs deci
 
 ---
 
+## Sprint 75 — SQLite additive-column auto-migration + Sprint 71.2 PK-rename data migration
+
+**Goal (shipped — design complete 2026-07-12, built and merged on branch `sprint-75-db-migration`).**
+Replace the ~14 hand-written per-column `_ensure_sqlite_compat_columns` shims in `db.py` with a
+generic reflection-based additive-column auto-migration scanner covering the ~22
+currently-unshimmed additive columns, and add deliberate data migrations for the two Sprint 71.2
+PK-adjacent renames (`regionpricing.area_id`→`zone`, `room.area_id`→`zone`/`room_type`) that
+Sprint 71.2 itself never touched `db.py` for. This is foundation-band infrastructure hardening
+(data-integrity / startup-robustness) — **not a feature** — squarely inside the "foundation before
+features" mandate. *(At design time this section read "design complete, not yet built" — a design
+decision being finalized is not the same as it being built. That distinction has since resolved:
+every task below is now `[x]`, shipped as the commits listed in its row.)*
+
+| # | Task | Status |
+|---|------|--------|
+| 75.1 | **Generic reflection additive-column scanner in `db.py`.** New `_ensure_additive_columns(engine)` replacing the body of `_ensure_sqlite_compat_columns`: for each model in `GAME_TABLE_MODELS`, diff `model.__table__.columns` against live reflected columns; for each column missing from the live table, `ALTER TABLE … ADD COLUMN` with a type derived from `col.type.compile(dialect=…)` and a **`DEFAULT` derived from the actual pydantic field default** (`model.model_fields[name].default` / `.default_factory`, not a naive type-zero table — this is load-bearing, see design section); **skip + WARNING-log** any missing column that is part of the primary key (SQLite can't `ADD` a PK column via `ALTER` — this is exactly `regionpricing.zone`, handed off to 75.4); for any DB-only column absent from the model, **WARN, never drop/alter** (strictly additive contract; DB-only columns are the rename/drop signal handled deliberately in 75.3/75.4). **Tier 1 in character, composition-layer in placement** (see OPEN ITEM A below). *Success: a legacy DB missing any of the ~22 unshimmed additive columns upgrades cleanly on startup; test-matrix items 1 + 4 + 6 (75.5) green.* — tunable: N/A (schema infra, no game-balance dial). | [x] Shipped, together with 75.2, as commit `683abd7` on branch `sprint-75-db-migration`. |
+| 75.2 | **Delete the 14 hand-written per-column shim blocks** (including the just-landed Sprint 73 `skill_points` shim), subsumed by 75.1 by construction (recommended: subsume, don't run-alongside — two sources of truth for the same fact is the exact "someone forgot to add a shim" bug that motivated this sprint). Retain a regression test asserting the previously-hand-shimmed columns still get added after the hand code is deleted, so the deletion can't silently regress. **Tier 1 in character, composition-layer in placement.** *Success: `db.py`'s compat body is the generic scanner only; previously-shimmed columns still added.* — tunable: N/A. | [x] Shipped, together with 75.1, as commit `683abd7` on branch `sprint-75-db-migration` — includes deleting the Sprint 73 `skill_points` shim (`99d3ef9`). |
+| 75.3 | **Room `area_id`→`zone`/`room_type` in-place data migration.** Runs after 75.1 (which will already have added `room.zone`/`room.room_type` as nullable columns, orphaned from `area_id`). `_migrate_room_area_id(engine)`: if the legacy `area_id` column is still present, `UPDATE room SET zone = …` applying the §71.2 fold table **verbatim** (town/wilderness/cave→`ashmoore`; cogsworth/whisperwood/port_veridian→themselves; `old_trade_road`→`cogsworth`, `forest_road`→`whisperwood`, `river_bend`→`port_veridian`); `room_type` is mechanically derivable **only** for the three Ashmoore kinds (`UPDATE room SET room_type = area_id WHERE area_id IN ('town','wilderness','cave') AND room_type IS NULL`) — the other zones' `room_type` was per-room authoring in 71.2b, not derivable, and stays NULL, matching §71.2's stance exactly. **Warranted even though rooms are reseed-derived**, because admin can `POST`/`PUT` rooms (`webui/admin/routers/world.py`), so a legacy DB can hold admin-authored rooms not in `world.yaml` that a reseed will never fix. **Recommend DROP `area_id` after copy** (SQLite 3.45 supports `DROP COLUMN` on this non-PK, non-indexed column) — a lingering half-renamed column is the "half-done seam" AGENTS.md warns against, and leaving it means the 75.1 scanner's DB-only-column WARNING fires on every startup forever; dropping it makes the migration self-clearing and idempotent. Guard the DROP on the column's presence. **Tier 1 in character, composition-layer in placement, with the bounded content-literal caveat (OPEN ITEM A).** *Success: test-matrix item 2 (75.5) green; migration idempotent.* — tunable: N/A. | [x] Shipped as commit `399aaae` on branch `sprint-75-db-migration`. |
+| 75.4 | **RegionPricing `area_id`→`zone` PK table-rebuild migration.** `zone` is the PRIMARY KEY, so neither `ADD COLUMN … PRIMARY KEY` nor `DROP COLUMN area_id` is possible in SQLite — requires the classic rebuild, guarded on "does the live `regionpricing` table still have an `area_id` column": (1) `CREATE TABLE regionpricing_new (zone VARCHAR PRIMARY KEY, region_mult FLOAT NOT NULL DEFAULT 1.0, bias JSON NOT NULL DEFAULT '{}')`; (2) `INSERT … SELECT <fold(area_id)>, region_mult, bias FROM regionpricing GROUP BY <fold(area_id)>` — the `GROUP BY` on the folded value is **mandatory** (the fold collapses Ashmoore's three source rows into one `ashmoore` PK and would otherwise raise a PK collision); (3) `DROP TABLE regionpricing; ALTER TABLE regionpricing_new RENAME TO regionpricing`. Resolves **OPEN ITEM B** (force `ashmoore`'s `region_mult` to `1.0` explicitly in the fold, rather than relying on `GROUP BY`'s arbitrary row-pick which could otherwise grab the wilderness/cave multiplier) and **OPEN ITEM C** (rebuild-with-fold vs. drop-and-recreate-empty — recommend rebuild-with-fold; see design section for the full fork). **Tier 1 in character, composition-layer in placement.** *Success: test-matrix item 3 (75.5) green; OPEN ITEMs B and C resolved per the stated recommendations.* — tunable: N/A. | [x] Shipped as commit `f623889` on branch `sprint-75-db-migration`. A missed-cleanup crash-loop guard (drop a stray `regionpricing_new` before rebuilding) followed in commit `8183be3`; a non-deterministic tie-break in the non-Ashmoore fold was made deterministic in commit `8b1795b`. |
+| 75.5 | **`tests/unit/test_db_migrations.py` — full test matrix.** Against a temp-file SQLite engine (not `:memory:`, so `ALTER`/rebuild round-trips through real reflection): (1) parametrized additive-column upgrade with an explicit hardcoded-default subset (`item.quality → 'common'`, `room.terrain → 'normal'`, JSON `'[]'`/`'{}'` factories, a nullable `NULL` case) to catch the type-zero-vs-field-default bug that pure reflection parity would tautologically hide; (2) Room data round-trip parametrized over the full §71.2 fold table + `area_id` dropped afterward; (3) RegionPricing rebuild round-trip (six legacy rows → four zone-keyed rows, Ashmoore collapsed to `1.0`, `zone` reported as PK by reflection); (4) warn-but-don't-drop for a DB-only column (`caplog`); (5) idempotency (second run issues no `ALTER`/rebuild); (6) non-SQLite dialect early-return guard (preserve existing behavior). **Test.** *Success: `make test` green; the previously-untested `_ensure_*` path is now covered.* — tunable: N/A. | [x] Shipped as commit `5900096` on branch `sprint-75-db-migration`. |
+
+### Sprint 75 design — additive-column scanner, PK-rename migrations & tier placement
+
+> **Provenance.** Research + design 2026-07-12, verified against the `sprint-73-progression` worktree
+> tip (`2dd499b`) in its own venv (SQLAlchemy `2.0.51`, SQLite `3.45.1`). Design-only — nothing in
+> this section is built. Open items are surfaced with a recommendation, not silently decided.
+
+**Precedent.** `src/lorecraft/db.py`'s `_ensure_sqlite_compat_columns` is the existing hand-maintained
+pattern — 14 per-column `if "x" not in cols: ALTER TABLE … ADD COLUMN` blocks. Most recent hand
+example: the Sprint 73 `skill_points` shim (commit `99d3ef9`). Sprint 71.2 (`docs/roadmap.md` §71.2)
+is the canonical `area_id`→`zone` fold table and the Ashmoore economy-collapse rule — but **the
+71.2 commits (`2e9f466`/`7e90bf4`) did not touch `db.py` at all**; 71.2 relied entirely on
+reseed-from-`world.yaml`, shipping **zero** compat/migration handling for that rename. So the (b)
+migrations below are net-new; there is no partial handling to build on or dedup against.
+
+**Fit to roadmap.** Sprint 75 was confirmed free (70–74 all claimed). This is pure foundation-band
+infrastructure hardening (data-integrity / startup-robustness), squarely inside the "foundation
+before features" mandate — not a feature jump-ahead.
+
+**Environment facts (verified in the sprint-73-progression tree's venv).** SQLAlchemy `2.0.51`,
+SQLite `3.45.1`. SQLite 3.45 **supports `ALTER TABLE … DROP COLUMN`** (added in 3.35.0) for plain
+non-PK, non-indexed columns — relevant to the `area_id` disposition in 75.3. It still **cannot**
+`ADD` a PRIMARY KEY column via `ALTER`, nor `DROP` a PK column — relevant to `regionpricing` (75.4).
+
+**Risks.**
+- **Tier-placement framing needed correction** — see OPEN ITEM A below. `db.py` is **not** `engine/`;
+  it lives at `src/lorecraft/db.py` and **already imports `lorecraft.features.*`** (bank, economy,
+  npc, quests, trading, reputation, transit, npc_memory in `GAME_TABLE_MODELS`). It is a
+  **composition-layer** module, not Tier 1 engine infra, so `tests/unit/test_tier_boundaries.py`
+  does not gate it the way it gates `engine/`.
+- **Content values leaking into infra.** The two fold-maps encode world-content-specific literals
+  (`ashmoore`, `cogsworth`, `old_trade_road`, …) inside `db.py`. As a one-shot historical migration
+  constant this is defensible, but it is **not** "no feature-specific opinion" — flagged, not
+  silently accepted (see OPEN ITEM A).
+- **`regionpricing.zone` is a PRIMARY KEY** — the generic scanner cannot and must not touch it; it
+  requires a full table-rebuild migration (75.4), the single hardest piece of this sprint.
+- **Coverage gap.** There is essentially no test coverage for `_ensure_sqlite_compat_columns` today
+  (it grew 14 blocks with no dedicated legacy-DB upgrade test). This sprint closes that gap as a
+  first-class deliverable (75.5), not an afterthought.
+
+**(a) The reflection-based additive-column scanner (75.1–75.2).** Mechanism
+(`_ensure_additive_columns(engine)`): early-return on non-SQLite; for each model in
+`GAME_TABLE_MODELS`, skip tables not yet reflected (brand-new DBs already got the full schema);
+diff `model.__table__.columns` (authoritative names + type + nullable + PK membership) against
+live reflected columns. **`model − live` → ADD**, skipping and WARNING-logging any PK-member column
+(the clean seam handed to 75.4). **Default derivation is load-bearing — derive from the actual
+pydantic field default, not a type-zero table.** Read `model.model_fields[name]`: if `field.default`
+is set, use it; elif `field.default_factory` is not `None`, call it and `json.dumps` (correctly
+distinguishing `'[]'` list factories from `'{}'` dict factories rather than guessing by name); else,
+for a `NOT NULL` column with no declared default, fall back to type-zero. Why it matters:
+`quality: str = "common"` and `terrain: str = "normal"` must emit `DEFAULT 'common'`/`DEFAULT
+'normal'`, not `''` — a naive str→`''` table would silently corrupt these two on every legacy
+upgrade. **`live − model` → WARN, never drop/alter** — the strictly-additive contract; a DB-only
+column is the rename/drop signal (exactly `room.area_id` and legacy `regionpricing.area_id`), out
+of scope for the generic scanner and handled deliberately in 75.3/75.4.
+
+**Decision — subsume, don't run-alongside (recommended, 75.2).** Delete all 14 hand-written blocks
+and let the generic scanner cover them by construction: every current hand entry is a plain
+additive column the scanner expresses exactly, and keeping both is two sources of truth for the same
+fact — the exact recurring "someone forgot to add a shim" bug that spawned this sprint. Retain a
+regression test asserting the previously-hand-shimmed columns still get added after deletion. The
+one thing the scanner must **not** subsume is `regionpricing.zone` (PK) — it never appeared in the
+hand code and belongs to 75.4.
+
+**(b) The two PK-rename data migrations (75.3–75.4).** These run **after** `_ensure_additive_columns`
+(which will already have added `room.zone`/`room.room_type` as nullable columns, leaving them NULL
+and `area_id` orphaned — the gap these deliberate steps close).
+
+*Room (`area_id` → `zone` + `room_type`, 75.3) — in-place, no rebuild needed.* `area_id` is nullable,
+non-PK, non-indexed; `zone`/`room_type` are nullable non-PK. `_migrate_room_area_id(engine)` folds
+`area_id` into `zone` verbatim per §71.2, derives `room_type` only for the three Ashmoore kinds
+(the other zones' `room_type` was per-room authoring, not derivable), and drops `area_id` after copy
+once SQLite 3.45's `DROP COLUMN` support is confirmed available. Warranted despite rooms being
+reseed-derived because admin `POST`/`PUT` on rooms (`webui/admin/routers/world.py`) can produce
+admin-authored rows not in `world.yaml` that a reseed will never fix.
+
+*RegionPricing (`area_id` PK → `zone` PK, 75.4) — full table rebuild.* `zone` is the PK, so neither
+`ADD COLUMN … PRIMARY KEY` nor `DROP COLUMN area_id` is possible; use the classic SQLite rebuild
+(new table → folded+grouped `INSERT` → drop old → rename new), guarded on the live table still
+having an `area_id` column. The `GROUP BY` on the folded value is mandatory to avoid a PK collision
+from Ashmoore's three source rows collapsing to one `ashmoore` row.
+
+**OPEN ITEM A — tier-placement correction.** The originating request framed this work as "belongs
+in `db.py`, which is Tier 1 engine infra." **That framing is inaccurate and should not be committed
+as written.** `db.py` lives at `src/lorecraft/db.py` (top-level), not under `engine/`, and it
+**already imports `lorecraft.features.*`** across `GAME_TABLE_MODELS` — making it a
+**composition-layer** module (allowed to import both engine and features), not a Tier 1 engine
+module; `tests/unit/test_tier_boundaries.py` does not apply to it the way it applies to `engine/`.
+→ **Recommendation:** state it accurately — **the scanner mechanism is Tier-1 *in character***
+(opinion-free reflection; knows *how* to diff+ALTER, encodes no feature's opinion about *what* a
+column means) and introduces no new feature import, so it adds zero coupling. **The two fold-maps
+are the caveat** — they embed world-content literals directly in `db.py`, which is not "no
+feature-specific opinion." Accept this as a **bounded, one-shot historical migration constant**
+(it transforms *past* data to a *known* target state; it is not runtime branching on room IDs,
+which the design principles forbid), but document it as a **deliberate, self-clearing exception**,
+not as clean Tier 1 — once `area_id` is dropped (room, 75.3) and the table rebuilt
+(regionpricing, 75.4), both fold-maps become dead code removable in a later cleanup.
+
+**OPEN ITEM B — the Ashmoore-collapse `region_mult` value.** The rebuild's `GROUP BY` picks *one*
+row's `region_mult` for the collapsed `ashmoore` row. §71.2 rubber-stamped `ashmoore = 1.0` (the
+`town` row's value, and the only Ashmoore room with a shop). → **Recommend forcing `ashmoore` to
+`1.0` explicitly** in the fold rather than relying on `GROUP BY`'s arbitrary row-pick (which could
+grab the 1.15 `wilderness` or 1.25 `cave` mult). Today all three Ashmoore rows would fold identically
+in player-facing terms because no shop sits in a wilderness/cave room, but forcing `1.0` matches
+§71.2's documented decision and is collision-proof regardless of row order.
+
+**OPEN ITEM C — rebuild-with-fold vs. drop-and-recreate-empty for `regionpricing`.** Unlike `room`,
+`regionpricing` has **no admin-authoring path** (verified: `region_for_zone` is a pure `session.get`;
+pricing is YAML-seeded from `economy.regions`, reseed-only). So its rows are always reproducible by
+a reseed, and a simpler migration would be: drop the old-schema table and let `_create_model_tables`
+recreate it empty with the `zone` PK, deferring repopulation to the next economy reseed. →
+**Recommend rebuild-with-fold (the 75.4 steps) anyway**, because the startup `SELECT zone` crash
+happens *before* any reseed is guaranteed to run, and rebuild-with-fold is the only option that
+keeps economy prices correct on a legacy DB upgraded **in place without a reseed** — the entire
+justification for building real data migration rather than "just ADD COLUMN and orphan the data."
+Drop-empty would leave every zone at the model default `1.0` until someone remembers to reseed.
+
+**(d) Test matrix.** See task 75.5 above for the full six-item matrix (parametrized additive-column
+upgrade with hardcoded-default assertions, Room fold round-trip, RegionPricing rebuild round-trip,
+warn-but-don't-drop, idempotency, non-SQLite guard).
+
+**Sequencing note (for the eventual Backend Engineer).** Build this on a branch based off
+`sprint-73-progression`'s current tip (`2dd499b`), not off `main`. Both Sprint 73 and Sprint 75 edit
+`_ensure_sqlite_compat_columns` in `db.py`; basing off the sprint-73 tip means Sprint 75's "delete
+the hand shims" change sits cleanly on top of Sprint 73's `skill_points` shim commit (`99d3ef9`)
+instead of conflicting with it during a later rebase/merge. Sprint 75 is scope-separate from
+Sprint 73 (progression) — do not fold it into the Sprint 73 branch's own work.
+
+**Tunability note.** None of Sprint 75's tasks are game-balance dials — this is schema/migration
+infrastructure, with no reward amount, price, or curve to tune. Every task's tunable classification
+is "N/A — schema infra"; there is no live-tunable knob to invent here.
+
+**Files referenced (design analysis, sprint-73-progression worktree — implementation base once
+picked up; do not confuse with this session's own worktree):**
+- `src/lorecraft/db.py` (scanner target; current hand-shim body)
+- `src/lorecraft/engine/models/world.py` (Room/Item/NPC additive fields)
+- `src/lorecraft/engine/models/player.py` (Player/PlayerStats/SaveSlot additive fields)
+- `src/lorecraft/features/economy/models.py` (`RegionPricing`, `zone` PK)
+- `src/lorecraft/features/economy/repo.py` (`region_for_zone` — no admin-authoring path)
+- `src/lorecraft/webui/admin/routers/world.py` (admin room POST/PUT — why 75.3 is warranted)
+- `docs/roadmap.md` §71.2 (fold table + Ashmoore collapse) and §73 design (format model for this
+  section)
+
 ---
 
 ## Backlog
@@ -656,6 +849,9 @@ in the Sprint 73 design section above; none are changed by the active-verbs deci
 | Economy: make `economy.regions` pricing live-tunable | Added 2026-07-12. Currently YAML-authored + reseed-only (`world_content/world.yaml`'s `economy.regions`, imported via `import_world._import_economy`) — a real gap against the "prefer live-tunable configuration where sensible" principle (`AGENTS.md`), surfaced while designing Sprint 73's progression config. Retrofit onto the `WorldClock` pattern (`webui/admin/routers/clock.py`): a DB-backed value, YAML-seeded for initial authoring, mutated live via an admin endpoint with no restart/reseed needed. Natural pairing with Sprint 73's `ProgressionConfig` (73.3/73.4) if picked up around the same time, since both retrofit the same YAML+reseed → live-tunable pattern — but independent work, not blocking either. |
 | Multiplayer trade/transit test pass | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Multiplayer sim-test coverage* (was Sprint 65) |
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
+| Sprint 73 cleanup: stale defensive `PlayerStats` fallbacks | Added 2026-07-12. After commit `c3b818a` made `PlayerRepo.stats()` get-or-create, ~8 call sites still carry now-dead `is not None`/`or PlayerStats(...)` defensive fallbacks and stale comments (notably `webui/player/session.py` L~324–329, L~481–486, and `engine/services/save.py` L~350–352) — flagged by Code Reviewer as a future-maintainer trap. Cosmetic, not a bug; not blocking. |
+| Sprint 73: low-probability first-stats-access race | Added 2026-07-12. A brand-new player's very first stats access from two concurrent requests could theoretically raise an unhandled `IntegrityError` on the get-or-create insert — flagged advisory/non-blocking by Code Reviewer. SQLite WAL mode serializes writers, so no data corruption is possible, just a possible one-off request error in an already-unlikely race window. |
+| Sprint 73: `test_progression_ui.py` still seeds `PlayerStats` directly | Added 2026-07-12. `tests/e2e/test_progression_ui.py` seeds a `PlayerStats` row directly as a workaround for the bug commit `c3b818a` fixed — harmless now but no longer necessary. A Frontend Specialist cleanup pass could remove the seed and update the test's docstring. |
 
 *Already-implemented items previously listed here (bug/todo letterbox, encumbrance/wear slots, the
 simulation CLI, the analytics dashboard) were promoted to shipped sprints — see
@@ -695,15 +891,16 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 - **Used (all complete):** 72 (backlog cleanup: tooling tech-debt + admin ops + mobile polish —
   72.1 scripting-catalog feature-enable + `register_spec` migration, 72.2 admin DB wipe/reseed from
   `world.yaml`, 72.3 admin engine restart + process supervision, 72.4 mobile chat tab-collapse; v0.92.0).
-- **In design: 73** (Generalized rewards + XP/leveling core — **mechanism/policy split** per the
-  2026-07-12 correction: 73.1 Tier 1 generic leveling *mechanism* [data-driven `LevelCurve` +
-  `award_xp` + `apply_stat_deltas`, no reward opinions], 73.2 `skill_points` field, 73.3 Tier 2
-  `ProgressionConfig` [YAML-seeded, admin-tunable], 73.4 **live admin-tune endpoint** [WorldClock
-  pattern], 73.5 Tier 2 reward interpreter, 73.6 quest rewards rewired [delivers 71.5 /
-  `issue-39d3fcb8`], 73.7 level-up payout from config, 73.8 exploration reroute, 73.9 level-up UX,
-  73.10 docs; admin-tunable phasing scope RESOLVED [73.4 stays in the plan, not yet built, user
-  2026-07-12]; remaining OPEN ITEMs: package placement [`features/progression/`], `coins` vs `money`,
-  perk-beyond-rewards [rec. rewards-only]).
+- **Used (all complete, pending Integrator merge/version-bump):** 73 (Generalized rewards +
+  XP/leveling core — **mechanism/policy split** per the 2026-07-12 correction: 73.1 Tier 1 generic
+  leveling *mechanism* [data-driven `LevelCurve` + `award_xp` + `apply_stat_deltas`, no reward
+  opinions], 73.2 `skill_points` field, 73.3 Tier 2 `ProgressionConfig` [YAML-seeded,
+  admin-tunable], 73.4 **live admin-tune endpoint** [WorldClock pattern], 73.5 Tier 2 reward
+  interpreter, 73.6 quest rewards rewired [delivers 71.5 / `issue-39d3fcb8`], 73.7 level-up payout
+  from config, 73.8 exploration reroute, 73.9 level-up UX, 73.10 docs; plus a critical
+  review-found fix (new characters never got a `PlayerStats` row, commit `c3b818a`). Branch
+  `sprint-73-progression`, all tasks `[x]` — see the Sprint 73 section above for the full commit
+  list.
 - **In design: 74** (Skill tree & ability unlocks — the skill-point *sink*; 74.1 data-driven
   `skill_tree.yaml` + loader, 74.2 node persistence [`unlocked_nodes` + `ability.<id>` flag],
   74.3 `train` command, 74.4 passive modifier source, 74.5 active-verb gating pattern + `forage`,
@@ -711,7 +908,17 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   **74-OI-1 RESOLVED 2026-07-12**: build all three ability flavors — active utility verbs [first-class],
   passive modifiers, interaction unlocks — data-driven; new **74-OI-5**: ability verbs live in their
   thematic feature, not `progression`).
-- **Next new sprint: 75.** Don't recycle a number that appears here or in
+- **Used (all complete, pending Integrator merge/version-bump):** 75 (SQLite additive-column
+  auto-migration + Sprint 71.2 PK-rename data migration; 75.1 generic reflection additive-column
+  scanner, 75.2 delete the 14 hand-written shims, 75.3 Room `area_id`→`zone`/`room_type` in-place
+  migration, 75.4 RegionPricing `area_id`→`zone` PK table-rebuild migration, 75.5 full test matrix;
+  foundation-band infra, not a feature; OPEN ITEMs A [tier-placement correction:
+  composition-layer, not Tier 1 engine, with a bounded content-literal exception], B [force
+  Ashmoore `region_mult` to 1.0], C [rebuild-with-fold over drop-empty for `regionpricing`] all
+  resolved per their stated recommendations; two review-found hardening fixes, commits `8183be3`
+  and `8b1795b`). Branch `sprint-75-db-migration`, all tasks `[x]` — see the Sprint 75 section
+  above for the full commit list.
+- **Next new sprint: 76.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
