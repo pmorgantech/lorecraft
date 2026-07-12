@@ -36,7 +36,7 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
-**Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a single reward path granting any mix of **xp + coins + items + skill points**, the XP curve/level-up core, and level-up itself paying out coins + skill points — mostly extending/fixing what already exists), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points on a data-driven tree that unlocks abilities in **all three flavors** — active utility verbs like `forage`/`sense`/`pick`, passive modifiers, and interaction/dialogue unlocks; ability-scope fork resolved 2026-07-12). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.4**.
+**Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a mechanism/policy split per the 2026-07-12 correction: **Tier 1** provides the generic, data-driven leveling mechanism — detect threshold crossings, apply an arbitrary reward payload to player properties — while **Tier 2 `features/progression/`** owns the opinionated, **admin-tunable** policy of what each level rewards [coins + skill points], plus the unified quest/level-up reward interpreter), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points on a data-driven tree that unlocks abilities in **all three flavors** — active utility verbs like `forage`/`sense`/`pick`, passive modifiers, and interaction/dialogue unlocks; ability-scope fork resolved 2026-07-12). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.4**.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -430,103 +430,128 @@ model is missing today; B's appeal is real but only if 72.3 is scoped as a throw
 
 ## Sprint 73 — Generalized rewards + XP/leveling core
 
-**Goal:** turn the inert `Player.level`/`xp` fields into a real (if modest) progression system **and**
-generalize the reward path so any source can grant **any combination of xp + coins + items + skill
-points** through one applier — delivering Sprint 71.5's quest-XP ask (`issue-39d3fcb8`) as a side
-effect. Combat is still shelved to [`wishlist.md`](wishlist.md), so this builds progression *without*
-combat stat-scaling: XP accumulates, players cross level thresholds on a gentle curve, each level-up
-is surfaced as a milestone **and pays out coins + skill points**. This sprint introduces the
-**skill-point *currency* (the earn side)**; *spending* skill points on a skill tree is Sprint 74 (the
-sink side) — earn-before-spend is a clean incremental seam, so skill points simply bank until then.
+**Goal:** turn the inert `Player.level`/`xp` fields into a real progression system, split cleanly along
+a **mechanism/policy (Tier 1/Tier 2) line** per the 2026-07-12 architectural correction. **Tier 1
+provides the generic, data-driven *mechanism*** — detect XP-threshold crossings and apply an arbitrary
+reward payload to a player's properties — and **knows nothing about *what* leveling rewards**. **Tier 2
+(`features/progression/`) supplies the *policy*** — the opinionated, **admin-tunable** answer to "what
+does each level grant" — and hands the Tier 1 mechanism concrete payloads. This delivers Sprint 71.5's
+quest-XP ask (`issue-39d3fcb8`) as a side effect. Combat stays shelved, so this builds progression
+*without* combat stat-scaling. This sprint introduces the **skill-point currency (earn side)**;
+*spending* it on a skill tree is Sprint 74.
 
-**Scope guard (2026-07-11 expansion).** The user scoped classic DikuMUD leveling *down* for now:
-build the reward/level/skill-point plumbing; **defer** the skill tree/abilities to Sprint 74 and
-**stat points** (free STR/DEX-style allocation) to *later* — the six `PlayerStats` attributes
-(`strength/agility/vitality/intellect/presence/fortitude`) already exist as real fields, so "stat
-points later" is about a *point-buy allocation UI*, not adding the stats. No stat-allocation work here.
+**The mechanism/policy split in one line (user's words, 2026-07-12):** *"tier1 should provide ability to
+do things (level up updates an array of player properties) and be data-driven; tier2 is the malleable
+opinionated bit where we tell the tier1 leveler what to reward for leveling, tunable by an admin."*
 
-**Verified starting state (2026-07-12).** `PlayerStats` (`engine/models/player.py` L36–53) already
-carries `level=1`, `xp=0`, `xp_to_next=100`, the six stat fields, and a `skills` JSON blob — but **no
-`skill_points` field** (grep-confirmed: the term appears nowhere in `src/`). XP accrues in exactly
-**one** place — `features/exploration/service.py` L62–64 does `stats.xp += DISCOVERY_XP`
-(`DISCOVERY_XP = 5`) on a search discovery — and **no level-up logic exists anywhere**: `level` never
-leaves `1` and nothing reads it. Quest completion **does not** award XP: `_award_rewards`
-(`features/quests/service.py` L195–203) handles `rewards["items"]` (via `ctx.item_location.spawn`) but
-its `rewards["xp"]` branch only emits a cosmetic `ctx.say("You gain N experience.")` — it never mutates
-`stats.xp` — and there is **no `coins`/`money` or `skill_points` branch at all**. World content already
-authors quest XP (`world_content/world.yaml`: **12** stage rewards, 40–65 each, **605 XP total**),
-currently discarded. **Coin-grant reuse path (confirmed):** coins are a ledger, not a `Player.coins`
-column — `LedgerService.credit(session, "player", player_id, amount)` (`engine/services/ledger.py`
-L59–66) is the documented money-creation API ("world import, admin, **loot** … the ONLY way coins
-enter play"), and `ctx.ledger` is on `GameContext` (context.py L58). Economy shop payouts already
-address the player as holder `("player", ctx.player.id)`. Reward coins reuse `credit` — no parallel path.
+**Scope guard.** Build the reward/level/skill-point plumbing; **defer** the skill tree/abilities to
+Sprint 74 and free **stat points** (STR/DEX-style point-buy allocation) to *later* — the six
+`PlayerStats` attributes already exist as real fields, so "stat points later" is about an allocation
+UI, not adding the stats. No stat-allocation work here.
+
+**Verified starting state (2026-07-12).** `PlayerStats` (`engine/models/player.py` L36–53) carries
+`level=1`, `xp=0`, `xp_to_next=100`, the six stat fields, and a `skills` JSON blob — but **no
+`skill_points` field**. XP accrues in exactly **one** place — `features/exploration/service.py` L62–64
+does `stats.xp += DISCOVERY_XP` (=5) — and **no level-up logic exists**. Quest `_award_rewards`
+(`features/quests/service.py` L195–203) handles `rewards["items"]` but its `rewards["xp"]` branch only
+narrates cosmetically (never mutates `stats.xp`), and there is **no `coins`/`skill_points` branch**.
+World content authors **605 XP** across 12 quest stage rewards, currently discarded. **Coin-grant reuse
+path (confirmed):** `LedgerService.credit(session, "player", player_id, amount)`
+(`engine/services/ledger.py` L59–66) is the documented money-creation API ("world import, admin,
+**loot** … the ONLY way coins enter play"); `ctx.ledger` is on `GameContext`. **Admin-tunable
+precedent (confirmed):** the DB-backed `WorldClock` singleton (`engine/models/world.py` L119) is
+**live-editable** by admins via `POST /admin/clock/time-ratio` (`webui/admin/routers/clock.py` L74–89) —
+commit to DB + push to the running engine, **no restart**. The YAML-seeded alternative is
+`economy.regions` → `RegionPricing` rows via `import_world._import_economy`, changeable only by
+YAML edit + reseed (or Sprint 72.2's `POST /admin/world/reseed`). See the admin-tunable OPEN ITEM below.
 
 | # | Task | Status |
 |---|------|--------|
-| 73.1 | **Tier 1 leveling core (pure curve + rollover).** New `src/lorecraft/engine/game/leveling.py`, mirroring the pure-helper shape of `engine/game/checks.py::skill_check`. Exposes `xp_for_level(level) -> int` and `award_xp(stats: PlayerStats, amount: int) -> LevelUpResult`, which adds XP, rolls `level` forward across **one or more** thresholds in a loop, updates `xp_to_next`, and returns `LevelUpResult(leveled_up, new_level, levels_gained)`. **Curve:** `xp_for_level(L) = BASE + STEP·(L-1)`, `BASE=100`, `STEP=50` (linear per-level cost → quadratic cumulative: L2=100, L3=+150, L4=+200, L5=+250). Calibration: the 605-XP quest budget + discovery XP lands a completionist around **level 4–5** — module-level tunables, a formula not per-room branching (data-driven rule respected). **Pure: no session/IO/`ctx`.** Deliberately knows nothing about coins/skill-points — those are a Tier 2 *policy* applied by 73.5, keeping the curve math reusable. Unit tests: single-level, multi-level rollover in one award, exact-threshold boundary, zero/negative guard. | [ ] |
-| 73.2 | **`PlayerStats.skill_points` field (the earn-side currency).** Add `skill_points: int = 0` to `PlayerStats` (`engine/models/player.py`). Earned this sprint (quests + level-ups), **spent** in Sprint 74's tree — banks harmlessly until then. Include it in the `stats_snapshot` save/load path (`SaveSlot.stats_snapshot`) and the admin DB reseed if stats are enumerated there. Success: a fresh player has `skill_points=0`; the field round-trips through save/load. | [ ] |
-| 73.3 | **Generalized reward applier (the unification).** New `features/progression/` package (see package-placement OPEN ITEM) exposing `apply_rewards(ctx, rewards: JsonObject) -> RewardOutcome`, which handles **every** key uniformly: `items` (→ `ctx.item_location.spawn`, existing logic lifted from quests), `xp` (→ `leveling.award_xp` from 73.1, returning any level-up for the caller to narrate), `coins` (→ `ctx.ledger.credit(ctx.session, "player", ctx.player.id, n)` — the confirmed reuse path), and `skill_points` (→ `stats.skill_points += n`). Reward keys are canonically **`coins`** (matches the ledger's own `CoinBalance` vocabulary; accept `money` as an author alias if desired — see OPEN ITEM). Returns a `RewardOutcome` (coins/xp/skill-points/items granted + any `LevelUpResult`) so callers narrate without re-deriving. Unit tests per key + a combined all-four bundle. | [ ] |
-| 73.4 | **Rewire quest rewards onto the applier (delivers Sprint 71.5 / `issue-39d3fcb8`).** Replace the bespoke body of `features/quests/service.py::_award_rewards` (L195–203) with a single `apply_rewards(ctx, rewards)` call, then narrate the outcome (73.7). Because `_complete_quest` already calls `_award_rewards(stage.rewards)` **per stage** (L164), multi-stage quests award incrementally for free. Success: completing a quest with `rewards.xp` raises `stats.xp`/`level`; the 605 XP in `world.yaml` goes live; `rewards.coins`/`rewards.skill_points` now function for authors. Closes Sprint 71.5. | [ ] |
-| 73.5 | **Level-up pays out coins + skill points.** When 73.1 reports `leveled_up`, the caller grants per-level rewards **through the same 73.3 applier** (build a `{"coins": LEVEL_UP_COINS·levels_gained, "skill_points": LEVEL_UP_SKILL_POINTS·levels_gained}` bundle) — one payout path, no second coin route. Constants are module-level tunables in `features/progression/` (recommend `LEVEL_UP_COINS=50`, `LEVEL_UP_SKILL_POINTS=1` — a level buys ~one small tree node in Sprint 74; tune with the user). Success: crossing a threshold credits coins to the player ledger and increments `skill_points`. | [ ] |
-| 73.6 | **Route discovery XP through the shared helper.** `features/exploration/service.py` L62–64's inline `stats.xp += DISCOVERY_XP` bypasses level-up. Replace with `award_xp(stats, DISCOVERY_XP)` (or `apply_rewards(ctx, {"xp": DISCOVERY_XP})` so a threshold-crossing discovery also pays 73.5's level-up rewards). No duplicated threshold math. Success: a discovery that crosses a threshold levels the player up and pays out. | [ ] |
-| 73.7 | **Level-up feedback (feed message + event + live stats).** On `leveled_up`, the Tier 2 caller emits a feed line (`ctx.say(f"You reach level {new_level}!", ...)` — add a small `MessageType.LEVEL` + `.msg-level` CSS token, mirroring Sprint 71.4's `MessageType.HELP`, or reuse `SYSTEM`), `ctx.push_update`s the Stats pane (already renders `level`/`xp`/`xp_to_next`: `partials/stats_panel.html` L44–45, `webui/player/session.py` L494–495 — extend to show `skill_points`), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`, `engine/game/events.py` L38). Narration/event stay in Tier 2 so Tier 1's `leveling.py` stays presentation-free. | [ ] |
-| 73.8 | **Docs.** `docs/user_guide.md` (score/leveling — how XP is earned, that levels are milestones that pay coins + skill points, what skill points are *for* [forward-ref Sprint 74]); `docs/admin_builder_guide.md` (quest `rewards` now supports `xp`/`coins`/`items`/`skill_points`, the curve + level-up-reward constants). No `scripting_api.md` regen unless a new `register_spec` lands (none planned this sprint). | [ ] |
+| 73.1 | **Tier 1 generic leveling *mechanism* (data-driven, policy-free).** New `src/lorecraft/engine/game/leveling.py`, pure like `engine/game/checks.py::skill_check`. It provides "the ability to do things," not opinions: (a) a **data-driven curve value object** `LevelCurve` — holds the threshold data (`base`, `step`, or an explicit `thresholds` list), **passed in as data**, not hardcoded module constants; `xp_for_level(curve, level) -> int`. (b) `award_xp(stats: PlayerStats, amount: int, curve: LevelCurve) -> LevelUpResult(leveled_up, old_level, new_level, levels_gained)` — adds XP, rolls `level` across **one or more** thresholds per the passed curve, updates `xp_to_next`, and returns how many levels crossed. It grants **nothing** beyond xp/level and **does not know** coins/skill-points exist — the caller decides per-level rewards. (c) a generic property applier `apply_stat_deltas(stats, deltas: Mapping[str, int])` — the "update an array of player properties" mechanism: validate each key is a known numeric `PlayerStats` field (whitelist: `xp`, `skill_points`, future stat points) and apply the int delta; reject unknown keys. **Pure: no session/IO/`ctx`, no coins (ledger) / items.** Unit tests: single/multi-level rollover, exact-threshold boundary, zero/negative guard, unknown-property rejection, curve driven by passed data. | [ ] |
+| 73.2 | **`PlayerStats.skill_points` field (the earn-side currency).** Add `skill_points: int = 0` to `PlayerStats`. Earned this sprint (quests + level-ups), **spent** in Sprint 74's tree — banks until then. Include in the `stats_snapshot` save/load path and admin reseed. Success: fresh player has `skill_points=0`; round-trips through save/load. | [ ] |
+| 73.3 | **Tier 2 progression *config* (data-driven **and** admin-tunable).** New `features/progression/` package: a DB-backed `ProgressionConfig` **singleton row** (mirroring the `WorldClock` pattern) holding **both** the curve params (`base`, `step`) **and** the per-level reward *policy* (`coins_per_level`, `skill_points_per_level`). **Seeded from a `progression:` section in `world.yaml`** at import (mirror `_import_economy`, and add it to `export_world_document` so live edits round-trip back to YAML) — data-driven defaults, authorable. Tier 2 reads this row and constructs the Tier 1 `LevelCurve` from its params. This is the "malleable opinionated bit." Success: config seeds from YAML; changing `coins_per_level` there + reseed changes level-up payouts with no code edit. | [ ] |
+| 73.4 | **Admin-tunable endpoint (live, no restart) — the "tunable by an admin" ask.** `GET`/`POST /admin/progression/config` mirroring `POST /admin/clock/time-ratio` (`webui/admin/routers/clock.py`): read + edit the 73.3 `ProgressionConfig` row live, commit, and (if any value is cached in the runtime) push it — no reseed, no restart. Admin `index.html` form hook + an e2e/integration test. **This is the piece the correction flagged as most at-risk of under-design; it is now a first-class task, not folded away.** See the admin-tunable OPEN ITEM for the phase-1 fallback. | [ ] |
+| 73.5 | **Tier 2 reward *interpreter* (policy → Tier 1 mechanism dispatch).** In `features/progression/`, `apply_rewards(ctx, rewards: JsonObject) -> RewardOutcome` interprets the reward **vocabulary** (`items`/`xp`/`coins`/`skill_points`) and dispatches each to a Tier 1 mechanism: `items` → `ctx.item_location.spawn`; `coins` → `ctx.ledger.credit`; `xp` → `leveling.award_xp` with the curve built from 73.3 config; `skill_points` (and future numeric props) → `leveling.apply_stat_deltas`. **The vocabulary lives here (Tier 2), not in Tier 1** — "which keys count as rewards" is a policy/content choice (see design note). Canonical key **`coins`** (matches `CoinBalance`; `money` tolerated as alias). Returns `RewardOutcome` (amounts granted + any `LevelUpResult`) so callers narrate without re-deriving. Unit tests per key + a combined bundle. | [ ] |
+| 73.6 | **Rewire quest rewards onto the interpreter (delivers Sprint 71.5 / `issue-39d3fcb8`).** Replace `features/quests/service.py::_award_rewards` (L195–203) with a single `apply_rewards(ctx, rewards)` call, then narrate (73.9). Quests just *supply the payload* (the authored reward dict); it owns no reward mechanism. Because `_complete_quest` calls `_award_rewards` **per stage**, multi-stage quests award incrementally for free. Success: `world.yaml`'s 605 quest XP goes live; `rewards.coins`/`rewards.skill_points` now function. Closes Sprint 71.5. | [ ] |
+| 73.7 | **Level-up rewards = pure Tier 2 policy read (no hardcoded amounts).** When 73.1's `award_xp` reports `levels_gained > 0`, `features/progression/` reads the 73.3 config's `coins_per_level`/`skill_points_per_level`, builds `{"coins": coins_per_level·levels_gained, "skill_points": skill_points_per_level·levels_gained}`, and applies it via the 73.5 interpreter. **No magic constants in code** — the numbers come from the admin-tunable config. Success: crossing a threshold credits coins + skill points at the *configured* rate; changing the rate via 73.4 changes payouts live. | [ ] |
+| 73.8 | **Route discovery XP through the mechanism.** `features/exploration/service.py` L62–64's inline `stats.xp += DISCOVERY_XP` bypasses level-up. Replace with `apply_rewards(ctx, {"xp": DISCOVERY_XP})` (or `award_xp` with the config curve) so a threshold-crossing discovery also triggers 73.7's payout. No duplicated threshold math. | [ ] |
+| 73.9 | **Level-up feedback (feed message + event + live stats).** On `leveled_up`, the Tier 2 caller emits a feed line (add `MessageType.LEVEL` + `.msg-level` CSS, mirroring Sprint 71.4's `MessageType.HELP`, or reuse `SYSTEM`), `ctx.push_update`s the Stats pane (extend `partials/stats_panel.html` / `webui/player/session.py` to show `skill_points`), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`). Presentation stays in Tier 2 so Tier 1's `leveling.py` stays IO-free. | [ ] |
+| 73.10 | **Docs.** `docs/user_guide.md` (how XP is earned; levels pay coins + skill points). `docs/admin_builder_guide.md` (quest `rewards` supports `xp`/`coins`/`items`/`skill_points`; the `world.yaml` `progression:` section; **how to live-tune per-level rewards + the curve from the admin console** [73.4]). No `scripting_api.md` regen (no new `register_spec`). | [ ] |
 
-### Sprint 73 design — tier placement, reward-key naming & the level-up perk fork
+### Sprint 73 design — the mechanism/policy (Tier 1/Tier 2) split, admin-tunability & naming
 
 > **Provenance.** Research + design 2026-07-12 (branch `sprint-73-leveling-design`, based on
-> `2b3253b`/v0.92.1), revised for the 2026-07-11 scope expansion. Design-only: no engine/feature code
-> shipped here. Starting-state facts are verified against the live tree. Genuine forks are surfaced
-> with a recommendation, **not** silently decided — same shape as the Sprint 72.3 restart fork.
+> `2b3253b`/v0.92.1), **revised for the 2026-07-12 mechanism/policy architectural correction**.
+> Design-only. Facts verified against the live tree. Forks surfaced with a recommendation, not
+> silently decided.
 
-**Tier placement (resolved — follows existing precedent, not a fork).** `PlayerStats`
-(`level`/`xp`/`xp_to_next`/`skill_points`) is **Tier 1** (`engine/models/player.py`). The threshold
-*math* is one Tier 1 pure helper (`engine/game/leveling.py`), exactly as `skill_check` lives in
-`engine/game/checks.py` and is called from features. The reward *policy* (curve constants aside) and
-all cross-feature wiring — coins via the ledger service, item spawning, narration, events — is **Tier
-2**, in `features/progression/`. This follows the established precedent that a Tier 2 feature mutates
-the Tier 1 `PlayerStats` directly (exploration already does `stats.xp += …`). **No new tier boundary,
-no engine→feature import** — the `tests/unit/test_tier_boundaries.py` guard continues to hold.
+**The Tier 1/Tier 2 boundary (resolved per the correction) — concrete signatures.** The old draft
+conflated mechanism and policy (it hardcoded "level-up pays coins + skill points" and a `BASE=100/STEP=50`
+curve as Python constants inside the leveling module). Corrected split:
 
-**OPEN ITEM — package placement of the reward/progression logic.** The generalized applier + level-up
-wiring need a home. Options: **(a)** a new `features/progression/` package (own `__init__.py` +
-`FeatureManifest`, auto-discovered by `discover_features()`) — matches the one-package-per-feature
-convention and gives Sprint 74's skill tree a natural home; **(b)** fold it into `features/quests/`
-(the main caller) — but exploration and level-up also grant rewards, so quests would become an
-implicit dependency of unrelated features; **(c)** a composition-layer helper in `services/`. →
-**Recommendation: (a)** — a thin but honest feature package. It is the only option that doesn't create
-a spurious quests→everything coupling and it pre-stages Sprint 74. Naming the package `progression`
-(not `leveling`) keeps room for the tree.
+- **Tier 1 = generic mechanism, data-driven, opinion-free** (`engine/game/leveling.py`):
+  - `LevelCurve` — a value object holding the threshold **data** (`base`/`step` or explicit `thresholds`),
+    *constructed by the caller from config*, never a hardcoded module constant. `xp_for_level(curve, level)`.
+  - `award_xp(stats, amount, curve) -> LevelUpResult` — rolls levels across the passed curve; returns
+    `levels_gained`. Grants nothing else; has no concept of coins or skill points.
+  - `apply_stat_deltas(stats, deltas: Mapping[str, int])` — the "update an array of player properties"
+    primitive; whitelisted numeric `PlayerStats` fields only.
+  - Coins and items are applied through the **existing Tier 1 services** (`LedgerService.credit`,
+    `ItemLocationService.spawn`) — already generic mechanisms.
+- **Tier 2 = opinionated policy, admin-tunable** (`features/progression/`):
+  - `ProgressionConfig` (DB singleton, YAML-seeded, admin-editable) — the curve params **and**
+    per-level reward policy.
+  - `apply_rewards(ctx, rewards)` — the reward-**vocabulary interpreter**; owns "which keys are rewards"
+    and dispatches to the Tier 1 mechanisms. **Deliberately Tier 2:** the reward vocabulary is a
+    policy/content concern (adding a future reward type is a policy change, and world.yaml authors write
+    these keys), so it does not belong in Tier 1's opinion-free mechanism layer. Tier 1 stays the pure
+    "doer"; Tier 2 decides *what* and *how much*.
 
-**OPEN ITEM — reward-key naming (`coins` vs `money`).** The user wrote "money"; the engine's own
-vocabulary is **coins** (`CoinBalance`, `LedgerService`, holder ledger). → **Recommendation:**
-canonical key `coins` (so builder docs and the ledger agree); optionally accept `money` as a
-tolerated alias in the applier to match natural authoring. Trivial to decide either way; flagged so
-`world.yaml` reward authoring doesn't get a silent surprise.
+This is precisely the user's model: Tier 1 "provides the ability to do things"; Tier 2 is "where we tell
+the tier1 leveler what to reward." Follows the existing precedent that a Tier 2 feature mutates Tier 1
+`PlayerStats` directly. **No new tier boundary, no engine→feature import** — the
+`tests/unit/test_tier_boundaries.py` guard holds.
 
-**OPEN ITEM — what does a level-up *do beyond* paying coins + skill points?** The 2026-07-11 scope
-already answers most of this: level-up **grants gold + skill points** (73.5), so a level is no longer a
-bare number. The residual fork is whether a level *also* confers a mechanical perk:
+**FINDING + OPEN ITEM — what "admin-tunable" means here, and how far to build it in Sprint 73.** The
+correction asked whether a *live* admin-editable balance value exists. It does — **two** precedents:
 
-- **(a) Rewards only (recommended core).** Coins + skill points + a milestone feed line + visible
-  `score`/Stats progress. Honest, ships as 73.1–73.8 with **zero content retrofit**. The skill points
-  *become* the mechanical payoff once Sprint 74's tree exists — so the "is a level mechanically felt?"
-  question is answered by Sprint 74, not by bolting a perk onto 73.
-- **(b) Gate existing content by level** (shop goods / zones / dialogue). **Scope risk:** nothing is
-  level-gated today; this means retrofitting `world.yaml` + adding level conditions. **Reject for 73.**
-- **(c) A small non-combat passive perk** (e.g. a per-level `carry_capacity` modifier via the existing
-  `engine/game/modifiers.py` resolver, which `encumbrance/rules.py::resolve_carry_capacity` already
-  composes). Cheap, but now **largely redundant** with 73.5 + Sprint 74 (a carry-capacity node can just
-  *be* a passive tree node bought with the skill points a level grants).
+1. **Live, DB-backed, no-restart (the `WorldClock` pattern).** `WorldClock` is a DB singleton whose
+   fields (`time_ratio`, `weather`, `paused`) are edited live via admin `POST` endpoints
+   (`clock.py`): mutate the row → `session.commit()` → push to the runtime (`state.clock_runner.time_ratio = …`).
+   This is genuine live admin tuning; nothing reseeds or restarts.
+2. **YAML-seeded, reseed-to-change (the `economy.regions` pattern).** Config lives in `world.yaml`,
+   imported to DB rows (`RegionPricing`) at world-import; changing it needs a YAML edit + reseed
+   (or `POST /admin/world/reseed`). Data-driven, **not** live.
 
-→ **Recommendation:** ship **(a)**; let Sprint 74's tree be where levels become mechanically felt
-(that's what skill points are *for*). Treat **(c)** as a candidate *tree node* in Sprint 74, not a
-Sprint 73 add-on; **reject (b)**.
+→ **Recommendation:** model `ProgressionConfig` on **pattern 1** — a DB singleton **seeded from
+`world.yaml`** (so it is data-driven *and* authorable, gaining pattern 2's round-trip via
+`export_world_document`) **and** exposed through a live admin endpoint (73.4), so an admin can retune
+per-level coins/skill-points and the curve **without a restart**, exactly as they already retune the
+clock. This invents no new structural pattern — it composes the two that exist.
+**Phasing sub-decision (the real OPEN ITEM):** if 73.4's live endpoint+UI must be cut for scope, the
+**minimum honest fallback** is "config in `world.yaml`, tuned via reseed" (pattern 2 only) — still
+data-driven, just not live. → **Recommend keeping 73.4 in-sprint** (the `WorldClock` precedent makes the
+endpoint cheap and the user asked for it explicitly); drop to the reseed-only fallback only if 73.4
+proves heavier than the clock precedent suggests. **Flagged, not silently decided.**
 
-**Follow-on XP sources (out of scope — flagged, not built).** Once 73.1 exists, first-time zone
-discovery, puzzle solves, and escort completion are natural additional `apply_rewards`/`award_xp`
-callers. A first version awarding from **quests + the existing discovery source** is sufficient;
-retrofitting every system in one sprint is over-scope.
+**OPEN ITEM — package placement.** `features/progression/` (own manifest, auto-discovered) vs. folding
+into `features/quests/` vs. a `services/` helper. → **Recommend `features/progression/`** — the only
+option avoiding a spurious quests→everything coupling; it also owns the Tier 2 config and pre-stages
+Sprint 74. (Unchanged by the correction; if anything the correction *reinforces* it, since the
+config/policy layer needs a clear Tier 2 home distinct from Tier 1 `engine/game/leveling.py`.)
+
+**OPEN ITEM — reward-key naming (`coins` vs `money`).** Engine vocabulary is **coins** (`CoinBalance`,
+`LedgerService`). → **Recommend** canonical `coins`; optionally accept `money` as an author alias.
+
+**OPEN ITEM — level-up beyond rewards.** The scope already answers this: level-up grants configured
+coins + skill points, so a level isn't a bare number. A residual mechanical perk (e.g. per-level
+`carry_capacity` modifier) is **largely redundant** with Sprint 74 (a carry node can just *be* a passive
+tree node). → **Recommend rewards-only**; let Sprint 74's tree be where levels are mechanically felt;
+reject content-gating-by-level as a scope explosion.
+
+**Follow-on XP sources (out of scope — flagged, not built).** First-time zone discovery, puzzle solves,
+escort completion are natural additional `apply_rewards` callers later. Quests + the existing discovery
+source suffice for v1.
 
 ---
 
@@ -604,6 +629,7 @@ block that may combine `flags` (always — the `ability.<id>` flag), a `modifier
   prereqs); tune skill-point costs against the ~1-point-per-level earn rate from 73.5 once both exist.
   The active-verbs decision suggests seeding the tree with at least the three verb-unlock nodes
   (`forage`/`keen_senses`/`pick_locks`) plus 2–3 passive nodes.
+- **74-OI-6 — NEW, from the Sprint 73 mechanism/policy correction — is `skill_tree.yaml` "admin-tunable" enough?** The tree (node costs/rewards) is YAML-seeded → DB at import, matching the `economy.regions` precedent: data-driven but **not live** (a cost change needs a reseed). This mirrors the Sprint 73 admin-tunable finding. → **Recommend YAML+reseed for v1** — node costs/prereqs are *structural* content, not a hot balance dial like per-level coin rewards, so the reseed cadence is acceptable; revisit migrating node costs onto the same live `ProgressionConfig`-style mechanism (73.4) only if admins ask to retune tree costs without a reseed. Keeps Sprint 74 consistent with 73's split (Tier 1 reads data; Tier 2/config owns the opinionated, potentially-live values).
 - **74-OI-4 — retroactive passives / respec (recommendation stands):** passives apply immediately
   (resolver recomputes per use — free); **no respec** in v1 (defer).
 
@@ -664,11 +690,14 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 - **Used (all complete):** 72 (backlog cleanup: tooling tech-debt + admin ops + mobile polish —
   72.1 scripting-catalog feature-enable + `register_spec` migration, 72.2 admin DB wipe/reseed from
   `world.yaml`, 72.3 admin engine restart + process supervision, 72.4 mobile chat tab-collapse; v0.92.0).
-- **In design: 73** (Generalized rewards + XP/leveling core — 73.1 Tier 1 leveling core, 73.2
-  `skill_points` field, 73.3 generalized reward applier, 73.4 quest rewards rewired [delivers 71.5 /
-  `issue-39d3fcb8`], 73.5 level-up coin/skill-point payout, 73.6 exploration reroute, 73.7 level-up UX,
-  73.8 docs; OPEN ITEMs: package placement [rec. new `features/progression/`], `coins` vs `money` key,
-  perk-beyond-rewards fork [rec. rewards-only, let Sprint 74 be where levels are felt]).
+- **In design: 73** (Generalized rewards + XP/leveling core — **mechanism/policy split** per the
+  2026-07-12 correction: 73.1 Tier 1 generic leveling *mechanism* [data-driven `LevelCurve` +
+  `award_xp` + `apply_stat_deltas`, no reward opinions], 73.2 `skill_points` field, 73.3 Tier 2
+  `ProgressionConfig` [YAML-seeded, admin-tunable], 73.4 **live admin-tune endpoint** [WorldClock
+  pattern], 73.5 Tier 2 reward interpreter, 73.6 quest rewards rewired [delivers 71.5 /
+  `issue-39d3fcb8`], 73.7 level-up payout from config, 73.8 exploration reroute, 73.9 level-up UX,
+  73.10 docs; OPEN ITEMs: admin-tunable phasing [rec. live endpoint in-sprint, reseed-only fallback],
+  package placement [`features/progression/`], `coins` vs `money`, perk-beyond-rewards [rec. rewards-only]).
 - **In design: 74** (Skill tree & ability unlocks — the skill-point *sink*; 74.1 data-driven
   `skill_tree.yaml` + loader, 74.2 node persistence [`unlocked_nodes` + `ability.<id>` flag],
   74.3 `train` command, 74.4 passive modifier source, 74.5 active-verb gating pattern + `forage`,
