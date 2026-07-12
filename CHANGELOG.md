@@ -4,6 +4,26 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.92.2] - 2026-07-12
+
+### Docs
+
+- **Sprint 73/74 design: generalized rewards, XP/leveling, and a skill tree.** Full design for
+  turning the inert `Player.level`/`xp` fields into real progression: Sprint 73 (Tier 1
+  mechanism/Tier 2 policy split — a generic leveling primitive in `engine/`, an admin-tunable
+  `ProgressionConfig` + reward interpreter in a new `features/progression/`, quest XP finally
+  wired up) and Sprint 74 (a data-driven skill tree unlocking abilities in three flavors: active
+  utility verbs, passive modifiers, interaction/dialogue unlocks). Design only — no code yet.
+- **Agent process updates.** Codified in `AGENTS.md` and every file-modifying agent definition:
+  the Tier 1 (unopinionated mechanism) / Tier 2 (data-driven opinionated policy) split as an
+  explicit design principle; a preference for live-tunable admin config (the `WorldClock`
+  pattern) over YAML+reseed-only for game-balance values; and mandatory continuous
+  worktree-location re-verification to guard against the "shared designated worktree race" —
+  a session's own worktree isn't automatically safe from concurrently-dispatched sub-agents,
+  which bit multiple agents independently across Sprint 71/72.
+- New backlog item: retrofit `economy.regions` pricing onto the live-tunable pattern (currently
+  YAML+reseed-only), surfaced by the same design review.
+
 ## [0.92.1] - 2026-07-12
 
 ### Fixed
