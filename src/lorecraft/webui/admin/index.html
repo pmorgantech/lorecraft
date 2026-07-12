@@ -174,6 +174,7 @@
       <div class="tab" data-tab="world"      onclick="showTab('world')">World</div>
       <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
       <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
+      <div class="tab" data-tab="progression" onclick="showTab('progression')">Progression</div>
       <div class="tab" data-tab="issues"     onclick="showTab('issues')">Issues</div>
       <div class="tab" data-tab="news"       onclick="showTab('news')">News</div>
       <div class="tab" data-tab="help"       onclick="showTab('help')">Help</div>
@@ -418,6 +419,45 @@
               <option value="blizzard">Blizzard</option>
             </select>
             <button onclick="setWeather()" style="margin-top:0.5rem;width:100%;">Apply</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progression -->
+      <div id="tab-progression" class="tab-panel">
+        <div id="progression-layout" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+          <div class="panel" style="min-width:260px;">
+            <h2>XP Curve</h2>
+            <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.75rem;">
+              Advancing from level <code>N</code> costs <code>base + step&times;(N-1)</code> XP.
+            </p>
+            <div class="field" style="margin-bottom:0.5rem;">
+              <label for="pg-base" style="display:block;color:var(--text-dim);font-size:0.75rem;">BASE</label>
+              <input id="pg-base" type="number" min="1" style="width:120px;" />
+            </div>
+            <div class="field">
+              <label for="pg-step" style="display:block;color:var(--text-dim);font-size:0.75rem;">STEP</label>
+              <input id="pg-step" type="number" min="0" style="width:120px;" />
+            </div>
+          </div>
+          <div class="panel" style="min-width:260px;">
+            <h2>Per-Level Rewards</h2>
+            <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.75rem;">
+              Paid out automatically each time a player crosses a level threshold.
+            </p>
+            <div class="field" style="margin-bottom:0.5rem;">
+              <label for="pg-coins" style="display:block;color:var(--text-dim);font-size:0.75rem;">COINS PER LEVEL</label>
+              <input id="pg-coins" type="number" min="0" style="width:120px;" />
+            </div>
+            <div class="field">
+              <label for="pg-skill-points" style="display:block;color:var(--text-dim);font-size:0.75rem;">SKILL POINTS PER LEVEL</label>
+              <input id="pg-skill-points" type="number" min="0" style="width:120px;" />
+            </div>
+          </div>
+          <div class="panel" style="min-width:200px;">
+            <h2>&nbsp;</h2>
+            <button id="pg-save-btn" onclick="saveProgressionConfig()" style="width:100%;">Save</button>
+            <div id="pg-save-status" role="status" aria-live="polite" style="font-size:0.8rem;min-height:1.2em;margin-top:0.5rem;"></div>
           </div>
         </div>
       </div>
@@ -743,7 +783,8 @@ function showError(msg) {
 const TAB_LOADERS = {
   dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
   crashes: loadCrashes, world: loadRooms,
-  changesets: loadChangesets, clock: loadClock, issues: loadIssues,
+  changesets: loadChangesets, clock: loadClock, progression: loadProgressionConfig,
+  issues: loadIssues,
   news: loadNews, help: loadHelp, accounts: loadAccounts, system: loadSystem
 };
 
@@ -1305,6 +1346,80 @@ async function setTimeRatio() {
 async function setWeather() {
   await api("POST", "/admin/clock/weather", {weather: document.getElementById("weather-select").value});
   loadClock();
+}
+
+// ────────────────────────────────────────
+// Progression (Sprint 73.4) — live-tune the XP curve + per-level reward
+// payout, mirroring the Clock time-ratio pattern above: GET fills the
+// inputs, Save POSTs and reloads to confirm the change stuck. POST is
+// superadmin-only server-side (Superadmin dependency in
+// admin/routers/progression.py); mirror that here the same way the World
+// reseed button does, so a lesser role sees disabled, clearly-labeled
+// inputs instead of firing the request and hitting a 403.
+// ────────────────────────────────────────
+
+function updateProgressionEditUI() {
+  const isSuperadmin = state.role === "superadmin";
+  for (const id of ["pg-base", "pg-step", "pg-coins", "pg-skill-points"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.disabled = !isSuperadmin;
+    el.title = isSuperadmin ? "" : "Requires superadmin role";
+  }
+  const btn = document.getElementById("pg-save-btn");
+  if (btn) {
+    btn.disabled = !isSuperadmin;
+    btn.title = isSuperadmin ? "" : "Requires superadmin role";
+  }
+}
+
+async function loadProgressionConfig() {
+  updateProgressionEditUI();
+  const c = await api("GET", "/admin/progression/config");
+  const statusEl = document.getElementById("pg-save-status");
+  if (c.detail) {
+    if (statusEl) { statusEl.style.color = "var(--danger)"; statusEl.textContent = c.detail; }
+    return;
+  }
+  document.getElementById("pg-base").value = c.base;
+  document.getElementById("pg-step").value = c.step;
+  document.getElementById("pg-coins").value = c.coins_per_level;
+  document.getElementById("pg-skill-points").value = c.skill_points_per_level;
+}
+
+async function saveProgressionConfig() {
+  if (state.role !== "superadmin") return; // belt-and-braces; inputs are disabled for this role
+  const statusEl = document.getElementById("pg-save-status");
+  const body = {
+    base: parseInt(document.getElementById("pg-base").value, 10),
+    step: parseInt(document.getElementById("pg-step").value, 10),
+    coins_per_level: parseInt(document.getElementById("pg-coins").value, 10),
+    skill_points_per_level: parseInt(document.getElementById("pg-skill-points").value, 10),
+  };
+  for (const [key, value] of Object.entries(body)) {
+    if (!Number.isFinite(value) || value < 0) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = `Invalid ${key.replace(/_/g, " ")}`;
+      return;
+    }
+  }
+  const btn = document.getElementById("pg-save-btn");
+  btn.disabled = true;
+  statusEl.style.color = "var(--text-dim)";
+  statusEl.textContent = "Saving…";
+  try {
+    const result = await api("POST", "/admin/progression/config", body);
+    if (result && result.detail) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = result.detail;
+    } else {
+      statusEl.style.color = "var(--phosphor)";
+      statusEl.textContent = "Saved.";
+      await loadProgressionConfig();
+    }
+  } finally {
+    updateProgressionEditUI();
+  }
 }
 
 // ────────────────────────────────────────
