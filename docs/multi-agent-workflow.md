@@ -10,10 +10,12 @@ specialists report back in the structured formats their own definition specifies
 
 | Agent | File | Model | Owns |
 |---|---|---|---|
-| Orchestrator | `.claude/agents/orchestrator.md` | sonnet | Decomposition, routing, validation |
+| Orchestrator | `.claude/agents/orchestrator.md` | sonnet | Decomposition, routing, validation, pipeline timing/stats |
 | Research & Planning | `.claude/agents/research-planner.md` | opus | Precedent search, roadmap fit, risk flags |
 | Backend Engineer | `.claude/agents/backend-engineer.md` | opus | Engine/feature Python, tier boundaries |
 | Frontend Specialist | `.claude/agents/frontend-specialist.md` | sonnet | HTMX/Alpine/Tailwind webui |
+| Database Specialist | `.claude/agents/database-specialist.md` | opus | Schema/indexing/normalization review (advisory, no Edit) |
+| Code Reviewer | `.claude/agents/code-reviewer.md` | opus | Idiomatic-Python/code-smell/security review (advisory, no Edit) |
 | Test & QA | `.claude/agents/test-qa.md` | haiku | Running suites, structured pass/fail |
 | Pytest Writer | `.claude/agents/pytest-writer.md` | sonnet | Authoring/splitting pytest suites (unit/integration/e2e), test performance, anti-reward-hacking review |
 | Docs Writer | `.claude/agents/docs-writer.md` | sonnet | user_guide/admin_guide/roadmap/CHANGELOG entries |
@@ -21,6 +23,14 @@ specialists report back in the structured formats their own definition specifies
 
 Only the Integrator touches version files and dated `CHANGELOG.md` headings — every other
 agent leaves those alone, consistent with the version/changelog coordination model below.
+
+**The implementation gate** (Orchestrator's own definition has the full detail): once Backend
+Engineer/Frontend Specialist report a code change done, it passes through Database Specialist
+(only if schema was touched), Code Reviewer, then Test & QA, in that order, before Integrator
+ever sees it. Any blocking finding sends the work back to the implementer, and the failing stage
+re-checks the fix before the pipeline continues. Database Specialist and Code Reviewer are
+advisory-only (no `Edit` tool) — they report findings; Backend Engineer/Frontend Specialist
+apply the fix.
 
 ## Worktree Bootstrap
 
