@@ -90,11 +90,21 @@
             {% endif %}
         </div>
 
-        <!-- CENTER: Chronicle card, command bar inside it (per the export) -->
+        <!-- CENTER: Chronicle card, command bar inside it (per the export).
+             Below lg this column also hosts the collapsed Chat tab (Sprint
+             72.4), so it stays visible for either the 'feed' or 'chat'
+             mobile tab — the #feed/#chat-pane children each pick which one
+             of them is actually shown (see their own :class bindings). -->
         <div
-            :class="mobileTab === 'feed' ? 'flex' : 'hidden'"
+            :class="(mobileTab === 'feed' || mobileTab === 'chat') ? 'flex' : 'hidden'"
             class="game-col game-col-center lg:!flex flex-col bg-panel border border-border rounded-lg overflow-hidden h-full flex-1">
-            <div class="px-3 py-2 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
+            <!-- "The Chronicle" header belongs to #feed (its scroll buttons
+                 and entry count both target #feed) — hidden below lg while
+                 the Chat tab is active (Sprint 72.4) so it doesn't sit atop
+                 the Chat pane's own header referring to the wrong pane;
+                 lg:!flex forces it back at the desktop stacked view. -->
+            <div :class="mobileTab === 'chat' ? 'hidden lg:!flex' : 'flex'"
+                 class="px-3 py-2 border-b border-border items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
                 <span>The Chronicle <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse align-middle mx-0.5"></span> Live</span>
                 <div class="flex items-center gap-2 normal-case tracking-normal">
                     <button
@@ -110,9 +120,15 @@
 
             <!-- Feed content (append-only strategy). No font utility here — the
                  chronicle inherits the active Layout's font (see custom.css
-                 per-layout typography): JetBrains Mono under Standard. -->
+                 per-layout typography): JetBrains Mono under Standard.
+                 Below lg, hidden while the mobile Chat tab is active (Sprint
+                 72.4) so the chat pane gets the whole column instead of the
+                 two stacking; lg:!block forces it back on regardless of
+                 mobileTab at the desktop breakpoint, matching the stacked
+                 Feed+Chat behaviour this column has always had there. -->
             <div id="feed"
                  role="log" aria-live="polite" aria-label="Game narrative log"
+                 :class="mobileTab === 'chat' ? 'hidden lg:!block' : ''"
                  class="flex-1 overflow-y-auto p-4 space-y-3 text-sm leading-relaxed bg-feed-bg scroll-smooth"
                  data-last-id="{{ feed_messages[-1].id if feed_messages else 0 }}">
                 <!-- Initial server-rendered messages -->
@@ -120,11 +136,22 @@
             </div>
 
             {% if prefs.separate_chat %}
-            <!-- Chat pane (Sprint 45): conversation split from the narrative
-                 feed so chatter never scrolls room/quest/action output out of
-                 view. Rendered only when the separate_chat preference is on;
-                 its presence is what routeChatMessages()/the WS handler key on. -->
-            <div id="chat-pane" class="h-1/3 min-h-28 flex flex-col border-t border-border">
+            <!-- Chat pane (Sprint 45, mobile tab-collapse Sprint 72.4):
+                 conversation split from the narrative feed so chatter never
+                 scrolls room/quest/action output out of view. Rendered only
+                 when the separate_chat preference is on; its presence is
+                 what routeChatMessages()/the WS handler key on.
+                 At >=lg it keeps the original stacked-below-feed look
+                 (h-1/3, forced visible via lg:!flex regardless of
+                 mobileTab). Below lg it instead becomes its own mobile tab
+                 (see the "Chat" button in the mobile tab bar) — hidden
+                 unless mobileTab === 'chat', in which case it fills the
+                 whole column (flex-1) rather than stacking under the feed,
+                 matching the app's other mobile tab-collapse panels
+                 (Room/Feed/Panel) instead of pushing content down. -->
+            <div id="chat-pane"
+                 :class="mobileTab === 'chat' ? 'flex flex-1 min-h-0 border-t' : 'hidden'"
+                 class="flex-col border-border lg:!flex lg:flex-none lg:h-1/3 lg:min-h-28 lg:border-t">
                 <div class="px-3 py-1.5 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
                     <span>Chat</span>
                     <button
@@ -214,7 +241,9 @@
     </div>
 
     <!-- Mobile tab bar (standard grid only): switches which column is visible
-         below the lg breakpoint. -->
+         below the lg breakpoint. The "Chat" tab (Sprint 72.4) only appears
+         when the separate_chat preference rendered #chat-pane above — with
+         it off, chat stays folded into Feed exactly as before. -->
     <div class="lg:hidden flex border-t border-zinc-800 bg-zinc-900 text-xs">
         <button
             @click="mobileTab = 'room'"
@@ -224,6 +253,12 @@
             @click="mobileTab = 'feed'"
             :class="mobileTab === 'feed' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
             class="flex-1 py-2 border-t-2 transition-colors">Feed</button>
+        {% if prefs.separate_chat %}
+        <button
+            @click="mobileTab = 'chat'"
+            :class="mobileTab === 'chat' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"
+            class="flex-1 py-2 border-t-2 transition-colors">Chat</button>
+        {% endif %}
         <button
             @click="mobileTab = 'panel'"
             :class="mobileTab === 'panel' ? 'text-emerald-400 border-emerald-500' : 'text-zinc-500 border-transparent'"

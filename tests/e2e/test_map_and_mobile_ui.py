@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from tests.e2e._helpers import enable_separate_chat
 from tests.e2e.conftest import create_character
 
 pytestmark = pytest.mark.e2e
@@ -63,3 +64,32 @@ def test_mobile_tab_bar_switches_panels(page: Any, live_server: str) -> None:
     page.click("text=Panel")
     page.locator("#inventory").wait_for()
     assert not page.locator("#room-description").is_visible()
+
+
+def test_mobile_chat_collapses_into_its_own_tab(page: Any, live_server: str) -> None:
+    """Sprint 72.4: with `separate_chat` on, small screens get a dedicated
+    "Chat" tab instead of the chat pane stacking below the feed and squeezing
+    it. The Chat tab is absent entirely when the preference is off."""
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+    enable_separate_chat(page, live_server)
+    page.set_viewport_size({"width": 390, "height": 844})
+
+    # Feed tab (default): the chat pane is collapsed away, not stacked below
+    # the feed pushing it down.
+    assert page.locator("#feed").is_visible()
+    assert not page.locator("#chat-pane").is_visible()
+
+    # Switching to the Chat tab shows the chat pane (and hides the feed) —
+    # same exclusive-tab behavior as Room/Feed/Panel, not an added stack.
+    # Scoped to role=button (exact) because #chat-pane's own header also
+    # renders the word "Chat", so a plain `text=Chat` locator is ambiguous.
+    page.get_by_role("button", name="Chat", exact=True).click()
+    page.locator("#chat-feed").wait_for()
+    assert page.locator("#chat-pane").is_visible()
+    assert not page.locator("#feed").is_visible()
+
+    # Switching back to Feed restores it and hides Chat again.
+    page.get_by_role("button", name="Feed", exact=True).click()
+    assert page.locator("#feed").is_visible()
+    assert not page.locator("#chat-pane").is_visible()
