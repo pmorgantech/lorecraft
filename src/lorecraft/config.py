@@ -35,6 +35,11 @@ class Settings:
     world_time_ratio: float = 60.0
     websocket_path: str = "/ws"
     disconnect_grace_seconds: float = 60.0
+    # Control directory shared with the process supervisor (scripts/supervisor.py)
+    # for the admin "request restart" handshake (Sprint 72.3). The admin endpoint
+    # writes a restart sentinel here and reads the supervisor's heartbeat to show
+    # whether a performer is armed; empty/unset when no supervisor is expected.
+    control_dir: str = "/tmp/lorecraft-control"
     # Admin JWT (ephemeral random secret used if not set — not suitable for production)
     admin_jwt_secret: str = ""
     admin_jwt_access_ttl: int = 900  # 15 minutes
@@ -117,6 +122,7 @@ def load_settings() -> Settings:
         disconnect_grace_seconds=float(
             os.getenv("LORECRAFT_DISCONNECT_GRACE_SECONDS", "60.0")
         ),
+        control_dir=os.getenv("LORECRAFT_CONTROL_DIR", "/tmp/lorecraft-control"),
         admin_jwt_secret=os.getenv("LORECRAFT_ADMIN_JWT_SECRET", ""),
         admin_jwt_access_ttl=int(os.getenv("LORECRAFT_ADMIN_JWT_ACCESS_TTL", "900")),
         admin_jwt_refresh_ttl=int(

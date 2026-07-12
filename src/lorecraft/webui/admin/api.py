@@ -15,6 +15,7 @@ from lorecraft.webui.admin.routers.news import router as news_router
 from lorecraft.webui.admin.routers.observability import (
     router as observability_router,
 )
+from lorecraft.webui.admin.routers.ops import router as ops_router
 from lorecraft.webui.admin.routers.players import router as players_router
 from lorecraft.webui.admin.routers.world import router as world_router
 
@@ -30,3 +31,4 @@ admin_router.include_router(news_router)
 admin_router.include_router(help_router)
 admin_router.include_router(analytics_router)
 admin_router.include_router(observability_router)
+admin_router.include_router(ops_router)

@@ -125,7 +125,7 @@ password}`, returning access + refresh tokens).
 
 ## Admin Web Panel Tour
 
-Nine tabs, each backed by REST endpoints under `/admin/*`:
+Ten tabs, each backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
@@ -138,6 +138,7 @@ Nine tabs, each backed by REST endpoints under `/admin/*`:
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
 | **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
 | **Accounts** | Create/revoke admin accounts, assign roles (superadmin only) | `GET/POST /admin/accounts`, `DELETE /admin/accounts/{username}` |
+| **System** | Request a graceful engine restart (superadmin only, confirm-gated). An **armed?** badge reflects whether the process supervisor is actually watching this instance; if not armed the request is refused (409) rather than silently dropped. See [Restarting the Engine](#restarting-the-engine) | `GET/POST /admin/ops/restart` |
 
 Player moderation actions (teleport, flag edit, freeze/unfreeze, message) live under the
 player detail view reached from the Dashboard — see
@@ -159,6 +160,28 @@ WebSocket reconnecting) is rejected and the console **automatically logs you out
 screen with a "session expired" notice — clearing the stale token and WS rather than leaving a dead
 session on screen. A `403` (valid session, insufficient role) does *not* log you out; it just reports
 the missing permission. Log back in to continue.
+
+## Restarting the Engine
+
+The **System** tab can request a graceful restart of the running engine without shelling in.
+This only *requests* a restart — the actual work is done by a small **supervisor process**
+(`scripts/supervisor.py`) that must be running the server for the button to do anything.
+
+- **How it works.** `start.sh` does a one-time cold-boot (venv, seed DBs, and a runtime-DB
+  reseed) and then launches the supervisor, which runs `uvicorn` as a child. Clicking
+  **Request Restart** (superadmin, with a confirm prompt) writes a sentinel file to the control
+  directory (`LORECRAFT_CONTROL_DIR`, default `/tmp/lorecraft-control`) and audit-logs an
+  `engine_restart_requested` event. The supervisor sees the sentinel, sends the child `SIGTERM`,
+  waits for uvicorn's graceful lifespan shutdown (so players enter the reconnect **grace period**
+  and re-attach seamlessly), then relaunches uvicorn — **without** re-running the reseed, so live
+  runtime state (player positions, sessions, world mutations) survives.
+- **Armed indicator.** The supervisor publishes a heartbeat; the System tab reads it and shows
+  **armed** / **not armed**. If nothing is listening (e.g. you launched bare uvicorn with
+  `LORECRAFT_NO_SUPERVISOR=1`), a restart request is refused with a clear 409 rather than silently
+  doing nothing.
+- **Crash recovery.** Because the supervisor also relaunches on an *unexpected* child exit, a crash
+  no longer means permanent downtime. A restart-storm guard caps how many relaunches can happen in a
+  short window so a stuck trigger or crash loop can't spin forever.
 
 ## Admin TUI
 

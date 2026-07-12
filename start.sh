@@ -10,6 +10,10 @@ SEED_AUDIT_DB="${SCRIPT_DIR}/test_dbs/lorecraft-dev-audit.db"
 #SEED_GAME_DB="${SCRIPT_DIR}/game.db"
 RUNTIME_GAME_DB="/tmp/lorecraft-dev-game.db"
 RUNTIME_AUDIT_DB="/tmp/lorecraft-dev-audit.db"
+# Control dir shared with the supervisor for the admin restart handshake (72.3).
+CONTROL_DIR="${LORECRAFT_CONTROL_DIR:-/tmp/lorecraft-control}"
+# Set LORECRAFT_NO_SUPERVISOR=1 to run uvicorn directly (no restart/crash-recovery).
+NO_SUPERVISOR="${LORECRAFT_NO_SUPERVISOR:-0}"
 WORLD_PATH="${SCRIPT_DIR}/world_content"
 INIT_DBS_IF_MISSING=1
 INIT_DBS_ONLY=0
@@ -153,22 +157,37 @@ if [[ ! -f "${SEED_GAME_DB}" || ! -f "${SEED_AUDIT_DB}" ]]; then
   exit 1
 fi
 
-reset_runtime_db() {
-  local seed_db="$1"
-  local runtime_db="$2"
+# === Cold-boot prep (runs exactly once per launch of this script) ===========
+# Reseed the runtime DBs from the committed seed DBs. This wipes all live
+# runtime state back to seed — correct for a cold boot, catastrophic on a
+# restart. It is single-sourced in lorecraft.ops.coldboot so the regression
+# guard (Sprint 72.3c) can prove the supervisor's relaunch loop never calls it.
+"${VENV_PYTHON}" -m lorecraft.ops.coldboot \
+  --pair "${SEED_GAME_DB}" "${RUNTIME_GAME_DB}" \
+  --pair "${SEED_AUDIT_DB}" "${RUNTIME_AUDIT_DB}"
 
-  # SQLite WAL mode leaves sidecar files beside the DB. A stale runtime WAL can
-  # be replayed against a freshly copied DB and make startup report corruption.
-  rm -f "${runtime_db}" "${runtime_db}-wal" "${runtime_db}-shm"
-  cp "${seed_db}" "${runtime_db}"
-}
-
-reset_runtime_db "${SEED_GAME_DB}" "${RUNTIME_GAME_DB}"
-reset_runtime_db "${SEED_AUDIT_DB}" "${RUNTIME_AUDIT_DB}"
-
+# === Run loop ===============================================================
+# The supervisor (scripts/supervisor.py) launches uvicorn as a child, watches
+# the control dir for an admin restart request, and on trigger does
+# SIGTERM -> wait for graceful lifespan shutdown -> relaunch WITHOUT reseeding.
+# It also relaunches on an unexpected crash. Set LORECRAFT_NO_SUPERVISOR=1 to
+# bypass it and run uvicorn directly (no restart, no crash recovery).
+#
 # --ws websockets-sansio: modern websockets API. uvicorn's default (auto) uses
 # the legacy API that websockets>=14 deprecates and will remove, which would
 # otherwise break server startup on a future websockets bump.
-LORECRAFT_DB_PATH="${RUNTIME_GAME_DB}" \
-LORECRAFT_AUDIT_DB_PATH="${RUNTIME_AUDIT_DB}" \
-"${SCRIPT_DIR}/.venv/bin/uvicorn" lorecraft.main:app --host 0.0.0.0 --port 8000 --ws websockets-sansio
+export LORECRAFT_DB_PATH="${RUNTIME_GAME_DB}"
+export LORECRAFT_AUDIT_DB_PATH="${RUNTIME_AUDIT_DB}"
+export LORECRAFT_CONTROL_DIR="${CONTROL_DIR}"
+
+UVICORN_CMD=(
+  "${SCRIPT_DIR}/.venv/bin/uvicorn" lorecraft.main:app
+  --host 0.0.0.0 --port 8000 --ws websockets-sansio
+)
+
+if [[ "${NO_SUPERVISOR}" == "1" ]]; then
+  exec "${UVICORN_CMD[@]}"
+else
+  exec "${VENV_PYTHON}" "${SCRIPT_DIR}/scripts/supervisor.py" \
+    --control-dir "${CONTROL_DIR}" -- "${UVICORN_CMD[@]}"
+fi
