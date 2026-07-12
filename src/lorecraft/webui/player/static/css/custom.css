@@ -106,6 +106,24 @@
     color: var(--lc-accent);
 }
 
+/* "You reach level N!" (MessageType.LEVEL → `msg-level`, Sprint 73.9): same
+   specificity/cascade fix as `.msg-help` above (the `#feed` prefix + the
+   dedicated `.text-zinc-200` override + `!important` are all load-bearing
+   for the same reasons documented there — this rule would otherwise lose to
+   `#feed .msg.narrative` at equal specificity). Uses `--lc-accent-strong`
+   (the theme's "bright"/hover accent, already used for other notable-state
+   highlights like `.exit-dir:hover`) rather than the base `--lc-accent`
+   `.msg-help` uses, so a level-up reads as a distinct, more celebratory
+   event than reference text — still entirely token-driven, so it repaints
+   correctly across every colour scheme. */
+#feed .msg.msg-level {
+    border-left-color: var(--lc-accent-strong) !important;
+    font-weight: 700;
+}
+#feed .msg.msg-level .text-zinc-200 {
+    color: var(--lc-accent-strong);
+}
+
 /* Panel headers */
 .panel-header {
     letter-spacing: 0.5px;
