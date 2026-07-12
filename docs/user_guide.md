@@ -294,6 +294,30 @@ effects, and some are permanent (background or earned through play). Skills impr
 more you use them ("learn by doing") — there's no way to train them directly. Reputation
 with an NPC or faction can unlock better prices, new dialogue, or additional quests.
 
+## Experience & Leveling
+
+```
+score           — your progress: level/xp, quests, wealth, reputation, discoveries
+```
+
+You earn **experience (XP)** two ways: completing a quest stage (its reward is applied the
+moment the stage completes) and **discovery** — a successful `search` that turns up a hidden
+passage awards a little XP for the find, alongside revealing the passage. XP accumulates
+toward your current level's threshold; the cost curve (how much XP each level takes) is set
+by the server admin rather than fixed in the game, so it can differ from server to server.
+
+Crossing a threshold **levels you up** — the chronicle prints a "You reach level N!" line in
+its own distinct color, and you're paid coins and skill points on the spot. Those amounts are
+also admin-configured rather than a fixed rate, so don't assume one server's payout matches
+another's.
+
+**Skill points** are a banked currency for now — your running total shows in the **Stats**
+pane, but spending them (a skill tree, ability unlocks) isn't available yet; consider them
+saved up for a future update.
+
+`score` (or the **Stats** pane) shows your current level and XP progress (`X/Y XP` toward the
+next level) at a glance.
+
 ## Trading
 
 ```
@@ -483,6 +507,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `traits` | | List your active traits |
 | `skills` | | List your skills and their levels |
 | `reputation` | `rep` | List your standing with NPCs and factions |
+| `score` | | Your progress: level/xp, quests, wealth, reputation, discoveries |
 | `search` | | Look for hidden exits and secrets in the room |
 | `journal` | | Review places visited, people met, items discovered, lore learned, and active quests |
 | `marks` | | List the marks you have earned by discovery |

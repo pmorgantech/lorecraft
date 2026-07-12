@@ -277,7 +277,8 @@ quests:
             value: true
         rewards:
           xp: 500
-          reputation: 25
+          coins: 50
+          skill_points: 1
 ```
 
 ### Quest Fields
@@ -299,7 +300,7 @@ Each stage has:
 | `description` | string | What the player needs to do |
 | `conditions` | array | Conditions that must be met to progress |
 | `completion_flags` | object | Flags set when stage completes |
-| `rewards` | object | Rewards for completing this stage (`xp`, `items`) |
+| `rewards` | object | Rewards for completing this stage (`xp`, `items`, `coins` [alias `money`], `skill_points`) — see [Quest rewards and the progression system](admin_builder_guide.md#quest-rewards-and-the-progression-system-sprint-73) for the full vocabulary and admin-tunable XP curve. Any other key must be a known numeric player stat; `reputation` is **not** a valid reward key — use a `side_effects: adjust_reputation` block instead (see Branching Stages below) |
 | `branches` | array | Sprint 30.1: alternate outcomes — see below |
 | `terminal` | bool | Sprint 30.1: complete the quest once this stage's `conditions` pass, regardless of array position (needed for a branch-reached ending that isn't last in `stages`) |
 | `timeout_ticks` | number | Sprint 30.2: game-clock ticks after which, if the player hasn't progressed past this stage, `on_timeout` fires |
@@ -425,7 +426,8 @@ quests:
           - type: "in_room"
             room_id: "wandering_crow_inn"
         rewards:
-          reputation: 50
+          xp: 50
+          coins: 20
 ```
 
 ---

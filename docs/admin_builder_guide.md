@@ -125,7 +125,7 @@ password}`, returning access + refresh tokens).
 
 ## Admin Web Panel Tour
 
-Ten tabs, each backed by REST endpoints under `/admin/*`:
+Eleven tabs, each backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
@@ -134,6 +134,7 @@ Ten tabs, each backed by REST endpoints under `/admin/*`:
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override. A weather override **announces the change to every player's feed** (e.g. "A light rain begins to fall."); re-setting the current weather is silent | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
+| **Progression** | Live-tune the XP curve (`base`/`step`) and per-level rewards (`coins_per_level`/`skill_points_per_level`) — no restart or reseed. See [Live-tuning progression from the admin console](#live-tuning-progression-from-the-admin-console) | `GET/POST /admin/progression/config` |
 | **Issues** | Repo-tracked issue tracker CRUD. **Resolved/deferred are hidden by default** — a "Hide status" checkbox group toggles any status in/out of view; plus a **priority** filter and a **sort** selector (Priority / Recently updated / Recently created). Filter+sort run client-side (hide/sort choices persist per browser); a header count shows `N shown · M hidden`. `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write. Table shows opened-by + created/updated dates (🕑 toggles absolute dates ↔ relative ages); rows expand (click) to description, tags, links, assignee, timestamps. Live-refreshes on any change — admin edits **and** in-game player `report`s | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
 | **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
@@ -344,6 +345,73 @@ Give an **item or NPC its own verbs** that appear and work only when that object
   requires every `side_effects` key to resolve to a registered handler.
 - A context verb that would **shadow a built-in** verb/alias (e.g. `look`, `take`) is skipped
   with a startup warning — pick a name that isn't already a command.
+
+### Quest rewards and the progression system (Sprint 73)
+
+A quest stage's `rewards:` block is a small vocabulary, interpreted by
+`features/progression/rewards.py`'s `apply_rewards` the moment the stage completes:
+
+```yaml
+stages:
+  - id: deliver_supplies
+    description: Bring the supplies to the outpost.
+    conditions:
+      - type: in_room
+        room_id: outpost
+    rewards:
+      items: [travel_ration]     # spawned on the player (skips ids already carried)
+      xp: 50                     # banked toward the level curve, below
+      coins: 25                  # canonical key (`money` is a tolerated alias)
+      skill_points: 1            # banked; spending them is a future sprint
+```
+
+All four keys are optional and additive — grant any subset. `coins`/`money` is the only
+sanctioned way for a quest to create coins (it goes through `LedgerService.credit`, same as
+every other coin faucet). An `xp` grant that crosses a level threshold pays out that level's
+configured `coins_per_level`/`skill_points_per_level` *on top of* whatever the stage itself
+grants — see the `progression:` section below for where that rate comes from. Any other
+numeric `PlayerStats` field name is also accepted as a reward key and applied as a plain
+delta (validated against a whitelist — a typo'd key is rejected at grant time, not silently
+dropped); it is **not** the place to grant `reputation` — use the dialogue/quest
+`side_effects: adjust_reputation` mechanism for that instead (see
+[dialogue_npcs_quests.md](dialogue_npcs_quests.md)).
+
+#### The `progression:` section (`world_content/world.yaml`)
+
+The XP curve and per-level rewards are seeded at import from a top-level `progression:` block:
+
+```yaml
+progression:
+  base: 100                 # XP to go from level 1 -> 2
+  step: 50                  # extra XP required per level after that
+                             # (level N -> N+1 costs base + step*(N-1))
+  coins_per_level: 25       # coins paid out on every level crossed
+  skill_points_per_level: 1 # skill points paid out on every level crossed
+```
+
+All four fields are required. `base` must be positive; `step`/`coins_per_level`/
+`skill_points_per_level` must be zero or positive — enforced at `world_cli validate`/import
+time, so a `base: 0` or negative value fails the import instead of blowing up later at the
+first reward grant. Importing seeds (or updates) a singleton `ProgressionConfig` DB row,
+mirroring the `WorldClock` pattern used elsewhere in this guide, that the reward interpreter
+reads on every `xp` grant.
+
+#### Live-tuning progression from the admin console
+
+Like the world clock's time-ratio, per-level rewards and the XP curve are editable **live,
+with no restart or reseed**, from the admin console's **Progression** tab:
+
+- **XP Curve** — `base`/`step`, editable independently.
+- **Per-Level Rewards** — `coins_per_level`/`skill_points_per_level`.
+
+Backed by `GET`/`POST /admin/progression/config`. `POST` accepts any subset of the four
+fields (an admin retunes one dial — say, `coins_per_level` — without restating the others);
+each field is validated with the same bounds as the `world.yaml` import (`base` positive,
+the rest non-negative) and rejected with `422` otherwise. Unlike the clock's `time_ratio`
+(which a running background task caches in memory and must be pushed a fresh value), nothing
+currently caches progression config in runtime state — the reward interpreter reads
+`ProgressionConfig` fresh from the DB on every grant — so a plain commit is enough; the very
+next reward uses the new numbers.
 
 ## The World CLI
 
