@@ -117,6 +117,22 @@ def test_items_reward_skips_unknown_and_already_carried() -> None:
         assert ctx.stack_repo.quantity_of(Location("player", "p1"), "gem") == 1
 
 
+def test_items_reward_skips_and_warns_on_non_list_value(caplog) -> None:
+    # A malformed `items` value (not a list) is tolerated — skipped, not raised —
+    # but logs a warning so a content-authoring typo isn't silently swallowed.
+    import logging
+
+    with Session(_engine()) as session:
+        player = _seed(session)
+        ctx = _ctx(session, player)
+
+        with caplog.at_level(logging.WARNING):
+            outcome = apply_rewards(ctx, {"items": "gem"})
+
+        assert outcome.items_spawned == ()
+        assert any("items" in r.message for r in caplog.records)
+
+
 def test_coins_reward_credits_ledger() -> None:
     with Session(_engine()) as session:
         player = _seed(session)

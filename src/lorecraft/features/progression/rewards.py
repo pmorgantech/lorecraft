@@ -21,6 +21,7 @@ what" and the balance numbers (all read from config/DB, never hardcoded).
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -38,6 +39,8 @@ from lorecraft.types import JsonObject, JsonValue
 
 if TYPE_CHECKING:
     from lorecraft.engine.game.context import GameContext
+
+log = logging.getLogger(__name__)
 
 _ITEMS_KEY = "items"
 _XP_KEY = "xp"
@@ -124,6 +127,13 @@ def apply_rewards(ctx: GameContext, rewards: JsonObject) -> RewardOutcome:
                 continue
             ctx.item_location.spawn(item_id, Location("player", player_id))
             items_spawned.append(item_id)
+    elif raw_items is not None:
+        # A malformed `items` value (not a list — e.g. a bare string or dict) is
+        # skipped rather than raising, but warn so a content-authoring typo isn't
+        # silently swallowed.
+        log.warning(
+            "reward 'items' must be a list, got %r; skipping", type(raw_items).__name__
+        )
 
     # coins -> Tier 1 ledger.credit (the only sanctioned way coins enter play).
     coins = _coins_amount(rewards)
