@@ -40,6 +40,12 @@ python -c "import lorecraft; print(lorecraft.__file__)"   # must print a path un
 If that path isn't under this worktree — bootstrap `failed`, or timed out — fall back to
 `PYTHONPATH="$PWD/src"` prepended per `AGENTS.md`, borrowing the primary tree's venv.
 
+**A shared worktree's checked-out branch can change between your own tool calls** if another
+agent is concurrently dispatched into the same directory — not just between sessions. Re-check
+`git branch --show-current`/`git log -1` immediately before running the suite you're about to
+report on, not just once at the start; a result reported against the wrong branch is a false
+pass/fail that gets trusted downstream. See AGENTS.md "The shared *designated* worktree race."
+
 ## Always check
 
 - `tests/unit/test_tier_boundaries.py` passes — a green main suite with this one red is

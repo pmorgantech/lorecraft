@@ -14,6 +14,14 @@ Confirm the API/WebSocket contract you're building against is actually stable �
 Backend Engineer's handoff for the exact shape (fields, event names) rather than guessing
 from partial code. Building UI against a still-moving endpoint wastes both agents' time.
 
+**Verify your worktree is actually yours before editing.** A shared session worktree isn't
+automatically safe from other concurrently-dispatched agents — its checked-out branch can
+change between your own tool calls (`git branch --show-current`/`git log -1`, check before any
+edit or commit, not just once). If it's not what you expect, create your own scratch worktree
+(`git worktree add /tmp/<task-name> <base>`) instead of proceeding on an assumption. Never `cd`
+into the primary tree for any git operation. See AGENTS.md "The shared *designated* worktree
+race."
+
 ## Rules
 
 - `webui/` may import both `engine.*` and `features.*` — it's the composition layer, not the

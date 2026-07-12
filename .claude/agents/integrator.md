@@ -37,6 +37,14 @@ cd /tmp/integrate-<task>
 cd - && git worktree remove /tmp/integrate-<task>
 ```
 
+**The same risk applies in reverse when reading, not just when writing `main`.** If you need to
+inspect a branch that sub-agents built in a *shared* session worktree (not your own dedicated
+scratch one), don't `cd` into that shared directory to look at it — its checked-out branch can
+change under you the same way the primary tree's can. Read it without checking it out:
+`git show <branch>:<path>`, or `git log <branch>` from your own scratch worktree, both of which
+work on any branch regardless of what's currently checked out elsewhere. See AGENTS.md "The
+shared *designated* worktree race" for why a session's own worktree isn't automatically safe.
+
 If `git` refuses a checkout or a `branch -f` because the branch is "already checked out
 elsewhere," that is not an obstacle to force past — it means another session is using it.
 Stop and report to the Orchestrator/user rather than forcing it, and never force-move a

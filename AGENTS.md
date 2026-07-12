@@ -55,6 +55,43 @@ See [`docs/multi-agent-workflow.md`](docs/multi-agent-workflow.md) for the full 
 - Keep test-only world content (disambiguation rooms, overlapping item names, etc.) out of
   `src/lorecraft/`. The engine loads world data from YAML/DB, not from pytest helpers.
 
+### Tier 1 = mechanism, Tier 2 = policy (2026-07-12)
+
+Beyond the import-direction rule in "Codebase structure" above, the tiers also split by
+**who decides what a behavior actually does**:
+
+- **Tier 1 (`engine/`) provides unopinionated functionality and hooks.** It knows *how* to do
+  a class of thing — apply a delta to a player's stats, resolve a modifier stack, detect a
+  threshold crossing — but never *what* that thing should be for any particular feature. A
+  Tier 1 function that hardcodes "leveling grants coins and skill points" has leaked policy
+  into the mechanism layer; it should instead expose a generic "apply this delta" primitive
+  and let a Tier 2 caller decide the delta's contents.
+- **Tier 2 (`features/<x>/`) is the malleable, opinionated layer.** It is where a specific
+  feature tells a Tier 1 mechanism what to actually do — quest rewards, economy pricing, XP
+  curves and level-up payouts, skill-tree costs. This is also where that opinion should be
+  **data-driven** per the bullets above: expressed in `world_content/` YAML or a DB-backed
+  config row, not a Python constant, so it can be re-authored without a code change.
+- When planning or reviewing a design, state explicitly which parts are Tier 1 (the hook/
+  primitive) and which are Tier 2 (the opinion/config feeding it) — don't leave this implicit.
+  A design that can't be split this way cleanly is a sign the mechanism is still coupled to
+  one feature's assumptions and should be generalized before a second feature needs the same
+  hook with different opinions.
+
+### Prefer live-tunable configuration where sensible (2026-07-12)
+
+Data-driven (previous section) is necessary but not sufficient — YAML-authored config that
+only takes effect after a world reseed (`economy.regions` in `world_content/world.yaml` is
+the current example) still requires a deploy-like action to change. Where a value is a game-
+balance dial an admin would plausibly want to retune without restarting or reseeding the
+server — reward amounts, pricing multipliers, XP curves — prefer the **live-tunable** pattern
+already established by `WorldClock` (`webui/admin/routers/clock.py`): a DB-backed singleton,
+optionally YAML-seeded for initial authoring, exposed through an admin endpoint that mutates
+the DB row *and* pushes the new value into the running server state in the same call, so the
+change is live with no restart. Not every config value needs this — static world topology or
+one-time content doesn't — but default to asking "would an admin want to change this live?"
+rather than assuming YAML + reseed is always enough. (`economy.regions` is a known gap here —
+currently reseed-only — flagged in `docs/roadmap.md`'s backlog as a candidate for this pattern.)
+
 ## Workflow
 
 - Make small, reviewable changes.
@@ -191,3 +228,44 @@ claiming `v0.76.0`). It's not something a single agent can prevent unilaterally;
 integrates/merges those branches together is the one who discovers and resolves the collision
 by renumbering one of them. Don't try to pre-empt it by scanning every open branch before every
 bump — just bump against your own branch's ancestry, and expect the integrator to reconcile.
+
+### The shared *designated* worktree race — a second, distinct failure mode (2026-07-12)
+
+The primary-tree race above is well-known; this is a related but separate trap that bit
+multiple sub-agents across the Sprint 71/72 work: **a session's own `.claude/worktrees/<name>`
+checkout is not automatically safe just because it isn't the primary tree.**
+
+**What happens:** an orchestrator (or a user directly) dispatches several sub-agents in the
+same session — e.g. four parallel Sprint 72 tasks. Each dispatched agent's shell defaults to
+the *same* designated worktree directory unless told otherwise. If two or more of those agents
+run concurrently (or even just interleaved — one finishes a tool call, another's turn runs a
+`git checkout` in between), the directory's checked-out branch gets switched out from under
+whichever agent thinks it's still on its own branch. This happened repeatedly and independently
+across at least three different sub-agents in one session (each noticed its `HEAD`/branch had
+changed mid-task, sometimes multiple times) — not a one-off, but the *default* outcome of
+dispatching parallel agents into a shared worktree without explicit isolation.
+
+**Rule for anyone dispatching sub-agents that will edit files or run git commands (Orchestrator,
+or a top-level session doing this directly):** if more than one such agent may run with any
+overlap — parallel dispatch, or even sequential dispatch where you can't guarantee the first
+fully finished including its commit before the second starts — give each one its **own**
+disposable scratch worktree, not the shared session directory:
+
+```bash
+git worktree add /tmp/<task-name> <base-branch-or-commit>   # isolated, no race possible
+# ... agent does all its work here, commits to its own branch ...
+git worktree remove /tmp/<task-name>   # clean up once merged/no longer needed
+```
+
+**Rule for any agent working in a worktree, even one it believes is exclusively its own:**
+verify before trusting it — `pwd` and `git branch --show-current`/`git log -1` — immediately
+before any edit or commit, not just once at the start of the task. A shared directory's branch
+can change *between* your own tool calls, not just between sessions. If it doesn't match what
+you expect, stop and create your own scratch worktree rather than proceeding on an assumption.
+
+**This compounds with the PYTHONPATH footgun above.** Every new scratch worktree an agent
+creates for itself needs the same treatment as any other worktree — no `.venv` of its own by
+default, so either bootstrap one or use the `PYTHONPATH="$PWD/src"` + primary-venv-activation
+recipe. Confirm the resolved `lorecraft.__file__` path points under *that specific scratch
+worktree*, not the primary tree or a different worktree, before trusting any test result run
+there — the failure mode ("green/red for the wrong tree") is silent either way.

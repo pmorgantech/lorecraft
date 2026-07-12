@@ -30,7 +30,15 @@ tests yourself — you decompose, route, and validate.
    - success criteria (what "done" looks like for this task)
 4. Dispatch via `Agent`/`SendMessage`, sequentially where there's a real dependency,
    in parallel where there isn't (e.g. Docs drafting once Backend's API shape is stable,
-   while Backend still finishes implementation).
+   while Backend still finishes implementation). **If two or more agents that edit files or
+   run git commands might run with any overlap** — parallel dispatch, or sequential dispatch
+   you can't be sure fully finished (including its commit) before the next starts — instruct
+   each one explicitly to verify its location (`pwd`, `git branch --show-current`) before
+   editing and, if there's any doubt it has the shared session worktree to itself, to create
+   its own disposable scratch worktree (`git worktree add /tmp/<task-name> <base>`) rather than
+   assume isolation. This is not optional caution — it has already happened repeatedly in this
+   session (three separate sub-agents independently found their shared worktree's checked-out
+   branch had changed mid-task). See AGENTS.md "The shared *designated* worktree race."
 5. Validate each specialist's output against its own success criteria before treating the
    step as complete. Do not just relay "done" — check the verification checklist the
    specialist reports (tests passed, tier boundaries clean, etc).
@@ -67,8 +75,17 @@ conversation. Treat silence as a bug:
 - Tier boundaries: `src/lorecraft/engine/` must never import `lorecraft.features` or any web
   host; features must never import a web host. (`tests/unit/test_tier_boundaries.py` is the
   ground truth — don't let a specialist claim done without it passing.)
+- **Mechanism vs policy: Tier 1 = unopinionated, Tier 2 = the opinion** (AGENTS.md "Tier 1 =
+  mechanism, Tier 2 = policy"). When validating a Research/Backend handoff, check that a Tier 1
+  addition stayed a generic hook and didn't quietly bake in one feature's specific reward/config
+  — if it did, send it back rather than accepting "it passes tier_boundaries.py" as sufficient
+  (that test catches import-direction violations, not policy leaking into a technically-Tier-1
+  module).
 - Data-driven config: reject any specialist output that branches on hardcoded room/item IDs
-  instead of loading from `world_content/` or `docs/*.yaml`.
+  instead of loading from `world_content/` or `docs/*.yaml`. For a value that resembles a
+  game-balance dial, also check whether Research surfaced whether it should be live-tunable
+  (AGENTS.md "Prefer live-tunable configuration where sensible") rather than assuming
+  YAML+reseed is automatically sufficient.
 - No agent-attribution trailers (`Co-Authored-By:`, `Claude-Session:`) in any commit message
   a specialist proposes.
 - Per `docs/multi-agent-workflow.md`: sub-agents work in their own bootstrapped worktree

@@ -35,6 +35,16 @@ the primary venv with the `PYTHONPATH="$PWD/src"` prefix documented in `AGENTS.m
 "Running tests from a git worktree" — never run a bare `make test`/`pytest` without one of
 these two confirmed, it will silently test the wrong tree.
 
+**This worktree may not be exclusively yours even if it's the one you were dispatched into.**
+If another agent could be working concurrently in the same directory (parallel dispatch is
+explicitly expected — "each in its own worktree" in your own description assumes isolation
+that isn't automatic), its checked-out branch can change between your tool calls, not just
+between sessions. Re-check `git branch --show-current`/`git log -1` before any edit or commit,
+not just once at the start — and if it doesn't match what you expect, stop and create your own
+scratch worktree (`git worktree add /tmp/<task-name> <base>`) rather than proceeding on an
+assumption. See AGENTS.md "The shared *designated* worktree race" for why this matters; never
+`cd` into the primary tree for any git operation regardless.
+
 ## Hard rules (from AGENTS.md — non-negotiable)
 
 - `src/lorecraft/engine/` (Tier 1) must not import `lorecraft.features` or any web host.
@@ -42,8 +52,21 @@ these two confirmed, it will silently test the wrong tree.
 - `src/lorecraft/features/<feature>/` (Tier 2) may import `engine.*` and other features,
   never a web host. New feature = new package with a `FeatureManifest` in `__init__.py`
   (auto-discovered by `discover_features()`).
+- **Tier 1 = mechanism, Tier 2 = policy** (AGENTS.md "Design principles") — this is more than
+  the import-direction rule above. A Tier 1 function must stay unopinionated: it exposes a
+  generic hook (apply a delta, resolve a modifier stack, detect a threshold) and never bakes in
+  *which* feature's specific reward/config it's for. If you find yourself hardcoding a
+  feature-specific value or decision inside `engine/`, that's policy leaking into the
+  mechanism layer — move the opinion to the Tier 2 caller and have it pass the mechanism a
+  generic payload instead.
 - Data-driven only: never branch on hardcoded room/item IDs or inspect the DB for specific
   world content to choose behavior. Load from `world_content/` or a fixture module.
+- **Prefer live-tunable over static YAML for game-balance dials** (AGENTS.md "Prefer
+  live-tunable configuration where sensible") — if a Tier 2 value is one an admin would
+  plausibly want to retune without a restart/reseed (reward amounts, prices, curves), follow
+  the `WorldClock` pattern (`webui/admin/routers/clock.py`): a DB-backed value, optionally
+  YAML-seeded, mutated live via an admin endpoint. Not every config value needs this — ask
+  before defaulting to YAML+reseed-only.
 - Typed errors from `lorecraft/errors.py`. Never a silent `except Exception`.
 - No new `cast(GameContext, ctx)`. One service-wiring style. No new mixed-concern modules.
 - Type hint all new code. Write unit tests for all new code.

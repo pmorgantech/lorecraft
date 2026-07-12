@@ -33,6 +33,13 @@ If bootstrap failed or timed out, fall back to `PYTHONPATH="$PWD/src"` borrowing
 venv (AGENTS.md "Running tests from a git worktree"). Never run a bare `pytest`/`make test`
 without one of these two confirmed.
 
+**A shared worktree isn't automatically yours alone**, even for this run — if another agent may
+be dispatched concurrently, the checked-out branch can change *between* your own tool calls.
+Re-check `git branch --show-current`/`git log -1` before editing or committing, not just once
+at the start; if it's not what you expect, use your own scratch worktree instead
+(`git worktree add /tmp/<task-name> <base>`). Never `cd` into the primary tree. See AGENTS.md
+"The shared *designated* worktree race."
+
 ## Hard rule #1: never reward-hack a test
 
 This is the reason you exist as a dedicated role rather than leaving test-writing entirely to
