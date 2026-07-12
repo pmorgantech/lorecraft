@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
 from lorecraft.features.progression.repo import ProgressionRepo
 from lorecraft.world.loader import export_world_document, load_world_yaml
+from lorecraft.world.validator import WorldValidationError
 
 _WORLD_WITH_PROGRESSION = """
 rooms:
@@ -66,6 +68,22 @@ def test_progression_config_round_trips_via_export(tmp_path) -> None:
     assert document.progression.step == 40
     assert document.progression.coins_per_level == 30
     assert document.progression.skill_points_per_level == 2
+
+
+def test_progression_config_rejects_non_positive_base_at_import(tmp_path) -> None:
+    # A `base: 0` (or negative) seed used to slip past import validation and only
+    # fail much later, as a LevelCurve ValidationError at reward-grant time. The
+    # validator now enforces the same bound the admin endpoint does, so a bad
+    # world.yaml fails loudly at seed time. WorldValidationError wraps pydantic.
+    bad = _WORLD_WITH_PROGRESSION.replace("base: 120", "base: 0")
+    with pytest.raises(WorldValidationError):
+        _load(bad, tmp_path)
+
+
+def test_progression_config_rejects_negative_step_at_import(tmp_path) -> None:
+    bad = _WORLD_WITH_PROGRESSION.replace("step: 40", "step: -1")
+    with pytest.raises(WorldValidationError):
+        _load(bad, tmp_path)
 
 
 def test_progression_config_reimport_upserts_single_row(tmp_path) -> None:

@@ -279,14 +279,21 @@ class ProgressionConfigData(BaseModel):
 
     All four are required: the game-balance numbers live here (authored, data-
     driven), never as Python defaults in the engine.
+
+    Bounds mirror the live-tune admin endpoint (`webui/admin/routers/
+    progression.py`) exactly, so a `world.yaml` author can't seed a value the
+    admin UI would reject — `base` must be positive (the level 1→2 XP cost, fed
+    straight into `LevelCurve` which requires `base > 0`), the rest non-negative.
+    Without these a `base: 0`/negative seed passed validation here and only blew
+    up much later as a `ValidationError` inside `LevelCurve` at reward-grant time.
     """
 
     model_config = ConfigDict(extra="forbid")
 
-    base: int
-    step: int
-    coins_per_level: int
-    skill_points_per_level: int
+    base: int = Field(gt=0)
+    step: int = Field(ge=0)
+    coins_per_level: int = Field(ge=0)
+    skill_points_per_level: int = Field(ge=0)
 
 
 class TransitStopData(BaseModel):
