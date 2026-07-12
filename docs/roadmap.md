@@ -512,8 +512,11 @@ the tier1 leveler what to reward." Follows the existing precedent that a Tier 2 
 `PlayerStats` directly. **No new tier boundary, no engine→feature import** — the
 `tests/unit/test_tier_boundaries.py` guard holds.
 
-**FINDING + RESOLVED — what "admin-tunable" means here, and how far to build it in Sprint 73.** The
-correction asked whether a *live* admin-editable balance value exists. It does — **two** precedents:
+**FINDING + DESIGN DECISION RESOLVED (planning only — nothing here is built yet; 73.3/73.4 are both
+still `[ ]` not started).** What "admin-tunable" should mean for the *new* `ProgressionConfig`, and how
+far to build it in Sprint 73. The correction asked whether a *live* admin-editable balance value
+exists **anywhere in the codebase already** — not for progression (nothing exists there yet, that's
+this sprint's job) but as prior art to model the new config on. It does — **two** existing precedents:
 
 1. **Live, DB-backed, no-restart (the `WorldClock` pattern).** `WorldClock` is a DB singleton whose
    fields (`time_ratio`, `weather`, `paused`) are edited live via admin `POST` endpoints
@@ -528,10 +531,12 @@ correction asked whether a *live* admin-editable balance value exists. It does �
 `export_world_document`) **and** exposed through a live admin endpoint (73.4), so an admin can retune
 per-level coins/skill-points and the curve **without a restart**, exactly as they already retune the
 clock. This invents no new structural pattern — it composes the two that exist.
-**Phasing sub-decision — RESOLVED (user, 2026-07-12): keep 73.4 in-sprint.** The minimum fallback if it
-had proven heavier than expected would have been "config in `world.yaml`, tuned via reseed" (pattern 2
-only, still data-driven, just not live) — but the user confirmed 73.4 stays as a first-class task, not
-a stretch goal. No fallback needed.
+**Phasing sub-decision — SCOPE RESOLVED (user, 2026-07-12): keep 73.4 in the sprint plan.** This
+resolves *whether to build it*, not building it — 73.4 (the live admin endpoint) is still `[ ]` not
+started, same as every other task in this sprint; nothing has been implemented yet. The minimum
+fallback, had the user cut it for scope, would have been "config in `world.yaml`, tuned via reseed"
+(pattern 2 only, still data-driven, just not live) — but they confirmed it stays as a first-class task,
+not a stretch goal. No fallback needed; implementation starts fresh from this plan.
 
 **OPEN ITEM — package placement.** `features/progression/` (own manifest, auto-discovered) vs. folding
 into `features/quests/` vs. a `services/` helper. → **Recommend `features/progression/`** — the only
@@ -696,8 +701,9 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   `ProgressionConfig` [YAML-seeded, admin-tunable], 73.4 **live admin-tune endpoint** [WorldClock
   pattern], 73.5 Tier 2 reward interpreter, 73.6 quest rewards rewired [delivers 71.5 /
   `issue-39d3fcb8`], 73.7 level-up payout from config, 73.8 exploration reroute, 73.9 level-up UX,
-  73.10 docs; admin-tunable phasing RESOLVED [73.4 stays in-sprint, user 2026-07-12]; remaining OPEN
-  ITEMs: package placement [`features/progression/`], `coins` vs `money`, perk-beyond-rewards [rec. rewards-only]).
+  73.10 docs; admin-tunable phasing scope RESOLVED [73.4 stays in the plan, not yet built, user
+  2026-07-12]; remaining OPEN ITEMs: package placement [`features/progression/`], `coins` vs `money`,
+  perk-beyond-rewards [rec. rewards-only]).
 - **In design: 74** (Skill tree & ability unlocks — the skill-point *sink*; 74.1 data-driven
   `skill_tree.yaml` + loader, 74.2 node persistence [`unlocked_nodes` + `ability.<id>` flag],
   74.3 `train` command, 74.4 passive modifier source, 74.5 active-verb gating pattern + `forage`,

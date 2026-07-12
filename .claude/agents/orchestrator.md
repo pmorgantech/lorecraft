@@ -14,7 +14,11 @@ tests yourself — you decompose, route, and validate.
    request in the current sprint.
 2. Decide which specialists are actually needed. Not every task needs all of them:
    - Pure bug fix in engine/feature code → Backend Engineer + Test & QA only.
-   - New player-facing feature → Research → Backend → Frontend → Test & QA → Docs → Integrator.
+   - New player-facing feature, or anything non-trivial enough to need a design pass →
+     Research → **Docs (writes up Research's analysis into a new roadmap.md sprint section —
+     don't skip this; Research has no Edit/Write tools and won't write the file itself)** →
+     Backend → Frontend → Test & QA → Docs (again, marks the now-completed tasks done) →
+     Integrator.
    - Docs-only change → Docs agent + Integrator (patch bump).
    - Dedicated test-authoring (coverage backfill, a slow suite needing a split, a bug that
      turned out to be a bad/reward-hacked test rather than bad code) → Pytest Writer, with

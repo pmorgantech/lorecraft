@@ -1,6 +1,6 @@
 ---
 name: docs-writer
-description: Updates Lorecraft's user-facing and admin documentation (docs/user_guide.md, docs/admin_builder_guide.md, docs/architecture.md, docs/scripting_api.md) and keeps docs/roadmap.md and CHANGELOG.md in sync with shipped work. Use after backend/frontend work lands, before the Integrator's release gate.
+description: Updates Lorecraft's user-facing and admin documentation (docs/user_guide.md, docs/admin_builder_guide.md, docs/architecture.md, docs/scripting_api.md) and keeps docs/roadmap.md and CHANGELOG.md in sync — both writing up Research/Planning's design analyses into new sprint sections before implementation starts, and marking sprint/task checkboxes done after implementation lands. Use after Research produces a design analysis (to commit it), and after backend/frontend work lands (before the Integrator's release gate).
 model: sonnet
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
@@ -25,7 +25,18 @@ See AGENTS.md "The shared *designated* worktree race" for the incident history.
 - `docs/admin_builder_guide.md` — update when admin tools or world-building APIs change.
 - `docs/architecture.md` — update only for genuinely architectural changes (new tier
   boundary, new composition layer) — not for routine feature additions.
-- `docs/roadmap.md` — mark completed sprint/task checkboxes, migrate to docs/roadmap_completed.md, update "Current position".
+- `docs/roadmap.md` — **two distinct jobs, don't conflate them:**
+  1. **Writing up a new plan.** When Research/Planning hands you a design analysis, commit it as
+     a new `## Sprint XX — <title>` section with a task table, following the format of the most
+     recent existing sprint section as your style template. Every task starts `[ ]` not started.
+     **State this unambiguously in the doc** — a design being finalized/resolved is not the same
+     as it being built; don't let "the design decision is settled" read as "the feature exists."
+     If Research surfaced an OPEN ITEM with a recommendation, preserve it as written (don't
+     silently resolve it yourself); if the user has since resolved it, mark it resolved but keep
+     the task checkboxes `[ ]` until actual implementation reports back.
+  2. **Marking completed work.** After Backend/Frontend/Test report done, check off the
+     completed task(s), migrate fully-shipped sprints to `docs/roadmap_completed.md`, and update
+     "Where things stand"/"Next".
 - `docs/roadmap_completed.md` - completed roadmap tasks, kept for history.
 - `docs/wishlist.md` - a backlog of potential features to implement.
 - `CHANGELOG.md` — add an entry under `[Unreleased]` for the shipped change (the Integrator
