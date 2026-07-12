@@ -750,6 +750,120 @@ async def _test_set_time_ratio() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Progression config (live admin tuning)
+# ---------------------------------------------------------------------------
+
+
+def _seed_progression(game_engine: Any) -> None:
+    from lorecraft.features.progression.models import ProgressionConfig
+
+    with Session(game_engine) as session:
+        session.add(
+            ProgressionConfig(
+                base=100, step=50, coins_per_level=25, skill_points_per_level=1
+            )
+        )
+        session.commit()
+
+
+def test_get_progression_config_returns_current_state() -> None:
+    anyio.run(_test_get_progression)
+
+
+async def _test_get_progression() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_progression(game_engine)
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/progression/config", token=token)
+    assert status == 200
+    assert data == {
+        "base": 100,
+        "step": 50,
+        "coins_per_level": 25,
+        "skill_points_per_level": 1,
+    }
+
+
+def test_post_progression_config_updates_live() -> None:
+    anyio.run(_test_post_progression)
+
+
+async def _test_post_progression() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_progression(game_engine)
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/progression/config",
+            body={"coins_per_level": 99, "base": 200},
+            token=token,
+        )
+        assert status == 200
+        assert data["coins_per_level"] == 99
+        assert data["base"] == 200
+
+        # A follow-up GET reflects the live change (other fields untouched).
+        _, after = await _http(app, "GET", "/admin/progression/config", token=token)
+    assert after["coins_per_level"] == 99
+    assert after["base"] == 200
+    assert after["step"] == 50
+    assert after["skill_points_per_level"] == 1
+
+
+def test_post_progression_config_rejects_nonpositive_base() -> None:
+    anyio.run(_test_post_progression_rejects_base)
+
+
+async def _test_post_progression_rejects_base() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    _seed_progression(game_engine)
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/progression/config",
+            body={"base": 0},
+            token=token,
+        )
+    assert status == 422
+
+
+def test_observer_cannot_edit_progression_config() -> None:
+    anyio.run(_test_observer_cannot_edit_progression)
+
+
+async def _test_observer_cannot_edit_progression() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token("observer")
+    _seed_progression(game_engine)
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/progression/config",
+            body={"coins_per_level": 5},
+            token=token,
+        )
+    assert status == 403
+
+
+# ---------------------------------------------------------------------------
 # Admin accounts
 # ---------------------------------------------------------------------------
 
