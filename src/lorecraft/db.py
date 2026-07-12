@@ -491,8 +491,13 @@ def _migrate_regionpricing_area_id(engine: Engine) -> None:
         return  # already zone-keyed (fresh or already-migrated)
 
     with engine.begin() as connection:
+        # ORDER BY area_id makes the fold deterministic even if the 1:1
+        # non-Ashmoore zone→row invariant is ever violated (see the non-Ashmoore
+        # branch below): the lowest-area_id row is the one kept.
         rows = connection.execute(
-            text("SELECT area_id, region_mult, bias FROM regionpricing")
+            text(
+                "SELECT area_id, region_mult, bias FROM regionpricing ORDER BY area_id"
+            )
         ).all()
 
         # zone -> (region_mult, bias_json). Fold in Python so the Ashmoore
@@ -507,7 +512,27 @@ def _migrate_regionpricing_area_id(engine: Engine) -> None:
                 if zone not in folded or area_id == "town":
                     folded[zone] = (1.0, bias_json)
             else:
-                folded[zone] = (float(region_mult), bias_json)
+                # Non-Ashmoore zones are 1:1 with a single pricing source row in
+                # all current world content (the connector zones fold onto a
+                # canonical zone that carries the only pricing row). Keep the
+                # first-seen (lowest area_id, per ORDER BY) row deterministically,
+                # but surface any real collision with differing values rather than
+                # silently last-wins over an unordered SELECT.
+                candidate = (float(region_mult), bias_json)
+                existing = folded.get(zone)
+                if existing is not None and existing != candidate:
+                    logger.warning(
+                        "regionpricing-migration: multiple source rows fold onto "
+                        "zone=%s with differing pricing (area_id=%s); keeping the "
+                        "first-seen %r, ignoring %r — the 1:1 zone→row invariant "
+                        "was violated",
+                        zone,
+                        area_id,
+                        existing,
+                        candidate,
+                    )
+                    continue
+                folded[zone] = candidate
 
         # Drop-first (not CREATE … IF NOT EXISTS): SQLite autocommits DDL outside
         # a transaction, so a crash between this CREATE and the final rename can

@@ -325,6 +325,31 @@ def test_regionpricing_rebuild_recovers_from_stray_new_table(tmp_path: Path) -> 
     assert "regionpricing_new" not in inspect(engine).get_table_names()
 
 
+def test_regionpricing_fold_collision_is_deterministic_and_warns(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Not reachable with current world content (connector zones carry no pricing
+    # rows), but if two non-Ashmoore source rows ever fold onto the same zone the
+    # result must be deterministic — lowest area_id wins via the ORDER BY — and the
+    # violated 1:1 invariant must surface as a WARNING, not silently last-wins.
+    engine = _file_engine(tmp_path)
+    _seed_legacy_regionpricing(
+        engine,
+        [
+            ("cogsworth", 1.1, "{}"),  # folds to zone cogsworth (kept: lower area_id)
+            ("old_trade_road", 2.2, "{}"),  # also folds to cogsworth (ignored)
+        ],
+    )
+
+    with caplog.at_level(logging.WARNING):
+        _migrate_regionpricing_area_id(engine)
+
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT zone, region_mult FROM regionpricing")).all()
+    assert [(r.zone, r.region_mult) for r in result] == [("cogsworth", 1.1)]
+    assert any("fold onto zone=cogsworth" in rec.message for rec in caplog.records)
+
+
 # --- 4. Warn-but-don't-drop for a DB-only column -----------------------------
 
 
