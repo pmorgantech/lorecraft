@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 
 from lorecraft.engine.scripting import catalog
+from lorecraft.engine.scripting.vocabulary import VocabKind
 from lorecraft.tools.world_cli import _load_scripting_vocabulary, main
 
 _DOC = Path(__file__).resolve().parents[2] / "docs" / "scripting_api.md"
@@ -50,3 +51,37 @@ def test_vocabulary_cli_category_filter(capsys) -> None:  # type: ignore[no-unty
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     assert {e["name"] for e in payload["entries"]} == {"in_combat", "not_in_combat"}
+
+
+def test_loader_enables_features_without_crashing() -> None:
+    """The generator wires (enables) every discovered feature, not just imports it.
+
+    Enable-time ``register_fn``s run against a doc-generation ``AppState`` stand-in;
+    this asserts none of the currently-registered features blow up during that wiring
+    (the stub carries enough surface — a populated ``ServiceContainer`` — for all of
+    them). A non-empty catalog is the smoke signal that wiring completed.
+    """
+    vocab = _load_scripting_vocabulary()
+    assert len(vocab) > 0
+    # Idempotent: enabling twice in the same process must not raise (VocabularyError on
+    # a same-capability re-register is a no-op — see Vocabulary.register).
+    assert len(_load_scripting_vocabulary()) == len(vocab)
+
+
+def test_enable_time_reputation_vocab_is_catalogued() -> None:
+    """Reputation's vocab registers at *enable* time (inside its ``register_fn``), not
+    module import, so it only reaches the catalog because the generator now enables
+    features. Guards the part-(b) ``register_spec`` migration."""
+    vocab = _load_scripting_vocabulary()
+
+    condition = vocab.get("actor_reputation_at_least")
+    assert condition is not None, "reputation condition missing from catalog"
+    assert condition.kind is VocabKind.CONDITION
+    assert condition.category == "reputation"
+
+    effect = vocab.get("adjust_reputation")
+    assert effect is not None, "adjust_reputation missing from catalog"
+    assert effect.kind is VocabKind.EFFECT
+
+    # Two authoring surfaces, one canonical capability — no accidental duplicate.
+    assert vocab.overlaps() == []
