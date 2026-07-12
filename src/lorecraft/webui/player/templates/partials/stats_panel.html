@@ -40,10 +40,16 @@
     </div>
 
     <div class="text-[9.5px] tracking-[0.15em] text-text-muted mb-2 pt-3 border-t border-border">LEVEL</div>
-    <div class="flex justify-between mb-4 font-mono">
+    <div class="flex justify-between mb-1 font-mono">
         <span class="text-text-muted">Level {{ ps.level }}</span>
         <span class="text-text">{{ ps.xp }} / {{ ps.xp_to_next }} xp</span>
     </div>
+    {% if ps.skill_points is defined %}
+    <div class="flex justify-between mb-4 font-mono">
+        <span class="text-text-muted">Skill Points</span>
+        <span class="text-emerald-400">{{ ps.skill_points }}</span>
+    </div>
+    {% endif %}
     {% endif %}
 
     {% if ps.traits %}

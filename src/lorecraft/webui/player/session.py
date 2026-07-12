@@ -69,6 +69,7 @@ class CommandResult:
     dialogue: JsonObject | None = None
     dialogue_changed: bool = False
     quest_changed: bool = False
+    stats_changed: bool = False
 
 
 def get_engines(request: Request | None = None):

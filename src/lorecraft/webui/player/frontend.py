@@ -788,6 +788,12 @@ async def handle_command(
                 app_state.pending_disambig[player.id] = disambig
 
             quest_changed = "quest_update" in ctx.updates
+            # Sprint 73.9: a level-up (via features/progression/feedback.py's
+            # narrate_level_up) pushes "stats_update" the same way a quest
+            # change pushes "quest_update" above -- re-render the Stats pane
+            # this turn so a live client sees the new level/xp/skill_points
+            # without a manual refresh.
+            stats_changed = "stats_update" in ctx.updates
 
             after_player = player_repo.get(player.id) or player
             npc_repo = NpcRepo(game_db)
@@ -930,6 +936,7 @@ async def handle_command(
                 dialogue=dialogue_snapshot,
                 dialogue_changed=dialogue_changed,
                 quest_changed=quest_changed,
+                stats_changed=stats_changed,
             )
 
             # A chat pane exists when separate_chat is on, or in the classic
@@ -1014,6 +1021,22 @@ async def handle_command(
                     active_quests=active_quests_snapshot(after_player, quest_repo),
                 )
                 response_html += mark_oob_swap(quest_html, "quest-tracker")
+
+            if result.stats_changed:
+                # Only the standard/dock layouts render #stats-panel (see
+                # game.html / game_dock.html); the OOB swap is a harmless
+                # no-op client-side for layouts without that element, same
+                # as the quest-tracker swap above.
+                stats_html = templates.get_template("partials/stats_panel.html").render(
+                    player_stats=stats_snapshot(
+                        game_db,
+                        player_repo,
+                        get_meters(request),
+                        get_effects(request),
+                        after_player.id,
+                    ),
+                )
+                response_html += mark_oob_swap(stats_html, "stats-panel")
 
             try:
                 players_html = templates.get_template(
