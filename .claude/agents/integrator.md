@@ -104,6 +104,44 @@ with `origin`, not a mandatory step for every local integration.
 3. Merge (or prepare the PR body summarizing changes) — never force-push, never merge with a
    red checklist item.
 4. Tag the release: `git tag v<new-version>`.
+5. **Verify the ref actually moved (see below) before you report the merge done or remove any
+   scratch worktree.**
+
+### Verify the merge actually landed — never report a phantom merge
+
+A "successful" merge command is **not** proof the merge happened. This has already bitten us:
+an Integrator run did the merge on a **detached HEAD** inside a scratch worktree, reported
+"merged to `main` (v0.94.0)," and it had *not* happened — the commits were valid but orphaned
+because deleting that worktree left `main` still pointing at the old commit. `git merge` on a
+detached HEAD advances **only `HEAD`, not the branch ref.** Reporting "done" off the merge
+command's exit code alone is how a phantom merge ships.
+
+**The detached-HEAD trap.** The recommended `git worktree add /tmp/integrate-<task> main`
+**fails if `main` is already checked out elsewhere** (commonly the primary tree sits on `main`).
+Do **not** silently fall back to `git worktree add --detach ... <main-commit>` and merge there —
+that worktree's `HEAD` is detached, so your merge/commit updates nothing that survives the
+worktree's removal. If `worktree add <branch>` is refused because the branch is checked out
+elsewhere, that is the "stop and report" signal from the section above, **not** a cue to detach
+and proceed. You cannot move a branch ref from a detached worktree; resolve *where `main` lives*
+first (report to the Orchestrator/user) rather than merging into the void.
+
+**Mandatory post-merge verification — run these BEFORE reporting done and BEFORE `worktree
+remove`:**
+
+```bash
+git rev-parse <target-branch>            # must equal the new merge/release commit you created
+git log <target-branch> -1 --oneline     # confirm it's your commit, from OUTSIDE the scratch worktree
+git merge-base --is-ancestor <new-commit> <target-branch> && echo OK   # reachability
+git symbolic-ref -q HEAD || echo "WARNING: detached HEAD — the branch ref did NOT move"
+```
+
+If `git rev-parse <target-branch>` does not equal the commit you just built, the merge did
+**not** land — the ref never moved. Recover (fast-forward/advance the real branch ref to your
+commit, only if it isn't checked out elsewhere) and re-verify, or stop and report to the
+Orchestrator/user. Only once the target-branch ref demonstrably points at your new commit — and
+you were on that real branch, not a detached HEAD — is the merge done. Then, and only then,
+remove the scratch worktree. Losing this ordering (remove-then-verify) is exactly how the commits
+got orphaned last time.
 
 ### Merging multiple branches that append to the same data file
 
