@@ -4,6 +4,22 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.91.1] - 2026-07-12
+
+### Docs
+
+- **Sprint 72 planning.** Drafted `## Sprint 72 — Backlog cleanup: tooling tech-debt + admin ops +
+  mobile polish` in `docs/roadmap.md`: 72.1 (scripting catalog generator feature-enable +
+  `register_spec` migration gap), 72.2 (admin DB wipe/reseed from `world.yaml`), 72.3 (admin engine
+  restart, flagged blocked on a supervision-mechanism design decision), 72.4 (mobile chat
+  tab-collapse polish). Pulled the corresponding rows out of the `## Backlog` table to avoid
+  duplication. Deliberately scoped as backlog cleanup, not an XP/leveling system — that product
+  decision (blocking Sprint 71.5) stays open and unrelated.
+- Updated `issue-fd64ee3e` (help-command readability) with live-debugging findings from testing
+  Sprint 71.4 against a real deployment: ruled out browser caching, a stale server process, and a
+  stale git checkout, but the `msg-help` styling still doesn't render live — root cause not yet
+  found. Left open for further investigation.
+
 ## [0.91.0] - 2026-07-11
 
 ### Added
