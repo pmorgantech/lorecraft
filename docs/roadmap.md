@@ -36,7 +36,7 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
-**Next: Sprint 73** — **XP & leveling progression** (design complete; see [Sprint 73](#sprint-73--xp--leveling-progression) below). Resolves the long-standing "does Lorecraft have leveling?" product question (**yes**, decided 2026-07-12) and unblocks Sprint 71.5 (quest XP rewards).
+**Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a single reward path granting any mix of **xp + coins + items + skill points**, the XP curve/level-up core, and level-up itself paying out coins + skill points — mostly extending/fixing what already exists), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points to unlock abilities). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.4**.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -78,7 +78,7 @@ work, with one item blocked on a product decision.
 | 71.2 | **Admin World panel: zone + name filter** (+ prerequisite `Room` schema split). Client-side zone dropdown + live name-substring search over the existing `GET /admin/world/rooms` response. Gated on first splitting the conflated `Room.area_id` into orthogonal `zone` + `room_type` fields. **Full design: [Sprint 71.2 design](#sprint-712-design--room-zoneroom_type-split--admin-world-filter) below.** | [x] v0.91.0 — All 71.2a-f complete (schema split `zone`/`room_type`, economy re-keyed, weather dedup guard, admin filter UI, test updates; branch `sprint-71-2-zone-room-type-split`, commits `2e9f466`, `7e90bf4`). |
 | 71.3 | **Player map rendering: z-level filtering + shape stability.** Isolate the fix to `rendering.py`; flag if it turns out the `Room` schema itself needs a change (would escalate scope). | [x] v0.91.0 — z-level filtering verified correct (regression test added `test_frontend_map.py`); fixed shape-stability bug where tie-break was non-deterministic (now sorts by distance + room_id), commit `2e9f466`. |
 | 71.4 | **Help command: better formatting (bold/color).** Presentation-only improvement to the `help` command's output. | [x] v0.91.0 — Backend `MessageType.HELP` tag (`c29fea1`) + frontend `.msg-help` CSS styling with `--lc-accent` token + e2e regression test (`357c533`, branch `sprint-71-4-help-formatting`). |
-| 71.5 | **Quest XP rewards.** | [ ] **UNBLOCKED → scoped into Sprint 73.** Product decision (2026-07-12): Lorecraft **does** have XP/leveling progression, so this is no longer blocked. The dedicated design now exists — see [Sprint 73 — XP & leveling progression](#sprint-73--xp--leveling-progression) below; implementation is **Sprint 73.2** (wire `_award_rewards` to actually apply quest `rewards.xp`). Closes when 73.2 ships. |
+| 71.5 | **Quest XP rewards.** | [ ] **UNBLOCKED → scoped into Sprint 73.** Product decision (2026-07-12): Lorecraft **does** have XP/leveling progression, so this is no longer blocked. The dedicated design now exists — see [Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core) below; implementation is **Sprint 73.4** (rewire `_award_rewards` onto the new generalized reward path so quest `rewards.xp` — and now `coins`/`skill_points` — actually apply). Closes when 73.4 ships. |
 
 ---
 
@@ -428,79 +428,194 @@ model is missing today; B's appeal is real but only if 72.3 is scoped as a throw
 
 ---
 
-## Sprint 73 — XP & leveling progression
+## Sprint 73 — Generalized rewards + XP/leveling core
 
-**Goal:** turn the currently-inert `Player.level`/`xp` scorekeeping fields into a real, if
-deliberately modest, progression system — and in doing so deliver Sprint 71.5's quest-XP ask
-(`issue-39d3fcb8`). **Product decision (2026-07-12): Lorecraft *does* have leveling.** Combat is
-still shelved to [`wishlist.md`](wishlist.md), so this sprint builds progression *without* combat
-stat-scaling: XP accumulates, players cross level thresholds on a gentle curve, and each level-up is
-surfaced as a milestone. Whether a level-up *also* grants a mechanical perk is the one open fork —
-see [Sprint 73 design](#sprint-73-design--xp-curve-tier-placement--the-level-up-perk-fork) below.
+**Goal:** turn the inert `Player.level`/`xp` fields into a real (if modest) progression system **and**
+generalize the reward path so any source can grant **any combination of xp + coins + items + skill
+points** through one applier — delivering Sprint 71.5's quest-XP ask (`issue-39d3fcb8`) as a side
+effect. Combat is still shelved to [`wishlist.md`](wishlist.md), so this builds progression *without*
+combat stat-scaling: XP accumulates, players cross level thresholds on a gentle curve, each level-up
+is surfaced as a milestone **and pays out coins + skill points**. This sprint introduces the
+**skill-point *currency* (the earn side)**; *spending* skill points on a skill tree is Sprint 74 (the
+sink side) — earn-before-spend is a clean incremental seam, so skill points simply bank until then.
 
-**Verified starting state (2026-07-12).** `PlayerStats` (`engine/models/player.py` L36–50) already
-carries `level: int = 1`, `xp: int = 0`, `xp_to_next: int = 100`. XP accrues in exactly **one** place
-today — `features/exploration/service.py` L62–64 does `stats.xp += DISCOVERY_XP` (`DISCOVERY_XP = 5`)
-on a search discovery — and **no level-up logic exists anywhere**: `level` never leaves `1`, and
-nothing reads it to gate or scale behaviour (grep-confirmed). Quest completion **does not** award XP:
-`_award_rewards` (`features/quests/service.py` L195–203) reads `rewards.get("xp")` but only emits a
-cosmetic `ctx.say("You gain N experience.")` — it never mutates `stats.xp`. World content already
-authors quest XP values (`world_content/world.yaml`: **12** stage rewards, 40–65 each, **605 XP
-total**), so the data exists and is simply discarded today.
+**Scope guard (2026-07-11 expansion).** The user scoped classic DikuMUD leveling *down* for now:
+build the reward/level/skill-point plumbing; **defer** the skill tree/abilities to Sprint 74 and
+**stat points** (free STR/DEX-style allocation) to *later* — the six `PlayerStats` attributes
+(`strength/agility/vitality/intellect/presence/fortitude`) already exist as real fields, so "stat
+points later" is about a *point-buy allocation UI*, not adding the stats. No stat-allocation work here.
+
+**Verified starting state (2026-07-12).** `PlayerStats` (`engine/models/player.py` L36–53) already
+carries `level=1`, `xp=0`, `xp_to_next=100`, the six stat fields, and a `skills` JSON blob — but **no
+`skill_points` field** (grep-confirmed: the term appears nowhere in `src/`). XP accrues in exactly
+**one** place — `features/exploration/service.py` L62–64 does `stats.xp += DISCOVERY_XP`
+(`DISCOVERY_XP = 5`) on a search discovery — and **no level-up logic exists anywhere**: `level` never
+leaves `1` and nothing reads it. Quest completion **does not** award XP: `_award_rewards`
+(`features/quests/service.py` L195–203) handles `rewards["items"]` (via `ctx.item_location.spawn`) but
+its `rewards["xp"]` branch only emits a cosmetic `ctx.say("You gain N experience.")` — it never mutates
+`stats.xp` — and there is **no `coins`/`money` or `skill_points` branch at all**. World content already
+authors quest XP (`world_content/world.yaml`: **12** stage rewards, 40–65 each, **605 XP total**),
+currently discarded. **Coin-grant reuse path (confirmed):** coins are a ledger, not a `Player.coins`
+column — `LedgerService.credit(session, "player", player_id, amount)` (`engine/services/ledger.py`
+L59–66) is the documented money-creation API ("world import, admin, **loot** … the ONLY way coins
+enter play"), and `ctx.ledger` is on `GameContext` (context.py L58). Economy shop payouts already
+address the player as holder `("player", ctx.player.id)`. Reward coins reuse `credit` — no parallel path.
 
 | # | Task | Status |
 |---|------|--------|
-| 73.1 | **Tier 1 leveling core (pure curve + rollover).** New `src/lorecraft/engine/game/leveling.py`, mirroring the pure-helper shape of `engine/game/checks.py::skill_check`. Exposes `xp_for_level(level) -> int` (the threshold curve) and `award_xp(stats: PlayerStats, amount: int) -> LevelUpResult`, which adds XP, rolls the level forward across **one or more** thresholds in a loop, updates `xp_to_next`, and returns a small result object (`levels_gained`, `new_level`, `leveled_up`). **Curve:** `xp_for_level(L) = BASE + STEP·(L-1)` with `BASE=100`, `STEP=50` (linear per-level cost → quadratic cumulative: L2=100, L3=+150, L4=+200, L5=+250). Calibration: the current 605-XP quest budget plus discovery XP lands a completionist around **level 4–5**, a sensible early-content ceiling; constants are module-level tunables (a formula, not per-room branching — the data-driven rule is respected). **Pure: no session/IO/`ctx`**, so both Tier 2 callers share one curve. Unit tests: single-level, multi-level rollover in one award, exact-threshold boundary, zero/negative-amount guard. | [ ] |
-| 73.2 | **Award quest XP (delivers Sprint 71.5 / `issue-39d3fcb8`).** `features/quests/service.py::_award_rewards` (L195–203): replace the cosmetic `ctx.say(...)`-only `xp` branch with a real `award_xp(stats, xp)` call (fetch `stats` via `ctx.player_repo.stats(...)`, add to session), then narrate the result (73.4). Because `_complete_quest` (L153) already calls `_award_rewards(stage.rewards)` **per stage** (L164), multi-stage quests award their XP incrementally as each stage completes — the partial-per-stage model falls out for free, no extra work. Success: completing a quest with `rewards.xp` raises `stats.xp`/`level`; the 605 XP already in `world.yaml` becomes live. Closes Sprint 71.5. | [ ] |
-| 73.3 | **Route discovery XP through the shared helper.** `features/exploration/service.py` L62–64 currently does `stats.xp += DISCOVERY_XP` inline, bypassing any level-up. Replace with `award_xp(stats, DISCOVERY_XP)` so discoveries share the one curve and can trigger a level-up. No duplicated threshold math. Success: search-discovery XP flows through 73.1; a discovery that crosses a threshold levels the player up. | [ ] |
-| 73.4 | **Level-up feedback (feed message + event + live stats).** When `award_xp` reports `leveled_up`, the calling feature emits a feed line via `ctx.say(f"You reach level {new_level}!", MessageType.<progression>)` — mirroring Sprint 71.4's `MessageType.HELP` addition: add a small `MessageType.LEVEL` + `.msg-level` CSS token if a distinct colour is wanted, else reuse `SYSTEM` — `ctx.push_update(...)` the Stats pane (already renders `level`/`xp`/`xp_to_next`: `partials/stats_panel.html` L44–45, `webui/player/session.py` L494–495), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`, `engine/game/events.py` L38). Narration/event stay in the Tier 2 callers (or a tiny shared Tier 2 helper) so Tier 1's `leveling.py` stays presentation-free. | [ ] |
-| 73.5 | **Docs.** `docs/user_guide.md` (score/leveling — how XP is earned, that levels are milestones); `docs/admin_builder_guide.md` (quest `rewards.xp` is now functional + the curve constants). No `scripting_api.md` regeneration needed unless a new `register_spec` lands (none planned). | [ ] |
+| 73.1 | **Tier 1 leveling core (pure curve + rollover).** New `src/lorecraft/engine/game/leveling.py`, mirroring the pure-helper shape of `engine/game/checks.py::skill_check`. Exposes `xp_for_level(level) -> int` and `award_xp(stats: PlayerStats, amount: int) -> LevelUpResult`, which adds XP, rolls `level` forward across **one or more** thresholds in a loop, updates `xp_to_next`, and returns `LevelUpResult(leveled_up, new_level, levels_gained)`. **Curve:** `xp_for_level(L) = BASE + STEP·(L-1)`, `BASE=100`, `STEP=50` (linear per-level cost → quadratic cumulative: L2=100, L3=+150, L4=+200, L5=+250). Calibration: the 605-XP quest budget + discovery XP lands a completionist around **level 4–5** — module-level tunables, a formula not per-room branching (data-driven rule respected). **Pure: no session/IO/`ctx`.** Deliberately knows nothing about coins/skill-points — those are a Tier 2 *policy* applied by 73.5, keeping the curve math reusable. Unit tests: single-level, multi-level rollover in one award, exact-threshold boundary, zero/negative guard. | [ ] |
+| 73.2 | **`PlayerStats.skill_points` field (the earn-side currency).** Add `skill_points: int = 0` to `PlayerStats` (`engine/models/player.py`). Earned this sprint (quests + level-ups), **spent** in Sprint 74's tree — banks harmlessly until then. Include it in the `stats_snapshot` save/load path (`SaveSlot.stats_snapshot`) and the admin DB reseed if stats are enumerated there. Success: a fresh player has `skill_points=0`; the field round-trips through save/load. | [ ] |
+| 73.3 | **Generalized reward applier (the unification).** New `features/progression/` package (see package-placement OPEN ITEM) exposing `apply_rewards(ctx, rewards: JsonObject) -> RewardOutcome`, which handles **every** key uniformly: `items` (→ `ctx.item_location.spawn`, existing logic lifted from quests), `xp` (→ `leveling.award_xp` from 73.1, returning any level-up for the caller to narrate), `coins` (→ `ctx.ledger.credit(ctx.session, "player", ctx.player.id, n)` — the confirmed reuse path), and `skill_points` (→ `stats.skill_points += n`). Reward keys are canonically **`coins`** (matches the ledger's own `CoinBalance` vocabulary; accept `money` as an author alias if desired — see OPEN ITEM). Returns a `RewardOutcome` (coins/xp/skill-points/items granted + any `LevelUpResult`) so callers narrate without re-deriving. Unit tests per key + a combined all-four bundle. | [ ] |
+| 73.4 | **Rewire quest rewards onto the applier (delivers Sprint 71.5 / `issue-39d3fcb8`).** Replace the bespoke body of `features/quests/service.py::_award_rewards` (L195–203) with a single `apply_rewards(ctx, rewards)` call, then narrate the outcome (73.7). Because `_complete_quest` already calls `_award_rewards(stage.rewards)` **per stage** (L164), multi-stage quests award incrementally for free. Success: completing a quest with `rewards.xp` raises `stats.xp`/`level`; the 605 XP in `world.yaml` goes live; `rewards.coins`/`rewards.skill_points` now function for authors. Closes Sprint 71.5. | [ ] |
+| 73.5 | **Level-up pays out coins + skill points.** When 73.1 reports `leveled_up`, the caller grants per-level rewards **through the same 73.3 applier** (build a `{"coins": LEVEL_UP_COINS·levels_gained, "skill_points": LEVEL_UP_SKILL_POINTS·levels_gained}` bundle) — one payout path, no second coin route. Constants are module-level tunables in `features/progression/` (recommend `LEVEL_UP_COINS=50`, `LEVEL_UP_SKILL_POINTS=1` — a level buys ~one small tree node in Sprint 74; tune with the user). Success: crossing a threshold credits coins to the player ledger and increments `skill_points`. | [ ] |
+| 73.6 | **Route discovery XP through the shared helper.** `features/exploration/service.py` L62–64's inline `stats.xp += DISCOVERY_XP` bypasses level-up. Replace with `award_xp(stats, DISCOVERY_XP)` (or `apply_rewards(ctx, {"xp": DISCOVERY_XP})` so a threshold-crossing discovery also pays 73.5's level-up rewards). No duplicated threshold math. Success: a discovery that crosses a threshold levels the player up and pays out. | [ ] |
+| 73.7 | **Level-up feedback (feed message + event + live stats).** On `leveled_up`, the Tier 2 caller emits a feed line (`ctx.say(f"You reach level {new_level}!", ...)` — add a small `MessageType.LEVEL` + `.msg-level` CSS token, mirroring Sprint 71.4's `MessageType.HELP`, or reuse `SYSTEM`), `ctx.push_update`s the Stats pane (already renders `level`/`xp`/`xp_to_next`: `partials/stats_panel.html` L44–45, `webui/player/session.py` L494–495 — extend to show `skill_points`), and queues a new `GameEvent.PLAYER_LEVELED_UP` (mirror `SKILL_IMPROVED`, `engine/game/events.py` L38). Narration/event stay in Tier 2 so Tier 1's `leveling.py` stays presentation-free. | [ ] |
+| 73.8 | **Docs.** `docs/user_guide.md` (score/leveling — how XP is earned, that levels are milestones that pay coins + skill points, what skill points are *for* [forward-ref Sprint 74]); `docs/admin_builder_guide.md` (quest `rewards` now supports `xp`/`coins`/`items`/`skill_points`, the curve + level-up-reward constants). No `scripting_api.md` regen unless a new `register_spec` lands (none planned this sprint). | [ ] |
 
-### Sprint 73 design — XP curve, tier placement & the level-up perk fork
+### Sprint 73 design — tier placement, reward-key naming & the level-up perk fork
 
 > **Provenance.** Research + design 2026-07-12 (branch `sprint-73-leveling-design`, based on
-> `2b3253b`/v0.92.1). Design-only: no engine/feature code shipped here. The starting-state facts
-> above are verified against the live tree. One genuine product fork (what a level-up *does*) is
-> surfaced below with a recommendation, **not** silently decided — same shape as the Sprint 72.3
-> restart fork.
+> `2b3253b`/v0.92.1), revised for the 2026-07-11 scope expansion. Design-only: no engine/feature code
+> shipped here. Starting-state facts are verified against the live tree. Genuine forks are surfaced
+> with a recommendation, **not** silently decided — same shape as the Sprint 72.3 restart fork.
 
-**Tier placement (resolved — follows existing precedent, not a fork).** `Player`/`PlayerStats` with
-`level`/`xp`/`xp_to_next` are **Tier 1** (`engine/models/player.py`). Two **Tier 2** features
-(exploration, quests) must award XP, and the current precedent is already that a Tier 2 feature
-mutates the Tier 1 `PlayerStats` directly — `exploration/service.py` does `stats.xp += …` on a
-`ctx.player_repo.stats()` object. Duplicating the *curve* across both features would drift, so the
-threshold math belongs in **one Tier 1 pure helper** (`engine/game/leveling.py`), exactly as
-`skill_check` lives in `engine/game/checks.py` and is called from features. The helper stays pure
-(mutates the passed `PlayerStats`, returns a result); presentation (`ctx.say`, `push_update`,
-`queue_event`) stays in the Tier 2 callers. **No new tier boundary, no engine→feature import** — and
-the existing `tests/unit/test_tier_boundaries.py` guard continues to hold.
+**Tier placement (resolved — follows existing precedent, not a fork).** `PlayerStats`
+(`level`/`xp`/`xp_to_next`/`skill_points`) is **Tier 1** (`engine/models/player.py`). The threshold
+*math* is one Tier 1 pure helper (`engine/game/leveling.py`), exactly as `skill_check` lives in
+`engine/game/checks.py` and is called from features. The reward *policy* (curve constants aside) and
+all cross-feature wiring — coins via the ledger service, item spawning, narration, events — is **Tier
+2**, in `features/progression/`. This follows the established precedent that a Tier 2 feature mutates
+the Tier 1 `PlayerStats` directly (exploration already does `stats.xp += …`). **No new tier boundary,
+no engine→feature import** — the `tests/unit/test_tier_boundaries.py` guard continues to hold.
 
-**OPEN ITEM — what does a level-up actually *do*?** Combat is shelved, so there are no combat stats
-to scale; a level is currently a pure number. Three framings:
+**OPEN ITEM — package placement of the reward/progression logic.** The generalized applier + level-up
+wiring need a home. Options: **(a)** a new `features/progression/` package (own `__init__.py` +
+`FeatureManifest`, auto-discovered by `discover_features()`) — matches the one-package-per-feature
+convention and gives Sprint 74's skill tree a natural home; **(b)** fold it into `features/quests/`
+(the main caller) — but exploration and level-up also grant rewards, so quests would become an
+implicit dependency of unrelated features; **(c)** a composition-layer helper in `services/`. →
+**Recommendation: (a)** — a thin but honest feature package. It is the only option that doesn't create
+a spurious quests→everything coupling and it pre-stages Sprint 74. Naming the package `progression`
+(not `leveling`) keeps room for the tree.
 
-- **(a) Milestone recognition (cosmetic).** Levels are a visible progress marker on `score` + the
-  Stats pane, plus a level-up feed line. No mechanical gating. Honest about what it is; ships as
-  73.1–73.5 with **zero content retrofit**.
-- **(b) Gate existing content by level** (shop goods / zones / dialogue options). **Flagged as a
-  scope risk:** nothing is level-gated today, so this means retrofitting `world.yaml` content and
-  adding level conditions — a much larger, content-heavy ask that would balloon the sprint.
-- **(c) A small non-combat mechanical perk.** The cleanest available hook is **carry capacity**:
-  `features/encumbrance/rules.py::resolve_carry_capacity` already composes `carry_base(strength)`
-  with the **modifier registry** (`engine/game/modifiers.py`), so a per-level `carry_capacity`
-  modifier slots in **with no new schema** and no combat coupling. A cosmetic **title** on `score`
-  is an even lighter alternative.
+**OPEN ITEM — reward-key naming (`coins` vs `money`).** The user wrote "money"; the engine's own
+vocabulary is **coins** (`CoinBalance`, `LedgerService`, holder ledger). → **Recommendation:**
+canonical key `coins` (so builder docs and the ledger agree); optionally accept `money` as a
+tolerated alias in the applier to match natural authoring. Trivial to decide either way; flagged so
+`world.yaml` reward authoring doesn't get a silent surprise.
 
-**Recommendation:** ship **(a)** as the Sprint 73 core (73.1–73.5) — it is the honest MVP and needs
-no content retrofit — and treat **(c) / carry-capacity** as the fastest *optional* follow-on **if**
-the user wants a level to be mechanically felt (roughly a day: register a level-scaled modifier + a
-test). **Explicitly reject (b)** for this sprint as a scope explosion. This is a product preference,
-not a correctness question; if the user picks (c) it becomes **73.6 — level-scaled carry-capacity
-modifier** rather than being silently folded in.
+**OPEN ITEM — what does a level-up *do beyond* paying coins + skill points?** The 2026-07-11 scope
+already answers most of this: level-up **grants gold + skill points** (73.5), so a level is no longer a
+bare number. The residual fork is whether a level *also* confers a mechanical perk:
 
-**Follow-on XP sources (out of scope — flagged, not built).** Once 73.1's helper exists, first-time
-zone discovery, puzzle solves, and escort-quest completion are natural additional `award_xp` callers.
-Deliberately deferred: a first version awarding XP from **quests + the existing discovery source** is
-sufficient; retrofitting every system in one sprint is over-scope.
+- **(a) Rewards only (recommended core).** Coins + skill points + a milestone feed line + visible
+  `score`/Stats progress. Honest, ships as 73.1–73.8 with **zero content retrofit**. The skill points
+  *become* the mechanical payoff once Sprint 74's tree exists — so the "is a level mechanically felt?"
+  question is answered by Sprint 74, not by bolting a perk onto 73.
+- **(b) Gate existing content by level** (shop goods / zones / dialogue). **Scope risk:** nothing is
+  level-gated today; this means retrofitting `world.yaml` + adding level conditions. **Reject for 73.**
+- **(c) A small non-combat passive perk** (e.g. a per-level `carry_capacity` modifier via the existing
+  `engine/game/modifiers.py` resolver, which `encumbrance/rules.py::resolve_carry_capacity` already
+  composes). Cheap, but now **largely redundant** with 73.5 + Sprint 74 (a carry-capacity node can just
+  *be* a passive tree node bought with the skill points a level grants).
+
+→ **Recommendation:** ship **(a)**; let Sprint 74's tree be where levels become mechanically felt
+(that's what skill points are *for*). Treat **(c)** as a candidate *tree node* in Sprint 74, not a
+Sprint 73 add-on; **reject (b)**.
+
+**Follow-on XP sources (out of scope — flagged, not built).** Once 73.1 exists, first-time zone
+discovery, puzzle solves, and escort completion are natural additional `apply_rewards`/`award_xp`
+callers. A first version awarding from **quests + the existing discovery source** is sufficient;
+retrofitting every system in one sprint is over-scope.
+
+---
+
+## Sprint 74 — Skill tree & ability unlocks
+
+**Goal:** give the skill points earned in Sprint 73 a **sink** — a data-driven skill tree whose nodes,
+bought with skill points, **unlock abilities**. This is the genuinely-new design surface flagged in the
+2026-07-11 expansion ("a skill tree system that enables abilities"). Unlike Sprint 73 (which mostly
+extends existing plumbing), the central question here — **what *is* an ability in a MUD with no combat
+and no spell system?** — is a real product fork, surfaced below grounded in the engine's *actual*
+extension points, with a recommendation but **not** silently decided. The task table is therefore
+**provisional and gated on resolving 74.1** first.
+
+**Verified engine surface for "what an ability could be" (2026-07-12, grep-confirmed).** Lorecraft has
+**four** real per-player extension points an "ability" could hang off — no green-field invention needed:
+
+1. **Command gating (`CommandConditionRegistry`, `engine/game/command_conditions.py`).** Commands
+   carry `conditions=("actor_has_flag:<flag>", …)` (registry.py L42); an unavailable command is
+   hidden from `help` and refused. `actor_has_flag` already gates verbs **per-player** off
+   `Player.flags`. → An **active ability = a command verb that only becomes available once unlocked.**
+2. **Scripting `when:` conditions.** `actor_has_flag`/`actor_lacks_flag` are registered on the
+   dialogue/command surfaces too (dialogue_conditions.py, identical descriptor), so **world builders
+   already gate `world.yaml` interactions on a player flag** — fully data-driven.
+3. **Side-effect `do:` vocabulary (`features/npc/side_effects.py`).** `set_flags` is a shipped effect.
+   → A tree-node purchase can unlock via the **existing** `set_flags` path — no new effect needed.
+4. **Modifier resolver (`engine/game/modifiers.py`).** A pluggable source contributes `add`/`mult`
+   modifiers keyed like `carry_capacity`, `skill.perception`, `price.buy`. → A **passive ability = a
+   modifier source** that reads unlocked nodes and always-on bonuses the resolver already composes.
+
+So an "ability" has **three plausible, all-real flavors**: **A. active** (a new command verb, gated),
+**B. passive** (a modifier source — bigger carry, better prices, +skill%), **C. interaction** (a
+scripting-condition gate world content checks). Note the **absence** matters too: with no combat and no
+spellcasting engine, active abilities are necessarily **utility verbs** (`forage`, `track`, `sense`,
+`pick` a lock, `appraise`) — there is nothing to "cast" and nothing to "hit." That constraint is the
+crux of the fork.
+
+**OPEN ITEM (the big fork) — what kind of ability does the first tree deliver, and is the tree
+data-driven or code-defined?** Two sub-decisions:
+
+- *Ability kind.* **(A) active utility verbs** are the most player-visible but need each verb
+  *implemented* (a `forage` that yields items needs loot tables; `track` needs footprint state) — real
+  content/engine work per verb. **(B) passive modifiers** are the **cheapest and lowest-risk**: they
+  reuse the modifier resolver with zero new verbs and zero content (a "+2 carry capacity" or "+10%
+  perception" node is a few lines + a test). **(C) interaction gates** are **free on the engine side**
+  (reuse `actor_has_flag`/a new `actor_has_ability` scripting condition) but push all the actual
+  content into `world.yaml` authoring.
+- *Definition source.* Per the repo's **data-driven principle**, the tree (nodes, costs, prereqs,
+  unlock effects) should live in **`world_content/` YAML** (e.g. `skill_tree.yaml`), loaded into a
+  registry mirroring `features/skills/definitions.py` + the world import — **not** hardcoded node IDs in
+  application code. Each node: `id`, `name`, `cost` (skill points), `prerequisites` (node ids), and an
+  **unlock** expressed in *existing* vocabulary (`set_flags: ability.<id>` and/or a `modifier` grant).
+
+→ **Recommendation:** make the **first tree small and lean on what exists** — **B (passive) + C
+(interaction), data-driven**, deferring A (active verbs) to a later pass. Concretely: 2–3 **passive
+nodes** proving the modifier path (carry capacity, a skill-% bonus) + **one interaction node** proving
+the `actor_has_ability` gate (a flag a `world.yaml` dialogue/context branch checks), all authored in
+`world_content/skill_tree.yaml`. Ship **one** example active verb only if the user wants A proven now.
+This delivers a *felt* tree in one sprint without committing to per-verb content, and every later
+active ability is then additive (a new gated verb + a node). **This fork must be confirmed with the
+user before 74.2+ — it changes the shape of nearly every task below.**
+
+**Provisional task table (gated on 74.1).**
+
+| # | Task | Status |
+|---|------|--------|
+| 74.1 | **Resolve the ability-kind + data-driven fork (above) with the user.** Decide A/B/C mix and confirm the tree is `world_content` YAML. Everything below assumes the recommended **B+C data-driven** answer; a different answer reshapes 74.4–74.7. | [ ] |
+| 74.2 | **Unlocked-node persistence.** Where purchased nodes live. Options: new `PlayerStats.unlocked_nodes: list[str]` (JSON, mirrors `traits`), or reuse `Player.flags` with an `ability.<id>` convention (leans directly on the existing gate #1/#2 with **no new field**). → Recommend a dedicated `unlocked_nodes` list for clean querying/UI, **plus** setting an `ability.<id>` flag on unlock so existing flag-gates work unchanged. Save/load round-trip. | [ ] |
+| 74.3 | **Data-driven tree definitions + loader.** `world_content/skill_tree.yaml` → a `SkillTreeRegistry` (mirror `features/skills/definitions.py::SkillRegistry` + the `world.yaml` import path). Node schema: `id`/`name`/`description`/`cost`/`prerequisites`/`unlock` (`set_flags` and/or `modifier`). Validation: no cycles, prereqs exist, costs ≥ 1. **No hardcoded node IDs in `src/`.** | [ ] |
+| 74.4 | **`train`/`learn` command — spend skill points on a node.** Verb lists available nodes (prereqs met, affordable) and buys one: check `stats.skill_points >= cost` + prereqs, decrement, record in 74.2, apply the node's unlock. Lives in `features/progression/commands.py`. Refuse with a clear reason on insufficient points / unmet prereqs. | [ ] |
+| 74.5 | **`actor_has_ability:<id>` condition (command + scripting surfaces).** New condition mirroring `actor_has_flag` (command_conditions.py + dialogue_conditions.py, identical descriptor via `register_spec`) reading the unlocked-node set, so **both** shipped verbs and `world.yaml` scripts gate on unlocks. Regenerate `docs/scripting_api.md` (`make scripting-docs`) in the same commit (new `register_spec`). | [ ] |
+| 74.6 | **Passive modifier source (flavor B).** A modifier collection source (`engine/game/modifiers.py` registry) that, for each unlocked node carrying a `modifier`, contributes it to the resolver (e.g. `carry_capacity +2`, `skill.perception mult`). Proves passive abilities with **zero new verbs**. Unit test: an unlocked node changes `resolve_carry_capacity`. | [ ] |
+| 74.7 | **Example content + one active verb (flavor A/C proof).** Author 2–3 passive nodes + one interaction-gated node in `world_content/skill_tree.yaml`; if the user picks A, add one example gated utility verb (e.g. `forage`) as the pattern for future active abilities. | [ ] |
+| 74.8 | **UI + docs.** Surface unlocked abilities + spendable skill points (extend `score`/Stats pane or a small `abilities` view). `docs/user_guide.md` (how to earn/spend skill points, what abilities do), `docs/admin_builder_guide.md` (authoring `skill_tree.yaml` nodes + the `actor_has_ability` gate). | [ ] |
+
+### Sprint 74 open items (summary)
+
+- **74-OI-1 (the big fork):** ability kind (A active verbs / B passive modifiers / C interaction gates)
+  + data-driven-YAML confirmation. **Recommend B+C, data-driven, small first tree.** *Must resolve with
+  the user before building.*
+- **74-OI-2:** node persistence — dedicated `unlocked_nodes` list vs. `flags` convention.
+  **Recommend both** (list for UI, `ability.<id>` flag for the existing gates).
+- **74-OI-3:** tree *shape/economy* — how many nodes, how skill-point costs map to the ~1-point-per-level
+  earn rate from 73.5, whether nodes are a strict tree or a shallow list to start. **Recommend a shallow
+  first tree** (flat tiers, few prereqs) and tune costs against the 73.5 earn rate once both exist.
+- **74-OI-4:** does an unlocked passive **retroactively** apply, and can nodes be **refunded/respec'd**?
+  **Recommend:** passives apply immediately (they are resolver sources, recomputed per use — free); **no
+  respec** in v1 (defer).
+
+---
 
 ---
 
@@ -554,10 +669,17 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 - **Used (all complete):** 72 (backlog cleanup: tooling tech-debt + admin ops + mobile polish —
   72.1 scripting-catalog feature-enable + `register_spec` migration, 72.2 admin DB wipe/reseed from
   `world.yaml`, 72.3 admin engine restart + process supervision, 72.4 mobile chat tab-collapse; v0.92.0).
-- **In design: 73** (XP & leveling progression — 73.1 Tier 1 leveling core, 73.2 quest XP [delivers
-  71.5 / `issue-39d3fcb8`], 73.3 exploration reroute, 73.4 level-up UX, 73.5 docs; one OPEN ITEM:
-  cosmetic milestone vs. a carry-capacity perk — see the Sprint 73 design section).
-- **Next new sprint: 74.** Don't recycle a number that appears here or in
+- **In design: 73** (Generalized rewards + XP/leveling core — 73.1 Tier 1 leveling core, 73.2
+  `skill_points` field, 73.3 generalized reward applier, 73.4 quest rewards rewired [delivers 71.5 /
+  `issue-39d3fcb8`], 73.5 level-up coin/skill-point payout, 73.6 exploration reroute, 73.7 level-up UX,
+  73.8 docs; OPEN ITEMs: package placement [rec. new `features/progression/`], `coins` vs `money` key,
+  perk-beyond-rewards fork [rec. rewards-only, let Sprint 74 be where levels are felt]).
+- **In design: 74** (Skill tree & ability unlocks — the skill-point *sink*; 74.1 resolve the
+  ability-kind/data-driven fork, 74.2 node persistence, 74.3 data-driven `skill_tree.yaml` + loader,
+  74.4 `train` command, 74.5 `actor_has_ability` condition, 74.6 passive modifier source, 74.7 example
+  content, 74.8 UI/docs; **big OPEN ITEM 74-OI-1**: what an "ability" *is* [A active verbs / B passive
+  modifiers / C interaction gates] — rec. B+C data-driven, small first tree; **gated on user decision**).
+- **Next new sprint: 75.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
