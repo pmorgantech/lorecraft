@@ -36,7 +36,7 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
-**Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a single reward path granting any mix of **xp + coins + items + skill points**, the XP curve/level-up core, and level-up itself paying out coins + skill points — mostly extending/fixing what already exists), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points to unlock abilities). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.4**.
+**Next: Sprints 73–74** — **progression** (design complete). The 2026-07-11 scope expansion (classic DikuMUD-style earn→level→train→abilities, deliberately scoped down for *now*) splits across two sprints: **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)** (a single reward path granting any mix of **xp + coins + items + skill points**, the XP curve/level-up core, and level-up itself paying out coins + skill points — mostly extending/fixing what already exists), then **[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)** (the genuinely-new design surface: spending skill points on a data-driven tree that unlocks abilities in **all three flavors** — active utility verbs like `forage`/`sense`/`pick`, passive modifiers, and interaction/dialogue unlocks; ability-scope fork resolved 2026-07-12). Resolves the long-standing "does Lorecraft have leveling?" question (**yes**, 2026-07-12) and delivers Sprint 71.5 (quest XP rewards) as **Sprint 73.4**.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -534,86 +534,81 @@ retrofitting every system in one sprint is over-scope.
 
 **Goal:** give the skill points earned in Sprint 73 a **sink** — a data-driven skill tree whose nodes,
 bought with skill points, **unlock abilities**. This is the genuinely-new design surface flagged in the
-2026-07-11 expansion ("a skill tree system that enables abilities"). Unlike Sprint 73 (which mostly
-extends existing plumbing), the central question here — **what *is* an ability in a MUD with no combat
-and no spell system?** — is a real product fork, surfaced below grounded in the engine's *actual*
-extension points, with a recommendation but **not** silently decided. The task table is therefore
-**provisional and gated on resolving 74.1** first.
+2026-07-11 expansion ("a skill tree that enables abilities"). The central fork — what an "ability" *is*
+in a combat-less, spell-less MUD — is now **RESOLVED (2026-07-12, user decision)**: build **all three
+flavors**, with **active utility verbs as a first-class, non-optional part of the design**, not the
+minimal B+C-only scope the research pass had recommended.
 
-**Verified engine surface for "what an ability could be" (2026-07-12, grep-confirmed).** Lorecraft has
-**four** real per-player extension points an "ability" could hang off — no green-field invention needed:
+**RESOLVED — 74-OI-1: an ability is one of three things (all three ship in Sprint 74).** Grounded in the
+engine's *actual* per-player extension points (grep-confirmed 2026-07-12):
 
-1. **Command gating (`CommandConditionRegistry`, `engine/game/command_conditions.py`).** Commands
-   carry `conditions=("actor_has_flag:<flag>", …)` (registry.py L42); an unavailable command is
-   hidden from `help` and refused. `actor_has_flag` already gates verbs **per-player** off
-   `Player.flags`. → An **active ability = a command verb that only becomes available once unlocked.**
-2. **Scripting `when:` conditions.** `actor_has_flag`/`actor_lacks_flag` are registered on the
-   dialogue/command surfaces too (dialogue_conditions.py, identical descriptor), so **world builders
-   already gate `world.yaml` interactions on a player flag** — fully data-driven.
-3. **Side-effect `do:` vocabulary (`features/npc/side_effects.py`).** `set_flags` is a shipped effect.
-   → A tree-node purchase can unlock via the **existing** `set_flags` path — no new effect needed.
-4. **Modifier resolver (`engine/game/modifiers.py`).** A pluggable source contributes `add`/`mult`
-   modifiers keyed like `carry_capacity`, `skill.perception`, `price.buy`. → A **passive ability = a
-   modifier source** that reads unlocked nodes and always-on bonuses the resolver already composes.
+- **(A) Active utility ability = a new command verb, gated by `actor_has_flag:ability.<id>`.** The
+  command registry already takes `conditions=[...]` per verb (`registry.py::register`, e.g.
+  `search` registers with `conditions=[REQUIRES_LIGHT, NOT_IN_COMBAT]`), and `actor_has_flag`
+  (`command_conditions.py`) already gates verbs per-player off `Player.flags` and hides them from
+  `help`. So an active ability is a verb that appears only once its `ability.<id>` flag is set — **no
+  new condition mechanism required**, exactly per the user's "gated by actor_has_flag". With no
+  combat/spellcasting, these are **utility** verbs (see 74.5/74.6 for the concrete set).
+- **(B) Passive ability = a modifier source** feeding the existing `engine/game/modifiers.py` resolver
+  (which `encumbrance/rules.py::resolve_carry_capacity` already composes) — an always-on bonus
+  (carry capacity, +skill%, better prices) with no new verb.
+- **(C) Interaction/dialogue ability = a `set_flags` unlock + `actor_has_flag` gate in world content.**
+  Both are shipped vocabulary (`set_flags` `do:` effect in `features/npc/side_effects.py`;
+  `actor_has_flag` registered on the dialogue surface too), so builders gate `world.yaml`
+  dialogue/context branches on `ability.<id>` with zero engine work.
 
-So an "ability" has **three plausible, all-real flavors**: **A. active** (a new command verb, gated),
-**B. passive** (a modifier source — bigger carry, better prices, +skill%), **C. interaction** (a
-scripting-condition gate world content checks). Note the **absence** matters too: with no combat and no
-spellcasting engine, active abilities are necessarily **utility verbs** (`forage`, `track`, `sense`,
-`pick` a lock, `appraise`) — there is nothing to "cast" and nothing to "hit." That constraint is the
-crux of the fork.
+The through-line: **all three flavors converge on the same `ability.<id>` player flag** — a node
+purchase sets it (flavor C's `set_flags` path), active verbs gate on it (A), and passive nodes
+additionally register a modifier (B). This makes the `ability.<id>` flag **load-bearing and mandatory**
+(it was "convenience" under the old B+C recommendation — the active-verbs decision promotes it), which
+is why 74.2 keeps *both* an `unlocked_nodes` list (for UI/query) and the flag (for gating).
 
-**OPEN ITEM (the big fork) — what kind of ability does the first tree deliver, and is the tree
-data-driven or code-defined?** Two sub-decisions:
-
-- *Ability kind.* **(A) active utility verbs** are the most player-visible but need each verb
-  *implemented* (a `forage` that yields items needs loot tables; `track` needs footprint state) — real
-  content/engine work per verb. **(B) passive modifiers** are the **cheapest and lowest-risk**: they
-  reuse the modifier resolver with zero new verbs and zero content (a "+2 carry capacity" or "+10%
-  perception" node is a few lines + a test). **(C) interaction gates** are **free on the engine side**
-  (reuse `actor_has_flag`/a new `actor_has_ability` scripting condition) but push all the actual
-  content into `world.yaml` authoring.
-- *Definition source.* Per the repo's **data-driven principle**, the tree (nodes, costs, prereqs,
-  unlock effects) should live in **`world_content/` YAML** (e.g. `skill_tree.yaml`), loaded into a
-  registry mirroring `features/skills/definitions.py` + the world import — **not** hardcoded node IDs in
-  application code. Each node: `id`, `name`, `cost` (skill points), `prerequisites` (node ids), and an
-  **unlock** expressed in *existing* vocabulary (`set_flags: ability.<id>` and/or a `modifier` grant).
-
-→ **Recommendation:** make the **first tree small and lean on what exists** — **B (passive) + C
-(interaction), data-driven**, deferring A (active verbs) to a later pass. Concretely: 2–3 **passive
-nodes** proving the modifier path (carry capacity, a skill-% bonus) + **one interaction node** proving
-the `actor_has_ability` gate (a flag a `world.yaml` dialogue/context branch checks), all authored in
-`world_content/skill_tree.yaml`. Ship **one** example active verb only if the user wants A proven now.
-This delivers a *felt* tree in one sprint without committing to per-verb content, and every later
-active ability is then additive (a new gated verb + a node). **This fork must be confirmed with the
-user before 74.2+ — it changes the shape of nearly every task below.**
-
-**Provisional task table (gated on 74.1).**
+**Definition source (unchanged, per the data-driven principle):** the tree — nodes, costs, prereqs,
+unlock effects — lives in **`world_content/skill_tree.yaml`**, loaded into a registry mirroring
+`features/skills/definitions.py` + the `world.yaml` import. **No hardcoded node IDs in `src/`.** Each
+node: `id`, `name`, `description`, `cost` (skill points), `prerequisites` (node ids), and an `unlock`
+block that may combine `flags` (always — the `ability.<id>` flag), a `modifier` (flavor B), and an
+`enables_verb` marker (flavor A, documentation only — the verb itself is code, gated on the flag).
 
 | # | Task | Status |
 |---|------|--------|
-| 74.1 | **Resolve the ability-kind + data-driven fork (above) with the user.** Decide A/B/C mix and confirm the tree is `world_content` YAML. Everything below assumes the recommended **B+C data-driven** answer; a different answer reshapes 74.4–74.7. | [ ] |
-| 74.2 | **Unlocked-node persistence.** Where purchased nodes live. Options: new `PlayerStats.unlocked_nodes: list[str]` (JSON, mirrors `traits`), or reuse `Player.flags` with an `ability.<id>` convention (leans directly on the existing gate #1/#2 with **no new field**). → Recommend a dedicated `unlocked_nodes` list for clean querying/UI, **plus** setting an `ability.<id>` flag on unlock so existing flag-gates work unchanged. Save/load round-trip. | [ ] |
-| 74.3 | **Data-driven tree definitions + loader.** `world_content/skill_tree.yaml` → a `SkillTreeRegistry` (mirror `features/skills/definitions.py::SkillRegistry` + the `world.yaml` import path). Node schema: `id`/`name`/`description`/`cost`/`prerequisites`/`unlock` (`set_flags` and/or `modifier`). Validation: no cycles, prereqs exist, costs ≥ 1. **No hardcoded node IDs in `src/`.** | [ ] |
-| 74.4 | **`train`/`learn` command — spend skill points on a node.** Verb lists available nodes (prereqs met, affordable) and buys one: check `stats.skill_points >= cost` + prereqs, decrement, record in 74.2, apply the node's unlock. Lives in `features/progression/commands.py`. Refuse with a clear reason on insufficient points / unmet prereqs. | [ ] |
-| 74.5 | **`actor_has_ability:<id>` condition (command + scripting surfaces).** New condition mirroring `actor_has_flag` (command_conditions.py + dialogue_conditions.py, identical descriptor via `register_spec`) reading the unlocked-node set, so **both** shipped verbs and `world.yaml` scripts gate on unlocks. Regenerate `docs/scripting_api.md` (`make scripting-docs`) in the same commit (new `register_spec`). | [ ] |
-| 74.6 | **Passive modifier source (flavor B).** A modifier collection source (`engine/game/modifiers.py` registry) that, for each unlocked node carrying a `modifier`, contributes it to the resolver (e.g. `carry_capacity +2`, `skill.perception mult`). Proves passive abilities with **zero new verbs**. Unit test: an unlocked node changes `resolve_carry_capacity`. | [ ] |
-| 74.7 | **Example content + one active verb (flavor A/C proof).** Author 2–3 passive nodes + one interaction-gated node in `world_content/skill_tree.yaml`; if the user picks A, add one example gated utility verb (e.g. `forage`) as the pattern for future active abilities. | [ ] |
-| 74.8 | **UI + docs.** Surface unlocked abilities + spendable skill points (extend `score`/Stats pane or a small `abilities` view). `docs/user_guide.md` (how to earn/spend skill points, what abilities do), `docs/admin_builder_guide.md` (authoring `skill_tree.yaml` nodes + the `actor_has_ability` gate). | [ ] |
+| 74.1 | **Data-driven tree definitions + loader.** `world_content/skill_tree.yaml` → a `SkillTreeRegistry` (mirror `features/skills/definitions.py::SkillRegistry` + the `world.yaml` import path). Node schema: `id`/`name`/`description`/`cost`/`prerequisites`/`unlock` (`flags`, optional `modifier`, optional `enables_verb`). Validation: no prerequisite cycles, prereqs exist, `cost >= 1`. **No hardcoded node IDs in `src/`.** Lives under `features/progression/`. Unit tests: load, cycle rejection, missing-prereq rejection. | [ ] |
+| 74.2 | **Node persistence (`unlocked_nodes` + `ability.<id>` flag — both now mandatory).** New `PlayerStats.unlocked_nodes: list[str]` (JSON, mirrors `traits`) for query/UI, **and** — because flavors A and C gate on `actor_has_flag` — each purchase also sets `Player.flags["ability.<id>"] = True`. The flag is now load-bearing (the active-verbs decision promoted it from convenience), so this dual-write is a design requirement, not an optimization. Save/load round-trip for both. | [ ] |
+| 74.3 | **`train`/`learn` command — spend skill points on a node.** Lists available nodes (prereqs met, affordable) and buys one: check `stats.skill_points >= cost` + prereqs, decrement `skill_points`, record the node in `unlocked_nodes`, set the `ability.<id>` flag, and register any passive `modifier` (74.4). Lives in `features/progression/commands.py`. Refuse with a clear reason on insufficient points / unmet prereqs / already-owned. | [ ] |
+| 74.4 | **Passive modifier source (flavor B).** A modifier collection source registered with `engine/game/modifiers.py` that, for each unlocked node carrying a `modifier`, contributes it to the resolver (e.g. `carry_capacity +2`, `skill.perception mult 1.1`, `price.buy mult 0.95`). Proves passive abilities with **zero new verbs**; applies retroactively and free (resolver recomputes per use — see 74-OI-4). Unit test: an unlocked node changes `resolve_carry_capacity`. | [ ] |
+| 74.5 | **Active-verb gating pattern + reference verb `forage` (flavor A).** Establish the pattern: a verb registers with `conditions=[..., "actor_has_flag:ability.<id>"]` so it is available (and `help`-listed) only once unlocked. Ship the reference implementation: **`forage`** — in an outdoor room (`Room.indoor == False`), roll `skill_check(survival)` (`game/checks.py`, the `survival` STANDARD_SKILL already exists) to yield a foraged consumable (the `consumables` feature already handles `eat`/`drink`), gated on `ability.forage`. Lives in the thematically-appropriate feature, not `progression` (see 74-OI-5). Unit tests: verb hidden without the flag, succeeds/fails on the skill roll with the flag. | [ ] |
+| 74.6 | **Two more active verbs — `sense` + `pick` (flavor A, ≥3 example verbs total).** **`sense`** (aka `perceive`): an enhanced `search` that rolls `skill_check(perception)` to reveal hidden items *and* concealed NPCs in the room, gated on `ability.keen_senses`. **`pick`**: attempt a locked exit *without* a key via `skill_check(lockpicking)` — the world already ships locked doors (Vault Hall) and a key/`unlock` flow, so this is the no-key path — gated on `ability.pick_locks`. Each in its thematic feature (exploration / movement-or-lockpicking), each with hidden-without-flag + skill-roll tests. These three (survival/perception/lockpicking) map onto three existing `STANDARD_SKILLS`, so no invented content. | [ ] |
+| 74.7 | **Interaction/dialogue unlock example (flavor C).** Author example `world_content` proving the pure-data path: a `skill_tree.yaml` node whose `unlock.flags` sets `ability.<id>`, plus a `world.yaml` dialogue/context branch gated on `actor_has_flag:ability.<id>` (e.g. a `persuasion`-flavored dialogue option that only appears once an ability is trained). Zero engine work — validates that builders can add interaction abilities without code. | [ ] |
+| 74.8 | **UI + docs.** Surface unlocked abilities + spendable skill points (extend `score`/Stats pane or a small `abilities` view listing owned nodes and available buys). `docs/user_guide.md` (earning/spending skill points; that abilities come in active-verb, passive-bonus, and interaction flavors; the starter verbs `forage`/`sense`/`pick`). `docs/admin_builder_guide.md` (authoring `skill_tree.yaml` nodes; the `unlock` block; gating content on `actor_has_flag:ability.<id>`). Regenerate `docs/scripting_api.md` via `make scripting-docs` **only if** an optional `actor_has_ability` alias is added (74-OI-5b) — otherwise no new `register_spec`. | [ ] |
 
 ### Sprint 74 open items (summary)
 
-- **74-OI-1 (the big fork):** ability kind (A active verbs / B passive modifiers / C interaction gates)
-  + data-driven-YAML confirmation. **Recommend B+C, data-driven, small first tree.** *Must resolve with
-  the user before building.*
-- **74-OI-2:** node persistence — dedicated `unlocked_nodes` list vs. `flags` convention.
-  **Recommend both** (list for UI, `ability.<id>` flag for the existing gates).
-- **74-OI-3:** tree *shape/economy* — how many nodes, how skill-point costs map to the ~1-point-per-level
-  earn rate from 73.5, whether nodes are a strict tree or a shallow list to start. **Recommend a shallow
-  first tree** (flat tiers, few prereqs) and tune costs against the 73.5 earn rate once both exist.
-- **74-OI-4:** does an unlocked passive **retroactively** apply, and can nodes be **refunded/respec'd**?
-  **Recommend:** passives apply immediately (they are resolver sources, recomputed per use — free); **no
-  respec** in v1 (defer).
+- **74-OI-1 — RESOLVED (2026-07-12, user):** an ability spans **all three flavors** — (A) active utility
+  verbs gated by `actor_has_flag`, (B) passive modifiers, (C) interaction/dialogue `set_flags` unlocks —
+  with active verbs **first-class** (74.5–74.6: `forage`/`sense`/`pick`), not the minimal B+C the research
+  pass recommended. Tree is data-driven `world_content/skill_tree.yaml`.
+- **74-OI-2 — node persistence (recommendation stands, now *reinforced*):** keep **both** an
+  `unlocked_nodes` list **and** the `ability.<id>` flag. The active-verbs decision makes the flag
+  **mandatory** (flavors A and C gate on `actor_has_flag`), not merely convenient — flagged per the
+  coordinator's ask to surface where the decision changes a smaller item.
+- **74-OI-5 — NEW, raised by the active-verbs decision — where do the ability *verbs* live?** The
+  gating flag/tree is `features/progression/`, but the verbs (`forage`/`sense`/`pick`) are thematically
+  exploration/utility. **(a)** put them in their thematic feature (forage/sense → `exploration`; pick →
+  the movement/lockpicking feature) with `progression` owning only the tree/train/persistence/modifier
+  source; **(b)** put all ability verbs in `progression`. → **Recommend (a)** — keeps `progression` from
+  becoming a grab-bag of unrelated verbs and keeps each verb near the skill/service it uses. Sub-item
+  **74-OI-5b:** whether to add an optional `actor_has_ability:<id>` condition as a readability alias over
+  `actor_has_flag:ability.<id>` — **recommend deferring it** (the user specified `actor_has_flag`; the
+  alias is sugar and would add a `register_spec` + `scripting_api.md` regen for no new capability).
+- **74-OI-3 — tree shape/economy (recommendation stands):** shallow first tree (flat tiers, few
+  prereqs); tune skill-point costs against the ~1-point-per-level earn rate from 73.5 once both exist.
+  The active-verbs decision suggests seeding the tree with at least the three verb-unlock nodes
+  (`forage`/`keen_senses`/`pick_locks`) plus 2–3 passive nodes.
+- **74-OI-4 — retroactive passives / respec (recommendation stands):** passives apply immediately
+  (resolver recomputes per use — free); **no respec** in v1 (defer).
+
+Package placement (`features/progression/`), reward-key (`coins`), and the Sprint 73 forks are settled
+in the Sprint 73 design section above; none are changed by the active-verbs decision.
 
 ---
 
@@ -674,11 +669,13 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   `issue-39d3fcb8`], 73.5 level-up coin/skill-point payout, 73.6 exploration reroute, 73.7 level-up UX,
   73.8 docs; OPEN ITEMs: package placement [rec. new `features/progression/`], `coins` vs `money` key,
   perk-beyond-rewards fork [rec. rewards-only, let Sprint 74 be where levels are felt]).
-- **In design: 74** (Skill tree & ability unlocks — the skill-point *sink*; 74.1 resolve the
-  ability-kind/data-driven fork, 74.2 node persistence, 74.3 data-driven `skill_tree.yaml` + loader,
-  74.4 `train` command, 74.5 `actor_has_ability` condition, 74.6 passive modifier source, 74.7 example
-  content, 74.8 UI/docs; **big OPEN ITEM 74-OI-1**: what an "ability" *is* [A active verbs / B passive
-  modifiers / C interaction gates] — rec. B+C data-driven, small first tree; **gated on user decision**).
+- **In design: 74** (Skill tree & ability unlocks — the skill-point *sink*; 74.1 data-driven
+  `skill_tree.yaml` + loader, 74.2 node persistence [`unlocked_nodes` + `ability.<id>` flag],
+  74.3 `train` command, 74.4 passive modifier source, 74.5 active-verb gating pattern + `forage`,
+  74.6 two more active verbs `sense`/`pick`, 74.7 interaction/dialogue unlock example, 74.8 UI/docs;
+  **74-OI-1 RESOLVED 2026-07-12**: build all three ability flavors — active utility verbs [first-class],
+  passive modifiers, interaction unlocks — data-driven; new **74-OI-5**: ability verbs live in their
+  thematic feature, not `progression`).
 - **Next new sprint: 75.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
