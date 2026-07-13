@@ -92,6 +92,13 @@ class SimulationServer:
     # True when `base_url` is the Rust gateway front door (ticket-only `/ws`);
     # False when it is the Python uvicorn origin directly (legacy `?player_id=`).
     through_rust: bool = False
+    # The live FastAPI app instance (`_LiveServer` runs it on a background thread
+    # in *this* process, not a subprocess), so a test can reach `app.state.lorecraft`
+    # to drive the shared command pipeline (`handle_ws_command`) in-process against
+    # the exact same game/audit DBs the wire path just wrote to — e.g. the Phase 4
+    # look-parity harness's Python-direct oracle. `None` only if never wired (never
+    # the case for `simulation_server_factory`-built servers).
+    app: Any = None
     # Session cookies captured from each character's `/lobby/create` 303, keyed
     # by player id, so a later `POST /auth/ws-ticket` can authenticate as them.
     _session_cookies: dict[str, httpx.Cookies] = field(default_factory=dict)
@@ -203,8 +210,23 @@ def simulation_server_factory(
     socket_paths: list[str] = []
 
     def _make(
-        rng_seed: int | None = None, *, through_rust: bool | None = None
+        rng_seed: int | None = None,
+        *,
+        through_rust: bool | None = None,
+        extra_env: dict[str, str] | None = None,
+        world_time_ratio: float | None = None,
     ) -> SimulationServer:
+        """Boot one fresh server.
+
+        `extra_env` is forwarded verbatim to the `RustGateway` subprocess (no
+        effect in Python-direct mode) — e.g. `{"LORECRAFT_RUST_VERBS": "look"}`
+        to opt a single test into routing a migrated verb through Rust's
+        execution path without touching the default (empty allow-list) fixture.
+        `world_time_ratio` overrides `Settings`' default real-time clock advance
+        (60.0) — pass `0.0` to freeze the world clock for a byte-identity compare
+        that must not race an in-test tick (e.g. the Phase 4 parity harness);
+        left `None`, most simulation tests want the clock actually advancing.
+        """
         if through_rust is None:
             through_rust = through_rust_enabled()
         db_dir = tmp_path_factory.mktemp("sim")
@@ -228,6 +250,11 @@ def simulation_server_factory(
             allow_query_player_id=not through_rust,
             gateway_enabled=through_rust,
             gateway_socket_path=socket_path or "var/gateway.sock",
+            **(
+                {"world_time_ratio": world_time_ratio}
+                if world_time_ratio is not None
+                else {}
+            ),
         )
         app = create_app(settings=settings)
         live_server = _LiveServer(app)
@@ -239,7 +266,9 @@ def simulation_server_factory(
             assert socket_path is not None  # set whenever through_rust
             ensure_gateway_binary()
             gateway = RustGateway(
-                backend_url=live_server.base_url, socket_path=socket_path
+                backend_url=live_server.base_url,
+                socket_path=socket_path,
+                extra_env=extra_env,
             )
             gateway.start()
             gateways.append(gateway)
@@ -251,6 +280,7 @@ def simulation_server_factory(
             game_db_path=game_db_path,
             audit_db_path=audit_db_path,
             through_rust=through_rust,
+            app=app,
         )
 
     try:
