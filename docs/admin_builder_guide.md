@@ -363,7 +363,7 @@ stages:
       items: [travel_ration]     # spawned on the player (skips ids already carried)
       xp: 50                     # banked toward the level curve, below
       coins: 25                  # canonical key (`money` is a tolerated alias)
-      skill_points: 1            # banked; spent on the skill tree, below
+      skill_points: 1            # banked; spent on abilities, below
 ```
 
 All four keys are optional and additive — grant any subset. `coins`/`money` is the only
@@ -453,26 +453,71 @@ Like Progression, nothing caches `RegionPricing` in runtime state — `features/
 reads the row fresh from the DB on every transaction — so a save takes effect on the very next
 buy/sell, no restart required.
 
-### Skill tree & abilities (Sprint 74)
+### Disciplines & abilities (Sprint 78)
 
-The skill points a player earns from leveling (above) are spent on a **skill tree**: a set of
-named nodes, each unlocking an **ability**. The tree is content, authored in
-`world_content/skill_tree.yaml` and loaded into an in-memory `SkillTreeRegistry` at server
-startup — the same pattern as `marks.yaml`/`hunts.yaml`, not the `world.yaml`/DB-import path
-`ProgressionConfig` uses. **No node ids are hardcoded in `src/`.**
+The skill points a player earns from leveling (above) are spent on **abilities**, each filed
+under one of five **disciplines**. This replaced two earlier, separately-vocabularied systems
+(a flat `SkillRegistry` catalog and the Sprint 74 skill tree's `ability.<id>` nodes) with one
+coherent, fully data-driven model — see
+[`discipline_ability_system.md`](discipline_ability_system.md) for the full design. Content
+lives in two files, both loaded into in-memory registries at server startup — the same pattern
+as `marks.yaml`/`hunts.yaml`, not the `world.yaml`/DB-import path `ProgressionConfig` uses.
+**No discipline or ability ids are hardcoded in `src/`.**
 
-#### Node schema
+#### `world_content/disciplines.yaml` — themed bodies of practice
 
 ```yaml
 version: 1
-nodes:
+disciplines:
+  - id: survival
+    name: Survival
+    description: >-
+      Reading the wild — foraging, tracking, pathfinding, and weathering exposure.
+    governing_stat: fortitude   # mirrors the old SkillDef.governing_stat
+    improve_chance: 0.1         # per-use growth-roll chance; defaults to 0.1
+    max_rank: 100                # rank ceiling; defaults to 100
+    check_keys: [skill.survival, skill.cartography]
+```
+
+Fields (`DisciplineDef`, `features/disciplines/abilities.py`):
+
+- `id`/`name`/`description` — identity and display text.
+- `governing_stat` — the base attribute the discipline is themed around (non-empty).
+- `improve_chance`/`max_rank` — the two proficiency-growth dials the Tier 1
+  `resolve_proficiency` mechanism takes as parameters (not engine constants): `improve_chance`
+  must be in `[0, 1]`, `max_rank` must be `>= 1`. Both default to `0.1`/`100` (the same values
+  the old flat-skill system used), but are authored explicitly per discipline so one can be
+  retuned (a faster-learning or deeper-mastery discipline) without touching another.
+- `check_keys` — the list of `skill.<name>` resolver-key namespaces this discipline governs
+  (e.g. Survival governs `skill.survival` and `skill.cartography`; Subterfuge governs
+  `skill.perception` and `skill.lockpicking`). This is *not* decorative: the `fatigue` feature's
+  low-stamina penalty (`features/fatigue/source.py::FatigueModifierSource`) enumerates every
+  discipline's `check_keys` to know which checks to penalize when a player is Weary/Exhausted —
+  there is no other registry of "every live skill check" to iterate, so a discipline that omits
+  a check key it should govern silently escapes the fatigue penalty on that check.
+
+The five shipped disciplines (Survival, Subterfuge, Commerce, Rhetoric, Fortitude) are the seed
+non-combat set; adding a sixth is a pure content change — a new list entry, no code.
+
+#### `world_content/abilities.yaml` — one concrete thing within a discipline
+
+```yaml
+version: 1
+abilities:
   - id: forage                    # unique id; also the argument to `train <id>`
     name: Forage                  # display name shown in `train`/`abilities`
     description: >-
       Learn to read the wild for food. Enables the `forage` verb in outdoor
       rooms, where a survival check turns up something edible.
+    discipline: survival          # which DisciplineDef this ability belongs to
+    ability_type: active          # open string: active | passive | interaction | …
+    activation_type: instant      # open string: instant | maintained | triggered | …
     cost: 1                       # skill points required; must be >= 1
-    prerequisites: []             # node ids that must already be trained
+    prerequisites: []             # ability ids that must already be trained
+    required_discipline_rank: 0   # minimum discipline rank to learn it; must be >= 0
+    proficiency_model: success_only  # none | success_only | success_and_magnitude
+    usage:
+      terrain: [outdoor]           # see "The usage: block" below
     unlock:
       enables_verb: forage        # (A) active-verb marker — documentation only,
                                    #     the verb itself is code (see below)
@@ -480,10 +525,13 @@ nodes:
   - id: mule
     name: Mule
     description: A trained back and better packing — you carry more before slowing.
+    discipline: fortitude
+    ability_type: passive
     cost: 1
     prerequisites: []
+    proficiency_model: none
     unlock:
-      modifier:                   # (B) passive-bonus node
+      modifier:                   # (B) passive-bonus ability
         key: carry_capacity       # namespaced modifier key (see engine/game/modifiers.py)
         kind: add                 # "add" or "mult"
         amount: 20
@@ -491,73 +539,117 @@ nodes:
   - id: silver_tongue
     name: Silver Tongue
     description: A persuasive turn of phrase opens conversations that stay shut to others.
+    discipline: rhetoric
+    ability_type: interaction
     cost: 1
     prerequisites: []
-    unlock: {}                    # (C) interaction/dialogue node — flag only, no
-                                   #     modifier or enables_verb
+    proficiency_model: none
+    unlock:
+      enables_verb: null           # (C) interaction/dialogue ability — flag only, no
+                                    #     modifier or enables_verb
 ```
 
-Every node's `unlock.flags` always includes `ability.<id>` — it's injected automatically if
-omitted, so authors don't have to repeat it. That flag is what a node purchase actually sets on
-the player and is the single gate all three ability flavors converge on:
+Full `AbilityRecord` fields (`features/disciplines/abilities.py`): `id`, `name`, `description`,
+`flavor`, `discipline` (required), `branch` (optional sub-grouping), `tier` (>= 1, default 1),
+`ability_type`/`activation_type` (open strings — deliberately not closed enums, so combat can
+add `stance`/`spell`/… later as content, not an engine change), `cost` (>= 1),
+`prerequisites`, `required_discipline_rank` (>= 0), `required_level`, `usage` (see below),
+`unlock`, `proficiency_model` (closed enum: `none` | `success_only` | `success_and_magnitude`),
+`mutually_exclusive_group`, `tags`.
 
-- **(A) Active-verb nodes** — `unlock.enables_verb` is a documentation-only marker naming the
-  verb the ability unlocks; the verb itself is real code (e.g. `features/exploration/forage.py`,
-  `features/exploration/sense.py`, `features/movement/service.py::pick`) whose command
-  registration gates on `conditions=["actor_has_flag:ability.<id>", ...]`. Adding a new
-  active-verb ability therefore always needs a matching code change — the YAML alone can't
-  create a new verb.
-- **(B) Passive-bonus nodes** — `unlock.modifier` is a `{key, kind, amount}` block matching the
-  Tier 1 `engine.game.modifiers.Modifier` shape (`kind` is `add` or `mult`; namespaced `key`s
-  like `carry_capacity`, `skill.perception`, `price.buy`). Every unlocked node carrying a
-  `modifier` is fed to the modifier resolver by `SkillTreeModifierSource`
-  (`features/progression/modifier_source.py`) — no engine-code change needed to add a new
+Every ability's `unlock.flags` always includes `ability.<id>` — it's injected automatically if
+omitted, so authors don't have to repeat it. That flag is what training an ability actually sets
+on the player and is the single gate all three ability flavors converge on:
+
+- **(A) Active-verb abilities** — `unlock.enables_verb` is a documentation-only marker naming
+  the verb the ability unlocks; the verb itself is real code (e.g.
+  `features/exploration/forage.py`, `features/exploration/sense.py`,
+  `features/movement/service.py::pick`) whose command registration gates on
+  `conditions=["actor_has_flag:ability.<id>", ...]`. Adding a new active-verb ability therefore
+  always needs a matching code change — the YAML alone can't create a new verb.
+- **(B) Passive-bonus abilities** — `unlock.modifier` is a `{key, kind, amount}` block matching
+  the Tier 1 `engine.game.modifiers.Modifier` shape (`kind` is `add` or `mult`; namespaced
+  `key`s like `carry_capacity`, `skill.perception`, `price.buy`). Every unlocked ability
+  carrying a `modifier` is fed to the modifier resolver by `AbilityModifierSource`
+  (`features/disciplines/modifier_source.py`) — no engine-code change needed to add a new
   passive as long as its `key` is one an existing resolver already reads (see the worked
   `haggler` example below for what happens when it isn't).
-- **(C) Interaction/dialogue nodes** — `unlock` carries only the flag (no `modifier`, no
-  `enables_verb`). Gate a `world.yaml` dialogue choice or NPC context on
-  `actor_has_flag: [ability.<id>]` and the option appears only once the node is trained — zero
-  engine code. Worked example: the innkeeper Mira's dialogue tree
+- **(C) Interaction/dialogue abilities** — `unlock` carries only the flag (no `modifier`, no
+  usable `enables_verb`). Gate a `world.yaml` dialogue choice or NPC context on
+  `actor_has_flag: [ability.<id>]` and the option appears only once the ability is trained —
+  zero engine code. Worked example: the innkeeper Mira's dialogue tree
   (`dialogue_trees: innkeeper_dialogue`) has a persuasion-flavored choice gated on
-  `actor_has_flag: [ability.silver_tongue]`, unlocked by the `silver_tongue` node above.
+  `actor_has_flag: [ability.silver_tongue]`, unlocked by the `silver_tongue` ability above.
+
+#### The `usage:` block — data-driven performance gating
+
+`usage:` (`UsageSpec`, projected to the Tier 1 `UsageRequirements` via
+`AbilityRecord.to_ability_def`) describes what must hold to *perform* an already-trained
+ability — distinct from what's needed to *learn* it. All fields default to "no requirement", so
+an ability with no `usage:` block is always performable once trained:
+
+- `character_states` / `target_states` — state names the actor (or, for target-directed
+  abilities, the target) must currently hold: a durable `state.<name>` flag or a transient
+  `ActiveEffect` key.
+- `terrain` — terrain tags, any one of which satisfies the requirement.
+- `resource` — `{type, cost}`, a resource the actor spends to perform it (today Lorecraft has
+  exactly one resource type, `stamina`, via the `fatigue` feature's meter; `cost: 0` means
+  "declared but free").
+- `cooldown_seconds` — real-time cooldown between uses; `0` means no cooldown.
+
+This is the retrofit target for verbs that used to hardcode their gating in Python. `forage`'s
+old `Room.indoor == False` check is now `usage.terrain: [outdoor]`, enforced by the Tier 1
+`check_usage` mechanism (`engine/game/abilities.py::check_usage`, called via
+`features/disciplines/usage.py`'s `evaluate_usage` helper) instead of the ability's own code
+inspecting the room. Adding a new usage requirement to an existing active-verb ability is
+therefore a YAML-only change; the verb's Python only needs to call `evaluate_usage` and act on
+the result, not hardcode a new condition.
 
 #### Validation rules
 
-Enforced by `SkillTreeNode`/`SkillTreeDocument` (`features/progression/skill_tree.py`) at load
-time — a malformed tree logs a warning and the registry stays empty rather than crashing boot:
+Enforced by `DisciplineDocument`/`AbilityDocument` (`features/disciplines/abilities.py`) at
+load time — a malformed document logs a warning and the registry stays empty rather than
+crashing boot:
 
-- `cost` must be `>= 1`.
-- Every `prerequisites` entry must name a node id that exists elsewhere in the same document (no
-  dangling prerequisites), and a node may not list itself as its own prerequisite.
-- No prerequisite cycles — the whole prerequisite graph must be a DAG (detected via a
-  standard grey/black DFS walk).
-- Node ids must be unique and non-empty within the document.
+- Discipline `id`/`governing_stat` must be non-empty; `improve_chance` in `[0, 1]`; `max_rank`
+  `>= 1`; discipline ids unique within the document.
+- Ability `cost` must be `>= 1`; `tier` `>= 1`; `required_discipline_rank` `>= 0`;
+  `proficiency_model` must be one of `none`/`success_only`/`success_and_magnitude`.
+- Every ability `prerequisites` entry must name an ability id that exists elsewhere in the same
+  document (no dangling prerequisites), and an ability may not list itself as its own
+  prerequisite.
+- No prerequisite cycles — the whole prerequisite graph must be a DAG (detected via a standard
+  grey/black DFS walk).
+- Ability ids must be unique and non-empty within the document.
 
-#### A passive node needs its `modifier.key` to be actually read somewhere
+#### A passive ability needs its `modifier.key` to be actually read somewhere
 
-A passive node's `modifier` only has an effect if some resolver in the codebase actually calls
-`resolve_for(...)`/`resolve(...)` with that same `key` — the modifier source is a generic pump,
-not a guarantee the value is consumed. This bit the `haggler` node during Sprint 74 review: it
-shipped with `key: price.buy, kind: mult, amount: 0.95`, but `EconomyService.buy_price` didn't
-yet resolve `price.buy` at all, so training Haggler silently did nothing. The fix
-(`features/economy/service.py::buy_price`) added a `_skill_price_mult` step that calls
+A passive ability's `modifier` only has an effect if some resolver in the codebase actually
+calls `resolve_for(...)`/`resolve(...)` with that same `key` — the modifier source is a generic
+pump, not a guarantee the value is consumed. This bit the `haggler` ability during the original
+Sprint 74 review (carried forward unchanged in the Sprint 78 migration): it ships with
+`key: price.buy, kind: mult, amount: 0.95`, and relies on `EconomyService.buy_price`'s
+`_skill_price_mult` step (`features/economy/service.py`), which calls
 `resolve_for(ctx.session, "player", ctx.player.id, "price.buy", base=1.0)` — the same
-read-through pattern `encumbrance/rules.py::resolve_carry_capacity` already used for
-`carry_capacity` — and folded it into the existing barter/reputation discount product. If you
-add a passive node with a new `modifier.key`, verify some Tier 1/Tier 2 code actually resolves
-that key before shipping it; an unconsumed modifier fails silently, not loudly.
+read-through pattern `encumbrance/rules.py::resolve_carry_capacity` uses for `carry_capacity` —
+and folds it into the existing barter/reputation discount product. If you add a passive ability
+with a new `modifier.key`, verify some Tier 1/Tier 2 code actually resolves that key before
+shipping it; an unconsumed modifier fails silently, not loudly.
 
 #### Not live-tunable — YAML + restart, not YAML + reseed
 
 Unlike `ProgressionConfig` (live-editable from the admin console's Progression tab, no restart)
 and unlike `world.yaml` content (imported into the DB via the World CLI, so a change needs a
-`world_cli import`, i.e. a reseed), `skill_tree.yaml` is read directly into an in-memory
-registry once at **server startup** (`main.py::_load_skill_tree_definitions`) — editing it takes
-effect on the **next process restart**, not a DB reseed and not live. This is a deliberate scope
-decision (roadmap 74-OI-6), not a gap: node costs and prerequisites are structural tree shape,
-not a hot balance dial an admin needs to retune mid-session the way per-level coin rewards are.
-Revisit moving tree costs onto a `ProgressionConfig`-style live-tunable DB row only if admins
-actually ask to retune skill-tree costs without a restart.
+`world_cli import`, i.e. a reseed), `disciplines.yaml` and `abilities.yaml` are read directly
+into in-memory registries once at **server startup**
+(`main.py::_load_discipline_definitions`/`_load_ability_definitions`, paths configured via
+`Settings.disciplines_yaml_path`/`abilities_yaml_path`) — editing either file takes effect on
+the **next process restart**, not a DB reseed and not live. This is a deliberate scope decision
+(carried over from the Sprint 74 skill tree, roadmap 74-OI-6), not a gap: ability costs,
+prerequisites, and discipline dials are structural content shape, not a hot balance lever an
+admin needs to retune mid-session the way per-level coin rewards are. Revisit moving these onto
+a `ProgressionConfig`-style live-tunable DB row only if admins actually ask to retune them
+without a restart.
 
 ## The World CLI
 

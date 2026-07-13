@@ -11,16 +11,18 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-13, v0.96.0 on main; Sprints 1–76 all shipped; 77 implemented pending merge, 78 designed & queued)
+## Where things stand (2026-07-13, v0.96.0 on main; Sprints 1–76 all shipped; 77 and 78 implemented pending merge)
 
 **Everything through Sprint 76 is merged to main** (currently at v0.96.0, which ships Sprints 73,
 74, 75, and 76 in sequence — see `../CHANGELOG.md`). All numbered sprints 1 through 76 are now
 shipped. **Sprint 77 (the Discipline/Ability system's Tier 1 mechanism — see that section below
 and [`discipline_ability_system.md`](discipline_ability_system.md)) is implemented, tested, and
 code-reviewed on branch `sprint-77-abilities-tier1`, all tasks `[x]`, pending Integrator
-merge/version-bump.** **Sprint 78 (the Tier 2 policy/content layer built on top of it) remains
-fully designed and reviewed by Research/Planning, queued for Backend Engineer** —
-design-finalized is not the same as built; every 78 task still starts unchecked.
+merge/version-bump.** **Sprint 78 (the Tier 2 policy/content layer built on top of it — the
+`features/disciplines/` registries, `world_content/disciplines.yaml`/`abilities.yaml` content,
+the `PlayerStats` schema migration, and the `train`/`abilities`/`disciplines` command rework) is
+now also implemented, tested, and gate-clean on branch `sprint-78-abilities-tier2`, all tasks
+`[x]` (78.5 dropped/superseded per its row), pending Integrator merge/version-bump.**
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -955,6 +957,11 @@ for this sprint's implementation gate.
 | ~~`help`'s CSS styling — resolved as working-as-designed, not a bug; leave alone~~ | Added 2026-07-13 (user). The tracked issue **`issue-fd64ee3e`** (`docs/issues.yaml`, filed 2026-07-05, status `open` as of writing) documents a live-deployment investigation that ruled out caching/stale-server/stale-checkout but stalled without confirming the `msg-help` class actually renders. **User has now visually confirmed live `help` output matches the coded design** (accent-colored border + `font-weight: 600` + accent-colored text, per `custom.css:101-107`) — they simply don't love the aesthetic, which is a taste/design question, not a rendering bug. **No roadmap action needed for `help`** — worth closing `issue-fd64ee3e` as resolved (not actioned here; roadmap.md doesn't own `docs/issues.yaml` entries) the next time someone touches that tracker. Note for context only: `.msg-help`'s CSS never included a font-size change, only color + weight — if a future redesign is wanted, that's new scope, not the original 71.4 spec. **Done 2026-07-13** (commit `95b5165`). `docs/issues.yaml`'s `issue-fd64ee3e` is now `status: resolved` with a dated resolution note, closing the tracker entry per the recommendation above. |
 | ~~Vitals (health/stamina/money) should always display near the command input, in the `classic` layout's format, across all layouts~~ | Added 2026-07-13 (user), investigated via Explore agent — genuinely new scope, not a regression (confirmed: `docs/user_guide.md`/`docs/architecture.md` never documented this as a goal for non-classic layouts). **Current state, precisely**: only **`classic`** (`templates/partials/game_classic.html:29`) places anything near the input — a single-line bracketed `#vitals` div (`partials/vitals.html`, e.g. `[ STA 42/60 · 137 coins ]`) directly above the command `&lt;input&gt;`, inside the same `&lt;form&gt;`. But `vitals_snapshot()` (`webui/player/session.py:400-419`) **deliberately excludes HP** — its own docstring says *"Lorecraft has no HP/MP/MV, so this surfaces the real meters instead of inventing MUD stats,"* showing only stamina + coins. The other four layouts (**Standard, Dock, E-reader, Immersive** — full list `preferences.py:67`) have **nothing near the input at all**: Standard/Dock tuck a full multi-value Stats tab/shade (`partials/stats_panel.html`, via `stats_snapshot()`, `session.py:438-478` — Health+Stamina meter bars, Coins, Attributes, Level/XP/Skill-Points, Traits, Marks, Reputation, Effects) into a separate right-column panel requiring a click; E-reader/Immersive have **no persistent vitals element whatsoever** — stats are only reachable by triggering the `score` command, which prints transiently into the scrolling chronicle. **The one place all three (HP + stamina + coins) already converge is `stats_panel.html`/`stats_snapshot()`** — the HP meter data already exists and is already fetched there (`meters.get(session, "player", player_id, "hp")`, `session.py:462-469`); it's `vitals_snapshot()`/`vitals.html` (the compact near-input line) that's missing it, not a data gap. **Fix shape** (two independent parts, not yet decided in detail — flag for the picking-up session): (a) **extend `vitals_snapshot()`/`vitals.html`** to add an HP segment to the bracketed line (mirroring the existing `STA`/coins format the user explicitly likes — e.g. `[ HP 18/20 · STA 42/60 · 137 coins ]`), affecting `classic` too since it's currently missing HP there as well; (b) **broadcast the `#vitals` div to the other four layouts** — mechanically straightforward per-template (each layout's command `&lt;form&gt;` is already a well-isolated block: Standard `game.html:169-197`, Dock `game_dock.html:65-76`, E-reader `game_ereader.html:62-76`, Immersive `game_immersive.html:72-79` — add a `&lt;div id="vitals"&gt;{% include "partials/vitals.html" %}&lt;/div&gt;` above each `&lt;input&gt;`, same as `game_classic.html:26-35`'s existing pattern), but requires generalizing two currently-classic-only gates: the initial-render population (`frontend.py:524-530`) and the post-command HTMX out-of-band refresh (`frontend.py:956-968`, `hx-swap-oob="true"`) both currently check `prefs.layout == "classic"` specifically. **Design question left open**: should the near-input compact vitals line *replace* Standard/Dock's existing detailed Stats tab/shade, or *complement* it (compact line near input for at-a-glance vitals, full panel still available for the detailed readout) — recommend complement, since classic itself already coexists with the `score` command for full detail and this preserves that established pattern rather than removing an existing feature. **Done 2026-07-13** (commit `446c823`). Both parts shipped: (a) `vitals_snapshot()` (`webui/player/session.py`) now includes HP alongside stamina/coins (mirroring the existing try/except-degrade pattern; the docstring's stale "no HP/MP/MV" claim corrected), rendered by `vitals.html` as `[ HP x/y · STA x/y · N coins ]`; (b) the `#vitals` div is now included in all five layout templates (`game.html`, `game_dock.html`, `game_ereader.html`, `game_immersive.html`, plus the pre-existing `game_classic.html`), with `frontend.py`'s two classic-only gates (initial render + post-command HTMX OOB refresh) generalized to fire for all layouts. **Open design question resolved: complement**, not replace — Standard/Dock's Stats tab/shade was left untouched. Code Reviewer flagged two non-blocking cosmetic follow-ups (an Immersive-layout CSS class mismatch between the initial-render div and the OOB-refresh wrapper, `mb-1.5` vs `px-1`; and a suggestion to catch the engine's typed `NotFoundError` instead of bare `Exception` in the new HP try/except) — noted as polish, not blocking. |
 
+| Dead `PlayerStats.skills` column left in place | Added 2026-07-13 (Sprint 78.3 Database Specialist review). The `discipline_ranks` migration (commit `bc3174e`) left the old `skills` column in place rather than dropping it, because the additive-column scanner (Sprint 75) has no DROP support — this fires a startup WARNING on every boot (the scanner's orphan-column check flags it forever). The commit's rationale claimed this "matches Sprint 75 precedent," but Database Specialist review found that's backwards: Sprint 75's actual precedent (`_migrate_room_area_id` in `db.py`) *actively drops* orphaned rename columns specifically to silence this warning permanently. **Recommend** a small dedicated follow-up migration (`_migrate_playerstats_skills`, guard-and-DROP, no data to fold since the keyspace changed) to close this out properly. |
+| Stale `required_skill`/`required_skill_min` comment text in `weather/modifiers.py` | Added 2026-07-13 (Sprint 78 Test & QA pass). `src/lorecraft/features/weather/modifiers.py` still has two comments referring to `required_skill`/`required_skill_min` after the field was renamed to `required_discipline` — the code itself is correctly renamed everywhere; this is comment-only drift. |
+| Help category cosmetic mismatch for `train`/`learn`/`abilities` | Added 2026-07-13 (Sprint 78 Test & QA pass). These commands are registered under `registry.category("progression")` in `src/lorecraft/commands/__init__.py` even though they now live in the `disciplines` feature — a `"disciplines"` category label would read truer. Purely cosmetic, no functional impact. |
+| E2E coverage gap for the new discipline/ability command surface | Added 2026-07-13 (Sprint 78 Test & QA pass). `train`/`abilities`/`disciplines`/`forage`/`pick`/`sense` are unit-tested but not directly exercised by browser-driven e2e tests. Not a current defect — flagged as worth a follow-up e2e pass. |
+
 *Already-implemented items previously listed here (bug/todo letterbox, encumbrance/wear slots, the
 simulation CLI, the analytics dashboard) were promoted to shipped sprints — see
 [`roadmap_completed.md`](roadmap_completed.md).*
@@ -1004,9 +1011,17 @@ identities, ability content, or policy values hardcoded anywhere in this sprint.
 
 ## Sprint 78 — Discipline/Ability system: Tier 2 policy & content (Phases B.2–F)
 
-**Not yet started — depends on Sprint 77's Tier 1 mechanism landing first.** Builds the
-opinionated, data-driven policy layer on top of Sprint 77's mechanism: registries, YAML content,
-the `PlayerStats` schema migration, content migration, and the command rework. Full detail in
+**Used (all complete, pending Integrator merge/version-bump).** Implemented on branch
+`sprint-78-abilities-tier2` — 8 implementation commits (`c4e4c34` 78.1 `DisciplineDef`/
+`DisciplineRegistry`, `d6fb469` 78.2 `AbilityRecord`/`AbilityRegistry`, `bc3174e` 78.3
+`PlayerStats.skills`→`discipline_ranks` migration, `7df0e59` 78.4 `disciplines.yaml`/
+`abilities.yaml` content, `413243f` 78.6 code migration — delete the flat skills catalog + wire
+services, `c225a84` 78.7 relocate `train`/`abilities` verbs to the `disciplines` feature,
+`3d33431` 78.8 retrofit `forage` onto data-driven `check_usage`, `4557266` 78.9
+`AbilityService`/command/modifier-source test coverage), plus the earlier design-correction
+commit (`779d48f`) already on the branch. Builds the opinionated, data-driven policy layer on
+top of Sprint 77's mechanism: registries, YAML content, the `PlayerStats` schema migration,
+content migration, and the command rework. Full detail in
 [`discipline_ability_system.md`](discipline_ability_system.md) §4–§9. **Design correction
 (2026-07-13):** the design doc originally directed a `sharp_eyes` modifier-key remap (78.5,
 below) as part of content migration; that premise was found false and the remap is dropped —
@@ -1014,17 +1029,24 @@ see §6.1's Option A and 78.5's row for the corrected reasoning.
 
 | # | Task | Status |
 |---|------|--------|
-| 78.1 | **`DisciplineDef`/`DisciplineRegistry`.** Loaded from `world_content/disciplines.yaml`, mirroring the existing `SkillTreeRegistry` load pattern (marks-def, `discover_features()`-compatible). Static YAML only — discipline structure is not a live-tunable dial (§3). | [ ] |
-| 78.2 | **`AbilityRegistry`.** Loaded from `world_content/abilities.yaml` (split from `disciplines.yaml` per §5.4's rationale — disciplines change rarely, abilities change often), each entry validated into the Tier 1 `AbilityDef` shape plus Tier-2-only display fields. | [ ] |
-| 78.3 | **`PlayerStats` schema migration (Database Specialist gate).** `skills: JsonObject` → `discipline_ranks: JsonObject` (same dict shape, different keys); `unlocked_nodes` kept as-is (a "node" is an "ability" now, vocabulary-only). Follow the Sprint 75 generic reflection-scanner pattern, not a hand-written shim (§4, §6.2). | [ ] |
-| 78.4 | **Content migration — 5-discipline non-combat seed set.** Survival, Subterfuge, Commerce, Rhetoric, Fortitude, absorbing all 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`, `sharp_eyes`, `haggler`, `silver_tongue`) and all 6 flat skills, zero new combat content (§7). | [ ] |
+| 78.1 | **`DisciplineDef`/`DisciplineRegistry`.** Loaded from `world_content/disciplines.yaml`, mirroring the existing `SkillTreeRegistry` load pattern (marks-def, `discover_features()`-compatible). Static YAML only — discipline structure is not a live-tunable dial (§3). | [x] |
+| 78.2 | **`AbilityRegistry`.** Loaded from `world_content/abilities.yaml` (split from `disciplines.yaml` per §5.4's rationale — disciplines change rarely, abilities change often), each entry validated into the Tier 1 `AbilityDef` shape plus Tier-2-only display fields. | [x] |
+| 78.3 | **`PlayerStats` schema migration (Database Specialist gate).** `skills: JsonObject` → `discipline_ranks: JsonObject` (same dict shape, different keys); `unlocked_nodes` kept as-is (a "node" is an "ability" now, vocabulary-only). Follow the Sprint 75 generic reflection-scanner pattern, not a hand-written shim (§4, §6.2). | [x] |
+| 78.4 | **Content migration — 5-discipline non-combat seed set.** Survival, Subterfuge, Commerce, Rhetoric, Fortitude, absorbing all 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`, `sharp_eyes`, `haggler`, `silver_tongue`) and all 6 flat skills, zero new combat content (§7). | [x] |
 | 78.5 | ~~`sharp_eyes` modifier-key remap.~~ **Dropped, superseded 2026-07-13 by the Option A namespace-retention decision — see [`discipline_ability_system.md`](discipline_ability_system.md) §6.1.** The original premise (that `skill.perception` was the *only* reference to the flat namespace, and had to be remapped to `discipline_ranks.subterfuge`) was false — a fuller audit found six live `skill.<name>` references across `traits/standard.py`, `consumables/buffs.py`, `items/effects.py`, `marks.yaml`, and `webui/player/frontend.py`, not just `sharp_eyes`. Research/Planning's resolved direction: `skill.<name>` is retained **permanently** as the check/modifier-key namespace (it's orthogonal to the `features/skills/` package's existence, not a back-compat alias); only the flat `SkillRegistry` catalog and `PlayerStats.skills` storage are deleted, with each check's base value re-sourced from `discipline_ranks.<discipline>` instead. No remap needed anywhere — this task is moot. | [ ] dropped |
-| 78.6 | **Code migration.** Delete `features/skills/definitions.py` (no back-compat alias, matches the `area_id` disposition precedent); `features/progression/skill_tree.py` → `features/disciplines/abilities.py` (renamed/extended); `engine/game/checks.py::skill_check()` and `engine/game/modifiers.py` unchanged (§6.3). | [ ] |
-| 78.7 | **Command rework — `train`/`learn`/`abilities`/`skills` → unified discipline/ability commands.** Driven by the generalized `check_acquisition`, folding in the already-flagged "one `ctx.say()` per command" fix for these commands' listings while their underlying data model changes shape anyway. | [ ] |
-| 78.8 | **Retrofit existing verbs onto `check_usage`.** `features/exploration/forage.py`, `sense.py`, movement/lockpicking's `pick` — replace hardcoded Python conditions (e.g. `Room.indoor == False`) with data-driven `usage:` YAML read through `check_usage`, proving the new mechanism actually replaces the old gating, not just duplicates it (§6.3). | [ ] |
-| 78.9 | **Backend + Frontend unit/e2e tests.** Registry loading, acquisition/usage flows end-to-end through the real content, command output, schema migration round-trip. | [ ] |
-| 78.10 | **Full Test & QA pass** (lint + typecheck + test, e2e) before merge. | [ ] |
-| 78.11 | **Docs.** `docs/user_guide.md` (disciplines/abilities/proficiency explained to players), `docs/admin_builder_guide.md` (authoring new abilities/disciplines), this roadmap section. | [ ] |
+| 78.6 | **Code migration.** Delete `features/skills/definitions.py` (no back-compat alias, matches the `area_id` disposition precedent); `features/progression/skill_tree.py` → `features/disciplines/abilities.py` (renamed/extended); `engine/game/checks.py::skill_check()` and `engine/game/modifiers.py` unchanged (§6.3). | [x] |
+| 78.7 | **Command rework — `train`/`learn`/`abilities`/`skills` → unified discipline/ability commands.** Driven by the generalized `check_acquisition`, folding in the already-flagged "one `ctx.say()` per command" fix for these commands' listings while their underlying data model changes shape anyway. | [x] |
+| 78.8 | **Retrofit existing verbs onto `check_usage`.** `features/exploration/forage.py`, `sense.py`, movement/lockpicking's `pick` — replace hardcoded Python conditions (e.g. `Room.indoor == False`) with data-driven `usage:` YAML read through `check_usage`, proving the new mechanism actually replaces the old gating, not just duplicates it (§6.3). | [x] |
+| 78.9 | **Backend + Frontend unit/e2e tests.** Registry loading, acquisition/usage flows end-to-end through the real content, command output, schema migration round-trip. | [x] |
+| 78.10 | **Full Test & QA pass** (lint + typecheck + test, e2e) before merge. | [x] |
+| 78.11 | **Docs.** `docs/user_guide.md` (disciplines/abilities/proficiency explained to players), `docs/admin_builder_guide.md` (authoring new abilities/disciplines), this roadmap section. | [x] |
+
+**Gate results (78.10):** Database Specialist, Code Reviewer, and both Test & QA lanes (unit +
+e2e) all reported clean. Four small non-blocking follow-ups were surfaced and moved to the
+Backlog table below rather than blocking merge: a dead `PlayerStats.skills` column left
+un-dropped (startup warning), two stale `required_skill`/`required_skill_min` comments in
+`features/weather/modifiers.py`, a cosmetic help-category mismatch for `train`/`learn`/
+`abilities`, and an e2e coverage gap for the new command surface.
 
 **OPEN ITEM carried from the design audit — not resolved here, flagged for a future sprint if
 demand appears:** per-ability `cost`, `cooldown_seconds`, resource costs, and proficiency-growth
@@ -1106,18 +1128,21 @@ beyond what Sprint 77 already shipped.
   + composition-layer work, no `engine/` changes; Database Specialist gate skipped). Branch
   `sprint-76-economy-live-tuning`, all tasks `[x]` — see the Sprint 76 section above for the full
   commit list.
-- **Used (77 all complete, pending Integrator merge/version-bump; 78 in design):**
+- **Used (77 and 78 all complete, pending Integrator merge/version-bump):**
   Discipline/Ability system (user-driven design brief, reworked to fit Lorecraft's
   combat-shelved status and Tier 1/2 architecture), split into **Sprint 77** (Tier 1 mechanism —
   `engine/game/abilities.py`, Phases A–B.1) and **Sprint 78** (Tier 2 policy/content —
   `features/disciplines/`, schema + content migration, command rework, Phases B.2–F), mirroring
   the Sprint 73/74 mechanism-then-policy precedent. Design finalized and Research/Planning-reviewed
   2026-07-13 (see [`discipline_ability_system.md`](discipline_ability_system.md)). **Sprint 77 is
-  now implemented** — 77.1–77.8 all `[x]` on branch `sprint-77-abilities-tier1` (7 implementation
+  implemented** — 77.1–77.8 all `[x]` on branch `sprint-77-abilities-tier1` (7 implementation
   commits plus the earlier design-finalization commit; no schema/DB changes), awaiting Integrator
-  merge/version-bump. **Sprint 78 has not started implementation** — see the Sprint 77/78 sections
-  above for full task tables. **Next genuinely free sprint number: 79.** Don't recycle a number
-  that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+  merge/version-bump. **Sprint 78 is also implemented** — 78.1–78.4 and 78.6–78.11 all `[x]` on
+  branch `sprint-78-abilities-tier2` (8 implementation commits plus the earlier design-correction
+  commit; 78.5 dropped/superseded), Database Specialist/Code Reviewer/Test & QA gates all clean,
+  awaiting Integrator merge/version-bump — see the Sprint 77/78 sections above for full task
+  tables. **Next genuinely free sprint number: 79.** Don't recycle a number that appears here or
+  in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 

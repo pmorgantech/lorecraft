@@ -16,7 +16,6 @@ Each guide provides detailed workflows, code examples, testing patterns, and des
 | Guide | Sprint | Subsystem | Purpose | Status |
 |-------|--------|-----------|---------|--------|
 | [combat_system.md](combat_system.md) | 31–33 | Combat | Tick-based combat, damage, NPC AI, kill credit, loot | Design phase; implementation TBD |
-| [discipline_ability_system.md](discipline_ability_system.md) | 77 (proposed) | Skills & Abilities | Replaces `features/skills/` + `features/progression/skill_tree.py` with a unified Discipline → Ability model; data-driven, non-combat seed disciplines, combat-ready seam | Design phase; not yet on roadmap as a numbered sprint |
 | [death_resurrection.md](death_resurrection.md) | 32 | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn | Design phase; implementation TBD |
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | 10, 30 | NPCs, Quests, Dialogue | NPC scheduling, dialogue trees, quest branching | Sprint 10 implemented; Sprint 30 in design |
 
@@ -37,6 +36,7 @@ These features are fully implemented. The guides below document the design and i
 | [tooling_infrastructure.md](tooling_infrastructure.md) | 10.5 | Admin Tooling | World CLI, content validators, analytics queries | ✅ Complete |
 | [trade_economy.md](trade_economy.md) | 28 | Trading & Economy | Shops, currency, player-to-player trading, escrow | ✅ Complete |
 | [transit_systems.md](transit_systems.md) | 29 | Transit & Travel | Routes, waypoints, schedules, position interpolation | ✅ Complete |
+| [discipline_ability_system.md](discipline_ability_system.md) | 77–78 | Disciplines & Abilities | Replaced `features/skills/` + `features/progression/skill_tree.py` with a unified Discipline → Ability model (Tier 1 mechanism in 77, Tier 2 policy/content in 78); data-driven, non-combat seed disciplines, combat-ready seam | ✅ Complete (pending Integrator merge) |
 
 ---
 

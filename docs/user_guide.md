@@ -281,18 +281,35 @@ similar helps). If it goes badly your rest is interrupted: shorter, and only a p
 recovery. A good night's sleep sometimes comes with a dream — occasionally a hint tied to
 something you've already discovered.
 
-## Character: Traits, Skills, and Reputation
+## Character: Traits, Disciplines, and Reputation
 
 ```
 traits          — list your active traits (from equipment, effects, and background)
-skills          — list your skills and their current levels
+disciplines     — list your disciplines and your rank in each (also: skills)
 reputation      — list your standing with NPCs and factions (also: rep)
 ```
 
 Traits are passive bonuses or penalties — some come from what you wear, some from timed
-effects, and some are permanent (background or earned through play). Skills improve the
-more you use them ("learn by doing") — there's no way to train them directly. Reputation
-with an NPC or faction can unlock better prices, new dialogue, or additional quests.
+effects, and some are permanent (background or earned through play).
+
+Your capabilities are organized into five **disciplines**, each a themed body of practice:
+
+| Discipline | Covers |
+|------------|--------|
+| Survival | Foraging, tracking, cartography, and weathering the wild |
+| Subterfuge | Lockpicking, perception, and moving unseen |
+| Commerce | Bartering and driving a fair deal |
+| Rhetoric | Persuasion and social craft |
+| Fortitude | Physical resilience |
+
+Each discipline has its own **rank**, and every check that leans on a discipline (a
+survival check to forage, a lockpicking check to `pick`, a perception check to `sense` or
+`search`, a bartering check when you `sell`, a persuasion check in dialogue) rolls against
+that discipline's rank. Ranks grow the more you use the checks they govern ("learn by
+doing") — there's no way to train a rank directly. Run `disciplines` (its alias `skills`
+is the same read-only command, not a separate system) to see your current rank in each.
+Reputation with an NPC or faction can unlock better prices, new dialogue, or additional
+quests.
 
 ## Experience & Leveling
 
@@ -311,23 +328,25 @@ its own distinct color, and you're paid coins and skill points on the spot. Thos
 also admin-configured rather than a fixed rate, so don't assume one server's payout matches
 another's.
 
-**Skill points** are the currency you spend on the skill tree — see
-[Skill Tree & Abilities](#skill-tree--abilities) below for how to spend them.
+**Skill points** are the currency you spend on abilities — see
+[Abilities](#abilities) below for how to spend them.
 
 `score` (or the **Stats** pane) shows your current level and XP progress (`X/Y XP` toward the
 next level) at a glance.
 
-## Skill Tree & Abilities
+## Abilities
 
 ```
-train [ability]     — spend skill points to unlock an ability (no arg lists what's trainable) (also: learn)
+train [ability]     — spend skill points to train an ability (no arg lists what's trainable) (also: learn)
 abilities            — list the abilities you know and what you can currently train (also: abils)
 ```
 
-The skill points you earn from [leveling up](#experience--leveling) are spent on a **skill
-tree** of named abilities. Each ability costs a number of skill points and may require another
-ability first (a prerequisite); once trained, an ability is yours for good — there's no
-respec.
+The skill points you earn from [leveling up](#experience--leveling) are spent on
+**abilities** — one-time, permanent unlocks, each filed under one of the five
+[disciplines](#character-traits-disciplines-and-reputation) above. Each ability costs a
+number of skill points and may require another ability first (a prerequisite), and some
+also require a minimum rank in their discipline or a minimum character level; once
+trained, an ability is yours for good — there's no respec.
 
 Abilities come in three flavors, and a given ability is always exactly one of them:
 
@@ -545,7 +564,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `extinguish <item>` | | Put out a lit light source |
 | `turn <item>` | `pull`, `activate` | Cycle a lever or dial to its next state |
 | `traits` | | List your active traits |
-| `skills` | | List your skills and their levels |
+| `disciplines` | `skills` | List your disciplines and your rank in each |
 | `reputation` | `rep` | List your standing with NPCs and factions |
 | `score` | | Your progress: level/xp, quests, wealth, reputation, discoveries |
 | `search` | | Look for hidden exits and secrets in the room |
