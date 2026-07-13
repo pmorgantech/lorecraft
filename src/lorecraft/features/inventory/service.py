@@ -34,6 +34,23 @@ from lorecraft.engine.services.item_components import (
     get_component_state,
     set_component_state,
 )
+from lorecraft.features.inventory.look_pure import (
+    ATTR_DESCRIPTION,
+    ATTR_EXITS,
+    ATTR_NAME,
+    ATTR_TERRAIN_SUFFIX,
+    ITEM_ATTR_NAME,
+    ITEM_ATTR_QUANTITY,
+    look_effects,
+)
+from lorecraft.protocol import (
+    EntitySnapshot,
+    Feed,
+    PanelUpdate,
+    ScriptBudget,
+    ScriptRequest,
+)
+from lorecraft.protocol.version import PROTOCOL_VERSION
 from lorecraft.types import JsonValue
 
 _M = TypeVar("_M")
@@ -205,29 +222,69 @@ class InventoryService:
         self._emit_item_dropped(ctx, item.id, count=count)
 
     def look(self, ctx: GameContext) -> None:
-        ctx.say(ctx.room.name)
-        ctx.say(ctx.room.description)
+        """Thin shim over the pure `look_effects` policy: read the same world
+        state it always has (room, visible exits, terrain suffix, room items)
+        into an immutable `ScriptRequest`, then apply the returned messages the
+        old way. No behavior change — the ordering/formatting lives in
+        `look_pure.look_effects`."""
+        request = self._build_look_request(ctx)
+        result = look_effects(request)
+        for message in result.messages:
+            if isinstance(message, Feed):
+                ctx.say(message.text, MessageType(message.message_type))
+            elif isinstance(message, PanelUpdate):
+                ctx.push_update(message.key, message.value)
 
+    def _build_look_request(self, ctx: GameContext) -> ScriptRequest:
+        """Materialize the read-only room snapshot `look_effects` consumes."""
         terrain_def = terrain_module.get_registry().get(ctx.room.terrain)
-        if terrain_def is not None and terrain_def.description_suffix:
-            ctx.say(terrain_def.description_suffix)
-
+        terrain_suffix = (
+            terrain_def.description_suffix
+            if terrain_def is not None and terrain_def.description_suffix
+            else None
+        )
         visible_exits = [
             exit_.direction
             for exit_ in ctx.room_repo.exits(ctx.room.id)
             if not exit_.hidden or is_exit_discovered(ctx, ctx.room.id, exit_.direction)
         ]
-        if visible_exits:
-            ctx.say(f"Exits: {', '.join(sorted(visible_exits))}.")
-        else:
-            ctx.say("There are no obvious exits.")
-
-        room_items = ctx.item_repo.items_in_room(ctx.room.id)
-        if room_items:
-            summary = format_room_items_summary(room_items)
-            ctx.say(f"You see: {summary}.")
-
-        ctx.push_update("room_id", ctx.room.id)
+        room_snapshot = EntitySnapshot(
+            id=ctx.room.id,
+            kind="room",
+            attributes={
+                ATTR_NAME: ctx.room.name,
+                ATTR_DESCRIPTION: ctx.room.description,
+                ATTR_TERRAIN_SUFFIX: terrain_suffix,
+                ATTR_EXITS: list(visible_exits),
+            },
+        )
+        related = [
+            EntitySnapshot(
+                id=item.id,
+                kind="item",
+                attributes={
+                    ITEM_ATTR_NAME: item.name,
+                    ITEM_ATTR_QUANTITY: stack.quantity,
+                },
+            )
+            for stack, item in ctx.item_repo.items_in_room(ctx.room.id)
+        ]
+        actor_snapshot = EntitySnapshot(id=ctx.player.id, kind="player", attributes={})
+        return ScriptRequest(
+            api_version=PROTOCOL_VERSION,
+            script_id="look",
+            script_version=1,
+            command_or_event="look",
+            actor_snapshot=actor_snapshot,
+            room_snapshot=room_snapshot,
+            selected_related_entities=related,
+            logical_time=0,
+            rng_stream_id="",
+            capability_set=[],
+            budget=ScriptBudget(
+                wall_ms=0, instructions=0, memory_bytes=0, output_bytes=0
+            ),
+        )
 
     def inventory(self, ctx: GameContext) -> None:
         stacks = ctx.item_repo.stacks_carried_by(ctx.player.id)
