@@ -1,0 +1,45 @@
+{
+  "api_version": 1,
+  "script_id": "look",
+  "script_version": 1,
+  "command_or_event": "look",
+  "actor_snapshot": {
+    "id": "player-1",
+    "kind": "player",
+    "attributes": {}
+  },
+  "room_snapshot": {
+    "id": "village_square",
+    "kind": "room",
+    "attributes": {
+      "name": "The Village Square of Ashmoore",
+      "description": "Cobblestones worn smooth by a hundred years of market-day boots radiate outward from a mossy stone well at the centre. A weathervane shaped like a rearing stallion creaks overhead. The smell of fresh bread drifts from somewhere eastward. To the north the clash of iron rings from a forge; to the west a painted sign swings above the inn. The road south leads out through the old gate.",
+      "terrain_suffix": null,
+      "exits": [
+        "north",
+        "east",
+        "west",
+        "south"
+      ]
+    }
+  },
+  "selected_related_entities": [
+    {
+      "id": "copper_coin",
+      "kind": "item",
+      "attributes": {
+        "name": "Worn Copper Coin",
+        "quantity": 1
+      }
+    }
+  ],
+  "logical_time": 0,
+  "rng_stream_id": "",
+  "capability_set": [],
+  "budget": {
+    "wall_ms": 0,
+    "instructions": 0,
+    "memory_bytes": 0,
+    "output_bytes": 0
+  }
+}

@@ -8,9 +8,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Self
 
-from lorecraft.protocol.effects import Effect
-from lorecraft.protocol.messages import OutboundMessage
+from lorecraft.errors import ValidationError
+from lorecraft.protocol._coerce import (
+    optional_int,
+    require_int,
+    require_list,
+    require_object,
+    require_str,
+)
+from lorecraft.protocol.effects import Effect, effect_from_json
+from lorecraft.protocol.messages import OutboundMessage, message_from_json
+from lorecraft.types import JsonObject
 
 # ID aliases — bare strings on the wire, matching Rust's transparent newtypes.
 WorldId = str
@@ -40,6 +50,15 @@ class Diagnostic:
     level: str
     message: str
 
+    def to_json(self) -> JsonObject:
+        return {"level": self.level, "message": self.message}
+
+    @classmethod
+    def from_json(cls, data: JsonObject) -> Self:
+        return cls(
+            level=require_str(data, "level"), message=require_str(data, "message")
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class CommandEnvelope:
@@ -55,6 +74,33 @@ class CommandEnvelope:
     deadline_ms: int
     raw: str
 
+    def to_json(self) -> JsonObject:
+        return {
+            "protocol_version": self.protocol_version,
+            "world_id": self.world_id,
+            "actor_id": self.actor_id,
+            "player_id": self.player_id,
+            "session_id": self.session_id,
+            "command_id": self.command_id,
+            "receive_sequence": self.receive_sequence,
+            "deadline_ms": self.deadline_ms,
+            "raw": self.raw,
+        }
+
+    @classmethod
+    def from_json(cls, data: JsonObject) -> Self:
+        return cls(
+            protocol_version=require_int(data, "protocol_version"),
+            world_id=require_str(data, "world_id"),
+            actor_id=require_str(data, "actor_id"),
+            player_id=require_str(data, "player_id"),
+            session_id=require_str(data, "session_id"),
+            command_id=require_str(data, "command_id"),
+            receive_sequence=require_int(data, "receive_sequence"),
+            deadline_ms=require_int(data, "deadline_ms"),
+            raw=require_str(data, "raw"),
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class CommandOutcome:
@@ -66,3 +112,40 @@ class CommandOutcome:
     messages: list[OutboundMessage] = field(default_factory=list)
     applied_effects: list[Effect] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
+
+    def to_json(self) -> JsonObject:
+        # Nested effects/messages carry their own ``{"type": ...}`` discriminator;
+        # recurse through their ``to_json`` rather than flattening with asdict.
+        return {
+            "command_id": self.command_id,
+            "status": self.status.value,
+            "commit_sequence": self.commit_sequence,
+            "messages": [message.to_json() for message in self.messages],
+            "applied_effects": [effect.to_json() for effect in self.applied_effects],
+            "diagnostics": [diagnostic.to_json() for diagnostic in self.diagnostics],
+        }
+
+    @classmethod
+    def from_json(cls, data: JsonObject) -> Self:
+        status_value = require_str(data, "status")
+        try:
+            status = OutcomeStatus(status_value)
+        except ValueError as exc:
+            raise ValidationError(f"unknown outcome status: {status_value!r}") from exc
+        return cls(
+            command_id=require_str(data, "command_id"),
+            status=status,
+            commit_sequence=optional_int(data, "commit_sequence"),
+            messages=[
+                message_from_json(require_object(item))
+                for item in require_list(data, "messages")
+            ],
+            applied_effects=[
+                effect_from_json(require_object(item))
+                for item in require_list(data, "applied_effects")
+            ],
+            diagnostics=[
+                Diagnostic.from_json(require_object(item))
+                for item in require_list(data, "diagnostics")
+            ],
+        )

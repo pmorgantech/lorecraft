@@ -182,3 +182,133 @@ def test_panel_update_matches_rust_wire_shape() -> None:
 def test_outbound_message_roundtrips_through_json() -> None:
     for msg in (Feed(text="hi", message_type="system"), PanelUpdate(key="k", value=3)):
         assert message_from_json(msg.to_json()) == msg
+
+
+# --- Container recursive to_json/from_json round-trips (Rust-port Phase 2) ---
+#
+# These exercise the container types' *recursive* serialization: a naive
+# `dataclasses.asdict()` would drop the nested `{"type": ...}` discriminator on
+# `Effect`/`OutboundMessage` variants and mangle the `from`/`from_` wire-key
+# rename. The Rust `lorecraft-protocol` crate consumes these exact shapes, so
+# round-trip fidelity is the cross-language contract.
+
+
+def _sample_snapshot() -> EntitySnapshot:
+    return EntitySnapshot(
+        id="tavern",
+        kind="room",
+        attributes={"name": "Tavern", "exits": ["north"], "nested": {"a": [1, True]}},
+    )
+
+
+def test_entity_snapshot_roundtrips() -> None:
+    snap = _sample_snapshot()
+    assert EntitySnapshot.from_json(snap.to_json()) == snap
+
+
+def test_diagnostic_roundtrips() -> None:
+    diag = Diagnostic(level="warning", message="something")
+    assert Diagnostic.from_json(diag.to_json()) == diag
+
+
+def test_command_envelope_roundtrips_recursively() -> None:
+    env = CommandEnvelope(
+        protocol_version=1,
+        world_id="world-1",
+        actor_id="actor-1",
+        player_id="player-1",
+        session_id="session-1",
+        command_id="cmd-1",
+        receive_sequence=42,
+        deadline_ms=5000,
+        raw="look",
+    )
+    assert CommandEnvelope.from_json(env.to_json()) == env
+
+
+def test_script_budget_roundtrips() -> None:
+    budget = ScriptBudget(
+        wall_ms=50, instructions=100000, memory_bytes=1048576, output_bytes=65536
+    )
+    assert ScriptBudget.from_json(budget.to_json()) == budget
+
+
+def test_emitted_event_and_scheduled_work_roundtrip() -> None:
+    event = EmittedEvent(event_type="looked", payload={"room": "tavern"})
+    work = ScheduledWork(job_id="j1", due_logical_time=99, payload=None)
+    assert EmittedEvent.from_json(event.to_json()) == event
+    assert ScheduledWork.from_json(work.to_json()) == work
+
+
+def test_script_request_roundtrips_with_nested_snapshots() -> None:
+    request = ScriptRequest(
+        api_version=1,
+        script_id="look",
+        script_version=1,
+        command_or_event="look",
+        actor_snapshot=EntitySnapshot(id="p", kind="player", attributes={}),
+        room_snapshot=_sample_snapshot(),
+        selected_related_entities=[
+            EntitySnapshot(id="sword", kind="item", attributes={"name": "Old Sword"})
+        ],
+        logical_time=7,
+        rng_stream_id="s1",
+        capability_set=["read"],
+        budget=ScriptBudget(
+            wall_ms=50, instructions=100000, memory_bytes=1048576, output_bytes=65536
+        ),
+    )
+    assert ScriptRequest.from_json(request.to_json()) == request
+
+
+def test_script_result_roundtrips_with_heterogeneous_messages() -> None:
+    """A `ScriptResult` holding a mix of `Feed`/`PanelUpdate` messages must keep
+    each variant's own `{"type": ...}` tag through the round-trip."""
+    result = ScriptResult(
+        messages=[
+            Feed(text="Tavern", message_type="system"),
+            PanelUpdate(key="room_id", value="tavern"),
+        ],
+        proposed_effects=[SendNarration(text="hi", message_type="feed")],
+        emitted_events=[EmittedEvent(event_type="looked", payload={"n": 1})],
+        scheduled_work=[ScheduledWork(job_id="j1", due_logical_time=5, payload=None)],
+        diagnostics=[Diagnostic(level="info", message="ok")],
+    )
+    dumped = result.to_json()
+    # (b) each nested variant preserves its own discriminator tag on the wire.
+    assert [m["type"] for m in dumped["messages"]] == ["Feed", "PanelUpdate"]
+    assert dumped["proposed_effects"][0]["type"] == "SendNarration"
+    assert ScriptResult.from_json(dumped) == result
+
+
+def test_command_outcome_roundtrips_preserving_effect_tags_and_from_key() -> None:
+    """A `CommandOutcome` carrying heterogeneous effects must keep each effect's
+    tag *and* the `from`/`from_` wire-key rename intact across the round-trip."""
+    outcome = CommandOutcome(
+        command_id="cmd-1",
+        status=OutcomeStatus.EXECUTED,
+        commit_sequence=7,
+        messages=[Feed(text="You go north.", message_type="system")],
+        applied_effects=[
+            MoveEntity(entity="player-1", from_="tavern", to="street"),
+            TransferItem(item="coin", from_="room", to="player-1", quantity=3),
+            AdjustMeter(entity="player-1", meter="health", delta=-2),
+        ],
+        diagnostics=[Diagnostic(level="info", message="ok")],
+    )
+    dumped = outcome.to_json()
+    # (b) heterogeneous effect tags survive; (c) the `from` wire-key rename holds.
+    assert [e["type"] for e in dumped["applied_effects"]] == [
+        "MoveEntity",
+        "TransferItem",
+        "AdjustMeter",
+    ]
+    assert dumped["applied_effects"][0]["from"] == "tavern"
+    assert "from_" not in dumped["applied_effects"][0]
+    assert dumped["applied_effects"][1]["from"] == "room"
+    assert CommandOutcome.from_json(dumped) == outcome
+
+
+def test_command_outcome_roundtrips_with_none_commit_sequence() -> None:
+    outcome = CommandOutcome(command_id="cmd-1", status=OutcomeStatus.BLOCKED)
+    assert CommandOutcome.from_json(outcome.to_json()) == outcome
