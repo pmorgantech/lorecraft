@@ -20,6 +20,12 @@ import uvicorn
 
 from lorecraft.config import Settings
 from lorecraft.main import create_app
+from tests._rust_gateway import (
+    RustGateway,
+    ensure_gateway_binary,
+    through_rust_enabled,
+    unique_socket_path,
+)
 
 playwright_sync_api = pytest.importorskip("playwright.sync_api")
 sync_playwright = playwright_sync_api.sync_playwright
@@ -89,21 +95,53 @@ class _LiveServer:
 
 @pytest.fixture
 def live_server(tmp_path: Path) -> Iterator[str]:
-    """Boot the real app against a fresh, disposable sqlite DB per test."""
+    """Boot the real app against a fresh, disposable sqlite DB per test.
+
+    Default: browsers talk straight to uvicorn (the Python-direct path, which
+    stays the rollback path). When `LORECRAFT_THROUGH_RUST` is set (see
+    `tests/_rust_gateway.through_rust_enabled`), the same app is booted with the
+    gateway adapter enabled and a `lorecraft-gateway` subprocess is spawned in
+    front of it; the yielded `base_url` then points at the **Rust front door**,
+    so the browser loads the whole app — HTML, static assets, `/auth/ws-ticket`,
+    and the terminated `/ws` — through Rust with no test-body change.
+    """
+    if not through_rust_enabled():
+        settings = Settings(
+            database_path=str(tmp_path / "e2e-game.db"),
+            audit_database_path=str(tmp_path / "e2e-audit.db"),
+            world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
+            seed_player_id="",
+            seed_player_username="",
+        )
+        server = _LiveServer(create_app(settings=settings))
+        server.start()
+        try:
+            yield server.base_url
+        finally:
+            server.stop()
+        return
+
+    ensure_gateway_binary()
+    socket_path = unique_socket_path()
     settings = Settings(
         database_path=str(tmp_path / "e2e-game.db"),
         audit_database_path=str(tmp_path / "e2e-audit.db"),
         world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
         seed_player_id="",
         seed_player_username="",
+        gateway_enabled=True,
+        gateway_socket_path=socket_path,
     )
-    app = create_app(settings=settings)
-    server = _LiveServer(app)
+    server = _LiveServer(create_app(settings=settings))
     server.start()
+    gateway = RustGateway(backend_url=server.base_url, socket_path=socket_path)
     try:
-        yield server.base_url
+        gateway.start()
+        yield gateway.base_url
     finally:
+        gateway.stop()
         server.stop()
+        Path(socket_path).unlink(missing_ok=True)
 
 
 @pytest.fixture

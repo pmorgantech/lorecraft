@@ -38,10 +38,24 @@ class VirtualPlayer:
         player_id: str,
         username: str,
         *,
+        ticket: str | None = None,
         timeout: float = _DEFAULT_TIMEOUT_SECONDS,
     ) -> VirtualPlayer:
-        """Open the socket and consume the initial `connected` handshake message."""
-        ws = await websockets.connect(f"{ws_url}/ws?player_id={player_id}")
+        """Open the socket and consume the initial `connected` handshake message.
+
+        Two auth transports, selected by whether a `ticket` is supplied:
+
+        - `ticket=None` (default): the legacy `?player_id=` query path, used by
+          the Python-direct simulation server (which enables
+          `allow_query_player_id`). Exercises the raw wire protocol without the
+          login UI.
+        - `ticket=<single-use ws-ticket>`: the real `?ticket=` path required by
+          the Rust gateway front door, which does **not** accept `?player_id=`.
+          Mint the ticket via `POST /auth/ws-ticket` (see
+          `SimulationServer.prepare_login`).
+        """
+        query = f"ticket={ticket}" if ticket is not None else f"player_id={player_id}"
+        ws = await websockets.connect(f"{ws_url}/ws?{query}")
         player = cls(player_id=player_id, username=username, _ws=ws)
         handshake = await asyncio.wait_for(player._recv(), timeout=timeout)
         if handshake.get("type") != "connected":

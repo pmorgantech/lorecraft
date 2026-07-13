@@ -26,8 +26,12 @@ def _username(prefix: str) -> str:
 
 async def _connect(server: SimulationServer, prefix: str) -> VirtualPlayer:
     username = _username(prefix)
-    player_id = server.create_player(username)
-    return await VirtualPlayer.connect(server.ws_url, player_id, username)
+    # prepare_login yields a ticket only in Rust-fronted mode; in Python-direct
+    # mode it is None and VirtualPlayer.connect falls back to ?player_id=.
+    player_id, ticket = server.prepare_login(username)
+    return await VirtualPlayer.connect(
+        server.ws_url, player_id, username, ticket=ticket
+    )
 
 
 def test_player_joined_broadcast_reaches_other_player_in_room(
@@ -42,9 +46,11 @@ async def _test_player_joined_broadcast(server: SimulationServer) -> None:
     bob = await _connect(server, "bob")
     try:
         alice_username = _username("alice")
-        alice_id = server.create_player(alice_username)
+        alice_id, alice_ticket = server.prepare_login(alice_username)
         alice = await asyncio.wait_for(
-            VirtualPlayer.connect(server.ws_url, alice_id, alice_username),
+            VirtualPlayer.connect(
+                server.ws_url, alice_id, alice_username, ticket=alice_ticket
+            ),
             timeout=5,
         )
         try:

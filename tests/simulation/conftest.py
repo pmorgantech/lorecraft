@@ -17,7 +17,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,12 @@ from lorecraft.main import create_app
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.repos.stack_repo import StackRepo
+from tests._rust_gateway import (
+    RustGateway,
+    ensure_gateway_binary,
+    through_rust_enabled,
+    unique_socket_path,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _STARTUP_TIMEOUT_SECONDS = 10.0
@@ -83,13 +89,24 @@ class SimulationServer:
     base_url: str
     game_db_path: Path
     audit_db_path: Path
+    # True when `base_url` is the Rust gateway front door (ticket-only `/ws`);
+    # False when it is the Python uvicorn origin directly (legacy `?player_id=`).
+    through_rust: bool = False
+    # Session cookies captured from each character's `/lobby/create` 303, keyed
+    # by player id, so a later `POST /auth/ws-ticket` can authenticate as them.
+    _session_cookies: dict[str, httpx.Cookies] = field(default_factory=dict)
 
     @property
     def ws_url(self) -> str:
         return "ws://" + self.base_url.removeprefix("http://")
 
     def create_player(self, username: str) -> str:
-        """Create a character via the real `/lobby/create` route; return its id."""
+        """Create a character via the real `/lobby/create` route; return its id.
+
+        Captures the `lorecraft_session` cookie set on the 303 redirect (relayed
+        untouched through the Rust proxy in Rust-fronted mode) so `mint_ticket`
+        can authenticate the follow-up `POST /auth/ws-ticket` as this character.
+        """
         # /lobby/create requires a matching `password_confirm` and enforces the
         # default PasswordPolicy (mixed case + a digit), so send both fields with
         # a policy-compliant password — otherwise it 400s. (Throwaway per-test
@@ -111,7 +128,36 @@ class SimulationServer:
             player = session.exec(
                 select(Player).where(Player.username == username)
             ).one()
+            self._session_cookies[player.id] = response.cookies
             return player.id
+
+    def mint_ticket(self, player_id: str) -> str:
+        """Mint a single-use WS ticket via the proxied `POST /auth/ws-ticket`.
+
+        Uses the session cookie captured by `create_player`, so the whole
+        cookie -> ticket round-trip goes through the Rust front door — proving
+        the ticket flow survives the reverse proxy before it is redeemed on the
+        Rust `/ws` upgrade.
+        """
+        cookies = self._session_cookies.get(player_id)
+        if cookies is None:
+            raise RuntimeError(f"no session cookie captured for player {player_id}")
+        response = httpx.post(f"{self.base_url}/auth/ws-ticket", cookies=cookies)
+        response.raise_for_status()
+        return response.json()["ws_ticket"]
+
+    def prepare_login(self, username: str) -> tuple[str, str | None]:
+        """Create a character and return `(player_id, ticket)` for a WS connect.
+
+        In Rust-fronted mode the ticket is a real single-use ws-ticket (the Rust
+        `/ws` accepts only `?ticket=`); in Python-direct mode it is `None` and
+        the caller connects with the legacy `?player_id=` path. Callers pass the
+        ticket straight to `VirtualPlayer.connect(..., ticket=ticket)`, which
+        selects the transport accordingly — one call site for both modes.
+        """
+        player_id = self.create_player(username)
+        ticket = self.mint_ticket(player_id) if self.through_rust else None
+        return player_id, ticket
 
     def audit_trail_for(self, actor_id: str) -> list[AuditEvent]:
         """Chronological audit events recorded for one actor."""
@@ -146,13 +192,25 @@ def simulation_server_factory(
     one independent server (e.g. audit-log regression: same script, two
     separate fresh worlds) don't have to duplicate the boot sequence. Every
     server created by a call is stopped at teardown.
+
+    Each server is either Python-direct (uvicorn only) or Rust-fronted (a
+    `lorecraft-gateway` subprocess in front of the Python app). The default is
+    taken from `LORECRAFT_THROUGH_RUST`, overridable per call with the
+    `through_rust=` keyword (the dedicated Rust-only tests force it True).
     """
     live_servers: list[_LiveServer] = []
+    gateways: list[RustGateway] = []
+    socket_paths: list[str] = []
 
-    def _make(rng_seed: int | None = None) -> SimulationServer:
+    def _make(
+        rng_seed: int | None = None, *, through_rust: bool | None = None
+    ) -> SimulationServer:
+        if through_rust is None:
+            through_rust = through_rust_enabled()
         db_dir = tmp_path_factory.mktemp("sim")
         game_db_path = db_dir / "sim-game.db"
         audit_db_path = db_dir / "sim-audit.db"
+        socket_path = unique_socket_path() if through_rust else None
         settings = Settings(
             database_path=str(game_db_path),
             audit_database_path=str(audit_db_path),
@@ -162,32 +220,71 @@ def simulation_server_factory(
             rng_seed=rng_seed,
             seed_player_id="",
             seed_player_username="",
-            # VirtualPlayer connects directly with ?player_id= to exercise
-            # the raw wire protocol (see virtual_player.py's docstring) —
-            # not the login UI, so it needs the legacy fallback explicitly
-            # (off by default since Sprint 4; see docs/roadmap.md 4.6).
-            allow_query_player_id=True,
+            # Python-direct: VirtualPlayer connects with ?player_id= to exercise
+            # the raw wire protocol (see virtual_player.py's docstring), so the
+            # legacy fallback is enabled. Rust-fronted: the gateway `/ws` is
+            # ticket-only, so keep the fallback OFF and exercise the real ticket
+            # path (create -> cookie -> /auth/ws-ticket -> ?ticket=).
+            allow_query_player_id=not through_rust,
+            gateway_enabled=through_rust,
+            gateway_socket_path=socket_path or "var/gateway.sock",
         )
         app = create_app(settings=settings)
         live_server = _LiveServer(app)
         live_server.start()
         live_servers.append(live_server)
+
+        base_url = live_server.base_url
+        if through_rust:
+            assert socket_path is not None  # set whenever through_rust
+            ensure_gateway_binary()
+            gateway = RustGateway(
+                backend_url=live_server.base_url, socket_path=socket_path
+            )
+            gateway.start()
+            gateways.append(gateway)
+            socket_paths.append(socket_path)
+            base_url = gateway.base_url
+
         return SimulationServer(
-            base_url=live_server.base_url,
+            base_url=base_url,
             game_db_path=game_db_path,
             audit_db_path=audit_db_path,
+            through_rust=through_rust,
         )
 
     try:
         yield _make
     finally:
+        for gateway in gateways:
+            gateway.stop()
         for live_server in live_servers:
             live_server.stop()
+        for socket_path in socket_paths:
+            Path(socket_path).unlink(missing_ok=True)
 
 
 @pytest.fixture
 def simulation_server(
     simulation_server_factory: Callable[..., SimulationServer],
 ) -> SimulationServer:
-    """A single fresh, disposable, real live server — the common case."""
+    """A single fresh, disposable, real live server — the common case.
+
+    Python-direct by default; Rust-fronted when `LORECRAFT_THROUGH_RUST` is set
+    (the three named exit tests consume this fixture unchanged, so the same test
+    bodies run against either front door).
+    """
     return simulation_server_factory()
+
+
+@pytest.fixture
+def rust_gateway_server(
+    simulation_server_factory: Callable[..., SimulationServer],
+) -> SimulationServer:
+    """A Rust-fronted live server, forced on regardless of the env flag.
+
+    For tests that specifically exercise the Rust gateway itself (e.g. the
+    bad-ticket -> 1008 auth rejection), so they run the Rust path even in an
+    otherwise Python-direct suite. Requires a buildable `lorecraft-gateway`.
+    """
+    return simulation_server_factory(through_rust=True)
