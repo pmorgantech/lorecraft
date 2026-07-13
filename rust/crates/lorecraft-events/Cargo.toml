@@ -1,0 +1,10 @@
+[package]
+name = "lorecraft-events"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+
+[dependencies]
+lorecraft-protocol = { path = "../lorecraft-protocol" }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"

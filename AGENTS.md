@@ -12,10 +12,14 @@ All agents working on Rust migration tasks:
 - Commit changes to feature branches, then integrate via pull request to `rust-port`.
 - Treat `rust-port` as the long-lived integration point for all Rust work.
 - Keep `main` untouched — it remains the production Python engine.
+- **Do not modify Python documentation files** (`docs/user_guide.md`, `docs/admin_builder_guide.md`,
+  `docs/architecture.md`, `docs/roadmap.md`, etc.). These files exist on `main` for the Python
+  engine and are read-only references from the rust-port branch. Rust-specific documentation
+  uses the `rust_` prefix (`docs/rust_migration_plan.md`, `docs/rust_porting_roadmap.md`, etc.).
 
 The core engine is being ported to Rust following the architectural recommendations in
 `docs/rust_migration_plan.md`. See that document for the phased approach, scripting boundary,
-and actor model design.
+and actor model design. Use `CHANGELOG_RUST.md` (not `CHANGELOG.md`) for Rust-side changes.
 
 ## Codebase structure (tier split, 2026-07-05)
 

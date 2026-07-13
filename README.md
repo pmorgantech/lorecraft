@@ -1,8 +1,42 @@
-# Lorecraft — Persistent Multiplayer Text Adventure Engine
+# Lorecraft — Rust Migration (rust-port branch)
 
-A Python-based text adventure engine designed for persistent, multiplayer worlds with a real-time clock, sophisticated world mechanics, and extensible feature system.
+**BRANCH NOTICE:** You are on the `rust-port` integration branch for the Rust engine migration.
+**Never commit to `main` or `develop` from this worktree.** See "Branch Structure" below.
 
-**Status:** Foundation and Tier 1 engine primitives complete (Sprints 1–21); Tier 2 feature band in progress (Sprints 22–35). See [`docs/roadmap.md`](docs/roadmap.md) — the single source of truth for what's done and what's next.
+This branch contains the Rust port of Lorecraft's core engine, following the phased strangler
+pattern outlined in [`docs/rust_migration_plan.md`](docs/rust_migration_plan.md). The Python
+implementation remains on `main` for reference and continued maintenance.
+
+---
+
+## Branch Structure & Development Workflow
+
+### rust-port Branch
+
+This branch is the **integration point for all Rust migration work**:
+
+- All Rust engine code lives in `rust/` with a Cargo workspace
+- New feature branches should be created **from rust-port**, never from main/develop
+- Pull requests merge **into rust-port**, never into main/develop
+- `main` branch remains the production Python engine and **must never be modified from this worktree**
+
+**Why this separation?** The Python engine on `main` is stable and used in production. Rust work is
+concurrent and experimental. Keeping them on separate branches prevents accidental pollution of the
+Python mainline.
+
+### Worktree Isolation
+
+Each agent/task works in its own `.claude/worktrees/<name>` checkout with local isolation:
+
+- **Rust builds:** Each worktree has its own `rust/target/` directory (build artifacts do not pollute
+  the primary tree or other worktrees)
+- **Python isolation:** Similar isolation via `.venv` per worktree or shared primary venv with
+  `PYTHONPATH="$PWD/src"` override
+- **Git safety:** Never `cd` into the primary tree (`/home/petem/src/Gamedev/lorecraft/`) for any
+  git operation; all work happens in the worktree
+
+See [`AGENTS.md`](AGENTS.md) for detailed worktree discipline and the shared-tree race conditions
+to avoid.
 
 ---
 
@@ -48,36 +82,105 @@ Lorecraft uses a **three-tier architecture** to separate engine concerns from ga
 
 ---
 
-## Quick Start (Development)
+## Development Setup
 
 ### Prerequisites
+
+**Rust (required for rust-port branch):**
+- Rustc 1.75+ (install via [rustup](https://rustup.rs/))
+- Cargo (included with Rust)
+- MSRV: 1.75 (minimum supported Rust version)
+
+**Python (for tools, compatibility testing, and optional worker processes):**
 - Python 3.12+
 - SQLite (included with Python)
 
-### Setup
+### Tooling Installation
+
+#### macOS / Linux
 
 ```bash
-# Install dependencies (including dev tools)
+# Install Rust (one-time, system-wide)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Verify
+rustc --version  # should be 1.75+
+cargo --version
+```
+
+#### Windows
+
+Download and install from [rustup.rs](https://rustup.rs/), or use:
+```powershell
+winget install Rustlang.Rust.GNU
+```
+
+### Worktree Setup (Agent/Task)
+
+Each agent works in a `.claude/worktrees/<name>` directory with isolated builds:
+
+```bash
+# (You are already in your worktree; no extra setup needed.)
+# Confirm isolation:
+pwd                              # should end in .claude/worktrees/<name>
+git branch --show-current        # should be rust-port or a feature branch from rust-port
+
+# Build Rust crates (artifacts stay local to this worktree's rust/target/)
+cd rust && cargo build
+
+# Run Rust tests
+cd rust && cargo test
+
+# Check with clippy
+cd rust && cargo clippy --all-targets -- -D warnings
+```
+
+**Important:** Each worktree's `rust/target/` directory is local and separate. Cargo will not
+pollute the primary tree or other worktrees.
+
+### Python-Side Setup (Optional)
+
+If working on Python compatibility or worker processes:
+
+```bash
+# Install Python dependencies
 pip install -e ".[dev]"
 
-# Run the server (starts at http://localhost:8000)
-./start.sh
-
-# Run tests
+# Run Python tests
 make test
 
 # Run linting
 make lint
-
-# Run type checking
-make typecheck
 ```
 
-See [`Makefile`](Makefile) for all available targets.
+See [`Makefile`](Makefile) for all Python targets.
 
 ---
 
 ## Project Structure
+
+### Rust (rust-port branch)
+
+```
+rust/
+├── Cargo.toml                           # Workspace definition
+└── crates/
+    ├── lorecraft-protocol/              # IDs, envelopes, serialization, versioning
+    ├── lorecraft-core/                  # Entities, effects, rules, validation
+    ├── lorecraft-runtime/               # World/zone actors, routing, queues
+    ├── lorecraft-events/                # Event types, stable dispatch, outbox
+    ├── lorecraft-scheduler/             # Logical clock, due jobs, determinism
+    ├── lorecraft-store/                 # sqlx persistence, transactions, migrations
+    ├── lorecraft-server/                # Axum HTTP/WebSocket, auth, admin APIs
+    ├── lorecraft-script/                # Script host trait, budgets, versioning
+    ├── lorecraft-script-luau/           # mlua/Luau integration
+    └── lorecraft-replay/                # Event hashing, replay validation
+```
+
+Each crate focuses on a subsystem boundary outlined in `docs/rust_migration_plan.md`.
+
+### Python (main branch — reference only)
 
 ```
 src/lorecraft/
@@ -99,10 +202,10 @@ world_content/
 └── rooms/                   # Room descriptions and layout
 
 docs/
-├── architecture_tiers.md    # Tier 1/2/3 split, extensibility
-├── engine_core.md           # Tier 1 primitives specification
-├── feature-registration.md  # How to build Tier 2 features
-├── roadmap.md               # Sprint breakdown, feature sequence, and current status
+├── rust_migration_plan.md   # Phased Rust port strategy (READ THIS FIRST)
+├── architecture_tiers.md    # Tier 1/2/3 split (Python reference)
+├── engine_core.md           # Tier 1 specs (Python reference)
+├── roadmap.md               # Python roadmap (reference only on rust-port)
 └── [many more...]
 ```
 
@@ -145,6 +248,38 @@ See [`docs/admin_builder_guide.md`](docs/admin_builder_guide.md) for authoring c
 
 ## Testing
 
+### Rust Tests
+
+```bash
+cd rust
+
+# Run all tests
+cargo test --all
+
+# Run with output
+cargo test --all -- --nocapture
+
+# Run a specific crate
+cargo test -p lorecraft-protocol
+
+# Run with logging (set RUST_LOG env var)
+RUST_LOG=debug cargo test --all -- --nocapture
+
+# Documentation tests
+cargo test --doc
+
+# Lint with clippy
+cargo clippy --all-targets -- -D warnings
+
+# Format check (run without --check to fix)
+cargo fmt --all -- --check
+```
+
+### Python Tests (reference only)
+
+Python tests on `main` are kept for reference. Rust tests validate the port incrementally
+per `docs/rust_migration_plan.md` phases.
+
 ```bash
 # Full test suite (parallel, excludes e2e/simulation)
 make test
@@ -157,12 +292,19 @@ make test-e2e
 
 # Live-server simulation tests
 make test-simulation
-
-# Single test file
-python -m pytest -n auto --dist=loadfile tests/unit/test_context.py
 ```
 
-Tests use an in-memory SQLite database and are fully deterministic (with seeded RNG).
+Tests use deterministic fixtures (seeded RNG, controlled clock) and golden-file comparisons
+for replay validation during the port.
+
+### Determinism & Replay
+
+Both Rust and Python implementations use:
+- Seeded pseudo-random number generation (controlled RNG streams per transaction)
+- Deterministic ordering keys (command sequence, job priority, event dispatch order)
+- Canonical state hashing for cross-implementation validation
+
+See `docs/rust_migration_plan.md` § "Deterministic performance under load" for details.
 
 ---
 

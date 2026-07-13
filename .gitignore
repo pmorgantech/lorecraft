@@ -203,6 +203,19 @@ tempCodeRunnerFile.py
 # Ruff stuff:
 .ruff_cache/
 
+# Rust build artifacts — per-worktree, never committed
+rust/target/
+Cargo.lock
+*.rlib
+*.rmeta
+
+# Rust IDE
+.rust-analyzer/
+rust-project.json
+
+# Rust debugger
+*.pdb
+
 # PyPI configuration file
 .pypirc
 

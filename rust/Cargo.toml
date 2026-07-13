@@ -1,0 +1,27 @@
+[workspace]
+members = [
+    "crates/lorecraft-protocol",
+    "crates/lorecraft-core",
+    "crates/lorecraft-runtime",
+    "crates/lorecraft-events",
+    "crates/lorecraft-scheduler",
+    "crates/lorecraft-store",
+    "crates/lorecraft-server",
+    "crates/lorecraft-script",
+    "crates/lorecraft-script-luau",
+    "crates/lorecraft-replay",
+]
+
+resolver = "2"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.test]
+opt-level = 2
