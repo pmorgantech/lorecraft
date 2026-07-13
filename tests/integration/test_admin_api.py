@@ -864,6 +864,197 @@ async def _test_observer_cannot_edit_progression() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Economy region pricing (live admin tuning, Sprint 76)
+# ---------------------------------------------------------------------------
+
+
+# Seeded AFTER lifespan startup (world bootstrap seeds its own RegionPricing rows
+# from world_content/world.yaml on startup); these test zones use unique ids so
+# they never collide with real world content.
+def _seed_regions(game_engine: Any) -> None:
+    from lorecraft.features.economy.models import RegionPricing
+
+    with Session(game_engine) as session:
+        session.add(
+            RegionPricing(zone="test_zone_a", region_mult=0.9, bias={"gem": 2.0})
+        )
+        session.add(RegionPricing(zone="test_zone_b", region_mult=1.2, bias={}))
+        session.commit()
+
+
+def test_get_economy_regions_returns_all() -> None:
+    anyio.run(_test_get_economy_regions)
+
+
+async def _test_get_economy_regions() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, data = await _http(app, "GET", "/admin/economy/regions", token=token)
+    assert status == 200
+    assert isinstance(data, list)
+    by_zone = {r["zone"]: r for r in data}
+    assert by_zone["test_zone_a"] == {
+        "zone": "test_zone_a",
+        "region_mult": 0.9,
+        "bias": {"gem": 2.0},
+    }
+    assert by_zone["test_zone_b"] == {
+        "zone": "test_zone_b",
+        "region_mult": 1.2,
+        "bias": {},
+    }
+    # zone-ordered
+    zones = [r["zone"] for r in data]
+    assert zones == sorted(zones)
+
+
+def test_get_economy_regions_requires_observer() -> None:
+    anyio.run(_test_get_economy_regions_requires_auth)
+
+
+async def _test_get_economy_regions_requires_auth() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    async with _lifespan(app):
+        status, _ = await _http(app, "GET", "/admin/economy/regions")
+    # HTTPBearer returns 401/403 without credentials.
+    assert status in (401, 403)
+
+
+def test_post_economy_region_updates_mult_live() -> None:
+    anyio.run(_test_post_economy_region_mult)
+
+
+async def _test_post_economy_region_mult() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/economy/regions/test_zone_a",
+            body={"region_mult": 1.5},
+            token=token,
+        )
+        assert status == 200
+        assert data["region_mult"] == 1.5
+        # bias untouched when only region_mult is provided.
+        assert data["bias"] == {"gem": 2.0}
+
+        _, after = await _http(app, "GET", "/admin/economy/regions", token=token)
+    zone_a = next(r for r in after if r["zone"] == "test_zone_a")
+    assert zone_a["region_mult"] == 1.5
+    assert zone_a["bias"] == {"gem": 2.0}
+
+
+def test_post_economy_region_replaces_bias_wholesale() -> None:
+    anyio.run(_test_post_economy_region_bias)
+
+
+async def _test_post_economy_region_bias() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/economy/regions/test_zone_a",
+            body={"bias": {"salt_sack": 0.5}},
+            token=token,
+        )
+        assert status == 200
+        # Wholesale replace: the old "gem" key is gone.
+        assert data["bias"] == {"salt_sack": 0.5}
+        # region_mult untouched when only bias is provided.
+        assert data["region_mult"] == 0.9
+
+        _, after = await _http(app, "GET", "/admin/economy/regions", token=token)
+    zone_a = next(r for r in after if r["zone"] == "test_zone_a")
+    assert zone_a["bias"] == {"salt_sack": 0.5}
+
+
+def test_post_economy_region_unknown_zone_returns_404() -> None:
+    anyio.run(_test_post_economy_region_unknown)
+
+
+async def _test_post_economy_region_unknown() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/economy/regions/nowhere_zone",
+            body={"region_mult": 1.1},
+            token=token,
+        )
+    assert status == 404
+
+
+def test_post_economy_region_rejects_nonpositive_mult() -> None:
+    anyio.run(_test_post_economy_region_bad_mult)
+
+
+async def _test_post_economy_region_bad_mult() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/economy/regions/test_zone_a",
+            body={"region_mult": 0},
+            token=token,
+        )
+    assert status == 422
+
+
+def test_observer_cannot_edit_economy_region() -> None:
+    anyio.run(_test_observer_cannot_edit_economy)
+
+
+async def _test_observer_cannot_edit_economy() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token("observer")
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/economy/regions/test_zone_a",
+            body={"region_mult": 1.5},
+            token=token,
+        )
+    assert status == 403
+
+
+# ---------------------------------------------------------------------------
 # Admin accounts
 # ---------------------------------------------------------------------------
 

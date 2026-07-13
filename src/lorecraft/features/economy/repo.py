@@ -35,6 +35,11 @@ class EconomyRepo:
             return None
         return self.session.get(RegionPricing, zone)
 
+    def all_regions(self) -> list[RegionPricing]:
+        """Every RegionPricing row, zone-ordered -- the admin tuning router's read."""
+        statement = select(RegionPricing).order_by(RegionPricing.zone)  # type: ignore[arg-type]
+        return list(self.session.exec(statement).all())
+
     def all_restockable_stock(self) -> list[ShopStock]:
         """Every ShopStock row with a restock schedule -- services/restock.py's sweep."""
         statement = (
