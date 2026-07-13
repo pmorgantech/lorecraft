@@ -117,6 +117,23 @@ pub struct AuthDecision {
     pub player_id: Option<PlayerId>,
 }
 
+/// The outcome of the Phase 4 snapshot leg ([`ForwardClient::build_snapshot`]):
+/// either the materialized snapshot to execute the feature against, or an early
+/// [`GatewayOutbound::ExecutionRejected`] short-circuit carrying the client reply
+/// to send instead (a frozen-session rejection, or a Python persistence failure).
+///
+/// A `Rejected` outcome means the driver must **not** run the feature or the
+/// `ApplyOutcome` leg — it simply returns the carried reply to the client (see the
+/// Phase 4b hardening notes on [`GatewayOutbound::ExecutionRejected`]).
+#[derive(Debug, Clone, PartialEq)]
+pub enum SnapshotOutcome {
+    /// Python materialized the snapshot; run the migrated feature against it.
+    Ready(Box<ScriptRequest>),
+    /// Python short-circuited the round-trip; send this reply to the client and
+    /// run no further legs.
+    Rejected(serde_json::Value),
+}
+
 /// The decoded acknowledgement of a `Connected` lifecycle handshake.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SessionAck {
@@ -378,14 +395,22 @@ impl ForwardClient {
     /// Correlated by `command_id` (= `envelope.command_id`) through the
     /// [`PendingExec`] map, the same way [`send_command`](Self::send_command)
     /// correlates a `CommandReply`.
+    ///
+    /// Python may instead answer with a [`GatewayOutbound::ExecutionRejected`]
+    /// short-circuit (a frozen session, or a snapshot-build failure); this surfaces
+    /// as [`SnapshotOutcome::Rejected`] carrying the client reply, so the driver
+    /// sends it and runs neither the feature nor the `ApplyOutcome` leg.
     pub async fn build_snapshot(
         &self,
         envelope: CommandEnvelope,
-    ) -> Result<Box<ScriptRequest>, ForwardError> {
+    ) -> Result<SnapshotOutcome, ForwardError> {
         let command_key = envelope.command_id.0.clone();
         let frame = GatewayInbound::BuildSnapshot { envelope };
         match self.send_exec(frame, command_key).await? {
-            GatewayOutbound::SnapshotReady { request, .. } => Ok(request),
+            GatewayOutbound::SnapshotReady { request, .. } => Ok(SnapshotOutcome::Ready(request)),
+            GatewayOutbound::ExecutionRejected { direct_reply, .. } => {
+                Ok(SnapshotOutcome::Rejected(direct_reply))
+            }
             _ => Err(ForwardError::UnexpectedReply),
         }
     }
@@ -411,8 +436,24 @@ impl ForwardClient {
         };
         match self.send_exec(frame, command_key).await? {
             GatewayOutbound::OutcomeApplied { direct_reply, .. } => Ok(direct_reply),
+            // A persistence failure in `apply_outcome` short-circuits with an
+            // in-game error reply rather than dropping the frame (which would wedge
+            // this await). No deliveries are carried, so nothing is published.
+            GatewayOutbound::ExecutionRejected { direct_reply, .. } => Ok(direct_reply),
             _ => Err(ForwardError::UnexpectedReply),
         }
+    }
+
+    /// Drop a still-pending execution round-trip slot for `command_id`.
+    ///
+    /// Called by the driver's caller after a [`tokio::time::timeout`] fires around
+    /// [`crate::execute::execute`] (a Python peer that answered *nothing*): dropping
+    /// the future abandons the `rx.await` in [`send_exec`](Self::send_exec), but the
+    /// stored [`oneshot::Sender`] would otherwise linger in the `exec` map keyed by
+    /// this `command_id`. Removing it here prevents that leak. Idempotent: a no-op
+    /// if the reply already arrived and cleared the slot, or if it never existed.
+    pub async fn cancel_exec(&self, command_id: &CommandId) {
+        self.exec.lock().await.remove(&command_id.0);
     }
 
     /// Register an execution round-trip slot keyed by `command_key`, write `frame`,
@@ -624,6 +665,31 @@ async fn demultiplex(
                 None => tracing::warn!(
                     command_id = %key,
                     "outcome-applied reply had no matching pending execution"
+                ),
+            }
+        }
+        // The Phase 4b execution short-circuit (frozen rejection / persistence
+        // failure). Correlated by `command_id` through the same `exec` map, it may
+        // answer either leg (in place of `SnapshotReady` or `OutcomeApplied`) —
+        // completing whichever driver leg is currently awaiting. It carries no
+        // deliveries, so nothing is fanned out. An unsolicited one (no waiter) is a
+        // protocol anomaly worth surfacing, never silently dropped.
+        GatewayOutbound::ExecutionRejected {
+            command_id,
+            direct_reply,
+        } => {
+            let key = command_id.0.clone();
+            let waiter = exec.lock().await.remove(&key);
+            match waiter {
+                Some(tx) => {
+                    let _ = tx.send(GatewayOutbound::ExecutionRejected {
+                        command_id,
+                        direct_reply,
+                    });
+                }
+                None => tracing::warn!(
+                    command_id = %key,
+                    "execution-rejected reply had no matching pending execution"
                 ),
             }
         }
@@ -1100,6 +1166,113 @@ mod tests {
             .send_disconnected(PlayerId("leaver".into()), DisconnectReason::ClientClose)
             .await;
         assert!(matches!(result, Err(ForwardError::ConnectionClosed)));
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// Phase 4b: `build_snapshot` surfaces a Python `ExecutionRejected` short-circuit
+    /// as [`SnapshotOutcome::Rejected`] carrying the client reply, instead of the
+    /// `SnapshotReady` snapshot — so the driver can send it and run no further leg.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn build_snapshot_returns_rejected_on_execution_rejected() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        let frozen = json!({
+            "type": "system",
+            "text": "Your session is frozen. Contact an administrator.",
+        });
+        let frozen_for_peer = frozen.clone();
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, mut write) = stream.into_split();
+            let command_id = match read_inbound(&mut read).await {
+                GatewayInbound::BuildSnapshot { envelope } => envelope.command_id,
+                other => panic!("expected BuildSnapshot, got {other:?}"),
+            };
+            write
+                .write_all(&encode_frame(&GatewayOutbound::ExecutionRejected {
+                    command_id,
+                    direct_reply: frozen_for_peer,
+                }))
+                .await
+                .expect("write rejection");
+            write.flush().await.expect("flush");
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        });
+
+        let registry = Arc::new(ConnectionRegistry::new());
+        let client = ForwardClient::connect(&socket_path, ctx(registry))
+            .await
+            .expect("connect");
+
+        let outcome = client
+            .build_snapshot(sample_envelope("cmd-frozen", "look"))
+            .await
+            .expect("build_snapshot");
+        assert_eq!(outcome, SnapshotOutcome::Rejected(frozen));
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// Phase 4b no-leak proof: after the driver's caller times out and calls
+    /// [`ForwardClient::cancel_exec`], the pending-execution slot is gone (no leak)
+    /// and the abandoned awaiter is released with `ConnectionClosed` — never hung.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn cancel_exec_removes_pending_slot_and_releases_awaiter() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        // Mute peer: reads the BuildSnapshot but never replies, holding the link open
+        // (a Python persistence handler that answers nothing — the timeout scenario).
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, write) = stream.into_split();
+            let _ = read_inbound(&mut read).await;
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            drop(write);
+            drop(read);
+        });
+
+        let registry = Arc::new(ConnectionRegistry::new());
+        let client = Arc::new(
+            ForwardClient::connect(&socket_path, ctx(registry))
+                .await
+                .expect("connect"),
+        );
+
+        // Spawn the build leg; it parks on the exec slot awaiting a reply that never
+        // comes (mirrors the driver future the caller wraps in a timeout).
+        let driver = Arc::clone(&client);
+        let handle = tokio::spawn(async move {
+            driver
+                .build_snapshot(sample_envelope("cmd-mute", "look"))
+                .await
+        });
+
+        // Let the frame be written and the slot inserted.
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        assert_eq!(
+            client.exec.lock().await.len(),
+            1,
+            "the in-flight execution slot should be registered"
+        );
+
+        // Simulate the timeout path: drop the driver future is modelled by cancelling
+        // the slot. It must be removed (no leak) and the awaiter released.
+        client.cancel_exec(&CommandId("cmd-mute".into())).await;
+        assert!(
+            client.exec.lock().await.is_empty(),
+            "cancel_exec must remove the slot so it does not leak"
+        );
+
+        let joined = tokio::time::timeout(std::time::Duration::from_secs(2), handle)
+            .await
+            .expect("awaiter released, not hung")
+            .expect("task ok");
+        assert!(matches!(joined, Err(ForwardError::ConnectionClosed)));
 
         peer.await.expect("mock peer joins cleanly");
     }

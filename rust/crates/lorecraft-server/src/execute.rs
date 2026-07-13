@@ -27,6 +27,19 @@
 //! driver itself returns only the issuing client's `direct_reply`; the fan-out is
 //! already dispatched by the time it returns.
 //!
+//! ## Early short-circuit (Phase 4b hardening)
+//!
+//! Python can end the round-trip early at either await point by replying with a
+//! [`GatewayOutbound::ExecutionRejected`] in place of `SnapshotReady`/`OutcomeApplied`
+//! (a **frozen-session** rejection before execution, or a **persistence-handler
+//! failure**). The driver then returns the carried client reply and runs no further
+//! leg — no feature, no `ApplyOutcome`, no publish. This is what keeps a raised
+//! Python handler or a frozen session from wedging the connection: paired with the
+//! [`tokio::time::timeout`] backstop the caller wraps `execute` in (so even a peer
+//! that sends *nothing* is bounded), the execution path can never hang.
+//!
+//! [`GatewayOutbound::ExecutionRejected`]: lorecraft_protocol::gateway::GatewayOutbound::ExecutionRejected
+//!
 //! ## Direct feature call vs. the runtime actor
 //!
 //! For 4a the driver calls the feature crate **directly**. The
@@ -49,7 +62,7 @@
 use lorecraft_protocol::envelope::{CommandEnvelope, CommandOutcome, OutcomeStatus};
 use lorecraft_protocol::ids::CommandId;
 
-use crate::forward::{ForwardClient, ForwardError};
+use crate::forward::{ForwardClient, ForwardError, SnapshotOutcome};
 use crate::route::MigratedVerb;
 
 /// Drive one Rust-routed command to its `direct_reply` over the Option-A
@@ -80,15 +93,23 @@ async fn execute_look(
 ) -> Result<serde_json::Value, ForwardError> {
     let command_id = envelope.command_id.clone();
 
-    // 1. Snapshot round-trip (Rust cannot read world state this phase).
-    let request = forward.build_snapshot(envelope).await?;
+    // 1. Snapshot round-trip (Rust cannot read world state this phase). Python may
+    //    short-circuit here — a frozen session or a snapshot-build failure returns
+    //    `ExecutionRejected`, surfaced as `SnapshotOutcome::Rejected`. In that case
+    //    we send the carried client reply and run NO feature, NO `ApplyOutcome`, NO
+    //    audit, NO broadcast — byte-parity with the pure-Python frozen guard.
+    let request = match forward.build_snapshot(envelope).await? {
+        SnapshotOutcome::Ready(request) => request,
+        SnapshotOutcome::Rejected(direct_reply) => return Ok(direct_reply),
+    };
 
     // 2. Run the migrated feature to derive the authoritative outcome.
     let result = lorecraft_feature_look::look_effects(&request);
     let outcome = look_outcome(command_id.clone(), result);
 
     // 3. Persist round-trip; Python commits before returning, then the read loop
-    //    publishes the deliveries — commit-before-publish preserved.
+    //    publishes the deliveries — commit-before-publish preserved. A persistence
+    //    failure here also short-circuits to an in-game error reply (no publish).
     forward.apply_outcome(command_id, outcome).await
 }
 

@@ -240,3 +240,171 @@ async fn look_driver_runs_option_a_round_trip_and_fans_out_deliveries() {
     drop(forward);
     peer.await.expect("mock peer joins cleanly");
 }
+
+/// FINDING #1/#2 SHORT-CIRCUIT PROOF: when the mock peer answers `BuildSnapshot`
+/// with an `ExecutionRejected` (a frozen session, or a raised persistence handler),
+/// the driver returns the carried client reply and sends **no** `ApplyOutcome` —
+/// no feature outcome is persisted, nothing is broadcast. This is the seam that
+/// keeps a raised Python handler or a frozen session from wedging the connection.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn look_driver_short_circuits_on_execution_rejected_and_sends_no_apply_outcome() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let socket_path = dir.path().join("gateway.sock");
+    let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+    let frozen_reply = json!({
+        "type": "system",
+        "text": "Your session is frozen. Contact an administrator.",
+    });
+
+    let (events_tx, mut events_rx) = mpsc::unbounded_channel::<GatewayInbound>();
+    let rejection = frozen_reply.clone();
+    let peer = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let (mut read, mut write) = stream.into_split();
+        while let Some(inbound) = read_inbound(&mut read).await {
+            let _ = events_tx.send(inbound.clone());
+            match inbound {
+                GatewayInbound::BuildSnapshot { envelope } => {
+                    write_outbound(
+                        &mut write,
+                        &GatewayOutbound::ExecutionRejected {
+                            command_id: envelope.command_id,
+                            direct_reply: rejection.clone(),
+                        },
+                    )
+                    .await;
+                }
+                // The driver must NOT reach the persistence leg on a rejection.
+                GatewayInbound::ApplyOutcome { .. } => {
+                    panic!("driver sent ApplyOutcome after an ExecutionRejected")
+                }
+                other => panic!("unexpected inbound frame: {other:?}"),
+            }
+        }
+    });
+
+    let registry = Arc::new(ConnectionRegistry::new());
+    let forward = ForwardClient::connect(&socket_path, ctx(Arc::clone(&registry)))
+        .await
+        .expect("connect");
+
+    let returned = timeout(
+        STEP,
+        execute::execute(
+            &forward,
+            route::MigratedVerb::Look,
+            look_envelope("cmd-frozen"),
+        ),
+    )
+    .await
+    .expect("driver completes in time")
+    .expect("driver succeeds with the rejection reply");
+
+    // The client gets the frozen reply verbatim — a clean in-game message, no hang.
+    assert_eq!(returned, frozen_reply);
+
+    // Exactly one inbound frame (the BuildSnapshot); no ApplyOutcome followed.
+    let first = events_rx.recv().await.expect("first inbound");
+    assert!(
+        matches!(first, GatewayInbound::BuildSnapshot { .. }),
+        "expected BuildSnapshot, got {first:?}"
+    );
+    assert!(
+        timeout(Duration::from_millis(300), events_rx.recv())
+            .await
+            .is_err(),
+        "no second inbound frame — the round-trip short-circuited"
+    );
+
+    drop(forward);
+    peer.await.expect("mock peer joins cleanly");
+}
+
+/// FINDING #1 TIMEOUT-BACKSTOP PROOF: a Python peer that answers **nothing** on the
+/// snapshot leg must not wedge the connection. The caller wraps the driver in a
+/// bounded `tokio::time::timeout`; on expiry it cleans up the pending slot via
+/// `cancel_exec` (no leak) and the SAME link stays usable — a subsequent command
+/// completes its full round-trip.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn mute_peer_times_out_then_link_stays_usable_for_next_command() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let socket_path = dir.path().join("gateway.sock");
+    let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+    let direct_reply_body = json!({"command": "look", "messages": ["you look around"]});
+    let reply = direct_reply_body.clone();
+
+    // Peer: swallow the FIRST inbound frame (the mute/timeout command), then serve
+    // every subsequent frame's round-trip normally.
+    let peer = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.expect("accept");
+        let (mut read, mut write) = stream.into_split();
+        let mut seen = 0u32;
+        while let Some(inbound) = read_inbound(&mut read).await {
+            seen += 1;
+            if seen == 1 {
+                // Mute: read it, reply with nothing (the wedge scenario).
+                continue;
+            }
+            match inbound {
+                GatewayInbound::BuildSnapshot { envelope } => {
+                    write_outbound(
+                        &mut write,
+                        &GatewayOutbound::SnapshotReady {
+                            command_id: envelope.command_id,
+                            request: Box::new(fixture_request()),
+                        },
+                    )
+                    .await;
+                }
+                GatewayInbound::ApplyOutcome { command_id, .. } => {
+                    write_outbound(
+                        &mut write,
+                        &GatewayOutbound::OutcomeApplied {
+                            command_id,
+                            direct_reply: reply.clone(),
+                            deliveries: vec![],
+                        },
+                    )
+                    .await;
+                }
+                other => panic!("unexpected inbound frame: {other:?}"),
+            }
+        }
+    });
+
+    let registry = Arc::new(ConnectionRegistry::new());
+    let forward = ForwardClient::connect(&socket_path, ctx(Arc::clone(&registry)))
+        .await
+        .expect("connect");
+
+    // 1st command: the peer is mute, so the bounded timeout fires. Then clean up the
+    // pending slot exactly as `ws_player` does on the timeout path.
+    let mute = look_envelope("cmd-mute");
+    let mute_id = mute.command_id.clone();
+    let timed_out = timeout(
+        Duration::from_millis(300),
+        execute::execute(&forward, route::MigratedVerb::Look, mute),
+    )
+    .await;
+    assert!(
+        timed_out.is_err(),
+        "the mute leg must time out, not resolve"
+    );
+    forward.cancel_exec(&mute_id).await;
+
+    // 2nd command on the SAME link completes its full round-trip — the connection
+    // was never wedged by the timed-out command.
+    let returned = timeout(
+        STEP,
+        execute::execute(&forward, route::MigratedVerb::Look, look_envelope("cmd-ok")),
+    )
+    .await
+    .expect("second command completes in time")
+    .expect("second command succeeds");
+    assert_eq!(returned, direct_reply_body);
+
+    drop(forward);
+    peer.await.expect("mock peer joins cleanly");
+}

@@ -520,6 +520,42 @@ class OutcomeApplied(GatewayOutbound):
 
 
 @dataclass(frozen=True, slots=True)
+class ExecutionRejected(GatewayOutbound):
+    """Phase 4 short-circuit (Python->Rust): **end the execution round-trip early**
+    and tell Rust to reply to the issuing client with ``direct_reply`` instead of
+    continuing. Correlated by ``command_id``, it may answer *either* leg — sent in
+    place of a ``SnapshotReady`` (before any feature runs) *or* in place of an
+    ``OutcomeApplied`` (before persistence completes).
+
+    One reusable frame covers both short-circuit cases (Phase 4b hardening):
+
+    1. **Frozen-session rejection.** ``_on_build_snapshot`` finds the session
+       ``frozen`` and rejects *before* executing — no feature, no ``ApplyOutcome``,
+       no audit, no broadcast — carrying the frozen ``system`` message (parity with
+       ``handle_ws_command``'s guard).
+    2. **Persistence-handler failure.** A ``BuildSnapshot``/``ApplyOutcome`` handler
+       raised; rather than dropping the reply (which would wedge the Rust driver),
+       the adapter logs the traceback and returns this frame with a client-facing
+       in-game ``error`` payload.
+
+    It carries **no** ``deliveries``: a rejected command publishes nothing. Rust
+    sends ``direct_reply`` to the client, runs no further round-trip for this
+    ``command_id``, and cleans up its pending-execution slot. Mirrors the Rust
+    ``GatewayOutbound::ExecutionRejected`` struct variant."""
+
+    TAG: ClassVar[str] = "ExecutionRejected"
+    command_id: CommandId
+    direct_reply: JsonValue
+
+    def to_json(self) -> JsonObject:
+        return {
+            "type": self.TAG,
+            "command_id": self.command_id,
+            "direct_reply": self.direct_reply,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class Deliver(GatewayOutbound):
     """An unsolicited async push. Carries no correlation id (not a reply)."""
 
@@ -615,6 +651,11 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
                 DeliveryDirective.from_json(require_object(item))
                 for item in require_list(data, "deliveries")
             ],
+        )
+    if tag == ExecutionRejected.TAG:
+        return ExecutionRejected(
+            command_id=require_str(data, "command_id"),
+            direct_reply=data.get("direct_reply"),
         )
     if tag == Deliver.TAG:
         return Deliver(

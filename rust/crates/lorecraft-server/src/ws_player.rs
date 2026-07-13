@@ -262,7 +262,26 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
                 // queue-back handling below is identical.
                 let forwarded = match route::decide(text.as_str(), &state.config.rust_verbs) {
                     RouteDecision::RustExecute(verb) => {
-                        execute::execute(&forward, verb, envelope).await
+                        // Backstop the whole Rust round-trip with a bounded timeout
+                        // (Phase 4b): a Python persistence peer that answers nothing
+                        // on either leg must not wedge this receive loop. On expiry
+                        // we clean up the pending execution slot (no leak), log, and
+                        // degrade to an in-game error — the connection stays usable.
+                        let command_id = envelope.command_id.clone();
+                        let budget = Duration::from_millis(state.config.execute_timeout_ms);
+                        match timeout(budget, execute::execute(&forward, verb, envelope)).await {
+                            Ok(result) => result,
+                            Err(_) => {
+                                forward.cancel_exec(&command_id).await;
+                                tracing::warn!(
+                                    player_id = %player_id.0,
+                                    command_id = %command_id.0,
+                                    timeout_ms = state.config.execute_timeout_ms,
+                                    "rust execution timed out; degrading to in-game error"
+                                );
+                                Ok(execution_error_frame())
+                            }
+                        }
                     }
                     RouteDecision::Python => forward.send_command(envelope).await,
                 };
@@ -353,6 +372,21 @@ fn rate_limited_frame() -> serde_json::Value {
         "type": "error",
         "code": "rate_limited",
         "message": "You are sending commands too quickly; please slow down.",
+    })
+}
+
+/// The in-band frame sent to a client when a Rust-executed command's round-trip
+/// exceeds `execute_timeout_ms` (Phase 4b backstop) — i.e. the Python persistence
+/// peer answered nothing on either leg. Degrades to a clean in-game error rather
+/// than dropping the socket, mirroring the shape of the frozen/persistence-failure
+/// [`ExecutionRejected`](lorecraft_protocol::gateway::GatewayOutbound::ExecutionRejected)
+/// reply and the Python crash-capture path's `error` payload. Keyless so it is
+/// never coalesced and stays strictly ordered.
+fn execution_error_frame() -> serde_json::Value {
+    json!({
+        "type": "error",
+        "message": "Something went wrong processing that command. \
+    It has been logged for review.",
     })
 }
 

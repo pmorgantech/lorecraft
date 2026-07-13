@@ -58,6 +58,7 @@ from lorecraft.protocol.gateway import (
     DeliveryDirective,
     Disconnected,
     DisconnectAck,
+    ExecutionRejected,
     GatewayCommand,
     GatewayInbound,
     GatewayOutbound,
@@ -90,6 +91,21 @@ from lorecraft.webui.player.ws_command import handle_ws_command
 log = logging.getLogger(__name__)
 
 _LENGTH_PREFIX_BYTES = 4
+
+
+def _execution_error_reply() -> JsonObject:
+    """The client-facing in-game error reply for a failed Phase 4 persistence handler.
+
+    Mirrors the crash-capture payload the pure-Python command path degrades to
+    (`handle_ws_command`'s `except` branch), so a `build_look_request`/`apply_outcome`
+    fault surfaces to the player as a clean in-game error rather than a dropped
+    socket. Carried on an `ExecutionRejected` frame back to Rust.
+    """
+    return {
+        "type": "error",
+        "message": "Something went wrong processing that command. "
+        "It has been logged for review.",
+    }
 
 
 def encode_frame(payload: JsonValue) -> bytes:
@@ -566,20 +582,47 @@ class GatewayAdapter:
 
     # -- Phase 4 execution round-trip (Rust owns execution; Python persists) --
 
-    def _on_build_snapshot(self, msg: BuildSnapshot) -> SnapshotReady:
+    def _on_build_snapshot(self, msg: BuildSnapshot) -> GatewayOutbound:
         """Build the `ScriptRequest` snapshot Rust executes the routed verb against.
 
-        Remembers the envelope keyed by its `command_id` so the correlated
-        `ApplyOutcome` (which carries no envelope) can recover the persistence
-        context. Only `look` is migrated this phase; other verbs are not yet
-        routed here.
+        Two short-circuits end the round-trip early with an `ExecutionRejected`
+        frame (Phase 4b hardening) so the Rust driver never hangs and the frozen-
+        session invariant is preserved:
+
+        - **Frozen session (finding #2).** Checked FIRST, mirroring
+          `handle_ws_command`'s guard: if the session's status is ``frozen``, reject
+          *before* building the snapshot — no feature, no `ApplyOutcome`, no audit,
+          no broadcast — returning the frozen ``system`` message for Rust to relay.
+        - **Handler failure (finding #1).** Any exception in the frozen check or
+          `build_look_request` (a vanished player/room, etc.) is caught, logged with
+          traceback, and degraded to a client-facing in-game ``error`` reply rather
+          than escaping to the silent dispatch catch-all (which would drop the reply
+          and wedge the Rust `execute` driver awaiting `SnapshotReady`).
+
+        On the success path the envelope is remembered keyed by its `command_id` so
+        the correlated `ApplyOutcome` (which carries no envelope) can recover the
+        persistence context. On either short-circuit the pending map is left
+        untouched — there will be no `ApplyOutcome` for a rejected command. Only
+        `look` is migrated this phase; other verbs are not yet routed here.
         """
         envelope = msg.envelope
-        request = build_look_request(self._state, envelope)
+        try:
+            frozen_reply = self._frozen_reply(envelope)
+            if frozen_reply is not None:
+                return ExecutionRejected(
+                    command_id=envelope.command_id, direct_reply=frozen_reply
+                )
+            request = build_look_request(self._state, envelope)
+        except Exception:
+            log.exception("gateway_build_snapshot_failed")
+            return ExecutionRejected(
+                command_id=envelope.command_id,
+                direct_reply=_execution_error_reply(),
+            )
         self._pending[envelope.command_id] = envelope
         return SnapshotReady(command_id=envelope.command_id, request=request)
 
-    async def _on_apply_outcome(self, msg: ApplyOutcome) -> OutcomeApplied:
+    async def _on_apply_outcome(self, msg: ApplyOutcome) -> GatewayOutbound:
         """Persist the Rust-derived outcome and return the reply + deliveries.
 
         Recovers the originating envelope from the pending map (populated by the
@@ -587,20 +630,54 @@ class GatewayAdapter:
         both DBs *before* returning, preserving commit-before-publish — and packs
         the actor `direct_reply` and post-commit `deliveries` into `OutcomeApplied`
         for Rust to publish.
+
+        Any failure (an unknown `command_id`, an unknown effect in `apply_outcome`,
+        a vanished player/room) is caught, logged with traceback, and degraded to an
+        `ExecutionRejected` frame carrying a client-facing in-game ``error`` reply
+        (finding #1) — never allowed to escape to the silent dispatch catch-all,
+        which would drop the reply and wedge the Rust driver awaiting
+        `OutcomeApplied`. The pending entry is popped before persistence, so a
+        failure here does not leak it.
         """
-        envelope = self._pending.pop(msg.command_id, None)
-        if envelope is None:
-            raise ValidationError(
-                f"ApplyOutcome for unknown command_id: {msg.command_id!r}"
+        try:
+            envelope = self._pending.pop(msg.command_id, None)
+            if envelope is None:
+                raise ValidationError(
+                    f"ApplyOutcome for unknown command_id: {msg.command_id!r}"
+                )
+            direct_reply, deliveries = await apply_outcome(
+                self._state, envelope, msg.outcome
             )
-        direct_reply, deliveries = await apply_outcome(
-            self._state, envelope, msg.outcome
-        )
+        except Exception:
+            log.exception("gateway_apply_outcome_failed")
+            return ExecutionRejected(
+                command_id=msg.command_id,
+                direct_reply=_execution_error_reply(),
+            )
         return OutcomeApplied(
             command_id=msg.command_id,
             direct_reply=direct_reply,
             deliveries=deliveries,
         )
+
+    def _frozen_reply(self, envelope: CommandEnvelope) -> JsonObject | None:
+        """Return the frozen-session reply if `envelope`'s session is frozen, else None.
+
+        Reproduces `handle_ws_command`'s guard exactly
+        (`player_repo.player_session(session_id).status == "frozen"`) against a
+        read-only game session, so a frozen player's Rust-routed command is rejected
+        with the byte-identical ``system`` message and executes/audits/broadcasts
+        nothing.
+        """
+        with Session(self._state.game_engine) as game_session:
+            session = PlayerRepo(game_session).player_session(envelope.session_id)
+            is_frozen = session is not None and session.status == "frozen"
+        if is_frozen:
+            return {
+                "type": "system",
+                "text": "Your session is frozen. Contact an administrator.",
+            }
+        return None
 
 
 class GatewayPushManager:

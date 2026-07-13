@@ -30,6 +30,7 @@ from lorecraft.protocol import (
     EmitEvent,
     EmittedEvent,
     EntitySnapshot,
+    ExecutionRejected,
     Feed,
     GatewayCommand,
     GlobalTarget,
@@ -552,6 +553,13 @@ def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
             ),
             "OutcomeApplied",
         ),
+        (
+            ExecutionRejected(
+                command_id="cmd-1",
+                direct_reply={"type": "system", "text": "frozen"},
+            ),
+            "ExecutionRejected",
+        ),
         (Deliver(directive=_sample_directive()), "Deliver"),
         (
             MovePlayer(player_id="player-1", from_room="tavern", to_room="square"),
@@ -562,6 +570,30 @@ def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
         dumped = frame.to_json()  # type: ignore[attr-defined]
         assert dumped["type"] == tag
         assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_execution_rejected_wire_shape_carries_correlation_and_no_deliveries() -> None:
+    # The Phase 4b short-circuit frame (frozen rejection / persistence failure) must
+    # byte-match the Rust `GatewayOutbound::ExecutionRejected` struct variant:
+    # correlated by `command_id`, an opaque `direct_reply`, and NO deliveries field.
+    frame = ExecutionRejected(
+        command_id="cmd-7",
+        direct_reply={
+            "type": "system",
+            "text": "Your session is frozen. Contact an administrator.",
+        },
+    )
+    dumped = frame.to_json()
+    assert dumped == {
+        "type": "ExecutionRejected",
+        "command_id": "cmd-7",
+        "direct_reply": {
+            "type": "system",
+            "text": "Your session is frozen. Contact an administrator.",
+        },
+    }
+    assert "deliveries" not in dumped
+    assert gateway_outbound_from_json(dumped) == frame
 
 
 def test_move_player_frame_shape_and_optional_from_room() -> None:

@@ -249,6 +249,40 @@ pub enum GatewayOutbound {
         /// path. Empty for a zero-broadcast verb.
         deliveries: Vec<DeliveryDirective>,
     },
+    /// Phase 4 short-circuit (Python->Rust): **end the execution round-trip early**
+    /// and tell Rust to reply to the issuing client with `direct_reply` instead of
+    /// continuing. Correlated by `command_id` (= the executing command's
+    /// [`CommandId`]), it may answer *either* leg — sent in place of a
+    /// [`Self::SnapshotReady`] (before any feature runs) **or** in place of a
+    /// [`Self::OutcomeApplied`] (before persistence completes).
+    ///
+    /// One reusable frame covers both short-circuit cases (see the Phase 4b
+    /// hardening notes in the module docs):
+    ///
+    /// 1. **Frozen-session rejection.** Python's `_on_build_snapshot` finds the
+    ///    session `frozen` and rejects *before* executing — no feature, no
+    ///    `ApplyOutcome`, no audit, no broadcast — carrying the frozen `system`
+    ///    message as `direct_reply` (parity with the pure-Python `handle_ws_command`
+    ///    guard).
+    /// 2. **Persistence-handler failure.** A `BuildSnapshot`/`ApplyOutcome` handler
+    ///    raised (vanished player/room, unknown effect, unknown `command_id`);
+    ///    rather than dropping the reply (which would wedge the Rust driver), Python
+    ///    logs the traceback and returns this frame with a client-facing in-game
+    ///    `error` payload as `direct_reply`.
+    ///
+    /// It carries **no** `deliveries`: a rejected command publishes nothing. Rust
+    /// sends `direct_reply` to the client, runs no further round-trip for this
+    /// `command_id`, and cleans up its pending-execution slot.
+    ExecutionRejected {
+        /// Correlates this rejection to the executing command's [`CommandId`]
+        /// (the same key its [`GatewayInbound::BuildSnapshot`]/
+        /// [`GatewayInbound::ApplyOutcome`] used).
+        command_id: CommandId,
+        /// The opaque legacy reply to send the issuing client instead of the
+        /// executed result — a frozen `system` message or a degraded `error`
+        /// payload (relayed verbatim, exactly like `OutcomeApplied.direct_reply`).
+        direct_reply: serde_json::Value,
+    },
     /// An unsolicited async push (clock ticks, weather, cross-player deliveries).
     /// Carries no correlation id because it is not a reply to any inbound frame.
     Deliver {
@@ -588,6 +622,13 @@ mod tests {
                 "OutcomeApplied",
             ),
             (
+                GatewayOutbound::ExecutionRejected {
+                    command_id: CommandId("cmd-1".into()),
+                    direct_reply: json!({"type": "system", "text": "frozen"}),
+                },
+                "ExecutionRejected",
+            ),
+            (
                 GatewayOutbound::Deliver {
                     directive: sample_directive(),
                 },
@@ -834,6 +875,40 @@ mod tests {
             json!([])
         );
         assert_round_trip(&empty);
+    }
+
+    #[test]
+    fn execution_rejected_carries_correlation_and_opaque_reply_no_deliveries() {
+        // The short-circuit frame (frozen rejection / persistence failure) is
+        // correlated by `command_id`, relays `direct_reply` opaquely, and carries
+        // no deliveries field at all — a rejected command publishes nothing.
+        let frame = GatewayOutbound::ExecutionRejected {
+            command_id: CommandId("cmd-7".into()),
+            direct_reply: json!({
+                "type": "system",
+                "text": "Your session is frozen. Contact an administrator.",
+            }),
+        };
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(value["type"], json!("ExecutionRejected"));
+        assert_eq!(value["command_id"], json!("cmd-7"));
+        assert_eq!(value["direct_reply"]["type"], json!("system"));
+        assert!(
+            value.get("deliveries").is_none(),
+            "a rejection carries no deliveries"
+        );
+        assert_round_trip(&frame);
+
+        // The persistence-failure shape (an `error` payload) round-trips too.
+        let err_frame = GatewayOutbound::ExecutionRejected {
+            command_id: CommandId("cmd-8".into()),
+            direct_reply: json!({"type": "error", "message": "logged for review."}),
+        };
+        assert_eq!(
+            serde_json::to_value(&err_frame).unwrap()["direct_reply"]["type"],
+            json!("error")
+        );
+        assert_round_trip(&err_frame);
     }
 
     #[test]

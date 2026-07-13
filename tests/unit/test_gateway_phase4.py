@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -35,9 +36,11 @@ from lorecraft.gateway.snapshots import build_look_request
 from lorecraft.main import create_app
 from lorecraft.protocol import PROTOCOL_VERSION
 from lorecraft.protocol.envelope import CommandEnvelope, CommandOutcome, OutcomeStatus
+from lorecraft.engine.models.session import PlayerSession
 from lorecraft.protocol.gateway import (
     ApplyOutcome,
     BuildSnapshot,
+    ExecutionRejected,
     OutcomeApplied,
     RoomTarget,
     SnapshotReady,
@@ -231,3 +234,120 @@ def test_build_then_apply_round_trip_through_adapter(
     assert len(applied.deliveries) == 1
     # The pending entry is cleaned up on ApplyOutcome.
     assert "rt" not in adapter._pending  # pyright: ignore[reportPrivateUsage]
+
+
+# --- 4b hardening: short-circuit (frozen guard + handler-failure error) -------
+
+
+def _freeze_session(state: AppState, session_id: str) -> None:
+    """Insert a `frozen` player session so the frozen-guard path can be exercised.
+
+    Mirrors what an admin freeze produces: a `PlayerSession` row for the seeded
+    player whose `status` is `frozen` — the exact state `handle_ws_command`'s guard
+    (`player_session(session_id).status == "frozen"`) rejects on.
+    """
+    with Session(state.game_engine) as game_session:
+        game_session.add(
+            PlayerSession(
+                id=session_id,
+                player_id=PLAYER_ID,
+                connected_at=0.0,
+                status="frozen",
+            )
+        )
+        game_session.commit()
+
+
+def _count_command_audit_rows(state: AppState) -> int:
+    with Session(state.audit_engine) as audit:
+        return sum(
+            1
+            for e in audit.exec(select(AuditEvent)).all()
+            if e.event_type == "command_executed"
+        )
+
+
+def test_build_snapshot_rejects_frozen_session_without_executing(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """FINDING #2: a frozen player's `look` is short-circuited at `BuildSnapshot`
+    with the exact frozen `system` message — NO snapshot is built, NOTHING is
+    pended for an `ApplyOutcome`, and NO audit row is written (parity with
+    `handle_ws_command`'s pre-execution frozen guard).
+
+    Pre-fix behavior (confirmed by reading the replaced `_on_build_snapshot`,
+    which returned a `SnapshotReady` unconditionally): a frozen session's
+    `BuildSnapshot` produced a `SnapshotReady`, so Rust would have gone on to
+    execute/apply/audit/broadcast the look — this assertion (`ExecutionRejected`)
+    would have failed against that code.
+    """
+    _warm_up_look(state)
+    audit_before = _count_command_audit_rows(state)
+    _freeze_session(state, "frozen-sess")
+
+    envelope = _envelope("frozen-sess", "cmd-frozen")
+    (frame,) = asyncio.run(adapter.handle_inbound(BuildSnapshot(envelope=envelope)))
+
+    assert isinstance(frame, ExecutionRejected)
+    assert frame.command_id == "cmd-frozen"
+    assert frame.direct_reply == {
+        "type": "system",
+        "text": "Your session is frozen. Contact an administrator.",
+    }
+    # No execution context was created for this command...
+    assert "cmd-frozen" not in adapter._pending  # pyright: ignore[reportPrivateUsage]
+    # ...and nothing was audited (no execute/apply happened).
+    assert _count_command_audit_rows(state) == audit_before
+
+
+def test_build_snapshot_handler_failure_returns_error_not_raises(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """FINDING #1: a `build_look_request` failure (here, a vanished player) is
+    caught and degraded to a client-facing in-game `error` reply carried on an
+    `ExecutionRejected` frame — NOT allowed to escape the handler (which pre-fix
+    would drop the reply at the dispatch catch-all and hang the Rust driver).
+
+    Pre-fix behavior (confirmed by reading the replaced `_on_build_snapshot`,
+    which called `build_look_request` with no guard): the `ValidationError` for an
+    unknown player propagated out of `handle_inbound` — under the real
+    `_handle_client` loop it was logged and `continue`d with no reply frame, the
+    exact indefinite-hang source. Post-fix it is a bounded `ExecutionRejected`.
+    """
+    envelope = _envelope("missing-sess", "cmd-missing")
+    # An unknown player id makes `build_look_request` raise ValidationError.
+    envelope = replace(envelope, player_id="does-not-exist", actor_id="does-not-exist")
+
+    (frame,) = asyncio.run(adapter.handle_inbound(BuildSnapshot(envelope=envelope)))
+
+    assert isinstance(frame, ExecutionRejected)
+    assert frame.command_id == "cmd-missing"
+    assert isinstance(frame.direct_reply, dict)
+    assert frame.direct_reply["type"] == "error"
+    # Nothing pended: no ApplyOutcome will follow a rejected build.
+    assert "cmd-missing" not in adapter._pending  # pyright: ignore[reportPrivateUsage]
+
+
+def test_apply_outcome_unknown_command_returns_error_not_raises(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """FINDING #1: an `ApplyOutcome` for a `command_id` with no pending envelope is
+    caught and degraded to an `ExecutionRejected` error reply — never raised (which
+    pre-fix escaped to the dispatch catch-all and dropped the reply, hanging Rust
+    awaiting `OutcomeApplied`).
+
+    Pre-fix behavior (confirmed by reading the replaced `_on_apply_outcome`, which
+    raised `ValidationError` for an unknown `command_id`): the exception propagated
+    out of `handle_inbound`; under `_handle_client` it was logged and `continue`d
+    with no reply, the hang source. Post-fix it is a bounded `ExecutionRejected`.
+    """
+    outcome = _look_outcome(state, "never-pended")
+
+    (frame,) = asyncio.run(
+        adapter.handle_inbound(ApplyOutcome(command_id="never-pended", outcome=outcome))
+    )
+
+    assert isinstance(frame, ExecutionRejected)
+    assert frame.command_id == "never-pended"
+    assert isinstance(frame.direct_reply, dict)
+    assert frame.direct_reply["type"] == "error"

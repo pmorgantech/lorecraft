@@ -59,6 +59,14 @@ pub struct GatewayConfig {
     /// misbehaving adapter can never wedge a connection's teardown forever; on
     /// expiry the link is dropped anyway (logged).
     pub disconnect_timeout_ms: u64,
+    /// Backstop timeout for one Rust-executed command's whole Option-A round-trip
+    /// (`BuildSnapshot → SnapshotReady`, feature, `ApplyOutcome → OutcomeApplied`).
+    /// Required (Phase 4b) because a Python persistence peer that answers *nothing*
+    /// on either leg would otherwise wedge the receive loop forever; on expiry the
+    /// pending execution slot is cleaned up, the command surfaces an in-game error
+    /// to the client, and the connection stays usable (see [`crate::ws_player`]).
+    /// Operational, not game-balance (design decision 12) — static this phase.
+    pub execute_timeout_ms: u64,
     /// Slow-client backpressure threshold (Phase 3c, item 3): how many consecutive
     /// outbound-queue overflows a connection may accumulate before the gateway
     /// closes it with WS 1013. Operational, not game-balance (design decision 12) —
@@ -92,6 +100,7 @@ impl Default for GatewayConfig {
             outbound_queue_depth: DEFAULT_OUTBOUND_QUEUE_DEPTH,
             handshake_timeout_ms: 5_000,
             disconnect_timeout_ms: 5_000,
+            execute_timeout_ms: 5_000,
             backpressure: BackpressureConfig::default(),
             rate_limit: RateLimitConfig::default(),
             // Empty == pure Phase 3 rollback: no verb is Rust-executed by default.

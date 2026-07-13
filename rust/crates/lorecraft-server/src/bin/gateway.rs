@@ -29,6 +29,7 @@
 //! | `LORECRAFT_GATEWAY_MAX_OVERFLOW`     | `64`       | Consecutive overflows before a slow-consumer close |
 //! | `LORECRAFT_GATEWAY_COMMAND_BURST`    | `20`       | Per-player command token-bucket burst      |
 //! | `LORECRAFT_GATEWAY_COMMAND_RATE`     | `5.0`      | Per-player sustained command rate (tokens/sec) |
+//! | `LORECRAFT_GATEWAY_EXECUTE_MS`       | `5000`     | Backstop timeout for one Rust-executed command's round-trip (Phase 4b) |
 //! | `LORECRAFT_GATEWAY_SEND_BUFFER_BYTES`| OS default | `SO_SNDBUF` on the listening socket (inherited by every accepted connection) |
 //!
 //! `SEND_BUFFER_BYTES` is the load-bearing knob for a *deterministic* slow-client
@@ -112,6 +113,11 @@ fn config_from_env() -> anyhow::Result<GatewayConfig> {
         "LORECRAFT_GATEWAY_COMMAND_RATE",
         config.rate_limit.per_second,
     );
+    // Phase 4b execution round-trip backstop: bounds one Rust-executed command's
+    // whole BuildSnapshot/ApplyOutcome conversation so a mute Python peer can never
+    // wedge the receive loop. Falls back to the shipped default when unset/malformed.
+    config.execute_timeout_ms =
+        env_parse_or("LORECRAFT_GATEWAY_EXECUTE_MS", config.execute_timeout_ms);
     // Phase 4 verb allow-list (decision 3). Unset/blank → empty set → every command
     // routes to Python (pure Phase 3 rollback). E.g. `LORECRAFT_RUST_VERBS=look`.
     config.rust_verbs =
