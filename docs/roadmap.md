@@ -37,6 +37,19 @@ NPC memorable detail, and the P4.2/P4.3/P4.4 thematic-consistency, lighting, and
 all of which found the existing 104-room world already correct. See `roadmap_world.md` and
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
+**Rust migration (parallel track — see [`rust_migration_plan.md`](rust_migration_plan.md) for detail):**
+Phase 0 (evidence gate), Phase 1 (language-neutral contracts), Phase 2 (shadow runner), and Phase 3
+(transport + connection ownership) are complete; Phase 4 is IN PROGRESS. **Phase 4 sub-slices 4a
+(execution-routing protocol + headless `look` parity) and 4b (live `look` cutover) are complete:**
+real WS clients' `look` commands are now Rust-executed by default (`LORECRAFT_RUST_VERBS=look`),
+with byte-identical audit/broadcast/parity. **Option (c) transport split confirmed (deferred):**
+`POST /command` `look` stays Python-executed (HTMX rendering, WS receive-only). **Phase 4c
+(movement) remains** — the phase-level exit criterion (real `go` via Rust with byte-identical
+audit/effect/state hashes) is not yet met. See `docs/rust_migration_plan.md`'s Phase 4 sections
+for 4b exit checks, the COMMAND_EXECUTED parity fix, the two hardening fixes, Option-c rationale,
+and the browser-command-transport future-phase open item (FRONTEND SPECIALIST project, scheduled
+AFTER 4c and BEFORE Phase 5+ broad verb migration).
+
 **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)
 is implementation-complete** — all of 73.1–73.10 shipped as commits on branch
 `sprint-73-progression` (full task-level detail in that section's table above), plus a critical

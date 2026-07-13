@@ -2044,7 +2044,7 @@ These are the hard, load-bearing decisions. Recommendations are stated; the pivo
 *4a exit check:* a synthetic `look` driven gateway->(route to Rust)->execute->Python-persist->audit reproduces the byte-identical `command_result` **and** the `look_only.audit.json` audit hash, with **no** real client cutover.
 
 **Sub-slice 4b — live `look` cutover behind the verb allow-list.**
-- [ ] `lorecraft-server`: route real player `/ws` (and `POST /command`) `look` commands to the Rust execution path when the allow-list contains `look`; publish the post-commit deliveries via the Phase 3 `Deliver` path — **Tier 1** — **Phase 4** — a real client's `look` executes via Rust with byte-identical `command_result` + the same room `state_change` broadcast.
+- [x] `lorecraft-server`: route real player `/ws` `look` commands to the Rust execution path when the allow-list contains `look`; publish the post-commit deliveries via the Phase 3 `Deliver` path — **Tier 1** — **Phase 4** — a real client's `look` executes via Rust with byte-identical `command_result` + the same room `state_change` broadcast. **Note:** `POST /command` `look` stays Python-executed this phase (Option c — deferred to browser-command-transport open item, below), consistent with Phase 3 decision 8; the WS path is live-cut-over.
 - [ ] Rollback verification: allow-list off -> `look` runs through the unchanged Python path — **Tier 1** — **Phase 4** — same e2e green with the flag off.
 
 *4b exit check:* the `look_only` audit golden and the live `command_result` both match through Rust; toggling the allow-list off returns to the Phase 3 Python path with no diff.
@@ -2187,6 +2187,104 @@ config toggle — is NOT yet met** — only the 4a foundation is proven.
 **Recommended next increment:** sub-slice 4b (live `look` cutover), per the design spec's own stated sequencing
 (4a foundation before 4b cutover before 4c movement) — **after 4b's FIRST work closes the two MUST-FIX findings
 above,** so live `look` traffic cannot hang the gateway or violate frozen-session invariants.
+
+### Kickoff status — sub-slice 4b (2026-07-13)
+
+**Sub-slice 4b is complete and exit-check verified for the WS path.** Three commits landed on
+branch `rust-port-phase4` after the 4a groundwork:
+
+- `6101bb9` — two MUST-FIX-BEFORE-4b hardening fixes applied:
+  (1) new `GatewayOutbound::ExecutionRejected{command_id, direct_reply}` short-circuit frame
+  reused for both a Python persistence-handler exception (adapter catches, emits error reply
+  instead of silently continuing) and the frozen-session guard (checked first in
+  `_on_build_snapshot`, short-circuits with the exact frozen system message, no execute/audit/
+  broadcast); (2) Rust `tokio::time::timeout` backstop (`execute_timeout_ms`) on the execute
+  driver to prevent indefinite hangs, plus pending-slot cleanup sweep on disconnect.
+- `0d00524` — live WS cutover: `look` now in the DEFAULT allow-list (`LORECRAFT_RUST_VERBS=look`
+  when unset; `GatewayConfig::default().rust_verbs` stays empty for library/unit consumers).
+  A real WS client's `look` is Rust-executed by default; rollback = `LORECRAFT_RUST_VERBS=""` (explicit empty)
+  → all commands to Python unchanged.
+- `5a77b6c` — gate-found parity-gap fix: `apply_outcome` now emits `COMMAND_EXECUTED` on the
+  bus (it previously only recorded the audit ROW), so composition observers — notably `main.py::
+  _push_command_executed` → the admin audit-feed broadcast, plus achievement/quest/analytics
+  listeners — fire for Rust-executed commands identically to the Python path. This closed a
+  real admin-audit-feed parity gap and restored a regressed slow-client backpressure test.
+  Also folded in: `_pending` map sweep-on-disconnect + cap (leak fix), and shared `webui/player/
+  messages.py` de-duping frozen/error strings.
+
+**4b's exit check is MET (for the WS path):** a real WS client's `look` is LIVE-executed by Rust
+default-on, byte-identical `command_result` + audit golden + admin `audit_appended` broadcast +
+actor-excluded room fan-out all reproduced. Rollback (allow-list empty → Python) intact.
+
+**Code Review:** clean (blocking parity gap resolved, no double-emit, advisory folds correct).
+**Test & QA lanes:** Python `make lint`/`make typecheck`(0)/`make test-cov` 1538 passed/1 skipped/
+91.08% cov; Rust `cargo build`/`test`(143 tests)/`clippy`/`fmt` clean. E2E lane: the previously-
+regressed slow-client backpressure test PASSES again through Rust; standard e2e 50 + sim 22;
+all 22 through-Rust exit checks green with look default-on (no regression).
+
+**CONFIRMED DECISION — Option (c) transport split (record as explicit DEFERRED item):** WS `look` = Rust-executed (done); `POST /command` `look` stays Python-executed this phase. REASON: the browser sends commands via HTMX `POST /command` form (rendering HTML), and its WebSocket is RECEIVE-ONLY, so the Rust WS execution path reaches only raw-WS clients (virtual_player/parity harness), not real browser players; Phase 3 decision 8 keeps `POST /command` on Python to avoid Rust rendering HTMX; `look` is read-only so its output is byte-identical across both engines (no user-visible divergence). Migrating the POST-path `look` is DEFERRED (see "Future-phase open items" section below). Do NOT implement it in Phase 4.
+
+**Still pending / explicitly NOT done:** sub-slice 4c (movement: `lorecraft-feature-move` crate, Python `build_move_request`, movement golden fixtures, and the `go`/directional routing — all unstarted). **Phase 4 is NOT complete — 4c (movement) remains;** the phase-level exit criterion requires real `look` and `go` to execute via Rust with byte-identical audit/effect/state hashes.
+
+**4c follow-ups — carry forward, close when movement migrates:**
+- The `apply_outcome` `flush_events()` is a no-op for look but movement's queued `PLAYER_MOVED` will need it (a `# TODO(4c)` is in the code).
+- The `_parse_command_metadata` re-parse drift risk (flagged as 4a follow-up (a)).
+- Audit `duration_ms`/`perf` omission on the Rust-execute path (flagged as 4a follow-up (c)).
+
+### Future-phase open items
+
+**Browser command transport — scheduling decision needed.** This open item arises from the confirmed
+Option-c transport split (4b, above): the Rust WS execution path reaches only raw-WS test clients
+(`virtual_player`, parity harness), **not real browser players**, because the browser sends commands
+via HTMX `POST /command` form (rendering HTML response), and its WebSocket is RECEIVE-ONLY. Phase 3
+decision 8 chose to keep `POST /command` on Python to avoid a Rust HTMX-rendering seam (inconsistent
+with decision 8's "Rust is the authority for a slice of gameplay"). Currently harmless for `look`
+(read-only, byte-identical output), but a **genuine two-engines-per-verb parity hazard** once MUTATING
+verbs migrate at 4c and beyond — transaction atomicity, audit trail, RNG draws, and event ordering
+become correctness-critical across both paths.
+
+**Gap:** Phase 3's `POST /command` verb dispatch is still routed to Python; Phase 4 4b cut over the
+WS path to Rust but left the browser's POST path untouched. This creates a split-routing scenario where
+`look` is executed by two different engines depending on transport (WS → Rust, POST → Python). For
+read-only verbs it is cosmetic; for mutating verbs it is a liability.
+
+**Three options (escalating stakes, recommend option (i)):**
+
+(i) **Browser migration to WebSocket command-send (recommended).** Move the browser from HTMX `POST
+/command` form to WebSocket command sends (JSON or text), with response as an in-band JSON frame
+(not HTML). This makes the browser's transport identical to the raw-WS test clients, so Rust
+becomes the real ingress-level authority for ALL clients. Rust no longer renders, but the browser
+receives the same `command_result` / `state_change` / broadcast frames as the raw-WS client, and
+can re-render client-side. This is the option recommended by the plan's architecture
+(decision 8 & decision 3: gateway routing, Rust authority). Drawback: a Frontend work increment,
+distinct from Phase 4. **Schedule as a DEDICATED increment AFTER 4c (movement) and BEFORE broad
+Phase 5+ verb migration**, so command routing ownership is settled before the migration accelerates
+beyond read-only verbs.
+
+(ii) **Rust HTMX-rendering seam (not recommended).** Add Rust rendering output for HTMX-bound responses,
+matching the HTML structure Python produces. Violates decision 8 ("Python owns rendering / Rust owns
+execution") and pushes rendering logic into the core engine. Only defensible as a short-term
+stop-gap if option (i) proves unfeasible, but it inverts the planned direction (Rust as authority,
+Python as composition layer). Flag as contingency only.
+
+(iii) **Python→Rust POST forwarding (transitional only, not recommended).** Keep `POST /command` on
+Python but have Python forward migrated verbs to Rust via UDS or HTTPx, await the Rust result, apply
+it, and render the response. This preserves HTMX rendering and lets Phase 4 proceed unchanged. Drawback:
+inverts the architecture (Python is the ingress router, forwarding to a Rust subsystem), splits routing
+ownership, and only works if the forwarding latency is acceptable. Valid as a temporary phase-1 bridge
+but explicitly transitional — not a long-term seam.
+
+**Recommendation:** Schedule option (i) — browser migration to WS command-send — as a DEDICATED
+increment **immediately after Phase 4c completes** and **before Phase 5+ broad verb migration**. This
+resolves the routing split, consolidates Rust as the ingress-level authority, and ensures new
+mutating verbs have a single code path from browser to engine. Mark this as a **FRONTEND SPECIALIST**
+project (the browser transport change), with clear success criterion: a browser client sending
+commands via WebSocket receives the same `command_result`/`state_change`/broadcast frames as a
+raw-WS client, with no server-side routing difference between them.
+
+**User decision:** confirm this scheduling (AFTER 4c, BEFORE broad 5+) so the Frontend increment
+can be planned in the sprint queue. If option (i) is not feasible, escalate to option (ii) or (iii)
+with explicit trade-off review.
 
 ## Final position
 

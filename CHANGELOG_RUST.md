@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Phase 4 sub-slice 4b implementation (live `look` cutover, hardening fixes, COMMAND_EXECUTED
+  parity fix): `LORECRAFT_RUST_VERBS=look` default enable (real WS clients' `look` Rust-executed
+  by default; rollback = explicit empty). New `GatewayOutbound::ExecutionRejected{command_id,
+  direct_reply}` frame for adapter error/exception replies (replaces silent continue). Rust
+  `tokio::time::timeout` backstop (`execute_timeout_ms`) on execute driver. Frozen-session guard
+  checked first in `_on_build_snapshot` with short-circuit `ExecutionRejected` reply. Pending-slot
+  map cleanup sweep on disconnect + cap (leak fix). Shared `webui/player/messages.py` de-duping
+  frozen/error strings across Python path.
+- COMMAND_EXECUTED bus emission from `apply_outcome` (was audit-row-only), restoring admin audit-feed
+  + observer-driven reactions (achievement/quest/analytics) parity with Python path.
+- Explicit DEFERRED decision record: Option (c) transport split — WS `look` live-cut over to Rust,
+  `POST /command` `look` stays Python (HTMX rendering, WS receive-only). Browser-command-transport
+  flagged as future-phase open item (dedicated increment AFTER Phase 4c, BEFORE broad Phase 5+
+  migration) with three options and recommendation (option (i): browser→WS, Rust as real authority,
+  FRONTEND SPECIALIST project).
 - Phase 4 sub-slice 4a implementation (execution-routing protocol + Python persistence handlers
   + Rust routing seam + headless `look` parity harness, no live client cutover): new
   `GatewayInbound::BuildSnapshot`/`ApplyOutcome` and `GatewayOutbound::SnapshotReady`/
@@ -34,15 +49,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LORECRAFT_RUST_VERBS=look` proves byte-for-byte `command_result` and `look_only.audit.json`
   reproduction, with actor-exclusion confirmed. No live client cutover — exit tests only.
 
+### Fixed
+- Phase 4 sub-slice 4b parity fix: `apply_outcome` now emits `COMMAND_EXECUTED` on the bus (was
+  audit-row-only), restoring admin audit-feed (`audit_appended` broadcast) and observer-driven
+  reactions (achievement/quest/analytics listener callbacks) to fire identically to the Python path.
+  Closed a real admin-audit-feed parity gap and restored the regressed slow-client backpressure test.
+- Phase 4 sub-slice 4b round-trip hardening: adapter no longer silently continues on `BuildSnapshot`/
+  `ApplyOutcome` handler exceptions; instead emits new `ExecutionRejected` reply frame. Rust execute
+  driver wrapped in `tokio::time::timeout` backstop to prevent indefinite hangs on unresponsive
+  Python adapter. Frozen-session guard checked first in `_on_build_snapshot` with short-circuit
+  `ExecutionRejected` reply (fixes the two MUST-FIX-BEFORE-4b dormant defects from 4a).
+- Pending-slot map now swept on disconnect + capped, preventing leak from long-lived connections.
+
+### Phase 4 sub-slice 4b status (2026-07-13)
+**4b's exit check is MET (WS path):** a real WS client's `look` is LIVE-executed by Rust
+default-on (`LORECRAFT_RUST_VERBS=look`), byte-identical `command_result` + audit golden +
+admin `audit_appended` broadcast, actor-excluded room fan-out. Rollback (allow-list empty
+→ Python unchanged) intact. **CONFIRMED DECISION — Option (c) transport split (deferred):**
+WS `look` = Rust-executed; `POST /command` `look` stays Python (HTMX rendering, WS receive-only,
+read-only parity). See `docs/rust_migration_plan.md`'s Phase 4 section 4b and "Future-phase open
+items" (browser-command-transport) for full rationale, three options, and scheduling recommendation
+(dedicated increment AFTER 4c, BEFORE Phase 5+ broad verb migration; FRONTEND SPECIALIST project).
+Sub-slice 4c (movement) remains — Phase 4 is IN PROGRESS, not complete. Three 4c follow-ups noted
+(apply_outcome flush_events, parse-metadata re-parse drift, audit duration fields).
+
 ### Phase 4 sub-slice 4a status
 **4a's exit check is MET:** a headless `look` driven through Rust-execute→Python-persist
 reproduces the byte-identical `command_result` + `look_only.audit.json` audit, with no real
-client routed. **Sub-slices 4b (live `look` cutover) and 4c (movement) remain — Phase 4 is IN
-PROGRESS, not complete.** Two MUST-FIX-BEFORE-4b dormant defects identified: (1) Rust-side
-indefinite hang if Python handler raises (no reply frame + no timeout), (2) frozen-session guard
-not reproduced on Rust path. See `docs/rust_migration_plan.md`'s Phase 4 section 4a status for
-detail, the two must-fix findings, and four 4c follow-ups (duplicate parse, TTL/disconnect-sweep
-for pending-execution map, missing duration fields in audit, debug assertion gap).
+client routed. Two MUST-FIX-BEFORE-4b dormant defects identified: (1) Rust-side indefinite hang
+if Python handler raises, (2) frozen-session guard not reproduced on Rust path. See
+`docs/rust_migration_plan.md`'s Phase 4 section 4a status for detail, the two must-fix findings,
+and four 4c follow-ups (duplicate parse, TTL/disconnect-sweep, missing duration fields, debug
+assertion gap).
 
 ---
 
