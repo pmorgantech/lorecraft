@@ -1,8 +1,10 @@
 //! `lorecraft-gateway` — the Rust gateway binary (Phase 3b).
 //!
-//! Serves the player `/ws` route (plus `/healthz`) and forwards commands to the
-//! Python adapter's UDS listener. Reverse-proxy routes for the rest of the app
-//! are the next task; until then any non-`/ws` page 404s here by design.
+//! Serves the player `/ws` route (plus `/healthz`) and reverse-proxies every
+//! other HTTP request to the Python backend, forwarding commands to the Python
+//! adapter's UDS listener. This is the Option-A single front door (Phase 3b): a
+//! browser loads the whole app through this port, so the frontend JS builds its
+//! WebSocket URL from the Rust origin with no change.
 //!
 //! Configuration is read from the environment (static operational config,
 //! design decision 12):
@@ -13,6 +15,7 @@
 //! | `LORECRAFT_GATEWAY_SOCKET_PATH` | `var/gateway.sock` | Python adapter's UDS socket path |
 //! | `LORECRAFT_GATEWAY_WORLD_ID`    | `world-1`        | `world_id` stamped on envelopes  |
 //! | `LORECRAFT_GATEWAY_DEADLINE_MS` | `5000`           | `deadline_ms` stamped on envelopes |
+//! | `LORECRAFT_GATEWAY_BACKEND`     | `http://127.0.0.1:8000` | Python uvicorn origin the proxy forwards to |
 //!
 //! Once serving, it prints exactly one line to stdout in the form
 //! `GATEWAY_LISTENING <addr>` (e.g. `GATEWAY_LISTENING 127.0.0.1:43571`) so a
@@ -50,6 +53,7 @@ fn config_from_env() -> anyhow::Result<GatewayConfig> {
         bind_address,
         socket_path: PathBuf::from(env_or("LORECRAFT_GATEWAY_SOCKET_PATH", "var/gateway.sock")),
         world_id: env_or("LORECRAFT_GATEWAY_WORLD_ID", "world-1"),
+        backend_url: env_or("LORECRAFT_GATEWAY_BACKEND", "http://127.0.0.1:8000"),
         default_deadline_ms,
         ..GatewayConfig::default()
     })

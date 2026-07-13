@@ -13,6 +13,9 @@
 //!   docs for the resolved design decision).
 //! - [`gateway`] — the Axum router/app + static config. The `lorecraft-gateway`
 //!   binary (`src/bin/gateway.rs`) serves it.
+//! - `proxy` (private) — the transparent HTTP reverse proxy (Phase 3b, Option A):
+//!   the router's `.fallback(...)` forwards every non-`/ws`/`/healthz` request to
+//!   the Python backend verbatim, making the gateway the single front door.
 //! - [`ws_player`] — the **live** player `/ws` cutover (Phase 3b): ticket auth
 //!   handoff, connect handshake, per-connection writer task, receive loop.
 //! - [`ws_admin`] / [`auth::validate_admin_token`] — 3c stubs (admin socket +
@@ -23,6 +26,7 @@
 pub mod auth;
 pub mod forward;
 pub mod gateway;
+mod proxy;
 pub mod ws_admin;
 pub mod ws_player;
 

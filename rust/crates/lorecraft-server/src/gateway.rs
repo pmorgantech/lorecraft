@@ -24,7 +24,7 @@ use lorecraft_events::{ConnectionRegistry, DEFAULT_OUTBOUND_QUEUE_DEPTH};
 use serde_json::json;
 
 use crate::forward::ForwardClient;
-use crate::{ws_admin, ws_player};
+use crate::{proxy, ws_admin, ws_player};
 
 /// Static gateway configuration (design decision 12 — operational, not
 /// game-balance, so static config this phase rather than a live-tunable singleton).
@@ -36,6 +36,10 @@ pub struct GatewayConfig {
     pub socket_path: PathBuf,
     /// The single world id stamped onto forwarded command envelopes (decision 3).
     pub world_id: String,
+    /// Base URL of the Python uvicorn backend that all non-`/ws`/`/healthz`
+    /// requests are reverse-proxied to (Phase 3b, Option A). No trailing slash is
+    /// required — the proxy trims one if present. Plain HTTP loopback origin.
+    pub backend_url: String,
     /// Default per-command execution budget stamped onto envelopes.
     pub default_deadline_ms: u64,
     /// Depth of each connection's bounded outbound queue.
@@ -53,6 +57,7 @@ impl Default for GatewayConfig {
             bind_address: SocketAddr::from(([127, 0, 0, 1], 8090)),
             socket_path: PathBuf::from("var/gateway.sock"),
             world_id: "world-1".to_string(),
+            backend_url: "http://127.0.0.1:8000".to_string(),
             default_deadline_ms: 5_000,
             outbound_queue_depth: DEFAULT_OUTBOUND_QUEUE_DEPTH,
             handshake_timeout_ms: 5_000,
@@ -73,6 +78,9 @@ pub struct GatewayState {
     pub registry: Arc<ConnectionRegistry>,
     /// The framed UDS client forwarding commands to the Python adapter.
     pub forward: Arc<ForwardClient>,
+    /// Shared HTTP client used by the reverse proxy to reach the Python backend
+    /// (redirect-following disabled; see [`crate::proxy`]).
+    pub http_client: Arc<reqwest::Client>,
 }
 
 /// Build the Axum [`Router`] for the gateway with the health check wired for real
@@ -86,11 +94,16 @@ pub fn build_router(
         config,
         registry,
         forward,
+        http_client: Arc::new(proxy::build_http_client()),
     };
     Router::new()
         .route("/healthz", get(healthz))
         .route("/ws", get(ws_player::upgrade))
         .route("/admin/ws", get(ws_admin::upgrade))
+        // Everything else (lobby/login HTML, static assets, /auth/ws-ticket,
+        // /command HTMX partials, …) is reverse-proxied to the Python backend.
+        // The three routes above keep precedence over this catch-all.
+        .fallback(proxy::proxy_handler)
         .with_state(state)
 }
 

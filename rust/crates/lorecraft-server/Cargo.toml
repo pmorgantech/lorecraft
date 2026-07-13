@@ -32,6 +32,16 @@ futures-util = { version = "0.3", default-features = false, features = ["std", "
 # uuid 1.21+ raises the MSRV to rustc 1.85; 1.20 (rust-version 1.63) is the
 # newest release within the workspace's 1.75 pin.
 uuid = { version = ">=1, <1.21", features = ["v4"] }
+# HTTP reverse-proxy client to the Python backend (Phase 3b, Option-A front
+# door): the gateway forwards every non-`/ws`/`/healthz` request to uvicorn.
+# Plain-HTTP loopback only, so `default-features = false` with no TLS/http2
+# feature — the backend is uvicorn on `127.0.0.1` over HTTP/1, and skipping TLS
+# avoids pulling a second TLS stack into the tree. Pinned below 0.13.4:
+# reqwest 0.13.4+ raises the MSRV to rustc 1.85, above this workspace's 1.75 pin
+# (same ceiling discipline as the axum pin above). Cargo's MSRV-aware resolver
+# already backs down to 0.13.3; the pin makes that ceiling explicit for a fresh
+# resolve, since Cargo.lock is gitignored and can drift.
+reqwest = { version = ">=0.13, <0.13.4", default-features = false }
 # Binary-target (src/bin/gateway.rs) error handling + log output.
 anyhow = "1"
 tracing-subscriber = "0.3"
