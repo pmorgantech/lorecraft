@@ -46,6 +46,7 @@ from lorecraft.protocol.gateway import (
     SnapshotReady,
 )
 from lorecraft.state import AppState
+from lorecraft.types import JsonObject
 from lorecraft.webui.player.ws_command import handle_ws_command
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -178,6 +179,61 @@ def test_apply_outcome_returns_single_state_change_delivery(state: AppState) -> 
     assert "players-online" in panels
     # Idempotent panel-refresh directives are coalesce-keyed (Tier 2 policy).
     assert directive.coalesce_key is not None
+
+
+def _drain_admin_audit_pushes(
+    queue: "asyncio.Queue[JsonObject]",
+) -> list[JsonObject]:
+    """Collect the `audit_appended` admin-feed pushes buffered on `queue`."""
+    pushes: list[JsonObject] = []
+    while not queue.empty():
+        message = queue.get_nowait()
+        if message.get("type") == "audit_appended":
+            pushes.append(message)
+    return pushes
+
+
+def test_apply_outcome_fires_admin_audit_appended_broadcast(state: AppState) -> None:
+    """PARITY (the gap the 4a harness missed): persisting a Rust-executed `look`
+    emits `COMMAND_EXECUTED` on the bus, so `main.py`'s `_push_command_executed`
+    observer pushes an `audit_appended` admin-feed broadcast — identical to what
+    the pure-Python command path (`handle_ws_command` -> `CommandEngine`) produces.
+
+    Pre-fix behavior: `apply_outcome` recorded the audit ROW but never emitted the
+    bus event, so no observer fired and an admin watching the live audit tab missed
+    every Rust-executed command. The baseline compare below is the exact side
+    effect that was silently absent.
+    """
+    _warm_up_look(state)
+
+    # Baseline: the pure-Python path's admin audit-feed push for the same `look`.
+    baseline_queue: asyncio.Queue[JsonObject] = asyncio.Queue()
+    state.admin_broadcaster.add(baseline_queue)
+    asyncio.run(
+        handle_ws_command(
+            state, DirectiveConnectionManager(), PLAYER_ID, "admin-base", "look"
+        )
+    )
+    state.admin_broadcaster.remove(baseline_queue)
+    baseline = _drain_admin_audit_pushes(baseline_queue)
+
+    # Rust path: apply_outcome must fire the identical admin push.
+    rust_queue: asyncio.Queue[JsonObject] = asyncio.Queue()
+    state.admin_broadcaster.add(rust_queue)
+    outcome = _look_outcome(state, "c-admin")
+    asyncio.run(apply_outcome(state, _envelope("admin-rust", "c-admin"), outcome))
+    state.admin_broadcaster.remove(rust_queue)
+    rust = _drain_admin_audit_pushes(rust_queue)
+
+    # Exactly one audit-feed push, carrying the right actor/summary/room, and
+    # byte-identical to the Python path's (the payload has no session-scoped field).
+    assert len(baseline) == 1
+    assert len(rust) == 1
+    push = rust[0]
+    assert push["actor_id"] == PLAYER_ID
+    assert push["room_id"] == state.settings.seed_player_start_room
+    assert push["summary"]
+    assert rust == baseline
 
 
 def test_apply_outcome_writes_command_executed_audit(state: AppState) -> None:

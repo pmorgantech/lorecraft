@@ -33,6 +33,10 @@ from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.observability import bind_transaction_context
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
+from lorecraft.webui.player.messages import (
+    EXECUTION_ERROR_MESSAGE,
+    FROZEN_SESSION_MESSAGE,
+)
 from lorecraft.webui.player.ui_snapshots import player_ui_updates
 
 log = logging.getLogger(__name__)
@@ -83,7 +87,7 @@ async def handle_ws_command(
         if active_session is not None and active_session.status == "frozen":
             return {
                 "type": "system",
-                "text": "Your session is frozen. Contact an administrator.",
+                "text": FROZEN_SESSION_MESSAGE,
             }
 
         room = room_repo.get(player.current_room_id)
@@ -166,6 +170,5 @@ async def handle_ws_command(
             )
             return {
                 "type": "error",
-                "message": "Something went wrong processing that command. "
-                "It has been logged for review.",
+                "message": EXECUTION_ERROR_MESSAGE,
             }

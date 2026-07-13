@@ -21,6 +21,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lorecraft.config import Settings
+from lorecraft.gateway import adapter as adapter_mod
 from lorecraft.gateway.adapter import (
     GatewayAdapter,
     GatewayPushManager,
@@ -36,6 +37,7 @@ from lorecraft.protocol.envelope import CommandEnvelope
 from lorecraft.protocol.gateway import (
     AdminAuthResult,
     AuthResult,
+    BuildSnapshot,
     ClientClose,
     Connected,
     ConnectAck,
@@ -52,6 +54,7 @@ from lorecraft.protocol.gateway import (
     PlayerTarget,
     RedeemTicket,
     RoomTarget,
+    SnapshotReady,
     ValidateAdminToken,
     gateway_outbound_from_json,
 )
@@ -203,6 +206,66 @@ def test_client_close_disconnect_emits_player_left(
     assert isinstance(frames[-1], DisconnectAck)
     assert not any(isinstance(f, DisconnectAck) for f in frames[:-1])
     assert not adapter.manager.is_connected(PLAYER_ID)
+
+
+# --- Phase 4b: pending-outcome map is bounded (leak-on-timeout advisory) -----
+
+
+def test_disconnect_sweeps_pending_outcomes_for_player(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """A `BuildSnapshot` pends an envelope awaiting its `ApplyOutcome`. If the
+    player disconnects first, Rust cancels on its side and sends Python no
+    `ApplyOutcome`, so the pending entry would otherwise leak forever. The
+    `Disconnected` teardown must sweep it."""
+    envelope = _envelope("sweep-sess", "cmd-pending", "look")
+    (ready,) = asyncio.run(adapter.handle_inbound(BuildSnapshot(envelope=envelope)))
+    assert isinstance(ready, SnapshotReady)
+    assert "cmd-pending" in adapter._pending  # pyright: ignore[reportPrivateUsage]
+
+    asyncio.run(
+        adapter.handle_inbound(Disconnected(player_id=PLAYER_ID, reason=ClientClose()))
+    )
+    # No ApplyOutcome will follow the disconnect — the entry must be reclaimed.
+    assert "cmd-pending" not in adapter._pending  # pyright: ignore[reportPrivateUsage]
+
+
+def test_disconnect_sweep_leaves_other_players_pending_intact(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """The sweep is per-player: disconnecting one player must not evict another
+    player's in-flight pending envelope."""
+    mine = _envelope("s-mine", "cmd-mine", "look")
+    asyncio.run(adapter.handle_inbound(BuildSnapshot(envelope=mine)))
+    # A second player's pending entry, inserted directly (no seeded second player
+    # needed — the sweep keys on the envelope's player_id).
+    other = replace(mine, command_id="cmd-other", player_id=SECOND_PLAYER_ID)
+    adapter._pending["cmd-other"] = other  # pyright: ignore[reportPrivateUsage]
+
+    asyncio.run(
+        adapter.handle_inbound(Disconnected(player_id=PLAYER_ID, reason=ClientClose()))
+    )
+    assert "cmd-mine" not in adapter._pending  # pyright: ignore[reportPrivateUsage]
+    assert "cmd-other" in adapter._pending  # pyright: ignore[reportPrivateUsage]
+
+
+def test_pending_map_evicts_oldest_over_cap(
+    state: AppState, adapter: GatewayAdapter, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Backstop for the pathological leak: once `_pending` exceeds its hard cap,
+    the oldest (insertion-order) entry is evicted so the map can never grow
+    without bound. Cap is monkeypatched small to keep the test cheap."""
+    monkeypatch.setattr(adapter_mod, "_MAX_PENDING_OUTCOMES", 2)
+    for i in range(3):
+        env = _envelope("cap-sess", f"cmd-{i}", "look")
+        adapter._pending[env.command_id] = env  # pyright: ignore[reportPrivateUsage]
+        adapter._evict_stale_pending()  # pyright: ignore[reportPrivateUsage]
+
+    pending = adapter._pending  # pyright: ignore[reportPrivateUsage]
+    assert len(pending) == 2
+    # The oldest (cmd-0) was evicted; the two newest remain.
+    assert "cmd-0" not in pending
+    assert set(pending) == {"cmd-1", "cmd-2"}
 
 
 # --- command round-trip (the parity anchor) --------------------------------

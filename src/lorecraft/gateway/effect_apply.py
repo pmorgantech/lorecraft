@@ -189,6 +189,33 @@ async def apply_outcome(
         )
         ctx.commit_audit_events()
 
+        # (3b) Announce the executed command on the bus, mirroring the engine's
+        # tail (engine.py:_execute_command, after the audit record+commit). This
+        # is what lets composition-layer observers registered on
+        # GameEvent.COMMAND_EXECUTED fire for Rust-executed commands too — most
+        # visibly main.py:_push_command_executed, which pushes the `audit_appended`
+        # admin audit-feed broadcast. Without it, an admin watching the live audit
+        # tab misses every Rust-executed command (and quest/achievement/analytics
+        # listeners are likewise skipped). Payload keys/values match engine.py
+        # exactly. `ctx.emit` reaches `state.bus` (passed as `bus=` above), the
+        # same bus those observers register on; the bus isolates handler
+        # exceptions into HandlerResult.error, so a misbehaving observer cannot
+        # break this function's return — matching the engine's behavior.
+        #
+        # No `ctx.flush_events()` is needed here for `look`: the persistence tail
+        # queues no game events (look derives no effects, so nothing calls
+        # queue_event). When movement migrates at 4c its queued PLAYER_MOVED event
+        # WILL need a flush before commit, mirroring engine.py step 9.
+        # TODO(4c): add `ctx.flush_events()` before the game commit once verbs that
+        # queue events (e.g. MoveEntity -> PLAYER_MOVED) migrate here.
+        ctx.emit(
+            GameEvent.COMMAND_EXECUTED,
+            actor_id=ctx.player.id,
+            verb=parsed.verb,
+            summary=_command_summary_text(parsed),
+            room_id=ctx.room.id,
+        )
+
         # (4) Post-command fan-out via the SAME function the live path drives, so
         # the deliveries (and their coalesce keys, stamped by the manager) match
         # byte-for-byte. For look this is a single players-excluded room

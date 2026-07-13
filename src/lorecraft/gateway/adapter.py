@@ -82,6 +82,10 @@ from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
 from lorecraft.webui.admin.auth import decode_token
 from lorecraft.webui.player.auth import consume_ws_ticket
+from lorecraft.webui.player.messages import (
+    EXECUTION_ERROR_MESSAGE,
+    FROZEN_SESSION_MESSAGE,
+)
 from lorecraft.webui.player.ui_snapshots import (
     player_ui_updates,
     reconnect_sync_payload,
@@ -91,6 +95,15 @@ from lorecraft.webui.player.ws_command import handle_ws_command
 log = logging.getLogger(__name__)
 
 _LENGTH_PREFIX_BYTES = 4
+
+# Hard cap on in-flight `BuildSnapshot` envelopes awaiting their correlated
+# `ApplyOutcome`. Normally at most one command is outstanding per connection, so
+# `_pending` holds a tiny handful; this cap only trips on genuine leakage — a
+# Rust `execute_timeout_ms` elapsing (Rust cancels on its side and sends Python
+# nothing) or a dropped `ApplyOutcome`. Combined with the per-player sweep on
+# `Disconnected`, it bounds `_pending` so a leaked entry can never accumulate
+# without limit. Oldest (insertion-order) entries are evicted first.
+_MAX_PENDING_OUTCOMES = 1024
 
 
 def _execution_error_reply() -> JsonObject:
@@ -103,8 +116,7 @@ def _execution_error_reply() -> JsonObject:
     """
     return {
         "type": "error",
-        "message": "Something went wrong processing that command. "
-        "It has been logged for review.",
+        "message": EXECUTION_ERROR_MESSAGE,
     }
 
 
@@ -484,6 +496,10 @@ class GatewayAdapter:
         """
         state = self._state
         player_id = msg.player_id
+        # A disconnect means no `ApplyOutcome` will ever arrive for this player's
+        # in-flight `BuildSnapshot`(s); reclaim their pending envelopes so they
+        # can't leak (advisory: the `_pending` map's timeout/disconnect path).
+        self._sweep_pending_for_player(player_id)
         if isinstance(msg.reason, ClientClose):
             session_id = self._manager.session_of(player_id)
             with (
@@ -604,6 +620,13 @@ class GatewayAdapter:
         persistence context. On either short-circuit the pending map is left
         untouched — there will be no `ApplyOutcome` for a rejected command. Only
         `look` is migrated this phase; other verbs are not yet routed here.
+
+        The pending map is bounded: a Rust execute-timeout (or a dropped
+        `ApplyOutcome`) would otherwise leak this entry forever, since Rust
+        cancels on its side and sends Python nothing. The per-player sweep on
+        `Disconnected` reclaims a disconnecting player's leaked entries; this hard
+        cap (`_MAX_PENDING_OUTCOMES`) is the backstop for the pathological case,
+        evicting the oldest entries first.
         """
         envelope = msg.envelope
         try:
@@ -620,7 +643,43 @@ class GatewayAdapter:
                 direct_reply=_execution_error_reply(),
             )
         self._pending[envelope.command_id] = envelope
+        self._evict_stale_pending()
         return SnapshotReady(command_id=envelope.command_id, request=request)
+
+    def _evict_stale_pending(self) -> None:
+        """Drop oldest pending envelopes once the map exceeds its hard cap.
+
+        `dict` preserves insertion order, so the first keys are the oldest
+        outstanding `BuildSnapshot`s — the ones a never-arriving `ApplyOutcome`
+        would leak. Under the normal at-most-one-outstanding-command discipline
+        this never trips; it only reclaims genuinely-leaked entries.
+        """
+        while len(self._pending) > _MAX_PENDING_OUTCOMES:
+            stale_id = next(iter(self._pending))
+            del self._pending[stale_id]
+            log.warning("gateway_evicted_stale_pending_outcome: %s", stale_id)
+
+    def _sweep_pending_for_player(self, player_id: str) -> None:
+        """Reclaim any pending envelopes belonging to a disconnecting player.
+
+        A disconnect means Rust will never send an `ApplyOutcome` for that
+        player's in-flight `BuildSnapshot`(s), so their `_pending` entries would
+        leak. Evict them here (called from the `Disconnected` teardown). Cheap:
+        `_pending` is normally near-empty.
+        """
+        stale = [
+            command_id
+            for command_id, envelope in self._pending.items()
+            if envelope.player_id == player_id
+        ]
+        for command_id in stale:
+            del self._pending[command_id]
+        if stale:
+            log.debug(
+                "gateway_swept_pending_outcomes player=%s count=%d",
+                player_id,
+                len(stale),
+            )
 
     async def _on_apply_outcome(self, msg: ApplyOutcome) -> GatewayOutbound:
         """Persist the Rust-derived outcome and return the reply + deliveries.
@@ -675,7 +734,7 @@ class GatewayAdapter:
         if is_frozen:
             return {
                 "type": "system",
-                "text": "Your session is frozen. Contact an administrator.",
+                "text": FROZEN_SESSION_MESSAGE,
             }
         return None
 
