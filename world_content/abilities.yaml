@@ -1,0 +1,132 @@
+# Abilities (Sprint 78) — one concrete thing within a discipline.
+#
+# The lossless migration of the pre-78 `skill_tree.yaml` (docs/discipline_ability_
+# system.md §7): the 7 existing nodes re-filed under their disciplines, each gaining
+# a `discipline:` field, an optional data-driven `usage:` block (what it takes to
+# *perform* it — replacing hardcoded Python conditions), and a `proficiency_model`.
+# Ids/costs/prerequisites/unlock payloads are unchanged; the `ability.<id>` flag is
+# still injected automatically if omitted. Three flavors, all data:
+#   (A) active verb    — `unlock.enables_verb` marks the code verb gated on the flag
+#   (B) passive bonus  — `unlock.modifier` feeds the engine modifier resolver
+#   (C) interaction    — flag alone; world.yaml dialogue gates on it
+#
+# Modifier keys keep the `skill.<name>` resolver namespace (§6.1, Option A) — it is
+# an arbitrary check-identity string, not tied to the deleted skills catalog, so
+# `sharp_eyes` needs no remap and existing trait/consumable/mark/item modifiers on
+# `skill.perception` etc. keep applying unchanged.
+version: 1
+abilities:
+  # --- (A) Active-verb abilities ---
+  - id: forage
+    name: Forage
+    description: >-
+      Learn to read the wild for food. Enables the `forage` verb in outdoor
+      rooms, where a survival check turns up something edible.
+    discipline: survival
+    ability_type: active
+    activation_type: instant
+    cost: 1
+    prerequisites: []
+    proficiency_model: success_only
+    usage:
+      terrain: [outdoor]  # replaces forage's hardcoded Room.indoor == False check
+    unlock:
+      enables_verb: forage
+    tags: [outdoor, gathering]
+
+  - id: keen_senses
+    name: Keen Senses
+    description: >-
+      Heighten your awareness. Enables the `sense` verb, a perception sweep that
+      reveals hidden ways and notices who and what is present.
+    discipline: subterfuge
+    ability_type: active
+    activation_type: instant
+    cost: 1
+    prerequisites: []
+    proficiency_model: success_only
+    unlock:
+      enables_verb: sense
+    tags: [awareness]
+
+  - id: pick_locks
+    name: Pick Locks
+    description: >-
+      Coax a locked door open without its key. Enables the `pick` verb, resolved
+      by a lockpicking check.
+    discipline: subterfuge
+    ability_type: active
+    activation_type: instant
+    cost: 2
+    prerequisites: []
+    proficiency_model: success_only
+    unlock:
+      enables_verb: pick
+    tags: [locks]
+
+  # --- (B) Passive-modifier abilities ---
+  - id: mule
+    name: Mule
+    description: A trained back and better packing — you carry more before slowing.
+    discipline: fortitude
+    ability_type: passive
+    activation_type: instant
+    cost: 1
+    prerequisites: []
+    proficiency_model: none
+    unlock:
+      modifier:
+        key: carry_capacity
+        kind: add
+        amount: 20
+    tags: [carry]
+
+  - id: sharp_eyes
+    name: Sharp Eyes
+    description: Practice sharpens perception on every check that leans on it.
+    discipline: subterfuge
+    ability_type: passive
+    activation_type: instant
+    cost: 2
+    prerequisites: [keen_senses]
+    proficiency_model: none
+    unlock:
+      modifier:
+        # Keeps the `skill.perception` resolver key (§6.1, Option A): perception
+        # checks still resolve under this key, so no remap is needed.
+        key: skill.perception
+        kind: mult
+        amount: 1.1
+    tags: [awareness]
+
+  - id: haggler
+    name: Haggler
+    description: A merchant's patter shaves a little off everything you buy.
+    discipline: commerce
+    ability_type: passive
+    activation_type: instant
+    cost: 2
+    prerequisites: []
+    proficiency_model: none
+    unlock:
+      modifier:
+        key: price.buy
+        kind: mult
+        amount: 0.95
+    tags: [trade]
+
+  # --- (C) Interaction / dialogue unlock ability (zero engine code) ---
+  - id: silver_tongue
+    name: Silver Tongue
+    description: >-
+      A persuasive turn of phrase opens conversations that stay shut to others.
+      Gates dialogue options flagged `actor_has_flag:ability.silver_tongue`.
+    discipline: rhetoric
+    ability_type: interaction
+    activation_type: instant
+    cost: 1
+    prerequisites: []
+    proficiency_model: none
+    unlock:
+      enables_verb: null
+    tags: [social]

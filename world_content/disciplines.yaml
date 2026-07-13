@@ -1,0 +1,55 @@
+# Disciplines (Sprint 78) — themed bodies of practice a player specializes in.
+#
+# The non-combat seed taxonomy (docs/discipline_ability_system.md §7): each
+# discipline absorbs the pre-78 skill-tree nodes and flat skills listed below.
+# `governing_stat` mirrors the old SkillDef.governing_stat. `improve_chance` /
+# `max_rank` are the proficiency-growth dials the Tier 1 resolve_proficiency
+# mechanism consumes per use; both default (0.1 / 100) — authored explicitly here
+# for discoverability and easy per-discipline retuning.
+version: 1
+disciplines:
+  - id: survival
+    name: Survival
+    description: >-
+      Reading the wild — foraging, tracking, pathfinding, and weathering
+      exposure. Absorbs the forage ability and the survival/cartography checks.
+    governing_stat: fortitude
+    improve_chance: 0.1
+    max_rank: 100
+
+  - id: subterfuge
+    name: Subterfuge
+    description: >-
+      Stealth and unseen access — picking locks, heightened awareness, and
+      moving unnoticed. Absorbs pick locks, keen senses, sharp eyes, and the
+      lockpicking/perception checks.
+    governing_stat: agility
+    improve_chance: 0.1
+    max_rank: 100
+
+  - id: commerce
+    name: Commerce
+    description: >-
+      Trade and pricing — driving a hard bargain and knowing a fair deal.
+      Absorbs the haggler ability and the bartering check.
+    governing_stat: presence
+    improve_chance: 0.1
+    max_rank: 100
+
+  - id: rhetoric
+    name: Rhetoric
+    description: >-
+      Persuasion and social craft — opening conversations that stay shut to
+      others. Absorbs silver tongue and the persuasion check.
+    governing_stat: presence
+    improve_chance: 0.1
+    max_rank: 100
+
+  - id: fortitude
+    name: Fortitude
+    description: >-
+      Physical resilience — carrying more and enduring hardship. Absorbs the
+      mule ability.
+    governing_stat: fortitude
+    improve_chance: 0.1
+    max_rank: 100
