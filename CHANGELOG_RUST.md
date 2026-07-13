@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.1] - 2026-07-13
+
 ### Fixed
 - Gateway follow-up #1: Rust `ConnectionRegistry` now learns room moves via new
   `GatewayOutbound::MovePlayer` frame (commit `a41f6fe`). A `POST /command` or WS
