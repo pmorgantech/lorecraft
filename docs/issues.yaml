@@ -221,10 +221,19 @@ issues:
     server-side logging of the actual `feed_msgs` dicts passed into
     feed_items.html for a `help` command, to see if `msg_type` is present
     at render time.
+
+    RESOLVED 2026-07-13: user has now visually confirmed on the live
+    deployment that `help` output does match the coded `.msg-help` styling
+    (bold, accent-colored text with an accent-colored left border, per
+    custom.css:101-107). The earlier live-deployment investigation's open
+    question — whether the `msg-help` class renders at all — is settled:
+    it does render correctly. The remaining feedback is an aesthetic
+    preference (not loving that look), not a rendering bug, so no further
+    action or code change is planned.
   created_by: player-1
   created_at: '2026-07-05T19:41:22.531174Z'
-  updated_at: '2026-07-11T20:35:00.000000Z'
-  status: open
+  updated_at: '2026-07-13T00:00:00.000000Z'
+  status: resolved
   priority: normal
   component: player-report
   tags:
