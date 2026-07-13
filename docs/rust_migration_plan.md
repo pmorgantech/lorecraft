@@ -2078,18 +2078,115 @@ cutover, backpressure/slow-client policy, disconnect/reconnect, rate-limiting)**
 are complete and tested green. The phase-level exit criterion — both client types
 through Rust; disconnect/reconnect + slow-client tests match — is MET.
 
-**Phase 4 kickoff design spec is now landed (2026-07-13).** The specification is
-**PENDING USER REVIEW** before implementation begins — specifically **OPEN ITEM #1**
-(DB ownership / transaction model), where the Phase 4 prose and the plan's own phase
-sequencing point in different directions and need explicit confirmation: Recommendation
-is **Option A** ("Rust owns execution, Python owns persistence" this phase; defer full
-Rust DB ownership to Phase 5 per the plan's "repositories and DB ownership = Phase 5
-step 6" sequencing), but the Phase 4 prose currently reads like **Option B** (Rust owns
-the whole transaction including sqlx DB reads/writes and audit/outbox commit). No Phase
-4 task is marked started/done — this is design-only. Confirm OPEN ITEM #1 before 4a's
-protocol frames harden. The plan's north star ("durable transactions and an outbox
-before publication") is preserved under Option A (Python commits before Rust publishes)
-and reached in Phase 5 when the outbox becomes Rust-owned durable.
+**Phase 4 kickoff design spec was issued 2026-07-13, and sub-slice 4a (execution-routing
+protocol + headless `look` parity, no live cutover) has landed GREEN through its gate.
+Sub-slices 4b (live `look` cutover) and 4c (movement) remain — Phase 4 is IN PROGRESS,
+not complete.** See "Kickoff status — sub-slice 4a" section below for the detailed 4a
+findings, the two MUST-FIX-BEFORE-4b dormant defects, and the 4c follow-ups. The plan's
+north star ("durable transactions and an outbox before publication") is preserved under
+Option A (Python commits before Rust publishes; Rust-owned durable outbox reaches Phase 5).
+
+### Kickoff status — sub-slice 4a (2026-07-13)
+
+**Sub-slice 4a is complete and exit-check verified.** The execution-routing protocol
+(Option A: "Rust owns execution, Python owns persistence"), the Python persistence
+handlers (snapshot-building, effect application, audit/commit), the Rust routing seam,
+and the headless `look` parity harness have all landed GREEN. **Sub-slices 4b (live
+`look` cutover) and 4c (movement) remain** — see "Still pending" below. **Phase 4 is
+NOT complete — 4b and 4c are required for the phase-level exit criterion; this section
+documents 4a alone.**
+
+Four commits landed on branch `rust-port-phase4`, all after the design-spec commit:
+
+- `6738780` — protocol (additive, both languages): `GatewayInbound::BuildSnapshot { envelope: CommandEnvelope }`
+  (Rust→Python: "give me the snapshot for this verb"), `GatewayOutbound::SnapshotReady { command_id, request: ScriptRequest }`
+  (Python→Rust), `GatewayInbound::ApplyOutcome { command_id, outcome: CommandOutcome }` (Rust→Python: "persist
+  these effects + audit, then broadcast"), `GatewayOutbound::OutcomeApplied { command_id, direct_reply: Value, deliveries: Vec<DeliveryDirective> }`
+  (Python→Rust — reuses Phase 3 `DeliveryDirective`). Recursive `to_json`/`from_json` on both sides.
+- `98f08d4` — Python persistence handlers (`src/lorecraft/gateway/`): `snapshots.build_look_request` (reuses
+  `InventoryService._build_look_request`), `effect_apply.apply_outcome` (applies effects — empty for look —
+  writes the `command_executed` audit row, commits game-then-audit DB, builds the byte-identical `command_result`
+  + the `state_change` deliveries via a directive-recording manager), adapter `_on_build_snapshot`/`_on_apply_outcome`
+  + a `command_id`-keyed pending-execution map.
+- `ebccd4a` — Rust routing + look execution driver (`lorecraft-server`): `route.rs` (verb allow-list from
+  `LORECRAFT_RUST_VERBS`, **default EMPTY** = pure Phase 3 rollback; conservative fallback — multi-command/
+  arguments/disambiguation-number/non-migrated-verb all → Python; `MigratedVerb` closed enum), `execute.rs`
+  (Option-A driver: BuildSnapshot→run `lorecraft-feature-look`→ApplyOutcome→publish deliveries via Phase-3
+  `Deliver` path; direct feature call, actor-dispatch noted as later refinement), forward.rs correlation,
+  ws_player consults `route::decide`.
+- `49693e7` — the headless `look` parity harness (`tests/simulation/test_phase4_look_parity.py`): a `look`
+  driven through the real Rust-execute→Python-persist path (real `lorecraft-gateway` subprocess + real Python
+  adapter over real UDS + real WS client, with `LORECRAFT_RUST_VERBS=look` opted in for the test) reproduces
+  the Python engine's `command_result` byte-for-byte + the `look_only.audit.json` audit (via the `normalize_events`
+  oracle), with actor-exclusion confirmed.
+
+**4a's own exit check is met:** "a synthetic `look` driven gateway->(route to Rust)->execute->Python-persist
+reproduces the byte-identical `command_result` **and** the `look_only.audit.json` audit hash, with **no**
+real client cutover" — proven via a hermetic cross-process harness (real `lorecraft-gateway` + real Python
+adapter + real UDS socket + real WS client) with `LORECRAFT_RUST_VERBS=look` enabled for the test only.
+No real client (`/ws` or `POST /command`) was cut over — both still run through the pre-existing Python
+path, exactly as designed.
+
+**Code Review:** zero blocking findings across all four commits. Clean on Tier 1 mechanism, import-direction rule,
+and the Option-A decision (Python commits before Rust publishes; no Rust DB access this phase).
+
+**Test & QA, full independent re-run:**
+
+- Python: `make lint` clean; `make typecheck` 0 errors; `make test` 1530 passed / 1 skipped; `make test-cov`
+  91.03% (gate 80%).
+- Rust (from `rust/`): `cargo build --all` clean; `cargo test --all` 128 tests passed; `cargo clippy -D warnings`
+  clean; `cargo fmt --all -- --check` clean.
+- E2E/simulation: standard `make test-e2e` (not Phase 4 lane), `make test-simulation` 22 passed; the 4a parity
+  test (3/3 `look` driven through Rust) passes; all 20 Phase 3 through-Rust exit checks still green (no regression
+  from 4a's dormant routing).
+
+**MUST-FIX-BEFORE-4b — Dormant defects (NOT 4a regressions; 4b flipping the allow-list activates them; record
+prominently as 4b prerequisites):**
+
+1. **Rust-side indefinite hang if a Python persistence handler raises.** The adapter catches handler exceptions
+   and `continue`s WITHOUT sending a reply frame, and the Rust `execute` driver awaits with NO timeout, so a
+   `build_look_request` or `apply_outcome` exception wedges the connection. **Fix before 4b:** adapter emits
+   an error/nack frame for BuildSnapshot/ApplyOutcome failures, and/or wrap `execute::execute` in a `tokio::time::timeout`.
+
+2. **Frozen-session guard not reproduced on the Rust execution path.** Today `handle_ws_command` (Python) rejects
+   a frozen session before executing; the Rust path doesn't consult frozen-session state. A frozen player's
+   `look` would execute/audit/broadcast once the allow-list routes `look` to Rust. **Fix before 4b:** either
+   pass `is_frozen` in the `ScriptRequest` snapshot and guard in Rust, or have Python's `build_look_request`
+   raise an exception that the adapter catches (preserving the current Python semantics).
+
+**4c follow-ups — CLOSE when movement migrates (NOT exit-blocking for 4a, but noted for implementation clarity):**
+
+(a) **Duplicate parse in Python** — the adapter re-parses the envelope's `raw` command line to extract verb/noun
+    for the snapshot context, duplicating the Rust side's parse (which has already normalized and validated).
+    Byte-identical for `look`; a drift risk for the first non-trivial verb (especially movement with direction
+    aliases). **Future:** carry the parsed verb + noun on the `CommandOutcome` or `ApplyOutcome` instead, avoiding
+    the re-parse.
+
+(b) **Pending-execution map has no TTL / disconnect-sweep.** The adapter keeps a `command_id`-keyed map of
+    in-flight outcomes, keyed from `build_look_request` through `apply_outcome`. For `look` (read-only, single
+    round-trip) it's memory-safe and not reachable. Once a `move` outcome can fail asynchronously (e.g., connection
+    drops mid-transition), the map needs a reaper or TTL. **Future:** add disconnect-sweep or bounded-age reaper.
+
+(c) **Audit payload missing durations.** The `apply_outcome` audit entry omits `duration_ms` and `perf` fields.
+    The Rust side owns timing; Python audits what Rust decided. Currently audit reads: "command_executed {
+    player_id, room_id, summary, success: true/false}". **Future:** Rust provides `execute_wall_ms` + `execute_cpu_ms`
+    in the `CommandOutcome`, passed through to the audit row.
+
+(d) **Debug assertion gap on effect application.** Movement will derive `Effect::MoveEntity`; `look` has no effects.
+    The Python `apply_outcome` lacks a `debug_assert!(proposed_effects.is_empty())` for the `look`-specific path,
+    so a future bug (Rust mistakenly deriving an effect for `look`) wouldn't be caught until runtime. **Future:**
+    per-verb assertions in `apply_outcome` or a per-verb applier module.
+
+**Still pending / explicitly NOT done:** sub-slice 4b (live `look` cutover through Rust — real client traffic
+still goes through the existing Python path; the allow-list remains empty; `route.rs` routing is in place but
+no real commands are routed) and sub-slice 4c (movement: `lorecraft-feature-move` crate, Python `build_move_request`,
+movement golden fixtures, and the `go`/directional routing — all unstarted). **The phase-level exit criterion —
+a real `look` and `go` execute via Rust with byte-identical audit/effect/state hashes, and rollback is a routing
+config toggle — is NOT yet met** — only the 4a foundation is proven.
+
+**Recommended next increment:** sub-slice 4b (live `look` cutover), per the design spec's own stated sequencing
+(4a foundation before 4b cutover before 4c movement) — **after 4b's FIRST work closes the two MUST-FIX findings
+above,** so live `look` traffic cannot hang the gateway or violate frozen-session invariants.
 
 ## Final position
 
