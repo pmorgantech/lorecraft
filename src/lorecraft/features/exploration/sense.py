@@ -50,6 +50,9 @@ class SenseService:
             key=f"skill.{_PERCEPTION_SKILL}",
         )
 
+        # Materialize the PlayerStats row (get-or-create) before record_use,
+        # which hard-raises on a missing row.
+        ctx.player_repo.stats(ctx.player.id)
         self._skills.record_use(ctx.session, ctx.rng, ctx.player.id, _PERCEPTION_SKILL)
 
         if not result.success:

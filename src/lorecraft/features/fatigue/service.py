@@ -115,6 +115,9 @@ class FatigueService:
             modifiers=modifiers,
             key="skill.survival",
         )
+        # Materialize the PlayerStats row (get-or-create) before record_use,
+        # which hard-raises on a missing row.
+        ctx.player_repo.stats(ctx.player.id)
         self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "survival")
 
         if result.success:

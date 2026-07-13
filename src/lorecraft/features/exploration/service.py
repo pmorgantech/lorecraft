@@ -37,6 +37,9 @@ class ExplorationService:
             key="skill.perception",
         )
 
+        # Materialize the PlayerStats row (get-or-create) before record_use,
+        # which hard-raises on a missing row.
+        ctx.player_repo.stats(ctx.player.id)
         self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "perception")
 
         if not result.success:

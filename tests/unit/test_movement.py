@@ -6,7 +6,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionContext
-from lorecraft.engine.models.player import Player
+from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import Exit, Item, Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
@@ -179,6 +179,39 @@ def test_movement_service_blocks_missing_exit() -> None:
 
     assert ctx.messages == ["You can't go that way."]
     assert ctx.player.current_room_id == "tavern"
+
+
+def test_pick_records_skill_use_for_a_player_without_a_stats_row() -> None:
+    """Regression: `pick` must not raise NotFoundError for a brand-new character
+    whose PlayerStats row has never been materialized. MovementService.pick calls
+    PlayerRepo.stats() for its get-or-create side effect before skills.record_use
+    (which hard-raises on a missing row); removing that call silently regressed a
+    fresh character's first lockpick attempt."""
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Exit(
+                room_id="tavern",
+                direction="north",
+                target_room_id="square",
+                locked=True,
+                key_item_id="brass_key",
+            )
+        )
+        player = _seed_player(session)
+        session.commit()
+        # Sanity: the fresh player genuinely has no PlayerStats row yet.
+        assert session.get(PlayerStats, player.id) is None
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        # Must not raise NotFoundError from record_use.
+        MovementService().pick("north", ctx)
+        session.commit()
+
+        assert session.get(PlayerStats, player.id) is not None
 
 
 def _seed_rooms(session: Session) -> None:

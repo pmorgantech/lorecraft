@@ -89,6 +89,9 @@ class MovementService:
             ),
             key="skill.lockpicking",
         )
+        # Materialize the PlayerStats row (get-or-create) before record_use,
+        # which hard-raises on a missing row.
+        ctx.player_repo.stats(ctx.player.id)
         _skills.record_use(ctx.session, ctx.rng, ctx.player.id, "lockpicking")
 
         if not result.success:
@@ -143,6 +146,9 @@ class MovementService:
                     MessageType.WARNING,
                 )
                 return
+            # Materialize the PlayerStats row (get-or-create) before record_use,
+            # which hard-raises on a missing row.
+            ctx.player_repo.stats(ctx.player.id)
             _skills.record_use(
                 ctx.session, ctx.rng, ctx.player.id, terrain_def.required_skill
             )
