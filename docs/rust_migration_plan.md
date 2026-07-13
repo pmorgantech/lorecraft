@@ -918,17 +918,62 @@ live-tunable candidates once the actor + script host land in Phase 2+ (mirror th
 
 **Phase 0:**
 
-- [ ] `src/lorecraft/tools/replay_hash.py`: `canonical_json` (float-reject) + `hash_events` over existing `normalize_events` — Tier 1 — deterministic sha256 for a trail; state-hash deferred to Phase 2 — tunable: static.
-- [ ] `tests/simulation/scenarios/look_only.json` + golden; refactor `test_audit_regression.py` to iterate scenarios — Tier 2 (test content) — read-only parity fixture for the `look` slice — tunable: static content.
-- [ ] Document `make test-simulation` as a mandatory rust-port review gate — N/A (policy doc) — reviewers confirm it green on contract/verb changes — tunable: n/a.
-- [ ] `tests/simulation/test_event_loop_blocking.py`: sync-sleep handler injection; assert concurrent command delayed ~SLOW — N/A (characterization test) — proves current head-of-line blocking — tunable: n/a.
-- [ ] `src/lorecraft/tools/mutation_scan.py`: AST inventory of direct SQL/ORM mutation → checklist — N/A (Phase 0 tooling) — enumerates the Phase 4/5 conversion backlog — tunable: n/a.
+- [x] `src/lorecraft/tools/replay_hash.py`: `canonical_json` (float-reject) + `hash_events` over existing `normalize_events` — Tier 1 — deterministic sha256 for a trail; state-hash deferred to Phase 2 — tunable: static.
+- [x] `tests/simulation/scenarios/look_only.json` + golden; refactor `test_audit_regression.py` to iterate scenarios — Tier 2 (test content) — read-only parity fixture for the `look` slice — tunable: static content.
+- [x] Document `make test-simulation` as a mandatory rust-port review gate — N/A (policy doc) — reviewers confirm it green on contract/verb changes — tunable: n/a.
+- [x] `tests/simulation/test_event_loop_blocking.py`: sync-sleep handler injection; assert concurrent command delayed ~SLOW — N/A (characterization test) — proves current head-of-line blocking — tunable: n/a.
+- [x] `src/lorecraft/tools/mutation_scan.py`: AST inventory of direct SQL/ORM mutation → checklist — N/A (Phase 0 tooling) — enumerates the Phase 4/5 conversion backlog — tunable: n/a.
 
 **Phase 1:**
 
-- [ ] `lorecraft-protocol` crate: add CommandEnvelope, CommandOutcome, ScriptRequest, ScriptResult, Effect (6 variants), EntitySnapshot (opaque attrs), OutboundMessage, ID newtypes — Tier 1 — serde JSON round-trips; no feature fields — tunable: PROTOCOL_VERSION static / budgets static-now-live-later.
-- [ ] `src/lorecraft/protocol/` package: frozen-dataclass mirror of the above; `version.py`; parity drift-test vs Rust `schema/version.json` — Tier 1 — Python<->Rust JSON parity — tunable: static.
-- [ ] `src/lorecraft/features/inventory/look_pure.py`: `look_effects(ScriptRequest) -> ScriptResult`; make `InventoryService.look` a thin snapshot-building shim — Tier 2 — byte-identical player output (goldens unchanged); no session in the pure fn — tunable: static.
+- [x] `lorecraft-protocol` crate: add CommandEnvelope, CommandOutcome, ScriptRequest, ScriptResult, Effect (6 variants), EntitySnapshot (opaque attrs), OutboundMessage, ID newtypes — Tier 1 — serde JSON round-trips; no feature fields — tunable: PROTOCOL_VERSION static / budgets static-now-live-later.
+- [x] `src/lorecraft/protocol/` package: frozen-dataclass mirror of the above; `version.py`; parity drift-test vs Rust `schema/version.json` — Tier 1 — Python<->Rust JSON parity — tunable: static.
+- [x] `src/lorecraft/features/inventory/look_pure.py`: `look_effects(ScriptRequest) -> ScriptResult`; make `InventoryService.look` a thin snapshot-building shim — Tier 2 — byte-identical player output (goldens unchanged); no session in the pure fn — tunable: static.
+
+### Kickoff status (2026-07-12)
+
+Both tracks are implemented, reviewed, and tested green:
+
+- **Part A** (Phase 0 evidence gate) landed on branch `rustport-phase0-python-evidence`
+  (commit `2300847`). **Part B** (Phase 1 contracts) landed on branch
+  `rustport-phase1-protocol-contracts` (commit `51ed270`).
+- Both branches passed Code Review with no blocking findings, and passed Test & QA:
+  Rust side — `cargo build`, `cargo test`, and `cargo clippy` all clean, 11 new
+  protocol tests; Python side — `make lint`, `make typecheck`, and `make test` all
+  clean, full suite 1420-1425 tests passed depending on branch, coverage 88.93% on
+  Track A, well above the 80% gate.
+- `mutation_scan.py`, run against the real `features/` tree, found 87 findings across
+  32 files (85 session-mutation, 2 model-attribute-write) — this is the expected
+  Phase 4/5 conversion backlog the tool exists to produce, not a defect to fix now.
+- `test_event_loop_blocking.py` ran green and stable across repeated runs, confirming
+  current synchronous command handlers do block the event loop — the expected,
+  documented characterization of current behavior, not a regression.
+
+**Two non-blocking follow-ups flagged by Code Review** — recommended for the next
+increment before they're forgotten:
+
+1. `tests/simulation/conftest.py`'s `audit_trail_for` sorts by `real_time` only (no
+   `id` tiebreaker) — a latent replay-determinism gap, since `real_time` isn't
+   guaranteed unique. `session_replay.py`'s `record_scenario` already does this
+   correctly with a `(real_time, id)` tiebreaker. Should be aligned before Phase 0's
+   hashing work (`replay_hash.py`) is leaned on more heavily.
+2. The Python protocol mirror's container types (`CommandOutcome`, `ScriptRequest`,
+   `ScriptResult`, `CommandEnvelope`) don't yet have their own `to_json`/`from_json` —
+   `dataclasses.asdict()` would silently drop the `Effect`/`OutboundMessage` tag and
+   the `from`/`from_` wire-key rename if a container holding one were serialized that
+   way. Not a bug yet (nothing serializes a container across the boundary in this
+   kickoff), but must be fixed with a proper recursive `to_json` before Phase 2
+   actually sends a `ScriptResult`/`CommandOutcome` over the wire.
+
+Also flagged: the unused `tokio` (full feature set), `uuid`, and `thiserror`
+dependencies in `lorecraft-protocol`'s `Cargo.toml` — should be trimmed or put to use
+in a follow-up cleanup pass.
+
+**Recommended next increment:** Phase 2's Rust world-actor skeleton (bounded input
+queue, deterministic ordering, RNG stream derivation) running `look` in shadow mode
+against the new `look_only` replay fixture, comparing Rust output to the Python golden
+via the new `replay_hash.py` hashing utility — the natural next slice per the plan's
+"Recommended first implementation experiment" steps 3-4 above.
 
 ### Where things stand / Next
 

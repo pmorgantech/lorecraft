@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/rust_migration_plan.md` — Phase 0/1 kickoff design spec: replay hashing,
   slow-handler and mutation-scan tooling (Phase 0), and `lorecraft-protocol` crate +
   Python `protocol/` mirror contracts with a `look` pure-function adapter (Phase 1)
+- Phase 0 evidence tooling: canonical replay-event hashing (`replay_hash.py`), a
+  read-only `look_only` parity fixture, an event-loop-blocking characterization test,
+  and an AST-based SQL/ORM mutation scanner (`mutation_scan.py`, 87 findings across 32
+  files as the Phase 4/5 conversion backlog).
+- Phase 1 language-neutral contracts: `CommandEnvelope`/`CommandOutcome`/
+  `ScriptRequest`/`ScriptResult`/`Effect`/`EntitySnapshot`/`OutboundMessage` defined in
+  the `lorecraft-protocol` Rust crate with a symmetric Python mirror
+  (`src/lorecraft/protocol/`), and the `look` command adapted to the effect model via a
+  pure `look_effects` function with zero behavior change.
 - Agent configuration updates (`AGENTS.md`, `.claude/agents/`) scoped for Rust + Python work
 - `README.md` updates with Rust tooling requirements and worktree setup guidance
 
