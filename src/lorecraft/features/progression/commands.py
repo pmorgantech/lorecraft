@@ -56,33 +56,28 @@ def register_progression_commands(
         del noun
         owned = tree.owned_nodes(ctx)
         available = tree.available_nodes(ctx)
-        ctx.say(
-            f"Skill points: {_skill_points(ctx)}.",
-            MessageType.SYSTEM,
-        )
+        lines = [f"Skill points: {_skill_points(ctx)}."]
         if owned:
-            ctx.say("Abilities you know:", MessageType.SYSTEM)
-            for node in owned:
-                ctx.say(_node_line(node, marker="✓"), MessageType.SYSTEM)
+            lines.append("Abilities you know:")
+            lines.extend(_node_line(node, marker="✓") for node in owned)
         else:
-            ctx.say("You have not trained any abilities yet.", MessageType.SYSTEM)
+            lines.append("You have not trained any abilities yet.")
         if available:
-            ctx.say("Ready to train:", MessageType.SYSTEM)
-            for node in available:
-                ctx.say(_node_line(node, marker="•"), MessageType.SYSTEM)
+            lines.append("Ready to train:")
+            lines.extend(_node_line(node, marker="•") for node in available)
+        ctx.say("\n".join(lines), MessageType.HELP)
 
 
 def _list_trainable(tree: SkillTreeService, ctx: GameContext) -> None:
     available = tree.available_nodes(ctx)
     locked = tree.locked_nodes(ctx)
-    ctx.say(f"Skill points: {_skill_points(ctx)}.", MessageType.SYSTEM)
+    lines = [f"Skill points: {_skill_points(ctx)}."]
     if available:
-        ctx.say("You can train:", MessageType.SYSTEM)
-        for node in available:
-            ctx.say(_node_line(node, marker="•"), MessageType.SYSTEM)
+        lines.append("You can train:")
+        lines.extend(_node_line(node, marker="•") for node in available)
     else:
-        ctx.say("Nothing is ready to train right now.", MessageType.SYSTEM)
+        lines.append("Nothing is ready to train right now.")
     if locked:
-        ctx.say("Still locked (need prerequisites or more points):", MessageType.SYSTEM)
-        for node in locked:
-            ctx.say(_node_line(node, marker="✗"), MessageType.SYSTEM)
+        lines.append("Still locked (need prerequisites or more points):")
+        lines.extend(_node_line(node, marker="✗") for node in locked)
+    ctx.say("\n".join(lines), MessageType.HELP)

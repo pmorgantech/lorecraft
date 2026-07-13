@@ -5,6 +5,7 @@ from __future__ import annotations
 from lorecraft.features.skills import definitions as skills_module
 from lorecraft.engine.game import traits as traits_module
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.features.bank.repo import BankRepo
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.features.reputation.repo import ReputationRepo
@@ -19,13 +20,14 @@ class CharacterInfoService:
             ctx.push_update("traits", [])
             return
 
-        ctx.say("Your traits:")
+        lines = ["Your traits:"]
         entries = []
         for name in names:
             trait_def = registry.get(name)
             description = trait_def.description if trait_def is not None else ""
-            ctx.say(f"  {name}: {description}")
+            lines.append(f"  {name}: {description}")
             entries.append({"name": name, "description": description})
+        ctx.say("\n".join(lines), MessageType.HELP)
         ctx.push_update("traits", entries)
 
     def list_skills(self, ctx: GameContext) -> None:
@@ -33,12 +35,13 @@ class CharacterInfoService:
         skill_levels = stats.skills if stats is not None else {}
         registry = skills_module.get_registry()
 
-        ctx.say("Your skills:")
+        lines = ["Your skills:"]
         entries = []
         for skill_def in sorted(registry.all_skills(), key=lambda s: s.name):
             level = skill_levels.get(skill_def.name, 0)
-            ctx.say(f"  {skill_def.name}: {level}")
+            lines.append(f"  {skill_def.name}: {level}")
             entries.append({"name": skill_def.name, "level": level})
+        ctx.say("\n".join(lines), MessageType.HELP)
         ctx.push_update("skills", entries)
 
     def list_reputation(self, ctx: GameContext) -> None:
@@ -49,10 +52,10 @@ class CharacterInfoService:
             ctx.push_update("reputation", [])
             return
 
-        ctx.say("Your reputation:")
+        lines = ["Your reputation:"]
         entries = []
         for row in rows:
-            ctx.say(f"  {row.target_type} {row.target_id}: {row.standing}")
+            lines.append(f"  {row.target_type} {row.target_id}: {row.standing}")
             entries.append(
                 {
                     "target_type": row.target_type,
@@ -60,6 +63,7 @@ class CharacterInfoService:
                     "standing": row.standing,
                 }
             )
+        ctx.say("\n".join(lines), MessageType.HELP)
         ctx.push_update("reputation", entries)
 
     def score(self, ctx: GameContext) -> None:
@@ -98,14 +102,15 @@ class CharacterInfoService:
         rooms_found = len(player.visited_rooms)
         npcs_met = len(player.met_npcs)
 
-        ctx.say(f"=== {player.username} — Score ===")
-        ctx.say(f"  Level {level}  ({xp}/{xp_to_next} XP)")
-        ctx.say(f"  Quests: {completed} completed, {active} in progress")
-        ctx.say(
-            f"  Wealth: {carried} carried + {banked} banked = {carried + banked} coins"
-        )
-        ctx.say(f"  Reputation: standing with {len(rep_rows)} parties")
-        ctx.say(f"  Discovered: {rooms_found} rooms, {npcs_met} NPCs met")
+        lines = [
+            f"=== {player.username} — Score ===",
+            f"  Level {level}  ({xp}/{xp_to_next} XP)",
+            f"  Quests: {completed} completed, {active} in progress",
+            f"  Wealth: {carried} carried + {banked} banked = {carried + banked} coins",
+            f"  Reputation: standing with {len(rep_rows)} parties",
+            f"  Discovered: {rooms_found} rooms, {npcs_met} NPCs met",
+        ]
+        ctx.say("\n".join(lines), MessageType.HELP)
 
         ctx.push_update(
             "score",
