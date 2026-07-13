@@ -6,5 +6,18 @@ rust-version = "1.75"
 
 [dependencies]
 lorecraft-protocol = { path = "../lorecraft-protocol" }
+lorecraft-events = { path = "../lorecraft-events" }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 thiserror = "1.0"
+tracing = "0.1"
+tokio = { version = "1", features = ["net", "io-util", "sync", "rt", "macros", "time"] }
+# Pinned to 0.8.4: 0.8.9+ raises the MSRV to rustc 1.80, above this workspace's
+# 1.75 pin. Exact-pin so a cargo update can't silently drift past that ceiling.
+# The `ws` feature is enabled for axum's WebSocket upgrade extractor, which the
+# 3b/3c player+admin socket cutover fills in (its route stubs already take it).
+axum = { version = "=0.8.4", default-features = false, features = ["ws", "query", "json", "http1", "tokio"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["net", "io-util", "sync", "rt", "rt-multi-thread", "macros", "time"] }
+tempfile = "3"
