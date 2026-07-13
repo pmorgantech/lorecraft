@@ -240,6 +240,55 @@ class UsageResult:
     missing_target_states: tuple[str, ...] = ()
 
 
+# --- Cooldown / resource primitives -------------------------------------------
+#
+# Two small generic checks, keyed off the numeric shapes the existing meter /
+# `ActiveEffect` primitives already expose — a resource is a `Meter.current`
+# (stamina is Lorecraft's only one today), a cooldown is naturally an
+# `ActiveEffect` whose `expires_at_epoch` gates re-use. Deliberately NOT a
+# multi-resource registry: there is exactly one resource to spend today, so a
+# plain available-vs-cost comparison is all the mechanism needs.
+
+
+def can_afford_resource(available: float, cost: float) -> bool:
+    """True if ``available`` covers ``cost`` (a resource-ledger affordability check).
+
+    Generic over resource type — the caller resolves *which* meter's value
+    ``available`` is; this only compares magnitudes. A negative cost is a caller
+    bug, not "free", so it is rejected loudly.
+    """
+    if cost < 0:
+        raise ValidationError(
+            f"resource cost must be non-negative, got {cost}",
+            code="validation_resource_cost",
+        )
+    return available >= cost
+
+
+def cooldown_expiry(started_epoch: float, cooldown_seconds: float) -> float:
+    """The epoch a cooldown started at ``started_epoch`` expires.
+
+    Mirrors how an `ActiveEffect` derives `expires_at_epoch` from its
+    `applied_at_epoch` — a Tier 2 caller can store the returned value on such a
+    row and later feed it to :func:`is_off_cooldown`.
+    """
+    if cooldown_seconds < 0:
+        raise ValidationError(
+            f"cooldown_seconds must be non-negative, got {cooldown_seconds}",
+            code="validation_cooldown_seconds",
+        )
+    return started_epoch + cooldown_seconds
+
+
+def is_off_cooldown(now_epoch: float, expires_at_epoch: float | None) -> bool:
+    """True if a cooldown expiring at ``expires_at_epoch`` has elapsed by ``now_epoch``.
+
+    ``None`` means "no cooldown recorded" (never used, or already swept) — always
+    ready. Mirrors the `ActiveEffect` sweep's ``now >= expires_at_epoch`` test.
+    """
+    return expires_at_epoch is None or now_epoch >= expires_at_epoch
+
+
 def check_usage(
     actor_state: ActorState,
     ability: AbilityDef,
@@ -285,12 +334,13 @@ def check_usage(
 
     if req.resource is not None and req.resource.cost > 0:
         available = actor_state.resources.get(req.resource.type, 0.0)
-        resource_met = available >= req.resource.cost
+        resource_met = can_afford_resource(available, req.resource.cost)
     else:
         resource_met = True
 
-    expiry = actor_state.cooldowns.get(ability.id)
-    cooldown_ready = expiry is None or world_state.now_epoch >= expiry
+    cooldown_ready = is_off_cooldown(
+        world_state.now_epoch, actor_state.cooldowns.get(ability.id)
+    )
 
     return UsageResult(
         usable=(
