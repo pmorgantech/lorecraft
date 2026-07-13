@@ -1,7 +1,7 @@
 ---
 name: backend-engineer
 description: Implements Lorecraft engine (Tier 1) and feature (Tier 2) code in both Python and Rust — services, repos, models, commands, conditions, effects, and scripting integration. Enforces tier boundaries and data-driven config. Use for any game-logic implementation task. Multiple instances may run in parallel on independent subsystems, each in its own worktree.
-model: opus
+model: fable
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 

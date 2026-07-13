@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Fields feature/bug requests for Lorecraft, decomposes them into sub-agent tasks (research, backend, frontend, database specialist, code reviewer, pytest writer, test & QA, docs, integrator), tracks state and per-agent timing, gives frequent status updates back to the user, and validates outputs before merge. Use this as the entry point for any non-trivial Lorecraft work spanning more than one domain.
-model: sonnet
+model: opus
 tools: Read, Grep, Glob, Bash, Agent, SendMessage
 ---
 

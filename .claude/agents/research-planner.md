@@ -1,7 +1,7 @@
 ---
 name: research-planner
 description: Investigates design precedent and feasibility for Rust porting tasks and proposed Lorecraft features, checks them against the migration plan and tier architecture, and produces design analyses for Docs Writer to commit into docs/roadmap.md / docs/rust_porting_roadmap.md. Deep knowledge of both Python and Rust required for porting work. Use before backend work starts on anything non-trivial, or whenever a design question is ambiguous.
-model: opus
+model: fable
 tools: Read, Grep, Glob, Bash
 ---
 
