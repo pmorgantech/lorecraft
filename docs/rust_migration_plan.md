@@ -985,6 +985,154 @@ criterion (`look` running through the protocol contract with zero effects and
 byte-identical output) closes out this kickoff and Phase 2 (Rust skeleton + shadow
 runner) can begin.
 
+## Phase 2 kickoff — design spec (2026-07-12)
+
+### Summary / scope
+
+This section is the concrete kickoff design for Phase 2 (build the Rust world-actor
+skeleton and run `look` in shadow mode), handed off from Research to Backend
+Engineering. It is the "Recommended next increment" named at the end of the Phase 0/1
+kickoff status above: build the Rust world-actor skeleton (bounded input queue,
+deterministic ordering, RNG stream derivation) and run `look` in shadow mode against
+the `look_only` replay fixture, comparing Rust output to a Python golden via
+`replay_hash.py`'s canonical hashing.
+
+### Confirmed design decisions (from Research-Planner analysis)
+
+1. **Hash target is the `ScriptResult`, not the existing audit-event golden.**
+   `tests/simulation/scenarios/look_only.audit.json` is a DB audit-event projection
+   from the full command pipeline (parser/dispatch/audit-writer/commit) — reproducing
+   it needs Phase 4 (Rust owns the pipeline), not Phase 2. The Phase 1 contract
+   boundary that exists today is `look_effects(ScriptRequest) -> ScriptResult`
+   (`src/lorecraft/features/inventory/look_pure.py`) — that pure-rule output is what
+   Phase 2 hashes and compares. **The audit golden is preserved as the Phase 4
+   target**, not deprecated or superseded by this slice.
+2. **Crate placement:**
+   - `lorecraft-replay` — canonical-JSON + sha256 hashing, ported from
+     `replay_hash.py`'s `canonical_json`/`hash_events` (sorted keys via
+     `serde_json::Value`'s BTreeMap-backed Map — **not** derived-struct
+     serialization, which preserves field-declaration order and would silently
+     diverge from Python's `sort_keys=True`; no whitespace; UTF-8; reject floats to
+     mirror Python's float-reject).
+   - `lorecraft-scheduler` — logical clock + deterministic ordering-key comparator:
+     `(logical_time, receive_sequence)`.
+   - `lorecraft-core` — RNG stream derivation: `derive_stream(world_seed, stream_id)
+     -> ChaCha8Rng`, seeded via SHA-256 of the stream identity (adds
+     `rand`/`rand_chacha` deps).
+   - `lorecraft-runtime` — the world-actor skeleton itself: bounded input queue
+     (`std::sync::mpsc::sync_channel`, no new deps), drain-then-sort-by-ordering-key-
+     then-dispatch loop (determinism must not depend on channel arrival
+     order/FIFO). Unopinionated — invokes an injected policy fn, holds no feature
+     opinion.
+   - **New crate `lorecraft-feature-look`** — the Rust port of `look_pure.py`'s
+     policy (message ordering/formatting opinion). Explicitly **not** placed in
+     `runtime`/`core`/`scheduler` `src/` — that would be a Tier 1/Tier 2 policy leak
+     (AGENTS.md "Tier 1 = mechanism, Tier 2 = policy"), the same class of finding a
+     reviewer would reject. Fallback if a new crate is rejected later: a
+     `lorecraft-replay/tests/` fixture, but the new-crate approach is recommended and
+     what's being built.
+3. **RNG cross-language parity is explicitly deferred, not attempted.** Python's
+   `GameRng` (`src/lorecraft/engine/game/rng.py`) is `random.Random` (Mersenne
+   Twister); Rust's target is `ChaCha8Rng`. A byte-level draw comparison across
+   languages isn't achievable without an RNG-algorithm decision that belongs to Phase
+   5 ("RNG streams" under Tier 1 authority migration). Phase 2 proves **Rust-internal**
+   RNG determinism only: same `(world_seed, stream_id)` twice → identical draws;
+   different `stream_id` → independent streams; interleaved/out-of-order dispatch
+   doesn't perturb a stream's own draw sequence.
+4. **Fixture capture reuses the existing shim, never hand-authored** (avoids
+   fixture/production drift): a Python golden test boots a fresh
+   `world_content/world.yaml` world (`rng_seed=1`), creates `player-1`, derives the
+   starting room from world config (not a hardcoded string in capture logic — the
+   room id only appears in the *generated* fixture data), calls
+   `InventoryService._build_look_request` for the resulting `ScriptRequest`, and
+   writes two checked-in artifacts so they can't drift apart:
+   `rust/fixtures/look_only/request.json` (the `ScriptRequest.to_json()`, Rust's
+   input) and `rust/fixtures/look_only/expected_result_hash.txt`
+   (`sha256(canonical_json(look_effects(request).to_json()))`). Regeneration gated by
+   `LORECRAFT_UPDATE_RUST_FIXTURES=1`, mirroring `LORECRAFT_UPDATE_GOLDENS`.
+5. **Recursive `to_json`/`from_json` on protocol container types is a hard
+   prerequisite, not just Phase 1 cleanup.** Confirmed still missing on
+   `ScriptResult`, `ScriptRequest`, `EntitySnapshot`, `ScriptBudget`, `EmittedEvent`,
+   `ScheduledWork`, `CommandEnvelope`, `CommandOutcome`, `Diagnostic` (present already
+   on `Effect`/`OutboundMessage`). `dataclasses.asdict()` would silently drop the
+   `{"type": ...}` tag on nested effect/message variants and the `from`/`from_`
+   wire-key rename. Must land before anything is hashed — blocks the fixture-capture
+   task.
+6. **Scope guardrails:** this slice is fixture-driven and read-only — no Rust
+   DB/store/events wiring (`lorecraft-store`/`-events`/`-server` stay stubs this
+   phase); the Python capture script must boot a disposable/temp world and must not
+   mutate any production/committed DB, matching the plan's "Rust runs in shadow
+   mode... should not mutate the production DB yet." The 87-finding mutation-scan
+   backlog remains out of scope (Phase 4/5).
+7. **No game-balance tunables in this slice** — pure protocol/determinism plumbing.
+   Queue capacity and `deadline_ms`/`ScriptBudget` fields are the only tunables
+   (operational, not gameplay), stay static-now for the skeleton, flagged as
+   live-tunable candidates once the actor/script host mature (Phase 3+), consistent
+   with the AGENTS.md live-tunable-config preference.
+
+### Proposed tasks (Phase 2)
+
+These map to two Backend Engineers implementing in parallel scratch worktrees off
+`rust-port`, no file overlap — Python task 1 is the only ordering dependency, since it
+unblocks the fixture the Rust side consumes.
+
+**Backend Engineer (Python)** — `src/lorecraft/protocol/`, `tests/simulation/`,
+`rust/fixtures/`:
+
+- [ ] Recursive `to_json`/`from_json` on the protocol container types listed in point
+  5 above — Tier 1 — round-tripped `ScriptResult` keeps nested `{"type":...}` tags;
+  parity test vs Rust JSON shape — tunable: static. (blocks all downstream Phase 2
+  work)
+- [ ] Fixture-capture + Python golden test
+  (`tests/simulation/test_look_scriptresult_parity.py`) per point 4 above — Tier 2
+  (test content/fixture) — regenerable, deterministic, no production-DB mutation —
+  tunable: static content.
+- [ ] Doc note that `look_only.audit.json` remains the Phase 4 pipeline-owned target,
+  distinct from this ScriptResult hash — N/A (doc) — tunable: n/a.
+
+**Backend Engineer (Rust)** — `rust/crates/` (+ new `lorecraft-feature-look`):
+
+- [ ] `lorecraft-replay`: `canonical_json` + `hash_bytes` port — Tier 1 — unit test:
+  known ScriptResult JSON hashes to a fixed hex; float input errors — tunable:
+  static.
+- [ ] `lorecraft-scheduler`: logical clock + `(logical_time, receive_sequence)`
+  ordering comparator — Tier 1 — test: out-of-order enqueue dispatches in
+  sorted-key order — tunable: static.
+- [ ] `lorecraft-core`: `derive_stream(world_seed, stream_id) -> ChaCha8Rng` — Tier 1
+  — tests: repeatability, stream independence, interleave/order-independence —
+  tunable: static.
+- [ ] `lorecraft-runtime`: world-actor skeleton, bounded `sync_channel` queue,
+  drain→sort→dispatch — Tier 1 — test: queue accepts up to capacity; dispatch order
+  == ordering-key order — tunable: queue capacity/deadline_ms operational,
+  static-now/live-later.
+- [ ] `lorecraft-feature-look` (new crate): Rust `look` policy fn + shadow-run parity
+  test reading `rust/fixtures/look_only/request.json`, hashing its output, asserting
+  equality with `expected_result_hash.txt` — Tier 2 — Rust hash matches Python's
+  byte-for-byte — tunable: static.
+- [ ] Cleanup: trim unused `tokio`(full)/`uuid`/`thiserror` from
+  `lorecraft-protocol/Cargo.toml` (flagged in the Phase 0/1 kickoff status) — N/A
+  (hygiene) — tunable: n/a.
+
+### OPEN ITEMS resolved
+
+1. Rust `look` policy crate placement — resolved: new `lorecraft-feature-look` crate
+   (not `lorecraft-replay/tests/` fallback), to avoid a Tier 1/Tier 2 policy leak.
+2. Cross-language RNG parity — resolved: deferred to Phase 5; Phase 2 proves
+   Rust-internal RNG determinism only.
+
+### Where things stand / Next
+
+Phase 0 and Phase 1 are landed (see the Phase 0/1 kickoff status above). This Phase 2
+design spec is the handoff for the next implementation slice: two Backend Engineers
+implementing the Python prerequisite (recursive `to_json`/`from_json` + fixture
+capture) and the Rust world-actor skeleton + `lorecraft-feature-look` crate in
+parallel scratch worktrees off `rust-port`. Once Phase 2's exit criterion is met
+(Rust reproduces the `look_only` `ScriptResult` hash exactly, in shadow mode, no DB
+mutation), **Phase 3 (migrate transport and connection ownership)** is the
+recommended next increment — moving HTTP/WebSocket ingress, connection maps, and
+room/global fan-out into Rust, forwarding commands to the existing Python command
+processor through the versioned protocol, per the "Migration plan" section above.
+
 ## Final position
 
 Lorecraft should not migrate to Rust merely because Rust is faster or Python has

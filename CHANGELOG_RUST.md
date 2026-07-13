@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- `docs/rust_migration_plan.md` — Phase 2 kickoff design spec: hash target
+  (`ScriptResult` via `look_effects`, not the audit-event golden), Rust crate
+  placement (`lorecraft-replay`/`lorecraft-scheduler`/`lorecraft-core`/
+  `lorecraft-runtime` plus new `lorecraft-feature-look`), deferred cross-language
+  RNG parity, fixture-capture design (`rust/fixtures/look_only/`), and the
+  recursive `to_json`/`from_json` prerequisite carried over from the Phase 0/1
+  kickoff follow-ups.
+
+---
+
 ## [0.1.0] - 2026-07-12
 
 ### Added
