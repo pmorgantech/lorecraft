@@ -49,13 +49,10 @@ from lorecraft.features.weather.fronts import (
 )
 from lorecraft.scripting_wiring import build_trigger_service, load_yaml_config
 from lorecraft.services.container import ServiceContainer
-from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
-from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.connection_manager import ConnectionManager
-from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.message_types import MessageType
@@ -64,12 +61,11 @@ from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
-from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.features.items.rules import register_item_rules
 from lorecraft.models.admin import AdminUser
-from lorecraft.engine.models.player import Player, PlayerStats
-from lorecraft.engine.models.world import NPC, Room
-from lorecraft.observability import bind_transaction_context, configure_logging
+from lorecraft.engine.models.player import PlayerStats
+from lorecraft.engine.models.world import NPC
+from lorecraft.observability import configure_logging
 from lorecraft.world.bootstrap import ensure_world_bootstrapped
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -84,11 +80,16 @@ from lorecraft.engine.services.mobile_route import MobileRouteService
 from lorecraft.features.transit.service import TransitService
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.state import AppState
-from lorecraft.types import JsonObject, JsonValue
+from lorecraft.types import JsonObject
 from lorecraft.webui.player.auth import consume_ws_ticket
 from lorecraft.webui.player.auth import router as player_auth_router
 from lorecraft.webui.player.frontend import router as web_router
 from lorecraft.webui.player.news_api import router as news_api_router
+from lorecraft.webui.player.ui_snapshots import (
+    player_ui_updates as _player_ui_updates,
+    reconnect_sync_payload as _reconnect_sync_payload,
+)
+from lorecraft.webui.player.ws_command import handle_ws_command
 
 log = logging.getLogger(__name__)
 
@@ -611,123 +612,14 @@ def create_app(
 async def _handle_websocket_command(
     state: AppState, player_id: str, session_id: str, command: str
 ) -> JsonObject:
-    # Resolve a bare number as a disambiguation choice.
-    stripped = command.strip()
-    if stripped.isdigit():
-        pending = state.pending_disambig.pop(player_id, None)
-        if pending is not None:
-            choices: list[str] = pending.get("choices", [])  # type: ignore[assignment]
-            idx = int(stripped) - 1
-            if 0 <= idx < len(choices):
-                verb: str = pending.get("verb", "examine")  # type: ignore[assignment]
-                command = f"{verb} {choices[idx]}"
-            # If out of range, fall through to normal (unknown) command handling.
+    """Run one player command over the live socket connection.
 
-    with (
-        Session(state.game_engine) as game_session,
-        Session(state.audit_engine) as audit_session,
-    ):
-        player_repo = PlayerRepo(game_session)
-        room_repo = RoomRepo(game_session)
-        player = player_repo.get(player_id)
-        if player is None:
-            return {
-                "type": "error",
-                "message": "Player no longer exists.",
-            }
-        pre_room_id = player.current_room_id
-
-        # Frozen session check
-        active_session = player_repo.player_session(session_id)
-        if active_session is not None and active_session.status == "frozen":
-            return {
-                "type": "system",
-                "text": "Your session is frozen. Contact an administrator.",
-            }
-
-        room = room_repo.get(player.current_room_id)
-        if room is None:
-            return {
-                "type": "error",
-                "message": "Player room no longer exists.",
-            }
-
-        transaction = TransactionContext.create(
-            actor_id=player.id,
-            correlation_id=session_id,
-        )
-        try:
-            ctx = build_game_context(
-                game_session,
-                player,
-                room,
-                bus=state.bus,
-                manager=state.manager,
-                transaction=transaction,
-                session_id=session_id,
-                rng=state.rng,
-                meters=state.meters,
-                effects=state.effects,
-                clock=room_repo.world_clock(),
-                audit_session=audit_session,
-                commit_state=game_session.commit,
-                commit_audit=audit_session.commit,
-                rollback_state=game_session.rollback,
-            )
-            with bind_transaction_context(
-                transaction.transaction_id, transaction.correlation_id
-            ):
-                parsed = state.command_engine.handle_command(command, ctx)
-            await broadcast_command_effects(state.manager, ctx, pre_room_id=pre_room_id)
-            messages: list[JsonValue] = list(ctx.messages)
-            room_messages: list[JsonValue] = list(ctx.room_messages)
-            # Chat echoes carry their channel (Sprint 52) so clients can tag/color
-            # per channel; older clients reading only `text` degrade gracefully.
-            chat_messages: list[JsonValue] = [
-                {"text": echo.text, "channel": echo.channel} for echo in ctx.chat_echoes
-            ]
-
-            # Capture and store any pending disambiguation; don't send to client.
-            disambig = ctx.updates.pop("disambig_pending", None)
-            if disambig is not None and isinstance(disambig, dict):
-                state.pending_disambig[player_id] = disambig
-
-            updates = {
-                **ctx.updates,
-                **_player_ui_updates(player, ctx.room, room_repo, ctx.item_repo),
-            }
-            response: JsonObject = {
-                "type": "command_result",
-                "command": parsed.raw,
-                "verb": parsed.verb,
-                "noun": parsed.noun,
-                "messages": messages,
-                "room_messages": room_messages,
-                "chat_messages": chat_messages,
-                "updates": updates,
-            }
-            return response
-        except Exception as exc:
-            # Sprint 57.3: anything that escapes the command pipeline itself
-            # (as opposed to a handler exception, already caught and
-            # reported gracefully inside CommandEngine) previously killed the
-            # WebSocket outright. Capture it and degrade to an in-game error
-            # instead of a raw disconnect.
-            log.exception("unhandled_command_pipeline_exception")
-            game_session.rollback()
-            record_crash(
-                audit_session,
-                transaction_id=transaction.transaction_id,
-                correlation_id=transaction.correlation_id,
-                player_id=player.id,
-                command_text=command,
-                exc=exc,
-            )
-            return {
-                "type": "error",
-                "message": "Something went wrong processing that command. "
-                "It has been logged for review.",
-            }
+    Thin delegator: the real pipeline lives in
+    `webui.player.ws_command.handle_ws_command`, shared verbatim with the
+    Rust-port gateway adapter. The `/ws` handler passes the real
+    `ConnectionManager` so fan-out reaches live sockets.
+    """
+    return await handle_ws_command(state, state.manager, player_id, session_id, command)
 
 
 def _load_hunt_definitions(hunts_yaml_path: str) -> None:
@@ -826,111 +718,6 @@ def _resolve_ws_player_id(websocket: WebSocket, state: AppState) -> str | None:
 
 def _read_web_asset(asset_name: str) -> str:
     return (WEB_DIR / asset_name).read_text(encoding="utf-8")
-
-
-def _reconnect_sync_payload(
-    player: Player, session_id: str, updates: JsonObject
-) -> JsonObject:
-    return {
-        "type": "reconnect_sync",
-        "session_id": session_id,
-        "player": {
-            "id": player.id,
-            "username": player.username,
-            "current_room_id": player.current_room_id,
-        },
-        "room": updates["room"],
-        "inventory": updates["inventory"],
-        "time": updates["time"],
-        "updates": updates,
-    }
-
-
-def _player_ui_updates(
-    player: Player,
-    room: Room,
-    room_repo: RoomRepo,
-    item_repo: ItemRepo,
-) -> JsonObject:
-    visited_rooms: list[JsonValue] = [
-        _room_snapshot(visited_room, room_repo, visited_room_ids=player.visited_rooms)
-        for visited_room in _visited_rooms(player, room_repo)
-    ]
-    return {
-        "room_id": room.id,
-        "room": _room_snapshot(room, room_repo, visited_room_ids=player.visited_rooms),
-        "visited_rooms": visited_rooms,
-        "inventory": _inventory_snapshot(player, item_repo),
-        "time": _time_snapshot(room_repo),
-    }
-
-
-def _visited_rooms(player: Player, room_repo: RoomRepo) -> list[Room]:
-    rooms: list[Room] = []
-    for room_id in player.visited_rooms:
-        room = room_repo.get(room_id)
-        if room is not None:
-            rooms.append(room)
-    return rooms
-
-
-def _room_snapshot(
-    room: Room, room_repo: RoomRepo, *, visited_room_ids: list[str]
-) -> JsonObject:
-    exits: list[JsonValue] = []
-    for exit_ in room_repo.exits(room.id):
-        target_room = room_repo.get(exit_.target_room_id)
-        target_payload: JsonObject = {
-            "direction": exit_.direction,
-            "target_room_id": exit_.target_room_id,
-            "hidden": exit_.hidden,
-            "locked": exit_.locked,
-            "visited": exit_.target_room_id in visited_room_ids,
-        }
-        if target_room is not None:
-            target_payload["target_map_x"] = target_room.map_x
-            target_payload["target_map_y"] = target_room.map_y
-            target_payload["target_map_z"] = target_room.map_z
-        exits.append(target_payload)
-
-    return {
-        "id": room.id,
-        "name": room.name,
-        "description": room.description,
-        "map_x": room.map_x,
-        "map_y": room.map_y,
-        "map_z": room.map_z,
-        "exits": exits,
-    }
-
-
-def _inventory_snapshot(player: Player, item_repo: ItemRepo) -> list[JsonValue]:
-    items: list[JsonValue] = []
-    for stack, item in item_repo.stacks_carried_by(player.id):
-        items.append(
-            {
-                "id": item.id,
-                "name": item.name,
-                "description": item.description,
-                "quantity": stack.quantity,
-            }
-        )
-    return items
-
-
-def _time_snapshot(room_repo: RoomRepo) -> JsonObject:
-    clock = room_repo.world_clock()
-    if clock is None:
-        return {}
-    return {
-        "hour": clock.current_hour,
-        "minute": clock.current_minute,
-        "day": clock.current_day,
-        "season": clock.current_season,
-        "weather": clock.weather,
-        "moon": moon_phase_for_day(clock.current_day),
-        "tide": tide_for_hour(clock.current_hour),
-    }
 
 
 def _ensure_admin_seed(game_engine: Engine, settings: Settings) -> None:

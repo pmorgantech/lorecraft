@@ -35,6 +35,11 @@ class Settings:
     world_time_ratio: float = 60.0
     websocket_path: str = "/ws"
     disconnect_grace_seconds: float = 60.0
+    # Rust-port gateway (Phase 3): the Unix-domain socket the Python gateway
+    # adapter listens on for length-prefixed JSON frames from the Rust gateway.
+    # A static operational tunable (localhost-only transport path), not a
+    # game-balance dial — env/config is correct, no live-tunable DB singleton.
+    gateway_socket_path: str = "var/gateway.sock"
     # Control directory shared with the process supervisor (scripts/supervisor.py)
     # for the admin "request restart" handshake (Sprint 72.3). The admin endpoint
     # writes a restart sentinel here and reads the supervisor's heartbeat to show
@@ -121,6 +126,9 @@ def load_settings() -> Settings:
         websocket_path=os.getenv("LORECRAFT_WEBSOCKET_PATH", "/ws"),
         disconnect_grace_seconds=float(
             os.getenv("LORECRAFT_DISCONNECT_GRACE_SECONDS", "60.0")
+        ),
+        gateway_socket_path=os.getenv(
+            "LORECRAFT_GATEWAY_SOCKET_PATH", "var/gateway.sock"
         ),
         control_dir=os.getenv("LORECRAFT_CONTROL_DIR", "/tmp/lorecraft-control"),
         admin_jwt_secret=os.getenv("LORECRAFT_ADMIN_JWT_SECRET", ""),

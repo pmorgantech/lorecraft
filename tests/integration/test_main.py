@@ -232,7 +232,7 @@ async def _test_websocket_unhandled_exception() -> None:
     )
     async with _lifespan(app):
         with patch(
-            "lorecraft.main.broadcast_command_effects",
+            "lorecraft.webui.player.ws_command.broadcast_command_effects",
             side_effect=RuntimeError("boom"),
         ):
             messages = await _run_websocket(

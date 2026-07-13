@@ -4,11 +4,54 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from typing import Protocol
 
 from lorecraft.observability import time_operation
 from lorecraft.types import JsonObject, JsonWebSocket
 
 log = logging.getLogger(__name__)
+
+
+class ConnectionManagerProtocol(Protocol):
+    """The delivery/selection surface every command + fan-out path depends on.
+
+    ``broadcast_command_effects`` and the command handlers reach the connection
+    map only through this fixed set of methods — never socket internals. Typing
+    the seams (``GameContext.manager``, ``build_game_context``,
+    ``broadcast_command_effects``, ``WorldContext.manager``) against this
+    Protocol instead of the concrete :class:`ConnectionManager` makes the manager
+    *injectable*: the Rust-port gateway (Phase 3) supplies a
+    ``DirectiveConnectionManager`` that records ``DeliveryDirective``s instead of
+    awaiting real sockets, and satisfies this surface structurally with no
+    changes here. This is a pure Tier 1 generalization (mechanism) — it adds no
+    gateway-specific policy to the engine.
+
+    The surface is the seven fan-out/selection methods plus ``is_connected``
+    (used by ``commands/social.py`` and ``features/follow/service.py`` via
+    ``ctx.manager``), so retyping the seams stays free of ``type: ignore``.
+    """
+
+    async def send_to_player(self, player_id: str, message: JsonObject) -> None: ...
+
+    async def broadcast_to_room(
+        self, room_id: str, message: JsonObject, exclude: str | None = None
+    ) -> None: ...
+
+    async def broadcast_global(
+        self, message: JsonObject, exclude: str | None = None
+    ) -> None: ...
+
+    def move_player(
+        self, player_id: str, from_room: str | None, to_room: str
+    ) -> None: ...
+
+    def players_in_room(self, room_id: str) -> list[str]: ...
+
+    def occupied_rooms(self) -> list[str]: ...
+
+    def connected_player_ids(self) -> list[str]: ...
+
+    def is_connected(self, player_id: str) -> bool: ...
 
 
 class ConnectionManager:

@@ -16,7 +16,7 @@ import logging
 
 from lorecraft.engine.game.channels import Channel, ChatScope
 from lorecraft.engine.game.channels import get_registry as get_channel_registry
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.models.player import Player
@@ -56,7 +56,7 @@ def _subscribed(ctx: GameContext, player_id: str, channel: Channel | None) -> bo
 
 
 async def broadcast_command_effects(
-    manager: ConnectionManager, ctx: GameContext, *, pre_room_id: str
+    manager: ConnectionManagerProtocol, ctx: GameContext, *, pre_room_id: str
 ) -> None:
     """Broadcast one command's room-visible effects to other players.
 

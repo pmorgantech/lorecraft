@@ -16,7 +16,7 @@ from lorecraft.engine.game.channels import (
 from lorecraft.engine.game.channels import (
     get_registry as get_channel_registry,
 )
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import Message, MessageType
@@ -59,7 +59,7 @@ class GameContext:
     meters: MeterService
     effects: EffectService
     npc_repo: NpcRepo
-    manager: ConnectionManager
+    manager: ConnectionManagerProtocol
     bus: EventBus
     audit: AuditRepo | None
     transaction: TransactionContext
@@ -235,7 +235,7 @@ def build_game_context(
     room: Room,
     *,
     bus: EventBus,
-    manager: ConnectionManager,
+    manager: ConnectionManagerProtocol,
     transaction: TransactionContext,
     session_id: str,
     rng: GameRng,

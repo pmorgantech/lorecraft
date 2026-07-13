@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Protocol
 
 from sqlmodel import Session
 
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.events import Event, EventBus, GameEvent, HandlerResult
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.rng import GameRng
@@ -49,7 +49,7 @@ log = logging.getLogger(__name__)
 
 
 def broadcast_room_async(
-    manager: ConnectionManager, room_id: str | None, text: str
+    manager: ConnectionManagerProtocol, room_id: str | None, text: str
 ) -> None:
     """Fire-and-forget room narration for an *autonomous* (non-command) event.
 
@@ -94,7 +94,7 @@ class WorldContext(Protocol):
     ledger: LedgerService
     meters: MeterService
     effects: EffectService
-    manager: ConnectionManager
+    manager: ConnectionManagerProtocol
     bus: EventBus
     audit: AuditRepo | None
     transaction: TransactionContext
@@ -132,7 +132,7 @@ class StandaloneWorldContext:
     ledger: LedgerService
     meters: MeterService
     effects: EffectService
-    manager: ConnectionManager
+    manager: ConnectionManagerProtocol
     bus: EventBus
     audit: AuditRepo | None
     transaction: TransactionContext
@@ -166,7 +166,7 @@ def build_world_context(
     session: Session,
     *,
     bus: EventBus,
-    manager: ConnectionManager,
+    manager: ConnectionManagerProtocol,
     transaction: TransactionContext,
     session_id: str,
     rng: GameRng,
