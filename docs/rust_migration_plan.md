@@ -1942,6 +1942,135 @@ slice: Rust parsing/routing for the selected verb, Rust repository reads/writes,
 Rust transaction and effect validation, Rust audit/outbox commit, golden replay
 comparison via the `look_only.audit.json` parity target.
 
+## Phase 4 kickoff — design spec (2026-07-13)
+
+### Summary / scope
+
+This section is the concrete kickoff design for Phase 4 (migrate one vertical gameplay slice), handed off from Research to Backend Engineering. Per the "Migration plan" section above, Phase 4 migrates a narrow-but-real slice — **`look` first, then movement (`go`/directional)** — so that **Rust owns the command pipeline for the migrated verb**: parse -> validation -> effect derivation -> outcome, with only the migrated verb(s) routed to Rust and everything else still executing in Python. This is the phase where Rust stops being transport-only (Phase 3) and becomes the **authority for a slice of gameplay**.
+
+**What "Rust owns the pipeline" means, per verb:**
+- **`look`** (read-only): Rust parses the verb, computes the ordered output via the already-built `lorecraft-feature-look` crate (the Phase 2 shadow port), and returns a `CommandOutcome` with `applied_effects = []`. The audit row (`command_executed`) and the room `state_change` broadcast are reproduced identically.
+- **movement** (`go`/`north`/`south`/`east`/`west`, mutating): Rust parses the direction, validates the move (exit exists, not locked, condition-flags satisfied, target room active), derives a single `Effect::MoveEntity`, and returns a `CommandOutcome` with that effect plus the leave/arrival narration. The player's `current_room_id`/`visited_rooms` mutation, the connection-map move, the audit trail, and the `PLAYER_MOVED`-driven reactions are reproduced identically.
+
+**Explicit exit criterion (phase-level):** a migrated verb executed by Rust reproduces the Python engine's effects/outcome/audit **byte-for-byte via the replay-hash harness** (`look_only.audit.json` for `look`; a new `move_only` golden for movement); non-migrated commands still run in Python unchanged; the migrated slice is toggled by routing config, and toggling it off returns to the pure-Python Phase 3 path (rollback is a routing decision, exactly as Phase 3 decision 8 established).
+
+### Grounded analysis of the current pipeline (look + movement)
+
+**The 13-step lifecycle** lives in `CommandEngine.handle_command` / `_execute_parsed` (`src/lorecraft/engine/game/engine.py`) with the transport/commit wiring in `src/lorecraft/webui/player/ws_command.py::handle_ws_command`. For a successful command the ordered steps are:
+1. Disambiguation-number resolution (`ws_command.py`, `state.pending_disambig`).
+2. Open two SQLModel sessions — `Session(state.game_engine)` and `Session(state.audit_engine)` — **two separate SQLite databases** (`ws_command.py`).
+3. Load `player` (`PlayerRepo.get`) and `room` (`RoomRepo.get`); capture `pre_room_id`; frozen-session guard.
+4. Build `TransactionContext.create(actor_id=player.id, correlation_id=session_id)` (`engine/game/transaction.py`) and `build_game_context(...)` (`engine/game/context.py`) wiring repos, services, RNG, and the three commit hooks (`commit_state=game_session.commit`, `commit_audit=audit_session.commit`, `rollback_state=game_session.rollback`).
+5. `parse_command(raw, context=ctx)` -> registry lookup (`registry_verb` normalizes aliases; `go`/`north`/`south`/`east`/`west` are all one registered handler — `features/movement/commands.py`).
+6. `registry.evaluate_conditions` (movement carries `REQUIRES_LIGHT`, `NOT_IN_COMBAT`).
+7. `rules.check(verb, ctx, payload)`.
+8. `command.handler(noun, ctx)` — the feature service.
+9. `ctx.flush_events()` — runs queued game events' bus handlers **before commit** (movement queues `PLAYER_MOVED`; handlers may further mutate the game session).
+10. `ctx.commit_state_changes()` -> `game_session.commit()` (game DB).
+11. `_record_success` -> `AuditService.record` (`engine/services/audit.py`) -> `ctx.commit_audit_events()` -> `audit_session.commit()` (audit DB, **separate commit, separate DB — no cross-DB atomicity**).
+12. `ctx.emit(GameEvent.COMMAND_EXECUTED, ...)` on the bus (composition observers).
+13. Back in `ws_command.py`: `broadcast_command_effects(manager, ctx, pre_room_id)` (`engine/game/broadcast.py`) — **publication happens strictly after commit**; then the legacy `command_result` envelope is assembled and returned.
+
+**`look` specifically** (`features/inventory/service.py::look` -> `look_pure.look_effects`):
+- Steps exercised: 5 (parse), 6 (no conditions), 7 (no rule), 8 (handler), 10 (state commit — **no game-state mutation, but the commit still runs**), 11 (audit row `command_executed`, summary `"look"`), 13 (broadcast: a single room `state_change` to other occupants, `exclude=actor`, since `look` doesn't move the player).
+- Repo reads: `room` (already loaded), `RoomRepo.exits(room.id)` + `is_exit_discovered` (visibility filter), the terrain registry, `ItemRepo.items_in_room(room.id)`.
+- Mutations: **none**. Effects: **none** (`proposed_effects=[]`, proven in Phase 1/2).
+- Audit/outbox: one `command_executed` audit row — this is precisely `tests/simulation/scenarios/look_only.audit.json` (a single event, `room_id: village_square`). **This is the Phase 4 pipeline-owned parity target** (the Phase 2 shadow slice hashed the *`ScriptResult`*, not this audit projection).
+
+**movement specifically** (`features/movement/service.py::move`):
+- Repo reads: `RoomRepo.exit(room.id, direction)`, `player.flags` (condition-flag gate), `StackRepo.quantity_of` (key check for locked exits), `RoomRepo.active(target)`, the terrain registry, and — when the target terrain is skill-gated — `SkillService.get_level`, `resolve_for` (modifier stack), `PlayerRepo.stats`.
+- Mutations (the parity-critical part): `ctx.player.current_room_id = target_room.id` and `ctx.player.visited_rooms = [...]` (**two persisted-model attribute writes — `mutation_scan.py` type-2 findings**); `_skills.record_use(...)` on a skill-gated move (**a session mutation AND an RNG draw** — `mutation_scan.py` type-1); `ctx.manager.move_player(...)` (connection map — already Rust-owned via Phase 3); `ctx.room = target`.
+- Audit/outbox: `command_executed` (summary = raw, e.g. `"go north"`); a queued `PLAYER_MOVED` game event flushed at step 9 (**can trigger quest progression, NPC reactions, triggers — additional Python mutations before commit**); broadcast at step 13 emits leave narration to `pre_room_id`, arrival narration + `state_change` to the new room, and a second `state_change` to the room left.
+- Transaction boundary: game-DB commit (step 10) then audit-DB commit (step 11), publication after both.
+
+### Central architecture decisions Phase 4 must resolve
+
+These are the hard, load-bearing decisions. Recommendations are stated; the pivotal one (#1) is also carried into OPEN ITEMS for user/Backend confirmation because the plan's own Phase 4 prose and its phase *sequencing* point in different directions.
+
+**Decision 1 — DB ownership / transaction model. RECOMMEND Option A: "Rust owns execution, Python owns persistence" for all of Phase 4; defer full Rust DB ownership (Option B) to Phase 5.**
+- *Option A (recommended).* Rust parses, validates, and derives the `CommandOutcome` (messages + `applied_effects`); Python remains the DB authority — it applies the effects through the existing `engine/repos/*` + services, commits both the game and audit SQLite databases via the existing commit hooks, and returns the legacy deliveries. `lorecraft-store` **stays a stub this phase.** Parity target: the effect list + the audit-trail hash + (for movement) the resulting player-state hash.
+- *Option B (deferred).* Rust owns the whole transaction: a real `lorecraft-store` (sqlx) reads/writes the two SQLite DBs, writes the audit/outbox rows, and commits. This is a Phase-5-sized lift — the "Migration plan" section explicitly sequences "repositories and DB ownership" as **Phase 5, step 6**, and `lorecraft-store` is a bare stub (`pub use lorecraft_protocol;` only).
+- *Rationale.* Option A honors the plan's own phase ordering, keeps each increment reviewable, and reuses the entire audit/outbox/commit machinery Phases 0-3 already proved. It still satisfies "Rust is the authority for a slice of gameplay": Rust owns parse -> validate -> effect-derivation -> outcome; Python becomes a mechanical effect-applier/persister for the migrated verb. The plan's north star ("durable transactions and an outbox before publication") is **preserved** this phase (Python commits before Rust publishes) and *reached* in Phase 5 when the outbox becomes a Rust-owned durable table. **Flagged as OPEN ITEM #1** because the Phase 4 prose ("Rust repository reads/writes... Rust audit/outbox commit") reads like Option B while the sequencing puts DB ownership in Phase 5 — the user/Backend should confirm the seam before implementation hardens.
+
+**Decision 2 — how Rust reads world/player state. RECOMMEND: Python builds the `ScriptRequest` snapshot and forwards it; Rust computes. No Rust SQLite reads, no authoritative Rust in-memory world this phase.**
+- The Phase 1/2 `EntitySnapshot`/`ScriptRequest` contract already exists and is already produced by `InventoryService._build_look_request`. For `look`, the Rust side is *literally the already-built `lorecraft-feature-look` crate* — now wired into the live path instead of a shadow fixture. For movement, Python adds a parallel `_build_move_request` (room exits with lock/flag/key state, target-room active flag, terrain skill requirement) into the same snapshot shape.
+- Rejected for this phase: (i) Rust reading SQLite directly (needs `lorecraft-store`, Option B, Phase 5); (ii) an authoritative in-memory world-actor holding state — the Phase 2 world-actor is a deliberately stateless skeleton; loading full world state into Rust is Phase 5+. The Phase 2 actor is reused only as the **ordering/dispatch** mechanism (drain->sort-by-`(logical_time, receive_sequence)`->dispatch), not as a state holder.
+- Consequence to flag: because Python still holds the repo reads, movement's **terrain-skill gate + `record_use` RNG draw stay in Python this phase** — see Decision 4 and the coverage gaps. This is a feature, not a defect: it keeps parity while the effect seam matures.
+
+**Decision 3 — routing. RECOMMEND: a verb allow-list consulted in the Rust gateway (`lorecraft-server`) at ingress; empty list == pure Phase 3 (rollback).**
+- The gateway does a **minimal** verb-extraction (first token, normalized against a small direction-alias table mirrored from Python's `DIRECTION_ALIASES`) *solely to route*. If the normalized verb is in the allow-list (static config, e.g. `LORECRAFT_RUST_VERBS=look`, then `look,go,north,south,east,west`), the command is dispatched to the Rust execution path; otherwise it continues down the existing `forward.rs` -> Python path **unchanged**.
+- **Conservative fallback:** any line that is not a single bare migrated verb (multi-command `;` lines, a pending disambiguation number, an unexpected argument shape) falls back to the Python path. Full parsing/disambiguation stays Python this phase; Rust parses only what it owns.
+- Rollback is toggling the allow-list to empty — consistent with Phase 3 decision 8 (old Python path kept, rollback is routing/config). The old Python `/ws` + `CommandEngine` path is **not** deleted.
+
+**Decision 4 — parity/audit for a mutating verb. RECOMMEND: extend the golden family for movement and introduce state-snapshot hashing (the Phase 0 deferred `hash_state`).**
+- `look` reuses `look_only.audit.json` directly (the audit-trail hash must match).
+- Movement adds `tests/simulation/scenarios/move_only.json` (a single `go <dir>` from the starting room, `rng_seed:1`) plus **three** goldens: `move_only.audit.json` (audit trail, same shape as `look_only`), `move_only.effects.json` (the `CommandOutcome.applied_effects` — a single `MoveEntity{entity, from, to}`), and a post-command **player-state hash** (`current_room_id` + `visited_rooms`). Movement is the natural place to land the state-snapshot hashing deferred in the Phase 0 spec (A1: "state-snapshot hashing — deferred to Phase 2... once the EntitySnapshot contract lands"): add `hash_state(snapshot)` to `replay_hash.py` reusing the existing `canonical_json` serializer, and a Rust mirror in `lorecraft-replay`.
+- Choose a movement scenario whose target terrain is **not** skill-gated for the first golden, so the RNG-draw path (Decision 2) does not enter the parity target; a *separate* skill-gated scenario is flagged as a later coverage item (RNG parity is deferred — see gaps).
+
+**Decision 5 — effect application + outbox ordering. RECOMMEND: preserve the existing commit-before-publish invariant exactly; Rust publishes only on Python's post-commit deliveries.**
+- Today publication (`broadcast_command_effects`) runs strictly after both DB commits (`ws_command.py`). Under Option A the order becomes: Rust computes outcome -> Python applies effects + commits game DB then audit DB -> Python returns the legacy `command_result` + `DeliveryDirective`s -> Rust publishes them via the **Phase 3 `Deliver`/broadcast path** (`lorecraft-events`). The outbox-before-publication invariant is preserved because Python commits before returning deliveries and Rust only publishes on receipt.
+- The two-DB non-atomicity (game commit then audit commit; a crash between them) is the **existing, documented** behavior — Phase 4 does not change it. Phase 5 is where the outbox becomes a Rust-owned durable table committed atomically with state (the north star). Flag this explicitly so a reviewer doesn't read Phase 4 as delivering the durable outbox.
+
+### Tier classification (per AGENTS.md "Tier 1 = mechanism, Tier 2 = policy")
+- **Tier 1 / mechanism — Rust (`lorecraft-server`, `lorecraft-runtime`, `lorecraft-protocol`):** the verb-routing/allow-list, the world-actor ordering + dispatch, the `CommandEnvelope` -> execution plumbing, the effect-validation primitive, the `CommandOutcome` contract, and the new snapshot-request / apply-outcome framing. These hold *no* opinion about what `look` or `go` mean.
+- **Tier 1 / mechanism — Python composition/web-host layer (`src/lorecraft/gateway/`):** the effect-**applier** (applies `MoveEntity` via existing `engine/repos/*`), the snapshot **builders**, and the audit/outbox commit — these use engine primitives. Per Phase 3 decision 11's cross-axis note: AGENTS.md's Tier 1/2 import-direction rule and `tests/unit/test_tier_boundaries.py` govern **only Python `src/lorecraft/`**; this new adapter code lives under `src/lorecraft/gateway/`, **may** import engine + features, and must **not** be imported by `engine/`.
+- **Tier 2 / policy — Rust crate axis (`lorecraft-feature-look`, new `lorecraft-feature-move`):** the specific verb's rules and message ordering — `look`'s output shape (already built), movement's exit/lock/flag validation + leave/arrival narration + the `MoveEntity` derivation. The Rust feature-vs-mechanism *crate* split is analogous-in-spirit to the Python import axis but a distinct axis (Phase 3 decision 11).
+- **Split holds:** the world-actor (mechanism) decides *ordering*; the feature crate (policy) decides *behavior*; Python (mechanism, composition layer) decides *persistence*. No feature opinion lands in `lorecraft-protocol` — `Effect::MoveEntity` is a generic primitive, not a movement-specific type.
+
+### Tunables
+- **No new game-balance dial is introduced this phase.** Movement's only balance-shaped values are the terrain `required_skill_min` thresholds, which already live in the terrain registry (`features/terrain/definitions.py`), are read Python-side, and **stay Python-owned** this phase (the skill gate stays in Python — Decision 2). They are not moved across the scripting boundary now; when they eventually are, they become part of the move `ScriptRequest` snapshot (which is where Python already surfaces them), i.e. versioned protocol data — flag this as future work.
+- The **verb allow-list** is an *operational* routing dial (which verbs go to Rust), not game balance: static config this phase (env/config), a candidate *operational* live-tunable later, **not** warranting the `WorldClock` DB-singleton pattern (which is for game-balance dials an admin retunes). This mirrors the judgment Phase 3 made for its operational dials.
+
+### Proposed crate / file / type layout
+- **`lorecraft-protocol`** (additive, Tier 1) — new framing for the execution round-trip (Option A). Additive to the Phase 3 gateway frames; `CommandEnvelope`, `CommandOutcome`, `Effect`, `EntitySnapshot`, `ScriptRequest`/`ScriptResult` reused verbatim:
+  - `GatewayInbound::BuildSnapshot { envelope: CommandEnvelope }` (Rust->Python: "give me the snapshot for this verb").
+  - `GatewayOutbound::SnapshotReady { command_id, request: ScriptRequest }` (Python->Rust).
+  - `GatewayInbound::ApplyOutcome { command_id, outcome: CommandOutcome }` (Rust->Python: "persist these effects + audit, then broadcast").
+  - `GatewayOutbound::OutcomeApplied { command_id, direct_reply: Value, deliveries: Vec<DeliveryDirective> }` (Python->Rust — reuses the Phase 3 `DeliveryDirective`; Rust publishes via the existing `Deliver` path).
+  - Python frozen-dataclass mirror with recursive `to_json`/`from_json` (the Phase 2 container-serialization discipline).
+- **`lorecraft-server`** (Tier 1) — the routing seam: `route.rs` (verb extraction + allow-list check + direction-alias table), dispatch of migrated verbs to the Rust execution path, non-migrated verbs still via `forward.rs`.
+- **`lorecraft-runtime`** (Tier 1) — reused as the ordering/dispatch mechanism; the injected `CommandPolicy` now calls a feature crate and emits a `CommandOutcome` (extend the policy trait's return, still no feature opinion in the actor).
+- **`lorecraft-feature-look`** (Tier 2, exists) — wired from shadow-fixture into the live execution path; produces `CommandOutcome{applied_effects:[]}`.
+- **`lorecraft-feature-move`** (Tier 2, **new crate**) — the Rust port of movement's validate + narration + `MoveEntity` derivation, mirroring how `lorecraft-feature-look` ported `look_pure.py`. Placed as its own crate (not inside `runtime`/`core`) to avoid the Tier 1/Tier 2 policy leak Phase 2 decision 2 rejected.
+- **`lorecraft-replay`** (Tier 1, exists) — add `hash_state` mirroring the new Python `replay_hash.hash_state` (Decision 4).
+- **`lorecraft-store`** — **stays a stub** (Option A). Building it out is Phase 5.
+- **Python `src/lorecraft/gateway/`** (composition/web-host layer) — extend `adapter.py` to serve `BuildSnapshot`/`ApplyOutcome`; add `snapshots.py` (`build_look_request` reuse + new `build_move_request`) and `effect_apply.py` (the `MoveEntity` applier: `current_room_id`/`visited_rooms` + connection-map move + residual terrain-skill/RNG/`PLAYER_MOVED`-flush kept in Python, committed via the existing hooks). Subject to the import-direction rule.
+
+### Task breakdown (sequenced sub-slices, mirroring 3a/3b/3c)
+
+**Sub-slice 4a — execution-routing protocol + headless `look` parity harness (NO live cutover).** Prove the seam before any real client is routed, exactly as 3a proved the forwarding contract before 3b cut over.
+- [ ] `lorecraft-protocol`: add `BuildSnapshot`/`SnapshotReady`/`ApplyOutcome`/`OutcomeApplied` frames + Python mirror w/ recursive `to_json`/`from_json` — **Tier 1** — **Phase 4** — serde/JSON round-trip parity both languages; `CommandEnvelope`/`CommandOutcome` reused verbatim.
+- [ ] Python `src/lorecraft/gateway/` `BuildSnapshot`/`ApplyOutcome` handlers + `snapshots.build_look_request` reuse + `effect_apply` (look = zero-effect, just audit + broadcast) — **Tier 1 (composition/web-host layer, respects import-direction rule)** — **Phase 4** — reproduces the `look_only.audit.json` trail when driven by a synthetic outcome.
+- [ ] `lorecraft-server::route` + wiring `lorecraft-feature-look` into the execution path (behind an allow-list defaulting empty) — **Tier 1** — **Phase 4** — headless harness drives `look_only` Rust-execute -> Python-persist and reproduces `look_only.audit.json`'s hash byte-for-byte; no live client routed.
+
+*4a exit check:* a synthetic `look` driven gateway->(route to Rust)->execute->Python-persist->audit reproduces the byte-identical `command_result` **and** the `look_only.audit.json` audit hash, with **no** real client cutover.
+
+**Sub-slice 4b — live `look` cutover behind the verb allow-list.**
+- [ ] `lorecraft-server`: route real player `/ws` (and `POST /command`) `look` commands to the Rust execution path when the allow-list contains `look`; publish the post-commit deliveries via the Phase 3 `Deliver` path — **Tier 1** — **Phase 4** — a real client's `look` executes via Rust with byte-identical `command_result` + the same room `state_change` broadcast.
+- [ ] Rollback verification: allow-list off -> `look` runs through the unchanged Python path — **Tier 1** — **Phase 4** — same e2e green with the flag off.
+
+*4b exit check:* the `look_only` audit golden and the live `command_result` both match through Rust; toggling the allow-list off returns to the Phase 3 Python path with no diff.
+
+**Sub-slice 4c — movement (`go`/directional) migration.**
+- [ ] `lorecraft-feature-move` (new crate): parse direction, validate exit/lock/condition-flags/target-active, derive `Effect::MoveEntity` + leave/arrival narration — **Tier 2** — **Phase 4** — unit tests for each block reason + the success effect.
+- [ ] Python `snapshots.build_move_request` (exits w/ lock/flag/key state, target-room active, terrain skill req) + `effect_apply` `MoveEntity` applier (`current_room_id`, `visited_rooms`, connection-map move; **residual terrain-skill gate + `record_use` RNG + `PLAYER_MOVED` flush stay Python**) — **Tier 1 (composition/web-host)** — **Phase 4** — mutations + reactions identical to today.
+- [ ] Movement goldens: `move_only.json` + `move_only.audit.json` + `move_only.effects.json` + post-state hash; add `hash_state` to `replay_hash.py` and `lorecraft-replay` — **Tier 2 (test content) / Tier 1 (`hash_state`)** — **Phase 4** — Rust-executed move reproduces audit + effect + player-state hashes.
+- [ ] Route `go`/`north`/`south`/`east`/`west` to Rust behind the allow-list — **Tier 1** — **Phase 4** — a real directional move executes via Rust, player relocates, room broadcasts land, `PLAYER_MOVED` reactions unchanged; flag off -> Python path.
+
+*4c exit check:* a real `go <dir>` executes via Rust; the `move_only` audit + effect + player-state hashes match Python; `PLAYER_MOVED`-driven reactions (quests/NPC/triggers) are byte-identical; rollback via the allow-list is intact.
+
+### Existing test coverage + gaps to flag (for Rust Test Writer / Test & QA)
+- **Reuse:** `look_only.audit.json` (exists) is the `look` target; the Phase 2 `look_only` `ScriptResult` parity remains valid and unchanged.
+- **NEW goldens needed:** `move_only.{json,audit.json,effects.json}` + a player-state hash — no mutating-verb golden exists yet.
+- **RNG parity constraint (hard):** movement's skill-gated path draws RNG via `_skills.record_use`. Cross-language RNG parity is **deferred to Phase 5** (Phase 2 decision 3: Python Mersenne Twister vs Rust ChaCha8). Therefore the RNG draw **must stay in Python** this phase, and the first movement golden must target **non-skill-gated** terrain so the draw is outside the parity target. A separate skill-gated-move parity scenario is a flagged later item, not this phase.
+- **`PLAYER_MOVED` reaction coverage:** `flush_events` can trigger quest/NPC/trigger handlers. These stay in Python this phase; a movement scenario that trips a quest step is a good regression fixture proving the reactions are unaffected by the Rust-execute seam.
+- **Routing fallback coverage:** a multi-command line (`look;go north`), a pending disambiguation number, and an unexpected argument must all fall back to Python — add explicit tests.
+
+### OPEN ITEMS
+1. **DB ownership / transaction model (pivotal).** Recommendation: **Option A** — "Rust owns execution, Python owns persistence" for all of Phase 4; defer full Rust DB ownership (`lorecraft-store` sqlx + audit/outbox commit, Option B) to Phase 5, honoring the plan's own "repositories and DB ownership = Phase 5 step 6" sequencing. Flagged for user/Backend confirmation because the Phase 4 prose ("Rust repository reads/writes... Rust audit/outbox commit") reads like Option B. Confirm before 4a's protocol frames harden, since Option B would replace the `BuildSnapshot`/`ApplyOutcome` round-trip with a Rust-owned store.
+2. **Snapshot round-trip vs. Python-side call-out.** Under Option A, Decision 3 routes at the gateway and coordinates state/persistence via two Rust<->Python round-trips (`BuildSnapshot`, `ApplyOutcome`). A lower-latency alternative keeps the gateway forwarding (Phase 3) and makes the **Python adapter** the router — Python builds the snapshot locally, calls the Rust feature (in-process FFI or a single UDS request), applies + commits, and broadcasts — avoiding one round-trip but making Rust a callee of Python rather than the ingress-level router. Recommendation: **gateway-level routing (Decision 3)** to match the plan's "Rust becomes the authority / the gateway decides a command is migrated"; flagged because the call-out variant is defensible if the round-trip latency proves material. Backend should confirm the round-trip shape in 4a before the Rust client hardens around it (same discipline as Phase 3 OPEN ITEM 1).
+3. **Residual movement logic staying in Python (terrain skill gate + RNG + event flush).** This is a deliberate phase-scoping call (Decision 2/4), not a permanent boundary. Recommendation: keep it Python this phase; pull the skill gate into `lorecraft-feature-move` only once Phase 5's RNG-stream authority lands so the `record_use` draw can move without breaking replay parity. Noted as future work.
+
 ### Where things stand / Next
 
 Phase 0 (evidence gate), Phase 1 (language-neutral contracts), Phase 2 (Rust
@@ -1951,11 +2080,18 @@ cutover, backpressure/slow-client policy, disconnect/reconnect, rate-limiting)**
 are complete and tested green. The phase-level exit criterion — both client types
 through Rust; disconnect/reconnect + slow-client tests match — is MET.
 
-After this lands, the natural next increment is Phase 4 — migrate one vertical
-gameplay slice (`look`, then movement) so Rust owns parsing/repo-reads/
-transaction/effect-validation/audit-outbox for the selected verb, routing only
-migrated commands to Rust, with the `look_only.audit.json` golden as the
-pipeline-owned parity target.
+**Phase 4 kickoff design spec is now landed (2026-07-13).** The specification is
+**PENDING USER REVIEW** before implementation begins — specifically **OPEN ITEM #1**
+(DB ownership / transaction model), where the Phase 4 prose and the plan's own phase
+sequencing point in different directions and need explicit confirmation: Recommendation
+is **Option A** ("Rust owns execution, Python owns persistence" this phase; defer full
+Rust DB ownership to Phase 5 per the plan's "repositories and DB ownership = Phase 5
+step 6" sequencing), but the Phase 4 prose currently reads like **Option B** (Rust owns
+the whole transaction including sqlx DB reads/writes and audit/outbox commit). No Phase
+4 task is marked started/done — this is design-only. Confirm OPEN ITEM #1 before 4a's
+protocol frames harden. The plan's north star ("durable transactions and an outbox
+before publication") is preserved under Option A (Python commits before Rust publishes)
+and reached in Phase 5 when the outbox becomes Rust-owned durable.
 
 ## Final position
 
