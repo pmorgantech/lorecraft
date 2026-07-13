@@ -113,18 +113,34 @@ assumption a fix was correct).
    a change that's pure logic with no model changes.
 2. **Code Reviewer** — always, for any code change (not docs-only). Idiomatic style, code
    smells, security.
-3. **Test & QA** — always: `make lint` (ruff), `make typecheck` (basedpyright), `make test`
-   (pytest) at minimum; `make test-cov`/`make test-e2e` if the change and its own success
-   criteria call for them.
-4. If **any** of 1–3 reports a blocking finding → dispatch the owning implementer (Backend
+3. **Test & QA** — always dispatched as **two parallel lanes** rather than one agent running
+   everything serially, since they have very different cost profiles (e2e runs ~4x longer than
+   the rest combined whenever it applies — browser automation, not just process startup):
+   - **Fast lane:** `make lint` (ruff) + `make typecheck` (basedpyright) + `make test`/
+     `make test-cov` (pytest, already internally parallel via xdist). Always dispatched.
+   - **e2e lane:** `make test-e2e` (also xdist-parallel — see AGENTS.md, it is *not* serial
+     despite looking that way at a glance) + `make test-simulation` (genuinely serial) — dispatch
+     only if the change touched frontend/webui or e2e-covered surface, per Test & QA's own
+     success criteria.
+   Both lanes are **independent runs of the same `test-qa` agent**, scoped by your dispatch
+   instructions to a specific suite subset each — not a new agent type, just two concurrent
+   invocations.
+4. **Numbering above is not dispatch order.** Database Specialist (if applicable), Code
+   Reviewer, and both Test & QA lanes are mutually independent — none needs another's output to
+   start, since all of them are analyzing the *same* pre-fix commit state. **Dispatch all
+   applicable stages as a single batched turn** (multiple `Agent` calls with
+   `run_in_background: false` in one turn — see "Dispatch mode" above), not sequentially one
+   stage at a time. Running them sequentially has already cost real wall-clock time across
+   multiple sprints for no coverage benefit — batching them is not an optional nicety.
+5. If **any** stage reports a blocking finding → dispatch the owning implementer (Backend
    Engineer or Frontend Specialist) with the specific finding attached, then **re-run the stage
-   that failed** (and everything after it — a fix for a Code Reviewer finding still needs Test &
-   QA to re-verify, since a fix can introduce a new lint/type/test failure). This is the same
-   retry-once-then-escalate rule as step 6 above: if the same stage fails twice on the same
-   issue, stop and report to the user rather than looping indefinitely.
-5. Only once Database Specialist (if applicable), Code Reviewer, and Test & QA all report clean
-   — **no iteration pending** — does the change go to **Integrator**.
-6. **If Integrator itself finds a red checklist item** (per its own pre-merge checklist), it
+   that failed** (and everything after it — a fix for a Code Reviewer finding still needs both
+   Test & QA lanes to re-verify, since a fix can introduce a new lint/type/test/e2e failure).
+   This is the same retry-once-then-escalate rule as step 6 above: if the same stage fails twice
+   on the same issue, stop and report to the user rather than looping indefinitely.
+6. Only once Database Specialist (if applicable), Code Reviewer, and **both** Test & QA lanes
+   all report clean — **no iteration pending** — does the change go to **Integrator**.
+7. **If Integrator itself finds a red checklist item** (per its own pre-merge checklist), it
    does not fix or re-test ad hoc — it routes back through this same gate (implementer fixes,
    then **Test & QA** specifically re-verifies before Integrator retries the merge). Integrator
    re-running `make test-cov` itself to "just double check" one thing is fine; re-running the

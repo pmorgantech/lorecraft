@@ -130,7 +130,7 @@ tools through the active venv (`python -m ...`):
 | Coverage gate | `make test-cov` | Same parallelism + `--cov=src/lorecraft`; matches CI `quality` job |
 | Lint | `make lint` | `ruff check` + `ruff format --check` |
 | Types | `make typecheck` | `basedpyright` |
-| E2E | `make test-e2e` | Serial; browser tests only |
+| E2E | `make test-e2e` | Parallel (`-n auto --dist=loadfile`, since `a7f76b4`) — each worker gets its own isolated browser + server (random port, unique `tmp_path` DB); browser tests only |
 | Simulation | `make test-simulation` | Serial; live-server harness only |
 
 When you must invoke pytest directly (e.g. a single file or `-k` filter), use the same
@@ -144,7 +144,13 @@ python -m pytest -n auto --dist=loadfile --cov=src/lorecraft --cov-report=term-m
 - `--dist=loadfile` keeps all cases in a file on one worker (required for file-scoped fixtures).
 - Override worker count: `PYTEST_WORKERS=4 make test` (default `auto`).
 - Requires the dev extra (`pytest-xdist`, `pytest-cov` for coverage runs): `pip install -e ".[dev]"`.
-- Do not add `-n` to `make test-e2e` or `make test-simulation`; those targets stay serial.
+- `make test-e2e` already runs `-n $(PYTEST_WORKERS) --dist=loadfile` (parallel) — don't assume
+  it's serial or route around it. It's capped well below available cores by file count, though:
+  15 e2e files means at most 15 concurrent workers regardless of `PYTEST_WORKERS`/core count.
+  Splitting an oversized e2e file (e.g. one bundling 10+ tests) raises this ceiling the same way
+  the 2026-07-05 unit-test split did — a Pytest Writer task, not something to do ad hoc.
+- Do not add `-n` to `make test-simulation`; that target stays genuinely serial (live-server
+  harness, no per-test isolation to safely parallelize against).
 
 ### Running tests from a git worktree (use the worktree's own venv, not a PYTHONPATH hack)
 
