@@ -64,11 +64,51 @@
 //!   connect *after* an accepted `AdminAuthResult`, deregister on socket close —
 //!   and Python is never told about admin connect/disconnect. No admin analogue of
 //!   the `Connected`/`Disconnected` frames is added.
+//!
+//! ## Phase 4 execution round-trip (Option A, 2026-07-13)
+//!
+//! Phase 4 makes Rust the **authority for a slice of gameplay** for a migrated verb
+//! (`look` first, then movement). Per the migration plan's **Decision 1 (Option A,
+//! CONFIRMED)**, ownership is split: **Rust owns execution** (parse -> validate ->
+//! effect derivation -> [`CommandOutcome`]) and **Python owns persistence** (applies
+//! the effects through the existing repos/services, commits both the game and audit
+//! SQLite databases, and returns the legacy deliveries). `lorecraft-store` stays a
+//! stub this phase; full Rust DB ownership (Option B) is deferred to Phase 5.
+//!
+//! Because Rust holds no authoritative world state yet (**Decision 2**), it cannot
+//! read player/room rows directly. So the migrated verb executes as a two round-trip
+//! conversation over this same channel, added by the four **additive** frames below:
+//!
+//! 1. **[`GatewayInbound::BuildSnapshot`]** (Rust->Python): given the routed
+//!    [`CommandEnvelope`], "build me the [`ScriptRequest`] snapshot to execute this
+//!    verb." Python reads the repos and materializes the immutable snapshot.
+//! 2. **[`GatewayOutbound::SnapshotReady`]** (Python->Rust): the snapshot, correlated
+//!    by `command_id` (= the originating envelope's [`CommandId`]). Rust runs the
+//!    feature against it and derives a [`CommandOutcome`].
+//! 3. **[`GatewayInbound::ApplyOutcome`]** (Rust->Python): "persist these validated
+//!    effects + write the audit row, then give me the deliveries to publish." Python
+//!    applies the effects, commits the game DB then the audit DB, and assembles the
+//!    legacy `command_result` + fan-out.
+//! 4. **[`GatewayOutbound::OutcomeApplied`]** (Python->Rust): the opaque
+//!    `direct_reply` (legacy `command_result` for the actor) plus the
+//!    [`DeliveryDirective`]s Rust publishes via the existing [`Self::Deliver`]
+//!    fan-out path.
+//!
+//! **Commit-before-publish is preserved exactly (Decision 5):** Python commits both
+//! DBs *before* returning [`GatewayOutbound::OutcomeApplied`], and Rust publishes the
+//! deliveries only on receipt — so publication still happens strictly after commit,
+//! just as `broadcast_command_effects` guarantees in the pure-Python path. The
+//! two-DB non-atomicity is the existing, documented behavior and is unchanged;
+//! Phase 5 is where the outbox becomes a Rust-owned durable table.
+//!
+//! These four frames are **additive**: [`CommandEnvelope`], [`CommandOutcome`],
+//! [`ScriptRequest`], and [`DeliveryDirective`] are reused verbatim and unchanged.
 
 use serde::{Deserialize, Serialize};
 
-use crate::envelope::CommandEnvelope;
+use crate::envelope::{CommandEnvelope, CommandOutcome};
 use crate::ids::{CommandId, PlayerId, SessionId};
+use crate::script::ScriptRequest;
 
 /// Why a connection was torn down. Its own internally-tagged enum so the wire
 /// shape stays uniform (`{"type": "ClientClose"}`) and is extensible later.
@@ -113,6 +153,27 @@ pub enum GatewayInbound {
     /// A forwarded command to execute. Wraps an unmodified [`CommandEnvelope`];
     /// serializes as `{"type": "Command", ...envelope fields}`.
     Command(CommandEnvelope),
+    /// Phase 4 step 1 (Rust->Python): ask Python to build the [`ScriptRequest`]
+    /// snapshot needed to execute the routed verb (see the Phase 4 execution
+    /// round-trip in the module docs). The [`CommandEnvelope`] is nested under
+    /// `envelope` (not flattened like [`Self::Command`]) so the reply's
+    /// `command_id` can correlate against `envelope.command_id`.
+    BuildSnapshot {
+        /// The routed command whose snapshot Python should materialize.
+        envelope: CommandEnvelope,
+    },
+    /// Phase 4 step 3 (Rust->Python): hand Python the [`CommandOutcome`] Rust
+    /// derived so Python persists the validated effects, writes the audit row, and
+    /// commits both DBs, then returns the deliveries to publish. Correlated to the
+    /// originating [`Self::BuildSnapshot`] by `command_id` (see the module docs).
+    ApplyOutcome {
+        /// Correlates this application to the executed command's [`CommandId`].
+        command_id: CommandId,
+        /// The authoritative outcome (messages + validated `applied_effects`) that
+        /// Python must persist. Commit-before-publish is preserved: Python commits
+        /// before replying with [`GatewayOutbound::OutcomeApplied`].
+        outcome: CommandOutcome,
+    },
 }
 
 /// A frame sent from the Python adapter back to the Rust gateway. Internally
@@ -158,6 +219,34 @@ pub enum GatewayOutbound {
         /// The opaque legacy `command_result` payload for the issuing client.
         direct_reply: serde_json::Value,
         /// Fan-out directives produced as a side effect of the command.
+        deliveries: Vec<DeliveryDirective>,
+    },
+    /// Phase 4 step 2 (Python->Rust): the [`ScriptRequest`] snapshot answering a
+    /// [`GatewayInbound::BuildSnapshot`], correlated by `command_id` (= the
+    /// originating envelope's [`CommandId`]). Rust executes the migrated feature
+    /// against this immutable snapshot and derives a [`CommandOutcome`] (see the
+    /// Phase 4 execution round-trip in the module docs).
+    SnapshotReady {
+        /// Correlates this snapshot to the [`GatewayInbound::BuildSnapshot`] that
+        /// requested it (the executing command's [`CommandId`]).
+        command_id: CommandId,
+        /// The fully-materialized, immutable snapshot to execute against. Boxed to
+        /// keep the enum's common variants small; the `Box` is wire-transparent, so
+        /// the JSON is identical to an inline [`ScriptRequest`].
+        request: Box<ScriptRequest>,
+    },
+    /// Phase 4 step 4 (Python->Rust): terminal reply to a
+    /// [`GatewayInbound::ApplyOutcome`] — Python has committed both DBs, so Rust may
+    /// now publish. Correlated by `command_id`. Commit-before-publish is preserved:
+    /// this frame is emitted only *after* Python's commits (see the module docs).
+    OutcomeApplied {
+        /// Correlates this reply to the [`GatewayInbound::ApplyOutcome`] it answers.
+        command_id: CommandId,
+        /// The opaque legacy `command_result` payload for the issuing client
+        /// (relayed verbatim, exactly like `CommandReply`'s `direct_reply`).
+        direct_reply: serde_json::Value,
+        /// Post-commit fan-out directives Rust publishes via the [`Self::Deliver`]
+        /// path. Empty for a zero-broadcast verb.
         deliveries: Vec<DeliveryDirective>,
     },
     /// An unsolicited async push (clock ticks, weather, cross-player deliveries).
@@ -257,9 +346,15 @@ pub enum DeliveryTarget {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::effects::Effect;
+    use crate::envelope::{Diagnostic, OutcomeStatus};
     use crate::ids::{ActorId, WorldId};
+    use crate::messages::OutboundMessage;
+    use crate::script::ScriptBudget;
+    use crate::snapshot::EntitySnapshot;
     use crate::PROTOCOL_VERSION;
     use serde_json::json;
+    use std::collections::BTreeMap;
 
     fn assert_round_trip<T>(value: &T)
     where
@@ -292,6 +387,69 @@ mod tests {
             exclude: Some(PlayerId("player-1".into())),
             payload: json!({"type": "feed_append", "text": "You go north."}),
             coalesce_key: None,
+        }
+    }
+
+    /// A non-trivial [`ScriptRequest`] with nested attribute JSON, exercising the
+    /// recursive snapshot/budget serialization the `SnapshotReady` frame carries.
+    fn sample_script_request() -> ScriptRequest {
+        let mut attrs: BTreeMap<String, serde_json::Value> = BTreeMap::new();
+        attrs.insert("name".into(), json!("Village Square"));
+        attrs.insert("exits".into(), json!(["north", "south"]));
+        attrs.insert("nested".into(), json!({"a": [1, 2, {"b": true}]}));
+        ScriptRequest {
+            api_version: 1,
+            script_id: "look".into(),
+            script_version: 1,
+            command_or_event: "look".into(),
+            actor_snapshot: EntitySnapshot {
+                id: "player-1".into(),
+                kind: "player".into(),
+                attributes: BTreeMap::new(),
+            },
+            room_snapshot: EntitySnapshot {
+                id: "village_square".into(),
+                kind: "room".into(),
+                attributes: attrs,
+            },
+            selected_related_entities: vec![EntitySnapshot {
+                id: "old_sword".into(),
+                kind: "item".into(),
+                attributes: BTreeMap::new(),
+            }],
+            logical_time: 7,
+            rng_stream_id: "stream-1".into(),
+            capability_set: vec!["read".into()],
+            budget: ScriptBudget {
+                wall_ms: 50,
+                instructions: 100_000,
+                memory_bytes: 1_048_576,
+                output_bytes: 65_536,
+            },
+        }
+    }
+
+    /// A non-trivial [`CommandOutcome`] carrying a tagged message + a tagged effect,
+    /// exercising the recursive nested-container serialization the `ApplyOutcome`
+    /// frame carries.
+    fn sample_outcome() -> CommandOutcome {
+        CommandOutcome {
+            command_id: CommandId("cmd-1".into()),
+            status: OutcomeStatus::Executed,
+            commit_sequence: Some(3),
+            messages: vec![OutboundMessage::Feed {
+                text: "You are in the village square.".into(),
+                message_type: "system".into(),
+            }],
+            applied_effects: vec![Effect::MoveEntity {
+                entity: "player-1".into(),
+                from: "village_square".into(),
+                to: "north_road".into(),
+            }],
+            diagnostics: vec![Diagnostic {
+                level: "info".into(),
+                message: "ok".into(),
+            }],
         }
     }
 
@@ -335,6 +493,19 @@ mod tests {
                 "Disconnected",
             ),
             (GatewayInbound::Command(sample_envelope()), "Command"),
+            (
+                GatewayInbound::BuildSnapshot {
+                    envelope: sample_envelope(),
+                },
+                "BuildSnapshot",
+            ),
+            (
+                GatewayInbound::ApplyOutcome {
+                    command_id: CommandId("cmd-1".into()),
+                    outcome: sample_outcome(),
+                },
+                "ApplyOutcome",
+            ),
         ];
         for (frame, tag) in cases {
             let value = serde_json::to_value(&frame).unwrap();
@@ -400,6 +571,21 @@ mod tests {
                     deliveries: vec![sample_directive()],
                 },
                 "CommandReply",
+            ),
+            (
+                GatewayOutbound::SnapshotReady {
+                    command_id: CommandId("cmd-1".into()),
+                    request: Box::new(sample_script_request()),
+                },
+                "SnapshotReady",
+            ),
+            (
+                GatewayOutbound::OutcomeApplied {
+                    command_id: CommandId("cmd-1".into()),
+                    direct_reply: json!({"command": "look", "messages": []}),
+                    deliveries: vec![sample_directive()],
+                },
+                "OutcomeApplied",
             ),
             (
                 GatewayOutbound::Deliver {
@@ -562,6 +748,92 @@ mod tests {
         });
         let back: DeliveryDirective = serde_json::from_value(legacy).unwrap();
         assert_eq!(back.coalesce_key, None);
+    }
+
+    #[test]
+    fn build_snapshot_nests_envelope_under_field_not_flattened() {
+        // Unlike the `Command` newtype variant (which flattens the envelope beside
+        // the tag), `BuildSnapshot` nests it under `envelope` so the reply's
+        // `command_id` can correlate against `envelope.command_id`.
+        let frame = GatewayInbound::BuildSnapshot {
+            envelope: sample_envelope(),
+        };
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(value["type"], json!("BuildSnapshot"));
+        assert_eq!(value["envelope"]["command_id"], json!("cmd-1"));
+        assert_eq!(value["envelope"]["raw"], json!("look"));
+        // The envelope must NOT be flattened alongside the tag.
+        assert!(value.get("raw").is_none());
+        assert_round_trip(&frame);
+    }
+
+    #[test]
+    fn apply_outcome_round_trips_full_nested_outcome() {
+        // The `outcome`'s tagged message + tagged effect must survive the round trip
+        // through the recursive container serialization (not flattened away).
+        let frame = GatewayInbound::ApplyOutcome {
+            command_id: CommandId("cmd-1".into()),
+            outcome: sample_outcome(),
+        };
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(value["type"], json!("ApplyOutcome"));
+        assert_eq!(value["command_id"], json!("cmd-1"));
+        assert_eq!(value["outcome"]["status"], json!("Executed"));
+        assert_eq!(value["outcome"]["messages"][0]["type"], json!("Feed"));
+        assert_eq!(
+            value["outcome"]["applied_effects"][0]["type"],
+            json!("MoveEntity")
+        );
+        assert_round_trip(&frame);
+    }
+
+    #[test]
+    fn snapshot_ready_round_trips_full_nested_request() {
+        // The nested `ScriptRequest`'s recursive snapshot attributes must survive.
+        let frame = GatewayOutbound::SnapshotReady {
+            command_id: CommandId("cmd-1".into()),
+            request: Box::new(sample_script_request()),
+        };
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(value["type"], json!("SnapshotReady"));
+        assert_eq!(value["command_id"], json!("cmd-1"));
+        assert_eq!(value["request"]["script_id"], json!("look"));
+        assert_eq!(
+            value["request"]["room_snapshot"]["attributes"]["nested"]["a"][2]["b"],
+            json!(true)
+        );
+        assert_round_trip(&frame);
+    }
+
+    #[test]
+    fn outcome_applied_carries_correlation_and_opaque_reply() {
+        // `direct_reply` is relayed opaquely; `deliveries` round-trip verbatim.
+        let frame = GatewayOutbound::OutcomeApplied {
+            command_id: CommandId("cmd-42".into()),
+            direct_reply: json!({"command": "look", "ok": true}),
+            deliveries: vec![sample_directive()],
+        };
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(value["type"], json!("OutcomeApplied"));
+        assert_eq!(value["command_id"], json!("cmd-42"));
+        assert_eq!(value["direct_reply"]["command"], json!("look"));
+        assert_eq!(
+            value["deliveries"][0]["payload"]["type"],
+            json!("feed_append")
+        );
+        assert_round_trip(&frame);
+
+        // A zero-broadcast verb (e.g. a private `look`) has empty deliveries.
+        let empty = GatewayOutbound::OutcomeApplied {
+            command_id: CommandId("cmd-42".into()),
+            direct_reply: json!({"ok": true}),
+            deliveries: vec![],
+        };
+        assert_eq!(
+            serde_json::to_value(&empty).unwrap()["deliveries"],
+            json!([])
+        );
+        assert_round_trip(&empty);
     }
 
     #[test]

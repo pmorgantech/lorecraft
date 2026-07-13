@@ -491,6 +491,21 @@ async fn demultiplex(
                 None => tracing::warn!("disconnect ack arrived with no pending teardown"),
             }
         }
+        // TODO(4a-task3): the Phase 4 execution round-trip replies. These are the
+        // Python->Rust halves of `BuildSnapshot`/`ApplyOutcome`; task 3 routes them
+        // to the pending-execution waiter that Rust's `look` router awaits (same
+        // correlation-by-`command_id` shape as `CommandReply`). Until that router
+        // exists no `BuildSnapshot`/`ApplyOutcome` is ever *sent*, so receiving one
+        // here is a protocol anomaly — log and drop rather than panic, keeping the
+        // additive protocol change compile-safe with no runtime `todo!()`.
+        frame
+        @ (GatewayOutbound::SnapshotReady { .. } | GatewayOutbound::OutcomeApplied { .. }) => {
+            tracing::warn!(
+                ?frame,
+                "Phase 4 execution reply received before the Rust execution router \
+                 is wired (4a task 3); dropping"
+            );
+        }
     }
 }
 

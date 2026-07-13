@@ -40,6 +40,28 @@ Resolved admin-push design (Phase 3c, 2026-07-13), documented on the Rust side t
   stateless and push-only (no ``SessionSafetyService`` grace like players); Rust owns
   the admin registry (register after an accepted ``AdminAuthResult``, deregister on
   socket close) and Python is never told about admin connect/disconnect.
+
+Phase 4 execution round-trip (Option A, 2026-07-13), documented on the Rust side too:
+
+Phase 4 makes **Rust own execution** (parse -> validate -> effect derivation ->
+``CommandOutcome``) while **Python owns persistence** (applies effects through the
+existing repos/services, commits the game then audit SQLite DBs, returns deliveries).
+Because Rust holds no authoritative world state yet, the migrated verb executes as a
+two round-trip conversation over this channel, added by four **additive** frames:
+
+- ``BuildSnapshot`` (Rust->Python): given the routed ``CommandEnvelope`` (nested under
+  ``envelope``), build the ``ScriptRequest`` snapshot to execute the verb.
+- ``SnapshotReady`` (Python->Rust): the snapshot, correlated by ``command_id`` (= the
+  originating envelope's ``command_id``); Rust runs the feature and derives an outcome.
+- ``ApplyOutcome`` (Rust->Python): persist the validated effects + audit row and commit
+  both DBs, then return the deliveries to publish.
+- ``OutcomeApplied`` (Python->Rust): the opaque ``direct_reply`` (legacy
+  ``command_result`` for the actor) plus the ``DeliveryDirective``s Rust publishes via
+  the existing ``Deliver`` fan-out path.
+
+**Commit-before-publish is preserved exactly:** Python commits both DBs *before*
+returning ``OutcomeApplied`` and Rust publishes only on receipt. ``CommandEnvelope``,
+``CommandOutcome``, ``ScriptRequest``, and ``DeliveryDirective`` are reused verbatim.
 """
 
 from __future__ import annotations
@@ -56,7 +78,14 @@ from lorecraft.protocol._coerce import (
     require_object,
     require_str,
 )
-from lorecraft.protocol.envelope import CommandEnvelope, CommandId, PlayerId, SessionId
+from lorecraft.protocol.envelope import (
+    CommandEnvelope,
+    CommandId,
+    CommandOutcome,
+    PlayerId,
+    SessionId,
+)
+from lorecraft.protocol.script import ScriptRequest
 from lorecraft.types import JsonObject, JsonValue
 
 # --- DisconnectReason ------------------------------------------------------
@@ -293,6 +322,44 @@ class GatewayCommand(GatewayInbound):
         return {"type": self.TAG, **self.envelope.to_json()}
 
 
+@dataclass(frozen=True, slots=True)
+class BuildSnapshot(GatewayInbound):
+    """Phase 4 step 1 (Rust->Python): ask Python to build the ``ScriptRequest``
+    snapshot to execute the routed verb (see the Phase 4 execution round-trip in the
+    module docstring). Unlike ``GatewayCommand`` (which flattens the envelope beside
+    the tag, mirroring the Rust ``Command`` newtype), the envelope is **nested** under
+    ``envelope`` so the reply's ``command_id`` can correlate against
+    ``envelope.command_id`` (mirrors the Rust struct variant
+    ``GatewayInbound::BuildSnapshot``)."""
+
+    TAG: ClassVar[str] = "BuildSnapshot"
+    envelope: CommandEnvelope
+
+    def to_json(self) -> JsonObject:
+        return {"type": self.TAG, "envelope": self.envelope.to_json()}
+
+
+@dataclass(frozen=True, slots=True)
+class ApplyOutcome(GatewayInbound):
+    """Phase 4 step 3 (Rust->Python): hand Python the derived ``CommandOutcome`` so it
+    persists the validated effects, writes the audit row, and commits both DBs, then
+    returns the deliveries to publish. Correlated to the originating ``BuildSnapshot``
+    by ``command_id``. The nested ``outcome`` recurses through
+    ``CommandOutcome.to_json`` (its messages/effects keep their own ``{"type": ...}``
+    tags) rather than being flattened."""
+
+    TAG: ClassVar[str] = "ApplyOutcome"
+    command_id: CommandId
+    outcome: CommandOutcome
+
+    def to_json(self) -> JsonObject:
+        return {
+            "type": self.TAG,
+            "command_id": self.command_id,
+            "outcome": self.outcome.to_json(),
+        }
+
+
 def gateway_inbound_from_json(data: JsonObject) -> GatewayInbound:
     """Reconstruct a ``GatewayInbound`` variant from its tagged-JSON shape."""
     tag = data.get("type")
@@ -310,6 +377,16 @@ def gateway_inbound_from_json(data: JsonObject) -> GatewayInbound:
     if tag == GatewayCommand.TAG:
         # The envelope is flattened alongside the tag; `from_json` ignores "type".
         return GatewayCommand(envelope=CommandEnvelope.from_json(data))
+    if tag == BuildSnapshot.TAG:
+        # The envelope is nested under "envelope" (not flattened, unlike Command).
+        return BuildSnapshot(
+            envelope=CommandEnvelope.from_json(require_dict(data, "envelope"))
+        )
+    if tag == ApplyOutcome.TAG:
+        return ApplyOutcome(
+            command_id=require_str(data, "command_id"),
+            outcome=CommandOutcome.from_json(require_dict(data, "outcome")),
+        )
     raise ValidationError(f"unknown gateway inbound type: {tag!r}")
 
 
@@ -399,6 +476,50 @@ class CommandReply(GatewayOutbound):
 
 
 @dataclass(frozen=True, slots=True)
+class SnapshotReady(GatewayOutbound):
+    """Phase 4 step 2 (Python->Rust): the ``ScriptRequest`` snapshot answering a
+    ``BuildSnapshot``, correlated by ``command_id`` (= the originating envelope's
+    ``command_id``). Rust executes the migrated feature against this immutable snapshot
+    and derives a ``CommandOutcome``. The nested ``request`` recurses through
+    ``ScriptRequest.to_json`` (its snapshots/budget) rather than being flattened."""
+
+    TAG: ClassVar[str] = "SnapshotReady"
+    command_id: CommandId
+    request: ScriptRequest
+
+    def to_json(self) -> JsonObject:
+        return {
+            "type": self.TAG,
+            "command_id": self.command_id,
+            "request": self.request.to_json(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class OutcomeApplied(GatewayOutbound):
+    """Phase 4 step 4 (Python->Rust): terminal reply to an ``ApplyOutcome`` — Python has
+    committed both DBs, so Rust may now publish. Commit-before-publish is preserved:
+    this frame is emitted only *after* the commits. ``direct_reply`` is the opaque
+    legacy ``command_result`` for the actor (relayed verbatim, like
+    ``CommandReply.direct_reply``); ``deliveries`` are the post-commit fan-out
+    directives Rust publishes via the ``Deliver`` path (empty for a zero-broadcast
+    verb)."""
+
+    TAG: ClassVar[str] = "OutcomeApplied"
+    command_id: CommandId
+    direct_reply: JsonValue
+    deliveries: list[DeliveryDirective] = field(default_factory=list)
+
+    def to_json(self) -> JsonObject:
+        return {
+            "type": self.TAG,
+            "command_id": self.command_id,
+            "direct_reply": self.direct_reply,
+            "deliveries": [d.to_json() for d in self.deliveries],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class Deliver(GatewayOutbound):
     """An unsolicited async push. Carries no correlation id (not a reply)."""
 
@@ -474,6 +595,20 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
         )
     if tag == CommandReply.TAG:
         return CommandReply(
+            command_id=require_str(data, "command_id"),
+            direct_reply=data.get("direct_reply"),
+            deliveries=[
+                DeliveryDirective.from_json(require_object(item))
+                for item in require_list(data, "deliveries")
+            ],
+        )
+    if tag == SnapshotReady.TAG:
+        return SnapshotReady(
+            command_id=require_str(data, "command_id"),
+            request=ScriptRequest.from_json(require_dict(data, "request")),
+        )
+    if tag == OutcomeApplied.TAG:
+        return OutcomeApplied(
             command_id=require_str(data, "command_id"),
             direct_reply=data.get("direct_reply"),
             deliveries=[

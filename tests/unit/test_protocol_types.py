@@ -14,7 +14,9 @@ from lorecraft.protocol import (
     AdjustMeter,
     AdminAuthResult,
     AdminTarget,
+    ApplyOutcome,
     AuthResult,
+    BuildSnapshot,
     ClientClose,
     CommandEnvelope,
     CommandOutcome,
@@ -34,6 +36,7 @@ from lorecraft.protocol import (
     GracefulQuit,
     MoveEntity,
     MovePlayer,
+    OutcomeApplied,
     OutcomeStatus,
     PanelUpdate,
     PlayerTarget,
@@ -45,6 +48,7 @@ from lorecraft.protocol import (
     ScriptResult,
     SendNarration,
     SetFlag,
+    SnapshotReady,
     TransferItem,
     ValidateAdminToken,
     delivery_target_from_json,
@@ -430,6 +434,53 @@ def _sample_envelope() -> CommandEnvelope:
     )
 
 
+def _sample_script_request() -> ScriptRequest:
+    """A non-trivial `ScriptRequest` with nested attribute JSON, exercising the
+    recursive snapshot/budget serialization the Phase 4 `SnapshotReady` frame
+    carries."""
+    return ScriptRequest(
+        api_version=1,
+        script_id="look",
+        script_version=1,
+        command_or_event="look",
+        actor_snapshot=EntitySnapshot(id="player-1", kind="player", attributes={}),
+        room_snapshot=EntitySnapshot(
+            id="village_square",
+            kind="room",
+            attributes={
+                "name": "Village Square",
+                "exits": ["north", "south"],
+                "nested": {"a": [1, 2, {"b": True}]},
+            },
+        ),
+        selected_related_entities=[
+            EntitySnapshot(id="old_sword", kind="item", attributes={})
+        ],
+        logical_time=7,
+        rng_stream_id="stream-1",
+        capability_set=["read"],
+        budget=ScriptBudget(
+            wall_ms=50, instructions=100000, memory_bytes=1048576, output_bytes=65536
+        ),
+    )
+
+
+def _sample_outcome() -> CommandOutcome:
+    """A non-trivial `CommandOutcome` carrying a tagged message + tagged effect,
+    exercising the recursive nested-container serialization the Phase 4
+    `ApplyOutcome` frame carries."""
+    return CommandOutcome(
+        command_id="cmd-1",
+        status=OutcomeStatus.EXECUTED,
+        commit_sequence=3,
+        messages=[Feed(text="You are in the village square.", message_type="system")],
+        applied_effects=[
+            MoveEntity(entity="player-1", from_="village_square", to="north_road")
+        ],
+        diagnostics=[Diagnostic(level="info", message="ok")],
+    )
+
+
 def test_every_gateway_inbound_variant_roundtrips_and_tags() -> None:
     variants: list[tuple[object, str]] = [
         (RedeemTicket(ticket="tkt-1"), "RedeemTicket"),
@@ -437,6 +488,11 @@ def test_every_gateway_inbound_variant_roundtrips_and_tags() -> None:
         (Connected(player_id="player-1"), "Connected"),
         (Disconnected(player_id="player-1", reason=ClientClose()), "Disconnected"),
         (GatewayCommand(envelope=_sample_envelope()), "Command"),
+        (BuildSnapshot(envelope=_sample_envelope()), "BuildSnapshot"),
+        (
+            ApplyOutcome(command_id="cmd-1", outcome=_sample_outcome()),
+            "ApplyOutcome",
+        ),
     ]
     for frame, tag in variants:
         dumped = frame.to_json()  # type: ignore[attr-defined]
@@ -483,6 +539,18 @@ def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
                 deliveries=[_sample_directive()],
             ),
             "CommandReply",
+        ),
+        (
+            SnapshotReady(command_id="cmd-1", request=_sample_script_request()),
+            "SnapshotReady",
+        ),
+        (
+            OutcomeApplied(
+                command_id="cmd-1",
+                direct_reply={"command": "look", "messages": []},
+                deliveries=[_sample_directive()],
+            ),
+            "OutcomeApplied",
         ),
         (Deliver(directive=_sample_directive()), "Deliver"),
         (
@@ -552,3 +620,72 @@ def test_command_reply_defaults_empty_deliveries() -> None:
     frame = CommandReply(command_id="cmd-1", direct_reply=None)
     assert frame.deliveries == []
     assert gateway_outbound_from_json(frame.to_json()) == frame
+
+
+# --- Phase 4 execution round-trip frames (Option A) ---
+
+
+def test_build_snapshot_nests_envelope_under_field_not_flattened() -> None:
+    # Unlike `GatewayCommand` (which flattens the envelope beside the tag),
+    # `BuildSnapshot` nests it under `envelope` so the reply's `command_id` can
+    # correlate against `envelope.command_id`.
+    frame = BuildSnapshot(envelope=_sample_envelope())
+    dumped = frame.to_json()
+    assert dumped["type"] == "BuildSnapshot"
+    assert dumped["envelope"]["command_id"] == "cmd-1"
+    assert dumped["envelope"]["raw"] == "look"
+    # The envelope must NOT be flattened alongside the tag.
+    assert "raw" not in dumped
+    assert gateway_inbound_from_json(dumped) == frame
+
+
+def test_apply_outcome_roundtrips_full_nested_outcome() -> None:
+    # The nested `outcome`'s tagged message + tagged effect must survive the round
+    # trip through the recursive container serialization (not flattened away).
+    frame = ApplyOutcome(command_id="cmd-1", outcome=_sample_outcome())
+    dumped = frame.to_json()
+    assert dumped["type"] == "ApplyOutcome"
+    assert dumped["command_id"] == "cmd-1"
+    assert dumped["outcome"]["status"] == "Executed"
+    assert dumped["outcome"]["messages"][0]["type"] == "Feed"
+    assert dumped["outcome"]["applied_effects"][0]["type"] == "MoveEntity"
+    # The `from`/`from_` wire-key rename holds through the nested effect.
+    assert dumped["outcome"]["applied_effects"][0]["from"] == "village_square"
+    assert gateway_inbound_from_json(dumped) == frame
+
+
+def test_snapshot_ready_roundtrips_full_nested_request() -> None:
+    # The nested `ScriptRequest`'s recursive snapshot attributes must survive.
+    frame = SnapshotReady(command_id="cmd-1", request=_sample_script_request())
+    dumped = frame.to_json()
+    assert dumped["type"] == "SnapshotReady"
+    assert dumped["command_id"] == "cmd-1"
+    assert dumped["request"]["script_id"] == "look"
+    assert (
+        dumped["request"]["room_snapshot"]["attributes"]["nested"]["a"][2]["b"] is True
+    )
+    assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_outcome_applied_carries_correlation_and_opaque_reply() -> None:
+    # `direct_reply` is relayed opaquely; `deliveries` round-trip verbatim.
+    frame = OutcomeApplied(
+        command_id="cmd-42",
+        direct_reply={"command": "look", "ok": True},
+        deliveries=[_sample_directive()],
+    )
+    dumped = frame.to_json()
+    assert dumped["type"] == "OutcomeApplied"
+    assert dumped["command_id"] == "cmd-42"
+    assert dumped["direct_reply"]["command"] == "look"
+    assert dumped["deliveries"][0]["payload"]["type"] == "feed_append"
+    assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_outcome_applied_defaults_empty_deliveries() -> None:
+    # A zero-broadcast verb (e.g. a private `look`) has empty deliveries.
+    frame = OutcomeApplied(command_id="cmd-1", direct_reply={"ok": True})
+    assert frame.deliveries == []
+    dumped = frame.to_json()
+    assert dumped["deliveries"] == []
+    assert gateway_outbound_from_json(dumped) == frame

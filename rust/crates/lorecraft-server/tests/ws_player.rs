@@ -152,6 +152,10 @@ async fn serve_connection(
                 accepted: false,
                 player_id: None,
             }],
+            // TODO(4a-task3): the Phase 4 execution round-trip is not exercised by
+            // this Phase 3 forwarding mock; the real `BuildSnapshot`/`ApplyOutcome`
+            // handling is wired when the Rust execution router lands.
+            GatewayInbound::BuildSnapshot { .. } | GatewayInbound::ApplyOutcome { .. } => vec![],
         };
         for frame in &replies {
             write_outbound(&mut write, frame).await;
