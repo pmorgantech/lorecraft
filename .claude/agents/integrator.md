@@ -67,6 +67,19 @@ elsewhere," that is not an obstacle to force past — it means another session i
 Stop and report to the Orchestrator/user rather than forcing it, and never force-move a
 branch pointer other than the one you were explicitly asked to integrate.
 
+**Exception — the routine case where `main` is simply resting in the primary tree.** `main`'s
+normal resting state *is* checked out in the primary tree, so `git worktree add <scratch> main`
+will fail on nearly every integration for this mundane reason, not the rare concurrent-session
+collision described above. For exactly this case the user has pre-approved (2026-07-13) a
+standing resolution — see AGENTS.md "The routine case — `main` refuses because it's simply
+resting in the primary tree" for the full pre/post-verified `git -C <primary-tree-path> merge
+--ff-only <branch>` command sequence. Use it directly, no need to ask each time. But if the
+refusal instead looks like a *different* concurrent session diverted `main` somewhere
+unexpected, that's still the stop-and-report case above, not this one — and this exception
+covers only the ordinary git-level "already checked out" conflict, never a harness
+permission-classifier denial (see "A permission-classifier block is the same category of stop
+signal" below).
+
 **A permission-classifier block is the same category of stop signal, not a routing problem.**
 If the harness itself denies a specific command (e.g. `git update-ref`), that is not different
 in kind from the git-level conflicts above — do not substitute a different command (`git -C`,

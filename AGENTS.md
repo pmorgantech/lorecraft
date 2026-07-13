@@ -230,6 +230,35 @@ session is using it — don't force past it (`git worktree remove --force`, `bra
 elsewhere) without confirming with the user first, since the branch pointer may be something
 another concurrent agent is actively relying on.
 
+**The routine case — `main` refuses because it's simply resting in the primary tree, not
+because a concurrent session diverted it.** `main`'s normal resting state *is* checked out in
+the primary tree, so `git worktree add <scratch> main` fails on essentially every integration,
+not just the rare concurrent-session collision above. For exactly this routine case, the user
+has pre-approved (2026-07-13) a standing, narrowly-scoped resolution that does not require
+asking each time: a single atomic, pre/post-verified command run against the primary tree's
+*path*, without `cd`-ing into it and without any other command in between:
+
+```bash
+git -C <primary-tree-path> branch --show-current   # verify: must print "main"
+git -C <primary-tree-path> status --short           # verify: must be empty (clean)
+git -C <primary-tree-path> merge --ff-only <scratch-branch>
+git -C <primary-tree-path> rev-parse main           # verify: must equal the new commit
+git -C <primary-tree-path> symbolic-ref -q HEAD     # verify: prints refs/heads/main, not empty
+```
+
+**This is narrowly scoped — it is not a general license to reach for `git -C`/`cd` whenever
+some other command is blocked.** If the refusal instead looks like a *different* concurrent
+session has `main` (or any branch) checked out somewhere unexpected — not simply the primary
+tree's normal resting state — that is still the "stop and confirm with the user" case above,
+not this one. And if a command is denied by the harness's own permission-classifier (a tool-use
+block, not a git-level "already checked out" conflict), that is a different failure mode
+entirely: never substitute `git -C`, a literal `cd`, or any other command to reach the identical
+outcome — report the block and let the user decide. See the Integrator/Orchestrator agent
+definitions' "permission-classifier blocks are stop signals, not routing problems" for the
+2026-07-13 incident where conflating these two cases — treating a permission denial as if it
+were the routine "main is resting in the primary tree" case — was the actual violation, and
+don't repeat that conflation in the other direction either.
+
 **Version-bump collisions are a related, accepted risk.** Two branches built concurrently by
 different sessions can independently claim the same "next" version number (each is blind to
 the other's in-flight work) — this has happened in practice (two unrelated branches both
