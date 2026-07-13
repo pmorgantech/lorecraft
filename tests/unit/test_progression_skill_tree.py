@@ -10,8 +10,11 @@ from sqlmodel import Session, create_engine
 from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import Room
@@ -24,12 +27,20 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
+from lorecraft.features.progression.commands import register_progression_commands
 from lorecraft.features.progression.service import SkillTreeService
 from lorecraft.features.progression.skill_tree import (
     SkillTreeRegistry,
     ability_flag,
     validate_skill_tree_document,
 )
+
+
+def _command_engine(service: SkillTreeService) -> CommandEngine:
+    registry = CommandRegistry()
+    register_progression_commands(registry, service)
+    return CommandEngine(registry, RuleEngine())
+
 
 ROOM_ID = "start"
 
@@ -164,3 +175,37 @@ def test_owned_moves_and_unlocks_dependent(ctx: GameContext) -> None:
     assert owned_ids == {"forage"}
     # With forage owned and 2 points left, sharp_eyes (cost 2) is now available.
     assert "sharp_eyes" in available_ids
+
+
+def test_train_command_buys_node_and_sets_flag(ctx: GameContext) -> None:
+    cmd_engine = _command_engine(SkillTreeService(_registry()))
+    cmd_engine.handle_command("train forage", ctx)
+    assert any("You train Forage" in m for m in ctx.messages)
+    assert ctx.player.flags.get(ability_flag("forage")) is True
+
+
+def test_train_command_refuses_with_reason(ctx: GameContext) -> None:
+    cmd_engine = _command_engine(SkillTreeService(_registry()))
+    # sharp_eyes needs forage first.
+    cmd_engine.handle_command("train sharp_eyes", ctx)
+    assert any("must train" in m.lower() for m in ctx.messages)
+    assert ctx.player.flags.get(ability_flag("sharp_eyes")) is None
+
+
+def test_train_no_arg_lists_trainable(ctx: GameContext) -> None:
+    cmd_engine = _command_engine(SkillTreeService(_registry()))
+    cmd_engine.handle_command("train", ctx)
+    joined = " ".join(ctx.messages)
+    assert "You can train" in joined
+    assert "Forage" in joined
+
+
+def test_abilities_command_reports_owned_and_available(ctx: GameContext) -> None:
+    service = SkillTreeService(_registry())
+    service.purchase(ctx, "forage")
+    cmd_engine = _command_engine(service)
+    cmd_engine.handle_command("abilities", ctx)
+    joined = " ".join(ctx.messages)
+    assert "Abilities you know:" in joined
+    assert "Forage" in joined
+    assert "Ready to train:" in joined  # sharp_eyes now affordable
