@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.2.0] - 2026-07-12
+
 ### Added
 - `docs/rust_migration_plan.md` — Phase 2 kickoff design spec: hash target
   (`ScriptResult` via `look_effects`, not the audit-event golden), Rust crate
