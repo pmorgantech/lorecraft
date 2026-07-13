@@ -40,6 +40,13 @@ class Settings:
     # A static operational tunable (localhost-only transport path), not a
     # game-balance dial — env/config is correct, no live-tunable DB singleton.
     gateway_socket_path: str = "var/gateway.sock"
+    # Rollback toggle for the Phase 3b player-`/ws` cutover (design decision 8):
+    # when True the app starts the gateway adapter's UDS listener at startup so
+    # the Rust gateway can forward client traffic to it; when False (default)
+    # the app behaves exactly as before the port — only the in-process Python
+    # `/ws` route serves clients. The Python `/ws` route stays registered either
+    # way, so rollback is purely "point clients back at Python + flip this off".
+    gateway_enabled: bool = False
     # Control directory shared with the process supervisor (scripts/supervisor.py)
     # for the admin "request restart" handshake (Sprint 72.3). The admin endpoint
     # writes a restart sentinel here and reads the supervisor's heartbeat to show
@@ -130,6 +137,7 @@ def load_settings() -> Settings:
         gateway_socket_path=os.getenv(
             "LORECRAFT_GATEWAY_SOCKET_PATH", "var/gateway.sock"
         ),
+        gateway_enabled=_env_bool("LORECRAFT_GATEWAY_ENABLED", False),
         control_dir=os.getenv("LORECRAFT_CONTROL_DIR", "/tmp/lorecraft-control"),
         admin_jwt_secret=os.getenv("LORECRAFT_ADMIN_JWT_SECRET", ""),
         admin_jwt_access_ttl=int(os.getenv("LORECRAFT_ADMIN_JWT_ACCESS_TTL", "900")),

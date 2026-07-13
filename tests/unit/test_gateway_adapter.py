@@ -10,7 +10,11 @@ to what `handle_ws_command` produces for the same command.
 from __future__ import annotations
 
 import asyncio
+import os
+import socket
+import stat
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -31,7 +35,9 @@ from lorecraft.protocol.gateway import (
     Deliver,
     Disconnected,
     GatewayCommand,
+    GatewayOutbound,
     GracefulQuit,
+    PlayerTarget,
     RedeemTicket,
     ValidateAdminToken,
     gateway_outbound_from_json,
@@ -43,17 +49,11 @@ from lorecraft.webui.player.ws_command import handle_ws_command
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PLAYER_ID = "player-1"
+SECOND_PLAYER_ID = "player-2"
 
 
-@pytest.fixture
-def state(tmp_path: Path) -> Iterator[AppState]:
-    """A fully-wired AppState with the seed player at the seeded start room.
-
-    The AppState is built by `create_app`'s lifespan startup (world bootstrap +
-    service wiring), so the fixture holds a `TestClient` context open for the
-    duration of the test to run that lifespan and expose `app.state.lorecraft`.
-    """
-    settings = Settings(
+def _base_settings(tmp_path: Path) -> Settings:
+    return Settings(
         database_path=str(tmp_path / "game.db"),
         audit_database_path=str(tmp_path / "audit.db"),
         world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
@@ -66,8 +66,21 @@ def state(tmp_path: Path) -> Iterator[AppState]:
         # Freeze the world clock so the `time` snapshot in a command's `updates`
         # is deterministic between the two parity runs (ratio 0 => no advance).
         world_time_ratio=0.0,
+        # Keep the lifespan-managed socket inside the test's tmp dir so a
+        # gateway-enabled run never touches the repo's var/.
+        gateway_socket_path=str(tmp_path / "lifespan-gateway.sock"),
     )
-    app = create_app(settings=settings)
+
+
+@pytest.fixture
+def state(tmp_path: Path) -> Iterator[AppState]:
+    """A fully-wired AppState with the seed player at the seeded start room.
+
+    The AppState is built by `create_app`'s lifespan startup (world bootstrap +
+    service wiring), so the fixture holds a `TestClient` context open for the
+    duration of the test to run that lifespan and expose `app.state.lorecraft`.
+    """
+    app = create_app(settings=_base_settings(tmp_path))
     with TestClient(app):
         state: AppState = app.state.lorecraft
         yield state
@@ -263,3 +276,199 @@ def test_command_round_trips_over_real_uds_socket(
     reply = asyncio.run(_roundtrip())
     assert reply.command_id == "c2"
     assert reply.direct_reply == expected
+
+
+# --- app-lifespan wiring (Phase 3b, flag-gated) ------------------------------
+
+
+def test_lifespan_gateway_disabled_by_default(tmp_path: Path) -> None:
+    """With `gateway_enabled` off (the default) the app must behave exactly as
+    before: no adapter constructed, no UDS socket created."""
+    settings = _base_settings(tmp_path)
+    assert settings.gateway_enabled is False
+    app = create_app(settings=settings)
+    with TestClient(app):
+        assert app.state.gateway_adapter is None
+        assert not Path(settings.gateway_socket_path).exists()
+
+
+def test_lifespan_gateway_enabled_starts_uds_with_owner_only_perms(
+    tmp_path: Path,
+) -> None:
+    """`gateway_enabled=True` starts the adapter's UDS listener at startup
+    (0600 — an unauthenticated internal channel must be owner-only) and
+    unlinks the socket file at shutdown."""
+    settings = replace(_base_settings(tmp_path), gateway_enabled=True)
+    app = create_app(settings=settings)
+    sock_path = Path(settings.gateway_socket_path)
+    with TestClient(app):
+        assert isinstance(app.state.gateway_adapter, GatewayAdapter)
+        mode = os.lstat(sock_path).st_mode
+        assert stat.S_ISSOCK(mode)
+        assert stat.S_IMODE(mode) == 0o600
+    # Lifespan shutdown stopped the adapter and removed the socket file.
+    assert not sock_path.exists()
+
+
+# --- UDS hardening in start()/stop() -----------------------------------------
+
+
+def test_start_unlinks_stale_socket_left_by_prior_crash(
+    state: AppState, tmp_path: Path
+) -> None:
+    stale_path = tmp_path / "stale-gateway.sock"
+    # A crashed process leaves the bound socket file behind on disk.
+    stale = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    stale.bind(str(stale_path))
+    stale.close()
+    assert stale_path.exists()
+
+    adapter = GatewayAdapter(state, socket_path=str(stale_path))
+
+    async def _cycle() -> None:
+        await adapter.start()  # must not fail with "Address already in use"
+        assert stale_path.is_socket()
+        await adapter.stop()
+
+    asyncio.run(_cycle())
+    assert not stale_path.exists()  # stop() cleaned up after itself
+
+
+def test_start_refuses_to_unlink_a_non_socket_path(
+    state: AppState, tmp_path: Path
+) -> None:
+    """A misconfigured socket path pointing at a real file must never be
+    destroyed — start() raises instead of unlinking."""
+    precious = tmp_path / "not-a-socket"
+    precious.write_text("do not delete")
+    adapter = GatewayAdapter(state, socket_path=str(precious))
+    with pytest.raises(RuntimeError, match="not a socket"):
+        asyncio.run(adapter.start())
+    assert precious.read_text() == "do not delete"
+
+
+def test_start_creates_missing_parent_dir(state: AppState, tmp_path: Path) -> None:
+    """`var/` may not exist in a fresh checkout — start() creates the parent."""
+    sock_path = tmp_path / "missing-var" / "gateway.sock"
+    adapter = GatewayAdapter(state, socket_path=str(sock_path))
+
+    async def _cycle() -> None:
+        await adapter.start()
+        assert sock_path.is_socket()
+        await adapter.stop()
+
+    asyncio.run(_cycle())
+
+
+# --- follow-break on involuntary disconnect (wired in 3b) --------------------
+
+
+def test_client_close_breaks_follow_and_notifies_target(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """A follower's involuntary drop clears the follow graph and delivers the
+    "no longer following you" notice + players-online nudge to the target as
+    Player-targeted `Deliver` directives. `player-2` is the second dev player
+    the world bootstrap already seeds at the same start room."""
+    follower_id = SECOND_PLAYER_ID
+    asyncio.run(adapter.handle_inbound(Connected(player_id=PLAYER_ID)))
+    asyncio.run(adapter.handle_inbound(Connected(player_id=follower_id)))
+    follow = state.services.follow
+    assert follow is not None
+    follow._following[follower_id] = PLAYER_ID  # Bryn follows player-1
+
+    frames = asyncio.run(
+        adapter.handle_inbound(
+            Disconnected(player_id=follower_id, reason=ClientClose())
+        )
+    )
+
+    assert follow.target_of(follower_id) is None  # graph cleared
+    to_target = [
+        f.directive
+        for f in frames
+        if isinstance(f, Deliver)
+        and isinstance(f.directive.target, PlayerTarget)
+        and f.directive.target.id == PLAYER_ID
+    ]
+    feed = [
+        d.payload
+        for d in to_target
+        if isinstance(d.payload, dict) and d.payload.get("type") == "feed_append"
+    ]
+    assert feed and "no longer following you" in str(feed[0]["content"])
+    assert any(
+        isinstance(d.payload, dict) and d.payload.get("type") == "state_change"
+        for d in to_target
+    )
+
+
+def test_target_client_close_breaks_follow_and_notifies_follower(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """The mirror case: the followed player drops; the still-connected follower
+    is orphaned and told the target left."""
+    follower_id = SECOND_PLAYER_ID
+    asyncio.run(adapter.handle_inbound(Connected(player_id=PLAYER_ID)))
+    asyncio.run(adapter.handle_inbound(Connected(player_id=follower_id)))
+    follow = state.services.follow
+    assert follow is not None
+    follow._following[follower_id] = PLAYER_ID
+
+    frames = asyncio.run(
+        adapter.handle_inbound(Disconnected(player_id=PLAYER_ID, reason=ClientClose()))
+    )
+
+    assert follow.followers_of(PLAYER_ID) == []
+    notices = [
+        f.directive.payload
+        for f in frames
+        if isinstance(f, Deliver)
+        and isinstance(f.directive.target, PlayerTarget)
+        and f.directive.target.id == follower_id
+        and isinstance(f.directive.payload, dict)
+        and f.directive.payload.get("type") == "feed_append"
+    ]
+    assert notices and "You stop following" in str(notices[0]["content"])
+
+
+# --- drain-lock discipline ----------------------------------------------------
+
+
+def test_lifecycle_and_command_drains_do_not_cross_contaminate(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    """A command and a lifecycle event handled concurrently must each drain only
+    their own directives: the command's fan-out never leaks into the lifecycle's
+    `Deliver`s, and the connect's `player_joined` never leaks into the
+    `CommandReply.deliveries` (both run whole under the directive lock)."""
+    second_id = SECOND_PLAYER_ID
+    session_id = _connect_session(adapter)  # PLAYER_ID online
+    _warm_up_look(adapter, session_id)
+
+    async def _run() -> tuple[list[GatewayOutbound], list[GatewayOutbound]]:
+        command_frames, lifecycle_frames = await asyncio.gather(
+            adapter.handle_inbound(
+                GatewayCommand(envelope=_envelope(session_id, "cc", "say hello"))
+            ),
+            adapter.handle_inbound(Connected(player_id=second_id)),
+        )
+        return command_frames, lifecycle_frames
+
+    command_frames, lifecycle_frames = asyncio.run(_run())
+
+    (reply,) = command_frames
+    assert isinstance(reply, CommandReply)
+    command_types = {
+        d.payload.get("type") for d in reply.deliveries if isinstance(d.payload, dict)
+    }
+    assert "player_joined" not in command_types  # lifecycle didn't leak in
+
+    ack, *delivers = lifecycle_frames
+    assert isinstance(ack, ConnectAck)
+    lifecycle_types = {
+        f.directive.payload.get("type")
+        for f in delivers
+        if isinstance(f, Deliver) and isinstance(f.directive.payload, dict)
+    }
+    assert lifecycle_types == {"player_joined"}  # nothing of the command leaked

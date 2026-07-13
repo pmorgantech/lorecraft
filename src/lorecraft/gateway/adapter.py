@@ -16,7 +16,10 @@ Fan-out is not sent to sockets here: a `DirectiveConnectionManager` records each
 broadcast as a `DeliveryDirective`, which the adapter relays to Rust (Rust owns
 the authoritative connection map and resolves recipients).
 
-Not wired into the app factory this phase — a later cutover task starts it.
+Wired into the app lifespan behind ``Settings.gateway_enabled`` (Phase 3b):
+`main.py` starts/stops the adapter alongside the app when the flag is on, and
+the existing Python `/ws` route stays registered either way as the rollback
+path (design decision 8).
 Composition/web-host layer: imports engine + features + web hosts, never
 imported *by* `engine/`.
 """
@@ -24,8 +27,12 @@ imported *by* `engine/`.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
+import os
+import stat
+from pathlib import Path
 
 import jwt
 from sqlmodel import Session
@@ -102,10 +109,13 @@ class GatewayAdapter:
         # link; per Phase 3 decision 5 it is advisory for recipient selection.
         self._manager = manager or DirectiveConnectionManager()
         self._socket_path = socket_path or state.settings.gateway_socket_path
-        # Commands from a connection are handled at-most-one-outstanding (matching
-        # today's implicit per-socket serialization); the lock keeps the shared
-        # directive buffer isolated per command even across multiplexed frames.
-        self._command_lock = asyncio.Lock()
+        # Drain discipline: the `DirectiveConnectionManager` records every
+        # broadcast into ONE shared `deliveries` buffer, so any handler that
+        # records directives and then `drain()`s (commands AND the
+        # connect/disconnect lifecycle handlers) must run whole under this lock.
+        # It is acquired once, at the `handle_inbound` dispatch level — see the
+        # comment there for the interleaving hazard it prevents.
+        self._directive_lock = asyncio.Lock()
         self._server: asyncio.AbstractServer | None = None
 
     @property
@@ -115,9 +125,18 @@ class GatewayAdapter:
     # -- server lifecycle ---------------------------------------------------
 
     async def start(self) -> asyncio.AbstractServer:
+        path = Path(self._socket_path)
+        # `var/` may not exist in a fresh checkout — create the parent like the
+        # rest of the app does for its runtime files (mkdir parents, exist_ok).
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._remove_stale_socket(path)
         self._server = await asyncio.start_unix_server(
             self._handle_client, path=self._socket_path
         )
+        # Owner-only: this is an intentionally-unauthenticated internal channel
+        # (design decision 2 — UDS is localhost-confined), so a local non-owner
+        # user must not be able to connect and impersonate players.
+        os.chmod(self._socket_path, 0o600)
         log.info("gateway adapter listening on %s", self._socket_path)
         return self._server
 
@@ -126,6 +145,32 @@ class GatewayAdapter:
             self._server.close()
             await self._server.wait_closed()
             self._server = None
+            # Don't leave a stale socket file behind for the next start to
+            # trip over (Python < 3.13 asyncio does not unlink it on close).
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(self._socket_path)
+
+    @staticmethod
+    def _remove_stale_socket(path: Path) -> None:
+        """Unlink a stale socket file left by a prior crash, and nothing else.
+
+        Without this, a restart after an unclean shutdown fails to bind with
+        `Address already in use`. Guard: only a socket file is ever unlinked —
+        any other filesystem object at the configured path is a misconfiguration
+        we must not destroy, so raise instead. `lstat` (not `stat`) so a symlink
+        pointing at a socket is not mistaken for the socket itself.
+        """
+        try:
+            mode = os.lstat(path).st_mode
+        except FileNotFoundError:
+            return
+        if not stat.S_ISSOCK(mode):
+            raise RuntimeError(
+                f"gateway socket path {path} exists and is not a socket; "
+                "refusing to unlink it — check LORECRAFT_GATEWAY_SOCKET_PATH"
+            )
+        log.warning("removing stale gateway socket %s", path)
+        path.unlink()
 
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -160,12 +205,22 @@ class GatewayAdapter:
             return [self._redeem_ticket(inbound)]
         if isinstance(inbound, ValidateAdminToken):
             return [self._validate_admin_token(inbound)]
-        if isinstance(inbound, Connected):
-            return await self._on_connected(inbound)
-        if isinstance(inbound, Disconnected):
-            return await self._on_disconnected(inbound)
-        if isinstance(inbound, GatewayCommand):
-            return [await self._on_command(inbound)]
+        # Drain discipline (Phase 3b hardening): every handler below records into
+        # — and then `drain()`s — the ONE shared `deliveries` buffer on the
+        # manager, so each must run whole under the directive lock. Locking here,
+        # at the dispatch level, guarantees a lifecycle event's record+drain and
+        # a command's record+drain can never interleave and cross-contaminate
+        # each other's directives (with concurrent client tasks in
+        # `_handle_client`, an unlocked lifecycle drain could steal an in-flight
+        # command's fan-out or vice versa). It also preserves today's implicit
+        # at-most-one-outstanding-command serialization per connection.
+        async with self._directive_lock:
+            if isinstance(inbound, Connected):
+                return await self._on_connected(inbound)
+            if isinstance(inbound, Disconnected):
+                return await self._on_disconnected(inbound)
+            if isinstance(inbound, GatewayCommand):
+                return [await self._on_command(inbound)]
         log.warning("gateway_inbound_unhandled: %s", type(inbound).__name__)
         return []
 
@@ -319,15 +374,22 @@ class GatewayAdapter:
                         },
                         exclude=player.id,
                     )
+                    # Terminate any follow involving the dropped player and tell
+                    # the still-connected other side (wired in 3b, mirroring the
+                    # `/ws` WebSocketDisconnect handler: break_on_disconnect is
+                    # now typed against ConnectionManagerProtocol, so the
+                    # directive-recording manager passes structurally and the
+                    # notices drain as `Deliver`s below).
+                    follow_service = state.services.follow
+                    if follow_service is not None:
+                        await follow_service.break_on_disconnect(
+                            self._manager, PlayerRepo(game_session), player_id
+                        )
                     room_id = player.current_room_id
                     username = player.username
                 else:
                     room_id = None
                     username = None
-            # follow-break is deferred: FollowService.break_on_disconnect is typed
-            # against the concrete ConnectionManager (and needs `is_connected` on a
-            # 2-method surface); wiring it through the injectable manager belongs to
-            # sub-slice 3b's live lifecycle cutover, not this foundation slice.
             if room_id is not None and username is not None:
                 self._manager.mark_disconnected(player_id)
                 await self._manager.broadcast_to_room(
@@ -347,16 +409,17 @@ class GatewayAdapter:
     # -- command forwarding (shared pipeline) -------------------------------
 
     async def _on_command(self, msg: GatewayCommand) -> CommandReply:
+        # Runs under `_directive_lock`, acquired by `handle_inbound` — the shared
+        # directive buffer is exclusively this command's until the drain below.
         envelope = msg.envelope
-        async with self._command_lock:
-            direct_reply = await handle_ws_command(
-                self._state,
-                self._manager,
-                envelope.player_id,
-                envelope.session_id,
-                envelope.raw,
-            )
-            deliveries = self._manager.drain()
+        direct_reply = await handle_ws_command(
+            self._state,
+            self._manager,
+            envelope.player_id,
+            envelope.session_id,
+            envelope.raw,
+        )
+        deliveries = self._manager.drain()
         return CommandReply(
             command_id=envelope.command_id,
             direct_reply=direct_reply,

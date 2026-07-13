@@ -25,7 +25,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Sequence
 
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.message_types import MessageType
@@ -165,7 +165,10 @@ class FollowService:
             )
 
     async def break_on_disconnect(
-        self, manager: ConnectionManager, player_repo: PlayerRepo, player_id: str
+        self,
+        manager: ConnectionManagerProtocol,
+        player_repo: PlayerRepo,
+        player_id: str,
     ) -> None:
         """Terminate any follow involving a player who just disconnected.
 
@@ -175,8 +178,12 @@ class FollowService:
         following the leaver — and any still-connected player on the other end
         is told, so their follow status and `players-online` panel don't lie.
         Called from the async disconnect handlers (graceful quit + involuntary
-        drop) where a `ConnectionManager` is available to push the notice; the
-        follow graph itself is process-local so nothing is persisted.
+        drop) where a connection manager is available to push the notice; typed
+        against `ConnectionManagerProtocol` (only `is_connected` +
+        `send_to_player` are used) so the Rust-port gateway adapter can pass its
+        `DirectiveConnectionManager` and the live `/ws` handler the real
+        `ConnectionManager`. The follow graph itself is process-local so nothing
+        is persisted.
         """
         leaver = player_repo.get(player_id)
         leaver_name = leaver.username if leaver is not None else "someone"
@@ -199,7 +206,7 @@ class FollowService:
                 )
 
     async def _push_disconnect_notice(
-        self, manager: ConnectionManager, player_id: str, text: str
+        self, manager: ConnectionManagerProtocol, player_id: str, text: str
     ) -> None:
         await manager.send_to_player(
             player_id,

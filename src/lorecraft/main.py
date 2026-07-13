@@ -52,6 +52,7 @@ from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
+from lorecraft.gateway.adapter import GatewayAdapter
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
@@ -398,10 +399,23 @@ def create_app(
             ):
                 _sync_session.commit()
         state.clock_runner.start()
+        # Rust-port gateway adapter (Phase 3b): flag-gated UDS listener so the
+        # Rust gateway can forward player traffic. Off by default — the flag is
+        # the rollback toggle (design decision 8), and the Python `/ws` route
+        # below stays registered and functional regardless of it.
+        gateway_adapter: GatewayAdapter | None = None
+        if resolved_settings.gateway_enabled:
+            gateway_adapter = GatewayAdapter(
+                state, socket_path=resolved_settings.gateway_socket_path
+            )
+            await gateway_adapter.start()
+        app.state.gateway_adapter = gateway_adapter
         app.state.lorecraft = state
         try:
             yield
         finally:
+            if gateway_adapter is not None:
+                await gateway_adapter.stop()
             await state.clock_runner.stop()
 
     app = FastAPI(title="Lorecraft", lifespan=lifespan)
