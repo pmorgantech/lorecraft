@@ -4,6 +4,45 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.95.0] - 2026-07-12
+
+### Added
+
+- **Sprint 74 — Data-driven skill tree and ability unlocks.** A complete system for spending the `skill_points`
+  earned in Sprint 73, gated behind a Tier 1/2 split that enables live-tunable progression design:
+  - **Tier 1 modifier-application mechanism** (`engine/game/modifiers.py`): generic `ModifierSource` (skill tree,
+    passive, event) + `apply_modifier(stats, source, modifier_type, amount)` that atomically edits `PlayerStats`
+    fields by type (health/mana/damage/etc. deltas, pricing multipliers, flags for dialogue locks).
+    Unopinionated; the engine knows *how* to apply a delta but not *what* makes sense for any feature.
+  - **Tier 2 skill tree feature** (`features/progression/skill_tree.py`): loads a data-driven YAML tree from
+    `world_content/skill_tree.yaml`, tracks player progress, and resolves unlock conditions (level gates,
+    prerequisite skills, skill-point cost). Three ability flavors:
+      1. **Active utility verbs** (`foraging`, `sense_pick`) — new player commands wired into existing systems
+         (item discovery, tile inspection) with no fallback-command penalty.
+      2. **Passive modifiers** — stat deltas and pricing multipliers applied at character load time, persisted
+         in `PlayerStats`.
+      3. **Dialogue/interaction unlocks** — flag-based conditions in scripting (`actor_has_flag`) that gate dialogue
+         options and quest rewards to players with the skill.
+  - **Live-tunable config pattern for skill trees** (new Skill Tree admin tab in `webui/admin/`): edit costs,
+    prerequisites, and stat deltas on the fly with no reseed/restart (mirroring Sprint 73's `ProgressionConfig`
+    pattern).
+  - **Economy wiring** (`features/economy/service.py`): modifier-driven pricing and tax multipliers so economic
+    balance flows from the skill tree (high-commerce players can price their sales lower via a commerce passive,
+    pay less tax via a haggle skill, etc.). Tested end-to-end with `test_economy.py`.
+  - **Comprehensive ability test suite** (`test_progression_skill_tree.py`, `test_forage.py`, `test_sense_pick.py`,
+    `test_dialogue_ability_unlock.py`, `test_progression_modifier_source.py`, `test_skill_tree.py`) covering
+    unlock conditions, modifier application, active verbs, dialogue gating, and persistence (`test_save.py`
+    additions verifying stat deltas round-trip correctly).
+
+### Docs
+
+- **User guide**: "Skill Tree and Abilities" section documenting the three ability types, how to unlock them
+  (skill points + prerequisites), and their in-game effects (command access, stat gains, dialogue unlocks).
+- **Admin builder guide**: "Skill tree authoring" subsection covering the YAML structure (`world_content/skill_tree.yaml`),
+  the modifier types and their effects, live-tuning via the Skill Tree admin tab, and wiring custom dialogue
+  unlocks with scripting flags.
+- **Roadmap**: Sprint 74 marked complete; foundation band (Sprints 5–15) now fully shipped.
+
 ## [0.94.0] - 2026-07-12
 
 ### Added
