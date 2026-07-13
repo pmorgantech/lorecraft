@@ -43,3 +43,16 @@ def register_movement_commands(
     )
     def lock_command(noun: str | None, ctx: GameContext) -> None:
         service.lock(noun, ctx)
+
+    @registry.register(
+        "pick",
+        conditions=[
+            CommandCondition.NOT_IN_COMBAT,
+            # Sprint 74.6: available only once the Pick Locks ability is trained
+            # (hidden from help until then).
+            "actor_has_flag:ability.pick_locks",
+        ],
+        help="pick <direction> — pick a locked exit without its key (requires the Pick Locks ability)",
+    )
+    def pick_command(noun: str | None, ctx: GameContext) -> None:
+        service.pick(noun, ctx)

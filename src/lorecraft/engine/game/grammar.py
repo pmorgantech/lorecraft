@@ -114,7 +114,9 @@ VERB_ALIASES = {
     "down": "move",
     "get": "take",
     "grab": "take",
-    "pick": "take",
+    # NB: bare "pick" is NOT a `take` alias — Sprint 74.6 gives `pick` to the
+    # lockpicking verb (`pick <direction>`). "pick up <item>" still means take,
+    # via PHRASAL_VERBS above; `take`/`get`/`grab` remain the take synonyms.
 }
 
 REGISTRY_VERB_ALIASES = {"move": "go"}

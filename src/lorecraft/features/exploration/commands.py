@@ -5,6 +5,7 @@ from __future__ import annotations
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
 from lorecraft.features.exploration.forage import ForageService
+from lorecraft.features.exploration.sense import SenseService
 from lorecraft.features.exploration.service import ExplorationService
 from lorecraft.features.exploration.journal import JournalService
 
@@ -13,6 +14,7 @@ from lorecraft.features.exploration.journal import JournalService
 # skill-tree node). Expressed as `actor_has_flag:<flag>` colon-strings, the
 # gating mechanism the design mandates (no new condition needed).
 _FORAGE_GATE = "actor_has_flag:ability.forage"
+_SENSE_GATE = "actor_has_flag:ability.keen_senses"
 
 
 def register_exploration_commands(
@@ -20,10 +22,12 @@ def register_exploration_commands(
     exploration: ExplorationService | None = None,
     journal: JournalService | None = None,
     forage: ForageService | None = None,
+    sense: SenseService | None = None,
 ) -> None:
     exploration_service = exploration or ExplorationService()
     journal_service = journal or JournalService()
     forage_service = forage or ForageService()
+    sense_service = sense or SenseService()
 
     @registry.register(
         "search",
@@ -55,3 +59,17 @@ def register_exploration_commands(
     def forage_command(noun: str | None, ctx: GameContext) -> None:
         del noun
         forage_service.forage(ctx)
+
+    @registry.register(
+        "sense",
+        "perceive",
+        conditions=[
+            CommandCondition.REQUIRES_LIGHT,
+            CommandCondition.NOT_IN_COMBAT,
+            _SENSE_GATE,
+        ],
+        help="sense — a keen perception sweep of the room (requires the Keen Senses ability)",
+    )
+    def sense_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        sense_service.sense(ctx)

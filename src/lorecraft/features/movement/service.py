@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 from lorecraft.features.terrain import definitions as terrain_module
+from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.grammar import OPPOSITE_DIRECTIONS
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.parser import DIRECTION_ALIASES
 from lorecraft.features.skills.service import SkillService
 
 _skills = SkillService()
+
+# Picking a lock is meant to be harder than routine skill use — locked doors are
+# a deliberate obstacle, so a trained picker still isn't guaranteed.
+PICK_DIFFICULTY = 25
 
 
 def _carries(ctx: GameContext, item_id: str) -> bool:
@@ -53,6 +59,46 @@ class MovementService:
         state = "locked" if locked else "unlocked"
         ctx.say(f"You {verb} the way {normalized}. It is now {state}.")
         ctx.tell_room(f"{ctx.player.username} {verb}s the way {normalized}.")
+
+    def pick(self, direction: str | None, ctx: GameContext) -> None:
+        """Attempt a locked exit *without* its key via a lockpicking check
+        (Sprint 74.6). The no-key counterpart to `unlock`; gated on the
+        `ability.pick_locks` flag at the command layer, so only trained
+        pickers can invoke it. On success the exit is left unlocked, exactly
+        as `unlock` leaves it; the roll never fabricates a key."""
+        if direction is None:
+            ctx.say("Pick which way?", MessageType.WARNING)
+            return
+
+        normalized = DIRECTION_ALIASES.get(direction.lower(), direction.lower())
+        exit_ = ctx.room_repo.exit(ctx.room.id, normalized)
+        if exit_ is None:
+            ctx.say("There is no exit that way.", MessageType.WARNING)
+            return
+        if not exit_.locked:
+            ctx.say(f"The way {normalized} isn't locked.", MessageType.WARNING)
+            return
+
+        base = _skills.get_level(ctx.session, ctx.player.id, "lockpicking")
+        result = skill_check(
+            ctx.rng,
+            base=base,
+            difficulty=PICK_DIFFICULTY,
+            modifiers=get_modifier_registry().collect(
+                ctx.session, "player", ctx.player.id
+            ),
+            key="skill.lockpicking",
+        )
+        if ctx.player_repo.stats(ctx.player.id) is not None:
+            _skills.record_use(ctx.session, ctx.rng, ctx.player.id, "lockpicking")
+
+        if not result.success:
+            ctx.say(f"You work the lock on the way {normalized}, but it holds.")
+            return
+
+        exit_.locked = False
+        ctx.say(f"You pick the lock. The way {normalized} is now open.")
+        ctx.tell_room(f"{ctx.player.username} picks the lock on the way {normalized}.")
 
     def move(self, direction: str, ctx: GameContext) -> None:
         exit_ = ctx.room_repo.exit(ctx.room.id, direction)
