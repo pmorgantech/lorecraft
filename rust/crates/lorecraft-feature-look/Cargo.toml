@@ -6,7 +6,7 @@ rust-version = "1.75"
 
 [dependencies]
 lorecraft-protocol = { path = "../lorecraft-protocol" }
-lorecraft-replay = { path = "../lorecraft-replay" }
 serde_json = "1.0"
 
 [dev-dependencies]
+lorecraft-replay = { path = "../lorecraft-replay" }

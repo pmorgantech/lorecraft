@@ -168,6 +168,21 @@ mod tests {
     }
 
     #[test]
+    fn integer_valued_float_is_still_rejected() {
+        // `2.0` is still an f64 in the serde_json::Value tree — `is_f64()` is
+        // true regardless of its actual value — so it must be rejected exactly
+        // like a fractional float. Mirrors the Python side's equivalent test
+        // (`test_canonical_json_rejects_integer_valued_float`), pinning the
+        // edge case against a future "optimize by value" regression that would
+        // let whole-number floats like `2.0` slip through.
+        let value = json!({"a": [1, 2.0]});
+        assert!(matches!(
+            canonical_json(&value).unwrap_err(),
+            ReplayError::FloatNotAllowed(_)
+        ));
+    }
+
+    #[test]
     fn nested_float_in_array_is_rejected() {
         let value = json!({"list": [1, 2, [3, 4.25]]});
         assert!(matches!(
