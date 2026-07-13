@@ -72,6 +72,7 @@ from lorecraft.webui.player.session import (
     MUD_CHRONICLE_LAYOUTS,
     expire_grace_periods,
     get_app_state,
+    get_broadcast_manager,
     get_bus,
     get_command_engine,
     get_effects,
@@ -754,13 +755,21 @@ async def handle_command(
         transaction = TransactionContext.create(
             actor_id=player.id, correlation_id=session_id
         )
+        # The command's OWN cross-player effects (movement `move_player`, P2P/follow
+        # `send_to_player`, `is_connected` checks, deferred deliveries) run against
+        # `ctx.manager`, and its post-command room fan-out runs against the same
+        # manager below. In gateway mode both must route through the push manager so
+        # they reach Rust-connected clients and keep the adapter mirror consistent
+        # (mirroring the WS path, which uses the adapter's DirectiveConnectionManager
+        # for both). Flag off: the real ConnectionManager, exactly as before.
+        broadcast_manager = get_broadcast_manager(request)
         try:
             ctx = build_game_context(
                 game_db,
                 player,
                 room,
                 bus=get_bus(request),
-                manager=get_real_manager(request) or get_manager(),
+                manager=broadcast_manager or get_manager(),
                 transaction=transaction,
                 session_id=session_id,
                 rng=get_rng(request),
@@ -1049,12 +1058,21 @@ async def handle_command(
             except Exception as e:
                 log.debug("players_template_render_failed: %s", str(e))
 
-            mgr = get_real_manager(request)
-            if mgr:
-                await broadcast_command_effects(mgr, ctx, pre_room_id=pre_room_id)
+            if broadcast_manager:
+                await broadcast_command_effects(
+                    broadcast_manager, ctx, pre_room_id=pre_room_id
+                )
 
             final_resp = HTMLResponse(content=response_html)
             if disconnect_requested:
+                # TODO(3b-followup / decision 8): gateway-mode graceful quit must
+                # instruct Rust to close the socket and route the leave broadcasts
+                # through the push manager. Deferred here — it needs a new
+                # Python->Rust close instruction (protocol + Rust handler), which is
+                # out of scope for this Python-only fix, and none of the exit-blocking
+                # e2e tests is a graceful quit. Flag off this is byte-identical; flag
+                # on the leave narration currently reaches nobody until 3b wires it.
+                mgr = get_real_manager(request)
                 active_session = player_repo.active_session(after_player.id)
                 if active_session is not None:
                     SessionSafetyService(

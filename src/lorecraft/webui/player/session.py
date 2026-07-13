@@ -16,7 +16,10 @@ from fastapi import Request
 from sqlmodel import Session as DBSession
 
 from lorecraft.db import create_audit_engine, create_game_engine
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import (
+    ConnectionManager,
+    ConnectionManagerProtocol,
+)
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
 from lorecraft.features.items.rules import register_item_rules
@@ -148,6 +151,29 @@ def get_real_manager(request: Request) -> ConnectionManager | None:
     except (AttributeError, TypeError):
         log.debug("app_state_manager_access_failed")
     return None
+
+
+def get_broadcast_manager(request: Request) -> ConnectionManagerProtocol | None:
+    """The manager `POST /command` uses for command execution + cross-player fan-out.
+
+    In gateway mode (Phase 3b) clients are connected to the Rust gateway, not this
+    process's `ConnectionManager` socket pool — which is therefore empty. So both the
+    command's own cross-player effects (movement `move_player`, P2P/follow
+    `send_to_player`, `is_connected` checks, deferred deliveries) and the post-command
+    `broadcast_command_effects` fan-out must route through the `GatewayPushManager`,
+    which relays each delivery to Rust as a standalone `Deliver` frame and answers
+    selection from the adapter's advisory mirror — exactly as the autonomous
+    clock/weather broadcasts and the WS command path (via `DirectiveConnectionManager`)
+    already do. Flag OFF (rollback): `app.state.gateway_push_manager` is `None`, so this
+    falls back to the real `ConnectionManager` — byte-identical to before the port.
+    """
+    try:
+        push = getattr(request.app.state, "gateway_push_manager", None)
+        if push is not None:
+            return push
+    except (AttributeError, TypeError):
+        log.debug("gateway_push_manager_access_failed")
+    return get_real_manager(request)
 
 
 def get_bus(request: Request) -> EventBus:

@@ -435,6 +435,12 @@ def create_app(
                 gateway_push_manager.bind(gateway_adapter)
             await gateway_adapter.start()
         app.state.gateway_adapter = gateway_adapter
+        # Expose the autonomous-broadcast push manager to the request handlers so
+        # the `POST /command` path (frontend.handle_command) can route its
+        # cross-player fan-out through the same gateway mechanism the WS command
+        # path and the clock/weather broadcasts use. `None` when the flag is off
+        # (rollback), so `get_broadcast_manager` falls back to the real manager.
+        app.state.gateway_push_manager = gateway_push_manager
         app.state.lorecraft = state
         try:
             yield
