@@ -1,12 +1,13 @@
 """Phase 4 sub-slice 4a exit check: the headless `look` parity harness.
 
-This IS the 4a deliverable ("Sub-slice 4a — execution-routing protocol +
-headless `look` parity harness (NO live cutover)" in
-`docs/rust_migration_plan.md`'s Phase 4 kickoff spec). It drives a synthetic
-`look` through the REAL two-process stack — a real `lorecraft-gateway`
-subprocess, a real Python adapter over the real UDS link, a real WebSocket
-client — with the verb allow-list opted in *only* for this test
-(`LORECRAFT_RUST_VERBS=look` via `RustGateway`'s `extra_env`), and proves:
+Originally the 4a deliverable ("Sub-slice 4a — execution-routing protocol +
+headless `look` parity harness (NO live cutover)"); **updated for 4b, the live
+`look` WS cutover.** As of 4b the gateway binary defaults its allow-list to
+`look` when `LORECRAFT_RUST_VERBS` is unset (see `bin/gateway.rs`'s
+`DEFAULT_RUST_VERBS`), so a real WebSocket client's bare `look` is Rust-executed
+**by default** — no per-test opt-in needed. The cases below therefore boot the
+Rust front door with **no** `extra_env` (the default-on path a production WS
+client hits) and prove:
 
 1. **command_result parity** — the `look` routed through Rust's execution
    path (`route.rs` -> `execute.rs` -> `BuildSnapshot`/`ApplyOutcome` ->
@@ -23,12 +24,13 @@ client — with the verb allow-list opted in *only* for this test
    actually excludes the actor over the real wire: another player in the room
    receives it, the actor does not.
 
-**No live cutover:** every other test in this suite (and every real client)
-still routes through the default, empty `rust_verbs` allow-list — see
-`test_default_allow_list_still_routes_look_to_python_behavior_preserving`
-below, which boots the SAME Rust front door without the opt-in env var and
-shows `look` is unaffected. Only this module's fixtures set
-`LORECRAFT_RUST_VERBS=look`, and only for the connections under test.
+**Rollback stays a config toggle:** setting `LORECRAFT_RUST_VERBS=`
+(explicitly empty) returns `look` — and every command — to the unchanged
+Phase 3 Python path. `test_default_routes_look_to_rust_and_empty_env_rolls_back`
+below boots the SAME Rust front door two ways — default-on (no `extra_env`,
+Rust-executed) versus explicit-empty (`LORECRAFT_RUST_VERBS=`, Python-executed)
+— and proves the reply is byte-identical either way, exercising both the live
+cutover and its rollback.
 
 **On "how do we know Rust really executed it":** since the whole point of
 Option A is that the reply is byte-identical whichever side executes it, there
@@ -70,7 +72,12 @@ _GOLDEN_AUDIT = (
 # Matches the world-content/rng-seed precedent set by look_only.json /
 # test_look_scriptresult_parity.py, though `look` draws no RNG itself.
 _RNG_SEED = 1
-_RUST_LOOK_ENV = {"LORECRAFT_RUST_VERBS": "look"}
+# Rollback (Phase 4b): an *explicitly empty* allow-list returns every command —
+# `look` included — to the Python path. Distinct from *unset*, which now defaults
+# to `look` (Rust-executed). `RustGateway` passes this straight to the subprocess
+# env, so `std::env::var` sees `Ok("")` and the bin's `DEFAULT_RUST_VERBS` default
+# does NOT apply — the parsed allow-list is empty.
+_ROLLBACK_ENV = {"LORECRAFT_RUST_VERBS": ""}
 
 
 def _username(prefix: str) -> str:
@@ -91,12 +98,16 @@ async def _connect(server: SimulationServer, prefix: str) -> VirtualPlayer:
 def test_rust_executed_look_matches_python_oracle_and_audit_golden(
     simulation_server_factory: Callable[..., SimulationServer],
 ) -> None:
-    """The core 4a exit check: Rust-execute -> Python-persist reproduces the
-    Python engine's `command_result` and `look_only.audit.json`'s audit shape."""
+    """The core exit check: Rust-execute -> Python-persist reproduces the
+    Python engine's `command_result` and `look_only.audit.json`'s audit shape.
+
+    Runs on the **default-on** path (no `extra_env`): the 4b gateway routes a
+    bare `look` to Rust with no opt-in, so this is exactly what a production WS
+    client hits."""
     server = simulation_server_factory(
         rng_seed=_RNG_SEED,
         through_rust=True,
-        extra_env=_RUST_LOOK_ENV,
+        extra_env=None,  # default allow-list now includes `look` (4b live cutover)
         # Freeze the world clock: the `updates.time` panel must be identical
         # between the wire look and the in-process oracle call a moment later,
         # not merely close — an unfrozen clock is a real (if rare) source of
@@ -169,26 +180,32 @@ async def _test_core_parity(server: SimulationServer) -> None:
         await player.close()
 
 
-# --- behavior-preservation guard (see module docstring's routing note) ------
+# --- default-on cutover + rollback (Phase 4b) --------------------------------
 
 
-def test_default_allow_list_still_routes_look_to_python_behavior_preserving(
+def test_default_routes_look_to_rust_and_empty_env_rolls_back(
     simulation_server_factory: Callable[..., SimulationServer],
 ) -> None:
-    """Same Rust front door, only the allow-list flag differs: `look` behaves
-    identically whether Rust executes it (allow-listed) or Python does
-    (default empty allow-list, forwarded via the unchanged Phase 3 path).
+    """The 4b live-cutover + rollback proof, on one held-constant front door.
 
-    This is the honest routing-confirmation signal this harness can give:
+    Two `lorecraft-gateway` subprocesses differing *only* in the allow-list:
+
+    * `rust_executed` — **no** `extra_env`: `LORECRAFT_RUST_VERBS` is unset, so
+      the bin's `DEFAULT_RUST_VERBS` (`look`) applies and a bare `look` routes
+      to `execute::execute` (the default-on live cutover — what a real WS client
+      now gets with zero configuration).
+    * `python_rolled_back` — `LORECRAFT_RUST_VERBS=` (explicitly empty): the
+      parsed allow-list is empty, so `look` forwards to Python via the unchanged
+      Phase 3 path (the rollback toggle).
+
     Option A's whole point is a byte-identical reply regardless of which side
-    executes, so there is no *client-visible* difference to assert on that
-    would prove Rust definitely executed the allow-listed run. What this test
-    *can* and does prove is that opting a verb into the allow-list changes
-    nothing about its observable behavior — guarding against a routing bug
-    that silently changed `look`'s behavior when Rust took it over. The
-    routing mechanics themselves (that an allow-listed bare `look` really
-    dispatches to `execute::execute`, not `forward::send_command`) are proven
-    at the impl level by `route.rs`'s unit tests and `tests/execute.rs`.
+    executes, so the assertion is `rust_reply == python_reply`: the live cutover
+    changed nothing observable, and the rollback restores the pure-Python path
+    with no divergence. The routing mechanics themselves (that an allow-listed
+    bare `look` really dispatches to `execute::execute`, and that an empty list
+    dispatches to `forward::send_command`) are proven at the impl level by
+    `route.rs`'s unit tests and `tests/execute.rs`; this composes on top of that
+    end-to-end.
 
     Holding the front door constant (both runs go through a real
     `lorecraft-gateway` subprocess) isolates the allow-list as the only
@@ -198,16 +215,16 @@ def test_default_allow_list_still_routes_look_to_python_behavior_preserving(
     rust_executed = simulation_server_factory(
         rng_seed=_RNG_SEED,
         through_rust=True,
-        extra_env=_RUST_LOOK_ENV,
+        extra_env=None,  # unset -> DEFAULT_RUST_VERBS (`look`) -> Rust-executed
         world_time_ratio=0.0,
     )
-    python_forwarded = simulation_server_factory(
+    python_rolled_back = simulation_server_factory(
         rng_seed=_RNG_SEED,
         through_rust=True,
-        extra_env=None,  # default empty allow-list: look forwards to Python
+        extra_env=_ROLLBACK_ENV,  # explicitly empty -> look forwards to Python
         world_time_ratio=0.0,
     )
-    asyncio.run(_test_behavior_preservation(rust_executed, python_forwarded))
+    asyncio.run(_test_behavior_preservation(rust_executed, python_rolled_back))
 
 
 async def _test_behavior_preservation(
@@ -246,11 +263,16 @@ def test_look_state_change_excludes_the_actor(
     self-targeted copy of that broadcast (`apply_outcome`'s
     `exclude=<actor>`, unit-proven in
     `test_apply_outcome_returns_single_state_change_delivery`, holds over the
-    real wire+gateway round-trip)."""
+    real wire+gateway round-trip).
+
+    Runs on the **default-on** path (no `extra_env`): this proves the live 4b
+    cutover's room `state_change` deliveries actually fan out over the real
+    gateway to a co-located second player — the load-bearing check that the
+    `Deliver`/fan-out path is live, not just the issuing client's reply."""
     server = simulation_server_factory(
         rng_seed=_RNG_SEED,
         through_rust=True,
-        extra_env=_RUST_LOOK_ENV,
+        extra_env=None,  # default allow-list includes `look` (4b live cutover)
         world_time_ratio=0.0,
     )
     asyncio.run(_test_actor_exclusion(server))

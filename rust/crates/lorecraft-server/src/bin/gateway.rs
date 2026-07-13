@@ -16,7 +16,7 @@
 //! | `LORECRAFT_GATEWAY_WORLD_ID`    | `world-1`        | `world_id` stamped on envelopes  |
 //! | `LORECRAFT_GATEWAY_DEADLINE_MS` | `5000`           | `deadline_ms` stamped on envelopes |
 //! | `LORECRAFT_GATEWAY_BACKEND`     | `http://127.0.0.1:8000` | Python uvicorn origin the proxy forwards to |
-//! | `LORECRAFT_RUST_VERBS`          | *(empty)*        | Comma-separated verbs Rust executes (Phase 4); empty = all commands to Python (rollback) |
+//! | `LORECRAFT_RUST_VERBS`          | `look`           | Comma-separated verbs Rust executes (Phase 4). **Unset** → the default live-cutover set (`look`). Explicitly **empty** (`LORECRAFT_RUST_VERBS=`) → all commands to Python (rollback) |
 //!
 //! The Phase-3c slow-client/rate-limit thresholds are also env-overridable. These
 //! are primarily for **test determinism** and secondarily for **operator tuning**;
@@ -60,6 +60,19 @@ use lorecraft_server::{
 /// may still be starting when the gateway boots), and the pause between tries.
 const CONNECT_ATTEMPTS: u32 = 20;
 const CONNECT_RETRY_PAUSE: Duration = Duration::from_millis(250);
+
+/// The default `LORECRAFT_RUST_VERBS` allow-list applied when the variable is
+/// **unset** — the Phase 4b live cutover set. `look` is the first verb Rust
+/// executes by default; a real WS client's bare `look` routes to the Rust
+/// pipeline with no configuration. Rollback stays a config toggle: setting
+/// `LORECRAFT_RUST_VERBS=` (explicitly empty) parses to the empty set, returning
+/// every command — `look` included — to the unchanged Phase 3 Python path.
+///
+/// This default lives at the *binary* boundary, not in
+/// [`GatewayConfig::default`](lorecraft_server::GatewayConfig), which stays empty
+/// (the safe library default = pure Phase 3): the deployed gateway opts `look`
+/// in, while library/unit consumers of the config default are unaffected.
+const DEFAULT_RUST_VERBS: &str = "look";
 
 fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_owned())
@@ -118,10 +131,16 @@ fn config_from_env() -> anyhow::Result<GatewayConfig> {
     // wedge the receive loop. Falls back to the shipped default when unset/malformed.
     config.execute_timeout_ms =
         env_parse_or("LORECRAFT_GATEWAY_EXECUTE_MS", config.execute_timeout_ms);
-    // Phase 4 verb allow-list (decision 3). Unset/blank → empty set → every command
-    // routes to Python (pure Phase 3 rollback). E.g. `LORECRAFT_RUST_VERBS=look`.
-    config.rust_verbs =
-        lorecraft_server::route::parse_allow_list(&env_or("LORECRAFT_RUST_VERBS", ""));
+    // Phase 4 verb allow-list (decision 3). Live cutover (4b): the variable
+    // **unset** defaults to `DEFAULT_RUST_VERBS` (`look`), so a real WS client's
+    // bare `look` is Rust-executed with no configuration. Setting it explicitly
+    // **empty** (`LORECRAFT_RUST_VERBS=`) parses to the empty set → every command
+    // routes to Python (pure Phase 3 rollback). `std::env::var` distinguishes the
+    // two: unset yields `Err` (→ default), explicit-empty yields `Ok("")` (→ empty).
+    config.rust_verbs = lorecraft_server::route::parse_allow_list(&env_or(
+        "LORECRAFT_RUST_VERBS",
+        DEFAULT_RUST_VERBS,
+    ));
     Ok(config)
 }
 
