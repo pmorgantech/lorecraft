@@ -1165,7 +1165,422 @@ handoff into Rust, forwarding commands to the existing Python command processor
 through the versioned protocol. This phase improves transport isolation and proves
 the protocol, but it is not the performance finish line; its exit criterion is that
 existing player and admin clients run through the Rust gateway, with
-disconnect/reconnect and slow-client tests matching current semantics.
+disconnect/reconnect and slow-client tests matching current semantics. See the
+Phase 3 kickoff design spec below.
+
+## Phase 3 kickoff — design spec (2026-07-13)
+
+### Summary / scope
+
+This section is the concrete kickoff design for Phase 3 (migrate transport and
+connection ownership), handed off from Research to Backend Engineering. Per the
+"Migration plan" section above, Phase 3 moves HTTP/WebSocket ingress, connection
+maps, room/global fan-out, connection backpressure, and authentication handoff into
+Rust, forwarding commands to the existing Python command processor through the
+versioned protocol. Its exit criterion is that **existing player and admin clients
+run through the Rust gateway, with disconnect/reconnect and slow-client tests
+matching current semantics.** This phase improves transport isolation and proves
+the protocol; it is explicitly **not** the performance finish line — command
+execution (parse/rules/handler/DB/commit) still runs in Python this phase, so
+head-of-line blocking *within a single Python command processor* persists until
+Phase 4+ moves execution to Rust.
+
+**What the current Python transport actually is** (grounded in a read of the code,
+not assumption):
+
+- **Player WS** (`main.py`, route `resolved_settings.websocket_path` = `/ws`): auth
+  is a single-use `?ticket=` handshake — `_resolve_ws_player_id` calls
+  `consume_ws_ticket` (`webui/player/auth.py`), which atomically pops a ticket from
+  the in-memory `AppState.ws_tickets` dict (minted by `POST /ws-ticket` after
+  validating a JWT bearer token or the `lorecraft_session` cookie; 60 s TTL,
+  single-use). A legacy `?player_id=` fallback is gated off by default
+  (`allow_query_player_id`). A single-live-connection-per-player rule rejects a
+  second tab with close code 1008. The receive loop is
+  `command = await websocket.receive_text()` →
+  `response = await _handle_websocket_command(state, player_id, session_id, command)`
+  → `await websocket.send_json(response)`.
+- **`_handle_websocket_command`** builds two SQLModel sessions + a `GameContext` via
+  `build_game_context`, runs `state.command_engine.handle_command(command, ctx)`,
+  then `broadcast_command_effects(state.manager, ctx, pre_room_id=...)`, and returns
+  a legacy `command_result` JsonObject
+  (`command`/`verb`/`noun`/`messages`/`room_messages`/`chat_messages`/`updates`). It
+  also owns disambiguation-number resolution and the crash-capture path.
+- **`ConnectionManager`** (`engine/game/connection_manager.py`): three in-memory
+  maps — `_connections: {player_id → ws}`, `_player_rooms: {player_id → room_id}`,
+  `_room_players: {room_id → set[player_id]}`. Fan-out
+  (`broadcast_to_room`/`broadcast_global`) is confirmed **sequential
+  await-per-recipient** (a `for player_id in ...: await send_to_player(...)` loop) —
+  exactly the head-of-line hazard the plan doc suspected. A failed send drops that
+  connection (logged, never silent). `players_in_room` returns a **sorted** list
+  (deterministic ordering already relied on).
+- **Admin WS** (`webui/admin/websocket.py`, route `/admin/ws`): auth is a `?token=`
+  JWT (`decode_token` vs `admin_jwt_secret`), **accept-before-validate** so a bad
+  token yields an application-level 1008 the admin UI distinguishes from a
+  transient 1006. It is push-only: a per-connection `asyncio.Queue(maxsize=200)`
+  drained by a `_send_loop` task, fed by `AdminBroadcaster.push` which does
+  `put_nowait` and **silently drops on `QueueFull`** — the one piece of real
+  backpressure that exists today.
+- **No player-side rate limiting, throttle, or semaphore exists anywhere** (grep
+  for `rate_limit`/`throttle`/`Semaphore` is empty outside admin's bounded queue).
+  Per-connection command serialization is only implicit: the WS loop awaits each
+  reply before reading the next frame.
+- **Disconnect** is detected as a `WebSocketDisconnect` raised from
+  `receive_text()`. The handler distinguishes an involuntary drop (socket still
+  live in the manager → begin 60 s grace via `SessionSafetyService`, "connection
+  flickers." room broadcast, `players-online` state_change, follow-break,
+  `manager.disconnect`, `player_left` broadcast) from a graceful quit (already torn
+  down → `is_connected` is False → bail, avoiding double teardown).
+  `disconnect_grace_seconds` defaults to 60 s (`config.py`). **Session/player
+  identity is DB-backed** (`SessionSafetyService`, `engine/services/save.py`,
+  `PlayerSession` rows) — the in-memory maps are the only ephemeral part.
+- A **second command entry point** exists: `POST /command`
+  (`webui/player/frontend.py::handle_command`) — the HTMX classic-mode path that
+  also handles graceful quit (`disconnect=True`), calling `mgr.disconnect`
+  directly. This returns rendered HTML, not JSON.
+
+### Confirmed design decisions (from Research-Planner analysis)
+
+1. **Phase 3 is split into three sequenced sub-slices, each with its own exit
+   check.** The phase is genuinely large (WS ingress + connection map + fan-out +
+   backpressure + auth handoff, for *both* player and admin), and a single
+   implementation slice would couple the risky socket cutover to the new
+   protective backpressure work. The split:
+   - **3a — Forwarding protocol + Python adapter + Rust gateway plumbing (no live
+     cutover).** Build the transport, the Python-side listener, and the Rust
+     connection-map + fan-out, proven against a harness while real clients still
+     hit Python. Mirrors how Phases 1/2 built the contract before any cutover.
+   - **3b — Player `/ws` cutover through Rust**, including auth handoff,
+     connection-lifecycle events, and disconnect/reconnect.
+   - **3c — Admin `/admin/ws` cutover + backpressure / slow-client policy for both
+     client types.**
+   Each sub-slice's exit check is stated in its task block below; the phase-level
+   exit criterion (both client types through Rust; disconnect/reconnect +
+   slow-client tests match current semantics) is met only when all three land.
+
+2. **Transport mechanism between Rust and Python: a Unix-domain socket carrying
+   length-prefixed JSON frames, two long-lived processes.** Rust gateway owns the
+   client sockets; the Python app runs headless-of-transport with a new inbound UDS
+   listener (the "gateway adapter"). Rejected alternatives and why: **HTTP
+   loopback** adds per-command request/response overhead and can't cleanly carry
+   the *async, Python-initiated* fan-out directives (see decision 4);
+   **subprocess stdin/stdout** would make Rust own Python's lifecycle,
+   contradicting "Python stays the authoritative deployable this phase" and
+   complicating supervision/restart; **TCP loopback** needs port management and
+   isn't localhost-confined by default. UDS is localhost-only (a security property
+   for the un-authenticated internal channel), low-overhead, supports framed
+   bidirectional messaging, and lets either process restart independently.
+   Framing: 4-byte big-endian length prefix + UTF-8 JSON (serde on the Rust side,
+   the existing frozen-dataclass mirror + `canonical_json` discipline on the
+   Python side).
+
+3. **`CommandEnvelope` (Phase 1) is reused verbatim to forward a command — no
+   additive field needed.** Field sourcing at Rust ingress: `player_id`/`actor_id`
+   from ticket redemption (actor == player for a player command); `session_id`
+   returned to Rust by the Python `Connected` lifecycle handshake (Python's
+   `SessionSafetyService.start_or_resume_session` mints/resumes it) and stamped on
+   subsequent envelopes; `command_id` minted by Rust (idempotency key);
+   `receive_sequence` a Rust per-connection monotonic; `deadline_ms` from Rust
+   config; `world_id` a Rust config constant (single world for now); `raw` the
+   command line. This confirms the Phase 1 envelope design holds under real
+   ingress.
+
+4. **The player *reply* and *fan-out* are carried as opaque legacy payloads this
+   phase, not remapped onto `CommandOutcome`/`OutboundMessage`.** The plan's rule
+   "Preserve current WebSocket payloads until the frontend migration is a separate
+   deliberate project" governs here. The frontend expects the legacy
+   `command_result` shape and legacy `feed_append`/`state_change`/
+   `player_joined`/`player_left` frames; rewriting them into
+   `CommandOutcome`/`OutboundMessage` is Phase 4+ work (when Rust owns the
+   pipeline). Therefore the gateway wire protocol adds two **new
+   gateway-framing types** in `lorecraft-protocol` (additive, Tier 1 mechanism):
+   - `GatewayInbound` (Rust→Python): `RedeemTicket{ticket}`,
+     `ValidateAdminToken{token}`, `Connected{player_id}`,
+     `Disconnected{player_id, reason: ClientClose|GracefulQuit}`,
+     `Command{CommandEnvelope}`.
+   - `GatewayOutbound` (Python→Rust): `AuthResult{player_id|reject}`,
+     `ConnectAck{session_id, room_id, direct_frames}`,
+     `CommandReply{direct_reply: Value, deliveries: Vec<DeliveryDirective>}`, and
+     standalone `Deliver{DeliveryDirective}` for async pushes (e.g. clock ticks,
+     weather, cross-player follow deliveries).
+   - `DeliveryDirective { target: DeliveryTarget, exclude: Option<PlayerId>,
+     payload: serde_json::Value }` where
+     `DeliveryTarget = Player(id) | Room(id) | Global`. Rust does **not**
+     interpret `payload` — it resolves recipients from its authoritative map and
+     relays the frame. This preserves payloads byte-exactly and defers the
+     `OutboundMessage` convergence to Phase 4+ (flagged:
+     `DeliveryDirective.payload` and `OutboundMessage` are different layers and
+     will converge once Python stops emitting legacy frames).
+
+5. **The Python adapter reuses ALL existing command + fan-out logic by injecting a
+   directive-recording `ConnectionManager`.** `broadcast_command_effects` and the
+   connect/disconnect handlers already take a `manager` parameter and call a fixed
+   API surface (`broadcast_to_room`, `send_to_player`, `broadcast_global`,
+   `move_player`, `players_in_room`, `connected_player_ids`, `occupied_rooms`). A
+   new `DirectiveConnectionManager` implements that identical API but *records*
+   `DeliveryDirective`s instead of awaiting sockets. This is the key move that
+   keeps Phase 3's Python churn minimal — no rewrite of `broadcast_command_effects`
+   or the chat/narration routing. To satisfy the recipient-selection logic that
+   needs the connected set (P2ALL chat subscription filtering iterates
+   `connected_player_ids()` + checks subscriptions), the
+   `DirectiveConnectionManager` maintains a lightweight **read-mirror** of the
+   connection map, kept consistent by the `Connected`/`Disconnected`/`move`
+   lifecycle events from Rust. Python resolves all per-recipient policy against
+   the mirror and emits concrete `Player`-targeted directives; simple whole-room
+   broadcasts may emit `Room` directives for Rust to resolve. **Rust's map is the
+   source of truth for delivery; the Python mirror is advisory for selection** —
+   a directive to a just-disconnected player is a harmless no-op in Rust, exactly
+   matching today's `send_to_player` "ws is None → return" behavior. (Future work:
+   move channel-subscription state into the snapshot/effect model so Rust resolves
+   everything and the mirror disappears.)
+
+6. **Auth handoff = Rust owns transport, Python owns credential/session policy.**
+   Rust extracts `?ticket=` (player) or `?token=` (admin) from the WS-upgrade
+   query and forwards it (`RedeemTicket`/`ValidateAdminToken`); it never sees the
+   JWT secret and never touches `AppState.ws_tickets`. Python runs
+   `consume_ws_ticket` (keeping single-use atomicity in the in-memory dict) /
+   `decode_token`, returns accept+player_id or reject; Rust closes with 1008 on
+   reject. Rust reproduces the admin **accept-before-validate** nuance (accept the
+   upgrade, then close 1008 on Python reject) so the admin UI's 1008-vs-1006
+   distinction survives. This is the mechanism/policy split in spirit: transport
+   handoff (mechanism) vs. credential validation (policy, stays Python).
+
+7. **`lorecraft-store` stays a stub this phase — session/connection state is
+   deliberately NOT persisted in Rust.** Rust connection maps are intentionally
+   in-memory and ephemeral. This is *safe* precisely because durable session
+   identity already lives in Python's DB (`PlayerSession` rows + 60 s grace via
+   `SessionSafetyService`), and ws-tickets are re-minted per reconnect via
+   Python's `POST /ws-ticket`. A Rust gateway crash loses only "who is currently
+   socket-connected"; every client's auto-reconnect re-mints a ticket and
+   re-establishes, and Python's `start_or_resume_session` resumes within grace.
+   **This is the safety property that makes Rust-owns-connections acceptable**
+   and must be stated as a design invariant, not left implicit.
+
+8. **Rollback is a routing toggle; the old Python WS handlers are KEPT, not
+   deleted.** Per the plan's "Make rollback a routing/configuration decision
+   while the old path still exists," the existing `/ws` and `/admin/ws` handlers
+   in `main.py`/`admin/websocket.py` stay in place behind a config flag; cutover
+   points clients at the Rust gateway address, and rollback points them back.
+   `HTTP POST /command` (HTMX classic mode, renders HTML) **stays on Python** this
+   phase — it is a request/response form post, not a connection-ownership
+   concern, and moving it would require Rust to render HTMX partials (out of
+   scope). One required Python-track change: the `POST /command` graceful-quit
+   path currently calls `mgr.disconnect` directly; when Rust owns the map it must
+   instead route its socket-close through the gateway adapter (emit a
+   `GracefulQuit` close instruction to Rust).
+
+9. **Crate boundaries.** Confirm **Axum** (`axum::extract::ws`, Tokio-based,
+   `Query` extractor maps directly onto today's `?ticket=`/`?token=` query-param
+   auth) — the natural Rust equivalent of the current Starlette/FastAPI WS. Build
+   out two crates, keep the rest as stubs:
+   - **`lorecraft-server`** — Axum HTTP/WS ingress + auth-handoff client + the
+     Rust-side UDS forwarding client. Files: `lib.rs`, `gateway.rs` (Axum
+     router/app + config), `ws_player.rs`, `ws_admin.rs`, `auth.rs`
+     (ticket/JWT handoff client), `forward.rs` (UDS framed client to Python).
+   - **`lorecraft-events`** — the connection-map + fan-out *mechanism* (Rust-owned,
+     headless-testable). Files: `connections.rs` (`ConnectionRegistry`:
+     player↔handle, `player→room`, `room→set`, all with sorted deterministic
+     reads mirroring Python's `sorted()`), `dispatch.rs` (per-connection bounded
+     outbound mpsc + writer task; fan-out via non-blocking `try_send` so one slow
+     client never head-of-line-blocks a broadcast — the core improvement over
+     Python's sequential await), `backpressure.rs` (slow-client policy). Keeping
+     fan-out here (not crammed into `-server`) keeps it reusable and
+     unit-testable without a live socket. `lorecraft-store` / `lorecraft-script*`
+     stay stubs.
+
+10. **Backpressure is NEW protective behavior, not a port of an existing limit.**
+    Player-side has *no* current limit, so "match current semantics" for this
+    dimension means "don't regress correctness for well-behaved clients," **not**
+    "reproduce an existing rate limit." Design: each connection gets a bounded
+    outbound queue (config depth, e.g. 256) drained by its own writer task. On
+    sustained overflow (N consecutive `try_send` failures or a time budget), the
+    slow client is disconnected (dedicated close code). Coalescing policy:
+    `state_change`/panel-refresh frames are idempotent and **coalescible** (keep-
+    latest per panel key); `feed_append` frames each matter and are **not**
+    coalesced (they queue; overflow → disconnect). Which frame types coalesce is
+    *policy* (Tier 2); the bounded-queue + disconnect *mechanism* is Tier 1.
+    Per-connection at-most-one-outstanding-command is preserved (matches today's
+    implicit serialization); a per-player command rate limit is added as new,
+    generous-by-default protective config (off/loose enough not to regress
+    well-behaved clients).
+
+11. **Tier classification** (per AGENTS.md "Tier 1 = mechanism, Tier 2 = policy"):
+    - **Tier 1 / mechanism** (Rust `lorecraft-server` + `lorecraft-events`): WS
+      ingress/upgrade, connection registry, room membership, bounded concurrent
+      fan-out, per-connection outbound queue, backpressure *enforcement*,
+      command-forwarding transport, sequence assignment, deadline stamping,
+      lifecycle-event emission.
+    - **Tier 2 / policy**: which frame types coalesce vs. queue, slow-client
+      disconnect thresholds/grace lengths, per-player rate-limit values, and
+      (Python-owned) credential validation (ticket/JWT) and channel-subscription
+      recipient selection.
+    - **Explicit cross-axis note:** AGENTS.md's Tier 1/2 rule and
+      `tests/unit/test_tier_boundaries.py` govern **only Python `src/lorecraft/`
+      import direction** — they do **not** apply to Rust crates. The Rust
+      gateway's own mechanism/policy split is an analogous-in-spirit but distinct
+      axis. The **new Python forwarding-adapter code lives under
+      `src/lorecraft/` and IS subject to the import-direction rule**: it needs
+      `command_engine`, `ConnectionManager`, `SessionSafetyService`,
+      `consume_ws_ticket`, and admin `decode_token`, so it is a
+      **composition/web-host-layer** module (`src/lorecraft/gateway/`), may
+      import engine + features (like `main.py`), and must **not** be imported
+      *by* `engine/`. State this so a reviewer doesn't file it under `engine/` by
+      reflex.
+
+12. **Tunables note** (per AGENTS.md "Prefer live-tunable configuration"): this
+    phase's dials — outbound queue depth, slow-client disconnect threshold,
+    per-player command rate limit, `deadline_ms` — are **operational**, not
+    game-balance. Following the same judgment call Phases 1/2 made for
+    `deadline_ms`/`ScriptBudget`: **static config this phase** (Rust config /
+    env), flagged as candidate *operational* live-tunables later (an operator
+    retuning under load) but **not** warranting the `WorldClock` DB-singleton
+    pattern, which is for *game-balance* dials an admin retunes.
+    `disconnect_grace_seconds` (60 s) already exists as Python config and stays
+    Python-owned. No game-balance dial is introduced.
+
+### Proposed tasks (Phase 3)
+
+Two implementation tracks (Rust `rust/crates/`, Python `src/lorecraft/gateway/` +
+`webui/`), each agent in its own scratch worktree off `rust-port`, no file overlap.
+**Sequencing: 3a before 3b before 3c**; within 3a the protocol/framing types are
+the ordering dependency (they unblock both the Python adapter and the Rust
+client).
+
+**Sub-slice 3a — forwarding protocol + adapter + gateway plumbing (no live
+cutover). Exit check: a synthetic command driven Rust→Python→Rust produces the
+byte-identical `command_result` payload and the same set of `DeliveryDirective`s
+the real `ConnectionManager` path produces today (parity harness), with no real
+client cutover.**
+
+- [ ] `lorecraft-protocol`: add `GatewayInbound`, `GatewayOutbound`,
+  `DeliveryDirective`, `DeliveryTarget` (additive; `CommandEnvelope` unchanged) +
+  Python frozen-dataclass mirror with recursive `to_json`/`from_json` — **Tier 1**
+  — serde/JSON round-trip parity both languages; `CommandEnvelope` still reused
+  verbatim — tunable: PROTOCOL_VERSION static.
+- [ ] Python `src/lorecraft/gateway/adapter.py`: UDS listener (length-prefixed
+  JSON) dispatching `RedeemTicket`/`ValidateAdminToken`/`Connected`/
+  `Disconnected`/`Command` to existing `consume_ws_ticket`/`decode_token`/
+  `SessionSafetyService`/`_handle_websocket_command` — **Tier 1
+  (composition/web-host layer, respects import-direction rule)** — round-trips a
+  command; emits `CommandReply` — tunable: socket path static.
+- [ ] Python `DirectiveConnectionManager` (same API surface as
+  `ConnectionManager`, records `DeliveryDirective`s + maintains lifecycle-fed
+  read-mirror) injected into `broadcast_command_effects` — **Tier 1 (web-host
+  layer)** — parity test: directives recorded == frames the real manager would
+  send for the same command — tunable: static.
+- [ ] `lorecraft-events`: `ConnectionRegistry` (three maps, sorted reads) +
+  `dispatch.rs` per-connection bounded outbound queue + concurrent fan-out —
+  **Tier 1** — unit tests: join/leave/move, broadcast-to-room resolves sorted
+  membership, one blocked queue doesn't stall a co-recipient — tunable: queue
+  depth static-now/ops-live-later.
+- [ ] `lorecraft-server`: `forward.rs` UDS framed client + Axum app skeleton
+  (routes not yet serving real clients) — **Tier 1** — integration test: Rust
+  client sends `Command`, receives `CommandReply`, relays directives to the
+  registry — tunable: static.
+
+**Sub-slice 3b — player `/ws` cutover through Rust. Exit check:
+`tests/e2e/test_reconnect.py`, `tests/e2e/test_multiplayer_realtime.py`, and
+`tests/simulation/test_multiplayer_scenarios.py` pass with clients pointed at
+the Rust gateway; bad/expired ticket → 1008 through Rust.**
+
+- [ ] `lorecraft-server::ws_player`: Axum `/ws` upgrade, `?ticket=` extraction →
+  `RedeemTicket` handoff, single-live-connection rule, receive-loop → `Command`
+  forward → relay `direct_reply` to client — **Tier 1** — a real client completes
+  a `look` through Rust with identical payload — tunable: deadline_ms static.
+- [ ] Connection lifecycle: Rust emits `Connected` (receives
+  `ConnectAck{session_id, room_id, direct_frames}`) and `Disconnected{reason}` on
+  socket close; Python runs grace/flicker/follow-break/player_left via existing
+  handlers, returning directives — **Tier 1 (Rust) + web-host (Python)** —
+  disconnect drops the map entry immediately; grace/`player_left` fan-out arrives
+  as directives — tunable: grace_seconds Python-owned static.
+- [ ] Disconnect/reconnect semantics: graceful-quit (command `disconnect=True`,
+  incl. `POST /command` path) tags the close `GracefulQuit` so Python skips
+  double-teardown; reconnect after gateway restart re-mints ticket + resumes
+  session within grace (DB-backed) — **Tier 1** — reconnect e2e green; documented
+  invariant: Rust map ephemeral, Python DB durable — tunable: static.
+
+**Sub-slice 3c — admin `/admin/ws` cutover + backpressure/slow-client policy.
+Exit check: `tests/e2e/test_admin_session.py` passes through Rust (bad token →
+1008, preserving 1008-vs-1006); a new slow-client test shows a stalled consumer
+is bounded/disconnected without blocking a co-located client; well-behaved
+clients unaffected.**
+
+- [ ] `lorecraft-server::ws_admin`: Axum `/admin/ws`, accept-before-validate,
+  `?token=` → `ValidateAdminToken` handoff, push-only via `lorecraft-events`
+  outbound queue — **Tier 1** — admin push arrives through Rust; bad token →
+  1008 after accept — tunable: static.
+- [ ] `lorecraft-events::backpressure`: bounded outbound queue + sustained-
+  overflow slow-client disconnect + `state_change`-coalesce /
+  `feed_append`-no-coalesce policy — **Tier 1 mechanism, Tier 2 policy (which
+  frames coalesce / thresholds)** — slow consumer disconnected within threshold,
+  sibling delivery unaffected — tunable: queue depth + threshold
+  static-now/ops-live-later; coalesce set = policy.
+- [ ] Per-player command rate limit + at-most-one-outstanding-per-connection —
+  **Tier 1 mechanism, Tier 2 policy (limit values)** — generous default doesn't
+  regress well-behaved clients; abusive client throttled — tunable: rate values
+  static-now/ops-live-later.
+
+### Existing test coverage + gaps to flag (for Pytest Writer / Test & QA)
+
+**Defines "current semantics" the gateway must match:** e2e —
+`test_reconnect.py::test_ws_reconnects_and_resumes_live_delivery`,
+`test_multiplayer_realtime.py` (5 tests: say propagation, `player_joined`
+here-now, `player_left` panel, dropped-item visibility, third-person
+narration), `test_admin_session.py`, `test_auth_flows.py` (ticket auth);
+simulation — `test_multiplayer_scenarios.py`,
+`test_load.py::test_concurrent_players_command_latency`,
+`test_soak.py::test_mixed_scenarios_soak`. The `virtual_player.py` harness
+connects to `ws_url/ws?player_id=` — a new conftest fixture must boot **both**
+the Rust gateway and the Python adapter and point clients at Rust (harness
+work, flag it).
+
+**Gaps needing NEW tests (author later; flag now so they're not missed):** (1) a
+**slow-client backpressure test** — no player-side equivalent exists; a client
+that stops reading must be bounded + disconnected without blocking a
+co-located player. (2) A **gateway-restart reconnect test** — Rust restart
+mid-session; client reconnects; Python resumes within grace (may be hard in
+the current harness — flag feasibility). (3) **Auth-handoff rejection** —
+bad/expired ticket and bad admin token both yield 1008 through Rust,
+preserving the admin 1008-vs-1006 distinction. (4) **Forwarding-adapter
+parity unit test** — `DirectiveConnectionManager` emits the same directives
+the real `ConnectionManager` would. (5) **Re-interpret
+`test_event_loop_blocking.py`:** because command *execution* still runs in
+Python via forwarding this phase, the intra-processor head-of-line assertion
+likely still holds; the Rust gateway only removes cross-*connection* delivery
+blocking. Confirm the characterization test's meaning is updated, not silently
+broken, and note it fully inverts only at Phase 4+.
+
+### OPEN ITEMS
+
+1. **`GatewayOutbound` async-push channel vs. request/reply multiplexing.**
+   Python emits both synchronous `CommandReply`s and unsolicited `Deliver`s
+   (clock ticks, weather, cross-player follow deliveries) on the same UDS
+   connection. Recommendation: a single multiplexed framed stream with a
+   correlation id on request/reply frames and un-correlated `Deliver` frames; a
+   dedicated Python→Rust push task. Flagged rather than silently decided —
+   Backend Engineering should confirm the multiplexing shape in 3a before the
+   Rust client hardens around it.
+2. **Channel-subscription read-mirror longevity.** The Python mirror (decision
+   5) is a Phase 3 expedient. Recommendation stated: move subscription state
+   into the snapshot/effect model in a later phase so Rust resolves all
+   recipients and the mirror disappears — noted as future work, not this phase.
+
+### Kickoff status
+
+*(Placeholder — to be filled in by the implementing Backend Engineers /
+Integrator after 3a/3b/3c land, matching the Phase 0/1 and Phase 2 "Kickoff
+status" sections above: branch names, commit hashes, Code Review outcome, Rust
+`cargo build`/`test`/`clippy`/`fmt` + Python `make lint`/`typecheck`/`test`
+results, and confirmation the phase-level exit criterion — both client types
+through the Rust gateway, disconnect/reconnect + slow-client tests matching
+current semantics — is met.)*
+
+### Where things stand / Next
+
+After this lands, the natural next increment is Phase 4 — migrate one vertical
+gameplay slice (`look`, then movement) so Rust owns parsing/repo-reads/
+transaction/effect-validation/audit-outbox for the selected verb, routing only
+migrated commands to Rust, with the `look_only.audit.json` golden as the
+pipeline-owned parity target.
 
 ## Final position
 

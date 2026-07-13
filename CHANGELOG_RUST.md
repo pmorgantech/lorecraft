@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `docs/rust_migration_plan.md` — Phase 3 kickoff design spec: transport/
+  connection-ownership migration split into three sequenced sub-slices (3a
+  forwarding protocol + adapter + gateway plumbing, 3b player `/ws` cutover,
+  3c admin `/admin/ws` cutover + backpressure), a UDS length-prefixed-JSON
+  transport between the Rust gateway and a new Python forwarding adapter, new
+  `GatewayInbound`/`GatewayOutbound`/`DeliveryDirective` gateway-framing
+  protocol types, the `DirectiveConnectionManager` design for reusing existing
+  Python fan-out logic, auth-handoff and disconnect/reconnect semantics, and
+  the new-protective (not ported) backpressure/slow-client policy.
+
 ---
 
 ## [0.2.0] - 2026-07-12
