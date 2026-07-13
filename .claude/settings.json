@@ -15,7 +15,8 @@
     "allow": [
       "Bash(git fetch *)",
       "Bash(source /home/petem/src/Gamedev/lorecraft/.venv/bin/activate)",
-      "mcp__graphify__get_neighbors"
+      "mcp__graphify__get_neighbors",
+      "Bash(python -m pytest *)"
     ]
   }
 }
