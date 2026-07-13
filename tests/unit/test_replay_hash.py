@@ -98,3 +98,20 @@ def test_canonical_json_rejects_float_in_list() -> None:
 def test_canonical_json_allows_bools_and_ints() -> None:
     # bool is an int subclass, not a float — must not be rejected.
     assert canonical_json({"flag": True, "count": 0}) == b'{"count":0,"flag":true}'
+
+
+def test_canonical_json_rejects_integer_valued_float() -> None:
+    """`2.0` is still a `float` even though its value is a whole number.
+
+    `isinstance(2.0, float)` is `True` regardless of value, so this must be
+    rejected exactly like `2.5` would be. Pins the edge case against a future
+    "optimisation" that rejects by value (e.g. `x != int(x)`) instead of by
+    type, which would silently let whole-number floats like `2.0` through.
+    """
+    with pytest.raises(TypeError, match="canonical_json rejects floats"):
+        canonical_json(2.0)
+
+
+def test_canonical_json_rejects_nested_integer_valued_float() -> None:
+    with pytest.raises(TypeError, match="canonical_json rejects floats"):
+        canonical_json({"a": [1, 2.0]})
