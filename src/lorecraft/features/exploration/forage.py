@@ -23,8 +23,13 @@ from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.features.disciplines.service import ProficiencyService
+from lorecraft.features.disciplines.usage import evaluate_usage
 
 FORAGE_SCHEMA_VERSION = 1
+
+# The ability id whose data-driven `usage:` block gates this verb (terrain:
+# [outdoor] in abilities.yaml — replacing the old hardcoded indoor check).
+_FORAGE_ABILITY = "forage"
 
 # Any-terrain fallback key. Entries under "*" are foragable in every outdoor room.
 WILDCARD_TERRAIN = "*"
@@ -108,7 +113,10 @@ class ForageService:
         self._proficiency = proficiency or ProficiencyService()
 
     def forage(self, ctx: GameContext) -> None:
-        if ctx.room.indoor:
+        # Data-driven usage gate: forage's `usage.terrain: [outdoor]` is enforced
+        # by the Tier 1 check_usage mechanism instead of a hardcoded indoor check.
+        usage = evaluate_usage(ctx, _FORAGE_ABILITY)
+        if usage is not None and not usage.terrain_met:
             ctx.say(
                 "There's nothing to forage indoors. Try the open air.",
                 MessageType.WARNING,

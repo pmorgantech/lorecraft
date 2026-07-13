@@ -26,11 +26,22 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
+from lorecraft.features.disciplines.abilities import (
+    get_ability_registry,
+    load_abilities_yaml,
+)
 from lorecraft.features.exploration.commands import register_exploration_commands
 from lorecraft.features.exploration.forage import (
     ForageRegistry,
     ForageService,
     validate_forage_document,
+)
+
+# The forage verb now reads its `usage.terrain: [outdoor]` gate through the Tier 1
+# check_usage mechanism, so the real ability content must be in the global
+# registry for the indoor-refusal test to fire.
+get_ability_registry().load_document(
+    load_abilities_yaml("world_content/abilities.yaml")
 )
 
 ROOM_ID = "meadow"
