@@ -11,14 +11,16 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-13, v0.96.0 on main; Sprints 1–76 all shipped; 77–78 designed & queued)
+## Where things stand (2026-07-13, v0.96.0 on main; Sprints 1–76 all shipped; 77 implemented pending merge, 78 designed & queued)
 
 **Everything through Sprint 76 is merged to main** (currently at v0.96.0, which ships Sprints 73,
 74, 75, and 76 in sequence — see `../CHANGELOG.md`). All numbered sprints 1 through 76 are now
-shipped. **Sprints 77 and 78 (the Discipline/Ability system — see those sections below and
-[`discipline_ability_system.md`](discipline_ability_system.md)) are fully designed, reviewed by
-Research/Planning, and queued for Backend Engineer** — design-finalized is not the same as
-built; every 77/78 task starts unchecked.
+shipped. **Sprint 77 (the Discipline/Ability system's Tier 1 mechanism — see that section below
+and [`discipline_ability_system.md`](discipline_ability_system.md)) is implemented, tested, and
+code-reviewed on branch `sprint-77-abilities-tier1`, all tasks `[x]`, pending Integrator
+merge/version-bump.** **Sprint 78 (the Tier 2 policy/content layer built on top of it) remains
+fully designed and reviewed by Research/Planning, queued for Backend Engineer** —
+design-finalized is not the same as built; every 78 task still starts unchecked.
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -961,8 +963,14 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 
 ## Sprint 77 — Discipline/Ability system: Tier 1 mechanism (Phases A–B.1)
 
-**Not yet started — design is finalized and reviewed by Research/Planning; queued for Backend
-Engineer.** Full design in [`discipline_ability_system.md`](discipline_ability_system.md)
+**Used (all complete, pending Integrator merge/version-bump).** Implemented on branch
+`sprint-77-abilities-tier1` — 7 implementation commits (`9eedd5d` 77.1 `AbilityDef`, `a21ca79`
+77.2 `check_acquisition`, `23103d9` 77.3 `check_usage`, `21db8b3` 77.4 `resolve_proficiency`,
+`39d59b0` 77.5 cooldown/resource primitives, `6f4cfb5` 77.6 unit tests, `da19c72` 77.7
+`features/disciplines/` package skeleton), plus the earlier design-finalization commit
+(`1188f99`) already on the branch. **No schema/DB changes this sprint** — pure new Tier 1 module
+plus a manifest-only Tier 2 package stub; `PlayerStats` migration is Sprint 78's job (78.3).
+Full design in [`discipline_ability_system.md`](discipline_ability_system.md)
 (added 2026-07-13, user-driven; Research/Planning audit pass completed 2026-07-13 with four
 cautions, all folded into the design — the `resolve_proficiency` parameterization note (§2),
 the new Live-tunability subsection (§3), the seed-discipline mapping-table fix (§7), and the
@@ -971,8 +979,7 @@ skills-vs-abilities split
 genuinely confusing (two separate systems both called "skill" — a flat numeric `SkillRegistry`
 catalog vs. the Sprint 74 skill-tree's `ability.<id>` nodes — that don't share storage or
 vocabulary) and provided a detailed Discipline → Ability design brief to replace both with one
-coherent, fully data-driven model. **"Design finalized" means ready to build, not built** — every
-task below starts unchecked.
+coherent, fully data-driven model.
 
 **Scope: Phase A (Tier 1 mechanism) plus the start of Phase B (Tier 2 scaffolding), stopping
 short of content/migration/commands** — those are Sprint 78. Mirrors the Sprint 73/74
@@ -980,14 +987,14 @@ mechanism-then-policy split precedent.
 
 | # | Task | Status |
 |---|------|--------|
-| 77.1 | **`engine/game/abilities.py` — `AbilityDef`.** New Tier 1 value object (mirrors `engine/game/leveling.py`'s shape): id, discipline id, tier, `ability_type`, `activation_type`, prerequisites, cost, usage-requirement descriptors. Pure data, no hardcoded ability IDs (`discipline_ability_system.md` §2). | [ ] |
-| 77.2 | **`check_acquisition(player_state, ability, discipline_rank) -> AcquisitionResult`.** Generic "can this player learn this ability" mechanism — cost affordable, prerequisites held, discipline rank + level met. Knows nothing about what an ability unlocks (§2). | [ ] |
-| 77.3 | **`check_usage(actor_state, ability, target_state, world_state) -> UsageResult`.** Generic "can this ability be performed right now" mechanism — character/target-state match via existing `Player.flags`/`ActiveEffect`, cooldown/resource affordability. **Genuinely new capability** — today's verbs hardcode their own gating in Python; this is the single biggest structural addition (§2, §5.3). | [ ] |
-| 77.4 | **`resolve_proficiency(base_level, modifiers, improve_chance, max_rank) -> float`.** Thin wrapper composing the existing `modifiers.py::resolve()` and `checks.py::skill_check()` Tier 1 primitives. **Parameterized, not hardcoded**: `improve_chance` and `max_rank` are supplied by the Tier 2 caller (from YAML/config), not baked in as module constants the way `features/skills/service.py`'s `IMPROVE_CHANCE`/`MAX_LEVEL` are today — that would leak policy into the mechanism layer (§2). | [ ] |
-| 77.5 | **Cooldown/resource primitives.** A small, generic `ResourceLedger`-style affordability check (stamina is the only resource Lorecraft has today — no speculative multi-resource system) plus a cooldown-timestamp check, both keyed off existing `ActiveEffect`/meter primitives. No new resource-type registry (§2). | [ ] |
-| 77.6 | **Unit tests for 77.1–77.5.** Pure Tier 1 module, no content yet — cover acquisition/usage/proficiency/cooldown edge cases with synthetic `AbilityDef`s, not real disciplines (those arrive in Sprint 78). | [ ] |
-| 77.7 | **Phase B.1 — `features/disciplines/` package skeleton.** New Tier 2 package (manifest-only stub at this stage) that will host the registries Sprint 78 builds out; establishes the package location and import boundaries (may import `engine.*`, never a web host) ahead of the registry/schema work. | [ ] |
-| 77.8 | **Docs.** This roadmap section plus confirmation that `discipline_ability_system.md` accurately reflects the shipped Tier 1 module's actual signatures (update if implementation deviates from the design in any parameter name/shape). | [ ] |
+| 77.1 | **`engine/game/abilities.py` — `AbilityDef`.** New Tier 1 value object (mirrors `engine/game/leveling.py`'s shape): id, discipline id, tier, `ability_type`, `activation_type`, prerequisites, cost, usage-requirement descriptors. Pure data, no hardcoded ability IDs (`discipline_ability_system.md` §2). | [x] |
+| 77.2 | **`check_acquisition(player_state, ability, discipline_rank) -> AcquisitionResult`.** Generic "can this player learn this ability" mechanism — cost affordable, prerequisites held, discipline rank + level met. Knows nothing about what an ability unlocks (§2). | [x] |
+| 77.3 | **`check_usage(actor_state, ability, target_state, world_state) -> UsageResult`.** Generic "can this ability be performed right now" mechanism — character/target-state match via existing `Player.flags`/`ActiveEffect`, cooldown/resource affordability. **Genuinely new capability** — today's verbs hardcode their own gating in Python; this is the single biggest structural addition (§2, §5.3). | [x] |
+| 77.4 | **`resolve_proficiency(rng, base_level, modifiers, improve_chance, max_rank) -> float`.** Thin wrapper composing the existing `modifiers.py::resolve()` and `checks.py::skill_check()` Tier 1 primitives. **Parameterized, not hardcoded**: `improve_chance` and `max_rank` are supplied by the Tier 2 caller (from YAML/config), not baked in as module constants the way `features/skills/service.py`'s `IMPROVE_CHANCE`/`MAX_LEVEL` are today — that would leak policy into the mechanism layer (§2). Shipped signature leads with `rng: GameRng` (not in the original illustrative sketch) since the roll composes `skill_check`, which requires it and is never called with bare `random`; it therefore also inherits `skill_check`'s 5%/95% floor/ceil clamping — see `discipline_ability_system.md` §2 for the full accepted-deviation note. | [x] |
+| 77.5 | **Cooldown/resource primitives.** A small, generic `ResourceLedger`-style affordability check (stamina is the only resource Lorecraft has today — no speculative multi-resource system) plus a cooldown-timestamp check, both keyed off existing `ActiveEffect`/meter primitives. No new resource-type registry (§2). | [x] |
+| 77.6 | **Unit tests for 77.1–77.5.** Pure Tier 1 module, no content yet — cover acquisition/usage/proficiency/cooldown edge cases with synthetic `AbilityDef`s, not real disciplines (those arrive in Sprint 78). | [x] |
+| 77.7 | **Phase B.1 — `features/disciplines/` package skeleton.** New Tier 2 package (manifest-only stub at this stage) that will host the registries Sprint 78 builds out; establishes the package location and import boundaries (may import `engine.*`, never a web host) ahead of the registry/schema work. | [x] |
+| 77.8 | **Docs.** This roadmap section plus confirmation that `discipline_ability_system.md` accurately reflects the shipped Tier 1 module's actual signatures (update if implementation deviates from the design in any parameter name/shape). | [x] |
 
 **Tier boundary:** 77.1–77.6 are pure **Tier 1** (`engine/game/abilities.py`) — no discipline
 identities, ability content, or policy values hardcoded anywhere in this sprint. 77.7 opens the
@@ -1097,16 +1104,18 @@ beyond what Sprint 77 already shipped.
   + composition-layer work, no `engine/` changes; Database Specialist gate skipped). Branch
   `sprint-76-economy-live-tuning`, all tasks `[x]` — see the Sprint 76 section above for the full
   commit list.
-- **Used (in design, implementing 77–78):** Discipline/Ability system (user-driven design brief,
-  reworked to fit Lorecraft's combat-shelved status and Tier 1/2 architecture). **77 and 78 are
-  reserved** — design finalized and Research/Planning-reviewed 2026-07-13 (see
-  [`discipline_ability_system.md`](discipline_ability_system.md)), split into **Sprint 77**
-  (Tier 1 mechanism — `engine/game/abilities.py`, Phases A–B.1) and **Sprint 78** (Tier 2
-  policy/content — `features/disciplines/`, schema + content migration, command rework,
-  Phases B.2–F), mirroring the Sprint 73/74 mechanism-then-policy precedent. Neither sprint has
-  started implementation — see the Sprint 77/78 sections above for full task tables. **Next
-  genuinely free sprint number: 79.** Don't recycle a number that appears here or in
-  [`roadmap_completed.md`](roadmap_completed.md).
+- **Used (77 all complete, pending Integrator merge/version-bump; 78 in design):**
+  Discipline/Ability system (user-driven design brief, reworked to fit Lorecraft's
+  combat-shelved status and Tier 1/2 architecture), split into **Sprint 77** (Tier 1 mechanism —
+  `engine/game/abilities.py`, Phases A–B.1) and **Sprint 78** (Tier 2 policy/content —
+  `features/disciplines/`, schema + content migration, command rework, Phases B.2–F), mirroring
+  the Sprint 73/74 mechanism-then-policy precedent. Design finalized and Research/Planning-reviewed
+  2026-07-13 (see [`discipline_ability_system.md`](discipline_ability_system.md)). **Sprint 77 is
+  now implemented** — 77.1–77.8 all `[x]` on branch `sprint-77-abilities-tier1` (7 implementation
+  commits plus the earlier design-finalization commit; no schema/DB changes), awaiting Integrator
+  merge/version-bump. **Sprint 78 has not started implementation** — see the Sprint 77/78 sections
+  above for full task tables. **Next genuinely free sprint number: 79.** Don't recycle a number
+  that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 

@@ -124,18 +124,33 @@ data-driven mechanism module, no IO, no session, no hardcoded ability IDs):
   no usage-requirement mechanism at all (a `forage`-flavor node's only "usage requirement" is
   hardcoded into the verb's own Python `conditions=[...]`, not data). Generalizing this into
   Tier 1 is the single biggest structural addition this guide proposes.
-- **`resolve_proficiency(base_level, modifiers) -> float`** — thin wrapper composing the
-  *existing* `engine/game/modifiers.py::resolve()` and `engine/game/checks.py::skill_check()`
-  Tier 1 primitives; proficiency growth-by-use logic itself is lifted near-verbatim from
+- **`resolve_proficiency(rng, base_level, modifiers, improve_chance, max_rank) -> float`** — as
+  shipped in `engine/game/abilities.py`, a thin wrapper composing the *existing*
+  `engine/game/modifiers.py::resolve()` and `engine/game/checks.py::skill_check()` Tier 1
+  primitives; proficiency growth-by-use logic itself is lifted near-verbatim from
   `SkillService.record_use()` (already Tier 1-appropriate in character, just misplaced under
   `features/skills/` today — see §6's migration note). **Important correction to "near-verbatim":**
   `SkillService.record_use()` (`features/skills/service.py:17,19,30`) currently bakes
   `IMPROVE_CHANCE = 0.1` and `MAX_LEVEL = 100` in as **module-level constants** — that's policy
-  masquerading as mechanism. The ported Tier 1 function must take them as parameters instead —
-  e.g. `resolve_proficiency(base_level, modifiers, improve_chance, max_rank)` — supplied by the
-  Tier 2 caller (from `world_content/disciplines.yaml` or a config row), not hardcoded in
-  `engine/game/abilities.py`. The mechanism knows *how* to roll a chance and cap a level; it
-  must not know *what* the chance or cap should be for any given discipline.
+  masquerading as mechanism. The ported Tier 1 function takes them as parameters instead —
+  `improve_chance` and `max_rank` — supplied by the Tier 2 caller (from
+  `world_content/disciplines.yaml` or a config row), not hardcoded in `engine/game/abilities.py`.
+  The mechanism knows *how* to roll a chance and cap a level; it does not know *what* the chance
+  or cap should be for any given discipline.
+
+  **Signature note (deviates from this doc's original illustrative sketch, reviewed and
+  accepted):** the shipped signature leads with `rng: GameRng` —
+  `resolve_proficiency(rng, base_level, modifiers, improve_chance, max_rank)`, not the
+  `resolve_proficiency(base_level, modifiers, improve_chance, max_rank)` shown above earlier in
+  this section. The improvement roll is inherently randomized, and per project convention
+  `random` is never called directly outside `GameRng` — so `rng` is threaded through as the
+  first parameter, mirroring `skill_check`'s own convention (`rng` first). Internally it composes
+  `checks.py::skill_check()` to perform the actual roll, which means `resolve_proficiency`
+  inherits `skill_check`'s `CHECK_FLOOR`/`CHECK_CEIL` (5/95) clamping: an `improve_chance=0.0`
+  still yields roughly a 5% chance to improve, and `improve_chance=1.0` still yields roughly a
+  95% chance — never a hard 0% or 100%. This is deliberate, matching `checks.py`'s "no
+  impossible checks, no sure things" philosophy engine-wide, not a bug to fix or a design
+  decision to re-litigate.
 - **Cooldown/resource primitives** — a small, generic `ResourceLedger`-style check (does the
   actor have enough of `resource_type` — stamina is the only resource that exists in Lorecraft
   today, via the `fatigue` feature's meter) and a cooldown-timestamp check, both keyed off
