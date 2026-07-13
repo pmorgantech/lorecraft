@@ -33,7 +33,7 @@ pub use backpressure::{
     RateLimitConfig, TokenBucket, DEFAULT_COALESCE_QUEUE_CAPACITY, DEFAULT_COMMAND_BURST,
     DEFAULT_COMMAND_RATE_PER_SEC, DEFAULT_MAX_CONSECUTIVE_OVERFLOW,
 };
-pub use connections::{ConnectionRegistry, OutboundPayload, OutboundSender};
+pub use connections::{ConnectionRegistry, OutboundFrame, OutboundPayload, OutboundSender};
 pub use dispatch::{
     dispatch, dispatch_with_config, outbound_channel, DeliveryFailure, DisconnectDirective,
     DispatchReport, Recipient, SendError, DEFAULT_OUTBOUND_QUEUE_DEPTH,

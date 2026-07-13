@@ -32,10 +32,38 @@ use crate::backpressure::OverflowTracker;
 /// it (see `lorecraft-protocol::gateway`).
 pub type OutboundPayload = serde_json::Value;
 
+/// One queued outbound frame: the opaque [`OutboundPayload`] plus the optional
+/// coalescing key the policy owner stamped on the originating
+/// [`DeliveryDirective`](lorecraft_protocol::gateway::DeliveryDirective).
+///
+/// The transport frame carries the key alongside the payload so a connection's
+/// writer-side [`CoalescingQueue`](crate::backpressure::CoalescingQueue) can honor
+/// keep-latest **without ever interpreting the payload** — `dispatch` attaches the
+/// key verbatim and never reads it (see [`crate::dispatch`]). Keyless frames
+/// (`coalesce_key: None`, e.g. `feed_append`) never coalesce.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutboundFrame {
+    /// The opaque legacy frame relayed to the client verbatim.
+    pub payload: OutboundPayload,
+    /// The coalescing key, or `None` for a strictly-ordered keyless frame.
+    pub coalesce_key: Option<String>,
+}
+
+impl OutboundFrame {
+    /// A keyless frame (never coalesces) — the common case for feed-style events.
+    pub fn keyless(payload: OutboundPayload) -> Self {
+        Self {
+            payload,
+            coalesce_key: None,
+        }
+    }
+}
+
 /// The sender half of a connection's bounded outbound queue. `dispatch` pushes
-/// payloads into it with `try_send`; the draining writer task lives in
-/// `lorecraft-server` (task 4).
-pub type OutboundSender = mpsc::Sender<OutboundPayload>;
+/// [`OutboundFrame`]s into it with `try_send`; the draining writer task lives in
+/// `lorecraft-server`, which folds each frame's `coalesce_key` through a
+/// [`CoalescingQueue`](crate::backpressure::CoalescingQueue).
+pub type OutboundSender = mpsc::Sender<OutboundFrame>;
 
 /// A single connection's outbound handle: its bounded-queue sender plus the
 /// per-connection [`OverflowTracker`] the backpressure mechanism advances on each
@@ -258,7 +286,7 @@ mod tests {
 
     /// Convenience: an unbounded-enough channel whose receiver is kept alive by
     /// the returned guard so the sender stays open for the duration of a test.
-    fn open_channel() -> (OutboundSender, mpsc::Receiver<OutboundPayload>) {
+    fn open_channel() -> (OutboundSender, mpsc::Receiver<OutboundFrame>) {
         mpsc::channel(8)
     }
 

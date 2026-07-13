@@ -28,7 +28,9 @@ use std::time::Duration;
 
 use anyhow::Context;
 use lorecraft_server::lorecraft_events::ConnectionRegistry;
-use lorecraft_server::{build_router, ForwardClient, GatewayConfig};
+use lorecraft_server::{
+    build_router, DisconnectHub, DispatchContext, ForwardClient, GatewayConfig,
+};
 
 /// How many times to retry the initial UDS connect to the Python adapter (it
 /// may still be starting when the gateway boots), and the pause between tries.
@@ -63,11 +65,11 @@ fn config_from_env() -> anyhow::Result<GatewayConfig> {
 /// gateway-before-adapter startup ordering isn't fatal.
 async fn connect_with_retry(
     socket_path: &Path,
-    registry: Arc<ConnectionRegistry>,
+    ctx: DispatchContext,
 ) -> anyhow::Result<ForwardClient> {
     let mut last_err: Option<lorecraft_server::ForwardError> = None;
     for attempt in 1..=CONNECT_ATTEMPTS {
-        match ForwardClient::connect(socket_path, Arc::clone(&registry)).await {
+        match ForwardClient::connect(socket_path, ctx.clone()).await {
             Ok(client) => return Ok(client),
             Err(err) => {
                 tracing::info!(
@@ -97,7 +99,13 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Arc::new(config_from_env()?);
     let registry = Arc::new(ConnectionRegistry::new());
-    let forward = Arc::new(connect_with_retry(&config.socket_path, Arc::clone(&registry)).await?);
+    let disconnect = Arc::new(DisconnectHub::new());
+    let ctx = DispatchContext::new(
+        Arc::clone(&registry),
+        Arc::clone(&disconnect),
+        config.backpressure,
+    );
+    let forward = Arc::new(connect_with_retry(&config.socket_path, ctx).await?);
 
     let listener = tokio::net::TcpListener::bind(config.bind_address)
         .await
@@ -108,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
     // The harness contract: one parseable stdout line once serving.
     println!("GATEWAY_LISTENING {addr}");
 
-    let router = build_router(config, registry, forward);
+    let router = build_router(config, registry, forward, disconnect);
     axum::serve(listener, router)
         .await
         .context("gateway server exited with an error")?;

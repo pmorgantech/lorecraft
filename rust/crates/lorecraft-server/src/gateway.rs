@@ -1,13 +1,13 @@
 //! `gateway.rs` — the Axum app skeleton: config, shared state, and router.
 //!
 //! It boots an Axum [`Router`] with a real `GET /healthz` route, the **live**
-//! player `/ws` route ([`crate::ws_player`], Phase 3b), and the still-stubbed
-//! admin `/admin/ws` seam ([`crate::ws_admin`], filled in by 3c), sharing a
-//! [`GatewayState`] that threads the static [`GatewayConfig`], the authoritative
-//! [`ConnectionRegistry`], and the shared [`ForwardClient`] into every handler.
-//! (The player WS handler opens its own per-connection `ForwardClient`; the
-//! shared one serves the health check and, later, admin push — see
-//! `forward.rs`'s module docs for the per-connection-link design decision.)
+//! player `/ws` route ([`crate::ws_player`], Phase 3b), and the **live** admin
+//! `/admin/ws` route ([`crate::ws_admin`], Phase 3c), sharing a [`GatewayState`]
+//! that threads the static [`GatewayConfig`], the authoritative
+//! [`ConnectionRegistry`], the slow-client [`DisconnectHub`], and the shared
+//! [`ForwardClient`] into every handler. (Each player/admin WS handler opens its
+//! own per-connection `ForwardClient`; the shared one serves the health check —
+//! see `forward.rs`'s module docs for the per-connection-link design decision.)
 //!
 //! Config is **static** this phase (design decision 12): the dials here
 //! (bind address, socket path, world id, deadline, queue depth) are *operational*,
@@ -20,9 +20,12 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
-use lorecraft_events::{ConnectionRegistry, DEFAULT_OUTBOUND_QUEUE_DEPTH};
+use lorecraft_events::{
+    BackpressureConfig, ConnectionRegistry, RateLimitConfig, DEFAULT_OUTBOUND_QUEUE_DEPTH,
+};
 use serde_json::json;
 
+use crate::disconnect::{DisconnectHub, DispatchContext};
 use crate::forward::ForwardClient;
 use crate::{proxy, ws_admin, ws_player};
 
@@ -55,6 +58,16 @@ pub struct GatewayConfig {
     /// misbehaving adapter can never wedge a connection's teardown forever; on
     /// expiry the link is dropped anyway (logged).
     pub disconnect_timeout_ms: u64,
+    /// Slow-client backpressure threshold (Phase 3c, item 3): how many consecutive
+    /// outbound-queue overflows a connection may accumulate before the gateway
+    /// closes it with WS 1013. Operational, not game-balance (design decision 12) —
+    /// static this phase, an ops live-tunable candidate later.
+    pub backpressure: BackpressureConfig,
+    /// Per-player command rate limit (Phase 3c, item 5): a generous-by-default
+    /// token bucket applied to command intake so an abusive flood is throttled while
+    /// a well-behaved interactive client never approaches the limit. Operational
+    /// config, static this phase.
+    pub rate_limit: RateLimitConfig,
 }
 
 impl Default for GatewayConfig {
@@ -68,6 +81,8 @@ impl Default for GatewayConfig {
             outbound_queue_depth: DEFAULT_OUTBOUND_QUEUE_DEPTH,
             handshake_timeout_ms: 5_000,
             disconnect_timeout_ms: 5_000,
+            backpressure: BackpressureConfig::default(),
+            rate_limit: RateLimitConfig::default(),
         }
     }
 }
@@ -85,22 +100,40 @@ pub struct GatewayState {
     pub registry: Arc<ConnectionRegistry>,
     /// The framed UDS client forwarding commands to the Python adapter.
     pub forward: Arc<ForwardClient>,
+    /// The server-owned slow-client close-signal hub (Phase 3c, item 3): shared by
+    /// every per-connection `ForwardClient` so a dispatch-detected overflow on any
+    /// link can close the stalled connection's socket.
+    pub disconnect: Arc<DisconnectHub>,
     /// Shared HTTP client used by the reverse proxy to reach the Python backend
     /// (redirect-following disabled; see [`crate::proxy`]).
     pub http_client: Arc<reqwest::Client>,
 }
 
-/// Build the Axum [`Router`] for the gateway with the health check wired for real
-/// and the player/admin WS route seams in place (stubbed until 3b/3c).
+impl GatewayState {
+    /// Build the [`DispatchContext`] a fresh per-connection `ForwardClient` needs:
+    /// the shared registry + close-signal hub + operational backpressure threshold.
+    pub fn dispatch_context(&self) -> DispatchContext {
+        DispatchContext::new(
+            Arc::clone(&self.registry),
+            Arc::clone(&self.disconnect),
+            self.config.backpressure,
+        )
+    }
+}
+
+/// Build the Axum [`Router`] for the gateway: the health check, the live player
+/// (`/ws`) and admin (`/admin/ws`) WS routes, and the reverse-proxy fallback.
 pub fn build_router(
     config: Arc<GatewayConfig>,
     registry: Arc<ConnectionRegistry>,
     forward: Arc<ForwardClient>,
+    disconnect: Arc<DisconnectHub>,
 ) -> Router {
     let state = GatewayState {
         config,
         registry,
         forward,
+        disconnect,
         http_client: Arc::new(proxy::build_http_client()),
     };
     Router::new()

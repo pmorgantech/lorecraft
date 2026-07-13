@@ -18,7 +18,9 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
 use lorecraft_server::lorecraft_events::ConnectionRegistry;
-use lorecraft_server::{build_router, ForwardClient, GatewayConfig};
+use lorecraft_server::{
+    build_router, DisconnectHub, DispatchContext, ForwardClient, GatewayConfig,
+};
 use tokio::net::{TcpListener, UnixListener};
 
 const LOBBY_HTML: &str = "<html><body>lobby</body></html>";
@@ -117,18 +119,24 @@ async fn start_gateway(backend_url: String) -> Harness {
     spawn_bare_uds_peer(listener);
 
     let registry = Arc::new(ConnectionRegistry::new());
+    let disconnect = Arc::new(DisconnectHub::new());
     let config = Arc::new(GatewayConfig {
         socket_path: socket_path.clone(),
         backend_url,
         handshake_timeout_ms: 2_000,
         ..GatewayConfig::default()
     });
+    let ctx = DispatchContext::new(
+        Arc::clone(&registry),
+        Arc::clone(&disconnect),
+        config.backpressure,
+    );
     let forward = Arc::new(
-        ForwardClient::connect(&socket_path, Arc::clone(&registry))
+        ForwardClient::connect(&socket_path, ctx)
             .await
             .expect("shared forward link connects"),
     );
-    let router = build_router(config, registry, forward);
+    let router = build_router(config, registry, forward, disconnect);
 
     let tcp = TcpListener::bind("127.0.0.1:0")
         .await

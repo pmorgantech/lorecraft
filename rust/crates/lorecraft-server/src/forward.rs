@@ -59,7 +59,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
-use lorecraft_events::{dispatch, ConnectionRegistry};
+use lorecraft_events::dispatch_with_config;
 use lorecraft_protocol::envelope::CommandEnvelope;
 use lorecraft_protocol::gateway::{DisconnectReason, GatewayInbound, GatewayOutbound};
 use lorecraft_protocol::ids::{PlayerId, SessionId};
@@ -68,6 +68,8 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::UnixStream;
 use tokio::sync::{oneshot, Mutex};
 use tokio::task::JoinHandle;
+
+use crate::disconnect::DispatchContext;
 
 const LENGTH_PREFIX_BYTES: usize = 4;
 
@@ -161,14 +163,16 @@ pub struct ForwardClient {
 
 impl ForwardClient {
     /// Connect to the Python adapter's UDS listener at `socket_path` and spawn the
-    /// background read loop that demultiplexes replies against `registry`.
+    /// background read loop that demultiplexes replies against `ctx`.
     ///
     /// The returned client is ready to [`send_command`](Self::send_command)
     /// immediately; async pushes and command-reply side-effect deliveries begin
-    /// flowing into `registry` as soon as Python emits them.
+    /// flowing into `ctx.registry` as soon as Python emits them, and a
+    /// slow-consumer overflow reported by [`dispatch_with_config`] is propagated to
+    /// the offending connection's writer via `ctx.disconnect` (Phase 3c, item 3).
     pub async fn connect(
         socket_path: impl AsRef<Path>,
-        registry: Arc<ConnectionRegistry>,
+        ctx: DispatchContext,
     ) -> Result<Self, ForwardError> {
         let stream = UnixStream::connect(socket_path).await?;
         let (read, write) = stream.into_split();
@@ -177,7 +181,7 @@ impl ForwardClient {
         let disconnect: PendingDisconnect = Arc::new(Mutex::new(None));
         let read_task = tokio::spawn(read_loop(
             read,
-            registry,
+            ctx,
             Arc::clone(&pending),
             Arc::clone(&control),
             Arc::clone(&disconnect),
@@ -206,6 +210,25 @@ impl ForwardClient {
                 accepted,
                 player_id,
             }),
+            _ => Err(ForwardError::UnexpectedReply),
+        }
+    }
+
+    /// Validate an admin `?token=` JWT: write a
+    /// [`GatewayInbound::ValidateAdminToken`] and await the routed shape-distinct
+    /// [`GatewayOutbound::AdminAuthResult`], returning whether Python accepted it.
+    ///
+    /// The admin result carries no `player_id` (admin tokens are not player-scoped),
+    /// so — unlike [`redeem_ticket`](Self::redeem_ticket) — there is no player to
+    /// resolve; a validated admin is registered by the caller into the Rust-local
+    /// admin registry (see the resolved admin-push design in
+    /// `lorecraft-protocol::gateway`).
+    pub async fn validate_admin(&self, token: &str) -> Result<bool, ForwardError> {
+        let frame = GatewayInbound::ValidateAdminToken {
+            token: token.to_owned(),
+        };
+        match self.send_control(frame).await? {
+            GatewayOutbound::AdminAuthResult { accepted } => Ok(accepted),
             _ => Err(ForwardError::UnexpectedReply),
         }
     }
@@ -364,14 +387,14 @@ impl Drop for ForwardClient {
 /// [`ForwardClient::send_command`] — a dropped connection never hangs a caller.
 async fn read_loop(
     mut read: OwnedReadHalf,
-    registry: Arc<ConnectionRegistry>,
+    ctx: DispatchContext,
     pending: PendingReplies,
     control: PendingControl,
     disconnect: PendingDisconnect,
 ) {
     loop {
         match read_frame(&mut read).await {
-            Ok(Some(frame)) => demultiplex(frame, &registry, &pending, &control, &disconnect).await,
+            Ok(Some(frame)) => demultiplex(frame, &ctx, &pending, &control, &disconnect).await,
             Ok(None) => break, // clean end-of-stream: peer closed
             Err(err) => {
                 // Not silent: a decode/transport fault ends the link, and the
@@ -390,7 +413,7 @@ async fn read_loop(
 /// Route one decoded outbound frame to its pending request and/or the registry.
 async fn demultiplex(
     frame: GatewayOutbound,
-    registry: &ConnectionRegistry,
+    ctx: &DispatchContext,
     pending: &PendingReplies,
     control: &PendingControl,
     disconnect: &PendingDisconnect,
@@ -403,13 +426,7 @@ async fn demultiplex(
         } => {
             // Side-effect fan-out is dispatched independently of the caller's reply.
             for directive in &deliveries {
-                let report = dispatch(registry, directive);
-                if !report.is_clean() {
-                    tracing::warn!(
-                        failures = report.failures.len(),
-                        "command-reply delivery had non-silent failures"
-                    );
-                }
+                relay_directive(ctx, directive);
             }
             let waiter = pending.lock().await.remove(&command_id.0);
             match waiter {
@@ -429,13 +446,7 @@ async fn demultiplex(
             }
         }
         GatewayOutbound::Deliver { directive } => {
-            let report = dispatch(registry, &directive);
-            if !report.is_clean() {
-                tracing::warn!(
-                    failures = report.failures.len(),
-                    "async deliver had non-silent failures"
-                );
-            }
+            relay_directive(ctx, &directive);
         }
         // Control replies for the sequential per-link handshakes: complete the
         // single pending control slot. An unsolicited one (no waiter) is a
@@ -466,6 +477,34 @@ async fn demultiplex(
                 None => tracing::warn!("disconnect ack arrived with no pending teardown"),
             }
         }
+    }
+}
+
+/// Fan one directive into the shared registry and enforce backpressure: relay via
+/// [`dispatch_with_config`] (using the operational threshold), log any non-silent
+/// failures, and — for every recipient whose sustained overflow tripped the
+/// slow-consumer threshold — fire its close signal through the
+/// [`DisconnectHub`](crate::disconnect::DisconnectHub) so the owning writer task
+/// closes the WebSocket with 1013 (Phase 3c, item 3). Each trigger is a
+/// non-blocking `watch` send, so tearing one stalled consumer down never delays a
+/// sibling's delivery.
+fn relay_directive(
+    ctx: &DispatchContext,
+    directive: &lorecraft_protocol::gateway::DeliveryDirective,
+) {
+    let report = dispatch_with_config(&ctx.registry, directive, &ctx.backpressure);
+    if !report.is_clean() {
+        tracing::warn!(
+            failures = report.failures.len(),
+            "fan-out delivery had non-silent failures"
+        );
+    }
+    for directive in &report.disconnect {
+        tracing::info!(
+            reason = directive.reason.as_str(),
+            "slow consumer tripped disconnect threshold; signalling close"
+        );
+        ctx.disconnect.trigger(directive);
     }
 }
 
@@ -502,12 +541,25 @@ fn encode_frame(frame: &GatewayOutbound) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lorecraft_events::{outbound_channel, DEFAULT_OUTBOUND_QUEUE_DEPTH};
+    use crate::disconnect::DisconnectHub;
+    use lorecraft_events::{
+        outbound_channel, BackpressureConfig, ConnectionRegistry, DEFAULT_OUTBOUND_QUEUE_DEPTH,
+    };
     use lorecraft_protocol::gateway::{DeliveryDirective, DeliveryTarget, GatewayInbound};
     use lorecraft_protocol::ids::{ActorId, CommandId, PlayerId, SessionId, WorldId};
     use lorecraft_protocol::PROTOCOL_VERSION;
     use serde_json::json;
     use tokio::net::UnixListener;
+
+    /// A dispatch context wrapping `registry` with a fresh hub + default threshold —
+    /// the shape [`ForwardClient::connect`] now takes.
+    fn ctx(registry: Arc<ConnectionRegistry>) -> DispatchContext {
+        DispatchContext::new(
+            registry,
+            Arc::new(DisconnectHub::new()),
+            BackpressureConfig::default(),
+        )
+    }
 
     fn sample_envelope(command_id: &str, raw: &str) -> CommandEnvelope {
         CommandEnvelope {
@@ -588,7 +640,7 @@ mod tests {
             tokio::time::sleep(std::time::Duration::from_millis(200)).await;
         });
 
-        let client = ForwardClient::connect(&socket_path, Arc::clone(&registry))
+        let client = ForwardClient::connect(&socket_path, ctx(Arc::clone(&registry)))
             .await
             .expect("connect");
 
@@ -610,7 +662,7 @@ mod tests {
                 .expect("recipient receives without stalling")
                 .expect("a payload was delivered");
         assert_eq!(
-            delivered,
+            delivered.payload,
             json!({"type": "feed_append", "text": "someone looks around."})
         );
 
@@ -635,7 +687,7 @@ mod tests {
         });
 
         let registry = Arc::new(ConnectionRegistry::new());
-        let client = ForwardClient::connect(&socket_path, registry)
+        let client = ForwardClient::connect(&socket_path, ctx(registry))
             .await
             .expect("connect");
 
@@ -692,7 +744,7 @@ mod tests {
         });
 
         let registry = Arc::new(ConnectionRegistry::new());
-        let client = ForwardClient::connect(&socket_path, registry)
+        let client = ForwardClient::connect(&socket_path, ctx(registry))
             .await
             .expect("connect");
 
@@ -772,7 +824,7 @@ mod tests {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         });
 
-        let client = ForwardClient::connect(&socket_path, Arc::clone(&registry))
+        let client = ForwardClient::connect(&socket_path, ctx(Arc::clone(&registry)))
             .await
             .expect("connect");
 
@@ -786,7 +838,7 @@ mod tests {
             .try_recv()
             .expect("player_left already delivered");
         assert_eq!(
-            delivered,
+            delivered.payload,
             json!({"type": "player_left", "player_id": "leaver"})
         );
 
@@ -811,7 +863,7 @@ mod tests {
         });
 
         let registry = Arc::new(ConnectionRegistry::new());
-        let client = ForwardClient::connect(&socket_path, registry)
+        let client = ForwardClient::connect(&socket_path, ctx(registry))
             .await
             .expect("connect");
 
@@ -840,7 +892,7 @@ mod tests {
         });
 
         let registry = Arc::new(ConnectionRegistry::new());
-        let client = ForwardClient::connect(&socket_path, registry)
+        let client = ForwardClient::connect(&socket_path, ctx(registry))
             .await
             .expect("connect");
 

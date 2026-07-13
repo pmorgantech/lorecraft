@@ -40,7 +40,7 @@ use tokio::sync::mpsc;
 
 use crate::admins::AdminId;
 use crate::backpressure::{BackpressureConfig, BackpressureDisconnect};
-use crate::connections::{Conn, ConnectionRegistry, OutboundPayload};
+use crate::connections::{Conn, ConnectionRegistry, OutboundFrame, OutboundPayload};
 
 /// Default depth of a per-connection bounded outbound queue.
 ///
@@ -58,7 +58,7 @@ pub fn outbound_channel(
     depth: usize,
 ) -> (
     crate::connections::OutboundSender,
-    mpsc::Receiver<OutboundPayload>,
+    mpsc::Receiver<OutboundFrame>,
 ) {
     mpsc::channel(depth)
 }
@@ -149,10 +149,13 @@ impl DispatchReport {
 /// player targets. It is **ignored for `Admin`** fan-out: `exclude` is a
 /// [`PlayerId`] and no admin console has one, so the two namespaces never collide.
 ///
-/// `directive.coalesce_key` is **not** consulted here: the mpsc transport queue this
-/// path feeds cannot do keyed replacement, so coalescing is the separate
+/// `directive.coalesce_key` is **carried** onto each transport
+/// [`OutboundFrame`](crate::connections::OutboundFrame) verbatim but never
+/// *interpreted* here — the mpsc transport queue cannot itself do keyed
+/// replacement, so the actual keep-latest coalescing is the
 /// [`CoalescingQueue`](crate::backpressure::CoalescingQueue) mechanism the server
-/// wraps around its writer drain (a later task). This function stays payload-blind.
+/// folds into its writer drain. Attaching (not reading) the key keeps this function
+/// payload-blind while letting the writer honor the policy owner's key.
 pub fn dispatch(registry: &ConnectionRegistry, directive: &DeliveryDirective) -> DispatchReport {
     dispatch_with_config(registry, directive, &BackpressureConfig::default())
 }
@@ -165,10 +168,18 @@ pub fn dispatch_with_config(
     config: &BackpressureConfig,
 ) -> DispatchReport {
     let mut report = DispatchReport::default();
+    let coalesce_key = directive.coalesce_key.as_deref();
     match &directive.target {
         DeliveryTarget::Player { id } => {
             if directive.exclude.as_ref() != Some(id) {
-                relay_player(registry, id, &directive.payload, config, &mut report);
+                relay_player(
+                    registry,
+                    id,
+                    &directive.payload,
+                    coalesce_key,
+                    config,
+                    &mut report,
+                );
             }
         }
         DeliveryTarget::Room { id } => {
@@ -176,7 +187,14 @@ pub fn dispatch_with_config(
                 if directive.exclude.as_ref() == Some(&pid) {
                     continue;
                 }
-                relay_player(registry, &pid, &directive.payload, config, &mut report);
+                relay_player(
+                    registry,
+                    &pid,
+                    &directive.payload,
+                    coalesce_key,
+                    config,
+                    &mut report,
+                );
             }
         }
         DeliveryTarget::Global => {
@@ -184,7 +202,14 @@ pub fn dispatch_with_config(
                 if directive.exclude.as_ref() == Some(&pid) {
                     continue;
                 }
-                relay_player(registry, &pid, &directive.payload, config, &mut report);
+                relay_player(
+                    registry,
+                    &pid,
+                    &directive.payload,
+                    coalesce_key,
+                    config,
+                    &mut report,
+                );
             }
         }
         DeliveryTarget::Admin => {
@@ -193,6 +218,7 @@ pub fn dispatch_with_config(
                     Recipient::Admin(admin_id),
                     &conn,
                     directive.payload.clone(),
+                    coalesce_key.map(str::to_owned),
                     config,
                     &mut report,
                 );
@@ -207,6 +233,7 @@ fn relay_player(
     registry: &ConnectionRegistry,
     player_id: &PlayerId,
     payload: &OutboundPayload,
+    coalesce_key: Option<&str>,
     config: &BackpressureConfig,
     report: &mut DispatchReport,
 ) {
@@ -216,24 +243,32 @@ fn relay_player(
             Recipient::Player(player_id.clone()),
             &conn,
             payload.clone(),
+            coalesce_key.map(str::to_owned),
             config,
             report,
         ),
     }
 }
 
-/// Non-blocking relay of one payload into a resolved connection's bounded queue,
+/// Non-blocking relay of one frame into a resolved connection's bounded queue,
 /// advancing its overflow tracker and recording the outcome. The registry lock is
 /// already released (the caller cloned the handle out), so a full or dead queue can
-/// never hold the shared map and can never delay a sibling recipient.
+/// never hold the shared map and can never delay a sibling recipient. The
+/// `coalesce_key` is attached to the transport frame verbatim (never interpreted)
+/// for the writer's [`CoalescingQueue`](crate::backpressure::CoalescingQueue).
 fn relay(
     recipient: Recipient,
     conn: &Conn,
     payload: OutboundPayload,
+    coalesce_key: Option<String>,
     config: &BackpressureConfig,
     report: &mut DispatchReport,
 ) {
-    match conn.sender.try_send(payload) {
+    let frame = OutboundFrame {
+        payload,
+        coalesce_key,
+    };
+    match conn.sender.try_send(frame) {
         Ok(()) => {
             conn.overflow.record_success();
             report.delivered += 1;
@@ -409,7 +444,10 @@ mod tests {
             .await
             .expect("fast recipient should receive without being stalled")
             .expect("consumer task delivered a payload");
-        assert_eq!(received, json!({"type": "feed_append", "text": "hi"}));
+        assert_eq!(
+            received.payload,
+            json!({"type": "feed_append", "text": "hi"})
+        );
 
         consumer.await.expect("consumer task joins cleanly");
     }

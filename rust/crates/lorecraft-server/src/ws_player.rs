@@ -48,26 +48,27 @@
 //! the socket abruptly (client sees 1006) rather than a crafted 1011 close,
 //! because the sink is owned by the writer task; acceptable this phase.
 
-use std::sync::Arc;
+use std::time::Instant;
 
 use axum::extract::ws::{close_code, CloseFrame, Message, Utf8Bytes, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
 use axum::response::Response;
-use futures_util::stream::SplitSink;
-use futures_util::{SinkExt, StreamExt};
-use lorecraft_events::outbound_channel;
+use futures_util::StreamExt;
+use lorecraft_events::{outbound_channel, OutboundFrame, TokenBucket};
 use lorecraft_protocol::envelope::CommandEnvelope;
 use lorecraft_protocol::gateway::DisconnectReason;
 use lorecraft_protocol::ids::{ActorId, CommandId, PlayerId, WorldId};
 use lorecraft_protocol::PROTOCOL_VERSION;
 use serde::Deserialize;
-use tokio::sync::mpsc;
+use serde_json::json;
 use tokio::time::{timeout, Duration};
 use uuid::Uuid;
 
 use crate::auth::{self, AuthError};
+use crate::disconnect::player_recipient;
 use crate::forward::{ForwardClient, SessionAck};
 use crate::gateway::{GatewayConfig, GatewayState};
+use crate::writer::writer_task;
 
 /// The `/ws` upgrade query. Only `?ticket=` is supported — the legacy
 /// `?player_id=` fallback (gated off by default in Python) is deliberately not
@@ -108,20 +109,17 @@ async fn close_with(mut socket: WebSocket, code: u16, reason: &str) {
 async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<String>) {
     let handshake_budget = Duration::from_millis(state.config.handshake_timeout_ms);
 
-    // 1. Dedicated per-connection UDS link to the Python adapter.
-    let forward = match ForwardClient::connect(
-        &state.config.socket_path,
-        Arc::clone(&state.registry),
-    )
-    .await
-    {
-        Ok(client) => client,
-        Err(err) => {
-            tracing::warn!(error = %err, "gateway backend unavailable for new connection");
-            close_with(socket, close_code::ERROR, "gateway backend unavailable").await;
-            return;
-        }
-    };
+    // 1. Dedicated per-connection UDS link to the Python adapter. Its read loop
+    //    shares the registry + slow-client close-signal hub with every other link.
+    let forward =
+        match ForwardClient::connect(&state.config.socket_path, state.dispatch_context()).await {
+            Ok(client) => client,
+            Err(err) => {
+                tracing::warn!(error = %err, "gateway backend unavailable for new connection");
+                close_with(socket, close_code::ERROR, "gateway backend unavailable").await;
+                return;
+            }
+        };
 
     // 2. Ticket auth: absent/empty and rejected tickets close identically (1008),
     //    mirroring Python's `_resolve_ws_player_id is None` path.
@@ -176,7 +174,11 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
     // delivery in the outbound queue.
     let (outbound_tx, outbound_rx) = outbound_channel(state.config.outbound_queue_depth);
     for frame in &ack.direct_frames {
-        if outbound_tx.send(frame.clone()).await.is_err() {
+        if outbound_tx
+            .send(OutboundFrame::keyless(frame.clone()))
+            .await
+            .is_err()
+        {
             // Unreachable in practice: we hold the receiver locally.
             tracing::error!(player_id = %player_id.0, "outbound queue closed before use");
             close_with(socket, close_code::ERROR, "internal error").await;
@@ -188,16 +190,61 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
         outbound_tx.clone(),
         Some(ack.room_id.clone()),
     );
+    // Register this connection's slow-client close signal (Phase 3c, item 3): the
+    // writer + this receive loop both watch it; the forward read loop flips it when
+    // dispatch reports this player as a stalled consumer.
+    let recipient = player_recipient(&player_id);
+    let mut close_rx = state.disconnect.register(&recipient);
 
-    // 5. Split the socket; the writer task owns the sink and drains the queue.
+    // 5. Split the socket; the writer task owns the sink and drains the (coalescing)
+    //    queue, closing with 1013 if the close signal fires.
     let (sink, mut stream) = socket.split();
-    let writer = tokio::spawn(writer_task(sink, outbound_rx));
+    let writer = tokio::spawn(writer_task(
+        sink,
+        outbound_rx,
+        close_rx.clone(),
+        state.config.outbound_queue_depth,
+    ));
 
-    // 6. Receive loop.
+    // 6. Receive loop. A generous per-connection token bucket (Phase 3c, item 5)
+    //    gates command intake; at-most-one-outstanding-per-connection is already
+    //    implicit — we await each command's reply before reading the next frame.
+    let mut rate = TokenBucket::new(state.config.rate_limit, Instant::now());
     let mut receive_sequence: u64 = 0;
-    while let Some(incoming) = stream.next().await {
+    loop {
+        let incoming = tokio::select! {
+            biased;
+            // Slow-consumer disconnect: stop reading and run teardown; the writer
+            // has independently closed the socket with 1013 on the same signal.
+            res = close_rx.changed() => {
+                if res.is_ok() && *close_rx.borrow_and_update() {
+                    tracing::info!(
+                        player_id = %player_id.0,
+                        "slow-consumer disconnect; tearing down connection"
+                    );
+                }
+                break;
+            }
+            maybe = stream.next() => match maybe {
+                Some(msg) => msg,
+                None => break,
+            },
+        };
         match incoming {
             Ok(Message::Text(text)) => {
+                if !rate.try_acquire(Instant::now()) {
+                    // Throttle: reject the excess command in-band and keep the
+                    // connection. Generous default → well-behaved clients never hit
+                    // this. A closed queue means the writer died: tear down.
+                    if outbound_tx
+                        .send(OutboundFrame::keyless(rate_limited_frame()))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                    continue;
+                }
                 receive_sequence += 1;
                 let envelope = build_envelope(
                     &state.config,
@@ -211,7 +258,11 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
                         // Route the reply through this connection's own queue so
                         // it stays ordered with fan-out frames. A closed queue
                         // means the writer died (client unreadable): tear down.
-                        if outbound_tx.send(direct_reply).await.is_err() {
+                        if outbound_tx
+                            .send(OutboundFrame::keyless(direct_reply))
+                            .await
+                            .is_err()
+                        {
                             tracing::debug!(
                                 player_id = %player_id.0,
                                 "writer gone; ending receive loop"
@@ -252,6 +303,7 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
     //    backstop so a slow/misbehaving adapter can never wedge teardown forever.
     //    Graceful-quit detection is deferred (module docs): always ClientClose.
     state.registry.deregister(&player_id);
+    state.disconnect.deregister(&recipient);
     let disconnect_budget = Duration::from_millis(state.config.disconnect_timeout_ms);
     match timeout(
         disconnect_budget,
@@ -279,21 +331,16 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
     }
 }
 
-/// The per-connection outbound writer (design decision 9/10): owns the WS sink,
-/// drains the bounded queue, serializes each opaque payload as a **text** frame.
-/// Exits on queue close (teardown) or a sink error (client unreadable) — the
-/// latter surfaces to the receive loop as a closed queue on its next reply send.
-async fn writer_task(
-    mut sink: SplitSink<WebSocket, Message>,
-    mut queue: mpsc::Receiver<serde_json::Value>,
-) {
-    while let Some(payload) = queue.recv().await {
-        let text = payload.to_string();
-        if let Err(err) = sink.send(Message::Text(Utf8Bytes::from(text))).await {
-            tracing::debug!(error = %err, "outbound write failed; writer exiting");
-            break;
-        }
-    }
+/// The in-band frame sent to a client whose command was throttled by the
+/// per-connection rate limit (Phase 3c, item 5). A **new** protective frame (no
+/// pre-existing player rate limit exists); keyless so it is never coalesced and
+/// stays strictly ordered. Flagged for the Rust scripting/frontend reference.
+fn rate_limited_frame() -> serde_json::Value {
+    json!({
+        "type": "error",
+        "code": "rate_limited",
+        "message": "You are sending commands too quickly; please slow down.",
+    })
 }
 
 /// Assemble the versioned [`CommandEnvelope`] for one inbound frame (design

@@ -53,9 +53,26 @@ pub async fn redeem_player_ticket(
 
 /// Validate an admin `?token=` JWT via the Python adapter.
 ///
-/// Phase 3c fills this in, preserving the admin **accept-before-validate** nuance
-/// (accept the upgrade, then close 1008 on reject) so the admin UI's 1008-vs-1006
-/// distinction survives. Stubbed in 3a.
-pub async fn validate_admin_token(_forward: &ForwardClient, _token: &str) -> Result<(), AuthError> {
-    todo!("admin token validation handoff is wired in Phase 3c")
+/// Forwards a [`GatewayInbound::ValidateAdminToken`](lorecraft_protocol::gateway::GatewayInbound::ValidateAdminToken)
+/// on the (per-connection) `forward` link and awaits the routed shape-distinct
+/// [`GatewayOutbound::AdminAuthResult`](lorecraft_protocol::gateway::GatewayOutbound::AdminAuthResult):
+///
+/// - accepted → `Ok(())`;
+/// - rejected → [`AuthError::Rejected`] (the caller closes the socket with WS 1008,
+///   *after* accepting the upgrade, so the admin UI can distinguish a stale-session
+///   logout from a 1006 transport drop);
+/// - any transport failure → [`AuthError::Transport`].
+///
+/// The admin result carries no `player_id` by construction, so a validated admin is
+/// structurally incapable of being fed into the player session path (see the
+/// resolved admin-push design in `lorecraft-protocol::gateway`).
+pub async fn validate_admin_token(forward: &ForwardClient, token: &str) -> Result<(), AuthError> {
+    match forward.validate_admin(token).await {
+        Ok(accepted) if accepted => Ok(()),
+        Ok(_) => Err(AuthError::Rejected),
+        Err(err) => {
+            tracing::warn!(error = %err, "admin token validation handoff failed at transport level");
+            Err(AuthError::Transport)
+        }
+    }
 }

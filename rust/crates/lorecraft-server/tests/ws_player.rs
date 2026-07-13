@@ -14,13 +14,15 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use lorecraft_server::lorecraft_events::{
-    outbound_channel, ConnectionRegistry, DEFAULT_OUTBOUND_QUEUE_DEPTH,
+    outbound_channel, ConnectionRegistry, RateLimitConfig, DEFAULT_OUTBOUND_QUEUE_DEPTH,
 };
 use lorecraft_server::lorecraft_protocol::gateway::{
     DeliveryDirective, DeliveryTarget, DisconnectReason, GatewayInbound, GatewayOutbound,
 };
 use lorecraft_server::lorecraft_protocol::ids::{PlayerId, SessionId};
-use lorecraft_server::{build_router, ForwardClient, GatewayConfig};
+use lorecraft_server::{
+    build_router, DisconnectHub, DispatchContext, ForwardClient, GatewayConfig,
+};
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -169,6 +171,13 @@ struct Harness {
 }
 
 async fn start_gateway(tickets: &[(&str, &str)]) -> Harness {
+    start_gateway_cfg(tickets, |_| {}).await
+}
+
+async fn start_gateway_cfg(
+    tickets: &[(&str, &str)],
+    tweak: impl FnOnce(&mut GatewayConfig),
+) -> Harness {
     let socket_dir = tempfile::tempdir().expect("tempdir");
     let socket_path = socket_dir.path().join("gateway.sock");
     let listener = UnixListener::bind(&socket_path).expect("bind mock adapter");
@@ -179,17 +188,25 @@ async fn start_gateway(tickets: &[(&str, &str)]) -> Harness {
     let events = spawn_mock_adapter(listener, tickets);
 
     let registry = Arc::new(ConnectionRegistry::new());
-    let config = Arc::new(GatewayConfig {
+    let disconnect = Arc::new(DisconnectHub::new());
+    let mut config = GatewayConfig {
         socket_path: socket_path.clone(),
         handshake_timeout_ms: 2_000,
         ..GatewayConfig::default()
-    });
+    };
+    tweak(&mut config);
+    let config = Arc::new(config);
+    let ctx = DispatchContext::new(
+        Arc::clone(&registry),
+        Arc::clone(&disconnect),
+        config.backpressure,
+    );
     let forward = Arc::new(
-        ForwardClient::connect(&socket_path, Arc::clone(&registry))
+        ForwardClient::connect(&socket_path, ctx)
             .await
             .expect("shared forward link connects"),
     );
-    let router = build_router(config, Arc::clone(&registry), forward);
+    let router = build_router(config, Arc::clone(&registry), forward, disconnect);
 
     let tcp = TcpListener::bind("127.0.0.1:0").await.expect("bind :0");
     let addr = tcp.local_addr().expect("local addr");
@@ -402,7 +419,7 @@ async fn disconnect_fans_out_player_left_to_room_sibling() {
         .expect("player_left reaches the sibling before teardown drops the link")
         .expect("sibling channel open");
     assert_eq!(
-        delivered,
+        delivered.payload,
         json!({"type": "player_left", "player_id": "leaver"})
     );
 }
@@ -440,7 +457,55 @@ async fn command_deliveries_fan_out_to_room_sibling() {
         .expect("sibling delivery arrives in time")
         .expect("sibling channel open");
     assert_eq!(
-        delivered,
+        delivered.payload,
         json!({"type": "feed_append", "text": "someone waves."})
     );
+}
+
+/// Per-player command RATE LIMIT (Phase 3c, item 5): with a deliberately tiny
+/// burst (2, no refill), a client that floods commands has its first `burst`
+/// admitted (real command replies) and every excess command rejected in-band with
+/// a `rate_limited` error frame — the connection stays open, and at-most-one-
+/// outstanding is preserved (each reply is awaited before the next read). The
+/// generous production default means a well-behaved client never reaches this.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn command_rate_limit_throttles_a_flood_but_keeps_the_connection() {
+    let harness = start_gateway_cfg(&[("ticket-a", "hero")], |cfg| {
+        // Tiny bucket, no refill during the test → deterministic throttling.
+        cfg.rate_limit = RateLimitConfig {
+            burst: 2,
+            per_second: 0.0,
+        };
+    })
+    .await;
+
+    let mut ws = ws_connect(harness.addr, "ticket-a").await;
+    let connected = next_text(&mut ws).await;
+    assert_eq!(connected["type"], json!("connected"));
+
+    // Flood five commands back to back.
+    for _ in 0..5 {
+        ws.send(WsMessage::text("look")).await.expect("send look");
+    }
+
+    // The first two are admitted (real command replies); the next three are
+    // rejected in-band with a rate_limited error frame — five ordered outbound
+    // frames total, connection still open.
+    let mut admitted = 0;
+    let mut throttled = 0;
+    for _ in 0..5 {
+        let frame = next_text(&mut ws).await;
+        if frame["type"] == json!("error") {
+            assert_eq!(frame["code"], json!("rate_limited"));
+            throttled += 1;
+        } else {
+            assert_eq!(frame["command"], json!("look"));
+            admitted += 1;
+        }
+    }
+    assert_eq!(admitted, 2, "exactly the burst was admitted");
+    assert_eq!(throttled, 3, "every excess command was throttled in-band");
+
+    // The connection is unharmed by throttling — it is still live in the registry.
+    assert!(harness.registry.is_connected(&PlayerId("hero".to_owned())));
 }
