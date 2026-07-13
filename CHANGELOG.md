@@ -4,6 +4,21 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.96.2] - 2026-07-13
+
+### Fixed
+
+- **Info commands: consolidate into single tagged output block.** The `score`, `abilities`, `train`, `traits`, `skills`, and `reputation` commands were rendering as multiple disjointed chat lines (each with its own timestamp and colored border) instead of one cohesive block. Consolidated each command's output into a single `ctx.say()` call joined with newlines, tagged `MessageType.HELP`, matching the reference `help` command pattern. (commit `2343da8`)
+
+### Docs
+
+- **Issue `issue-fd64ee3e` resolved as working-as-designed.** Help command CSS styling — accent-colored border, bold text, accent-colored text per `custom.css:101-107` — was confirmed working live; the complaint was an aesthetic preference, not a rendering bug. `docs/issues.yaml` updated to `status: resolved`. (commit `95b5165`)
+- **Roadmap: close three UI-cohesion backlog items.** Three Backlog table entries marked complete: info-commands consolidation fix, help CSS resolution, and vitals broadcast. (commit `808a25e`)
+
+### Added
+
+- **Vitals display: add HP to compact line and broadcast to all layouts.** Extended `vitals_snapshot()` to include an HP segment in the compact bracketed line (e.g. `[ HP 18/20 · STA 42/60 · 137 coins ]`), complementing the existing stamina + coins display. Broadcast the `#vitals` div to all five player layouts (Standard, Dock, E-reader, Immersive, Classic) by adding `{% include "partials/vitals.html" %}` above each layout's command input `<form>`, and generalized the initial-render population and HTMX out-of-band refresh guards to check for `prefs.layout in {"classic", "standard", "dock", "ereader", "immersive"}` instead of classic-only. (commit `446c823`)
+
 ## [0.96.1] - 2026-07-13
 
 ### Docs
