@@ -5378,7 +5378,28 @@ dialogue_trees:
           - label: The moon is full tonight. Does the creek really change with it?
             moon_phase_is: full
             next_node: moon_lore
+          # Interaction-ability unlock (Sprint 74.7, flavor C): this persuasion
+          # option only appears once the `silver_tongue` skill-tree node is
+          # trained, which sets `ability.silver_tongue`. Pure data — the gate is
+          # the already-shipped `actor_has_flag` dialogue condition, no engine code.
+          - label: (Silver Tongue) Surely a woman who hears everything has a room's
+              worth of secrets to trade.
+            actor_has_flag: [ability.silver_tongue]
+            next_node: silver_tongue_confidence
           - label: Nothing, thanks.
+            side_effects:
+              end_dialogue: true
+      silver_tongue_confidence:
+        text: >-
+          Mira laughs, low and appraising. "Smooth. Most just ask." She leans in.
+          "There's a strongbox under the third floorboard past the cellar stair —
+          not mine, and the man it belongs to won't be back. You didn't hear it
+          from me."
+        side_effects:
+          set_flags:
+            - lore:mira_strongbox
+        choices:
+          - label: A pleasure doing business.
             side_effects:
               end_dialogue: true
       moon_lore:
