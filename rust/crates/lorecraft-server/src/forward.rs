@@ -60,9 +60,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use lorecraft_events::dispatch_with_config;
-use lorecraft_protocol::envelope::CommandEnvelope;
+use lorecraft_protocol::envelope::{CommandEnvelope, CommandOutcome};
 use lorecraft_protocol::gateway::{DisconnectReason, GatewayInbound, GatewayOutbound};
-use lorecraft_protocol::ids::{PlayerId, SessionId};
+use lorecraft_protocol::ids::{CommandId, PlayerId, SessionId};
+use lorecraft_protocol::script::ScriptRequest;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::UnixStream;
@@ -79,6 +80,16 @@ const LENGTH_PREFIX_BYTES: usize = 4;
 /// [`CommandId`](lorecraft_protocol::ids::CommandId) does not derive `Hash` in the
 /// protocol crate.
 type PendingReplies = Arc<Mutex<HashMap<String, oneshot::Sender<GatewayOutbound>>>>;
+
+/// A map of in-flight **execution** round-trips (Phase 4) to the oneshot that
+/// resolves the driver awaiting a `SnapshotReady`/`OutcomeApplied`.
+///
+/// Keyed by the raw `command_id` string, exactly like [`PendingReplies`]. The two
+/// legs of one command's round-trip (`BuildSnapshot → SnapshotReady`, then
+/// `ApplyOutcome → OutcomeApplied`) are strictly sequential — the driver awaits the
+/// snapshot before sending the outcome — so one slot per `command_id` is reused
+/// across both legs with no collision.
+type PendingExec = Arc<Mutex<HashMap<String, oneshot::Sender<GatewayOutbound>>>>;
 
 /// The single pending **control** reply slot for the sequential
 /// `RedeemTicket → AuthResult` / `Connected → ConnectAck` handshake steps.
@@ -153,6 +164,8 @@ pub struct ForwardClient {
     write: Mutex<OwnedWriteHalf>,
     /// In-flight command correlation slots (see [`PendingReplies`]).
     pending: PendingReplies,
+    /// In-flight execution round-trip slots (Phase 4; see [`PendingExec`]).
+    exec: PendingExec,
     /// The single pending control-handshake slot (see [`PendingControl`]).
     control: PendingControl,
     /// The single pending disconnect-completion slot (see [`PendingDisconnect`]).
@@ -177,18 +190,21 @@ impl ForwardClient {
         let stream = UnixStream::connect(socket_path).await?;
         let (read, write) = stream.into_split();
         let pending: PendingReplies = Arc::new(Mutex::new(HashMap::new()));
+        let exec: PendingExec = Arc::new(Mutex::new(HashMap::new()));
         let control: PendingControl = Arc::new(Mutex::new(None));
         let disconnect: PendingDisconnect = Arc::new(Mutex::new(None));
         let read_task = tokio::spawn(read_loop(
             read,
             ctx,
             Arc::clone(&pending),
+            Arc::clone(&exec),
             Arc::clone(&control),
             Arc::clone(&disconnect),
         ));
         Ok(Self {
             write: Mutex::new(write),
             pending,
+            exec,
             control,
             disconnect,
             read_task,
@@ -354,6 +370,70 @@ impl ForwardClient {
         }
     }
 
+    /// Phase 4 leg 1 (Option A): send [`GatewayInbound::BuildSnapshot`] for
+    /// `envelope` and await the correlated [`GatewayOutbound::SnapshotReady`],
+    /// returning the materialized [`ScriptRequest`] the migrated feature executes
+    /// against.
+    ///
+    /// Correlated by `command_id` (= `envelope.command_id`) through the
+    /// [`PendingExec`] map, the same way [`send_command`](Self::send_command)
+    /// correlates a `CommandReply`.
+    pub async fn build_snapshot(
+        &self,
+        envelope: CommandEnvelope,
+    ) -> Result<Box<ScriptRequest>, ForwardError> {
+        let command_key = envelope.command_id.0.clone();
+        let frame = GatewayInbound::BuildSnapshot { envelope };
+        match self.send_exec(frame, command_key).await? {
+            GatewayOutbound::SnapshotReady { request, .. } => Ok(request),
+            _ => Err(ForwardError::UnexpectedReply),
+        }
+    }
+
+    /// Phase 4 leg 2 (Option A): send [`GatewayInbound::ApplyOutcome`] and await the
+    /// terminal [`GatewayOutbound::OutcomeApplied`], returning the opaque legacy
+    /// `direct_reply` for the issuing client.
+    ///
+    /// The reply's post-commit `deliveries` are dispatched into the shared registry
+    /// **by the read loop** (see [`demultiplex`]) — the same independent side-effect
+    /// fan-out a `CommandReply`'s deliveries take — so by the time this returns they
+    /// are already published. Commit-before-publish holds because Python commits
+    /// both DBs before emitting `OutcomeApplied`.
+    pub async fn apply_outcome(
+        &self,
+        command_id: CommandId,
+        outcome: CommandOutcome,
+    ) -> Result<serde_json::Value, ForwardError> {
+        let command_key = command_id.0.clone();
+        let frame = GatewayInbound::ApplyOutcome {
+            command_id,
+            outcome,
+        };
+        match self.send_exec(frame, command_key).await? {
+            GatewayOutbound::OutcomeApplied { direct_reply, .. } => Ok(direct_reply),
+            _ => Err(ForwardError::UnexpectedReply),
+        }
+    }
+
+    /// Register an execution round-trip slot keyed by `command_key`, write `frame`,
+    /// and await the routed [`GatewayOutbound`] reply (`SnapshotReady` or
+    /// `OutcomeApplied`). On a write failure the slot is reclaimed so a retry can
+    /// reuse the id; a dropped sender (read loop ended) surfaces as
+    /// [`ForwardError::ConnectionClosed`] rather than hanging.
+    async fn send_exec(
+        &self,
+        frame: GatewayInbound,
+        command_key: String,
+    ) -> Result<GatewayOutbound, ForwardError> {
+        let (tx, rx) = oneshot::channel();
+        self.exec.lock().await.insert(command_key.clone(), tx);
+        if let Err(err) = self.write_frame(&frame).await {
+            self.exec.lock().await.remove(&command_key);
+            return Err(err);
+        }
+        rx.await.map_err(|_| ForwardError::ConnectionClosed)
+    }
+
     /// Whether the background read loop is still running (the link to Python is
     /// live). Cheap, non-blocking — used by the gateway health check.
     pub fn is_active(&self) -> bool {
@@ -389,12 +469,15 @@ async fn read_loop(
     mut read: OwnedReadHalf,
     ctx: DispatchContext,
     pending: PendingReplies,
+    exec: PendingExec,
     control: PendingControl,
     disconnect: PendingDisconnect,
 ) {
     loop {
         match read_frame(&mut read).await {
-            Ok(Some(frame)) => demultiplex(frame, &ctx, &pending, &control, &disconnect).await,
+            Ok(Some(frame)) => {
+                demultiplex(frame, &ctx, &pending, &exec, &control, &disconnect).await
+            }
             Ok(None) => break, // clean end-of-stream: peer closed
             Err(err) => {
                 // Not silent: a decode/transport fault ends the link, and the
@@ -406,6 +489,7 @@ async fn read_loop(
     }
     // Fail all in-flight requests: dropping the senders wakes their receivers.
     pending.lock().await.clear();
+    exec.lock().await.clear();
     control.lock().await.take();
     disconnect.lock().await.take();
 }
@@ -415,6 +499,7 @@ async fn demultiplex(
     frame: GatewayOutbound,
     ctx: &DispatchContext,
     pending: &PendingReplies,
+    exec: &PendingExec,
     control: &PendingControl,
     disconnect: &PendingDisconnect,
 ) {
@@ -491,20 +576,56 @@ async fn demultiplex(
                 None => tracing::warn!("disconnect ack arrived with no pending teardown"),
             }
         }
-        // TODO(4a-task3): the Phase 4 execution round-trip replies. These are the
-        // Python->Rust halves of `BuildSnapshot`/`ApplyOutcome`; task 3 routes them
-        // to the pending-execution waiter that Rust's `look` router awaits (same
-        // correlation-by-`command_id` shape as `CommandReply`). Until that router
-        // exists no `BuildSnapshot`/`ApplyOutcome` is ever *sent*, so receiving one
-        // here is a protocol anomaly — log and drop rather than panic, keeping the
-        // additive protocol change compile-safe with no runtime `todo!()`.
-        frame
-        @ (GatewayOutbound::SnapshotReady { .. } | GatewayOutbound::OutcomeApplied { .. }) => {
-            tracing::warn!(
-                ?frame,
-                "Phase 4 execution reply received before the Rust execution router \
-                 is wired (4a task 3); dropping"
-            );
+        // Phase 4 execution round-trip replies (Option A). Both correlate to the
+        // executing command by `command_id` through the `exec` map — the same shape
+        // as `CommandReply`'s `pending` map — completing the driver leg awaiting in
+        // `ForwardClient::build_snapshot` / `apply_outcome`. An unsolicited one (no
+        // waiter) is a protocol anomaly worth surfacing, never silently dropped.
+        GatewayOutbound::SnapshotReady {
+            command_id,
+            request,
+        } => {
+            let key = command_id.0.clone();
+            let waiter = exec.lock().await.remove(&key);
+            match waiter {
+                Some(tx) => {
+                    let _ = tx.send(GatewayOutbound::SnapshotReady {
+                        command_id,
+                        request,
+                    });
+                }
+                None => tracing::warn!(
+                    command_id = %key,
+                    "snapshot-ready reply had no matching pending execution"
+                ),
+            }
+        }
+        GatewayOutbound::OutcomeApplied {
+            command_id,
+            direct_reply,
+            deliveries,
+        } => {
+            // Commit-before-publish (decision 5): Python committed both DBs before
+            // emitting this frame, so the post-commit fan-out is published now —
+            // independently of the driver's reply, exactly like `CommandReply`.
+            for directive in &deliveries {
+                relay_directive(ctx, directive);
+            }
+            let key = command_id.0.clone();
+            let waiter = exec.lock().await.remove(&key);
+            match waiter {
+                Some(tx) => {
+                    let _ = tx.send(GatewayOutbound::OutcomeApplied {
+                        command_id,
+                        direct_reply,
+                        deliveries,
+                    });
+                }
+                None => tracing::warn!(
+                    command_id = %key,
+                    "outcome-applied reply had no matching pending execution"
+                ),
+            }
         }
     }
 }

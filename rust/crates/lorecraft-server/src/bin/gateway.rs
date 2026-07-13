@@ -16,6 +16,7 @@
 //! | `LORECRAFT_GATEWAY_WORLD_ID`    | `world-1`        | `world_id` stamped on envelopes  |
 //! | `LORECRAFT_GATEWAY_DEADLINE_MS` | `5000`           | `deadline_ms` stamped on envelopes |
 //! | `LORECRAFT_GATEWAY_BACKEND`     | `http://127.0.0.1:8000` | Python uvicorn origin the proxy forwards to |
+//! | `LORECRAFT_RUST_VERBS`          | *(empty)*        | Comma-separated verbs Rust executes (Phase 4); empty = all commands to Python (rollback) |
 //!
 //! The Phase-3c slow-client/rate-limit thresholds are also env-overridable. These
 //! are primarily for **test determinism** and secondarily for **operator tuning**;
@@ -111,6 +112,10 @@ fn config_from_env() -> anyhow::Result<GatewayConfig> {
         "LORECRAFT_GATEWAY_COMMAND_RATE",
         config.rate_limit.per_second,
     );
+    // Phase 4 verb allow-list (decision 3). Unset/blank → empty set → every command
+    // routes to Python (pure Phase 3 rollback). E.g. `LORECRAFT_RUST_VERBS=look`.
+    config.rust_verbs =
+        lorecraft_server::route::parse_allow_list(&env_or("LORECRAFT_RUST_VERBS", ""));
     Ok(config)
 }
 

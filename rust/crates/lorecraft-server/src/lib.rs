@@ -19,6 +19,12 @@
 //! - [`ws_player`] — the **live** player `/ws` cutover (Phase 3b): ticket auth
 //!   handoff, connect handshake, per-connection writer task, receive loop, plus
 //!   (Phase 3c) a per-player command rate limit.
+//! - [`route`] — Phase 4 verb-level routing at ingress: a verb allow-list
+//!   (default **empty** == pure Phase 3 rollback) decides whether a command is
+//!   Rust-executed or forwarded to Python.
+//! - [`execute`] — Phase 4 Rust execution driver (Option A): the
+//!   `BuildSnapshot → run feature → ApplyOutcome` round-trip for a migrated verb
+//!   (`look`), with Python owning persistence.
 //! - [`ws_admin`] / [`auth::validate_admin_token`] — the **live** admin `/admin/ws`
 //!   cutover (Phase 3c): accept-before-validate `?token=` handoff (1008-vs-1006),
 //!   push-only writer.
@@ -32,9 +38,11 @@
 
 pub mod auth;
 pub mod disconnect;
+pub mod execute;
 pub mod forward;
 pub mod gateway;
 mod proxy;
+pub mod route;
 mod writer;
 pub mod ws_admin;
 pub mod ws_player;
@@ -43,4 +51,6 @@ pub use disconnect::{DisconnectHub, DispatchContext};
 pub use forward::{AuthDecision, ForwardClient, ForwardError, SessionAck};
 pub use gateway::{build_router, GatewayConfig, GatewayState};
 pub use lorecraft_events;
+pub use lorecraft_feature_look;
 pub use lorecraft_protocol;
+pub use route::{MigratedVerb, RouteDecision};

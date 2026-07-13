@@ -66,8 +66,10 @@ use uuid::Uuid;
 
 use crate::auth::{self, AuthError};
 use crate::disconnect::player_recipient;
+use crate::execute;
 use crate::forward::{ForwardClient, SessionAck};
 use crate::gateway::{GatewayConfig, GatewayState};
+use crate::route::{self, RouteDecision};
 use crate::writer::writer_task;
 
 /// The `/ws` upgrade query. Only `?ticket=` is supported — the legacy
@@ -253,7 +255,18 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
                     receive_sequence,
                     text.as_str(),
                 );
-                match forward.send_command(envelope).await {
+                // Phase 4 routing (decision 3): a migrated verb whose verb is in the
+                // (default-empty) allow-list is executed by Rust via the Option-A
+                // round-trip; everything else forwards to Python unchanged. Both
+                // paths yield the same opaque `direct_reply` for the client, so the
+                // queue-back handling below is identical.
+                let forwarded = match route::decide(text.as_str(), &state.config.rust_verbs) {
+                    RouteDecision::RustExecute(verb) => {
+                        execute::execute(&forward, verb, envelope).await
+                    }
+                    RouteDecision::Python => forward.send_command(envelope).await,
+                };
+                match forwarded {
                     Ok(direct_reply) => {
                         // Route the reply through this connection's own queue so
                         // it stays ordered with fan-out frames. A closed queue

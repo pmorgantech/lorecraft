@@ -11,6 +11,9 @@ path = "src/bin/gateway.rs"
 [dependencies]
 lorecraft-protocol = { path = "../lorecraft-protocol" }
 lorecraft-events = { path = "../lorecraft-events" }
+# Phase 4: the Rust `look` policy the execution driver runs (Tier 2). Re-exported
+# from the crate root so integration tests can drive it directly.
+lorecraft-feature-look = { path = "../lorecraft-feature-look" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"

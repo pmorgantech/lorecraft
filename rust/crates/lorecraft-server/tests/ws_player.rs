@@ -20,6 +20,8 @@ use lorecraft_server::lorecraft_protocol::gateway::{
     DeliveryDirective, DeliveryTarget, DisconnectReason, GatewayInbound, GatewayOutbound,
 };
 use lorecraft_server::lorecraft_protocol::ids::{PlayerId, SessionId};
+use lorecraft_server::lorecraft_protocol::script::{ScriptBudget, ScriptRequest};
+use lorecraft_server::lorecraft_protocol::snapshot::EntitySnapshot;
 use lorecraft_server::{
     build_router, DisconnectHub, DispatchContext, ForwardClient, GatewayConfig,
 };
@@ -67,6 +69,42 @@ async fn write_outbound(write: &mut OwnedWriteHalf, frame: &GatewayOutbound) {
     write.flush().await.expect("mock peer flushes");
 }
 
+/// A minimal but real `look` [`ScriptRequest`] the mock returns from
+/// `BuildSnapshot`, so the Rust `look` feature runs against it and derives the
+/// outcome the mock then "persists" via `OutcomeApplied`.
+fn look_snapshot_request() -> ScriptRequest {
+    let mut attrs = std::collections::BTreeMap::new();
+    attrs.insert("name".to_owned(), json!("The Tavern"));
+    attrs.insert("description".to_owned(), json!("A cozy room."));
+    attrs.insert("exits".to_owned(), json!(["north"]));
+    ScriptRequest {
+        api_version: 1,
+        script_id: "look".to_owned(),
+        script_version: 1,
+        command_or_event: "look".to_owned(),
+        actor_snapshot: EntitySnapshot {
+            id: "player-1".to_owned(),
+            kind: "player".to_owned(),
+            attributes: std::collections::BTreeMap::new(),
+        },
+        room_snapshot: EntitySnapshot {
+            id: "tavern".to_owned(),
+            kind: "room".to_owned(),
+            attributes: attrs,
+        },
+        selected_related_entities: vec![],
+        logical_time: 0,
+        rng_stream_id: String::new(),
+        capability_set: vec![],
+        budget: ScriptBudget {
+            wall_ms: 0,
+            instructions: 0,
+            memory_bytes: 0,
+            output_bytes: 0,
+        },
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Mock Python adapter: serves EVERY accepted UDS connection (the per-player
 // links plus the gateway's shared health-check link) against one ticket table.
@@ -91,6 +129,11 @@ async fn serve_connection(
     events: mpsc::UnboundedSender<GatewayInbound>,
 ) {
     let (mut read, mut write) = stream.into_split();
+    // Remember the actor of the in-flight execution so the `look` room broadcast can
+    // exclude them, mirroring the real adapter (a `look` `state_change` goes to the
+    // *other* occupants). `ApplyOutcome` carries no `player_id`, so it is captured
+    // from the preceding `BuildSnapshot` on this same connection.
+    let mut exec_actor: Option<PlayerId> = None;
     while let Some(inbound) = read_inbound(&mut read).await {
         let _ = events.send(inbound.clone());
         let replies: Vec<GatewayOutbound> = match inbound {
@@ -152,10 +195,33 @@ async fn serve_connection(
                 accepted: false,
                 player_id: None,
             }],
-            // TODO(4a-task3): the Phase 4 execution round-trip is not exercised by
-            // this Phase 3 forwarding mock; the real `BuildSnapshot`/`ApplyOutcome`
-            // handling is wired when the Rust execution router lands.
-            GatewayInbound::BuildSnapshot { .. } | GatewayInbound::ApplyOutcome { .. } => vec![],
+            // Phase 4 execution round-trip (Option A): the mock plays the Python
+            // persistence side. `BuildSnapshot` yields the immutable snapshot;
+            // `ApplyOutcome` (after Rust ran the feature) yields the legacy
+            // `direct_reply` plus one room-targeted `state_change` broadcast —
+            // exactly the `look` fan-out shape the real adapter reproduces.
+            GatewayInbound::BuildSnapshot { envelope } => {
+                exec_actor = Some(envelope.player_id.clone());
+                vec![GatewayOutbound::SnapshotReady {
+                    command_id: envelope.command_id,
+                    request: Box::new(look_snapshot_request()),
+                }]
+            }
+            GatewayInbound::ApplyOutcome { command_id, .. } => {
+                vec![GatewayOutbound::OutcomeApplied {
+                    command_id,
+                    direct_reply: json!({"command": "look", "messages": ["you look around"]}),
+                    deliveries: vec![DeliveryDirective {
+                        target: DeliveryTarget::Room {
+                            id: "tavern".to_owned(),
+                        },
+                        // Exclude the actor, exactly as `look` broadcasts to others.
+                        exclude: exec_actor.clone(),
+                        payload: json!({"type": "state_change", "room_id": "tavern"}),
+                        coalesce_key: None,
+                    }],
+                }]
+            }
         };
         for frame in &replies {
             write_outbound(&mut write, frame).await;
@@ -347,6 +413,78 @@ async fn happy_path_connect_command_and_disconnect() {
         );
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
+}
+
+/// PHASE 4 WIRING PROOF: with `look` in the allow-list a live `/ws` `look` routes
+/// to the **Rust execution driver** (Option-A `BuildSnapshot`/`ApplyOutcome`
+/// round-trip), and the client receives the `OutcomeApplied.direct_reply` — while a
+/// non-migrated verb (`wave`) still takes the unchanged Python `Command` path. This
+/// exercises the ws_player routing seam end to end; it is the opt-in path, so it
+/// changes no default behavior (the allow-list is empty unless configured).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn look_routes_to_rust_execution_when_allow_listed() {
+    let mut harness = start_gateway_cfg(&[("good-ticket", "hero")], |cfg| {
+        cfg.rust_verbs = ["look".to_owned()].into_iter().collect();
+    })
+    .await;
+    let mut ws = ws_connect(harness.addr, "good-ticket").await;
+
+    // Drain the ConnectAck `connected` frame.
+    let connected = next_text(&mut ws).await;
+    assert_eq!(connected["type"], json!("connected"));
+
+    // A `look` is Rust-executed: the reply is the `OutcomeApplied.direct_reply`
+    // (NOT the Python `CommandReply` shape `{"messages":["ok"]}`).
+    ws.send(WsMessage::text("look")).await.expect("send look");
+    let reply = next_text(&mut ws).await;
+    assert_eq!(
+        reply,
+        json!({"command": "look", "messages": ["you look around"]})
+    );
+
+    // The mock saw the Option-A round-trip (BuildSnapshot then ApplyOutcome) rather
+    // than a `Command` frame — proof the Rust path executed it.
+    let build = await_event(&mut harness.events, |event| match event {
+        GatewayInbound::BuildSnapshot { envelope } if envelope.raw == "look" => {
+            Some(envelope.command_id.clone())
+        }
+        _ => None,
+    })
+    .await;
+    let applied = await_event(&mut harness.events, |event| match event {
+        GatewayInbound::ApplyOutcome {
+            command_id,
+            outcome,
+        } => Some((command_id.clone(), outcome.clone())),
+        _ => None,
+    })
+    .await;
+    assert_eq!(
+        applied.0, build,
+        "ApplyOutcome correlates to the BuildSnapshot"
+    );
+    assert!(
+        applied.1.applied_effects.is_empty(),
+        "look derives no effects"
+    );
+
+    // The post-commit room broadcast fanned out into the registry (the actor is the
+    // only occupant here, so assert via a second player would need more setup; the
+    // dedicated tests/execute.rs test proves fan-out to a bystander). Here we assert
+    // the driver did not fall through to the Python `Command` path for `look`.
+
+    // A non-migrated verb still forwards to Python unchanged.
+    ws.send(WsMessage::text("wave")).await.expect("send wave");
+    let wave_reply = next_text(&mut ws).await;
+    assert_eq!(wave_reply, json!({"command": "wave", "messages": ["ok"]}));
+    let saw_command = await_event(&mut harness.events, |event| match event {
+        GatewayInbound::Command(env) if env.raw == "wave" => Some(()),
+        _ => None,
+    })
+    .await;
+    let () = saw_command;
+
+    ws.close(None).await.expect("client close");
 }
 
 /// EXIT-CHECK REQUIREMENT: a bad/expired ticket yields WS close **1008**

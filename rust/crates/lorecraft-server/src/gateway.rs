@@ -13,6 +13,7 @@
 //! (bind address, socket path, world id, deadline, queue depth) are *operational*,
 //! not game-balance, so they do not use the live-tunable `WorldClock` pattern.
 
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -68,6 +69,16 @@ pub struct GatewayConfig {
     /// a well-behaved interactive client never approaches the limit. Operational
     /// config, static this phase.
     pub rate_limit: RateLimitConfig,
+    /// Phase 4 verb allow-list: the normalized verbs whose command pipeline Rust
+    /// owns (executes via [`crate::execute`]) rather than forwarding to Python.
+    ///
+    /// **Defaults empty**, so with no configuration every command routes to Python
+    /// — byte-identical to the pure Phase 3 path (decision 3). Populated from
+    /// `LORECRAFT_RUST_VERBS` (comma-separated) at the binary; enabling a verb is
+    /// an operational config change and emptying the list is the rollback. Only a
+    /// verb that is *both* migrated and listed here is Rust-executed (see
+    /// [`crate::route::decide`]).
+    pub rust_verbs: HashSet<String>,
 }
 
 impl Default for GatewayConfig {
@@ -83,6 +94,8 @@ impl Default for GatewayConfig {
             disconnect_timeout_ms: 5_000,
             backpressure: BackpressureConfig::default(),
             rate_limit: RateLimitConfig::default(),
+            // Empty == pure Phase 3 rollback: no verb is Rust-executed by default.
+            rust_verbs: HashSet::new(),
         }
     }
 }
