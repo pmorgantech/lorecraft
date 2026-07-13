@@ -11,7 +11,6 @@
 #![warn(missing_docs)]
 
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 pub mod effects;
 pub mod envelope;
@@ -31,11 +30,13 @@ pub use snapshot::EntitySnapshot;
 pub const PROTOCOL_VERSION: u32 = 1;
 
 /// A placeholder error type for protocol operations.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, thiserror::Error)]
 pub enum ProtocolError {
     /// Serialization or deserialization error
+    #[error("Serialization error: {0}")]
     SerializationError(String),
     /// Version mismatch
+    #[error("Version mismatch: expected {expected}, got {got}")]
     VersionMismatch {
         /// Version the reader expected.
         expected: u32,
@@ -43,22 +44,9 @@ pub enum ProtocolError {
         got: u32,
     },
     /// Invalid command envelope
+    #[error("Invalid envelope: {0}")]
     InvalidEnvelope(String),
 }
-
-impl fmt::Display for ProtocolError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ProtocolError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
-            ProtocolError::VersionMismatch { expected, got } => {
-                write!(f, "Version mismatch: expected {}, got {}", expected, got)
-            }
-            ProtocolError::InvalidEnvelope(msg) => write!(f, "Invalid envelope: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for ProtocolError {}
 
 #[cfg(test)]
 mod tests {

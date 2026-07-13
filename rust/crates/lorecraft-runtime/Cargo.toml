@@ -6,5 +6,6 @@ rust-version = "1.75"
 
 [dependencies]
 lorecraft-protocol = { path = "../lorecraft-protocol" }
+lorecraft-scheduler = { path = "../lorecraft-scheduler" }
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"

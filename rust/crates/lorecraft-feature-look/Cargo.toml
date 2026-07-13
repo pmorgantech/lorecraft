@@ -1,12 +1,12 @@
 [package]
-name = "lorecraft-replay"
+name = "lorecraft-feature-look"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 
 [dependencies]
 lorecraft-protocol = { path = "../lorecraft-protocol" }
-serde = { version = "1.0", features = ["derive"] }
+lorecraft-replay = { path = "../lorecraft-replay" }
 serde_json = "1.0"
-sha2 = "0.10"
-thiserror = "1.0"
+
+[dev-dependencies]
