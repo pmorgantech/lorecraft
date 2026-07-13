@@ -680,6 +680,311 @@ This experiment answers the important questions cheaply:
 - Which Python mechanics truly need to survive as Python?
 - Where does latency actually accumulate?
 
+## Phase 0/1 kickoff — design spec (2026-07-12)
+
+This section is the concrete kickoff design for Phase 0 (evidence gate) and Phase 1
+(language-neutral contracts), handed off from Research to Backend Engineering. It
+grounds the "Recommended first implementation experiment" above in specific files,
+types, and tasks. Two Backend Engineers implement Part A and Part B in parallel, each
+in their own scratch worktree branched from `rust-port`.
+
+### Part A — Phase 0 evidence gate (Python side)
+
+**A1. Canonical state/event hashing.** New module `src/lorecraft/tools/replay_hash.py`
+(kept separate from `session_replay.py` to stay dependency-light):
+
+- `canonical_json(obj: JsonValue) -> bytes`: implemented as
+  `json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")`.
+  Float policy: **reject floats** (raise `TypeError`) — forces pre-quantized int/str
+  values and pre-empts a future Rust-serde float-formatting parity divergence.
+- `hash_events(events: Iterable[AuditEvent]) -> str`: `sha256(canonical_json(normalize_events(events))).hexdigest()`
+  — a thin composition over the existing `session_replay.normalize_events`.
+- In scope now: event-trail hashing only (proves Python==Python replay determinism as
+  a single digest instead of a list `==` comparison).
+- Deferred to Phase 2: state-snapshot hashing — no state-snapshot shape exists yet;
+  once the Phase 1 `EntitySnapshot` contract lands, `replay_hash.py` gains
+  `hash_state(snapshot)` reusing the same `canonical_json` serializer.
+
+**A2. Promote replay scenarios to required fixtures.** Two parts:
+
+(a) Add `tests/simulation/scenarios/look_only.json` (a single `look` command in a
+fixed room, `rng_seed: 1`) plus its golden `look_only.audit.json` — a tight
+read-only parity fixture for the `look` slice specifically (the existing
+`golden_path.json`/`load_default.json` fixtures are mutation-heavy, not a clean
+read-only target). Refactor `tests/simulation/test_audit_regression.py` to iterate a
+scenario list rather than hardcoding `golden_path`. Do not add combat/economy/trading
+scenarios now — scenario coverage should track migrated verbs only.
+
+(b) Document policy (this doc section itself is that documentation): any rust-port
+change touching the protocol/effect contract or a migrated verb must run
+`make test-simulation` green, confirmed by the reviewer — since the `simulation`
+pytest marker is excluded from default `make test` and cannot self-enforce.
+
+**A3. Slow-handler event-loop-blocking test.** New
+`tests/simulation/test_event_loop_blocking.py` (`pytest.mark.simulation`, needs a
+live async server). Inject a synchronous `time.sleep(SLOW)` (not `asyncio.sleep` — it
+must actually block the loop) into one command handler via monkeypatch or a
+dedicated test-only slow verb. Run two concurrent connections: A issues the slow
+command at t0, B issues a fast command (e.g. `who`) shortly after. Assert B's
+round-trip latency is delayed by ~`SLOW` (head-of-line blocking) and/or that a world-
+clock heartbeat tick is delayed similarly. This is a characterization test of
+**current (undesirable) behavior** — the migration is expected to invert this
+assertion once command execution moves off the ingress task.
+
+**A4. SQL/ORM direct-mutation inventory.** Definition of a violation: (1)
+`.add`/`.delete`/`.commit`/`.flush`/`.exec(<mutating stmt>)` called on a
+SQLModel/SQLAlchemy `Session` obtained via `ctx.session` or constructed directly,
+from `features/**` or composition layers; or (2) an attribute assignment on a
+persisted engine model that bypasses an `engine/repos/*` method. Reads are excluded.
+New tool: `src/lorecraft/tools/mutation_scan.py` (AST-based), walks `features/` +
+composition layers, flags both patterns, and emits a JSON/markdown checklist keyed
+by `file:line` — this becomes the Phase 4/5 conversion backlog.
+
+### Part B — Phase 1 contracts (`lorecraft-protocol` crate + Python mirror)
+
+Current crate state: `rust/crates/lorecraft-protocol/src/lib.rs` has only
+`PROTOCOL_VERSION: u32 = 1` and `ProtocolError`. Everything below is additive — no
+breaking change to what exists.
+
+**ID newtypes (Tier 1/mechanism):** `WorldId`, `ActorId`, `PlayerId`, `SessionId`,
+`CommandId` — `struct XId(String)` with `#[serde(transparent)]`. Python mirror: plain
+`str` type aliases (keeps JSON identical, no wrapping).
+
+**`CommandEnvelope` (Tier 1):**
+
+```rust
+CommandEnvelope {
+  protocol_version: u32,
+  world_id: WorldId,
+  actor_id: ActorId,
+  player_id: PlayerId,
+  session_id: SessionId,
+  command_id: CommandId,     // idempotency key
+  receive_sequence: u64,     // monotonic admission/client sequence
+  deadline_ms: u64,          // monotonic execution budget
+  raw: String,               // raw command line
+}
+```
+
+**`CommandOutcome` (Tier 1):**
+
+```rust
+CommandOutcome {
+  command_id: CommandId,
+  status: OutcomeStatus,          // enum { Executed, Blocked, Failed, TimedOut }
+  commit_sequence: Option<u64>,
+  messages: Vec<OutboundMessage>,
+  applied_effects: Vec<Effect>,
+  diagnostics: Vec<Diagnostic>,
+}
+```
+
+**`ScriptRequest` / `ScriptResult` (Tier 1**, reusing the field lists already defined
+in "The scripting boundary" above):
+
+```rust
+ScriptRequest {
+  api_version: u32,
+  script_id: String,
+  script_version: u32,
+  command_or_event: String,
+  actor_snapshot: EntitySnapshot,
+  room_snapshot: EntitySnapshot,
+  selected_related_entities: Vec<EntitySnapshot>,
+  logical_time: u64,
+  rng_stream_id: String,
+  capability_set: Vec<String>,
+  budget: ScriptBudget,   // { wall_ms, instructions, memory_bytes, output_bytes }
+}
+
+ScriptResult {
+  messages: Vec<OutboundMessage>,
+  proposed_effects: Vec<Effect>,
+  emitted_events: Vec<EmittedEvent>,
+  scheduled_work: Vec<ScheduledWork>,
+  diagnostics: Vec<Diagnostic>,
+}
+```
+
+**`EntitySnapshot` (Tier 1 — the anti-leak decision):**
+
+```rust
+EntitySnapshot {
+  id: String,
+  kind: String,                                     // "room" | "player" | "item" | ...
+  attributes: BTreeMap<String, serde_json::Value>,   // OPAQUE — no feature keys typed here
+}
+```
+
+The mechanism knows an entity has id/kind/attributes; it does not know a room has
+exits or a player has HP — those are Tier 2 policy filled by the feature. Do **not**
+add a typed `exits: Vec<Exit>` field to the crate — that is the leak signal to reject
+in review.
+
+**Effect enum (Tier 1**, minimal set for this kickoff — more variants added as later
+slices need them):
+
+```rust
+enum Effect {
+  MoveEntity   { entity: String, from: String, to: String },
+  TransferItem { item: String, from: String, to: String, quantity: u32 },
+  AdjustMeter  { entity: String, meter: String, delta: i64 },
+  SetFlag      { entity: String, key: String, value: serde_json::Value },
+  EmitEvent    { event_type: String, payload: serde_json::Value },
+  SendNarration{ text: String, message_type: String },
+}
+```
+
+**`OutboundMessage` (Tier 1):**
+
+```rust
+enum OutboundMessage {
+  Feed        { text: String, message_type: String },   // maps to ctx.say / WsFeedAppend
+  PanelUpdate { key: String, value: serde_json::Value }, // maps to ctx.push_update / WsStateChange
+}
+```
+
+**`look` produces zero effects** — the crisp read-only proof of the Phase 1 exit
+criterion: each `ctx.say(...)` line maps to `OutboundMessage::Feed`; the
+`push_update("room_id", ...)` maps to `OutboundMessage::PanelUpdate` (a client panel
+refresh, not an authoritative state change, so **not** an `Effect`);
+`proposed_effects = []`, `emitted_events = []`, `scheduled_work = []`.
+
+Flagged judgment call: the plan lists `SendNarration` as an effect variant, but
+narration for command handlers flows through `ScriptResult.messages` /
+`OutboundMessage::Feed` instead (matching existing `ctx.say`) — `SendNarration`
+stays in the enum for scripts/events that need narration ordered relative to state
+effects, but `look` uses `messages`, not this effect variant.
+
+**Python mirror — representation choice:** frozen dataclasses
+(`@dataclass(frozen=True, slots=True)`), **not** pydantic/msgspec/TypedDict — no new
+dependency, matches the existing `session_replay.py` convention, immutability matches
+"immutable snapshot," and `dataclasses.asdict(...)` feeding the new `canonical_json(...)`
+gives byte-level JSON parity control against Rust serde output. New Python package
+`src/lorecraft/protocol/` (top-level, sibling to `src/lorecraft/types.py`, so
+engine+features+parity harness can all import without a feature/web dependency) with
+`version.py`, `envelope.py`, `script.py`, `effects.py`, `snapshot.py`, `messages.py`.
+`EntitySnapshot.attributes` mirrors as `dict[str, JsonValue]` reusing
+`lorecraft.types.JsonValue`.
+
+**Versioning.** `PROTOCOL_VERSION` stays `1` for this kickoff. Bump policy: bump on
+any breaking change to envelope/effect/script/snapshot shapes; additive optional
+fields don't bump (Rust `#[serde(default)]` + Python `field(default=...)`). Python
+mirror declares `PROTOCOL_VERSION: int = 1` in `src/lorecraft/protocol/version.py`.
+Cross-language parity check: a Rust test in `lorecraft-protocol` writes the constant
+to a checked-in `rust/crates/lorecraft-protocol/schema/version.json`; a Python
+drift-test `tests/unit/test_protocol_version_parity.py` reads it and asserts equality
+(same shape as the existing `make ai-graph`/`make scripting-docs` drift checks).
+
+**`look` adapter structure** (Phase 1 exit criterion — **not** a live cutover, must
+be byte-identical to current behavior):
+
+- New pure function (Tier 2/policy): `src/lorecraft/features/inventory/look_pure.py`
+  → `def look_effects(request: ScriptRequest) -> ScriptResult`. Reads only from
+  `request.room_snapshot.attributes` (keys like `"name"`, `"description"`,
+  `"terrain"`, `"exits"`) and `request.selected_related_entities` (room items).
+  Returns messages (Feed lines in the same order as today's `ctx.say` calls, plus the
+  `PanelUpdate("room_id", ...)`) and `proposed_effects=[]`. No `GameContext`, no
+  session, no repo access inside this function.
+- `InventoryService.look(ctx)` becomes a thin shim: (1) build the `ScriptRequest`
+  snapshot from `ctx` using the same reads it does today (`ctx.room`,
+  `ctx.room_repo.exits`, `ctx.item_repo.items_in_room`, terrain registry) — reads
+  only; (2) call `look_effects`; (3) apply the result the old way — each `Feed` →
+  `ctx.say(text, message_type)`, each `PanelUpdate` → `ctx.push_update(key, value)`,
+  in the same order.
+- Hard requirement: existing `look` unit tests and the golden-path/`look_only` audit
+  goldens must show zero diff — this is a refactor, not a behavior change.
+
+**Tier classification** (explicit, per AGENTS.md "Tier 1 = mechanism, Tier 2 =
+policy"):
+
+- Tier 1/mechanism: the `lorecraft-protocol` crate + `src/lorecraft/protocol/`
+  mirror — `CommandEnvelope`, `CommandOutcome`, `ScriptRequest`, `ScriptResult`,
+  `Effect`, `EntitySnapshot`, `OutboundMessage`, ID newtypes, `PROTOCOL_VERSION`. No
+  feature-specific fields; `EntitySnapshot.attributes` is opaque precisely so no
+  feature's opinion lands in the type.
+- Tier 2/policy: `features/inventory/look_pure.py` — `look_effects` and which
+  attribute/message keys it reads/emits are `look`'s opinion and live in the
+  feature, never the protocol type.
+
+**Tunables note** (per AGENTS.md "Prefer live-tunable configuration"): this kickoff
+introduces no game-balance dials. The only dials are operational (`deadline_ms`,
+`ScriptBudget` fields) — static config for this kickoff, but flagged as strong
+live-tunable candidates once the actor + script host land in Phase 2+ (mirror the
+`WorldClock` DB-backed-singleton + admin-endpoint pattern rather than YAML+reseed).
+`PROTOCOL_VERSION` is a static code constant, never live-tunable.
+
+### Proposed tasks
+
+**Phase 0:**
+
+- [x] `src/lorecraft/tools/replay_hash.py`: `canonical_json` (float-reject) + `hash_events` over existing `normalize_events` — Tier 1 — deterministic sha256 for a trail; state-hash deferred to Phase 2 — tunable: static.
+- [x] `tests/simulation/scenarios/look_only.json` + golden; refactor `test_audit_regression.py` to iterate scenarios — Tier 2 (test content) — read-only parity fixture for the `look` slice — tunable: static content.
+- [x] Document `make test-simulation` as a mandatory rust-port review gate — N/A (policy doc) — reviewers confirm it green on contract/verb changes — tunable: n/a.
+- [x] `tests/simulation/test_event_loop_blocking.py`: sync-sleep handler injection; assert concurrent command delayed ~SLOW — N/A (characterization test) — proves current head-of-line blocking — tunable: n/a.
+- [x] `src/lorecraft/tools/mutation_scan.py`: AST inventory of direct SQL/ORM mutation → checklist — N/A (Phase 0 tooling) — enumerates the Phase 4/5 conversion backlog — tunable: n/a.
+
+**Phase 1:**
+
+- [x] `lorecraft-protocol` crate: add CommandEnvelope, CommandOutcome, ScriptRequest, ScriptResult, Effect (6 variants), EntitySnapshot (opaque attrs), OutboundMessage, ID newtypes — Tier 1 — serde JSON round-trips; no feature fields — tunable: PROTOCOL_VERSION static / budgets static-now-live-later.
+- [x] `src/lorecraft/protocol/` package: frozen-dataclass mirror of the above; `version.py`; parity drift-test vs Rust `schema/version.json` — Tier 1 — Python<->Rust JSON parity — tunable: static.
+- [x] `src/lorecraft/features/inventory/look_pure.py`: `look_effects(ScriptRequest) -> ScriptResult`; make `InventoryService.look` a thin snapshot-building shim — Tier 2 — byte-identical player output (goldens unchanged); no session in the pure fn — tunable: static.
+
+### Kickoff status (2026-07-12)
+
+Both tracks are implemented, reviewed, and tested green:
+
+- **Part A** (Phase 0 evidence gate) landed on branch `rustport-phase0-python-evidence`
+  (commit `2300847`). **Part B** (Phase 1 contracts) landed on branch
+  `rustport-phase1-protocol-contracts` (commit `51ed270`).
+- Both branches passed Code Review with no blocking findings, and passed Test & QA:
+  Rust side — `cargo build`, `cargo test`, and `cargo clippy` all clean, 11 new
+  protocol tests; Python side — `make lint`, `make typecheck`, and `make test` all
+  clean, full suite 1420-1425 tests passed depending on branch, coverage 88.93% on
+  Track A, well above the 80% gate.
+- `mutation_scan.py`, run against the real `features/` tree, found 87 findings across
+  32 files (85 session-mutation, 2 model-attribute-write) — this is the expected
+  Phase 4/5 conversion backlog the tool exists to produce, not a defect to fix now.
+- `test_event_loop_blocking.py` ran green and stable across repeated runs, confirming
+  current synchronous command handlers do block the event loop — the expected,
+  documented characterization of current behavior, not a regression.
+
+**Two non-blocking follow-ups flagged by Code Review** — recommended for the next
+increment before they're forgotten:
+
+1. `tests/simulation/conftest.py`'s `audit_trail_for` sorts by `real_time` only (no
+   `id` tiebreaker) — a latent replay-determinism gap, since `real_time` isn't
+   guaranteed unique. `session_replay.py`'s `record_scenario` already does this
+   correctly with a `(real_time, id)` tiebreaker. Should be aligned before Phase 0's
+   hashing work (`replay_hash.py`) is leaned on more heavily.
+2. The Python protocol mirror's container types (`CommandOutcome`, `ScriptRequest`,
+   `ScriptResult`, `CommandEnvelope`) don't yet have their own `to_json`/`from_json` —
+   `dataclasses.asdict()` would silently drop the `Effect`/`OutboundMessage` tag and
+   the `from`/`from_` wire-key rename if a container holding one were serialized that
+   way. Not a bug yet (nothing serializes a container across the boundary in this
+   kickoff), but must be fixed with a proper recursive `to_json` before Phase 2
+   actually sends a `ScriptResult`/`CommandOutcome` over the wire.
+
+Also flagged: the unused `tokio` (full feature set), `uuid`, and `thiserror`
+dependencies in `lorecraft-protocol`'s `Cargo.toml` — should be trimmed or put to use
+in a follow-up cleanup pass.
+
+**Recommended next increment:** Phase 2's Rust world-actor skeleton (bounded input
+queue, deterministic ordering, RNG stream derivation) running `look` in shadow mode
+against the new `look_only` replay fixture, comparing Rust output to the Python golden
+via the new `replay_hash.py` hashing utility — the natural next slice per the plan's
+"Recommended first implementation experiment" steps 3-4 above.
+
+### Where things stand / Next
+
+These tasks are the active kickoff work queue for the two Backend Engineers about to
+implement Part A and Part B in parallel, each in their own scratch worktree branched
+from `rust-port`. Part A (Phase 0 evidence gate) and Part B (Phase 1 contracts) have
+no file overlap and can proceed concurrently. Once both land, the Phase 1 exit
+criterion (`look` running through the protocol contract with zero effects and
+byte-identical output) closes out this kickoff and Phase 2 (Rust skeleton + shadow
+runner) can begin.
+
 ## Final position
 
 Lorecraft should not migrate to Rust merely because Rust is faster or Python has
