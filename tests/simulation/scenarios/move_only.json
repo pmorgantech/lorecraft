@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "description": "Mutating parity slice: a single non-skill-gated bare `north` from the starting room (village_square -> blacksmith_forge, terrain=normal, no lock/condition-flags). Raw is the BARE direction word (not `go north`) because Rust's route.rs only dispatches a single-token line to its execution path this phase (a two-token `go north` always falls back to Python, regardless of the allow-list) -- see rust/crates/lorecraft-server/src/route.rs. The Rust-port movement (Phase 4c) golden -- the mutating-verb counterpart to look_only.",
+  "world_yaml": "world_content/world.yaml",
+  "rng_seed": 1,
+  "actors": [
+    "player-1"
+  ],
+  "commands": [
+    {"t": 0.0, "actor": "player-1", "raw": "north"}
+  ]
+}

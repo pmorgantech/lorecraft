@@ -1,0 +1,8 @@
+[
+  {
+    "type": "MoveEntity",
+    "entity": "$ACTOR$",
+    "from": "village_square",
+    "to": "blacksmith_forge"
+  }
+]

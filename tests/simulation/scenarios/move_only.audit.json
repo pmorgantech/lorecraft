@@ -1,0 +1,9 @@
+[
+  {
+    "event_type": "command_executed",
+    "summary": "Command executed: north",
+    "target_id": null,
+    "room_id": "blacksmith_forge",
+    "severity": "INFO"
+  }
+]

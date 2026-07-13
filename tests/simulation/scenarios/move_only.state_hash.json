@@ -1,0 +1,6 @@
+{
+  "description": "Post-command PlayerStateSnapshot (current_room_id + visited_rooms) for the move_only scenario's bare `north`, captured from a fresh Python-direct (no gateway) live server seeded with rng_seed=1, world_time_ratio=0.0, replaying move_only.json's single command against a freshly created player starting at village_square. hash_state is the SHA-256 hex digest lorecraft.tools.replay_hash.hash_state computes over this exact snapshot (canonical_json: sorted keys, compact separators). visited_rooms starts as [village_square] (the player's spawn room is recorded as visited) and gains blacksmith_forge on the move.",
+  "current_room_id": "blacksmith_forge",
+  "visited_rooms": ["village_square", "blacksmith_forge"],
+  "hash_state": "2489e0af0c3cd58dfbc4b221c2aede487ddcd9048e772560bd186e0f7cf5b3f4"
+}
