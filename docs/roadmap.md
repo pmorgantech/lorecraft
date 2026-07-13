@@ -11,7 +11,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-12, v0.94.0 on main; Sprints 73 & 75 merged)
+## Where things stand (2026-07-13, v0.94.0 on main; Sprints 73 & 75 merged; Sprint 76 queued next)
 
 **Everything through Sprint 75 is merged to main** (currently at v0.94.0, which ships Sprints 73
 and 75 — see `../CHANGELOG.md`).
@@ -68,6 +68,15 @@ tree, bought with skill points, unlocking abilities in all three flavors — act
 (`forage`/`sense`/`pick`), passive modifiers (`mule`/`sharp_eyes`/`haggler`), and an
 interaction/dialogue unlock (`silver_tongue`, gating a persuasion option in the innkeeper Mira's
 dialogue tree). Awaiting Integrator merge.
+
+**[Sprint 76 — Economy live-tuning admin UI](#sprint-76--economy-live-tuning-admin-ui)
+is queued next, not yet started** — all of 76.1–76.7 are `[ ]`. Closes the `economy.regions`
+live-tunability gap (flagged in the Backlog table below and in `AGENTS.md`'s "prefer live-tunable
+configuration" section) by adding the missing **admin layer** — a repo read method plus an
+admin router/UI tab — over the `RegionPricing` table, which is **already** DB-backed and
+live-read (since Sprint 71.2); **no schema change**, so the Database Specialist gate is skipped.
+Pure Tier 2 (`features/economy/`) + composition-layer (`webui/admin/`) work — no `engine/`
+changes.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -877,6 +886,35 @@ picked up; do not confuse with this session's own worktree):**
 
 ---
 
+## Sprint 76 — Economy live-tuning admin UI
+
+**Goal:** close the `economy.regions` live-tunability gap flagged in the Backlog table below and
+in `AGENTS.md`'s "Prefer live-tunable configuration where sensible" section. `RegionPricing`
+(`src/lorecraft/features/economy/models.py`) is **already** a DB-backed table — `zone` (PK) →
+`region_mult` + a per-item `bias` JSON map — YAML-seeded from `world_content/world.yaml`'s
+`economy.regions:` list at import time, and already read **live** from the DB on every
+transaction (`features/economy/service.py`). **This is not a schema/model change** — `RegionPricing`
+already exists exactly as needed; what's missing is the admin layer to retune it without a reseed,
+mirroring the `WorldClock` (`webui/admin/routers/clock.py`) and Sprint 73.4 `ProgressionConfig`
+precedents. Because there is no schema change, **the Database Specialist gate stage is skipped**
+for this sprint's implementation gate.
+
+**Tier boundary:** this is pure **Tier 2 + composition-layer** work — a new read method on
+`features/economy/repo.py` (Tier 2 feature repo) plus a new router/UI under `webui/admin/`
+(composition layer, may import both engine and features). **No `engine/` changes.**
+
+| # | Task | Status |
+|---|------|--------|
+| 76.1 | **`EconomyRepo.all_regions()`.** New read method on `src/lorecraft/features/economy/repo.py` returning every `RegionPricing` row (today there is only `region_for_zone(zone)`, a single-row lookup — the admin list view needs all rows). Mechanism-only, Tier 2 feature-repo addition, no schema change. | [ ] |
+| 76.2 | **Admin router `webui/admin/routers/economy.py`.** GET (list all regions, `Observer`-gated) and POST (edit one region's `region_mult`/`bias`, `Superadmin`-gated) endpoints, mirroring `webui/admin/routers/progression.py`'s exact pattern (Sprint 73.4: read the row(s) fresh from the DB each call, mutate + commit in the POST handler — no runtime cache to push to, since nothing caches `RegionPricing` in memory). Register in `webui/admin/api.py` (import + `admin_router.include_router(economy_router)` alongside the other routers there). | [ ] |
+| 76.3 | **"Economy" admin tab in `webui/admin/index.html`.** Mirror the existing "Progression" tab's structure (the `tab-progression` panel and its `loadProgressionConfig`/`saveProgressionConfig`/`updateProgressionEditUI` JS, ~line 1350–1420) but for a *list* of regions (one row per zone) rather than a single config object — each row shows zone, `region_mult` (editable number input), `bias` (editable, likely a simple JSON textarea given it's a sparse `item_id`→mult map), and a per-row Save button. Superadmin-gated editing exactly like Progression's tab (disabled inputs + tooltip for lesser roles, `state.role === "superadmin"`). | [ ] |
+| 76.4 | **Backend unit tests.** Coverage for `EconomyRepo.all_regions()` and the new admin router's GET/POST endpoints (auth-gating, validation, persistence round-trip) — written inline by Backend Engineer as part of 76.1/76.2, not a separate Pytest Writer task. | [ ] |
+| 76.5 | **Frontend e2e tests.** Coverage for the new Economy admin tab, written inline by Frontend Specialist as part of 76.3, following the existing e2e admin-tab test pattern (e.g. `tests/e2e/test_admin_issues.py`, or the Progression tab's e2e test if one exists — check `tests/e2e/` for a progression admin test to mirror). | [ ] |
+| 76.6 | **Full Test & QA pass** (lint + typecheck + test, e2e for the new admin UI) before merge. | [ ] |
+| 76.7 | **Docs.** This roadmap section, plus an update to `docs/admin_builder_guide.md` documenting the new Economy admin tab/endpoints, in the same style as that guide's existing Clock/Progression admin-control sections. | [ ] |
+
+---
+
 ## Backlog
 
 | Item | Notes |
@@ -886,7 +924,7 @@ picked up; do not confuse with this session's own worktree):**
 | Sounds, GPT descriptions, online world-building | Wishlist |
 | ~~Player-facing bug reports~~ | **Done** — `report` one-liner (v0.12.0) + guided category→title→detail wizard (Sprint 33.1). Only the `report player <name>` moderation branch + an `Issue.target_player_id` field remain — see [`wishlist.md`](wishlist.md) → *Issue-report wizard*. |
 | Database inspector / state editor | Admin tool for advanced troubleshooting |
-| Economy: make `economy.regions` pricing live-tunable | Added 2026-07-12. Currently YAML-authored + reseed-only (`world_content/world.yaml`'s `economy.regions`, imported via `import_world._import_economy`) — a real gap against the "prefer live-tunable configuration where sensible" principle (`AGENTS.md`), surfaced while designing Sprint 73's progression config. Retrofit onto the `WorldClock` pattern (`webui/admin/routers/clock.py`): a DB-backed value, YAML-seeded for initial authoring, mutated live via an admin endpoint with no restart/reseed needed. Natural pairing with Sprint 73's `ProgressionConfig` (73.3/73.4) if picked up around the same time, since both retrofit the same YAML+reseed → live-tunable pattern — but independent work, not blocking either. |
+| ~~Economy: make `economy.regions` pricing live-tunable~~ | Added 2026-07-12. **Picked up as [Sprint 76 — Economy live-tuning admin UI](#sprint-76--economy-live-tuning-admin-ui) (2026-07-13), queued next.** `RegionPricing` is already DB-backed and live-read (since Sprint 71.2) — the gap is purely the missing admin layer (repo read-all method + admin router/UI), not a schema change. |
 | Multiplayer trade/transit test pass | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Multiplayer sim-test coverage* (was Sprint 65) |
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
 | Sprint 73 cleanup: stale defensive `PlayerStats` fallbacks | Added 2026-07-12. After commit `c3b818a` made `PlayerRepo.stats()` get-or-create, ~8 call sites still carry now-dead `is not None`/`or PlayerStats(...)` defensive fallbacks and stale comments (notably `webui/player/session.py` L~324–329, L~481–486, and `engine/services/save.py` L~350–352) — flagged by Code Reviewer as a future-maintainer trap. Cosmetic, not a bug; not blocking. |
@@ -958,7 +996,12 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   resolved per their stated recommendations; two review-found hardening fixes, commits `8183be3`
   and `8b1795b`). Branch `sprint-75-db-migration`, all tasks `[x]` — see the Sprint 75 section
   above for the full commit list.
-- **Next new sprint: 76.** Don't recycle a number that appears here or in
+- **Queued, not yet started: 76** (Economy live-tuning admin UI — 76.1 `EconomyRepo.all_regions()`,
+  76.2 admin router GET/POST for `RegionPricing`, 76.3 "Economy" admin tab, 76.4 backend unit
+  tests, 76.5 frontend e2e tests, 76.6 Test & QA pass, 76.7 docs; no schema change — `RegionPricing`
+  already exists and is already live-read; pure Tier 2 + composition-layer work, no `engine/`
+  changes; Database Specialist gate skipped).
+- **Next new sprint: 77.** Don't recycle a number that appears here or in
   [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
