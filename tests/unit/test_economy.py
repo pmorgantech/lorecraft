@@ -221,6 +221,58 @@ class TestPricing:
         # 100 * 0.0025 = 0.25, capped at BARTER_DISCOUNT_CAP = 0.25
         assert service.buy_price(ctx, shop, NPC_ID, salt) == 15
 
+    def test_haggler_ability_discounts_price(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        """The Haggler skill-tree node (price.buy mult 0.95) flows through the
+        Tier 1 modifier resolver into buy_price, multiplied alongside the
+        barter/reputation discounts (not replacing them)."""
+        from lorecraft.features.progression.modifier_source import register
+        from lorecraft.features.progression.skill_tree import (
+            get_registry,
+            validate_skill_tree_document,
+        )
+
+        _cmd_engine, ctx, session = built
+        stats = session.get(PlayerStats, ctx.player.id)
+        assert stats is not None
+        stats.unlocked_nodes = ["haggler"]
+        session.add(stats)
+        session.commit()
+
+        register()  # idempotent global registration of SkillTreeModifierSource
+        tree = get_registry()
+        tree.clear()
+        tree.load_document(
+            validate_skill_tree_document(
+                {
+                    "nodes": [
+                        {
+                            "id": "haggler",
+                            "name": "Haggler",
+                            "cost": 2,
+                            "unlock": {
+                                "modifier": {
+                                    "key": "price.buy",
+                                    "kind": "mult",
+                                    "amount": 0.95,
+                                }
+                            },
+                        }
+                    ]
+                }
+            )
+        )
+        try:
+            service = EconomyService()
+            shop = session.get(Shop, SHOP_ID)
+            salt = session.get(Item, "salt_sack")
+            assert shop is not None and salt is not None
+            # 20 * 0.95 = 19 (5% off), distinct from the un-haggled 20.
+            assert service.buy_price(ctx, shop, NPC_ID, salt) == 19
+        finally:
+            tree.clear()
+
 
 class TestListShop:
     def test_list_shows_stock_and_prices(

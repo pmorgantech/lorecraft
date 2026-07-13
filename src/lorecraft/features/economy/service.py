@@ -26,6 +26,7 @@ from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.grammar import score_match
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.features.economy.models import Shop, ShopStock
 from lorecraft.engine.models.world import Item, NPC
 from lorecraft.features.economy.repo import EconomyRepo
@@ -94,6 +95,15 @@ class EconomyService:
         )
         return min(REP_DISCOUNT_CAP, max(0, standing) * REP_DISCOUNT_PER_STANDING)
 
+    def _skill_price_mult(self, ctx: GameContext) -> float:
+        """Resolved `price.buy` multiplier from passive skill-tree abilities
+        (e.g. the Haggler node) and any other registered modifier source.
+
+        base=1.0 so an unmodified player pays full price; the Tier 1 resolver
+        folds every source's `mult` amount (0.95 = 5% off) in its fixed bucket
+        order. Same read-through pattern as `resolve_carry_capacity`."""
+        return resolve_for(ctx.session, "player", ctx.player.id, "price.buy", base=1.0)
+
     def _region_mult_and_bias(
         self, ctx: GameContext, item_id: str
     ) -> tuple[float, float]:
@@ -125,8 +135,10 @@ class EconomyService:
         quality_mult = QUALITY_MULTIPLIERS.get(item.quality, 1.0)
         region_mult, bias_mult = self._region_mult_and_bias(ctx, item.id)
         demand_mult = self._demand_mult(stock)
-        discount = (1 - self._barter_discount(ctx)) * (
-            1 - self._rep_discount(ctx, npc_id)
+        discount = (
+            (1 - self._barter_discount(ctx))
+            * (1 - self._rep_discount(ctx, npc_id))
+            * self._skill_price_mult(ctx)
         )
         return max(
             0,
