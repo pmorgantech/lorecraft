@@ -4,6 +4,52 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.96.0] - 2026-07-13
+
+### Added
+
+- **Sprint 76 — Economy live-tuning admin UI.** Complete the live-tunable pattern for region-pricing
+  economy configuration by exposing `RegionPricing` (DB-backed and live-read since Sprint 71.2)
+  through an admin interface:
+  - **Backend `EconomyRepo.all_regions()` read method** (`src/lorecraft/features/economy/repo.py`):
+    Returns all `RegionPricing` rows for the admin list view (complements the existing
+    single-row `region_for_zone(zone)` method). No schema change — the table already exists and
+    is live-read at query time.
+  - **Admin API router** (`src/lorecraft/webui/admin/routers/economy.py`): `GET /admin/economy/regions`
+    (returns all regions, `Observer`-gated so any admin can view zone multipliers and bias maps)
+    and `POST /admin/economy/regions/{zone}` (edits a region's `region_mult` and/or `bias` JSON,
+    `Superadmin`-gated). Mirrors the `progression.py` pattern: read fresh from DB each call, apply
+    changes, commit immediately with no runtime cache. Validates `region_mult > 0` and rejects
+    malformed `bias` JSON without persistence. Registered in `webui/admin/api.py`.
+  - **"Economy" admin tab** (`webui/admin/index.html` + tests/e2e/test_admin_economy.py): New tab
+    showing a sortable list of zones with current `region_mult` and `bias`. Superadmin-gated edit
+    controls (disabled inputs + tooltip for lesser roles). Each row has a Save button that POSTs to
+    the backend, and edit changes persist across page reloads. Includes regression test for
+    save-status persistence and role-gated controls.
+  - **Save-status UI fix** (commit `57c1ba3`): The Economy tab's save-status feedback message was
+    clobbered if the table reloaded (e.g., from a WS push) between the POST response and the user
+    dismissing the status message. Fixed with request-scoped state so reloads don't clear the
+    feedback. In passing, hardened JavaScript string contexts (zone values now HTML-escaped in
+    `onclick` handlers) to eliminate potential zone-name XSS and improved URI encoding of region
+    names in fetch URLs.
+  - **Bias type-confusion rejection test** (commit `18a7a94`): Pinned a case where a POST with a
+    bias JSON map containing non-numeric multipliers (e.g. `{"item_id": "invalid"}` instead of
+    a number) is correctly rejected before DB persistence.
+
+### Docs
+
+- **Admin builder guide**: New "Region pricing (Sprint 76)" subsection documenting the Economy tab
+  (view auth: any admin role; edit auth: Superadmin only), the `region_mult` constraint (must be
+  > 0), the `bias` map format (sparse `item_id` → `multiplier` JSON, a full replace on POST, not a
+  merge), and the live-tunability guarantee (no reseed or restart needed). Added Admin Web Panel
+  Tour entry for the Economy tab. Related Docs link to `docs/trade_economy.md`.
+- **Fixed stale economy examples**: `docs/world_building.md` and `docs/trade_economy.md` had
+  `economy.regions` YAML examples still using the pre-Sprint-71.2/75 `area_id` field name. Updated
+  to use `zone` (the schema validator and `RegionPricing.zone` PK both require it; `extra="forbid"`
+  means the old examples would fail import validation now).
+- **Roadmap**: Sprint 76 marked complete; closed the `economy.regions` live-tunability backlog gap
+  flagged in `AGENTS.md`'s "Prefer live-tunable configuration" design principle.
+
 ## [0.95.0] - 2026-07-12
 
 ### Added
