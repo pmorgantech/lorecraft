@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "description": "Read-only parity slice: a single `look` in the starting room. A tight, mutation-free golden for the Rust-port `look` conversion (Phase 1 exit criterion) — the golden_path/load_default fixtures are mutation-heavy and not a clean read-only target.",
+  "world_yaml": "world_content/world.yaml",
+  "rng_seed": 1,
+  "actors": [
+    "player-1"
+  ],
+  "commands": [
+    {"t": 0.0, "actor": "player-1", "raw": "look"}
+  ]
+}
