@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-07-13
+
 ### Added
 - `docs/rust_migration_plan.md` — Phase 3 kickoff design spec: transport/
   connection-ownership migration split into three sequenced sub-slices (3a
