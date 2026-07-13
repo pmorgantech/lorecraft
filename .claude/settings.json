@@ -15,8 +15,26 @@
     "allow": [
       "Bash(git fetch *)",
       "Bash(source /home/petem/src/Gamedev/lorecraft/.venv/bin/activate)",
+      "Bash(source .venv/bin/activate)",
       "mcp__graphify__get_neighbors",
-      "Bash(python -m pytest *)"
+      "Bash(python -m pytest *)",
+      "Bash(pytest *)",
+      "Bash(.venv/bin/python -m pytest *)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(python -m venv *)",
+      "Bash(python3 -m venv *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(echo *)",
+      "Bash(ruff *)",
+      "Bash(python -m ruff *)",
+      "Bash(.venv/bin/ruff *)",
+      "Bash(basedpyright *)",
+      "Bash(python -m basedpyright *)",
+      "Bash(.venv/bin/basedpyright *)",
+      "Bash(make *)",
+      "Bash(bash scripts/bootstrap-worktree.sh)"
     ]
   }
 }

@@ -146,39 +146,48 @@ python -m pytest -n auto --dist=loadfile --cov=src/lorecraft --cov-report=term-m
 - Requires the dev extra (`pytest-xdist`, `pytest-cov` for coverage runs): `pip install -e ".[dev]"`.
 - Do not add `-n` to `make test-e2e` or `make test-simulation`; those targets stay serial.
 
-### Running tests from a git worktree (the PYTHONPATH footgun)
+### Running tests from a git worktree (use the worktree's own venv, not a PYTHONPATH hack)
 
-Agents usually work in a `.claude/worktrees/<name>` checkout, and there's a subtle trap
-that silently tests the **wrong** source. Two facts cause it:
+Every session running inside a `.claude/worktrees/<name>` checkout gets its own isolated `.venv`
+**automatically**: `session-start.sh` fires `bash scripts/bootstrap-worktree.sh` in the background
+the instant the session starts (idempotent — safe to fire repeatedly; see the script). That venv's
+editable install resolves `import lorecraft` to **that worktree's** `src/lorecraft`, not the
+primary tree's.
 
-1. **The `.venv` lives only in the primary working tree (repo root), not in the worktree.**
-   So `python` isn't even on `PATH` in a fresh worktree shell until you activate that venv.
-2. **That venv's editable install (`pip install -e`) resolves `import lorecraft` to the
-   *primary* tree's `src/lorecraft`** — *not* your worktree's. So a bare
-   `python -m pytest` (or `make test`) run from a worktree passes/fails against the primary
-   tree's code and **your worktree edits are never exercised.** Nothing errors; you just get
-   green (or red) for the wrong tree.
-
-**Fix:** activate the primary venv and prepend `PYTHONPATH=<worktree>/src` so imports resolve
-to the worktree. Copy-paste recipe that works from *inside* any worktree (no hardcoded paths):
+**Use it directly — this is the default, not a fallback:**
 
 ```bash
-MAIN=$(dirname "$(git rev-parse --git-common-dir)")   # primary working tree (repo root)
-source "$MAIN/.venv/bin/activate"                      # `python`/`pytest` on PATH only after this
-PYTHONPATH="$PWD/src" python -m pytest -n auto --dist=loadfile path/to/test_file.py
-PYTHONPATH="$PWD/src" python -m basedpyright            # typecheck the worktree too
+.venv/bin/python -m pytest -n auto --dist=loadfile path/to/test_file.py
+.venv/bin/python -m basedpyright
+# or: source .venv/bin/activate — then plain `python`/`pytest`/`make test` all resolve correctly
 ```
 
-- Confirm you're testing the right tree once: `PYTHONPATH="$PWD/src" python -c "import lorecraft, sys; print(lorecraft.__file__)"`
+- Bootstrap runs in the background, so confirm it finished before trusting a result:
+  `cat var/bootstrap-status` should read `ready` (starts as `running`). If the file/venv is
+  missing entirely, run `make bootstrap` yourself — idempotent, worktree-scoped, and refuses to
+  run from the primary tree by design.
+- Confirm you're testing the right tree once: `.venv/bin/python -c "import lorecraft; print(lorecraft.__file__)"`
   must print a path **under your worktree**, not the repo root.
-- To use the Makefile targets from a worktree, inject the same var:
-  `PYTHONPATH="$PWD/src" make test` (xdist workers inherit the env). `ruff` needs no PYTHONPATH.
-- Heavier but foolproof alternative: give the worktree its own venv
-  (`python -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"`); then plain
-  `make test` "just works" there. Prefer the `PYTHONPATH` one-liner for quick runs.
+- Once bootstrapped, plain `make test` / `make lint` / `make typecheck` just work against the
+  worktree's own code — no extra flags, no `PYTHONPATH`.
+
+**Only fall back to `PYTHONPATH="$PWD/src"` + primary-venv-activation for a genuinely
+un-bootstrapped location** — e.g. an ad hoc `/tmp/<scratch>` worktree created for a one-off git
+operation that unexpectedly also needs to run Python (rare; most scratch worktrees are git-only
+and never touch Python). This recipe is fragile in practice — easy to activate the wrong venv or
+drop the `PYTHONPATH` prefix on one command in a chain and silently test the primary tree instead
+with no error — so prefer bootstrapping the location instead when Python work is actually needed
+there:
+
+```bash
+MAIN=$(dirname "$(git rev-parse --git-common-dir)")
+source "$MAIN/.venv/bin/activate"
+PYTHONPATH="$PWD/src" python -m pytest -n auto --dist=loadfile path/to/test_file.py
+```
+
 - **e2e/live-server tests:** point the app's content mirrors at a temp dir in the fixture
   (`issues_yaml_path`/`news_yaml_path`/`help_yaml_path` → `tmp_path`) so a run can't export
-  test data into the repo's `docs/*.yaml`. `PYTHONPATH="$PWD/src"` still applies.
+  test data into the repo's `docs/*.yaml`.
 
 ### The shared primary-tree checkout race (git commands, not just Python)
 
@@ -263,9 +272,11 @@ before any edit or commit, not just once at the start of the task. A shared dire
 can change *between* your own tool calls, not just between sessions. If it doesn't match what
 you expect, stop and create your own scratch worktree rather than proceeding on an assumption.
 
-**This compounds with the PYTHONPATH footgun above.** Every new scratch worktree an agent
-creates for itself needs the same treatment as any other worktree — no `.venv` of its own by
-default, so either bootstrap one or use the `PYTHONPATH="$PWD/src"` + primary-venv-activation
-recipe. Confirm the resolved `lorecraft.__file__` path points under *that specific scratch
-worktree*, not the primary tree or a different worktree, before trusting any test result run
-there — the failure mode ("green/red for the wrong tree") is silent either way.
+**This compounds with venv isolation above.** A `.claude/worktrees/<name>` *session* worktree
+already got its `.venv` bootstrapped automatically at session start (see above) — no action
+needed there. A `/tmp/<scratch>` worktree created ad hoc for a git operation does **not** get
+that treatment (`session-start.sh` never fires there); if one of those unusually also needs to
+run Python, run `make bootstrap` in it explicitly rather than reaching for `PYTHONPATH` by
+habit. Confirm the resolved `lorecraft.__file__` path points under *that specific worktree*, not
+the primary tree or a different worktree, before trusting any test result run there — the
+failure mode ("green/red for the wrong tree") is silent either way.
