@@ -167,6 +167,7 @@
 
             <!-- Command bar INSIDE the chronicle card (per the export). -->
             <div class="flex-none p-3 border-t border-border">
+                <div id="vitals" class="mb-1.5 text-xs">{% include "partials/vitals.html" %}</div>
                 <form id="command-form"
                       hx-post="/command"
                       hx-target="#feed"

@@ -60,6 +60,7 @@
             </div>
         </div>
         <div class="flex-none px-6 py-3 border-t border-border">
+            <div id="vitals" class="mb-1.5 text-xs">{% include "partials/vitals.html" %}</div>
             <form hx-post="/command" hx-target="#feed" hx-swap="beforeend"
                   hx-on::after-request="handleCommandSuccess(this)"
                   class="flex items-center gap-3 rounded border border-border px-4 py-3"

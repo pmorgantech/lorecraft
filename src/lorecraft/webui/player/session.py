@@ -400,16 +400,23 @@ MUD_CHRONICLE_LAYOUTS = ("immersive", "classic")
 def vitals_snapshot(
     session: DBSession, meters: MeterService, player_id: str
 ) -> dict[str, Any]:
-    """Compact vitals for the classic-layout prompt (Sprint 59): carried coins
-    and the fatigue meter as "stamina". Lorecraft has no HP/MP/MV, so this
-    surfaces the real meters instead of inventing MUD stats. Degrades
-    gracefully — a missing fatigue MeterDef (feature disabled) just omits
-    stamina; only coins (always available via the ledger) is guaranteed."""
+    """Compact vitals for the near-input prompt (Sprint 59, HP added later):
+    carried coins, the engine's bootstrap "hp" meter, and the fatigue meter
+    as "stamina" — the same real meters the Stats pane shows (see
+    stats_snapshot()), just condensed onto one line. Degrades gracefully — a
+    missing meter (feature disabled, e.g. no fatigue) just omits that
+    segment; only coins (always available via the ledger) is guaranteed."""
     from lorecraft.engine.services.ledger import LedgerService
 
     out: dict[str, Any] = {
         "coins": LedgerService().balance_of(session, "player", player_id)
     }
+    try:
+        meter = meters.get(session, "player", player_id, "hp")
+        out["hp_current"] = int(round(meter.current))
+        out["hp_max"] = int(round(meter.maximum))
+    except Exception:  # pragma: no cover - only if the hp meter is absent
+        pass
     try:
         meter = meters.get(session, "player", player_id, "fatigue")
         out["stamina_current"] = int(round(meter.current))

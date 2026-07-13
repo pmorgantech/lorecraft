@@ -68,14 +68,17 @@
         </div>
         {% endif %}
 
-        <!-- Floating command bar. -->
-        <form class="immersive-cmd absolute left-4 right-4 bottom-4 flex items-center gap-3"
-              hx-post="/command" hx-target="#feed" hx-swap="beforeend"
-              hx-on::after-request="handleCommandSuccess(this)">
-            <span class="text-accent text-lg leading-none">&rsaquo;</span>
-            <input name="command" id="command-input" autocomplete="off" spellcheck="false"
-                   placeholder="What do you do?" aria-label="command"
-                   class="flex-1 bg-transparent outline-none text-sm text-text placeholder:text-text-muted">
-        </form>
+        <!-- Floating vitals + command bar. -->
+        <div class="absolute left-4 right-4 bottom-4 space-y-1.5">
+            <div id="vitals" class="text-xs px-1">{% include "partials/vitals.html" %}</div>
+            <form class="immersive-cmd flex items-center gap-3"
+                  hx-post="/command" hx-target="#feed" hx-swap="beforeend"
+                  hx-on::after-request="handleCommandSuccess(this)">
+                <span class="text-accent text-lg leading-none">&rsaquo;</span>
+                <input name="command" id="command-input" autocomplete="off" spellcheck="false"
+                       placeholder="What do you do?" aria-label="command"
+                       class="flex-1 bg-transparent outline-none text-sm text-text placeholder:text-text-muted">
+            </form>
+        </div>
     </div>
 </div>

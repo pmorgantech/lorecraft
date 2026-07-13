@@ -95,6 +95,26 @@ def test_command_history_arrow_up_down_navigation(page: Any, live_server: str) -
     assert input_box.input_value() == "look"
 
 
+def test_standard_layout_shows_vitals_near_input_and_refreshes_on_command(
+    page: Any, live_server: str
+) -> None:
+    """The compact vitals line (previously classic-layout-only) now renders
+    near the command input on every layout, including Standard (the default
+    layout create_character lands on) -- and OOB-refreshes after a command,
+    the same as classic already did (see docs/roadmap.md's vitals gap)."""
+    username = f"e2e_{uuid.uuid4().hex[:8]}"
+    create_character(page, live_server, username)
+
+    vitals = page.locator("#vitals")
+    vitals.wait_for()
+    assert "coin" in vitals.inner_text()
+
+    send_command(page, "look")
+    # Still present (OOB-swapped, not removed) after the round-trip.
+    page.locator("#vitals").wait_for()
+    assert "coin" in page.locator("#vitals").inner_text()
+
+
 def test_invalid_command_shows_error_and_refocuses_input(
     page: Any, live_server: str
 ) -> None:

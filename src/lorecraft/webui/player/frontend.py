@@ -521,13 +521,12 @@ async def game_screen(
                 ),
             ]
 
-        # The classic layout's prompt shows a vitals line (real meters, not MUD
-        # stats — see vitals_snapshot). Only computed for that layout.
-        vitals = (
-            vitals_snapshot(game_db, get_meters(request), player.id)
-            if prefs.layout == "classic"
-            else None
-        )
+        # Every layout's prompt shows a compact vitals line (real meters, not
+        # MUD stats — see vitals_snapshot). game.html is the top-level template
+        # for all layouts (via its {% include %} branches), so computing this
+        # once here covers all of them; vitals.html's own guards degrade
+        # gracefully if a meter/feature is absent.
+        vitals = vitals_snapshot(game_db, get_meters(request), player.id)
         # The Stats pane (Sprint 62, from the export's "Score" readout) —
         # Standard shows it as a tab, Dock as a window-shade section.
         player_stats = (
@@ -953,19 +952,18 @@ async def handle_command(
 
             response_html = feed_html
 
-            # Classic layout shows a vitals line in its prompt (Sprint 59) —
-            # OOB-refresh it each turn (stamina/coins change on rest, travel,
-            # buying, etc.), like the design's "vitals update in the same trip".
-            if prefs.layout == "classic":
-                vitals_html = templates.get_template("partials/vitals.html").render(
-                    vitals=vitals_snapshot(
-                        game_db, get_meters(request), after_player.id
-                    ),
-                )
-                response_html += (
-                    f'<div id="vitals" hx-swap-oob="true" '
-                    f'class="mb-1.5 text-xs">{vitals_html}</div>'
-                )
+            # Every layout's prompt shows a vitals line (Sprint 59; broadcast to
+            # all layouts later) — OOB-refresh it each turn (HP/stamina/coins
+            # change on rest, travel, combat, buying, etc.), like the design's
+            # "vitals update in the same trip". vitals.html degrades gracefully
+            # if a meter/feature is absent, so this is safe for every layout.
+            vitals_html = templates.get_template("partials/vitals.html").render(
+                vitals=vitals_snapshot(game_db, get_meters(request), after_player.id),
+            )
+            response_html += (
+                f'<div id="vitals" hx-swap-oob="true" '
+                f'class="mb-1.5 text-xs">{vitals_html}</div>'
+            )
 
             if room_state_changed and result.new_room:
                 room_html = templates.get_template(
