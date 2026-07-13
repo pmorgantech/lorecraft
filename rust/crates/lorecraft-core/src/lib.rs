@@ -4,6 +4,10 @@
 
 pub use lorecraft_protocol;
 
+pub mod rng;
+
+pub use rng::derive_stream;
+
 /// A placeholder for core game entities and logic.
 pub struct Entity {
     /// Entity identifier
