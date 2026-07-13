@@ -62,6 +62,20 @@ change under you the same way the primary tree's can. Read it without checking i
 work on any branch regardless of what's currently checked out elsewhere. See AGENTS.md "The
 shared *designated* worktree race" for why a session's own worktree isn't automatically safe.
 
+**Never build your own commits (the version bump, `CHANGELOG.md` move) inside a shared session
+worktree either — not even to read from it first.** This already happened: the release commit
+for a routine roadmap-doc merge was built via `git reset` (to `FETCH_HEAD`) + `git commit` run
+directly inside the top-level session's own designated `.claude/worktrees/<name>` checkout —
+not the primary tree, and not a destructive command, but still a mutation of a worktree that
+session considered exclusively its own, made without its knowledge, leaving a stray commit on
+its branch that then had to be independently discovered and reset away. (Incident, 2026-07-13:
+the release commit for the "roadmap-refresh" docs fix.) The fix is the same discipline as
+everywhere else in this file: create your **own** disposable scratch worktree
+(`git worktree add /tmp/integrate-<task> <source-branch-or-commit>`) for any commit you're
+about to make, every time, even for a one-line version bump that feels too small to bother —
+that's exactly the "just a quick fix-up" reasoning AGENTS.md's primary-tree section already
+warns doesn't hold up.
+
 If `git` refuses a checkout or a `branch -f` because the branch is "already checked out
 elsewhere," that is not an obstacle to force past — it means another session is using it.
 Stop and report to the Orchestrator/user rather than forcing it, and never force-move a
