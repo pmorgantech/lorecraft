@@ -23,7 +23,7 @@ import time
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.models.player import Player
 from lorecraft.features.quests.models import PlayerQuestProgress, Quest
@@ -36,7 +36,7 @@ def _stage_by_id(quest: Quest, stage_id: str) -> JsonObject | None:
 
 
 class QuestTimerService:
-    def __init__(self, game_engine: Engine, manager: ConnectionManager) -> None:
+    def __init__(self, game_engine: Engine, manager: ConnectionManagerProtocol) -> None:
         self._game_engine = game_engine
         self._manager = manager
         self._bus: EventBus | None = None

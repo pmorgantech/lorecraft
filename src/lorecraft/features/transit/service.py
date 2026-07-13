@@ -16,7 +16,7 @@ import logging
 from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
@@ -45,7 +45,7 @@ class TransitService:
         self,
         game_engine: Engine,
         mobile_routes: MobileRouteService,
-        manager: ConnectionManager,
+        manager: ConnectionManagerProtocol,
     ) -> None:
         self._game_engine = game_engine
         self._mobile_routes = mobile_routes

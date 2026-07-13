@@ -20,7 +20,7 @@ from sqlalchemy.engine import Engine
 from sqlmodel import Session
 
 from lorecraft.engine.game import effects as effects_module
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.effects import EffectDef
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
@@ -63,7 +63,7 @@ class WeatherFrontService:
     def __init__(
         self,
         game_engine: Engine,
-        manager: ConnectionManager,
+        manager: ConnectionManagerProtocol,
         rng: GameRng,
         effects: EffectService,
         config: JsonObject,

@@ -24,7 +24,7 @@ import logging
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
@@ -51,7 +51,7 @@ class NpcBehaviorService:
     def __init__(
         self,
         game_engine: Engine,
-        manager: ConnectionManager,
+        manager: ConnectionManagerProtocol,
         rng: GameRng,
         meters: MeterService,
         effects: EffectService,

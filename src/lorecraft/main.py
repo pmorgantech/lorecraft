@@ -157,8 +157,11 @@ def create_app(
             help_session.commit()
 
         manager = ConnectionManager()
-        # Autonomous (server-initiated) broadcasts — the world-clock `time_update`
-        # and weather narration, neither triggered by a player command — target
+        # Autonomous (server-initiated) broadcasts — the world-clock `time_update`,
+        # weather narration, and every timer/scheduler/event-driven broadcaster
+        # below (quest-timer expiries, autonomous NPC roam/patrol narration,
+        # traveling storm-front effects, transit vehicle departure/arrival +
+        # minimap animation), none triggered by a player command — target
         # `broadcast_manager`. Flag OFF (rollback / legacy `/ws`): the real
         # `ConnectionManager`, byte-identical to before. Gateway mode: a
         # late-bound push manager that relays them to Rust as standalone `Deliver`
@@ -239,12 +242,18 @@ def create_app(
             restock_service.register(bus)
         quest_timer_service = None
         if "quests" in enabled_set:
-            quest_timer_service = QuestTimerService(resolved_game_engine, manager)
+            quest_timer_service = QuestTimerService(
+                resolved_game_engine, broadcast_manager
+            )
             quest_timer_service.register(bus)
         npc_behavior_service = None
         if "npc_ai" in enabled_set:
             npc_behavior_service = NpcBehaviorService(
-                resolved_game_engine, manager, app_rng, meter_service, effect_service
+                resolved_game_engine,
+                broadcast_manager,
+                app_rng,
+                meter_service,
+                effect_service,
             )
             npc_behavior_service.register(bus)
         weather_front_service = None
@@ -252,7 +261,7 @@ def create_app(
             register_storm_effects()
             weather_front_service = WeatherFrontService(
                 resolved_game_engine,
-                manager,
+                broadcast_manager,
                 app_rng,
                 effect_service,
                 load_yaml_config(resolved_settings.weather_fronts_yaml_path),
@@ -269,7 +278,7 @@ def create_app(
         transit_service = None
         if "transit" in enabled_set:
             transit_service = TransitService(
-                resolved_game_engine, mobile_route_service, manager
+                resolved_game_engine, mobile_route_service, broadcast_manager
             )
             transit_service.load_lines()
 
