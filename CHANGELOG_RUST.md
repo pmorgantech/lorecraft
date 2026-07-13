@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Gateway follow-up #1: Rust `ConnectionRegistry` now learns room moves via new
+  `GatewayOutbound::MovePlayer` frame (commit `a41f6fe`). A `POST /command` or WS
+  room move now updates the authoritative Rust registry in-order, so players see
+  new broadcasts in their NEW room immediately after moving.
+- Gateway follow-up #3: Autonomous broadcasters (`NpcBehaviorService`,
+  `QuestTimerService`, `WeatherFrontService`, `TransitService`, `MobileRouteService`)
+  now route through `GatewayPushManager` instead of the empty-in-gateway-mode real
+  `ConnectionManager` (commit `d408711`), so their server-initiated broadcasts reach
+  gateway-connected clients.
+
 ### Changed
 - Agent roster/tooling updates (`AGENTS.md`, `.claude/agents/`): model-tier
   assignments, re-added the `pytest-writer` agent, documented the 2-lane

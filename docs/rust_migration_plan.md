@@ -1867,31 +1867,41 @@ vs-buffering-proxy concern from 3b is resolved (the admin UI has no SSE/EventSou
 so the buffering reverse proxy is sufficient).
 
 **Phase 3 follow-ups (before gateway on by default)** — consolidated list of
-still-open items from both 3b and 3c non-blocking advisories:
+still-open items from both 3b and 3c non-blocking advisories, plus two gaps CLOSED
+by the most recent implementation round:
 
-**From 3b (correctness gaps + hardening):**
+**From 3b (correctness gaps + hardening) — CLOSED ITEMS:**
 
-1. **Rust `ConnectionRegistry` doesn't learn `POST /command` room moves** (correctness
-   gap). A `POST /command` room move updates only the Python adapter's mirror, not
-   Rust's authoritative `ConnectionRegistry` — so after a browser-UI move, if the mover
-   sits still and a third party enters the mover's NEW room, the mover misses that later
-   room broadcast. Needs a Python→Rust move instruction in the `GatewayInbound` protocol.
+1. **CLOSED** — Rust `ConnectionRegistry` now learns `POST /command` room moves via
+   `GatewayOutbound::MovePlayer` frame (commit `a41f6fe`). The `move_player` method
+   in gateway-mode managers emits a new additive protocol frame, applied in-order
+   ahead of command-reply deliveries, so the mover's new room broadcasts are visible.
+   Proven by `tests/simulation/test_multiplayer_scenarios.py::test_mover_receives_broadcast_targeted_at_their_new_room`
+   through Rust.
+
+**From 3b (still open):**
+
 2. **Graceful-quit via `POST /command`** (design decision 8). The `disconnect=True`
    teardown still uses the real `ConnectionManager`; in gateway mode the Rust side owns
    the socket, so a proper close needs a new Python→Rust close instruction. A
    `TODO(decision 8)` marks it in `frontend.py`.
-3. **"Dark" autonomous broadcasters** (mechanical gap). Only clock + weather narration
-   route through the gateway; `NpcBehaviorService`, `TransitService`, `QuestTimerService`,
-   `WeatherFrontService` storm effects, and `MobileRouteService` still target the real
-   `ConnectionManager` and are dark to gateway clients. A guard test covers clock/weather;
-   the rest is the same mechanical `broadcast_manager` swap once verified.
+
+3. **CLOSED** — "Dark" autonomous broadcasters now route through `GatewayPushManager`
+   (commit `d408711`). `QuestTimerService`, `NpcBehaviorService`, `WeatherFrontService`
+   storm path, `TransitService`, and `MobileRouteService` now use the gateway-aware
+   broadcast manager instead of the empty-in-gateway-mode real `ConnectionManager`,
+   so their server-initiated broadcasts reach gateway clients. Proven by
+   `tests/simulation/test_gateway_autonomous_broadcasts.py` (NPC path) through Rust.
+
 4. **Unbounded Python push queue** (hardening). `_ClientLink.outbound` in the adapter
    has no depth limit; the Rust side is bounded. A late-phase hardening item to prevent
    memory growth under slow-client conditions before going to production.
+
 5. **`players_here` presence dots** (cosmetic staleness). On the actor's own panel, the
    live presence dots remain cosmetically stale in gateway mode — Rust sees the right set,
    but the update message to the actor itself may reflect a slightly earlier snapshot.
    Low priority, non-functional.
+
 6. **CI browser e2e coverage.** The exit tests (Playwright+Chromium) were verified
    in-env; ensure CI has the `.[e2e]` extras + `playwright install chromium` in the
    build matrix for ongoing automated coverage.
@@ -1902,6 +1912,29 @@ still-open items from both 3b and 3c non-blocking advisories:
 8. `coalesce_key_for` panel-less `state_change` collapse confirmation.
 9. `writer.rs` doc-comment prose clarity.
 10. `SEND_BUFFER_BYTES` env-parse consistency.
+
+**New advisories from this gate's code review (3b+3c completeness round):**
+
+11. **POST-path cross-command move-race** (candidate follow-up). On the HTMX `POST
+    /command` path only (not WS), a concurrent second POST command broadcasting to
+    the mover's NEW room could enqueue its `Deliver` ahead of the mover's `MovePlayer`
+    frame, since the POST path isn't serialized by `_directive_lock` like the WS path.
+    A strict improvement over the pre-#1-closed behavior, but a candidate follow-up
+    if concurrent HTMX-in-gateway is a first-class supported path.
+
+12. **`GatewayPushManager.move_player` encapsulation** (mild cleanup). The
+    `move_player` method reaches into `_apply_move_to_mirror` (a protected method
+    across a class boundary). A public method would read cleaner; flagged for
+    architectural polish.
+
+13. **GAP #3 through-Rust coverage partial** (test completeness). The #3 closure
+    via `broadcast_manager` swap is proven for the NPC path only
+    (`tests/simulation/test_gateway_autonomous_broadcasts.py` covers NPC behavior),
+    not the other three paths (quest timer, weather front, transit routes). All
+    four rely on the identical one-line manager swap + the structural widening
+    of `ConnectionManagerProtocol`, but only NPC has explicit through-Rust proof
+    — the others inherit the mechanism proof from NPC and the existing Python-side
+    tests, a sound but incomplete coverage stance.
 
 **Recommended next increment:** Phase 4 (migrate one vertical gameplay slice —
 `look`, then movement), per the migration plan's own stated sequence. First vertical
