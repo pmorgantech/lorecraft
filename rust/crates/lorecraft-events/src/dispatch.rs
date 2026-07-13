@@ -103,12 +103,20 @@ impl DispatchReport {
 /// - [`DeliveryTarget::Global`] → [`ConnectionRegistry::connected_player_ids`]
 ///   (sorted).
 ///
+/// [`DeliveryTarget::Admin`] is a **placeholder no-op here** — admin fan-out
+/// resolves against a separate admin registry that Phase 3c task 2 wires in;
+/// `ConnectionRegistry` is player-keyed and has no admin sockets, so this arm
+/// currently resolves to zero recipients. Task 2 replaces it with real admin
+/// fan-out (register on admin socket connect, deregister on close).
+///
 /// The `exclude` player (e.g. the actor who caused a broadcast) is omitted.
 pub fn dispatch(registry: &ConnectionRegistry, directive: &DeliveryDirective) -> DispatchReport {
     let recipients: Vec<PlayerId> = match &directive.target {
         DeliveryTarget::Player { id } => vec![id.clone()],
         DeliveryTarget::Room { id } => registry.players_in_room(id),
         DeliveryTarget::Global => registry.connected_player_ids(),
+        // TODO(phase3c-task2): resolve against the admin registry once it exists.
+        DeliveryTarget::Admin => Vec::new(),
     };
 
     let mut report = DispatchReport::default();

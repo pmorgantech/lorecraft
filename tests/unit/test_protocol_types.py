@@ -12,6 +12,8 @@ import json
 
 from lorecraft.protocol import (
     AdjustMeter,
+    AdminAuthResult,
+    AdminTarget,
     AuthResult,
     ClientClose,
     CommandEnvelope,
@@ -362,6 +364,7 @@ def test_delivery_target_wire_shapes() -> None:
         (PlayerTarget(id="player-1"), {"type": "Player", "id": "player-1"}),
         (RoomTarget(id="tavern"), {"type": "Room", "id": "tavern"}),
         (GlobalTarget(), {"type": "Global"}),
+        (AdminTarget(), {"type": "Admin"}),
     ]
     for target, shape in cases:
         assert target.to_json() == shape
@@ -438,6 +441,7 @@ def test_disconnected_nests_reason_tag() -> None:
 def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
     variants: list[tuple[object, str]] = [
         (AuthResult(accepted=True, player_id="player-1"), "AuthResult"),
+        (AdminAuthResult(accepted=True), "AdminAuthResult"),
         (
             ConnectAck(
                 session_id="session-1",
@@ -470,6 +474,18 @@ def test_auth_result_reject_serializes_null_player_id() -> None:
         "player_id": None,
     }
     assert gateway_outbound_from_json(frame.to_json()) == frame
+
+
+def test_admin_auth_result_has_no_player_id_field() -> None:
+    # The admin auth outcome is shape-distinct from the player `AuthResult`: it
+    # carries only `accepted`, so a validated admin can never be mistaken for a
+    # player (see the resolved admin-push design).
+    for accepted in (True, False):
+        frame = AdminAuthResult(accepted=accepted)
+        dumped = frame.to_json()
+        assert dumped == {"type": "AdminAuthResult", "accepted": accepted}
+        assert "player_id" not in dumped
+        assert gateway_outbound_from_json(dumped) == frame
 
 
 def test_command_reply_carries_correlation_id() -> None:

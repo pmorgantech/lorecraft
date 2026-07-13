@@ -440,7 +440,11 @@ async fn demultiplex(
         // Control replies for the sequential per-link handshakes: complete the
         // single pending control slot. An unsolicited one (no waiter) is a
         // protocol anomaly worth surfacing, never silently dropped.
-        frame @ (GatewayOutbound::AuthResult { .. } | GatewayOutbound::ConnectAck { .. }) => {
+        // `AdminAuthResult` is the admin channel's control reply and routes the
+        // same way; Phase 3c task 2 wires the admin handshake that awaits it.
+        frame @ (GatewayOutbound::AuthResult { .. }
+        | GatewayOutbound::AdminAuthResult { .. }
+        | GatewayOutbound::ConnectAck { .. }) => {
             let waiter = control.lock().await.take();
             match waiter {
                 Some(tx) => {

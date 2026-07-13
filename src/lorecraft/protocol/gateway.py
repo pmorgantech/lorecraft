@@ -26,6 +26,20 @@ Rust side too:
   it preserves the legacy WebSocket frame shapes byte-exactly.
 - **Room ids are plain ``str``.** There is no ``RoomId`` newtype, matching the Rust
   ``DeliveryTarget::Room`` / ``ConnectAck`` shapes.
+
+Resolved admin-push design (Phase 3c, 2026-07-13), documented on the Rust side too:
+
+- **Admin fan-out reuses ``Deliver``.** ``AdminTarget`` (``{"type": "Admin"}``) names
+  "every connected admin console"; ``AdminBroadcaster.push`` sends an admin event as
+  a normal ``Deliver(DeliveryDirective(target=AdminTarget(), ...))`` frame and Rust
+  fans it out to admins from its admin registry — no separate admin-deliver frame.
+- **Admin auth is the shape-distinct ``AdminAuthResult``.** A validated admin carries
+  no ``player_id`` (admin tokens are not player-scoped), so admin validation replies
+  with ``AdminAuthResult(accepted)`` rather than overloading the player ``AuthResult``.
+- **Admin lifecycle is Rust-local — no protocol frame.** Admin connections are
+  stateless and push-only (no ``SessionSafetyService`` grace like players); Rust owns
+  the admin registry (register after an accepted ``AdminAuthResult``, deregister on
+  socket close) and Python is never told about admin connect/disconnect.
 """
 
 from __future__ import annotations
@@ -131,6 +145,20 @@ class GlobalTarget(DeliveryTarget):
     TAG: ClassVar[str] = "Global"
 
 
+@dataclass(frozen=True, slots=True)
+class AdminTarget(DeliveryTarget):
+    """Deliver to every connected admin console (``{"type": "Admin"}``).
+
+    Resolved against Rust's admin registry rather than the player registry (see the
+    resolved admin-push design in ``gateway.rs``); the opaque ``payload`` is relayed
+    unchanged, exactly like ``RoomTarget``/``GlobalTarget`` for players. This lets
+    ``AdminBroadcaster.push`` fan an admin event out as an ordinary
+    ``Deliver`` frame.
+    """
+
+    TAG: ClassVar[str] = "Admin"
+
+
 def delivery_target_from_json(data: JsonObject) -> DeliveryTarget:
     """Reconstruct a ``DeliveryTarget`` variant from its tagged-JSON shape."""
     tag = data.get("type")
@@ -140,6 +168,8 @@ def delivery_target_from_json(data: JsonObject) -> DeliveryTarget:
         return RoomTarget(id=require_str(data, "id"))
     if tag == GlobalTarget.TAG:
         return GlobalTarget()
+    if tag == AdminTarget.TAG:
+        return AdminTarget()
     raise ValidationError(f"unknown delivery target: {tag!r}")
 
 
@@ -284,8 +314,10 @@ class GatewayOutbound:
 
 @dataclass(frozen=True, slots=True)
 class AuthResult(GatewayOutbound):
-    """The result of a ticket/JWT handoff. On rejection, ``accepted`` is ``False``
-    and ``player_id`` is ``None``; Rust closes with 1008."""
+    """The result of a player ``RedeemTicket`` handoff. On rejection, ``accepted`` is
+    ``False`` and ``player_id`` is ``None``; Rust closes with 1008. Admin-token
+    validation uses the shape-distinct ``AdminAuthResult`` instead (see the resolved
+    admin-push design in ``gateway.rs``)."""
 
     TAG: ClassVar[str] = "AuthResult"
     accepted: bool
@@ -297,6 +329,21 @@ class AuthResult(GatewayOutbound):
             "accepted": self.accepted,
             "player_id": self.player_id,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class AdminAuthResult(GatewayOutbound):
+    """The result of a ``ValidateAdminToken`` handoff for the push-only admin
+    console. Deliberately **distinct** from ``AuthResult`` and carrying no
+    ``player_id`` — an admin token is not player-scoped, so a validated admin cannot
+    be routed through the player session path. On rejection ``accepted`` is ``False``
+    and Rust closes with 1008."""
+
+    TAG: ClassVar[str] = "AdminAuthResult"
+    accepted: bool
+
+    def to_json(self) -> JsonObject:
+        return {"type": self.TAG, "accepted": self.accepted}
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,6 +420,8 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
             accepted=require_bool(data, "accepted"),
             player_id=optional_str(data, "player_id"),
         )
+    if tag == AdminAuthResult.TAG:
+        return AdminAuthResult(accepted=require_bool(data, "accepted"))
     if tag == ConnectAck.TAG:
         return ConnectAck(
             session_id=require_str(data, "session_id"),

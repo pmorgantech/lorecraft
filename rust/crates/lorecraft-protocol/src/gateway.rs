@@ -31,6 +31,39 @@
 //! - **Room ids are plain `String`.** There is no `RoomId` newtype in
 //!   [`crate::ids`]; [`DeliveryTarget::Room`] and [`GatewayOutbound::ConnectAck`]
 //!   use bare `String` room ids to match.
+//!
+//! ## Resolved admin-push design (Phase 3c, 2026-07-13)
+//!
+//! The admin console (`/admin/ws`) is a **push-only** channel: Python's
+//! `AdminBroadcaster.push` fans one opaque frame out to *every* connected admin
+//! socket (see `webui/admin/websocket.py`). Phase 3c moves that channel onto the
+//! gateway; the additive protocol surface it needs is resolved here:
+//!
+//! - **Admin fan-out reuses [`GatewayOutbound::Deliver`].** A new
+//!   [`DeliveryTarget::Admin`] unit variant (`{"type": "Admin"}`) names "every
+//!   connected admin console." Python's broadcaster pushes an admin event as a
+//!   normal `Deliver { DeliveryDirective { target: Admin, exclude, payload } }`
+//!   frame and Rust resolves `Admin` against its admin registry, relaying the
+//!   opaque `payload` exactly as it does `Room`/`Global` against the player
+//!   registry. No separate parallel admin-deliver frame is introduced — the
+//!   directive shape already generalizes cleanly.
+//! - **Admin auth is a shape-distinct [`GatewayOutbound::AdminAuthResult`].** A
+//!   validated admin carries **no** `player_id` (admin tokens are not player-
+//!   scoped). Rather than overload the player [`GatewayOutbound::AuthResult`] with
+//!   an ambiguous `accepted: true, player_id: None`, admin validation replies with
+//!   a dedicated `AdminAuthResult { accepted }` frame that has no `player_id` field
+//!   at all. This makes the two auth outcomes non-ambiguous by construction: the
+//!   Rust `ws_admin` handshake matches on `AdminAuthResult` and a validated admin
+//!   is *structurally* incapable of being fed into the player `Connected`/session
+//!   path (which requires a `PlayerId`). The player `AuthResult` shape is untouched.
+//! - **Admin lifecycle is Rust-local — no protocol frame.** Unlike players (who go
+//!   through Python's `SessionSafetyService` grace/flicker handling via
+//!   [`GatewayInbound::Connected`]/[`GatewayInbound::Disconnected`]), admin
+//!   connections are stateless and push-only: Python holds no per-admin session
+//!   state. Rust therefore owns the admin registry entirely — register on socket
+//!   connect *after* an accepted `AdminAuthResult`, deregister on socket close —
+//!   and Python is never told about admin connect/disconnect. No admin analogue of
+//!   the `Connected`/`Disconnected` frames is added.
 
 use serde::{Deserialize, Serialize};
 
@@ -87,13 +120,25 @@ pub enum GatewayInbound {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum GatewayOutbound {
-    /// The result of a `RedeemTicket`/`ValidateAdminToken` handoff. On rejection,
-    /// `accepted` is `false` and `player_id` is `None`; Rust closes with 1008.
+    /// The result of a player [`GatewayInbound::RedeemTicket`] handoff. On
+    /// rejection, `accepted` is `false` and `player_id` is `None`; Rust closes with
+    /// 1008. Admin-token validation uses the shape-distinct [`Self::AdminAuthResult`]
+    /// instead (see the resolved admin-push design in the module docs).
     AuthResult {
         /// Whether the credential was accepted.
         accepted: bool,
         /// The authenticated player on acceptance, else `None`.
         player_id: Option<PlayerId>,
+    },
+    /// The result of a [`GatewayInbound::ValidateAdminToken`] handoff for the
+    /// push-only admin console. Deliberately **distinct** from [`Self::AuthResult`]
+    /// and carrying no `player_id` — an admin token is not player-scoped, so a
+    /// validated admin cannot be routed through the player session path (see the
+    /// resolved admin-push design in the module docs). On rejection `accepted` is
+    /// `false` and Rust closes with 1008.
+    AdminAuthResult {
+        /// Whether the admin token was accepted.
+        accepted: bool,
     },
     /// Acknowledges a `Connected` handshake with the freshly minted/resumed session
     /// and the frames to replay into the just-connected client.
@@ -150,7 +195,7 @@ pub struct DeliveryDirective {
 
 /// The recipient set for a [`DeliveryDirective`]. Internally tagged
 /// (`{"type": "Player", "id": ...}` / `{"type": "Room", "id": ...}` /
-/// `{"type": "Global"}`).
+/// `{"type": "Global"}` / `{"type": "Admin"}`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum DeliveryTarget {
@@ -166,6 +211,11 @@ pub enum DeliveryTarget {
     },
     /// Deliver to every connected player.
     Global,
+    /// Deliver to every connected admin console. Resolved against Rust's
+    /// admin registry rather than the player registry (see the resolved
+    /// admin-push design in the module docs); the opaque `payload` is relayed
+    /// unchanged, exactly like [`Self::Room`]/[`Self::Global`] for players.
+    Admin,
 }
 
 #[cfg(test)]
@@ -295,6 +345,10 @@ mod tests {
                 "AuthResult",
             ),
             (
+                GatewayOutbound::AdminAuthResult { accepted: true },
+                "AdminAuthResult",
+            ),
+            (
                 GatewayOutbound::ConnectAck {
                     session_id: SessionId("session-1".into()),
                     room_id: "tavern".into(),
@@ -348,6 +402,24 @@ mod tests {
     }
 
     #[test]
+    fn admin_auth_result_has_no_player_id_field() {
+        // The admin auth outcome is shape-distinct from the player `AuthResult`:
+        // it carries only `accepted`, so a validated admin can never be mistaken
+        // for a player (see the resolved admin-push design in the module docs).
+        let accept =
+            serde_json::to_value(GatewayOutbound::AdminAuthResult { accepted: true }).unwrap();
+        assert_eq!(accept, json!({"type": "AdminAuthResult", "accepted": true}));
+        let reject =
+            serde_json::to_value(GatewayOutbound::AdminAuthResult { accepted: false }).unwrap();
+        assert_eq!(
+            reject,
+            json!({"type": "AdminAuthResult", "accepted": false})
+        );
+        assert!(accept.get("player_id").is_none());
+        assert_round_trip(&GatewayOutbound::AdminAuthResult { accepted: true });
+    }
+
+    #[test]
     fn command_reply_carries_correlation_id() {
         // OPEN ITEM 1: the reply is correlated to its command by `command_id`.
         let value = serde_json::to_value(GatewayOutbound::CommandReply {
@@ -377,6 +449,7 @@ mod tests {
                 json!({"type": "Room", "id": "tavern"}),
             ),
             (DeliveryTarget::Global, json!({"type": "Global"})),
+            (DeliveryTarget::Admin, json!({"type": "Admin"})),
         ];
         for (target, shape) in cases {
             assert_eq!(serde_json::to_value(&target).unwrap(), shape);

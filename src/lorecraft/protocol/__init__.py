@@ -33,6 +33,8 @@ from lorecraft.protocol.envelope import (
     WorldId,
 )
 from lorecraft.protocol.gateway import (
+    AdminAuthResult,
+    AdminTarget,
     AuthResult,
     ClientClose,
     Connected,
@@ -112,6 +114,7 @@ __all__ = [
     "gateway_inbound_from_json",
     "GatewayOutbound",
     "AuthResult",
+    "AdminAuthResult",
     "ConnectAck",
     "CommandReply",
     "Deliver",
@@ -125,6 +128,7 @@ __all__ = [
     "PlayerTarget",
     "RoomTarget",
     "GlobalTarget",
+    "AdminTarget",
     "delivery_target_from_json",
     # script
     "ScriptBudget",
