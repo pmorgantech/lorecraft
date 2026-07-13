@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from lorecraft.engine.models.player import PlayerStats
+
 # The `Player.flags` namespace prefix for *durable* usage-requirement states
 # (§5.3). A required character/target state ``hidden`` is satisfied by a
 # ``state.hidden`` flag (durable) *or* a held ``ActiveEffect`` whose
@@ -97,3 +99,61 @@ class AbilityDef:
     required_discipline_rank: int = 0
     required_level: int | None = None
     usage: UsageRequirements = field(default_factory=UsageRequirements)
+
+
+# --- Acquisition: can this player *learn* this ability? -----------------------
+
+
+@dataclass(frozen=True)
+class AcquisitionResult:
+    """Outcome of :func:`check_acquisition`.
+
+    `allowed` is the conjunction of the four sub-checks; the individual booleans
+    (and `missing_prerequisites`) let a Tier 2 caller build a specific "why not"
+    message without re-deriving the reason.
+    """
+
+    allowed: bool
+    affordable: bool
+    prerequisites_met: bool
+    rank_met: bool
+    level_met: bool
+    missing_prerequisites: tuple[str, ...] = ()
+
+
+def check_acquisition(
+    player_state: PlayerStats,
+    ability: AbilityDef,
+    discipline_rank: int,
+) -> AcquisitionResult:
+    """Generic "can this player learn this ability" check (§2).
+
+    Verifies only the *abstract* acquisition conditions — the player can afford
+    the skill-point cost, already owns every prerequisite ability, and meets the
+    discipline-rank and character-level gates. Knows nothing about *what* the
+    ability unlocks; the caller decides what to do when `allowed` is True.
+
+    Ownership of prerequisites is read from ``player_state.unlocked_nodes`` (the
+    query/UI record of owned abilities; a "node" is an "ability" post-rename).
+    ``discipline_rank`` is supplied by the caller from its per-discipline
+    accumulator (§4) rather than read here, keeping this mechanism ignorant of
+    how rank is stored.
+    """
+    owned = set(player_state.unlocked_nodes)
+    missing = tuple(p for p in ability.prerequisites if p not in owned)
+
+    affordable = player_state.skill_points >= ability.cost
+    prerequisites_met = not missing
+    rank_met = discipline_rank >= ability.required_discipline_rank
+    level_met = (
+        ability.required_level is None or player_state.level >= ability.required_level
+    )
+
+    return AcquisitionResult(
+        allowed=affordable and prerequisites_met and rank_met and level_met,
+        affordable=affordable,
+        prerequisites_met=prerequisites_met,
+        rank_met=rank_met,
+        level_met=level_met,
+        missing_prerequisites=missing,
+    )
