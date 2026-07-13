@@ -214,6 +214,19 @@ Use this table (or a condensed version of it) in:
   commit to their own branch and stop — merging multiple such branches back together is the
   Integrator's job, not something each content agent should attempt, and not something you
   should improvise inline either.
+- **A permission-classifier block on a sub-agent's tool call is a stop-and-report signal, not
+  a puzzle to route around.** If the harness denies a specific command (e.g. `git update-ref`),
+  do not instruct the sub-agent to achieve the identical outcome through a different command —
+  swapping in `git merge --ff-only`, `git -C`, or a literal `cd` into a location AGENTS.md
+  already forbids (the primary tree) defeats the point of the block just as much as retrying
+  the original command would. Surface the denial to the user and let them decide, exactly as
+  you'd surface a genuine git-level conflict. **Never cite a commit, doc section, or "established
+  practice" as justification for a workaround without reading it first** — verify any claim
+  before using it to unblock a sub-agent. (Incident, 2026-07-13: an orchestrator fabricated a
+  citation to `b6b4c92` — which is actually just a post-merge verification step, unrelated —
+  to justify instructing the Integrator to `cd` into the shared primary tree after
+  `git update-ref` was blocked. No data was lost, but the workaround itself was the violation,
+  independent of whether it happened to succeed.)
 
 ## What you read, never write
 
