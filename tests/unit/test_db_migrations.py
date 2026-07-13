@@ -432,3 +432,51 @@ def test_migrations_are_noop_on_non_sqlite_dialect() -> None:
     # Early-return before touching the DB at all.
     engine.begin.assert_not_called()
     engine.connect.assert_not_called()
+
+
+# --- 7. PlayerStats.skills -> discipline_ranks additive rename (Sprint 78.3) --
+
+
+def test_discipline_ranks_added_and_legacy_skills_left_as_dead_column(
+    tmp_path: Path,
+) -> None:
+    """A pre-78 DB (flat `skills` JSON column, no `discipline_ranks`) upgrades by
+    ADDing `discipline_ranks` and leaving the legacy `skills` column untouched.
+
+    The additive scanner is strictly additive — it cannot DROP — so the old
+    column lingers as a warned, ignored dead column (Sprint 75 precedent). The
+    new column is what the model reads/writes going forward.
+    """
+    from lorecraft.engine.models.player import PlayerStats
+
+    engine = _file_engine(tmp_path)
+    PlayerStats.__table__.create(engine)  # type: ignore[attr-defined]
+    # Simulate the legacy shape: drop the new column, re-add the old `skills` one,
+    # then seed a row via raw SQL (the ORM would insert the new column we dropped).
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE playerstats DROP COLUMN discipline_ranks"))
+        conn.execute(text("ALTER TABLE playerstats ADD COLUMN skills JSON"))
+        conn.execute(
+            text(
+                "INSERT INTO playerstats "
+                "(player_id, strength, agility, vitality, intellect, presence, "
+                "fortitude, max_hp, level, xp, xp_to_next, skill_points, skills, "
+                "traits, unlocked_nodes) "
+                "VALUES ('p1', 10, 10, 10, 10, 10, 10, 100, 1, 0, 100, 0, "
+                "'{\"perception\": 12}', '[]', '[]')"
+            )
+        )
+    assert "discipline_ranks" not in _columns(engine, "playerstats")
+
+    _ensure_additive_columns(engine)
+
+    cols = _columns(engine, "playerstats")
+    assert "discipline_ranks" in cols  # added by the scanner
+    assert "skills" in cols  # legacy column left in place, not dropped
+    # The new column reads back its field-derived default ({}), independent of
+    # the stranded legacy data — no silent data migration is claimed.
+    with engine.connect() as conn:
+        value = conn.execute(
+            text("SELECT discipline_ranks FROM playerstats WHERE player_id = 'p1'")
+        ).scalar()
+    assert value == "{}"

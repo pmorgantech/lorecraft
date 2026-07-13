@@ -337,7 +337,7 @@ def _stats_snapshot(ctx: GameContext, stats: PlayerStats | None) -> JsonObject:
         "xp": stats.xp,
         "xp_to_next": stats.xp_to_next,
         "skill_points": stats.skill_points,
-        "skills": dict(stats.skills),
+        "discipline_ranks": dict(stats.discipline_ranks),
         # Skill-tree purchases (Sprint 74). The paired `ability.<id>` flags live
         # in Player.flags, already snapshotted separately (save_slot.flags).
         "unlocked_nodes": list(stats.unlocked_nodes),
@@ -369,9 +369,9 @@ def _apply_stats_snapshot(ctx: GameContext, snapshot: JsonObject) -> None:
         value = snapshot.get(field)
         if isinstance(value, int):
             setattr(stats, field, value)
-    skills = snapshot.get("skills")
-    if isinstance(skills, dict):
-        stats.skills = dict(skills)
+    discipline_ranks = snapshot.get("discipline_ranks")
+    if isinstance(discipline_ranks, dict):
+        stats.discipline_ranks = dict(discipline_ranks)
     unlocked_nodes = snapshot.get("unlocked_nodes")
     if isinstance(unlocked_nodes, list):
         stats.unlocked_nodes = [str(node) for node in unlocked_nodes]

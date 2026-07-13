@@ -32,7 +32,7 @@ class CharacterInfoService:
 
     def list_skills(self, ctx: GameContext) -> None:
         stats = ctx.player_repo.stats(ctx.player.id)
-        skill_levels = stats.skills if stats is not None else {}
+        skill_levels = stats.discipline_ranks if stats is not None else {}
         registry = skills_module.get_registry()
 
         lines = ["Your skills:"]

@@ -24,7 +24,7 @@ class SkillService:
         stats = session.get(PlayerStats, player_id)
         if stats is None:
             return BASE_LEVEL
-        level = stats.skills.get(skill_name)
+        level = stats.discipline_ranks.get(skill_name)
         return int(level) if isinstance(level, (int, float)) else BASE_LEVEL
 
     def record_use(
@@ -47,6 +47,6 @@ class SkillService:
         if not rng.chance(IMPROVE_CHANCE):
             return False
 
-        stats.skills = {**stats.skills, skill_name: current + 1}
+        stats.discipline_ranks = {**stats.discipline_ranks, skill_name: current + 1}
         session.add(stats)
         return True

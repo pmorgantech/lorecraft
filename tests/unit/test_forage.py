@@ -74,7 +74,9 @@ def _build(
         flags={"ability.forage": True} if has_flag else {},
     )
     session.add(player)
-    session.add(PlayerStats(player_id=player.id, skills={"survival": survival}))
+    session.add(
+        PlayerStats(player_id=player.id, discipline_ranks={"survival": survival})
+    )
     session.commit()
 
     room = session.get(Room, ROOM_ID)

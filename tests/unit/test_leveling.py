@@ -173,4 +173,4 @@ def test_apply_stat_deltas_rejects_before_partial_mutation() -> None:
 def test_apply_stat_deltas_rejects_non_numeric_field() -> None:
     stats = _stats()
     with pytest.raises(ValidationError):
-        apply_stat_deltas(stats, {"skills": 1})
+        apply_stat_deltas(stats, {"discipline_ranks": 1})

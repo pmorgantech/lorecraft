@@ -128,7 +128,7 @@ class TestSkills:
         _cmd_engine, ctx, session = built
         stats = session.get(PlayerStats, ctx.player.id)
         assert stats is not None
-        stats.skills = {"survival": 100}
+        stats.discipline_ranks = {"survival": 100}
         session.add(stats)
         session.commit()
 

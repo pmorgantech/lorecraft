@@ -264,7 +264,7 @@ class TestTerrainGating:
         session.add(dest)
         stats = session.get(PlayerStats, ctx.player.id)
         assert stats is not None
-        stats.skills = {"survival": 50}
+        stats.discipline_ranks = {"survival": 50}
         session.add(stats)
         session.commit()
         ctx.player.flags = {**ctx.player.flags, "has_key": True}

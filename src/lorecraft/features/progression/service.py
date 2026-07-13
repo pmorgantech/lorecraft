@@ -101,7 +101,7 @@ class SkillTreeService:
 
         # Commit the purchase: spend points, record the node, set every unlock
         # flag. Reassign the JSON columns (not in-place mutate) so SQLAlchemy
-        # detects the change — same discipline as PlayerStats.skills / flags.
+        # detects the change — same discipline as PlayerStats.discipline_ranks / flags.
         stats.skill_points -= node.cost
         stats.unlocked_nodes = [*stats.unlocked_nodes, node.id]
         ctx.player_repo.save_stats(stats)
