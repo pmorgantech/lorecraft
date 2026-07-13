@@ -166,6 +166,31 @@ pub enum GatewayOutbound {
         /// The fan-out directive to relay.
         directive: DeliveryDirective,
     },
+    /// A registry state update: a player changed rooms during command handling.
+    ///
+    /// **Not a delivery** — it carries no payload and fans nothing out. It exists
+    /// solely to keep Rust's authoritative `player -> room` / `room -> players`
+    /// maps ([`ConnectionRegistry`](crate::gateway) on the events crate) in step
+    /// with Python's mid-command `move_player`, so a subsequent
+    /// [`DeliveryTarget::Room`] broadcast aimed at the mover's **new** room
+    /// actually reaches them. The Rust read loop applies it by calling
+    /// `ConnectionRegistry::move_player`.
+    ///
+    /// Sent **in order ahead of** the moving command's own deliveries down the
+    /// same link, so by the time any later room-targeted `Deliver`/`CommandReply`
+    /// is resolved, the registry already places the mover in `to_room`. Python
+    /// emits it for both command paths (the WS `CommandReply` path folds the
+    /// move frames just before the reply; the HTMX `POST /command` push path
+    /// flushes them just before its post-command fan-out).
+    MovePlayer {
+        /// The player who changed rooms.
+        player_id: PlayerId,
+        /// The room the player left, if known (mirrors Python's truthiness: an
+        /// empty/absent origin is treated as "unset" by the registry).
+        from_room: Option<String>,
+        /// The room the player moved into (plain id; no `RoomId` newtype).
+        to_room: String,
+    },
     /// Terminal acknowledgement that a [`GatewayInbound::Disconnected`] teardown
     /// finished. It is emitted **after** all of the teardown's fan-out
     /// [`GatewayOutbound::Deliver`] frames (the `player_left` broadcast, the
@@ -382,6 +407,14 @@ mod tests {
                 },
                 "Deliver",
             ),
+            (
+                GatewayOutbound::MovePlayer {
+                    player_id: PlayerId("player-1".into()),
+                    from_room: Some("tavern".into()),
+                    to_room: "square".into(),
+                },
+                "MovePlayer",
+            ),
             (GatewayOutbound::DisconnectAck, "DisconnectAck"),
         ];
         for (frame, tag) in cases {
@@ -443,6 +476,37 @@ mod tests {
         assert_eq!(value["type"], json!("CommandReply"));
         assert_eq!(value["command_id"], json!("cmd-42"));
         assert_eq!(value["deliveries"], json!([]));
+    }
+
+    #[test]
+    fn move_player_frame_shape_and_optional_from_room() {
+        // A move with a known origin serializes both rooms alongside the tag.
+        let with_origin = GatewayOutbound::MovePlayer {
+            player_id: PlayerId("player-1".into()),
+            from_room: Some("tavern".into()),
+            to_room: "square".into(),
+        };
+        assert_eq!(
+            serde_json::to_value(&with_origin).unwrap(),
+            json!({
+                "type": "MovePlayer",
+                "player_id": "player-1",
+                "from_room": "tavern",
+                "to_room": "square",
+            })
+        );
+        assert_round_trip(&with_origin);
+
+        // An unknown origin serializes `from_room` as null (mirrors Python's
+        // `Optional[str]` -> `None`); the registry treats it as "unset".
+        let no_origin = GatewayOutbound::MovePlayer {
+            player_id: PlayerId("player-1".into()),
+            from_room: None,
+            to_room: "square".into(),
+        };
+        let value = serde_json::to_value(&no_origin).unwrap();
+        assert_eq!(value["from_room"], json!(null));
+        assert_round_trip(&no_origin);
     }
 
     #[test]

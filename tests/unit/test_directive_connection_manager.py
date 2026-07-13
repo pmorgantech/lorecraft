@@ -6,7 +6,12 @@ from __future__ import annotations
 import asyncio
 
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
-from lorecraft.protocol.gateway import GlobalTarget, PlayerTarget, RoomTarget
+from lorecraft.protocol.gateway import (
+    GlobalTarget,
+    MovePlayer,
+    PlayerTarget,
+    RoomTarget,
+)
 
 
 def _drain(mgr: DirectiveConnectionManager) -> list[object]:
@@ -71,6 +76,34 @@ def test_move_player_and_room_selection_mirror_the_real_manager() -> None:
     mgr.move_player("p1", "tavern", "road")
     assert mgr.players_in_room("tavern") == ["p2"]
     assert mgr.players_in_room("road") == ["p1", "p3"]
+
+
+def test_move_player_records_a_move_frame_for_rust() -> None:
+    # A mid-command move both updates the mirror AND records a `MovePlayer` frame so
+    # the adapter can forward it to Rust's authoritative registry (gap-1 fix).
+    mgr = DirectiveConnectionManager()
+    mgr.mark_connected("p1", "tavern")
+
+    mgr.move_player("p1", "tavern", "road")
+
+    (move,) = mgr.drain_moves()
+    assert isinstance(move, MovePlayer)
+    assert move == MovePlayer(player_id="p1", from_room="tavern", to_room="road")
+    # The mirror moved too.
+    assert mgr.players_in_room("road") == ["p1"]
+    # drain_moves clears the buffer.
+    assert mgr.drain_moves() == []
+
+
+def test_mark_connected_does_not_record_a_move_frame() -> None:
+    # Rust learns the connect room from `ConnectAck` (it registers the player
+    # there), so a lifecycle connect must update only the mirror — emitting a
+    # `MovePlayer` frame here would be a redundant/duplicate registry mutation.
+    mgr = DirectiveConnectionManager()
+    mgr.mark_connected("p1", "tavern")
+
+    assert mgr.drain_moves() == []
+    assert mgr.players_in_room("tavern") == ["p1"]
 
 
 def test_mark_disconnected_removes_from_mirror_and_session() -> None:

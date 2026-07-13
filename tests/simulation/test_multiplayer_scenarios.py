@@ -141,6 +141,57 @@ async def _test_command_room_broadcast(server: SimulationServer) -> None:
         await bob.close()
 
 
+def test_mover_receives_broadcast_targeted_at_their_new_room(
+    simulation_server: SimulationServer,
+) -> None:
+    asyncio.run(_test_mover_receives_new_room_broadcast(simulation_server))
+
+
+async def _test_mover_receives_new_room_broadcast(server: SimulationServer) -> None:
+    """A player who MOVES rooms must still receive a later broadcast targeted at
+    their NEW room.
+
+    Through the Rust front door (`LORECRAFT_THROUGH_RUST=1`) this is the regression
+    guard for the gap-1 fix: Rust owns the authoritative connection registry, and
+    before the fix Python never told it about a mid-command room move — the WS and
+    `POST /command` paths updated only the advisory Python mirror. So after a player
+    moved and then sat still, Rust's map still placed them in the OLD room, and a
+    subsequent `Deliver{Room(new_room)}` was resolved against a membership set that
+    no longer contained them: they silently missed it. (The exit tests only asserted
+    a *stationary* observer seeing a *mover*'s leave/arrival, so they never caught
+    this.) With the fix Python emits a `MovePlayer` frame — ahead of the moving
+    command's deliveries, in-order on the same link — so Rust relocates the player
+    before resolving any later room broadcast.
+
+    Scenario: alice connects in village_square and moves north to blacksmith_forge
+    (an EMPTY room, so nothing is delivered to her by her own move). Then bob
+    connects in village_square and also moves north; his arrival narration is
+    broadcast to blacksmith_forge — the room alice is now in. Alice must receive it.
+    Before the fix (Rust-fronted) she is still registered in village_square and the
+    wait below times out. Python-direct mode exercises the same assertion against
+    the real `ConnectionManager`, whose `move_player` was always correct.
+    """
+    alice = await _connect(server, "alice")
+    bob = await _connect(server, "bob")
+    try:
+        # Alice moves into the (empty) blacksmith_forge to the north. Her own move
+        # delivers nothing to her; it only relocates her in the registry.
+        move_result = await alice.send_command("go north")
+        assert move_result["type"] == "command_result"
+
+        # Bob follows north; his arrival narration ("bob arrives from the south.")
+        # is broadcast to blacksmith_forge — the room alice moved into. She only
+        # receives it if the registry learned her move (gap-1 fix).
+        await bob.send_command("go north")
+
+        arrival = await alice.wait_for_broadcast("feed_append", timeout=5)
+        assert arrival["message_type"] == "room_event"
+        assert "arrives" in str(arrival["content"]).lower()
+    finally:
+        await alice.close()
+        await bob.close()
+
+
 def test_concurrent_take_of_a_single_item_has_no_duplication(
     simulation_server: SimulationServer,
 ) -> None:

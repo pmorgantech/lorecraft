@@ -48,6 +48,7 @@ from lorecraft.protocol.gateway import (
     GatewayOutbound,
     GlobalTarget,
     GracefulQuit,
+    MovePlayer,
     PlayerTarget,
     RedeemTicket,
     RoomTarget,
@@ -266,6 +267,37 @@ def test_command_reply_direct_reply_matches_shared_pipeline(
     assert isinstance(command_reply.direct_reply, dict)
     assert command_reply.direct_reply["type"] == "command_result"
     assert command_reply.direct_reply == expected
+
+
+def test_move_command_emits_move_player_frame_before_command_reply(
+    state: AppState, adapter: GatewayAdapter
+) -> None:
+    # The gap-1 fix: a command that moves the player (village_square -> north ->
+    # blacksmith_forge) must emit a `MovePlayer` frame AHEAD of its `CommandReply`
+    # so Rust's registry learns the move before any later broadcast to the new room
+    # is resolved. The seed player starts at village_square.
+    session_id = _connect_session(adapter)
+    _warm_up_look(adapter, session_id)
+
+    frames = asyncio.run(
+        adapter.handle_inbound(
+            GatewayCommand(envelope=_envelope(session_id, "c-move", "north"))
+        )
+    )
+
+    # The move frame precedes the reply (in-order on the wire => Rust applies the
+    # registry move before fanning out the command's own deliveries).
+    assert isinstance(frames[0], MovePlayer)
+    assert frames[0].player_id == PLAYER_ID
+    assert frames[0].from_room == "village_square"
+    assert frames[0].to_room == "blacksmith_forge"
+    assert isinstance(frames[-1], CommandReply)
+    assert frames[-1].command_id == "c-move"
+    # The advisory mirror reflects the move as well.
+    assert adapter.manager.players_in_room("blacksmith_forge") == [PLAYER_ID]
+    assert adapter.manager.players_in_room("village_square") == []
+    # The move buffer was drained (a subsequent command emits no stale move).
+    assert adapter.manager.drain_moves() == []
 
 
 def test_command_round_trips_over_real_uds_socket(
@@ -677,9 +709,13 @@ class _CapturingAdapter:
     def __init__(self) -> None:
         self.manager = DirectiveConnectionManager()
         self.pushed: list[DeliveryDirective] = []
+        self.moved: list[MovePlayer] = []
 
     async def push_deliver(self, directive: DeliveryDirective) -> None:
         self.pushed.append(directive)
+
+    async def push_move(self, move: MovePlayer) -> None:
+        self.moved.append(move)
 
 
 def test_gateway_push_manager_maps_broadcasts_like_directive_manager() -> None:
@@ -726,6 +762,42 @@ def test_gateway_push_manager_selection_delegates_to_mirror() -> None:
     assert wrapper.players_in_room("tavern") == ["p1"]
     assert wrapper.connected_player_ids() == ["p1"]
     assert wrapper.is_connected("p1") is True
+
+
+def test_gateway_push_manager_records_move_and_flushes_move_frame() -> None:
+    """The POST `/command` path: `move_player` updates the mirror (without leaking
+    into the command-path manager's own buffer) and records a `MovePlayer`, which
+    `flush_moves` forwards to Rust as a `MovePlayer` frame (gap-1 fix)."""
+    fake = _CapturingAdapter()
+    wrapper = GatewayPushManager()
+    wrapper.bind(fake)  # type: ignore[arg-type]
+    fake.manager.mark_connected("p1", "village_square")
+
+    wrapper.move_player("p1", "village_square", "blacksmith_forge")
+
+    # The advisory mirror moved, but nothing leaked into the command-path buffer.
+    assert fake.manager.players_in_room("blacksmith_forge") == ["p1"]
+    assert fake.manager.drain_moves() == []
+    # Nothing forwarded yet — flush is explicit, after the command.
+    assert fake.moved == []
+
+    asyncio.run(wrapper.flush_moves())
+    assert fake.moved == [
+        MovePlayer(
+            player_id="p1", from_room="village_square", to_room="blacksmith_forge"
+        )
+    ]
+    # A second flush is a no-op (buffer cleared).
+    asyncio.run(wrapper.flush_moves())
+    assert len(fake.moved) == 1
+
+
+def test_gateway_push_manager_flush_moves_unbound_is_noop() -> None:
+    """Before the adapter is bound, recording a move and flushing must not raise
+    and must forward nothing (no gateway audience yet)."""
+    wrapper = GatewayPushManager()
+    wrapper.move_player("p1", "a", "b")  # must not raise
+    asyncio.run(wrapper.flush_moves())  # must not raise
 
 
 def test_gateway_push_manager_unbound_is_noop() -> None:

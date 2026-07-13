@@ -55,6 +55,7 @@ from lorecraft.protocol.gateway import (
     GatewayInbound,
     GatewayOutbound,
     GlobalTarget,
+    MovePlayer,
     PlayerTarget,
     RedeemTicket,
     RoomTarget,
@@ -271,6 +272,23 @@ class GatewayAdapter:
             return
         await link.outbound.put(Deliver(directive=directive))
 
+    async def push_move(self, move: MovePlayer) -> None:
+        """Proactively relay a room move to the Rust peer as a `MovePlayer` frame.
+
+        The `POST /command` (HTMX) push path records the mover's room change on the
+        :class:`GatewayPushManager` during command handling, then flushes it here —
+        **before** its post-command room fan-out — so Rust's registry places the
+        mover in the new room ahead of any later broadcast targeting it (gap-1).
+
+        Like :meth:`push_deliver`, it is sent down exactly ONE active link (Rust owns
+        the authoritative registry and applies the move regardless of which link it
+        arrives on); with no active link it is a harmless no-op.
+        """
+        link = next(iter(self._links), None)
+        if link is None:
+            return
+        await link.outbound.put(move)
+
     # -- dispatch (socket-free; unit-testable) ------------------------------
 
     async def handle_inbound(self, inbound: GatewayInbound) -> list[GatewayOutbound]:
@@ -294,7 +312,7 @@ class GatewayAdapter:
             if isinstance(inbound, Disconnected):
                 return await self._on_disconnected(inbound)
             if isinstance(inbound, GatewayCommand):
-                return [await self._on_command(inbound)]
+                return await self._on_command(inbound)
         log.warning("gateway_inbound_unhandled: %s", type(inbound).__name__)
         return []
 
@@ -493,7 +511,7 @@ class GatewayAdapter:
 
     # -- command forwarding (shared pipeline) -------------------------------
 
-    async def _on_command(self, msg: GatewayCommand) -> CommandReply:
+    async def _on_command(self, msg: GatewayCommand) -> list[GatewayOutbound]:
         # Runs under `_directive_lock`, acquired by `handle_inbound` — the shared
         # directive buffer is exclusively this command's until the drain below.
         envelope = msg.envelope
@@ -504,12 +522,20 @@ class GatewayAdapter:
             envelope.session_id,
             envelope.raw,
         )
+        # Any mid-command room move must reach Rust's registry BEFORE the command's
+        # own room-targeted deliveries are resolved — and before any later broadcast
+        # to the mover's new room — so the `MovePlayer` frames precede the
+        # `CommandReply`. Because the Rust read loop processes this link's frames in
+        # order, ordering them first here is what guarantees a mover no longer misses
+        # a subsequent broadcast to their new room (gap-1 fix).
+        moves = self._manager.drain_moves()
         deliveries = self._manager.drain()
-        return CommandReply(
+        reply = CommandReply(
             command_id=envelope.command_id,
             direct_reply=direct_reply,
             deliveries=deliveries,
         )
+        return [*moves, reply]
 
 
 class GatewayPushManager:
@@ -538,6 +564,9 @@ class GatewayPushManager:
 
     def __init__(self) -> None:
         self._adapter: GatewayAdapter | None = None
+        # Room moves recorded synchronously during command handling, flushed to Rust
+        # as `MovePlayer` frames by `flush_moves` after the command (see below).
+        self._pending_moves: list[MovePlayer] = []
 
     def bind(self, adapter: GatewayAdapter) -> None:
         """Attach the live adapter once the lifespan has constructed it."""
@@ -547,6 +576,23 @@ class GatewayPushManager:
         if self._adapter is None:
             return
         await self._adapter.push_deliver(directive)
+
+    async def flush_moves(self) -> None:
+        """Forward every room move recorded since the last flush to Rust.
+
+        The `POST /command` handler calls this **after** command execution and
+        **before** its post-command fan-out (`broadcast_command_effects`), so Rust's
+        registry learns the move ahead of any room-targeted broadcast that follows —
+        the ordering guarantee the WS path gets for free by emitting `MovePlayer`
+        frames before the `CommandReply`. Before the adapter is bound (or with no
+        active gateway link) `push_move` is a harmless no-op.
+        """
+        pending = self._pending_moves
+        self._pending_moves = []
+        if self._adapter is None:
+            return
+        for move in pending:
+            await self._adapter.push_move(move)
 
     # -- ConnectionManagerProtocol: delivery (pushes standalone Deliver frames) --
 
@@ -587,8 +633,14 @@ class GatewayPushManager:
     # -- ConnectionManagerProtocol: selection (reads the adapter's mirror) ------
 
     def move_player(self, player_id: str, from_room: str | None, to_room: str) -> None:
+        # Update the advisory mirror without recording into the command-path
+        # manager's own `moves` buffer (which this POST path never drains) — the move
+        # is recorded here instead and flushed by `flush_moves` after the command.
         if self._adapter is not None:
-            self._adapter.manager.move_player(player_id, from_room, to_room)
+            self._adapter.manager._apply_move_to_mirror(player_id, from_room, to_room)
+        self._pending_moves.append(
+            MovePlayer(player_id=player_id, from_room=from_room, to_room=to_room)
+        )
 
     def players_in_room(self, room_id: str) -> list[str]:
         if self._adapter is None:

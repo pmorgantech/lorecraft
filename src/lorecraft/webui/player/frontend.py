@@ -21,6 +21,7 @@ from sqlmodel import Session as DBSession
 
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
+from lorecraft.gateway.adapter import GatewayPushManager
 from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
@@ -1059,6 +1060,12 @@ async def handle_command(
                 log.debug("players_template_render_failed: %s", str(e))
 
             if broadcast_manager:
+                # Gateway mode: forward any mid-command room move to Rust's registry
+                # BEFORE the post-command room fan-out below, so a broadcast aimed at
+                # the mover's new room reaches them (gap-1). The WS path gets this
+                # ordering for free by emitting `MovePlayer` before its `CommandReply`.
+                if isinstance(broadcast_manager, GatewayPushManager):
+                    await broadcast_manager.flush_moves()
                 await broadcast_command_effects(
                     broadcast_manager, ctx, pre_room_id=pre_room_id
                 )

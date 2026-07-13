@@ -33,6 +33,7 @@ from lorecraft.protocol import (
     GlobalTarget,
     GracefulQuit,
     MoveEntity,
+    MovePlayer,
     OutcomeStatus,
     PanelUpdate,
     PlayerTarget,
@@ -484,11 +485,35 @@ def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
             "CommandReply",
         ),
         (Deliver(directive=_sample_directive()), "Deliver"),
+        (
+            MovePlayer(player_id="player-1", from_room="tavern", to_room="square"),
+            "MovePlayer",
+        ),
     ]
     for frame, tag in variants:
         dumped = frame.to_json()  # type: ignore[attr-defined]
         assert dumped["type"] == tag
         assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_move_player_frame_shape_and_optional_from_room() -> None:
+    # A move with a known origin serializes both rooms alongside the tag; this must
+    # byte-match the Rust `GatewayOutbound::MovePlayer` wire shape.
+    with_origin = MovePlayer(player_id="player-1", from_room="tavern", to_room="square")
+    assert with_origin.to_json() == {
+        "type": "MovePlayer",
+        "player_id": "player-1",
+        "from_room": "tavern",
+        "to_room": "square",
+    }
+    assert gateway_outbound_from_json(with_origin.to_json()) == with_origin
+
+    # An unknown origin serializes `from_room` as null (mirrors Rust `None`); the
+    # registry treats an absent/empty origin as "unset".
+    no_origin = MovePlayer(player_id="player-1", from_room=None, to_room="square")
+    dumped = no_origin.to_json()
+    assert dumped["from_room"] is None
+    assert gateway_outbound_from_json(dumped) == no_origin
 
 
 def test_auth_result_reject_serializes_null_player_id() -> None:

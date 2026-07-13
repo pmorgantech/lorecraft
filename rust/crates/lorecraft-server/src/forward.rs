@@ -448,6 +448,20 @@ async fn demultiplex(
         GatewayOutbound::Deliver { directive } => {
             relay_directive(ctx, &directive);
         }
+        // A registry state update, not a delivery: reconcile the mover's room in
+        // the shared authoritative map so a *subsequent* room-targeted broadcast
+        // aimed at their new room resolves them as a member. Because the read loop
+        // processes frames in order and Python emits this ahead of the moving
+        // command's own deliveries down the same link, the map is already updated
+        // before any later `Deliver`/`CommandReply` is resolved against it.
+        GatewayOutbound::MovePlayer {
+            player_id,
+            from_room,
+            to_room,
+        } => {
+            ctx.registry
+                .move_player(&player_id, from_room.as_deref(), &to_room);
+        }
         // Control replies for the sequential per-link handshakes: complete the
         // single pending control slot. An unsolicited one (no waiter) is a
         // protocol anomaly worth surfacing, never silently dropped.
@@ -666,6 +680,85 @@ mod tests {
             json!({"type": "feed_append", "text": "someone looks around."})
         );
 
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// THE GAP-1 REGISTRY PROOF: a `MovePlayer` frame relocates the mover in the
+    /// shared registry so a *subsequent* room-targeted `Deliver` aimed at their
+    /// **new** room reaches them. The mover starts registered in `old-room`; the
+    /// mock peer sends `MovePlayer{old-room -> new-room}` then a `Deliver` to
+    /// `new-room`. Assert the mover's outbound channel receives the new-room
+    /// payload — which it only can if the move was applied first. Without the
+    /// `MovePlayer` handler the registry would still place the mover in `old-room`
+    /// and the delivery would never reach them.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn move_player_frame_relocates_mover_so_new_room_deliver_reaches_them() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        // The mover is registered in the OLD room, as they would be at connect.
+        let registry = Arc::new(ConnectionRegistry::new());
+        let (mover_tx, mut mover_rx) = outbound_channel(DEFAULT_OUTBOUND_QUEUE_DEPTH);
+        registry.register(PlayerId("mover".into()), mover_tx, Some("old-room".into()));
+        // Sanity: the registry does not yet place the mover in the new room.
+        assert!(registry.players_in_room("new-room").is_empty());
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (_read, mut write) = stream.into_split();
+            // First the room move, THEN a broadcast to the new room — the order the
+            // real adapter emits (move frame ahead of the command's deliveries).
+            let move_frame = GatewayOutbound::MovePlayer {
+                player_id: PlayerId("mover".into()),
+                from_room: Some("old-room".into()),
+                to_room: "new-room".into(),
+            };
+            write
+                .write_all(&encode_frame(&move_frame))
+                .await
+                .expect("write move");
+            let deliver = GatewayOutbound::Deliver {
+                directive: DeliveryDirective {
+                    target: DeliveryTarget::Room {
+                        id: "new-room".into(),
+                    },
+                    exclude: None,
+                    payload: json!({"type": "feed_append", "text": "a bell tolls in the new room."}),
+                    coalesce_key: None,
+                },
+            };
+            write
+                .write_all(&encode_frame(&deliver))
+                .await
+                .expect("write deliver");
+            write.flush().await.expect("flush");
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        });
+
+        let client = ForwardClient::connect(&socket_path, ctx(Arc::clone(&registry)))
+            .await
+            .expect("connect");
+
+        // The mover, now relocated by the MovePlayer frame, receives the new-room
+        // broadcast on its outbound channel.
+        let delivered = tokio::time::timeout(std::time::Duration::from_secs(2), mover_rx.recv())
+            .await
+            .expect("mover receives without stalling")
+            .expect("a payload was delivered to the moved player");
+        assert_eq!(
+            delivered.payload,
+            json!({"type": "feed_append", "text": "a bell tolls in the new room."})
+        );
+
+        // The registry now reflects the move on both sides of the map.
+        assert_eq!(
+            registry.players_in_room("new-room"),
+            vec![PlayerId("mover".into())]
+        );
+        assert!(registry.players_in_room("old-room").is_empty());
+
+        drop(client);
         peer.await.expect("mock peer joins cleanly");
     }
 

@@ -410,6 +410,36 @@ class Deliver(GatewayOutbound):
 
 
 @dataclass(frozen=True, slots=True)
+class MovePlayer(GatewayOutbound):
+    """A registry state update: a player changed rooms during command handling.
+
+    **Not a delivery** — it carries no payload and fans nothing out. It exists solely
+    to keep Rust's authoritative ``player -> room`` / ``room -> players`` maps in step
+    with Python's mid-command ``move_player``, so a subsequent ``RoomTarget`` broadcast
+    aimed at the mover's **new** room actually reaches them. Rust applies it by calling
+    ``ConnectionRegistry::move_player``.
+
+    Emitted **in order ahead of** the moving command's own deliveries down the same
+    link: the WS ``CommandReply`` path returns the move frames just before the reply,
+    and the HTMX ``POST /command`` push path flushes them just before its post-command
+    fan-out. ``from_room`` is ``None`` when the origin is unknown (mirrors the Rust
+    ``Option<String>``); the registry treats an absent/empty origin as "unset"."""
+
+    TAG: ClassVar[str] = "MovePlayer"
+    player_id: PlayerId
+    from_room: str | None
+    to_room: str
+
+    def to_json(self) -> JsonObject:
+        return {
+            "type": self.TAG,
+            "player_id": self.player_id,
+            "from_room": self.from_room,
+            "to_room": self.to_room,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class DisconnectAck(GatewayOutbound):
     """Terminal ack that a ``Disconnected`` teardown finished (no fields).
 
@@ -454,6 +484,12 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
     if tag == Deliver.TAG:
         return Deliver(
             directive=DeliveryDirective.from_json(require_dict(data, "directive"))
+        )
+    if tag == MovePlayer.TAG:
+        return MovePlayer(
+            player_id=require_str(data, "player_id"),
+            from_room=optional_str(data, "from_room"),
+            to_room=require_str(data, "to_room"),
         )
     if tag == DisconnectAck.TAG:
         return DisconnectAck()

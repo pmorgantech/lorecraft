@@ -26,6 +26,7 @@ from lorecraft.gateway.coalescing import coalesce_key_for
 from lorecraft.protocol.gateway import (
     DeliveryDirective,
     GlobalTarget,
+    MovePlayer,
     PlayerTarget,
     RoomTarget,
 )
@@ -37,6 +38,11 @@ class DirectiveConnectionManager:
 
     def __init__(self) -> None:
         self.deliveries: list[DeliveryDirective] = []
+        # Command-driven room moves recorded during handling, to be drained and
+        # forwarded to Rust as `MovePlayer` frames (ahead of the command's own
+        # deliveries) so Rust's authoritative registry learns the move — otherwise a
+        # later broadcast to the mover's new room would miss them (gap-1 fix).
+        self.moves: list[MovePlayer] = []
         # Read-mirror of the connection map (advisory, Rust is authoritative).
         self._connected: set[str] = set()
         self._player_rooms: dict[str, str] = {}
@@ -85,7 +91,25 @@ class DirectiveConnectionManager:
     # -- ConnectionManagerProtocol: selection (reads the mirror) ------------
 
     def move_player(self, player_id: str, from_room: str | None, to_room: str) -> None:
-        """Mirror the real manager's mid-command room move (synchronous)."""
+        """Mirror the real manager's mid-command room move (synchronous).
+
+        Besides updating the advisory mirror, this **records** the move so the
+        adapter can forward it to Rust as a ``MovePlayer`` frame after the command:
+        Rust owns the authoritative connection map, and without the frame a
+        subsequent room broadcast aimed at the mover's new room would never reach
+        them (gap-1). Only true mid-command moves record — the lifecycle
+        ``mark_connected`` path calls :meth:`_apply_move_to_mirror` directly, since
+        Rust learns the connect room from ``ConnectAck``.
+        """
+        self._apply_move_to_mirror(player_id, from_room, to_room)
+        self.moves.append(
+            MovePlayer(player_id=player_id, from_room=from_room, to_room=to_room)
+        )
+
+    def _apply_move_to_mirror(
+        self, player_id: str, from_room: str | None, to_room: str
+    ) -> None:
+        """Update the advisory three-map mirror, without recording a move frame."""
         if from_room:
             self._room_players[from_room].discard(player_id)
         current_room = self._player_rooms.get(player_id)
@@ -115,7 +139,11 @@ class DirectiveConnectionManager:
         self._connected.add(player_id)
         if session_id is not None:
             self._sessions[player_id] = session_id
-        self.move_player(player_id, self._player_rooms.get(player_id), room_id)
+        # Mirror-only: Rust learns the connect room from `ConnectAck` (it registers
+        # the player there), so a connect must NOT also emit a `MovePlayer` frame.
+        self._apply_move_to_mirror(
+            player_id, self._player_rooms.get(player_id), room_id
+        )
 
     def mark_disconnected(self, player_id: str) -> None:
         """Drop a player from the mirror (adapter `Disconnected`)."""
@@ -135,4 +163,15 @@ class DirectiveConnectionManager:
         """Return and clear the directives recorded since the last drain."""
         recorded = self.deliveries
         self.deliveries = []
+        return recorded
+
+    def drain_moves(self) -> list[MovePlayer]:
+        """Return and clear the room moves recorded since the last drain.
+
+        The adapter forwards these to Rust as ``MovePlayer`` frames **ahead of** the
+        command's ``CommandReply`` (and its deliveries) so Rust's registry is updated
+        before any later room-targeted broadcast is resolved against it.
+        """
+        recorded = self.moves
+        self.moves = []
         return recorded
