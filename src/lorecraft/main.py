@@ -252,6 +252,8 @@ def create_app(
             services.marks.register(bus)
         if "progression" in enabled_set:
             _load_skill_tree_definitions(resolved_settings.skill_tree_yaml_path)
+        if "disciplines" in enabled_set:
+            _load_discipline_definitions(resolved_settings.disciplines_yaml_path)
         if services.exploration is not None:
             _load_forage_definitions(resolved_settings.forage_yaml_path)
         if "context_commands" in enabled_set:
@@ -806,6 +808,28 @@ def _load_skill_tree_definitions(skill_tree_yaml_path: str) -> None:
         registry.load_document(load_skill_tree_yaml(skill_tree_yaml_path))
     except Exception as exc:  # malformed tree content shouldn't crash boot
         log.warning("failed to load skill tree from %s: %s", skill_tree_yaml_path, exc)
+
+
+def _load_discipline_definitions(disciplines_yaml_path: str) -> None:
+    """Load discipline definitions (Sprint 78) into the in-memory registry at
+    startup. A missing file is fine — it just means no disciplines are defined."""
+    from pathlib import Path
+
+    from lorecraft.features.disciplines.abilities import (
+        get_discipline_registry,
+        load_disciplines_yaml,
+    )
+
+    registry = get_discipline_registry()
+    registry.clear()
+    if not Path(disciplines_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_disciplines_yaml(disciplines_yaml_path))
+    except Exception as exc:  # malformed content shouldn't crash boot
+        log.warning(
+            "failed to load disciplines from %s: %s", disciplines_yaml_path, exc
+        )
 
 
 def _load_forage_definitions(forage_yaml_path: str) -> None:

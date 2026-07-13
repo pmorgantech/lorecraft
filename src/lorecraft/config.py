@@ -58,6 +58,8 @@ class Settings:
     weather_fronts_yaml_path: str = "world_content/weather_fronts.yaml"
     spawns_yaml_path: str = "world_content/spawns.yaml"
     skill_tree_yaml_path: str = "world_content/skill_tree.yaml"
+    disciplines_yaml_path: str = "world_content/disciplines.yaml"
+    abilities_yaml_path: str = "world_content/abilities.yaml"
     forage_yaml_path: str = "world_content/forage.yaml"
     seed_player_id: str = "player-1"
     seed_player_username: str = "player-1"
