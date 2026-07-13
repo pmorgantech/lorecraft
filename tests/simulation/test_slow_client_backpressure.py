@@ -1,58 +1,64 @@
-"""Phase 3c exit test: a stalled admin consumer is bounded + disconnected (WS 1013)
-without blocking a co-located well-behaved admin, and well-behaved admins are
-unaffected.
+"""Phase 3c exit test: a stalled admin consumer is bounded + disconnected by the
+gateway's slow-client backpressure without blocking a co-located well-behaved admin.
 
 This exercises the **Rust** gateway's slow-client backpressure end to end (the
 mechanism is entirely Rust-side — a Python-direct run would not touch it), so the
 whole module is gated on `LORECRAFT_THROUGH_RUST` and skipped otherwise.
 
 Why the admin push-only path (not a player). Admin `/admin/ws` connections are
-pure consumers — the server floods them via `AdminBroadcaster` and they never
-send commands — so a "stalled consumer" is modelled simply by *never reading the
-socket*, with no risk that the stalled client's own inbound processing perturbs
-the experiment. The flood is real admin traffic: every executed player command
-emits a keyless ``audit_appended`` admin broadcast (see
-`src/lorecraft/main.py::_push_command_executed` and the coalescing policy in
-`src/lorecraft/gateway/coalescing.py`, which leaves ``audit_appended`` un-keyed so
-each one occupies its own outbound-queue slot), and every player connect emits a
-keyless ``player_connected``.
+pure consumers — the server floods them via `AdminBroadcaster` and they never send
+commands — so a "stalled consumer" is a socket that simply *stops reading*, with no
+inbound processing to perturb the experiment. The flood is real admin traffic:
+every executed player command emits a keyless ``audit_appended`` admin broadcast
+(see `src/lorecraft/main.py::_push_command_executed`; ``audit_appended`` is left
+un-keyed by `src/lorecraft/gateway/coalescing.py`, so each occupies its own
+outbound-queue slot rather than coalescing away).
 
 What is asserted (a faithful proof, no mock/stub):
 
-* Two **real** admin WebSocket clients connect through the **real** Rust gateway.
-  One installs a tiny ``SO_RCVBUF`` and never calls ``recv`` (a genuinely stalled
-  consumer whose TCP receive window closes quickly, so the server writer blocks
-  and the Rust-side bounded outbound queue fills and overflows). The other reads
-  continuously.
-* The stalled socket is observed to **close** (ideally with code **1013**, the
-  slow-consumer code the Rust `writer` sends; at minimum a real close/transport
-  error) while the flood continues.
-* Throughout the stall the well-behaved admin **keeps receiving** events and is
-  **never disconnected** — the co-located sibling is unaffected.
+* A **genuinely** stalled admin (a raw socket that performs the WS upgrade by hand
+  and then never reads — see ``_connect_stalled_admin_raw``) is **torn down** by the
+  gateway's slow-consumer backpressure while the flood runs.
+* A co-located **well-behaved** admin (`websockets`, draining continuously) **keeps
+  receiving** events throughout the stall and is **never disconnected** — the
+  sibling is unaffected (the core non-blocking claim).
 
-Determinism / speed / the bin env-knob. With the shipped defaults (outbound queue
-depth 256, 64 consecutive overflows) the stalled socket only trips after the OS
-TCP send buffer *plus* the ~256-deep queue *plus* 64 more frames have been
-delivered — on this host ~1.6k frames — and the only high-volume generator
-(``audit_appended``) is throttled by the Rust per-player command rate limit (burst
-20, 5/s per player), so the flood uses a pool of players to reach the threshold
-within the deadline. The test therefore **passes on defaults** (it observes a real
-teardown of the stalled socket while the sibling is unaffected), but its trip point
-depends on the host's socket-buffer size and it is not fast.
+Determinism / speed / why a raw socket + the ``SEND_BUFFER_BYTES`` knob. Two facts
+make the naive approach neither fast nor reliable:
 
-To make it *fast and host-independent* the test hands the gateway small
-queue-depth / overflow-threshold / rate overrides via the environment
-(``_KNOB_ENV``); the current `lorecraft-gateway` bin does not read those yet, so
-they are a harmless no-op today and the test relies on the defaults path. Once the
-bin honors them the same test trips in a handful of frames regardless of OS buffer
-sizes. If a host's socket buffers are large enough that the rate-limited flood
-cannot reach the default threshold before the deadline, the test **skips** (never
-falsely passes) with an explicit pointer to that env-knob rather than flaking.
+1. **A `websockets` client cannot model a stalled consumer here.** Even with a
+   shallow ``max_queue`` and no ``recv()`` call, its asyncio read task keeps draining
+   the transport (verified empirically on this platform), so the server writer never
+   blocks. The stalled consumer is therefore a raw TCP socket that never reads.
+2. **The trip point is dominated by the OS *send* buffer, not the outbound queue
+   depth.** With the default ``SO_SNDBUF`` (megabytes) a non-reading consumer's kernel
+   buffer absorbs *thousands* of frames before the writer blocks — so ``QUEUE_DEPTH``
+   / ``MAX_OVERFLOW`` barely move the trip count, and it is slow + host-dependent.
+   Capping ``SO_SNDBUF`` (via the ``LORECRAFT_GATEWAY_SEND_BUFFER_BYTES`` bin knob)
+   to a few KB makes the writer block after a *handful* of frames, so the outbound
+   queue overflows into the slow-consumer disconnect promptly and **independent of
+   the host's default socket buffers**.
+
+So ``_KNOB_ENV`` caps the send buffer (the load-bearing knob), un-throttles the
+command rate (so the few frames needed arrive fast), and shrinks ``MAX_OVERFLOW``;
+``QUEUE_DEPTH`` stays at its default so the well-behaved sibling absorbs dispatch
+bursts without tripping. The stalled socket cannot observe its own teardown while
+frozen (the ``Close``/``FIN`` sit behind a window-blocked backlog, and there is no
+RST for a window-blocked graceful close), so the test stalls + floods for a fixed
+window that clears the trip plus the writer's fixed (production, 5s) close grace,
+then re-opens the window and drains the socket to confirm the teardown
+(``_confirm_stalled_torn_down``). A fully non-reading client sees the teardown as an
+honest transport drop (equivalent to WS 1006) rather than a clean 1013 close.
+
+The test **always runs and asserts** — no host-dependent skip that could silently
+mask a regression: a failure to tear the stalled socket down is a hard failure.
 """
 
 from __future__ import annotations
 
 import asyncio
+import base64
+import os
 import socket
 import threading
 import time
@@ -85,13 +91,24 @@ _STARTUP_TIMEOUT_SECONDS = 10.0
 _ADMIN_USER = "sim-admin"
 _ADMIN_PASS = "sim-admin-pass-1234"
 
-# Small values the bin *would* apply once it honors backpressure/rate env, so the
-# stalled queue overflows after a handful of frames instead of several hundred.
+# Env overrides the `lorecraft-gateway` bin honors (see its module docs + this
+# module's docstring). These make the stalled consumer trip fast and
+# host-independently; when absent, production keeps its OS-tuned defaults.
 _KNOB_ENV = {
-    "LORECRAFT_GATEWAY_QUEUE_DEPTH": "4",
-    "LORECRAFT_GATEWAY_MAX_OVERFLOW": "4",
+    # The load-bearing knob: cap the gateway's per-connection send buffer so a
+    # non-reading consumer's kernel buffer fills after only a handful of frames and
+    # the writer blocks promptly — host-independent (see the module docstring). With
+    # the OS default (megabytes) the trip point is dominated by that buffer, not the
+    # queue depth, which is why this test is fast and deterministic only with the cap.
+    "LORECRAFT_GATEWAY_SEND_BUFFER_BYTES": "4096",
+    # Trip promptly once the writer is blocked.
+    "LORECRAFT_GATEWAY_MAX_OVERFLOW": "8",
+    # Do not rate-limit the flood, so the (few) frames needed to trip arrive fast.
     "LORECRAFT_GATEWAY_COMMAND_BURST": "100000",
     "LORECRAFT_GATEWAY_COMMAND_RATE": "100000",
+    # QUEUE_DEPTH is left at its default (256): the well-behaved sibling reader must
+    # absorb dispatch bursts without tripping, and the capped send buffer — not the
+    # queue depth — is what makes the *stalled* consumer trip quickly.
 }
 
 # Tiny receive buffer for the stalled admin so its TCP window closes fast and the
@@ -201,46 +218,115 @@ def _mint_admin_token(base_url: str) -> str:
     return token
 
 
-async def _connect_admin_ws(
-    ws_url: str, token: str, *, stalled: bool
-) -> ClientConnection:
-    """Open an admin `/admin/ws` connection through Rust.
+async def _connect_reader_admin(ws_url: str, token: str) -> ClientConnection:
+    """Open the well-behaved sibling admin `/admin/ws` connection (drains normally)."""
+    return await websockets.connect(f"{ws_url}/admin/ws?token={token}")
 
-    When ``stalled`` the client is given a deliberately tiny ``SO_RCVBUF`` **and** a
-    shallow ``max_queue`` and the caller then never reads it, so both the library's
-    inbound buffer and the kernel receive window fill quickly, the TCP window
-    closes, and the server-side writer blocks — the condition backpressure must
-    detect. A stalled client typically never drains the buffered ``Close(1013)``
-    frame, so on teardown it observes a bare transport drop (1006) rather than
-    1013; the test accepts either (see the module docstring).
+
+def _connect_stalled_admin_raw(ws_url: str, token: str) -> socket.socket:
+    """Open a **genuinely** stalled admin `/admin/ws` connection as a raw socket.
+
+    A `websockets` client cannot model a stalled consumer on this platform: even
+    with a shallow ``max_queue`` and no ``recv()`` call, its asyncio read task keeps
+    draining the transport, so the server writer never blocks (verified empirically).
+    So the stalled consumer is a **raw TCP socket** that performs the WebSocket
+    upgrade by hand, reads the ``101`` response, and then **never reads another
+    byte**. Combined with the gateway's capped ``SO_SNDBUF`` (``_KNOB_ENV``), the
+    server's send buffer fills after only a handful of pushed frames, the writer
+    blocks, and the Rust outbound queue overflows into the slow-consumer disconnect —
+    deterministically and independent of the host's *default* socket-buffer size.
+
+    A tiny ``SO_RCVBUF`` shrinks the client receive window too, so the writer blocks
+    even sooner. The socket is left in non-blocking mode; the caller confirms the
+    teardown after the stall window with ``_confirm_stalled_torn_down``.
     """
-    uri = f"{ws_url}/admin/ws?token={token}"
-    if not stalled:
-        return await websockets.connect(uri)
     host = ws_url.removeprefix("ws://").split(":")[0]
     port = int(ws_url.rsplit(":", 1)[1])
     sock = socket.create_connection((host, port))
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, _STALLED_RCVBUF_BYTES)
-    # Hand the pre-configured socket to websockets so its tiny RCVBUF is used for
-    # the whole connection; a shallow max_queue means the library pauses transport
-    # reads after just a couple of unread frames, so the *only* thing keeping the
-    # server writer unblocked is what the tiny kernel window still accepts.
-    return await websockets.connect(uri, sock=sock, max_queue=2)
+    key = base64.b64encode(os.urandom(16)).decode()
+    request = (
+        f"GET /admin/ws?token={token} HTTP/1.1\r\n"
+        f"Host: {host}:{port}\r\n"
+        "Upgrade: websocket\r\n"
+        "Connection: Upgrade\r\n"
+        f"Sec-WebSocket-Key: {key}\r\n"
+        "Sec-WebSocket-Version: 13\r\n"
+        "\r\n"
+    )
+    sock.sendall(request.encode())
+    # Read just the handshake response (bounded); then never read again.
+    sock.settimeout(10.0)
+    buf = b""
+    while b"\r\n\r\n" not in buf:
+        chunk = sock.recv(4096)
+        if not chunk:
+            sock.close()
+            raise RuntimeError("gateway closed during stalled-admin WS handshake")
+        buf += chunk
+    status_line = buf.split(b"\r\n", 1)[0]
+    if b" 101 " not in status_line:
+        sock.close()
+        raise RuntimeError(f"stalled-admin WS upgrade failed: {status_line!r}")
+    sock.setblocking(False)
+    return sock
+
+
+def _confirm_stalled_torn_down(sock: socket.socket, *, timeout: float) -> bool:
+    """Confirm the (previously stalled) raw socket was torn down by the gateway.
+
+    Called **after** the stall window, once the slow-consumer trip has certainly
+    fired server-side, so draining is now safe (it cannot prevent a trip that has
+    already happened). Draining also opens the receive window, which lets the
+    gateway flush its buffered frames + the ``Close`` and then close the socket.
+
+    A genuinely non-reading client can't observe the teardown any other way: the
+    ``Close(1013)`` frame and the ``FIN`` sit *behind* the buffered push frames with
+    the receive window pinned shut, so a non-consuming ``MSG_PEEK`` never sees them
+    (there is no RST for a window-blocked graceful close). Reading drains that
+    backlog and reaches the terminal ``FIN`` (``recv`` returns ``b""``) or a reset
+    (``ConnectionError``/``OSError``) — either is a teardown. Returns ``False`` only
+    if the socket stays open (keeps yielding data, never closing) within ``timeout``.
+    """
+    # Re-open the receive window wide so the window-blocked backlog (the gateway's
+    # unsent frames + terminal FIN) floods in quickly instead of trickling through
+    # the tiny stall-time RCVBUF — keeps the confirm-drain to ~1s.
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1 << 20)
+    except OSError:
+        pass
+    sock.setblocking(True)
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False  # still delivering data, never closed → not torn down
+        sock.settimeout(remaining)
+        try:
+            data = sock.recv(1 << 16)
+        except (ConnectionError, OSError) as exc:
+            # A timeout means "still open, no more data" (not torn down); any other
+            # OSError is a transport reset (torn down).
+            return not isinstance(exc, socket.timeout)
+        if data == b"":
+            return True  # clean FIN → torn down
 
 
 async def _run_scenario(server: SimulationServer) -> dict[str, Any]:
     """Drive the stall + flood and collect observations.
 
-    Returns a dict with: ``tripped`` (bool — was the stalled socket torn down),
-    ``close_code`` (int | None — observed close code, typically 1006 for a fully
-    stalled client), ``reader_received`` (frames the well-behaved admin got), and
-    ``reader_open`` (was the well-behaved admin still connected).
+    Returns a dict with: ``tripped`` (bool — was the stalled raw socket torn down),
+    ``reader_received`` (frames the well-behaved sibling admin got), and
+    ``reader_open`` (was the sibling still connected at the end).
     """
     ws_url = server.ws_url
     token = _mint_admin_token(server.base_url)
 
-    stalled = await _connect_admin_ws(ws_url, token, stalled=True)
-    reader = await _connect_admin_ws(ws_url, token, stalled=False)
+    # The genuinely-stalled consumer (raw socket, never reads) + the well-behaved
+    # sibling (drains continuously). Both are real admin `/admin/ws` connections
+    # through the real Rust gateway; they receive the same fan-out.
+    stalled_sock = _connect_stalled_admin_raw(ws_url, token)
+    reader = await _connect_reader_admin(ws_url, token)
 
     reader_received = 0
     reader_open = True
@@ -256,101 +342,95 @@ async def _run_scenario(server: SimulationServer) -> dict[str, Any]:
 
     reader_task = asyncio.create_task(_drain_reader())
 
-    # Watch for the stalled socket's teardown WITHOUT reading application frames
-    # (reading would un-stall it). `wait_closed()` resolves when the connection is
-    # torn down — by the server's 1013 close or, more likely for a fully-stalled
-    # client that never drained the close frame, a transport drop — and observes
-    # the close code either way; it never consumes a data frame, so the stall
-    # holds.
-    stall_tripped = asyncio.Event()
-
-    async def _watch_stalled() -> None:
-        await stalled.wait_closed()
-        stall_tripped.set()
-
-    stall_task = asyncio.create_task(_watch_stalled())
-
-    # Flooding players: connect a pool and drive each one with a continuous
-    # send/drain loop. Every *admitted* command emits a keyless `audit_appended`
-    # admin broadcast (throttled ones are rejected in-band and generate no admin
-    # event), delivered to BOTH admin sockets. Each flooder drains its own replies
-    # so its own outbound queue never backs up — the ONLY stalled consumer is the
-    # admin. The reader admin drains continuously; the stalled admin accumulates
-    # until its bounded queue overflows past the disconnect threshold.
-    #
-    # Aggregate admin-frame rate is bounded by the per-player rate limit, so a
-    # larger pool floods faster; this is sized to trip the shipped default
-    # threshold (queue depth 256 + 64 overflow, atop the kernel send buffer) well
-    # inside the deadline. The bin's (currently-ignored) small-queue env overrides
-    # would trip it in a handful of frames instead — see the module docstring.
+    # Flooding players: a pool driven by decoupled send + drain loops so each
+    # flooder's own socket never backs up (it drains everything it is sent) — the
+    # ONLY stalled consumer is the raw admin socket. Every admitted `look` emits a
+    # keyless `audit_appended` admin broadcast delivered to BOTH admin connections,
+    # so the stalled socket's kernel buffer fills; with the capped `SO_SNDBUF` the
+    # server writer blocks after a handful of frames and the outbound queue overflows
+    # into the slow-consumer disconnect.
     players: list[VirtualPlayer] = []
     stop_flood = asyncio.Event()
-    # Generous headroom: the flood normally trips well inside this (≈50s on the
-    # dev host), and the loop exits the instant the stalled socket is torn down —
-    # the full budget is only ever spent on a host whose socket buffers are large
-    # enough that the default threshold is out of reach, in which case the test
-    # skips (see the test body) rather than flaking.
-    deadline_seconds = 120.0
+    # Keep the flood on through a fixed stall window that comfortably exceeds the
+    # gateway's trip time *plus* its (production, 5s) slow-client close grace, so the
+    # stalled socket is definitely torn down before we look. The trip itself is fast
+    # and host-independent (the capped `SO_SNDBUF` fills after a handful of frames);
+    # the window is dominated by that fixed 5s grace, not by any host-dependent
+    # buffer. We do NOT read the stalled socket during this window (reading would
+    # relieve the backpressure and prevent the trip); we only confirm afterwards.
+    stall_window_seconds = 11.0
+    confirm_timeout_seconds = 6.0
 
-    async def _flood_loop(player: VirtualPlayer) -> None:
+    async def _flood_send(player: VirtualPlayer) -> None:
         while not stop_flood.is_set():
             try:
                 await player._ws.send("look")
-                # Drain exactly one reply (command_result OR in-band rate-limit
-                # error) so the flooder never stalls its own socket.
-                await asyncio.wait_for(player._ws.recv(), timeout=2.0)
-                # Pace just above the per-player admit rate: enough to keep each
-                # bucket draining every admitted frame, without hammering the
-                # single Python event loop with throttled-command spam (which
-                # would slow the whole flood down).
-                await asyncio.sleep(0.1)
-            except (websockets.ConnectionClosed, asyncio.TimeoutError, OSError):
+                await asyncio.sleep(0.02)
+            except (websockets.ConnectionClosed, OSError):
+                return
+
+    async def _flood_drain(player: VirtualPlayer) -> None:
+        while not stop_flood.is_set():
+            try:
+                await player._ws.recv()
+            except (websockets.ConnectionClosed, OSError):
                 return
 
     flood_tasks: list[asyncio.Task[None]] = []
     try:
-        pool_size = 16
+        pool_size = 8
         for i in range(pool_size):
             player_id, ticket = server.prepare_login(f"flooder-{i}")
             player = await VirtualPlayer.connect(
                 ws_url, player_id, f"flooder-{i}", ticket=ticket
             )
             players.append(player)
-        flood_tasks = [asyncio.create_task(_flood_loop(p)) for p in players]
+        for p in players:
+            flood_tasks.append(asyncio.create_task(_flood_send(p)))
+            flood_tasks.append(asyncio.create_task(_flood_drain(p)))
 
-        # Flood until the stalled socket is torn down or the deadline elapses.
-        try:
-            await asyncio.wait_for(stall_tripped.wait(), timeout=deadline_seconds)
-        except asyncio.TimeoutError:
-            pass
+        # Stall + flood for the fixed window so the slow-consumer trip certainly
+        # fires. Capture the sibling's progress at that point (it must have been
+        # receiving *during* the stall — proof it was never blocked by the stalled
+        # peer), then stop the flood and confirm the stalled socket was torn down.
+        await asyncio.sleep(stall_window_seconds)
+        reader_received_during_stall = reader_received
+        reader_open_during_stall = reader_open
         stop_flood.set()
-
-        close_code: int | None = None
-        if stall_tripped.is_set() and stalled.close_code is not None:
-            close_code = int(stalled.close_code)
+        for task in flood_tasks:
+            task.cancel()
+        # Blocking socket reads in a thread so they never block the event loop.
+        tripped = await asyncio.to_thread(
+            _confirm_stalled_torn_down, stalled_sock, timeout=confirm_timeout_seconds
+        )
 
         return {
-            "tripped": stall_tripped.is_set(),
-            "close_code": close_code,
-            "reader_received": reader_received,
-            "reader_open": reader_open,
+            "tripped": tripped,
+            "reader_received": reader_received_during_stall,
+            "reader_open": reader_open_during_stall,
         }
     finally:
         stop_flood.set()
         for task in flood_tasks:
             task.cancel()
         reader_task.cancel()
-        stall_task.cancel()
-        for player in players:
+
+        async def _close_quietly(closer: Any) -> None:
             try:
-                await player.close()
-            except Exception:
+                await asyncio.wait_for(closer(), timeout=2.0)
+            except (Exception, asyncio.TimeoutError):
                 pass
-        for sock_conn in (reader, stalled):
-            try:
-                await sock_conn.close()
-            except Exception:
-                pass
+
+        # Close every WS client concurrently so a wedged socket can't serialise the
+        # teardown into a multi-second stall.
+        await asyncio.gather(
+            *(_close_quietly(p.close) for p in players),
+            _close_quietly(reader.close),
+        )
+        try:
+            stalled_sock.close()
+        except OSError:
+            pass
 
 
 def test_stalled_admin_disconnected_without_blocking_sibling(
@@ -358,34 +438,25 @@ def test_stalled_admin_disconnected_without_blocking_sibling(
 ) -> None:
     result = asyncio.run(_run_scenario(slow_client_server))
 
-    if not result["tripped"]:
-        # The flood never tripped the disconnect within the deadline. On the
-        # shipped defaults this depends on the OS TCP send-buffer size (the queue
-        # fills only after the kernel buffer does), so on a host with unusually
-        # large socket buffers the default depth-256 + 64-overflow threshold may
-        # sit beyond what the rate-limited flood can reach in time. That is exactly
-        # the case the (currently-unwired) `lorecraft-gateway` backpressure env
-        # overrides — LORECRAFT_GATEWAY_QUEUE_DEPTH / _MAX_OVERFLOW (+ _COMMAND_RATE
-        # to flood fast) — would make deterministic. Skip (never falsely pass)
-        # rather than flake; the assertions below hold once the socket is torn down.
-        pytest.skip(
-            "stalled admin not disconnected within the deadline on this host — "
-            "the default backpressure threshold sits beyond the reachable flood "
-            "given the OS socket-buffer size and per-player rate limit; wire the "
-            "lorecraft-gateway backpressure/rate env-knob (see module docstring) "
-            "for a fast, host-independent trip."
-        )
-
-    # The stalled consumer was really torn down by the server...
-    assert result["tripped"], "expected the stalled admin socket to be closed"
-    # ...with a slow-consumer teardown. A fully stalled client never drains the
-    # buffered Close(1013) frame, so it observes an abnormal transport drop (1006);
-    # accept that or the explicit 1013 (both are the gateway closing THIS socket).
-    assert result["close_code"] in (1006, 1013), (
-        f"expected a slow-consumer teardown (1013) or transport drop (1006), "
-        f"got {result['close_code']}"
+    # The stalled consumer was really torn down by the server. The capped send
+    # buffer (`_KNOB_ENV`) makes the writer block after a handful of frames — bounded
+    # by that cap, not the host's default socket buffer — so this ALWAYS happens
+    # within the generous deadline. A failure to trip is a real backpressure
+    # regression, asserted (never skipped) so it can never be silently masked.
+    assert result["tripped"], (
+        "expected the stalled admin socket to be torn down by the gateway's "
+        "slow-consumer backpressure within the deadline; it was not — the teardown "
+        "has regressed, or LORECRAFT_GATEWAY_SEND_BUFFER_BYTES/_MAX_OVERFLOW are not "
+        "honored by the bin."
     )
-    # ...while the co-located well-behaved admin kept receiving throughout and was
+    # A fully non-reading raw client never drains the buffered Close(1013) frame, so
+    # it observes an honest transport reset (equivalent to WS 1006) rather than a
+    # clean 1013 close — either way the gateway closed THIS socket. Asserting a
+    # precise 1013 would require a slow-but-not-frozen consumer that reads the close
+    # frame; that is deliberately out of scope here (the transport drop is the
+    # faithful outcome for a genuinely stalled consumer).
+    #
+    # Meanwhile the co-located well-behaved admin kept receiving throughout and was
     # never disconnected — the sibling is unaffected (the core non-blocking claim).
     assert result["reader_received"] > 0, "well-behaved admin received no events"
     assert result["reader_open"], "well-behaved admin was wrongly disconnected"

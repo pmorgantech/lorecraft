@@ -17,6 +17,28 @@
 //! | `LORECRAFT_GATEWAY_DEADLINE_MS` | `5000`           | `deadline_ms` stamped on envelopes |
 //! | `LORECRAFT_GATEWAY_BACKEND`     | `http://127.0.0.1:8000` | Python uvicorn origin the proxy forwards to |
 //!
+//! The Phase-3c slow-client/rate-limit thresholds are also env-overridable. These
+//! are primarily for **test determinism** and secondarily for **operator tuning**;
+//! when unset the shipped [`GatewayConfig`] defaults apply unchanged. A malformed
+//! value is ignored (warned) in favour of the default rather than aborting startup.
+//!
+//! | Variable                             | Default    | Meaning                                    |
+//! |--------------------------------------|------------|--------------------------------------------|
+//! | `LORECRAFT_GATEWAY_QUEUE_DEPTH`      | `256`      | Per-connection outbound queue depth        |
+//! | `LORECRAFT_GATEWAY_MAX_OVERFLOW`     | `64`       | Consecutive overflows before a slow-consumer close |
+//! | `LORECRAFT_GATEWAY_COMMAND_BURST`    | `20`       | Per-player command token-bucket burst      |
+//! | `LORECRAFT_GATEWAY_COMMAND_RATE`     | `5.0`      | Per-player sustained command rate (tokens/sec) |
+//! | `LORECRAFT_GATEWAY_SEND_BUFFER_BYTES`| OS default | `SO_SNDBUF` on the listening socket (inherited by every accepted connection) |
+//!
+//! `SEND_BUFFER_BYTES` is the load-bearing knob for a *deterministic* slow-client
+//! test: with the OS default send buffer (megabytes) a non-reading consumer's kernel
+//! buffer absorbs thousands of frames before the writer ever blocks — so the
+//! backpressure trip point is dominated by that host-dependent buffer, not by
+//! [`QUEUE_DEPTH`]/[`MAX_OVERFLOW`]. Capping `SO_SNDBUF` to a few KB makes the writer
+//! block after a handful of frames, so the queue fills and the slow-consumer close
+//! fires promptly and host-independently. Unset (the default) it is never touched, so
+//! production and every other test keep the OS-tuned buffer.
+//!
 //! Once serving, it prints exactly one line to stdout in the form
 //! `GATEWAY_LISTENING <addr>` (e.g. `GATEWAY_LISTENING 127.0.0.1:43571`) so a
 //! test harness binding to `:0` can learn the actual port.
@@ -41,6 +63,21 @@ fn env_or(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_owned())
 }
 
+/// Parse an optional numeric env override, falling back to `default` when the
+/// variable is unset *or* malformed. Unlike the required `BIND`/`DEADLINE_MS`
+/// knobs (which abort on a bad value), these Phase-3c operational tunables are
+/// best-effort: a malformed value warns and keeps the shipped default rather than
+/// downing the gateway, so a stray override never takes production offline.
+fn env_parse_or<T: std::str::FromStr>(key: &str, default: T) -> T {
+    match std::env::var(key) {
+        Err(_) => default,
+        Ok(raw) => raw.parse().unwrap_or_else(|_| {
+            tracing::warn!(key, value = %raw, "ignoring malformed gateway override; using default");
+            default
+        }),
+    }
+}
+
 /// Build the gateway config from the environment (see the module docs table).
 fn config_from_env() -> anyhow::Result<GatewayConfig> {
     let bind_raw = env_or("LORECRAFT_GATEWAY_BIND", "127.0.0.1:0");
@@ -51,14 +88,68 @@ fn config_from_env() -> anyhow::Result<GatewayConfig> {
     let default_deadline_ms: u64 = deadline_raw.parse().with_context(|| {
         format!("LORECRAFT_GATEWAY_DEADLINE_MS is not an integer: {deadline_raw}")
     })?;
-    Ok(GatewayConfig {
+    let mut config = GatewayConfig {
         bind_address,
         socket_path: PathBuf::from(env_or("LORECRAFT_GATEWAY_SOCKET_PATH", "var/gateway.sock")),
         world_id: env_or("LORECRAFT_GATEWAY_WORLD_ID", "world-1"),
         backend_url: env_or("LORECRAFT_GATEWAY_BACKEND", "http://127.0.0.1:8000"),
         default_deadline_ms,
         ..GatewayConfig::default()
-    })
+    };
+    // Phase-3c slow-client/rate-limit overrides (see the module docs). Each falls
+    // back to the shipped default when unset or malformed, so production and the
+    // non-overriding tests are unchanged.
+    config.outbound_queue_depth =
+        env_parse_or("LORECRAFT_GATEWAY_QUEUE_DEPTH", config.outbound_queue_depth);
+    config.backpressure.max_consecutive_overflow = env_parse_or(
+        "LORECRAFT_GATEWAY_MAX_OVERFLOW",
+        config.backpressure.max_consecutive_overflow,
+    );
+    config.rate_limit.burst =
+        env_parse_or("LORECRAFT_GATEWAY_COMMAND_BURST", config.rate_limit.burst);
+    config.rate_limit.per_second = env_parse_or(
+        "LORECRAFT_GATEWAY_COMMAND_RATE",
+        config.rate_limit.per_second,
+    );
+    Ok(config)
+}
+
+/// Bind the HTTP/WS listener, optionally capping `SO_SNDBUF` on the listening
+/// socket (Linux inherits it onto every accepted connection).
+///
+/// When `send_buffer_bytes` is `None` this is exactly `TcpListener::bind` — the OS
+/// keeps its autotuned (multi-megabyte) send buffer, so production is unchanged.
+/// When `Some`, the buffer is pinned small: a non-reading consumer's kernel buffer
+/// then fills after only a handful of frames, so the writer blocks and the
+/// slow-consumer backpressure trip fires promptly and host-independently (the
+/// enabler for the deterministic slow-client simulation). `SO_REUSEADDR` is set to
+/// match `TcpListener::bind`'s default on Unix.
+async fn bind_listener(
+    addr: SocketAddr,
+    send_buffer_bytes: Option<u32>,
+) -> anyhow::Result<tokio::net::TcpListener> {
+    let Some(bytes) = send_buffer_bytes else {
+        return tokio::net::TcpListener::bind(addr)
+            .await
+            .with_context(|| format!("could not bind {addr}"));
+    };
+    let socket = match addr {
+        SocketAddr::V4(_) => tokio::net::TcpSocket::new_v4(),
+        SocketAddr::V6(_) => tokio::net::TcpSocket::new_v6(),
+    }
+    .context("could not create listening socket")?;
+    socket
+        .set_reuseaddr(true)
+        .context("could not set SO_REUSEADDR")?;
+    socket
+        .set_send_buffer_size(bytes)
+        .with_context(|| format!("could not set SO_SNDBUF={bytes}"))?;
+    socket
+        .bind(addr)
+        .with_context(|| format!("could not bind {addr}"))?;
+    socket
+        .listen(1024)
+        .with_context(|| format!("could not listen on {addr}"))
 }
 
 /// Connect the shared (health-check/admin) forward link, retrying briefly so
@@ -98,6 +189,33 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = Arc::new(config_from_env()?);
+    // Optional `SO_SNDBUF` cap (see the module docs) — read here, not in
+    // `GatewayConfig`, because it only shapes how `main` builds the listener socket
+    // and never flows into the request handlers. Unset → OS default (untouched).
+    let send_buffer_bytes: Option<u32> = match std::env::var("LORECRAFT_GATEWAY_SEND_BUFFER_BYTES")
+    {
+        Err(_) => None,
+        Ok(raw) => match raw.parse::<u32>() {
+            Ok(bytes) => Some(bytes),
+            Err(_) => {
+                tracing::warn!(
+                    value = %raw,
+                    "ignoring malformed LORECRAFT_GATEWAY_SEND_BUFFER_BYTES; using OS default"
+                );
+                None
+            }
+        },
+    };
+    // Log the effective operational knobs once at startup so an operator (or a test)
+    // can confirm which backpressure / rate-limit thresholds are actually in force.
+    tracing::info!(
+        outbound_queue_depth = config.outbound_queue_depth,
+        max_consecutive_overflow = config.backpressure.max_consecutive_overflow,
+        command_burst = config.rate_limit.burst,
+        command_rate_per_sec = config.rate_limit.per_second,
+        send_buffer_bytes = ?send_buffer_bytes,
+        "gateway backpressure/rate-limit config"
+    );
     let registry = Arc::new(ConnectionRegistry::new());
     let disconnect = Arc::new(DisconnectHub::new());
     let ctx = DispatchContext::new(
@@ -107,9 +225,7 @@ async fn main() -> anyhow::Result<()> {
     );
     let forward = Arc::new(connect_with_retry(&config.socket_path, ctx).await?);
 
-    let listener = tokio::net::TcpListener::bind(config.bind_address)
-        .await
-        .with_context(|| format!("could not bind {}", config.bind_address))?;
+    let listener = bind_listener(config.bind_address, send_buffer_bytes).await?;
     let addr = listener
         .local_addr()
         .context("bound listener has no address")?;
