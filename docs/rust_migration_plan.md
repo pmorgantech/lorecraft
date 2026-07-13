@@ -1665,6 +1665,127 @@ is stated explicitly so a future reader doesn't assume Phase 3 is complete.
 design spec's own stated sequencing (3a before 3b before 3c) — do not skip
 ahead to 3c.
 
+### Kickoff status — sub-slice 3b (2026-07-13)
+
+**Sub-slice 3b is complete and exit-check verified.** The player `/ws` cutover
+via the Rust gateway front-door is now implemented and tested through real
+clients (browser e2e via Playwright+Chromium in-env). 3c (admin cutover +
+backpressure/slow-client policy) is **still pending** — see "Still pending"
+below. **The phase-level exit criterion is therefore NOT yet fully met**; this
+section documents 3b alone. Two sub-slices (3b player + 3c admin) must both land
+before the phase gate closes.
+
+Seven commits landed on branch `rust-port-phase3-impl`, all after 3a's docs
+commit `6a1083e`:
+
+- `ae646cc` — Python: `GatewayAdapter` wired into the app lifespan behind a
+  `gateway_enabled` flag (default off = immediate rollback safety); UDS
+  hardening (0600 socket perms + stale-socket unlink — actionable 3a review
+  advisory notes 1+3); lifecycle-vs-command directive-drain lock safeguard
+  (note 2); follow-break-on-disconnect wired (deferred from 3a).
+- `7bc8d9e` — Rust: player `/ws` termination via the Rust gateway — `?ticket=`
+  handoff from the Python adapter, single-live-connection rule (rejects if
+  client already connected), one dedicated UDS link per WS connection (resolves
+  OPEN ITEM 1's bidirectional-channel shape), per-connection bounded outbound
+  writer task for fair delivery, and a new `lorecraft-gateway` binary (prints
+  `GATEWAY_LISTENING <addr>` for harness port-discovery). MSRV 1.75 held
+  (uuid <1.21, tokio-tungstenite <0.27, axum-core pinned).
+- `63cbed5` — Rust: transparent HTTP reverse proxy (reqwest 0.13.3, MSRV-fit,
+  no TLS stack — plain loopback only) of all non-WS requests to the Python
+  uvicorn backend; hop-by-hop header stripping, redirect-non-following,
+  Set-Cookie passthrough; confirmed no SSE in the player UI.
+- `cff4ab9` — Test harness: dual-process fixture (`tests/_rust_gateway.py`)
+  that builds+spawns the Rust gateway and boots the Python app with the adapter,
+  gated by `LORECRAFT_THROUGH_RUST=1` env var; points the three named exit tests
+  at the Rust front door; sim harness mints real tickets through the proxy; a
+  bad-ticket→WS-1008 close-code test.
+- `c7327f6` — Python: autonomous clock/weather broadcasts pushed through the
+  gateway as `Deliver` frames (a new `GatewayPushManager` + per-connection
+  outbound queue), so server-initiated pushes reach gateway-connected browsers.
+- `0359f76` — Rust+Python: fixed a gate-found BLOCKING disconnect-fan-out race
+  via an additive `GatewayOutbound::DisconnectAck` frame (Rust awaits the ack,
+  bounded 5s backstop, so asynchronous tear-down `Deliver`s —
+  `player_left`/follow-break/players-online — reach remaining players before the
+  link tears down).
+- `5696002` — Python: fixed a second gate-found EXIT-BLOCKING gap — the browser
+  sends commands via `POST /command` (HTMX), whose `broadcast_command_effects`
+  was using the empty-in-gateway-mode real `ConnectionManager`; now routes
+  through the `GatewayPushManager` (both fan-out and command execution path) so
+  cross-player broadcasts from non-WS commands reach Rust-connected browsers.
+
+**3b's own exit check is met:** all three named exit tests pass **through the
+Rust front door** (not just Python-direct):
+
+- `tests/e2e/test_reconnect.py` — 6/6 via Playwright+Chromium (browser e2e
+  automation; verified in-env with real browser subprocess).
+- `tests/e2e/test_multiplayer_realtime.py` — 6/6 via Playwright+Chromium
+  (browser e2e).
+- `tests/simulation/test_multiplayer_scenarios.py` — 5/5 (live-server harness,
+  direct player protocol).
+- Bad/expired/reused ticket → WS close code 1008 through Rust (3/3 variants).
+- Rollback (Python-direct, flag off) intact (6/6, same test suite still passes
+  without the gateway).
+
+A full secondary verification run by Test & QA confirmed:
+
+- Python: `make lint` clean; `make typecheck` 0 errors; `make test` 1486
+  passed / 1 skipped; `make test-cov` 91% (gate 80%); `tests/unit/test_tier_boundaries.py`
+  clean, confirming `src/lorecraft/gateway/` is not imported by `engine/`.
+- Rust (from `rust/`): `cargo build --all` clean; `cargo test --all` 81 tests
+  passed; `cargo clippy -D warnings` clean; `cargo fmt --check` clean.
+
+**Code Review:** zero blocking findings across all seven commits. One
+advisory note on the 5-second `DisconnectAck` timeout — appropriate for
+in-test use; production deployments may tune it, flagged for future runbook
+documentation.
+
+**Still pending / explicitly NOT done:** sub-slice 3c (admin `/admin/ws`
+cutover + backpressure/slow-client policy — `ws_admin.rs` remains a stub,
+`lorecraft-events::backpressure` module does not yet exist) and several
+non-blocking follow-ups that must be resolved before "gateway enabled by
+default" (see below). **The phase-level exit criterion — both client types
+through the Rust gateway; disconnect/reconnect + slow-client tests matching
+current semantics — is NOT yet met** — 3b delivers the player half, 3c is
+still needed.
+
+**KNOWN FOLLOW-UPS** (NOT exit-blocking for 3b, but MUST be listed — several
+must be closed before "gateway on by default"; recorded here so the phase isn't
+overclaimed):
+
+1. **Rust `ConnectionRegistry` room-move staleness (correctness gap).** A `POST
+   /command` room move updates only the Python adapter's mirror, not Rust's
+   authoritative `ConnectionRegistry` — so after a browser-UI move, if the mover
+   sits still and a third party enters the mover's NEW room, the mover misses
+   that later room broadcast. Untested by the exit tests (they only assert a
+   stationary observer seeing a mover's leave/arrival). Needs a Python→Rust
+   move instruction in the `GatewayInbound` protocol.
+2. **Graceful-quit via `POST /command` (design decision 8).** The
+   `disconnect=True` teardown still uses the real `ConnectionManager`; in
+   gateway mode the Rust side owns the socket, so a proper close needs a new
+   Python→Rust close instruction. A `TODO(decision 8)` marks it in
+   `frontend.py`. Flag-off (rollback to Python-direct) is unaffected.
+3. **"Dark" autonomous broadcasters (mechanical gap).** Only clock + weather
+   narration route through the gateway; `NpcBehaviorService`, `TransitService`,
+   `QuestTimerService`, `WeatherFrontService` storm effects, and
+   `MobileRouteService` still target the real `ConnectionManager` and are dark
+   to gateway clients. A guard test covers clock/weather; the rest is the same
+   mechanical `broadcast_manager` swap once verified.
+4. **Unbounded Python push queue (hardening).** `_ClientLink.outbound` in the
+   adapter has no depth limit; the Rust side is bounded. A late-phase hardening
+   item to prevent memory growth under slow-client conditions before going to
+   production.
+5. **`players_here` presence dots (cosmetic staleness).** On the actor's own
+   panel, the live presence dots remain cosmetically stale in gateway mode —
+   Rust sees the right set, but the update message to the actor itself may
+   reflect a slightly earlier snapshot. Low priority, non-functional.
+6. **CI browser e2e coverage.** The exit tests (Playwright+Chromium) were
+   verified in-env here; ensure CI has the `.[e2e]` extras + `playwright install
+   chromium` in the build matrix for ongoing automated coverage.
+
+**Recommended next increment:** sub-slice 3c (admin `/admin/ws` cutover), per
+the design spec's own stated sequencing (3a before 3b before 3c) — do not skip
+ahead.
+
 ### Where things stand / Next
 
 After this lands, the natural next increment is Phase 4 — migrate one vertical

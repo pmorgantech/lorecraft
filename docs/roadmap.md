@@ -75,9 +75,11 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 *(Separate track, own branch/versioning per [`../CHANGELOG_RUST.md`](../CHANGELOG_RUST.md):
 the `rust-port` branch's Phase 3 transport/connection-ownership migration has sub-slice 3a
-(forwarding protocol + Python adapter + Rust gateway plumbing, no live client cutover)
-landed as of 2026-07-13 — see [`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 3
-"Kickoff status — sub-slice 3a" for detail; sub-slices 3b/3c are still pending.)*
+(forwarding protocol + Python adapter + Rust gateway plumbing) and sub-slice 3b (player `/ws`
+cutover via Rust front-door, all exit tests through Rust-verified) landed as of 2026-07-13 —
+see [`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 3 kickoff status sections for
+detail; sub-slice 3c (admin cutover + backpressure) is still pending, and the phase-level
+exit criterion is NOT yet fully met.)*
 
 ---
 

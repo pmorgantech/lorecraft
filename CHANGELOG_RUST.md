@@ -52,6 +52,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   check. **Sub-slices 3b (player `/ws` cutover) and 3c (admin cutover +
   backpressure) are not yet built** — the Phase 3 phase-level exit criterion
   remains open.
+- Sub-slice 3b implementation (player `/ws` cutover via Rust front-door):
+  `GatewayAdapter` wired with `gateway_enabled` flag (default off, immediate
+  rollback); UDS hardening (0600 socket perms, stale-socket cleanup);
+  follow-break-on-disconnect wired.
+- Rust player `/ws` termination: `?ticket=` handoff, single-live-connection
+  rule, one UDS link per WS (closes OPEN ITEM 1), per-connection bounded
+  outbound writer task, new `lorecraft-gateway` binary with port-discovery
+  output.
+- Rust transparent HTTP reverse proxy for all non-WS requests to Python
+  uvicorn backend (reqwest 0.13.3, loopback-only, no TLS); hop-by-hop header
+  stripping, Set-Cookie passthrough; no SSE in player UI confirmed.
+- Test harness: dual-process fixture gated by `LORECRAFT_THROUGH_RUST=1` that
+  builds+spawns gateway and Python app; exit tests (reconnect, multiplayer,
+  simulation) run through Rust front door; bad-ticket→WS-1008 test; rollback
+  (flag off) verified.
+- Autonomous clock/weather broadcasts through gateway via `GatewayPushManager`
+  + per-connection outbound queues so server-initiated pushes reach gateway
+  clients.
+- Fixed BLOCKING disconnect-fan-out race via `GatewayOutbound::DisconnectAck`
+  frame with 5s backstop, ensuring tear-down deliveries reach remaining
+  players before link tears down.
+- Fixed EXIT-BLOCKING `POST /command` broadcast routing: `broadcast_command_effects`
+  now routes through `GatewayPushManager` so cross-player broadcasts from
+  non-WS commands reach Rust-connected browsers. **Sub-slice 3c (admin cutover
+  + backpressure/slow-client policy) is not yet built** — Phase 3 phase-level
+  exit criterion remains open; 6 known follow-ups flagged (room-move staleness,
+  graceful-quit via POST, dark broadcasters, unbounded Python queue, presence
+  dots, CI Playwright setup).
 
 ---
 
