@@ -175,6 +175,7 @@
       <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
       <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
       <div class="tab" data-tab="progression" onclick="showTab('progression')">Progression</div>
+      <div class="tab" data-tab="economy"    onclick="showTab('economy')">Economy</div>
       <div class="tab" data-tab="issues"     onclick="showTab('issues')">Issues</div>
       <div class="tab" data-tab="news"       onclick="showTab('news')">News</div>
       <div class="tab" data-tab="help"       onclick="showTab('help')">Help</div>
@@ -459,6 +460,25 @@
             <button id="pg-save-btn" onclick="saveProgressionConfig()" style="width:100%;">Save</button>
             <div id="pg-save-status" role="status" aria-live="polite" style="font-size:0.8rem;min-height:1.2em;margin-top:0.5rem;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- Economy -->
+      <div id="tab-economy" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Region Pricing</h2>
+          <button onclick="loadEconomyRegions()">↻ Refresh</button>
+        </div>
+        <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.75rem;">
+          Per-zone price multiplier applied to every transaction, plus an optional per-item
+          bias map (item id &rarr; multiplier) layered on top. Live &mdash; no restart or
+          reseed required.
+        </p>
+        <div class="panel" style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Zone</th><th>Region &times;</th><th>Bias (JSON)</th><th></th></tr></thead>
+            <tbody id="economy-tbody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -784,6 +804,7 @@ const TAB_LOADERS = {
   dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
   crashes: loadCrashes, world: loadRooms,
   changesets: loadChangesets, clock: loadClock, progression: loadProgressionConfig,
+  economy: loadEconomyRegions,
   issues: loadIssues,
   news: loadNews, help: loadHelp, accounts: loadAccounts, system: loadSystem
 };
@@ -1419,6 +1440,104 @@ async function saveProgressionConfig() {
     }
   } finally {
     updateProgressionEditUI();
+  }
+}
+
+// ────────────────────────────────────────
+// Economy (Sprint 76) — live-tune per-zone region pricing. Unlike
+// Progression's single config object, this is a *list* of `RegionPricing`
+// rows (one per zone), each independently editable/saveable. Mirrors
+// admin/routers/economy.py: GET returns every row, POST
+// /economy/regions/{zone} edits one row's region_mult/bias (superadmin-gated
+// server-side; disabled inputs + tooltip client-side for lesser roles, same
+// pattern as Progression's updateProgressionEditUI).
+// ────────────────────────────────────────
+
+let allEconomyRegions = [];
+
+function updateEconomyEditUI() {
+  const isSuperadmin = state.role === "superadmin";
+  for (const region of allEconomyRegions) {
+    const mult = document.getElementById(`eco-mult-${region.zone}`);
+    const bias = document.getElementById(`eco-bias-${region.zone}`);
+    const btn  = document.getElementById(`eco-save-${region.zone}`);
+    for (const el of [mult, bias, btn]) {
+      if (!el) continue;
+      el.disabled = !isSuperadmin;
+      el.title = isSuperadmin ? "" : "Requires superadmin role";
+    }
+  }
+}
+
+async function loadEconomyRegions() {
+  const regions = await api("GET", "/admin/economy/regions");
+  const tbody = document.getElementById("economy-tbody");
+  tbody.innerHTML = "";
+  if (!Array.isArray(regions)) {
+    if (regions && regions.detail) showError(regions.detail);
+    return;
+  }
+  allEconomyRegions = regions;
+  for (const r of regions) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="font-family:monospace;color:var(--amber)">${esc(r.zone)}</td>
+      <td><input id="eco-mult-${esc(r.zone)}" type="number" min="0" step="0.05" value="${r.region_mult}" style="width:90px;" /></td>
+      <td><textarea id="eco-bias-${esc(r.zone)}" rows="2" style="width:220px;font-family:monospace;font-size:0.8rem;">${esc(JSON.stringify(r.bias || {}))}</textarea></td>
+      <td style="min-width:140px;">
+        <button id="eco-save-${esc(r.zone)}" onclick="saveEconomyRegion('${esc(r.zone)}')">Save</button>
+        <div id="eco-status-${esc(r.zone)}" role="status" aria-live="polite" style="font-size:0.75rem;min-height:1.2em;margin-top:0.25rem;"></div>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+  updateEconomyEditUI();
+}
+
+async function saveEconomyRegion(zone) {
+  if (state.role !== "superadmin") return; // belt-and-braces; inputs are disabled for this role
+  const statusEl = document.getElementById(`eco-status-${zone}`);
+  const multEl = document.getElementById(`eco-mult-${zone}`);
+  const biasEl = document.getElementById(`eco-bias-${zone}`);
+
+  const region_mult = parseFloat(multEl.value);
+  if (!Number.isFinite(region_mult) || region_mult <= 0) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Invalid region multiplier (must be > 0)";
+    return;
+  }
+
+  let bias;
+  try {
+    bias = JSON.parse(biasEl.value.trim() || "{}");
+  } catch (e) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Invalid bias JSON";
+    return;
+  }
+  const biasValid = bias !== null && typeof bias === "object" && !Array.isArray(bias)
+    && Object.values(bias).every(v => typeof v === "number" && Number.isFinite(v));
+  if (!biasValid) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Bias must be a JSON object of item id → number";
+    return;
+  }
+
+  const btn = document.getElementById(`eco-save-${zone}`);
+  btn.disabled = true;
+  statusEl.style.color = "var(--text-dim)";
+  statusEl.textContent = "Saving…";
+  try {
+    const result = await api("POST", `/admin/economy/regions/${zone}`, {region_mult, bias});
+    if (result && result.detail) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = result.detail;
+    } else {
+      statusEl.style.color = "var(--phosphor)";
+      statusEl.textContent = "Saved.";
+      await loadEconomyRegions();
+    }
+  } finally {
+    updateEconomyEditUI();
   }
 }
 
