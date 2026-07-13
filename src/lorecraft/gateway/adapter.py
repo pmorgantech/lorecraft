@@ -42,7 +42,11 @@ from sqlmodel import Session
 from lorecraft.gateway.coalescing import coalesce_key_for
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
 from lorecraft.gateway.effect_apply import apply_outcome
-from lorecraft.gateway.snapshots import build_look_request
+from lorecraft.gateway.snapshots import (
+    build_look_request,
+    build_move_request,
+    move_target_is_skill_gated,
+)
 from lorecraft.protocol.envelope import CommandEnvelope, CommandId
 from lorecraft.protocol.gateway import (
     AdminAuthResult,
@@ -54,6 +58,7 @@ from lorecraft.protocol.gateway import (
     Connected,
     ConnectAck,
     CommandReply,
+    DeferToPython,
     Deliver,
     DeliveryDirective,
     Disconnected,
@@ -74,6 +79,7 @@ from lorecraft.protocol.gateway import (
 )
 from lorecraft.errors import ValidationError
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.game.parser import parse_command
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
@@ -601,25 +607,29 @@ class GatewayAdapter:
     def _on_build_snapshot(self, msg: BuildSnapshot) -> GatewayOutbound:
         """Build the `ScriptRequest` snapshot Rust executes the routed verb against.
 
-        Two short-circuits end the round-trip early with an `ExecutionRejected`
-        frame (Phase 4b hardening) so the Rust driver never hangs and the frozen-
-        session invariant is preserved:
+        Dispatches on the routed verb (`look` and, from Phase 4c, `move`). Three
+        short-circuits end the round-trip early so the Rust driver never hangs and
+        the frozen-session invariant is preserved:
 
         - **Frozen session (finding #2).** Checked FIRST, mirroring
           `handle_ws_command`'s guard: if the session's status is ``frozen``, reject
           *before* building the snapshot — no feature, no `ApplyOutcome`, no audit,
           no broadcast — returning the frozen ``system`` message for Rust to relay.
-        - **Handler failure (finding #1).** Any exception in the frozen check or
-          `build_look_request` (a vanished player/room, etc.) is caught, logged with
+        - **Skill-gated move (OPEN ITEM #3).** A `move` whose target terrain is
+          skill-gated draws RNG Python-side (`SkillService.record_use`), so it must
+          not run in Rust: `_build_snapshot_frame` returns a `DeferToPython` frame
+          and the Rust driver re-runs the whole command through the ordinary
+          command path (Python owns the skill gate + RNG + `PLAYER_MOVED`). No
+          pending entry is remembered — there will be no correlated `ApplyOutcome`.
+        - **Handler failure (finding #1).** Any exception in the frozen check or a
+          snapshot builder (a vanished player/room, etc.) is caught, logged with
           traceback, and degraded to a client-facing in-game ``error`` reply rather
           than escaping to the silent dispatch catch-all (which would drop the reply
           and wedge the Rust `execute` driver awaiting `SnapshotReady`).
 
-        On the success path the envelope is remembered keyed by its `command_id` so
-        the correlated `ApplyOutcome` (which carries no envelope) can recover the
-        persistence context. On either short-circuit the pending map is left
-        untouched — there will be no `ApplyOutcome` for a rejected command. Only
-        `look` is migrated this phase; other verbs are not yet routed here.
+        On the `SnapshotReady` path the envelope is remembered keyed by its
+        `command_id` so the correlated `ApplyOutcome` (which carries no envelope)
+        can recover the persistence context.
 
         The pending map is bounded: a Rust execute-timeout (or a dropped
         `ApplyOutcome`) would otherwise leak this entry forever, since Rust
@@ -635,15 +645,40 @@ class GatewayAdapter:
                 return ExecutionRejected(
                     command_id=envelope.command_id, direct_reply=frozen_reply
                 )
-            request = build_look_request(self._state, envelope)
+            frame = self._build_snapshot_frame(envelope)
         except Exception:
             log.exception("gateway_build_snapshot_failed")
             return ExecutionRejected(
                 command_id=envelope.command_id,
                 direct_reply=_execution_error_reply(),
             )
+        if isinstance(frame, DeferToPython):
+            # Python runs the whole command (skill-gated move — RNG stays Python).
+            # No pending entry: no `ApplyOutcome` will be correlated to this id.
+            return frame
         self._pending[envelope.command_id] = envelope
         self._evict_stale_pending()
+        return frame
+
+    def _build_snapshot_frame(self, envelope: CommandEnvelope) -> GatewayOutbound:
+        """Build the outbound snapshot frame for `envelope`'s routed verb.
+
+        Returns a `SnapshotReady` for a Rust-executable command, or a
+        `DeferToPython` for a skill-gated `move` (whose RNG draw stays Python —
+        OPEN ITEM #3). The verb is recovered with the *same* parser the live path
+        uses; for the direction/verb resolution this reads no world state, so it is
+        byte-identical to `handle_ws_command`'s parse and needs no game session.
+        `look` (and any not-yet-branched verb) falls through to the read-only look
+        snapshot, matching the only verbs Rust routes here this phase.
+        """
+        commands = parse_command(envelope.raw).commands
+        verb = commands[-1].verb if commands else ""
+        if verb == "move":
+            request = build_move_request(self._state, envelope)
+            if move_target_is_skill_gated(request, commands[-1].noun):
+                return DeferToPython(command_id=envelope.command_id)
+            return SnapshotReady(command_id=envelope.command_id, request=request)
+        request = build_look_request(self._state, envelope)
         return SnapshotReady(command_id=envelope.command_id, request=request)
 
     def _evict_stale_pending(self) -> None:
