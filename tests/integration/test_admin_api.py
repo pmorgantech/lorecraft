@@ -1032,6 +1032,28 @@ async def _test_post_economy_region_bad_mult() -> None:
     assert status == 422
 
 
+def test_post_economy_region_rejects_nonnumeric_bias() -> None:
+    anyio.run(_test_post_economy_region_bad_bias)
+
+
+async def _test_post_economy_region_bad_bias() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _seed_regions(game_engine)
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/economy/regions/test_zone_a",
+            body={"bias": {"gem": "abc"}},
+            token=token,
+        )
+    assert status == 422
+
+
 def test_observer_cannot_edit_economy_region() -> None:
     anyio.run(_test_observer_cannot_edit_economy)
 
