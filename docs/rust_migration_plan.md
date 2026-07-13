@@ -557,10 +557,8 @@ disconnect/reconnect and slow-client tests match current semantics.
 
 Choose a narrow but real slice, such as `look`, then movement:
 
-- Rust parsing/routing for the selected verb;
-- Rust repository reads/writes;
-- Rust transaction and effect validation;
-- Rust audit/outbox commit;
+- Rust parsing/routing and effect-derivation for the selected verb;
+- Python persistence (applies derived effects via existing repos/services; commits both DBs);
 - existing UI response shape;
 - golden replay comparison.
 
