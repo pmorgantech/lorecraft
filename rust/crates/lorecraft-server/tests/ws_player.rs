@@ -128,7 +128,22 @@ async fn serve_connection(
                     deliveries,
                 }]
             }
-            GatewayInbound::Disconnected { .. } => vec![],
+            // Mirror the Python adapter's teardown-response path: a `Disconnected`
+            // yields the leave fan-out (`player_left` to the room) FOLLOWED BY the
+            // terminal `DisconnectAck`. Returning `vec![]` here is exactly what hid
+            // the disconnect bug — the leave was never exercised through Rust.
+            GatewayInbound::Disconnected { player_id, .. } => vec![
+                GatewayOutbound::Deliver {
+                    directive: DeliveryDirective {
+                        target: DeliveryTarget::Room {
+                            id: "tavern".to_owned(),
+                        },
+                        exclude: None,
+                        payload: json!({"type": "player_left", "player_id": player_id.0}),
+                    },
+                },
+                GatewayOutbound::DisconnectAck,
+            ],
             GatewayInbound::ValidateAdminToken { .. } => vec![GatewayOutbound::AuthResult {
                 accepted: false,
                 player_id: None,
@@ -347,6 +362,47 @@ async fn second_connection_for_same_player_closes_1008_already_connected() {
         .expect("send look");
     let reply = next_text(&mut first).await;
     assert_eq!(reply["command"], json!("look"));
+}
+
+/// THE DISCONNECT REGRESSION GUARD: when a gateway-fronted player's WS drops, the
+/// teardown `player_left` fan-out must reach a still-connected room sibling. This
+/// exercises the full path — WS close → `Disconnected` down the dying link →
+/// Python's leave `Deliver` read + dispatched into the shared registry → sibling's
+/// outbound queue — *before* the link is torn down. Before the fix, Rust aborted
+/// the link's read loop microseconds after writing `Disconnected`, so this
+/// `player_left` never arrived and the assertion below would time out.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn disconnect_fans_out_player_left_to_room_sibling() {
+    let harness = start_gateway(&[("ticket-a", "leaver")]).await;
+
+    // A sibling registered directly in the shared registry, in the same room the
+    // mock adapter places connecting players into.
+    let (sibling_tx, mut sibling_rx) = outbound_channel(DEFAULT_OUTBOUND_QUEUE_DEPTH);
+    harness.registry.register(
+        PlayerId("bystander".to_owned()),
+        sibling_tx,
+        Some("tavern".to_owned()),
+    );
+
+    let mut ws = ws_connect(harness.addr, "ticket-a").await;
+    let connected = next_text(&mut ws).await;
+    assert_eq!(connected["player_id"], json!("leaver"));
+    assert!(harness
+        .registry
+        .is_connected(&PlayerId("leaver".to_owned())));
+
+    // The player drops: close the socket.
+    ws.close(None).await.expect("client close");
+
+    // The sibling's queue receives the leave broadcast produced by the teardown.
+    let delivered = timeout(STEP, sibling_rx.recv())
+        .await
+        .expect("player_left reaches the sibling before teardown drops the link")
+        .expect("sibling channel open");
+    assert_eq!(
+        delivered,
+        json!({"type": "player_left", "player_id": "leaver"})
+    );
 }
 
 /// Fan-out: a `CommandReply.deliveries` room directive produced on the acting

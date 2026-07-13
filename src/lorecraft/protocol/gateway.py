@@ -348,6 +348,23 @@ class Deliver(GatewayOutbound):
         return {"type": self.TAG, "directive": self.directive.to_json()}
 
 
+@dataclass(frozen=True, slots=True)
+class DisconnectAck(GatewayOutbound):
+    """Terminal ack that a ``Disconnected`` teardown finished (no fields).
+
+    Emitted **after** the teardown's fan-out ``Deliver``s (``player_left``, the
+    connection-flicker narration, the ``players-online`` refresh, follow-break
+    notices), so the Rust gateway can await it and only drop the dying
+    per-connection link once those ``Deliver``s have been read and dispatched to
+    the remaining room siblings. Mirrors the Rust ``GatewayOutbound::DisconnectAck``
+    bare-tag variant."""
+
+    TAG: ClassVar[str] = "DisconnectAck"
+
+    def to_json(self) -> JsonObject:
+        return {"type": self.TAG}
+
+
 def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
     """Reconstruct a ``GatewayOutbound`` variant from its tagged-JSON shape."""
     tag = data.get("type")
@@ -375,4 +392,6 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
         return Deliver(
             directive=DeliveryDirective.from_json(require_dict(data, "directive"))
         )
+    if tag == DisconnectAck.TAG:
+        return DisconnectAck()
     raise ValidationError(f"unknown gateway outbound type: {tag!r}")

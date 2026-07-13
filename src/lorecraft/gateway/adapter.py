@@ -47,6 +47,7 @@ from lorecraft.protocol.gateway import (
     Deliver,
     DeliveryDirective,
     Disconnected,
+    DisconnectAck,
     GatewayCommand,
     GatewayInbound,
     GatewayOutbound,
@@ -407,6 +408,15 @@ class GatewayAdapter:
         teardown: begin the grace period, narrate the connection flicker + a
         players-online refresh, then drop the mirror entry and broadcast
         `player_left`. Recorded broadcasts are relayed as `Deliver`s.
+
+        The returned list **always ends with a terminal `DisconnectAck`**, even
+        when there are no `Deliver`s (unknown player, or a `GracefulQuit` that
+        already tore down). The Rust gateway sends `Disconnected` down the dying
+        per-connection link and then *awaits* this `DisconnectAck` before dropping
+        that link — so the leading `Deliver`s are guaranteed to have been read and
+        dispatched to the remaining room siblings first. Without the ack, Rust
+        would abort the link's read loop microseconds after writing `Disconnected`,
+        and the still-connected players would silently miss the leave.
         """
         state = self._state
         player_id = msg.player_id
@@ -474,7 +484,9 @@ class GatewayAdapter:
             self._manager.mark_disconnected(player_id)
 
         deliveries = self._manager.drain()
-        return [Deliver(directive=d) for d in deliveries]
+        # The terminal ack MUST be last so Rust only tears the link down once every
+        # preceding teardown `Deliver` has been read and dispatched.
+        return [*(Deliver(directive=d) for d in deliveries), DisconnectAck()]
 
     # -- command forwarding (shared pipeline) -------------------------------
 

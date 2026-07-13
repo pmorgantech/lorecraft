@@ -27,7 +27,9 @@ from lorecraft.gateway.adapter import (
     encode_frame,
     read_frame,
 )
+from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
+import lorecraft.main as main_mod
 from lorecraft.main import create_app
 from lorecraft.protocol import PROTOCOL_VERSION
 from lorecraft.protocol.envelope import CommandEnvelope
@@ -40,6 +42,7 @@ from lorecraft.protocol.gateway import (
     Deliver,
     DeliveryDirective,
     Disconnected,
+    DisconnectAck,
     GatewayCommand,
     GatewayOutbound,
     GlobalTarget,
@@ -170,7 +173,10 @@ def test_graceful_quit_disconnect_skips_teardown(
         adapter.handle_inbound(Disconnected(player_id=PLAYER_ID, reason=GracefulQuit()))
     )
     # No flicker/player_left broadcasts on a graceful quit; mirror is cleared.
-    assert frames == []
+    # The terminal DisconnectAck is still emitted (and is the *only* frame) so
+    # the Rust gateway's teardown handshake always completes — even when there is
+    # nothing to fan out.
+    assert frames == [DisconnectAck()]
     assert not adapter.manager.is_connected(PLAYER_ID)
 
 
@@ -187,6 +193,12 @@ def test_client_close_disconnect_emits_player_left(
         if isinstance(d, Deliver) and isinstance(d.directive.payload, dict)
     }
     assert "player_left" in payload_types
+    # The teardown fan-out `Deliver`s must precede the terminal `DisconnectAck`:
+    # Rust dispatches the leave to remaining players as the frames arrive and only
+    # drops the link on the ack, so ordering (Delivers first, ack last) is the
+    # load-bearing contract.
+    assert isinstance(frames[-1], DisconnectAck)
+    assert not any(isinstance(f, DisconnectAck) for f in frames[:-1])
     assert not adapter.manager.is_connected(PLAYER_ID)
 
 
@@ -316,6 +328,52 @@ def test_lifespan_gateway_enabled_starts_uds_with_owner_only_perms(
         assert stat.S_IMODE(mode) == 0o600
     # Lifespan shutdown stopped the adapter and removed the socket file.
     assert not sock_path.exists()
+
+
+def test_gateway_mode_routes_autonomous_broadcasts_through_push_manager(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Guard: in gateway mode the autonomous (server-initiated) broadcasters — the
+    world clock's `time_update` and weather narration — must be wired to the
+    `GatewayPushManager`, NOT the raw `ConnectionManager` (whose socket pool is
+    empty in gateway mode, since clients live in Rust's authoritative registry).
+    If a future autonomous broadcaster is wired straight to `manager` in gateway
+    mode its pushes would silently vanish; this fails loudly instead.
+
+    Scope note (known-incomplete, to be listed in the Rust migration/scripting
+    docs): the clock and weather handlers both consume the *single*
+    `broadcast_manager` local in `create_app`, so capturing the manager handed to
+    `register_weather_handlers` proves the shared selection for both. Other
+    autonomous emitters wired independently later (e.g. NPC ambient emotes) are
+    not each asserted here — extend this guard when one lands.
+    """
+    captured: dict[str, object] = {}
+    real = main_mod.register_weather_handlers
+
+    def _capture(
+        bus: object, engine: object, manager: object, *a: object, **kw: object
+    ):  # type: ignore[no-untyped-def]
+        captured["manager"] = manager
+        return real(bus, engine, manager, *a, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(main_mod, "register_weather_handlers", _capture)
+
+    off_dir = tmp_path / "off"
+    off_dir.mkdir()
+    on_dir = tmp_path / "on"
+    on_dir.mkdir()
+
+    # Flag OFF (rollback / legacy `/ws`): the raw ConnectionManager, unchanged.
+    with TestClient(create_app(settings=_base_settings(off_dir))):
+        assert isinstance(captured["manager"], ConnectionManager)
+
+    captured.clear()
+
+    # Flag ON (gateway cutover): the late-bound push manager that relays
+    # autonomous broadcasts to Rust as standalone `Deliver` frames.
+    on_settings = replace(_base_settings(on_dir), gateway_enabled=True)
+    with TestClient(create_app(settings=on_settings)):
+        assert isinstance(captured["manager"], GatewayPushManager)
 
 
 # --- UDS hardening in start()/stop() -----------------------------------------

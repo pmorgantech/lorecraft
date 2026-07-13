@@ -49,6 +49,12 @@ pub struct GatewayConfig {
     /// the Python adapter acks nothing for an unknown player this phase, so an
     /// un-timed await could hang the upgrade task forever.
     pub handshake_timeout_ms: u64,
+    /// Backstop timeout for the disconnect teardown handshake
+    /// (`Disconnected → …Deliver… → DisconnectAck`). Bounds how long teardown
+    /// waits for Python to emit the leave fan-out + terminal ack, so a slow or
+    /// misbehaving adapter can never wedge a connection's teardown forever; on
+    /// expiry the link is dropped anyway (logged).
+    pub disconnect_timeout_ms: u64,
 }
 
 impl Default for GatewayConfig {
@@ -61,6 +67,7 @@ impl Default for GatewayConfig {
             default_deadline_ms: 5_000,
             outbound_queue_depth: DEFAULT_OUTBOUND_QUEUE_DEPTH,
             handshake_timeout_ms: 5_000,
+            disconnect_timeout_ms: 5_000,
         }
     }
 }

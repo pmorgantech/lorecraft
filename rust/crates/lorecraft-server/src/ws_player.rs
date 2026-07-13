@@ -31,9 +31,15 @@
 //!    are dispatched into the registry by the forward read loop and reach other
 //!    players via *their* writer tasks.
 //! 7. **Teardown.** On client close / receive error / writer exit: deregister,
-//!    best-effort `Disconnected{reason: ClientClose}` to Python (its
-//!    grace/flicker/`player_left` fan-out returns as `Deliver` pushes for the
-//!    remaining players), then drain the writer.
+//!    then send `Disconnected{reason: ClientClose}` to Python and **await its
+//!    teardown completion** ([`ForwardClient::send_disconnected`]). Python's
+//!    grace/flicker/`player_left`/follow-break fan-out returns as `Deliver` pushes
+//!    on this same link, which the forward read loop dispatches into the shared
+//!    registry — reaching the *remaining* players — followed by a terminal
+//!    `DisconnectAck`. Awaiting that ack (bounded by `disconnect_timeout_ms`) is
+//!    load-bearing: it guarantees the leave fan-out is read and dispatched
+//!    *before* this dying per-connection link is dropped (dropping it aborts the
+//!    read loop). Only then drain the writer.
 //!
 //! Deferred (noted, not silently dropped): graceful-quit detection — a command
 //! whose reply indicates the player quit — still reports `ClientClose`; the
@@ -236,16 +242,34 @@ async fn handle_socket(socket: WebSocket, state: GatewayState, ticket: Option<St
     }
 
     // 7. Teardown. Deregister first (stop new fan-out to this connection), then
-    //    tell Python — its grace/flicker/player_left directives flow back on this
-    //    same link and are dispatched to the *remaining* players; the directive
-    //    aimed at this now-deregistered player is a harmless no-op.
+    //    tell Python and AWAIT the teardown's completion: its grace/flicker/
+    //    player_left/follow-break directives flow back on this same link as
+    //    `Deliver`s (dispatched to the *remaining* players; the directive aimed at
+    //    this now-deregistered player is a harmless no-op), terminated by a
+    //    `DisconnectAck`. Awaiting that ack before returning is what keeps the
+    //    read loop alive long enough to dispatch the leave fan-out — returning
+    //    here drops `forward`, which aborts the read loop. The timeout is a
+    //    backstop so a slow/misbehaving adapter can never wedge teardown forever.
     //    Graceful-quit detection is deferred (module docs): always ClientClose.
     state.registry.deregister(&player_id);
-    if let Err(err) = forward
-        .send_disconnected(player_id.clone(), DisconnectReason::ClientClose)
-        .await
+    let disconnect_budget = Duration::from_millis(state.config.disconnect_timeout_ms);
+    match timeout(
+        disconnect_budget,
+        forward.send_disconnected(player_id.clone(), DisconnectReason::ClientClose),
+    )
+    .await
     {
-        tracing::debug!(error = %err, player_id = %player_id.0, "disconnect notify failed");
+        Ok(Ok(())) => {} // ack received: the leave fan-out reached remaining players.
+        Ok(Err(err)) => {
+            tracing::debug!(error = %err, player_id = %player_id.0, "disconnect notify failed");
+        }
+        Err(_) => {
+            tracing::warn!(
+                player_id = %player_id.0,
+                timeout_ms = state.config.disconnect_timeout_ms,
+                "disconnect ack timed out; tearing down without confirmed leave fan-out"
+            );
+        }
     }
     // Let the writer drain and exit: dropping our sender closes the queue once
     // the registry's clone is gone too (deregistered above).

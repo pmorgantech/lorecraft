@@ -63,6 +63,36 @@ async def _test_player_joined_broadcast(server: SimulationServer) -> None:
         await bob.close()
 
 
+def test_player_left_broadcast_reaches_other_player_on_disconnect(
+    simulation_server: SimulationServer,
+) -> None:
+    asyncio.run(_test_player_left_broadcast(simulation_server))
+
+
+async def _test_player_left_broadcast(server: SimulationServer) -> None:
+    """When one player's WS drops, a still-connected room sibling must receive
+    the `player_left` broadcast.
+
+    Through the Rust front door (`LORECRAFT_THROUGH_RUST=1`) this is the
+    regression guard for the disconnect fan-out fix: the teardown's leave
+    `Deliver` has to be read and dispatched on the *dying* per-connection UDS
+    link before Rust tears that link down. Before the fix Rust aborted the link's
+    read loop microseconds after writing `Disconnected`, so this broadcast never
+    arrived and the wait below timed out. Python-direct mode (flag off) exercises
+    the same assertion against the legacy `/ws` WebSocketDisconnect teardown."""
+    bob = await _connect(server, "bob")
+    alice = await _connect(server, "alice")
+    try:
+        # Both new characters start in village_square. Alice's socket drops; bob
+        # must be told she left.
+        await alice.close()
+        left = await bob.wait_for_broadcast("player_left", timeout=5)
+        assert left["player_id"] == alice.player_id
+        assert left["username"] == alice.username
+    finally:
+        await bob.close()
+
+
 def test_command_room_messages_broadcast_to_other_ws_players(
     simulation_server: SimulationServer,
 ) -> None:

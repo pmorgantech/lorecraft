@@ -121,6 +121,17 @@ pub enum GatewayOutbound {
         /// The fan-out directive to relay.
         directive: DeliveryDirective,
     },
+    /// Terminal acknowledgement that a [`GatewayInbound::Disconnected`] teardown
+    /// finished. It is emitted **after** all of the teardown's fan-out
+    /// [`GatewayOutbound::Deliver`] frames (the `player_left` broadcast, the
+    /// connection-flicker narration, the `players-online` refresh, and any
+    /// follow-break notices), so by the time the Rust read loop sees this frame it
+    /// has already dispatched every one of those `Deliver`s into the shared
+    /// registry. The Rust gateway awaits this before dropping the dying
+    /// per-connection link, which is what guarantees the remaining room siblings
+    /// actually receive the leave (see `forward.rs`'s `send_disconnected`). Carries
+    /// no correlation id — a link disconnects exactly once.
+    DisconnectAck,
 }
 
 /// A single fan-out directive: relay an opaque `payload` to a set of recipients.
@@ -305,12 +316,22 @@ mod tests {
                 },
                 "Deliver",
             ),
+            (GatewayOutbound::DisconnectAck, "DisconnectAck"),
         ];
         for (frame, tag) in cases {
             let value = serde_json::to_value(&frame).unwrap();
             assert_eq!(value["type"], json!(tag));
             assert_round_trip(&frame);
         }
+    }
+
+    #[test]
+    fn disconnect_ack_serializes_as_bare_tag() {
+        // The teardown-completion frame carries no fields — just its tag.
+        assert_eq!(
+            serde_json::to_value(GatewayOutbound::DisconnectAck).unwrap(),
+            json!({"type": "DisconnectAck"})
+        );
     }
 
     #[test]

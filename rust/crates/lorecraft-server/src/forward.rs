@@ -85,6 +85,16 @@ type PendingReplies = Arc<Mutex<HashMap<String, oneshot::Sender<GatewayOutbound>
 /// module docs), so one slot suffices; no keyed correlation map is needed.
 type PendingControl = Arc<Mutex<Option<oneshot::Sender<GatewayOutbound>>>>;
 
+/// The single pending **disconnect-completion** slot.
+///
+/// A `Disconnected` teardown is answered by exactly one terminal
+/// [`GatewayOutbound::DisconnectAck`], emitted *after* the teardown's fan-out
+/// `Deliver`s. A link disconnects exactly once, so one slot suffices. Completing
+/// it lets [`ForwardClient::send_disconnected`] return only once every teardown
+/// `Deliver` has been read and dispatched into the shared registry (i.e. the
+/// remaining room siblings have already received the leave).
+type PendingDisconnect = Arc<Mutex<Option<oneshot::Sender<()>>>>;
+
 /// The decoded outcome of a `RedeemTicket` (or `ValidateAdminToken`) handoff.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthDecision {
@@ -126,10 +136,11 @@ pub enum ForwardError {
     /// [`GatewayOutbound::CommandReply`] — a protocol violation.
     #[error("unexpected non-CommandReply frame answered a command")]
     UnexpectedReply,
-    /// A second control handshake (`RedeemTicket`/`Connected`) was started while
-    /// one was still pending on this link — a caller bug, since per-link
-    /// handshakes are strictly sequential (see the module docs).
-    #[error("a control handshake is already in flight on this link")]
+    /// A second control round-trip (`RedeemTicket`/`Connected`, or the
+    /// `Disconnected` teardown) was started while one was still pending on this
+    /// link — a caller bug, since these are strictly one-at-a-time per link (see
+    /// the module docs).
+    #[error("a control round-trip is already in flight on this link")]
     HandshakeInFlight,
 }
 
@@ -142,6 +153,8 @@ pub struct ForwardClient {
     pending: PendingReplies,
     /// The single pending control-handshake slot (see [`PendingControl`]).
     control: PendingControl,
+    /// The single pending disconnect-completion slot (see [`PendingDisconnect`]).
+    disconnect: PendingDisconnect,
     /// The background demultiplexing read loop; aborted on drop.
     read_task: JoinHandle<()>,
 }
@@ -161,16 +174,19 @@ impl ForwardClient {
         let (read, write) = stream.into_split();
         let pending: PendingReplies = Arc::new(Mutex::new(HashMap::new()));
         let control: PendingControl = Arc::new(Mutex::new(None));
+        let disconnect: PendingDisconnect = Arc::new(Mutex::new(None));
         let read_task = tokio::spawn(read_loop(
             read,
             registry,
             Arc::clone(&pending),
             Arc::clone(&control),
+            Arc::clone(&disconnect),
         ));
         Ok(Self {
             write: Mutex::new(write),
             pending,
             control,
+            disconnect,
             read_task,
         })
     }
@@ -217,17 +233,48 @@ impl ForwardClient {
         }
     }
 
-    /// Notify Python that this player's connection ended. Fire-and-forget: no
-    /// reply frame is defined for `Disconnected`; the teardown's own fan-out
-    /// (`player_left`, flicker narration) flows back as `Deliver` pushes that the
-    /// read loop dispatches into the shared registry.
+    /// Notify Python that this player's connection ended, then **await the
+    /// teardown's completion** before returning.
+    ///
+    /// This is a request/complete handshake, not fire-and-forget: the teardown's
+    /// own fan-out (`player_left`, the connection-flicker narration, the
+    /// `players-online` refresh, follow-break notices) flows back on this same
+    /// link as `Deliver` pushes, which the read loop dispatches into the shared
+    /// registry — reaching the *remaining* room siblings. Python then emits a
+    /// terminal [`GatewayOutbound::DisconnectAck`] *after* those `Deliver`s; this
+    /// method awaits it, so it returns only once every teardown `Deliver` has been
+    /// read and dispatched. That is what lets the caller drop this dying
+    /// per-connection link **without** racing the read loop's abort against those
+    /// still-in-flight `Deliver`s (the bug this handshake fixes).
+    ///
+    /// **Caller must apply a timeout**: a pathological or slow adapter that never
+    /// sends the ack must not wedge teardown forever. On the read loop dying first
+    /// this returns [`ForwardError::ConnectionClosed`] rather than hanging.
     pub async fn send_disconnected(
         &self,
         player_id: PlayerId,
         reason: DisconnectReason,
     ) -> Result<(), ForwardError> {
-        self.write_frame(&GatewayInbound::Disconnected { player_id, reason })
+        let (tx, rx) = oneshot::channel();
+        {
+            // A link disconnects exactly once; a second call is a caller bug.
+            let mut slot = self.disconnect.lock().await;
+            if slot.is_some() {
+                return Err(ForwardError::HandshakeInFlight);
+            }
+            *slot = Some(tx);
+        }
+        if let Err(err) = self
+            .write_frame(&GatewayInbound::Disconnected { player_id, reason })
             .await
+        {
+            // Reclaim the slot so the failure is clean (the link is torn down next).
+            self.disconnect.lock().await.take();
+            return Err(err);
+        }
+        // Completes on the terminal `DisconnectAck` (all teardown `Deliver`s
+        // dispatched first). A dropped sender means the read loop ended.
+        rx.await.map_err(|_| ForwardError::ConnectionClosed)
     }
 
     /// Write a control frame and await the single routed control reply.
@@ -320,10 +367,11 @@ async fn read_loop(
     registry: Arc<ConnectionRegistry>,
     pending: PendingReplies,
     control: PendingControl,
+    disconnect: PendingDisconnect,
 ) {
     loop {
         match read_frame(&mut read).await {
-            Ok(Some(frame)) => demultiplex(frame, &registry, &pending, &control).await,
+            Ok(Some(frame)) => demultiplex(frame, &registry, &pending, &control, &disconnect).await,
             Ok(None) => break, // clean end-of-stream: peer closed
             Err(err) => {
                 // Not silent: a decode/transport fault ends the link, and the
@@ -336,6 +384,7 @@ async fn read_loop(
     // Fail all in-flight requests: dropping the senders wakes their receivers.
     pending.lock().await.clear();
     control.lock().await.take();
+    disconnect.lock().await.take();
 }
 
 /// Route one decoded outbound frame to its pending request and/or the registry.
@@ -344,6 +393,7 @@ async fn demultiplex(
     registry: &ConnectionRegistry,
     pending: &PendingReplies,
     control: &PendingControl,
+    disconnect: &PendingDisconnect,
 ) {
     match frame {
         GatewayOutbound::CommandReply {
@@ -397,6 +447,19 @@ async fn demultiplex(
                     let _ = tx.send(frame);
                 }
                 None => tracing::warn!("control reply arrived with no pending handshake"),
+            }
+        }
+        // The terminal teardown ack: complete the disconnect waiter. Because the
+        // read loop processes frames in order, every teardown `Deliver` above has
+        // already been dispatched by the time this arrives. An unsolicited ack
+        // (no waiter) is a protocol anomaly worth surfacing, never silently dropped.
+        GatewayOutbound::DisconnectAck => {
+            let waiter = disconnect.lock().await.take();
+            match waiter {
+                Some(tx) => {
+                    let _ = tx.send(());
+                }
+                None => tracing::warn!("disconnect ack arrived with no pending teardown"),
             }
         }
     }
@@ -647,6 +710,109 @@ mod tests {
             ack.direct_frames,
             vec![json!({"type": "connected", "player_id": "player-9"})]
         );
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// THE DISCONNECT-FIX PROOF: the teardown fan-out reaches a *still-registered*
+    /// sibling before `send_disconnected` returns. The mock peer replies to
+    /// `Disconnected` with a room-targeted `player_left` `Deliver` **then** the
+    /// terminal `DisconnectAck`. Assert (a) the sibling receives the `player_left`
+    /// payload, and (b) `send_disconnected` resolves `Ok(())` — i.e. it awaited the
+    /// ack and did not return (letting the link drop) before the fan-out landed.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn disconnect_awaits_ack_after_teardown_deliveries_reach_sibling() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        // A sibling still in the room the leaver was in.
+        let registry = Arc::new(ConnectionRegistry::new());
+        let (sibling_tx, mut sibling_rx) = outbound_channel(DEFAULT_OUTBOUND_QUEUE_DEPTH);
+        registry.register(
+            PlayerId("sibling".into()),
+            sibling_tx,
+            Some("tavern".into()),
+        );
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, mut write) = stream.into_split();
+            match read_inbound(&mut read).await {
+                GatewayInbound::Disconnected { player_id, .. } => {
+                    assert_eq!(player_id, PlayerId("leaver".into()));
+                }
+                other => panic!("expected Disconnected, got {other:?}"),
+            }
+            // Teardown fan-out first, terminal ack last — the real adapter order.
+            let leave = GatewayOutbound::Deliver {
+                directive: DeliveryDirective {
+                    target: DeliveryTarget::Room {
+                        id: "tavern".into(),
+                    },
+                    exclude: None,
+                    payload: json!({"type": "player_left", "player_id": "leaver"}),
+                },
+            };
+            write
+                .write_all(&encode_frame(&leave))
+                .await
+                .expect("write leave");
+            write
+                .write_all(&encode_frame(&GatewayOutbound::DisconnectAck))
+                .await
+                .expect("write ack");
+            write.flush().await.expect("flush");
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        });
+
+        let client = ForwardClient::connect(&socket_path, Arc::clone(&registry))
+            .await
+            .expect("connect");
+
+        client
+            .send_disconnected(PlayerId("leaver".into()), DisconnectReason::ClientClose)
+            .await
+            .expect("disconnect completes on ack");
+
+        // The sibling already has the leave payload queued once send returned.
+        let delivered = sibling_rx
+            .try_recv()
+            .expect("player_left already delivered");
+        assert_eq!(
+            delivered,
+            json!({"type": "player_left", "player_id": "leaver"})
+        );
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// A peer that reads `Disconnected` then drops without ever sending
+    /// `DisconnectAck` must fail `send_disconnected` with `ConnectionClosed`
+    /// rather than hang it forever.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn disconnect_without_ack_fails_closed_not_hang() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, write) = stream.into_split();
+            let _ = read_inbound(&mut read).await; // read the Disconnected
+            drop(write); // close without acking
+            drop(read);
+        });
+
+        let registry = Arc::new(ConnectionRegistry::new());
+        let client = ForwardClient::connect(&socket_path, registry)
+            .await
+            .expect("connect");
+
+        let result = client
+            .send_disconnected(PlayerId("leaver".into()), DisconnectReason::ClientClose)
+            .await;
+        assert!(matches!(result, Err(ForwardError::ConnectionClosed)));
 
         peer.await.expect("mock peer joins cleanly");
     }
