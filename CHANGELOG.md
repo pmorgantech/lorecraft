@@ -4,6 +4,37 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.97.0] - 2026-07-13
+
+### Added
+
+- **Sprint 77 — Discipline/Ability system: Tier 1 mechanism.** New `engine/game/abilities.py`
+  Tier 1 module providing the generic mechanism layer for the Discipline → Ability → Proficiency
+  model described in `docs/discipline_ability_system.md`:
+  - **`AbilityDef`** value object (mirrors `engine/game/leveling.py`'s shape): id, discipline id,
+    tier, `ability_type`, `activation_type`, prerequisites, cost, and usage-requirement
+    descriptors — pure data, no hardcoded ability IDs.
+  - **`check_acquisition`** and **`check_usage`** mechanisms: generic, data-driven gating checks
+    (prerequisite/proficiency/cooldown/resource requirements passed in as data, not branched on
+    in code) — `check_usage` is genuinely new capability, since today's verbs hardcode their own
+    gating in Python.
+  - **`resolve_proficiency`** growth wrapper: parameterized `improve_chance`/`max_rank` per
+    discipline, composes the existing `skill_check()` and `modifiers.py::resolve()` primitives
+    rather than duplicating them, and inherits `skill_check`'s 5/95 floor-ceil clamping.
+  - **Cooldown/resource affordability primitives**: generic checks for per-ability cooldown
+    expiry and resource-cost affordability, reusable by any Tier 2 feature.
+  - **`features/disciplines/` Tier 2 package skeleton**: manifest-only stub (no registries,
+    commands, or content yet) marking where the Sprint 78 policy/content layer will attach.
+  - **Full unit test coverage**: 100% coverage on the new `engine/game/abilities.py` module.
+  - **No schema/DB changes this sprint** — the `PlayerStats` migration (`skills` →
+    `discipline_ranks`) is deferred to Sprint 78.
+
+  This is the mechanism half of the two-sprint pair replacing Lorecraft's confusing
+  skills-vs-abilities split (a flat `SkillRegistry` catalog and the Sprint 74 skill-tree's
+  `ability.<id>` nodes, which shared neither storage nor vocabulary) with one coherent,
+  data-driven model. Sprint 78 (the Tier 2 policy/content layer — registries, world-content
+  YAML, and the schema migration) is next.
+
 ## [0.96.2] - 2026-07-13
 
 ### Fixed
