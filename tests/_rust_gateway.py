@@ -146,11 +146,18 @@ class RustGateway:
         socket_path: str,
         world_id: str = "world-1",
         deadline_ms: int = 5000,
+        extra_env: dict[str, str] | None = None,
     ) -> None:
         self._backend_url = backend_url
         self._socket_path = socket_path
         self._world_id = world_id
         self._deadline_ms = deadline_ms
+        # Optional extra environment passed straight through to the gateway
+        # subprocess. Used by the slow-client backpressure test to hand the bin
+        # small queue-depth / overflow-threshold / rate-limit overrides *if* the
+        # bin honors them (see that test). Harmless when the bin ignores an
+        # unknown variable, so this stays a no-op for every other caller.
+        self._extra_env = dict(extra_env or {})
         self._proc: subprocess.Popen[str] | None = None
         self._addr: str | None = None
         self._stdout_lines: list[str] = []
@@ -177,6 +184,7 @@ class RustGateway:
             "LORECRAFT_GATEWAY_BACKEND": self._backend_url,
             "LORECRAFT_GATEWAY_WORLD_ID": self._world_id,
             "LORECRAFT_GATEWAY_DEADLINE_MS": str(self._deadline_ms),
+            **self._extra_env,
         }
         self._proc = subprocess.Popen(
             [str(binary)],

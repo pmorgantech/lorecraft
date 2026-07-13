@@ -146,29 +146,65 @@ def live_server(tmp_path: Path) -> Iterator[str]:
 
 @pytest.fixture
 def admin_server(tmp_path: Path) -> Iterator[str]:
-    """Boot the real app (fresh DB) with a seeded superadmin for admin-console tests."""
-    settings = Settings(
-        database_path=str(tmp_path / "e2e-game.db"),
-        audit_database_path=str(tmp_path / "e2e-audit.db"),
-        world_yaml_path=str(REPO_ROOT / "world_content" / "world.yaml"),
+    """Boot the real app (fresh DB) with a seeded superadmin for admin-console tests.
+
+    Default: the browser talks straight to uvicorn (the Python-direct path, which
+    stays the rollback path — byte-identical to before this fixture learned the
+    Rust branch). When `LORECRAFT_THROUGH_RUST` is set (see
+    `tests/_rust_gateway.through_rust_enabled`), the same app is booted with the
+    gateway adapter enabled and a `lorecraft-gateway` subprocess is spawned in
+    front of it; the yielded `base_url` then points at the **Rust front door**, so
+    the admin console loads through Rust — HTML/static assets and `/auth/*` are
+    reverse-proxied, and `/admin/ws` is *terminated by Rust*. This exercises the
+    Rust admin cutover end-to-end, including the accept-before-validate → 1008
+    close a bogus admin token must produce (`test_ws_auth_rejection_forces_logout`).
+
+    Mirrors `live_server`'s Rust-fronting exactly; only the extra admin-seed +
+    content-mirror settings differ.
+    """
+    admin_settings: dict[str, Any] = {
+        "database_path": str(tmp_path / "e2e-game.db"),
+        "audit_database_path": str(tmp_path / "e2e-audit.db"),
+        "world_yaml_path": str(REPO_ROOT / "world_content" / "world.yaml"),
         # Point content mirrors at empty tmp files so the tracker starts clean
         # (don't bootstrap the repo's real docs/issues.yaml into the test DB).
-        issues_yaml_path=str(tmp_path / "issues.yaml"),
-        news_yaml_path=str(tmp_path / "news.yaml"),
-        help_yaml_path=str(tmp_path / "help_topics.yaml"),
-        seed_player_id="",
-        seed_player_username="",
-        admin_jwt_secret="e2e-admin-session-secret-key-32chars!",
-        admin_seed_username=ADMIN_USER,
-        admin_seed_password=ADMIN_PASS,
-        admin_seed_role="superadmin",
+        "issues_yaml_path": str(tmp_path / "issues.yaml"),
+        "news_yaml_path": str(tmp_path / "news.yaml"),
+        "help_yaml_path": str(tmp_path / "help_topics.yaml"),
+        "seed_player_id": "",
+        "seed_player_username": "",
+        "admin_jwt_secret": "e2e-admin-session-secret-key-32chars!",
+        "admin_seed_username": ADMIN_USER,
+        "admin_seed_password": ADMIN_PASS,
+        "admin_seed_role": "superadmin",
+    }
+
+    if not through_rust_enabled():
+        server = _LiveServer(create_app(settings=Settings(**admin_settings)))
+        server.start()
+        try:
+            yield server.base_url
+        finally:
+            server.stop()
+        return
+
+    ensure_gateway_binary()
+    socket_path = unique_socket_path()
+    settings = Settings(
+        **admin_settings,
+        gateway_enabled=True,
+        gateway_socket_path=socket_path,
     )
     server = _LiveServer(create_app(settings=settings))
     server.start()
+    gateway = RustGateway(backend_url=server.base_url, socket_path=socket_path)
     try:
-        yield server.base_url
+        gateway.start()
+        yield gateway.base_url
     finally:
+        gateway.stop()
         server.stop()
+        Path(socket_path).unlink(missing_ok=True)
 
 
 def admin_login(page: Any, base_url: str) -> None:
