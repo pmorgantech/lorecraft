@@ -15,8 +15,11 @@ from dataclasses import dataclass
 class TerrainDef:
     name: str
     description_suffix: str
-    required_skill: str | None = None
-    required_skill_min: int = 0
+    # The discipline whose rank gates safe entry (Sprint 78; renamed from the
+    # pre-78 `required_skill`). Its id doubles as the `skill.<name>` resolver key
+    # for the gated check (survival). None = ungated terrain.
+    required_discipline: str | None = None
+    required_discipline_min: int = 0
 
 
 class TerrainRegistry:
@@ -44,20 +47,20 @@ STANDARD_TERRAIN = [
     TerrainDef(
         "mountain",
         "The mountain path is steep and treacherous.",
-        required_skill="survival",
-        required_skill_min=20,
+        required_discipline="survival",
+        required_discipline_min=20,
     ),
     TerrainDef(
         "swamp",
         "The ground squelches underfoot, thick with mud.",
-        required_skill="survival",
-        required_skill_min=10,
+        required_discipline="survival",
+        required_discipline_min=10,
     ),
     TerrainDef(
         "water",
         "The water is cold and deep.",
-        required_skill="survival",
-        required_skill_min=30,
+        required_discipline="survival",
+        required_discipline_min=30,
     ),
 ]
 

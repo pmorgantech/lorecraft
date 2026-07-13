@@ -22,23 +22,28 @@ from lorecraft.features.exploration.rules import (
     mark_exit_discovered,
 )
 from lorecraft.features.inventory.service import format_room_items_summary
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.service import ProficiencyService
 
 # Easier than a blind `search` (difficulty 10) — a trained sense is meant to
 # pick up more, not less.
 SENSE_DIFFICULTY = 5
 
-_PERCEPTION_SKILL = "perception"
+# Subterfuge is the discipline whose rank is the sense check's base; the resolver
+# key stays `skill.perception` (Option A) so existing perception modifiers apply.
+_SUBTERFUGE_DISCIPLINE = "subterfuge"
+_PERCEPTION_CHECK_KEY = "skill.perception"
 
 
 class SenseService:
     """Handles the `sense` verb: a perception sweep of the current room."""
 
-    def __init__(self, skills: SkillService | None = None) -> None:
-        self._skills = skills or SkillService()
+    def __init__(self, proficiency: ProficiencyService | None = None) -> None:
+        self._proficiency = proficiency or ProficiencyService()
 
     def sense(self, ctx: GameContext) -> None:
-        base = self._skills.get_level(ctx.session, ctx.player.id, _PERCEPTION_SKILL)
+        base = self._proficiency.get_rank(
+            ctx.session, ctx.player.id, _SUBTERFUGE_DISCIPLINE
+        )
         modifiers = get_modifier_registry().collect(
             ctx.session, "player", ctx.player.id
         )
@@ -47,13 +52,15 @@ class SenseService:
             base=base,
             difficulty=SENSE_DIFFICULTY,
             modifiers=modifiers,
-            key=f"skill.{_PERCEPTION_SKILL}",
+            key=_PERCEPTION_CHECK_KEY,
         )
 
         # Materialize the PlayerStats row (get-or-create) before record_use,
         # which hard-raises on a missing row.
         ctx.player_repo.stats(ctx.player.id)
-        self._skills.record_use(ctx.session, ctx.rng, ctx.player.id, _PERCEPTION_SKILL)
+        self._proficiency.record_use(
+            ctx.session, ctx.rng, ctx.player.id, _SUBTERFUGE_DISCIPLINE
+        )
 
         if not result.success:
             ctx.say("You focus your senses but notice nothing unusual.")

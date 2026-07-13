@@ -16,6 +16,7 @@ disciplines:
     governing_stat: fortitude
     improve_chance: 0.1
     max_rank: 100
+    check_keys: [skill.survival, skill.cartography]
 
   - id: subterfuge
     name: Subterfuge
@@ -26,6 +27,7 @@ disciplines:
     governing_stat: agility
     improve_chance: 0.1
     max_rank: 100
+    check_keys: [skill.perception, skill.lockpicking]
 
   - id: commerce
     name: Commerce
@@ -35,6 +37,7 @@ disciplines:
     governing_stat: presence
     improve_chance: 0.1
     max_rank: 100
+    check_keys: [skill.bartering]
 
   - id: rhetoric
     name: Rhetoric
@@ -44,6 +47,7 @@ disciplines:
     governing_stat: presence
     improve_chance: 0.1
     max_rank: 100
+    check_keys: [skill.persuasion]
 
   - id: fortitude
     name: Fortitude
@@ -53,3 +57,4 @@ disciplines:
     governing_stat: fortitude
     improve_chance: 0.1
     max_rank: 100
+    check_keys: []

@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 
 from lorecraft.features.npc.dialogue import _visible_choices_for_flags
-from lorecraft.features.progression.skill_tree import ability_flag
+from lorecraft.features.disciplines.abilities import ability_flag
 
 _ABILITY = "silver_tongue"
 _TREE_ID = "innkeeper_dialogue"

@@ -12,8 +12,8 @@ from __future__ import annotations
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry
-from lorecraft.features.progression.service import SkillTreeService
-from lorecraft.features.progression.skill_tree import SkillTreeNode
+from lorecraft.features.disciplines.abilities import AbilityRecord
+from lorecraft.features.disciplines.service import AbilityService
 
 
 def _skill_points(ctx: GameContext) -> int:
@@ -21,15 +21,15 @@ def _skill_points(ctx: GameContext) -> int:
     return stats.skill_points if stats is not None else 0
 
 
-def _node_line(node: SkillTreeNode, *, marker: str) -> str:
+def _node_line(node: AbilityRecord, *, marker: str) -> str:
     cost = f"{node.cost} sp"
     return f"  {marker} {node.name} ({cost}) — {node.description.strip()}"
 
 
 def register_progression_commands(
-    registry: CommandRegistry, service: SkillTreeService | None = None
+    registry: CommandRegistry, service: AbilityService | None = None
 ) -> None:
-    tree = service or SkillTreeService()
+    tree = service or AbilityService()
 
     @registry.register(
         "train",
@@ -68,7 +68,7 @@ def register_progression_commands(
         ctx.say("\n".join(lines), MessageType.HELP)
 
 
-def _list_trainable(tree: SkillTreeService, ctx: GameContext) -> None:
+def _list_trainable(tree: AbilityService, ctx: GameContext) -> None:
     available = tree.available_nodes(ctx)
     locked = tree.locked_nodes(ctx)
     lines = [f"Skill points: {_skill_points(ctx)}."]

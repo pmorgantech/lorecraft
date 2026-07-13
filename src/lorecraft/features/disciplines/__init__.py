@@ -7,20 +7,36 @@ Tier 1 mechanism in `engine.game.abilities`. It ultimately replaces both
 `features/progression/skill_tree.py`'s node shape with one coherent model — see
 `docs/discipline_ability_system.md`.
 
-Sprint 77 (Tier 1) ships only this skeleton: a manifest so the package is
-auto-discovered by `discover_features()` and a placement for the registry/service
-work. The registries (`DisciplineRegistry`/`AbilityRegistry`), the
-`world_content/disciplines.yaml` + `abilities.yaml` loaders, the `PlayerStats`
-migration, and the `train`/`learn` command rework all land in Sprint 78 (Phases
-B.2–F). Until then this is a passive manifest with no `register_fn` — it wires
-nothing onto the shared registries yet. It imports only `engine.*` (never a web
-host), per the tier boundary.
+Sprint 78 fills in the real feature: the `DisciplineRegistry`/`AbilityRegistry`
+(loaded from `world_content/disciplines.yaml` + `abilities.yaml`), the
+`ProficiencyService`/`AbilityService`, and the `train`/`disciplines`/`abilities`
+commands. The `register_fn` binds the passive-ability modifier source onto the
+Tier 1 modifier resolver (ported from progression 74.4). It imports only
+`engine.*` and other features (never a web host), per the tier boundary.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from lorecraft.features.disciplines.modifier_source import (
+    register as _register_modifiers,
+)
 from lorecraft.features.manifest import FeatureManifest, register_feature
 
-manifest = FeatureManifest(key="disciplines", name="Disciplines & Abilities")
+if TYPE_CHECKING:
+    from lorecraft.state import AppState
+
+
+def _wire(_state: AppState) -> None:
+    # Bridge unlocked passive-ability modifiers into the Tier 1 modifier resolver.
+    _register_modifiers()
+
+
+manifest = FeatureManifest(
+    key="disciplines",
+    name="Disciplines & Abilities",
+    register_fn=_wire,
+)
 
 register_feature(manifest)

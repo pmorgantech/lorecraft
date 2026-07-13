@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from lorecraft.features.skills import definitions as skills_module
+from lorecraft.features.disciplines.abilities import get_discipline_registry
 from lorecraft.engine.game import traits as traits_module
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.message_types import MessageType
@@ -30,19 +30,24 @@ class CharacterInfoService:
         ctx.say("\n".join(lines), MessageType.HELP)
         ctx.push_update("traits", entries)
 
-    def list_skills(self, ctx: GameContext) -> None:
-        stats = ctx.player_repo.stats(ctx.player.id)
-        skill_levels = stats.discipline_ranks if stats is not None else {}
-        registry = skills_module.get_registry()
+    def list_disciplines(self, ctx: GameContext) -> None:
+        """Report each discipline and the player's current rank in it (Sprint 78).
 
-        lines = ["Your skills:"]
+        Replaces the pre-78 `skills` listing: a discipline rank *is* the former
+        flat skill level, now grouped under the five seed disciplines.
+        """
+        stats = ctx.player_repo.stats(ctx.player.id)
+        ranks = stats.discipline_ranks if stats is not None else {}
+        registry = get_discipline_registry()
+
+        lines = ["Your disciplines:"]
         entries = []
-        for skill_def in sorted(registry.all_skills(), key=lambda s: s.name):
-            level = skill_levels.get(skill_def.name, 0)
-            lines.append(f"  {skill_def.name}: {level}")
-            entries.append({"name": skill_def.name, "level": level})
+        for discipline in sorted(registry.all(), key=lambda d: d.name):
+            rank = ranks.get(discipline.id, 0)
+            lines.append(f"  {discipline.name}: rank {rank}")
+            entries.append({"id": discipline.id, "name": discipline.name, "rank": rank})
         ctx.say("\n".join(lines), MessageType.HELP)
-        ctx.push_update("skills", entries)
+        ctx.push_update("disciplines", entries)
 
     def list_reputation(self, ctx: GameContext) -> None:
         repo = ReputationRepo(ctx.session)

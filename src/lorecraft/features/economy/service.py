@@ -33,7 +33,7 @@ from lorecraft.features.economy.repo import EconomyRepo
 from lorecraft.features.inventory.service import parse_item_target
 from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 from lorecraft.features.reputation.service import ReputationService
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.service import ProficiencyService
 
 QUALITY_MULTIPLIERS = {
     "common": 1.0,
@@ -57,11 +57,11 @@ class EconomyService:
     def __init__(
         self,
         ledger: LedgerService | None = None,
-        skills: SkillService | None = None,
+        proficiency: ProficiencyService | None = None,
         reputation: ReputationService | None = None,
     ) -> None:
         self.ledger = ledger or LedgerService()
-        self.skills = skills or SkillService()
+        self.proficiency = proficiency or ProficiencyService()
         self.reputation = reputation or ReputationService()
 
     # -- shop/item lookup --------------------------------------------
@@ -86,7 +86,9 @@ class EconomyService:
     # -- pricing --------------------------------------------------
 
     def _barter_discount(self, ctx: GameContext) -> float:
-        level = self.skills.get_level(ctx.session, ctx.player.id, "bartering")
+        # Bartering folds into the Commerce discipline (§7); its rank drives the
+        # buy-side discount.
+        level = self.proficiency.get_rank(ctx.session, ctx.player.id, "commerce")
         return min(BARTER_DISCOUNT_CAP, level * BARTER_DISCOUNT_PER_LEVEL)
 
     def _rep_discount(self, ctx: GameContext, npc_id: str) -> float:

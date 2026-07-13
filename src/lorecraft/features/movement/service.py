@@ -12,9 +12,13 @@ from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.parser import DIRECTION_ALIASES
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.service import ProficiencyService
 
-_skills = SkillService()
+_proficiency = ProficiencyService()
+
+# Lock-picking draws its base from the Subterfuge rank; the resolver key stays
+# `skill.lockpicking` (Option A).
+_LOCKPICK_DISCIPLINE = "subterfuge"
 
 # Picking a lock is meant to be harder than routine skill use — locked doors are
 # a deliberate obstacle, so a trained picker still isn't guaranteed.
@@ -79,7 +83,7 @@ class MovementService:
             ctx.say(f"The way {normalized} isn't locked.", MessageType.WARNING)
             return
 
-        base = _skills.get_level(ctx.session, ctx.player.id, "lockpicking")
+        base = _proficiency.get_rank(ctx.session, ctx.player.id, _LOCKPICK_DISCIPLINE)
         result = skill_check(
             ctx.rng,
             base=base,
@@ -92,7 +96,9 @@ class MovementService:
         # Materialize the PlayerStats row (get-or-create) before record_use,
         # which hard-raises on a missing row.
         ctx.player_repo.stats(ctx.player.id)
-        _skills.record_use(ctx.session, ctx.rng, ctx.player.id, "lockpicking")
+        _proficiency.record_use(
+            ctx.session, ctx.rng, ctx.player.id, _LOCKPICK_DISCIPLINE
+        )
 
         if not result.success:
             ctx.say(f"You work the lock on the way {normalized}, but it holds.")
@@ -128,18 +134,19 @@ class MovementService:
             return
 
         terrain_def = terrain_module.get_registry().get(target_room.terrain)
-        if terrain_def is not None and terrain_def.required_skill is not None:
-            base = _skills.get_level(
-                ctx.session, ctx.player.id, terrain_def.required_skill
-            )
+        if terrain_def is not None and terrain_def.required_discipline is not None:
+            discipline = terrain_def.required_discipline
+            base = _proficiency.get_rank(ctx.session, ctx.player.id, discipline)
             effective = resolve_for(
                 ctx.session,
                 "player",
                 ctx.player.id,
-                f"skill.{terrain_def.required_skill}",
+                # The discipline id doubles as the `skill.<name>` resolver key for
+                # the gated terrain checks (survival) — Option A namespace.
+                f"skill.{discipline}",
                 base=base,
             )
-            if effective < terrain_def.required_skill_min:
+            if effective < terrain_def.required_discipline_min:
                 ctx.say(
                     f"You aren't skilled enough to venture into the "
                     f"{target_room.terrain} safely.",
@@ -149,9 +156,7 @@ class MovementService:
             # Materialize the PlayerStats row (get-or-create) before record_use,
             # which hard-raises on a missing row.
             ctx.player_repo.stats(ctx.player.id)
-            _skills.record_use(
-                ctx.session, ctx.rng, ctx.player.id, terrain_def.required_skill
-            )
+            _proficiency.record_use(ctx.session, ctx.rng, ctx.player.id, discipline)
 
         previous_room_id = ctx.room.id
         ctx.player.current_room_id = target_room.id

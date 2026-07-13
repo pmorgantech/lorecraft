@@ -22,7 +22,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.service import ProficiencyService
 
 FORAGE_SCHEMA_VERSION = 1
 
@@ -32,7 +32,10 @@ WILDCARD_TERRAIN = "*"
 # A middling check — forage is meant to usually pay off outdoors, but not always.
 FORAGE_DIFFICULTY = 15
 
-_SURVIVAL_SKILL = "survival"
+# Survival is the discipline whose rank is the forage check's base; the resolver
+# key stays `skill.survival` (Option A) so existing survival-check modifiers apply.
+_SURVIVAL_DISCIPLINE = "survival"
+_SURVIVAL_CHECK_KEY = "skill.survival"
 
 
 class ForageEntry(BaseModel):
@@ -99,10 +102,10 @@ class ForageService:
     def __init__(
         self,
         registry: ForageRegistry | None = None,
-        skills: SkillService | None = None,
+        proficiency: ProficiencyService | None = None,
     ) -> None:
         self._registry = registry or get_registry()
-        self._skills = skills or SkillService()
+        self._proficiency = proficiency or ProficiencyService()
 
     def forage(self, ctx: GameContext) -> None:
         if ctx.room.indoor:
@@ -112,7 +115,9 @@ class ForageService:
             )
             return
 
-        base = self._skills.get_level(ctx.session, ctx.player.id, _SURVIVAL_SKILL)
+        base = self._proficiency.get_rank(
+            ctx.session, ctx.player.id, _SURVIVAL_DISCIPLINE
+        )
         modifiers = get_modifier_registry().collect(
             ctx.session, "player", ctx.player.id
         )
@@ -121,13 +126,15 @@ class ForageService:
             base=base,
             difficulty=FORAGE_DIFFICULTY,
             modifiers=modifiers,
-            key=f"skill.{_SURVIVAL_SKILL}",
+            key=_SURVIVAL_CHECK_KEY,
         )
 
         # Materialize the PlayerStats row (get-or-create) before record_use,
         # which hard-raises on a missing row.
         ctx.player_repo.stats(ctx.player.id)
-        self._skills.record_use(ctx.session, ctx.rng, ctx.player.id, _SURVIVAL_SKILL)
+        self._proficiency.record_use(
+            ctx.session, ctx.rng, ctx.player.id, _SURVIVAL_DISCIPLINE
+        )
 
         if not result.success:
             ctx.say("You forage the area but turn up nothing edible.")

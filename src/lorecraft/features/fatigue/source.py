@@ -15,7 +15,7 @@ from sqlmodel import Session
 
 from lorecraft.engine.game import meters as meters_module
 from lorecraft.engine.game import modifiers as modifiers_module
-from lorecraft.features.skills import definitions as skills_module
+from lorecraft.features.disciplines.abilities import get_discipline_registry
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.modifiers import Modifier
 from lorecraft.engine.models.player import PlayerStats
@@ -60,11 +60,13 @@ class FatigueModifierSource:
             mult = WEARY_MULT
         else:
             return []
+        # Sap every live skill check. The check identities are the `skill.<name>`
+        # resolver keys each discipline declares it governs (§6.1, Option A) — a
+        # data-driven replacement for iterating the deleted flat skill catalogue.
         return [
-            Modifier(
-                key=f"skill.{skill.name}", kind="mult", amount=mult, source="fatigue"
-            )
-            for skill in skills_module.get_registry().all_skills()
+            Modifier(key=check_key, kind="mult", amount=mult, source="fatigue")
+            for discipline in get_discipline_registry().all()
+            for check_key in discipline.check_keys
         ]
 
 

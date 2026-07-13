@@ -209,7 +209,7 @@ class TestPricing:
         _cmd_engine, ctx, session = built
         stats = session.get(PlayerStats, ctx.player.id)
         assert stats is not None
-        stats.discipline_ranks = {"bartering": 100}
+        stats.discipline_ranks = {"commerce": 100}
         session.add(stats)
         session.commit()
 
@@ -224,14 +224,14 @@ class TestPricing:
     def test_haggler_ability_discounts_price(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
-        """The Haggler skill-tree node (price.buy mult 0.95) flows through the
-        Tier 1 modifier resolver into buy_price, multiplied alongside the
+        """The Haggler ability (price.buy mult 0.95) flows through the Tier 1
+        modifier resolver into buy_price, multiplied alongside the
         barter/reputation discounts (not replacing them)."""
-        from lorecraft.features.progression.modifier_source import register
-        from lorecraft.features.progression.skill_tree import (
-            get_registry,
-            validate_skill_tree_document,
+        from lorecraft.features.disciplines.abilities import (
+            get_ability_registry,
+            validate_ability_document,
         )
+        from lorecraft.features.disciplines.modifier_source import register
 
         _cmd_engine, ctx, session = built
         stats = session.get(PlayerStats, ctx.player.id)
@@ -240,16 +240,17 @@ class TestPricing:
         session.add(stats)
         session.commit()
 
-        register()  # idempotent global registration of SkillTreeModifierSource
-        tree = get_registry()
+        register()  # idempotent global registration of AbilityModifierSource
+        tree = get_ability_registry()
         tree.clear()
         tree.load_document(
-            validate_skill_tree_document(
+            validate_ability_document(
                 {
-                    "nodes": [
+                    "abilities": [
                         {
                             "id": "haggler",
                             "name": "Haggler",
+                            "discipline": "commerce",
                             "cost": 2,
                             "unlock": {
                                 "modifier": {

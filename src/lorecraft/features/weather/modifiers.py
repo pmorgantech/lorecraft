@@ -49,14 +49,16 @@ class WeatherTerrainModifierSource:
         if room is None:
             return []
         terrain_def = terrain_module.get_registry().get(room.terrain)
-        if terrain_def is None or terrain_def.required_skill is None:
+        if terrain_def is None or terrain_def.required_discipline is None:
             return []  # sheltered / generic terrain — unaffected by weather
         clock = RoomRepo(session).world_clock()
         if clock is None or clock.weather not in HARSH_WEATHERS:
             return []
         return [
             Modifier(
-                f"skill.{terrain_def.required_skill}",
+                # The discipline id doubles as the `skill.<name>` resolver key for
+                # the gated terrain check (survival) — Option A namespace.
+                f"skill.{terrain_def.required_discipline}",
                 "add",
                 -HARSH_WEATHER_SKILL_PENALTY,
                 f"weather:{clock.weather}",

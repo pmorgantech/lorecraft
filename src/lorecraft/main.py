@@ -250,8 +250,6 @@ def create_app(
         if services.marks is not None:
             _load_mark_definitions(resolved_settings.marks_yaml_path)
             services.marks.register(bus)
-        if "progression" in enabled_set:
-            _load_skill_tree_definitions(resolved_settings.skill_tree_yaml_path)
         if "disciplines" in enabled_set:
             _load_discipline_definitions(resolved_settings.disciplines_yaml_path)
             _load_ability_definitions(resolved_settings.abilities_yaml_path)
@@ -789,26 +787,6 @@ def _load_mark_definitions(marks_yaml_path: str) -> None:
         registry.load_document(load_marks_yaml(marks_yaml_path))
     except Exception as exc:  # malformed mark content shouldn't crash boot
         log.warning("failed to load marks from %s: %s", marks_yaml_path, exc)
-
-
-def _load_skill_tree_definitions(skill_tree_yaml_path: str) -> None:
-    """Load skill-tree node definitions (Sprint 74) into the in-memory registry
-    at startup. A missing file is fine — it just means no abilities are defined."""
-    from pathlib import Path
-
-    from lorecraft.features.progression.skill_tree import (
-        get_registry,
-        load_skill_tree_yaml,
-    )
-
-    registry = get_registry()
-    registry.clear()
-    if not Path(skill_tree_yaml_path).exists():
-        return
-    try:
-        registry.load_document(load_skill_tree_yaml(skill_tree_yaml_path))
-    except Exception as exc:  # malformed tree content shouldn't crash boot
-        log.warning("failed to load skill tree from %s: %s", skill_tree_yaml_path, exc)
 
 
 def _load_discipline_definitions(disciplines_yaml_path: str) -> None:

@@ -57,7 +57,6 @@ class Settings:
     celestial_yaml_path: str = "world_content/celestial.yaml"
     weather_fronts_yaml_path: str = "world_content/weather_fronts.yaml"
     spawns_yaml_path: str = "world_content/spawns.yaml"
-    skill_tree_yaml_path: str = "world_content/skill_tree.yaml"
     disciplines_yaml_path: str = "world_content/disciplines.yaml"
     abilities_yaml_path: str = "world_content/abilities.yaml"
     forage_yaml_path: str = "world_content/forage.yaml"

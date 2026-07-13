@@ -12,20 +12,26 @@ from lorecraft.features.exploration.rules import (
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.features.progression.feedback import narrate_level_up
 from lorecraft.features.progression.rewards import apply_rewards
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.service import ProficiencyService
 
 # A routine search; a room author could later vary this per-room via terrain
 # or a room flag, but a flat difficulty keeps the first cut simple.
 SEARCH_DIFFICULTY = 10
 DISCOVERY_XP = 5
 
+# Perception checks (search/sense) draw their base from the Subterfuge rank; the
+# resolver key stays `skill.perception` (Option A).
+_SUBTERFUGE_DISCIPLINE = "subterfuge"
+
 
 class ExplorationService:
-    def __init__(self, skills: SkillService | None = None) -> None:
-        self.skills = skills or SkillService()
+    def __init__(self, proficiency: ProficiencyService | None = None) -> None:
+        self.proficiency = proficiency or ProficiencyService()
 
     def search(self, ctx: GameContext) -> None:
-        base = self.skills.get_level(ctx.session, ctx.player.id, "perception")
+        base = self.proficiency.get_rank(
+            ctx.session, ctx.player.id, _SUBTERFUGE_DISCIPLINE
+        )
         modifiers = get_modifier_registry().collect(
             ctx.session, "player", ctx.player.id
         )
@@ -40,7 +46,9 @@ class ExplorationService:
         # Materialize the PlayerStats row (get-or-create) before record_use,
         # which hard-raises on a missing row.
         ctx.player_repo.stats(ctx.player.id)
-        self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "perception")
+        self.proficiency.record_use(
+            ctx.session, ctx.rng, ctx.player.id, _SUBTERFUGE_DISCIPLINE
+        )
 
         if not result.success:
             ctx.say("You search the area but find nothing new.")

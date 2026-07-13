@@ -22,13 +22,14 @@ def register_character_commands(
         service.list_traits(ctx)
 
     @registry.register(
+        "disciplines",
         "skills",
         conditions=[CommandCondition.NOT_IN_COMBAT],
-        help="skills — list your skills and their levels",
+        help="disciplines — list your disciplines and your rank in each",
     )
-    def skills_command(noun: str | None, ctx: GameContext) -> None:
+    def disciplines_command(noun: str | None, ctx: GameContext) -> None:
         del noun
-        service.list_skills(ctx)
+        service.list_disciplines(ctx)
 
     @registry.register(
         "reputation",

@@ -1315,10 +1315,12 @@ async def partial_map_full(
 
 def _cartography_level(db: DBSession, player_id: str) -> int:
     from lorecraft.engine.game.modifiers import resolve_for
-    from lorecraft.features.skills.service import SkillService
+    from lorecraft.features.disciplines.service import ProficiencyService
 
-    skills = SkillService()
-    base = skills.get_level(db, player_id, "cartography")
+    # Cartography folds into the Survival discipline (§7); its rank is the base.
+    # The `skill.cartography` resolver key is unchanged (Option A) so any
+    # cartography-keyed modifiers still apply.
+    base = ProficiencyService().get_rank(db, player_id, "survival")
     return round(resolve_for(db, "player", player_id, "skill.cartography", base=base))
 
 

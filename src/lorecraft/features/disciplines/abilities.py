@@ -81,6 +81,12 @@ class DisciplineDef(BaseModel):
     governing_stat: str
     improve_chance: float = DEFAULT_IMPROVE_CHANCE
     max_rank: int = DEFAULT_MAX_RANK
+    # The `skill.<name>` resolver-key namespaces this discipline governs — the
+    # check identities whose base is fed by this discipline's rank (§6.1, Option
+    # A). Makes the §7 "absorbs skills" mapping first-class content: e.g. Subterfuge
+    # governs `skill.perception` + `skill.lockpicking`. Consumed by cross-cutting
+    # modifier sources (the fatigue penalty) that must enumerate every live check.
+    check_keys: list[str] = Field(default_factory=list)
 
     @field_validator("id", "governing_stat")
     @classmethod

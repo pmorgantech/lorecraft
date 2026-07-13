@@ -32,7 +32,11 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.abilities import (
+    get_discipline_registry,
+    load_disciplines_yaml,
+)
+from lorecraft.features.disciplines.service import ProficiencyService
 
 # Traits + reputation used to register as import side effects; they now register
 # via their feature register()s. Call them once for this module's tests
@@ -40,6 +44,11 @@ from lorecraft.features.skills.service import SkillService
 _register_trait_sources()
 _register_standard_traits()
 _register_reputation()
+# Discipline ranks replace the old flat skills; the proficiency/command tests
+# below need the seed disciplines loaded into the in-memory registry.
+get_discipline_registry().load_document(
+    load_disciplines_yaml("world_content/disciplines.yaml")
+)
 
 ROOM_ID = "room-1"
 
@@ -96,33 +105,33 @@ def built() -> Iterator[tuple[CommandEngine, GameContext, Session]]:
     session.close()
 
 
-class TestSkills:
-    def test_get_level_defaults_to_zero(
+class TestProficiency:
+    def test_get_rank_defaults_to_zero(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         _cmd_engine, ctx, session = built
 
-        level = SkillService().get_level(session, ctx.player.id, "perception")
+        rank = ProficiencyService().get_rank(session, ctx.player.id, "subterfuge")
 
-        assert level == 0
+        assert rank == 0
 
     def test_record_use_improves_with_favorable_rng(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         _cmd_engine, ctx, session = built
         rng = GameRng(seed=1)
-        service = SkillService()
+        service = ProficiencyService()
 
         improved = False
         for _ in range(200):
-            if service.record_use(session, rng, ctx.player.id, "lockpicking"):
+            if service.record_use(session, rng, ctx.player.id, "subterfuge"):
                 improved = True
                 break
 
         assert improved
-        assert service.get_level(session, ctx.player.id, "lockpicking") == 1
+        assert service.get_rank(session, ctx.player.id, "subterfuge") == 1
 
-    def test_record_use_caps_at_max_level(
+    def test_record_use_caps_at_max_rank(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         _cmd_engine, ctx, session = built
@@ -133,18 +142,26 @@ class TestSkills:
         session.commit()
 
         rng = GameRng(seed=1)
-        service = SkillService()
+        service = ProficiencyService()
         for _ in range(20):
             service.record_use(session, rng, ctx.player.id, "survival")
 
-        assert service.get_level(session, ctx.player.id, "survival") == 100
+        assert service.get_rank(session, ctx.player.id, "survival") == 100
 
-    def test_skills_command_lists_all_standard_skills(
+    def test_record_use_unknown_discipline_never_grows(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        service = ProficiencyService()
+        grew = service.record_use(session, GameRng(seed=1), ctx.player.id, "nope")
+        assert grew is False
+
+    def test_disciplines_command_lists_seed_disciplines(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         cmd_engine, ctx, _session = built
 
-        cmd_engine.handle_command("skills", ctx)
+        cmd_engine.handle_command("disciplines", ctx)
 
-        assert any("perception" in m for m in ctx.messages)
-        assert any("bartering" in m for m in ctx.messages)
+        assert any("Survival" in m for m in ctx.messages)
+        assert any("Subterfuge" in m for m in ctx.messages)

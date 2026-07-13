@@ -16,7 +16,7 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.features.warmth.rules import resolve_warmth
-from lorecraft.features.skills.service import SkillService
+from lorecraft.features.disciplines.service import ProficiencyService
 
 UNBURDENED_MOVE_DRAIN = 2.0
 BURDENED_MOVE_DRAIN = 4.0
@@ -48,8 +48,8 @@ DREAM_MESSAGES = [
 
 
 class FatigueService:
-    def __init__(self, skills: SkillService | None = None) -> None:
-        self.skills = skills or SkillService()
+    def __init__(self, proficiency: ProficiencyService | None = None) -> None:
+        self.proficiency = proficiency or ProficiencyService()
 
     def register(self, bus: EventBus) -> None:
         bus.on(GameEvent.PLAYER_MOVED, self._on_player_moved)
@@ -100,7 +100,8 @@ class FatigueService:
             self._dream(ctx)
             return
 
-        base = self.skills.get_level(ctx.session, ctx.player.id, "survival")
+        # Weathering an unsafe night is a Survival check (§7).
+        base = self.proficiency.get_rank(ctx.session, ctx.player.id, "survival")
         modifiers = get_modifier_registry().collect(
             ctx.session, "player", ctx.player.id
         )
@@ -118,7 +119,7 @@ class FatigueService:
         # Materialize the PlayerStats row (get-or-create) before record_use,
         # which hard-raises on a missing row.
         ctx.player_repo.stats(ctx.player.id)
-        self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "survival")
+        self.proficiency.record_use(ctx.session, ctx.rng, ctx.player.id, "survival")
 
         if result.success:
             ctx.say("You bed down as best you can and manage a full night's rest.")
