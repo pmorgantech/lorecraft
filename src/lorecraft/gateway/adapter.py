@@ -11,6 +11,8 @@ forwards framed `GatewayInbound` messages; this adapter dispatches them to the
 - `Connected`     -> session boot/resume        -> `ConnectAck` (+ `Deliver`s)
 - `Disconnected`  -> grace/flicker/player_left teardown -> `Deliver`s
 - `Command`       -> shared `handle_ws_command`  -> `CommandReply`
+- `BuildSnapshot` -> `build_look_request`        -> `SnapshotReady` (Phase 4)
+- `ApplyOutcome`  -> `apply_outcome` (persist+commit) -> `OutcomeApplied` (Phase 4)
 
 Fan-out is not sent to sockets here: a `DirectiveConnectionManager` records each
 broadcast as a `DeliveryDirective`, which the adapter relays to Rust (Rust owns
@@ -39,10 +41,15 @@ from sqlmodel import Session
 
 from lorecraft.gateway.coalescing import coalesce_key_for
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
+from lorecraft.gateway.effect_apply import apply_outcome
+from lorecraft.gateway.snapshots import build_look_request
+from lorecraft.protocol.envelope import CommandEnvelope, CommandId
 from lorecraft.protocol.gateway import (
     AdminAuthResult,
     AdminTarget,
+    ApplyOutcome,
     AuthResult,
+    BuildSnapshot,
     ClientClose,
     Connected,
     ConnectAck,
@@ -56,12 +63,15 @@ from lorecraft.protocol.gateway import (
     GatewayOutbound,
     GlobalTarget,
     MovePlayer,
+    OutcomeApplied,
     PlayerTarget,
     RedeemTicket,
     RoomTarget,
+    SnapshotReady,
     ValidateAdminToken,
     gateway_inbound_from_json,
 )
+from lorecraft.errors import ValidationError
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -145,6 +155,13 @@ class GatewayAdapter:
         # by `push_deliver` to relay an autonomous, server-initiated broadcast to
         # the Rust peer down a single link (Rust fans out from its own registry).
         self._links: set[_ClientLink] = set()
+        # Phase 4 execution round-trip (Option A): the in-flight envelope from each
+        # `BuildSnapshot`, keyed by `command_id`, so the correlated `ApplyOutcome`
+        # (which carries only `command_id` + outcome, not the envelope) can recover
+        # the player/session/raw needed to persist and build the reply. Removed on
+        # `ApplyOutcome`. We keep the envelope here rather than widening the
+        # protocol frame (the envelope is already in hand at BuildSnapshot time).
+        self._pending: dict[CommandId, CommandEnvelope] = {}
 
     @property
     def manager(self) -> DirectiveConnectionManager:
@@ -297,6 +314,16 @@ class GatewayAdapter:
             return [self._redeem_ticket(inbound)]
         if isinstance(inbound, ValidateAdminToken):
             return [self._validate_admin_token(inbound)]
+        # Phase 4 execution round-trip (Option A). Both steps build their own local
+        # directive-recording manager (in `build_look_request` / `apply_outcome`)
+        # and never touch the adapter's shared `deliveries` buffer, so — unlike the
+        # command/lifecycle handlers below — they need no directive lock: an
+        # `ApplyOutcome`'s fan-out is returned inline in `OutcomeApplied`, not
+        # drained from the shared buffer.
+        if isinstance(inbound, BuildSnapshot):
+            return [self._on_build_snapshot(inbound)]
+        if isinstance(inbound, ApplyOutcome):
+            return [await self._on_apply_outcome(inbound)]
         # Drain discipline (Phase 3b hardening): every handler below records into
         # — and then `drain()`s — the ONE shared `deliveries` buffer on the
         # manager, so each must run whole under the directive lock. Locking here,
@@ -536,6 +563,44 @@ class GatewayAdapter:
             deliveries=deliveries,
         )
         return [*moves, reply]
+
+    # -- Phase 4 execution round-trip (Rust owns execution; Python persists) --
+
+    def _on_build_snapshot(self, msg: BuildSnapshot) -> SnapshotReady:
+        """Build the `ScriptRequest` snapshot Rust executes the routed verb against.
+
+        Remembers the envelope keyed by its `command_id` so the correlated
+        `ApplyOutcome` (which carries no envelope) can recover the persistence
+        context. Only `look` is migrated this phase; other verbs are not yet
+        routed here.
+        """
+        envelope = msg.envelope
+        request = build_look_request(self._state, envelope)
+        self._pending[envelope.command_id] = envelope
+        return SnapshotReady(command_id=envelope.command_id, request=request)
+
+    async def _on_apply_outcome(self, msg: ApplyOutcome) -> OutcomeApplied:
+        """Persist the Rust-derived outcome and return the reply + deliveries.
+
+        Recovers the originating envelope from the pending map (populated by the
+        preceding `BuildSnapshot`), persists via `apply_outcome` — which commits
+        both DBs *before* returning, preserving commit-before-publish — and packs
+        the actor `direct_reply` and post-commit `deliveries` into `OutcomeApplied`
+        for Rust to publish.
+        """
+        envelope = self._pending.pop(msg.command_id, None)
+        if envelope is None:
+            raise ValidationError(
+                f"ApplyOutcome for unknown command_id: {msg.command_id!r}"
+            )
+        direct_reply, deliveries = await apply_outcome(
+            self._state, envelope, msg.outcome
+        )
+        return OutcomeApplied(
+            command_id=msg.command_id,
+            direct_reply=direct_reply,
+            deliveries=deliveries,
+        )
 
 
 class GatewayPushManager:
