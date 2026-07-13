@@ -7,7 +7,7 @@ forwards framed `GatewayInbound` messages; this adapter dispatches them to the
 `GatewayOutbound` messages:
 
 - `RedeemTicket`  -> `consume_ws_ticket`        -> `AuthResult`
-- `ValidateAdminToken` -> admin `decode_token`  -> `AuthResult`
+- `ValidateAdminToken` -> admin `decode_token`  -> `AdminAuthResult`
 - `Connected`     -> session boot/resume        -> `ConnectAck` (+ `Deliver`s)
 - `Disconnected`  -> grace/flicker/player_left teardown -> `Deliver`s
 - `Command`       -> shared `handle_ws_command`  -> `CommandReply`
@@ -37,8 +37,11 @@ from pathlib import Path
 import jwt
 from sqlmodel import Session
 
+from lorecraft.gateway.coalescing import coalesce_key_for
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
 from lorecraft.protocol.gateway import (
+    AdminAuthResult,
+    AdminTarget,
     AuthResult,
     ClientClose,
     Connected,
@@ -301,16 +304,16 @@ class GatewayAdapter:
         player_id = consume_ws_ticket(self._state, msg.ticket)
         return AuthResult(accepted=player_id is not None, player_id=player_id)
 
-    def _validate_admin_token(self, msg: ValidateAdminToken) -> AuthResult:
+    def _validate_admin_token(self, msg: ValidateAdminToken) -> AdminAuthResult:
+        # Admin validation replies with the shape-distinct `AdminAuthResult` (no
+        # `player_id`): an admin token is not player-scoped, and Rust's
+        # `auth::validate_admin_token` awaits `AdminAuthResult` on the control slot
+        # to register the connection in its admin registry (Phase 3c cutover).
         try:
             decode_token(msg.token, self._state.settings.admin_jwt_secret)
         except jwt.InvalidTokenError:
-            return AuthResult(accepted=False, player_id=None)
-        # Admin tokens carry no player_id. `AuthResult.player_id` is reused loosely
-        # between the player and admin auth paths here; the admin channel doesn't
-        # need a player_id, so None-on-success is acceptable for now. Revisit when
-        # sub-slice 3c wires the real admin `/admin/ws` cutover.
-        return AuthResult(accepted=True, player_id=None)
+            return AdminAuthResult(accepted=False)
+        return AdminAuthResult(accepted=True)
 
     # -- connection lifecycle ----------------------------------------------
 
@@ -550,7 +553,10 @@ class GatewayPushManager:
     async def send_to_player(self, player_id: str, message: JsonObject) -> None:
         await self._push(
             DeliveryDirective(
-                target=PlayerTarget(id=player_id), exclude=None, payload=message
+                target=PlayerTarget(id=player_id),
+                exclude=None,
+                payload=message,
+                coalesce_key=coalesce_key_for(message),
             )
         )
 
@@ -559,7 +565,10 @@ class GatewayPushManager:
     ) -> None:
         await self._push(
             DeliveryDirective(
-                target=RoomTarget(id=room_id), exclude=exclude, payload=message
+                target=RoomTarget(id=room_id),
+                exclude=exclude,
+                payload=message,
+                coalesce_key=coalesce_key_for(message),
             )
         )
 
@@ -567,7 +576,12 @@ class GatewayPushManager:
         self, message: JsonObject, exclude: str | None = None
     ) -> None:
         await self._push(
-            DeliveryDirective(target=GlobalTarget(), exclude=exclude, payload=message)
+            DeliveryDirective(
+                target=GlobalTarget(),
+                exclude=exclude,
+                payload=message,
+                coalesce_key=coalesce_key_for(message),
+            )
         )
 
     # -- ConnectionManagerProtocol: selection (reads the adapter's mirror) ------
@@ -595,3 +609,63 @@ class GatewayPushManager:
         if self._adapter is None:
             return False
         return self._adapter.manager.is_connected(player_id)
+
+
+class AdminGatewaySink:
+    """Relays ``AdminBroadcaster`` events to Rust as ``Deliver(Admin)`` frames.
+
+    In gateway mode admin consoles connect to Rust and live in Rust's admin
+    registry, *not* this process's ``/admin/ws`` per-connection queue pool — so
+    every event the :class:`~lorecraft.webui.admin.broadcaster.AdminBroadcaster`
+    fans out must ALSO be relayed to Rust. This is registered as the broadcaster's
+    synchronous sink (``AdminBroadcaster.set_gateway_sink``); each event is wrapped
+    in a :class:`DeliveryDirective` targeting every admin console
+    (:class:`~lorecraft.protocol.gateway.AdminTarget`) — with the Tier 2 coalescing
+    key stamped by :func:`~lorecraft.gateway.coalescing.coalesce_key_for` — and
+    pushed to Rust via :meth:`GatewayAdapter.push_deliver` down one active link.
+    Rust fans it out to *all* admins from its registry regardless of which link it
+    arrived on, exactly like an autonomous player broadcast.
+
+    **Flag-off is untouched:** the sink is only registered when
+    ``gateway_enabled``; with it unset the broadcaster's legacy per-connection
+    ``asyncio.Queue`` path (drained by the Python ``/admin/ws`` handler) is
+    byte-identical to before.
+
+    **Late-bound** like :class:`GatewayPushManager`: the broadcaster (and its
+    sink) is constructed before the adapter in the app lifespan, so :meth:`bind`
+    injects the adapter afterward. Before binding — or with no active gateway
+    link — forwarding is a harmless no-op.
+
+    The broadcaster's ``push`` is *synchronous* (bus handlers call it from sync
+    callbacks), while :meth:`GatewayAdapter.push_deliver` is async, so the relay is
+    scheduled as a task on the running event loop, mirroring the autonomous
+    clock-broadcast scheduling in ``main.py``. Called with no running loop (e.g. a
+    unit test invoking ``push`` directly) it is a no-op.
+    """
+
+    def __init__(self) -> None:
+        self._adapter: GatewayAdapter | None = None
+
+    def bind(self, adapter: GatewayAdapter) -> None:
+        """Attach the live adapter once the lifespan has constructed it."""
+        self._adapter = adapter
+
+    def directive_for(self, event: JsonObject) -> DeliveryDirective:
+        """Build the ``Deliver(Admin)`` directive for one admin event (pure)."""
+        return DeliveryDirective(
+            target=AdminTarget(),
+            exclude=None,
+            payload=event,
+            coalesce_key=coalesce_key_for(event),
+        )
+
+    def __call__(self, event: JsonObject) -> None:
+        adapter = self._adapter
+        if adapter is None:
+            return
+        directive = self.directive_for(event)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return  # no running loop (e.g. tests) — nothing to schedule onto
+        loop.create_task(adapter.push_deliver(directive))

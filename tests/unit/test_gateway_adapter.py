@@ -34,6 +34,7 @@ from lorecraft.main import create_app
 from lorecraft.protocol import PROTOCOL_VERSION
 from lorecraft.protocol.envelope import CommandEnvelope
 from lorecraft.protocol.gateway import (
+    AdminAuthResult,
     AuthResult,
     ClientClose,
     Connected,
@@ -127,12 +128,13 @@ def test_validate_admin_token(state: AppState, adapter: GatewayAdapter) -> None:
         "e2e-admin", "superadmin", state.settings.admin_jwt_secret, 900, "access"
     )
     (ok,) = asyncio.run(adapter.handle_inbound(ValidateAdminToken(token=token)))
-    assert isinstance(ok, AuthResult)
+    # The admin channel replies with the shape-distinct `AdminAuthResult` (no
+    # `player_id`) so Rust can register the console in its admin registry.
+    assert isinstance(ok, AdminAuthResult)
     assert ok.accepted is True
-    assert ok.player_id is None  # admin tokens carry no player_id (see adapter)
 
     (bad,) = asyncio.run(adapter.handle_inbound(ValidateAdminToken(token="not-a-jwt")))
-    assert isinstance(bad, AuthResult)
+    assert isinstance(bad, AdminAuthResult)
     assert bad.accepted is False
 
 

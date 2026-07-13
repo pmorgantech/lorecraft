@@ -52,7 +52,11 @@ from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
-from lorecraft.gateway.adapter import GatewayAdapter, GatewayPushManager
+from lorecraft.gateway.adapter import (
+    AdminGatewaySink,
+    GatewayAdapter,
+    GatewayPushManager,
+)
 from lorecraft.engine.game.connection_manager import (
     ConnectionManager,
     ConnectionManagerProtocol,
@@ -173,6 +177,16 @@ def create_app(
         rules = RuleEngine()
         register_item_rules(rules)
         admin_broadcaster = AdminBroadcaster()
+        # Gateway mode (Phase 3c): admin consoles connect to Rust, so every admin
+        # broadcast must ALSO be relayed to Rust as a `Deliver(Admin)` frame. The
+        # sink is registered on the broadcaster now and late-bound to the adapter
+        # once it is constructed below (same pattern as `gateway_push_manager`).
+        # Flag OFF: no sink — the broadcaster's legacy per-connection queue path
+        # (drained by the Python `/admin/ws` handler) is byte-identical to before.
+        admin_gateway_sink: AdminGatewaySink | None = None
+        if resolved_settings.gateway_enabled:
+            admin_gateway_sink = AdminGatewaySink()
+            admin_broadcaster.set_gateway_sink(admin_gateway_sink)
         app_rng = GameRng(resolved_settings.rng_seed)
         clock_runner = WorldClockRunner(
             game_engine=resolved_game_engine,
@@ -433,6 +447,10 @@ def create_app(
             # registered on the bus above, before the adapter existed).
             if gateway_push_manager is not None:
                 gateway_push_manager.bind(gateway_adapter)
+            # Late-bind the admin sink to the now-built adapter so admin broadcasts
+            # relay to Rust's admin registry as `Deliver(Admin)` frames.
+            if admin_gateway_sink is not None:
+                admin_gateway_sink.bind(gateway_adapter)
             await gateway_adapter.start()
         app.state.gateway_adapter = gateway_adapter
         # Expose the autonomous-broadcast push manager to the request handlers so

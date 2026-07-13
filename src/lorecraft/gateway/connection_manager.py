@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
+from lorecraft.gateway.coalescing import coalesce_key_for
 from lorecraft.protocol.gateway import (
     DeliveryDirective,
     GlobalTarget,
@@ -50,7 +51,10 @@ class DirectiveConnectionManager:
     async def send_to_player(self, player_id: str, message: JsonObject) -> None:
         self.deliveries.append(
             DeliveryDirective(
-                target=PlayerTarget(id=player_id), exclude=None, payload=message
+                target=PlayerTarget(id=player_id),
+                exclude=None,
+                payload=message,
+                coalesce_key=coalesce_key_for(message),
             )
         )
 
@@ -59,7 +63,10 @@ class DirectiveConnectionManager:
     ) -> None:
         self.deliveries.append(
             DeliveryDirective(
-                target=RoomTarget(id=room_id), exclude=exclude, payload=message
+                target=RoomTarget(id=room_id),
+                exclude=exclude,
+                payload=message,
+                coalesce_key=coalesce_key_for(message),
             )
         )
 
@@ -67,7 +74,12 @@ class DirectiveConnectionManager:
         self, message: JsonObject, exclude: str | None = None
     ) -> None:
         self.deliveries.append(
-            DeliveryDirective(target=GlobalTarget(), exclude=exclude, payload=message)
+            DeliveryDirective(
+                target=GlobalTarget(),
+                exclude=exclude,
+                payload=message,
+                coalesce_key=coalesce_key_for(message),
+            )
         )
 
     # -- ConnectionManagerProtocol: selection (reads the mirror) ------------
