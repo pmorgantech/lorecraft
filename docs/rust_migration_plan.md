@@ -1079,37 +1079,37 @@ unblocks the fixture the Rust side consumes.
 **Backend Engineer (Python)** — `src/lorecraft/protocol/`, `tests/simulation/`,
 `rust/fixtures/`:
 
-- [ ] Recursive `to_json`/`from_json` on the protocol container types listed in point
+- [x] Recursive `to_json`/`from_json` on the protocol container types listed in point
   5 above — Tier 1 — round-tripped `ScriptResult` keeps nested `{"type":...}` tags;
   parity test vs Rust JSON shape — tunable: static. (blocks all downstream Phase 2
   work)
-- [ ] Fixture-capture + Python golden test
+- [x] Fixture-capture + Python golden test
   (`tests/simulation/test_look_scriptresult_parity.py`) per point 4 above — Tier 2
   (test content/fixture) — regenerable, deterministic, no production-DB mutation —
   tunable: static content.
-- [ ] Doc note that `look_only.audit.json` remains the Phase 4 pipeline-owned target,
+- [x] Doc note that `look_only.audit.json` remains the Phase 4 pipeline-owned target,
   distinct from this ScriptResult hash — N/A (doc) — tunable: n/a.
 
 **Backend Engineer (Rust)** — `rust/crates/` (+ new `lorecraft-feature-look`):
 
-- [ ] `lorecraft-replay`: `canonical_json` + `hash_bytes` port — Tier 1 — unit test:
+- [x] `lorecraft-replay`: `canonical_json` + `hash_bytes` port — Tier 1 — unit test:
   known ScriptResult JSON hashes to a fixed hex; float input errors — tunable:
   static.
-- [ ] `lorecraft-scheduler`: logical clock + `(logical_time, receive_sequence)`
+- [x] `lorecraft-scheduler`: logical clock + `(logical_time, receive_sequence)`
   ordering comparator — Tier 1 — test: out-of-order enqueue dispatches in
   sorted-key order — tunable: static.
-- [ ] `lorecraft-core`: `derive_stream(world_seed, stream_id) -> ChaCha8Rng` — Tier 1
+- [x] `lorecraft-core`: `derive_stream(world_seed, stream_id) -> ChaCha8Rng` — Tier 1
   — tests: repeatability, stream independence, interleave/order-independence —
   tunable: static.
-- [ ] `lorecraft-runtime`: world-actor skeleton, bounded `sync_channel` queue,
+- [x] `lorecraft-runtime`: world-actor skeleton, bounded `sync_channel` queue,
   drain→sort→dispatch — Tier 1 — test: queue accepts up to capacity; dispatch order
   == ordering-key order — tunable: queue capacity/deadline_ms operational,
   static-now/live-later.
-- [ ] `lorecraft-feature-look` (new crate): Rust `look` policy fn + shadow-run parity
+- [x] `lorecraft-feature-look` (new crate): Rust `look` policy fn + shadow-run parity
   test reading `rust/fixtures/look_only/request.json`, hashing its output, asserting
   equality with `expected_result_hash.txt` — Tier 2 — Rust hash matches Python's
   byte-for-byte — tunable: static.
-- [ ] Cleanup: trim unused `tokio`(full)/`uuid`/`thiserror` from
+- [x] Cleanup: trim unused `tokio`(full)/`uuid`/`thiserror` from
   `lorecraft-protocol/Cargo.toml` (flagged in the Phase 0/1 kickoff status) — N/A
   (hygiene) — tunable: n/a.
 
@@ -1120,18 +1120,52 @@ unblocks the fixture the Rust side consumes.
 2. Cross-language RNG parity — resolved: deferred to Phase 5; Phase 2 proves
    Rust-internal RNG determinism only.
 
+### Kickoff status (2026-07-12)
+
+Both tracks are implemented, reviewed, and tested green:
+
+- **Python prerequisite** (recursive `to_json`/`from_json` + fixture capture) landed
+  on branch `rustport-phase2-protocol-tojson`: recursive `to_json`/`from_json` on the
+  protocol container types, the fixture-capture golden test, and the checked-in
+  `rust/fixtures/look_only/{request.json,expected_result_hash.txt}` artifacts, plus a
+  follow-up commit pinning the integer-valued-float (`2.0`) edge case in
+  `canonical_json`'s float-reject logic.
+- **Rust world-actor skeleton** landed on branch `rustport-phase2-actor-skeleton`:
+  `lorecraft-replay` (canonical JSON + sha256 hashing), `lorecraft-scheduler`
+  (ordering key + logical clock), `lorecraft-core` (`derive_stream` RNG derivation),
+  `lorecraft-runtime` (bounded-queue world-actor skeleton), the new
+  `lorecraft-feature-look` crate (Rust port of `look_pure.py` + the cross-language
+  parity test), and the `lorecraft-protocol` `Cargo.toml` cleanup (removed unused
+  `tokio`-full/`uuid`, put `thiserror` to genuine use), plus a follow-up commit
+  adding the mirroring `2.0` float-reject test and moving `lorecraft-replay` to
+  `[dev-dependencies]` in `lorecraft-feature-look`.
+- **The Phase 2 exit criterion is proven and independently verified twice:** the
+  Rust `look_only_fixture_parity` test computes a canonical-JSON sha256 hash of its
+  `look_effects` output and asserts it equals the Python-captured golden — both
+  sides produce `ff78f14d4adff1daf3fa1c6a4ce3aa4a537f4384ff29011dca14460c7b2c95ca`.
+- Code Review found zero blocking issues on either branch (only minor advisories,
+  since closed by the two follow-up commits above).
+- Full verification once all three branches (this design spec plus the two above)
+  are combined: Python `make lint`/`make typecheck`/`make test` (1448 tests) all
+  clean; Rust `cargo build`/`cargo test --all` (39 tests across 6 crates: core 5,
+  feature-look 5, protocol 11, replay 8, runtime 4, scheduler 6)/
+  `cargo clippy --all-targets -- -D warnings`/`cargo fmt --all -- --check` all
+  clean.
+
 ### Where things stand / Next
 
-Phase 0 and Phase 1 are landed (see the Phase 0/1 kickoff status above). This Phase 2
-design spec is the handoff for the next implementation slice: two Backend Engineers
-implementing the Python prerequisite (recursive `to_json`/`from_json` + fixture
-capture) and the Rust world-actor skeleton + `lorecraft-feature-look` crate in
-parallel scratch worktrees off `rust-port`. Once Phase 2's exit criterion is met
-(Rust reproduces the `look_only` `ScriptResult` hash exactly, in shadow mode, no DB
-mutation), **Phase 3 (migrate transport and connection ownership)** is the
-recommended next increment — moving HTTP/WebSocket ingress, connection maps, and
-room/global fan-out into Rust, forwarding commands to the existing Python command
-processor through the versioned protocol, per the "Migration plan" section above.
+Phase 0, Phase 1, and Phase 2 are landed (see the Phase 0/1 kickoff status and the
+Phase 2 kickoff status above). Rust reproduces the `look_only` `ScriptResult` hash
+exactly, in shadow mode, with no DB mutation — Phase 2's exit criterion is met.
+
+**Phase 3 (migrate transport and connection ownership)** is the recommended next
+increment, per the "Migration plan" section above: move HTTP/WebSocket ingress,
+connection maps, room/global fan-out, connection backpressure, and authentication
+handoff into Rust, forwarding commands to the existing Python command processor
+through the versioned protocol. This phase improves transport isolation and proves
+the protocol, but it is not the performance finish line; its exit criterion is that
+existing player and admin clients run through the Rust gateway, with
+disconnect/reconnect and slow-client tests matching current semantics.
 
 ## Final position
 
