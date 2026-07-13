@@ -11,10 +11,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-13, v0.94.0 on main; Sprints 73 & 75 merged; Sprint 76 implementation-complete, awaiting Integrator)
+## Where things stand (2026-07-13, v0.96.0 on main; Sprints 73, 74, 75 & 76 all merged)
 
-**Everything through Sprint 75 is merged to main** (currently at v0.94.0, which ships Sprints 73
-and 75 — see `../CHANGELOG.md`).
+**Everything through Sprint 76 is merged to main** (currently at v0.96.0, which ships Sprints 73,
+74, 75, and 76 in sequence — see `../CHANGELOG.md`).
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -67,7 +67,7 @@ Delivers the skill-point *sink* Sprint 73 set up: a data-driven `world_content/s
 tree, bought with skill points, unlocking abilities in all three flavors — active utility verbs
 (`forage`/`sense`/`pick`), passive modifiers (`mule`/`sharp_eyes`/`haggler`), and an
 interaction/dialogue unlock (`silver_tongue`, gating a persuasion option in the innkeeper Mira's
-dialogue tree). Awaiting Integrator merge.
+dialogue tree). **Merged to main as v0.95.0.**
 
 **[Sprint 76 — Economy live-tuning admin UI](#sprint-76--economy-live-tuning-admin-ui)
 is implementation-complete** — all of 76.1–76.7 shipped as commits on branch
@@ -80,11 +80,11 @@ the Database Specialist gate was skipped. Delivers a new **Economy** admin tab: 
 can view every zone's `region_mult`/`bias`, and a superadmin can retune either live, with no
 restart or reseed. Pure Tier 2 (`features/economy/`) + composition-layer (`webui/admin/`) work —
 no `engine/` changes. Gate-clean (lint, typecheck, 1459 unit tests, 54 e2e tests, tier boundaries,
-90.91% coverage; Code Reviewer found no blocking issues). Awaiting Integrator merge.
+90.91% coverage; Code Reviewer found no blocking issues). **Merged to main as v0.96.0.**
 
-Sprint 73 cleanup backlog (stale `PlayerStats` fallbacks, first-access race, stale e2e seed
-workaround) closed 2026-07-13 — see commits `70ffcab`/`1a050de`/`92edad1` on
-`sprint73-cleanup-backlog`.
+Sprint 73's cleanup backlog (stale `PlayerStats` fallbacks, the first-access race investigation,
+and the stale e2e seed workaround) is fully closed as of 2026-07-13 — see the struck-through
+Backlog table entries below for the resolution detail on each.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
