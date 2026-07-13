@@ -15,6 +15,23 @@
     "allow": [
       "Bash(git fetch *)",
       "Bash(source /home/petem/src/Gamedev/lorecraft/.venv/bin/activate)",
+      "Bash(python -m pytest *)",
+      "Bash(make lint)",
+      "Bash(make typecheck)",
+      "Bash(make test)",
+      "Bash(make test-cov)",
+      "Bash(make ai-graph)",
+      "Bash(make scripting-docs)",
+      "Bash(cargo fmt *)",
+      "Bash(cargo clippy *)",
+      "Bash(cargo test *)",
+      "Bash(cargo build *)",
+      "Bash(cargo check *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(cd *)",
+      "Bash(echo *)",
       "mcp__graphify__get_neighbors"
     ]
   }
