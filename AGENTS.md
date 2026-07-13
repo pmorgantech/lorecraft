@@ -138,7 +138,7 @@ tools through the active venv (`python -m ...`):
 | Coverage gate | `make test-cov` | Same parallelism + `--cov=src/lorecraft`; matches CI `quality` job |
 | Lint | `make lint` | `ruff check` + `ruff format --check` |
 | Types | `make typecheck` | `basedpyright` |
-| E2E | `make test-e2e` | Serial; browser tests only |
+| E2E | `make test-e2e` | Parallel (`-n auto --dist=loadfile`, since `a7f76b4`); browser tests only |
 | Simulation | `make test-simulation` | Serial; live-server harness only |
 
 When you must invoke pytest directly (e.g. a single file or `-k` filter), use the same
@@ -152,7 +152,14 @@ python -m pytest -n auto --dist=loadfile --cov=src/lorecraft --cov-report=term-m
 - `--dist=loadfile` keeps all cases in a file on one worker (required for file-scoped fixtures).
 - Override worker count: `PYTEST_WORKERS=4 make test` (default `auto`).
 - Requires the dev extra (`pytest-xdist`, `pytest-cov` for coverage runs): `pip install -e ".[dev]"`.
-- Do not add `-n` to `make test-e2e` or `make test-simulation`; those targets stay serial.
+- `make test-e2e` **is** parallelized (`-n auto --dist=loadfile`, since `a7f76b4` — 2.56× speedup,
+  31.93s→12.44s); it inherits the same `PYTEST_PARALLEL_ARGS` as the default suite. Because
+  `--dist=loadfile` pins each file to one worker, e2e parallelism is capped at the e2e **file
+  count** (~14 files), *not* the core count — so the slowest single file is the wall-clock long
+  pole (`tests/e2e/test_gameplay_flows.py`, 10 tests, is ~2× the next largest). Splitting the
+  largest e2e files (a Pytest Writer task — it also re-checks fixture isolation across the split)
+  is the lever to push e2e toward the available cores.
+- `make test-simulation` stays serial (live-server harness) — do **not** add `-n` to it.
 
 ### Running tests from a git worktree (the PYTHONPATH footgun)
 

@@ -1,7 +1,7 @@
 ---
 name: docs-writer
 description: Updates Lorecraft's user-facing, admin, and Rust migration documentation (docs/user_guide.md, docs/admin_builder_guide.md, docs/architecture.md, docs/scripting_api.md, docs/rust_migration_plan.md, docs/rust_porting_roadmap.md) and keeps docs/roadmap.md and CHANGELOG.md in sync — both writing up Research/Planning's design analyses into new sprint sections before implementation starts, and marking sprint/task checkboxes done after implementation lands. Use after Research produces a design analysis (to commit it), and after backend/frontend/Rust work lands (before the Integrator's release gate).
-model: sonnet
+model: haiku
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 

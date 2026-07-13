@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Agent roster/tooling updates (`AGENTS.md`, `.claude/agents/`): model-tier
+  assignments, re-added the `pytest-writer` agent, documented the 2-lane
+  Test & QA split, and corrected `AGENTS.md`'s stale "e2e is serial" claim
+  (e2e has run parallel since `a7f76b4`; simulation remains serial). No
+  crate or Python engine code changed.
+
 ---
 
 ## [0.3.0] - 2026-07-13

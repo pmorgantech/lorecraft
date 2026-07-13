@@ -1,7 +1,7 @@
 ---
 name: integrator
 description: Final release gate for Lorecraft — verifies all sub-agent work is green, bumps semver, updates CHANGELOG.md, and merges/tags. The only agent permitted to touch version files. Use once Backend/Frontend/Test/Docs have all reported done.
-model: haiku
+model: sonnet
 tools: Read, Edit, Grep, Bash
 ---
 

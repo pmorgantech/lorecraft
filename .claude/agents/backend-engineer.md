@@ -1,7 +1,7 @@
 ---
 name: backend-engineer
 description: Ports Lorecraft's engine (Tier 1) and features (Tier 2) to Rust — writes the crates, effects, actors, repositories, scheduler, and scripting-host code under rust/. Expert Rust engineer; reads the existing Python (src/lorecraft/) as the authoritative behavior source to port from, but does not author Python. Enforces the migration-plan invariants and the mechanism/policy tier split. Use for any Rust implementation task. Multiple instances may run in parallel on independent crates, each in its own worktree.
-model: fable
+model: opus
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
