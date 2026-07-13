@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod effects;
 pub mod envelope;
+pub mod gateway;
 pub mod ids;
 pub mod messages;
 pub mod script;
@@ -21,6 +22,9 @@ pub mod snapshot;
 
 pub use effects::Effect;
 pub use envelope::{CommandEnvelope, CommandOutcome, Diagnostic, OutcomeStatus};
+pub use gateway::{
+    DeliveryDirective, DeliveryTarget, DisconnectReason, GatewayInbound, GatewayOutbound,
+};
 pub use ids::{ActorId, CommandId, PlayerId, SessionId, WorldId};
 pub use messages::OutboundMessage;
 pub use script::{EmittedEvent, ScheduledWork, ScriptBudget, ScriptRequest, ScriptResult};

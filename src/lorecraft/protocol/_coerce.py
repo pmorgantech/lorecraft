@@ -37,6 +37,22 @@ def optional_int(data: JsonObject, key: str) -> int | None:
     return value
 
 
+def require_bool(data: JsonObject, key: str) -> bool:
+    value = data.get(key)
+    if not isinstance(value, bool):
+        raise ValidationError(f"field {key!r} must be a bool, got {value!r}")
+    return value
+
+
+def optional_str(data: JsonObject, key: str) -> str | None:
+    value = data.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValidationError(f"field {key!r} must be a string or null, got {value!r}")
+    return value
+
+
 def require_dict(data: JsonObject, key: str) -> JsonObject:
     value = data.get(key)
     if not isinstance(value, dict):

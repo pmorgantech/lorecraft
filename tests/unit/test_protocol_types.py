@@ -12,16 +12,30 @@ import json
 
 from lorecraft.protocol import (
     AdjustMeter,
+    AuthResult,
+    ClientClose,
     CommandEnvelope,
     CommandOutcome,
+    CommandReply,
+    ConnectAck,
+    Connected,
+    Deliver,
+    DeliveryDirective,
     Diagnostic,
+    Disconnected,
     EmitEvent,
     EmittedEvent,
     EntitySnapshot,
     Feed,
+    GatewayCommand,
+    GlobalTarget,
+    GracefulQuit,
     MoveEntity,
     OutcomeStatus,
     PanelUpdate,
+    PlayerTarget,
+    RedeemTicket,
+    RoomTarget,
     ScheduledWork,
     ScriptBudget,
     ScriptRequest,
@@ -29,7 +43,12 @@ from lorecraft.protocol import (
     SendNarration,
     SetFlag,
     TransferItem,
+    ValidateAdminToken,
+    delivery_target_from_json,
+    disconnect_reason_from_json,
     effect_from_json,
+    gateway_inbound_from_json,
+    gateway_outbound_from_json,
     message_from_json,
 )
 
@@ -312,3 +331,158 @@ def test_command_outcome_roundtrips_preserving_effect_tags_and_from_key() -> Non
 def test_command_outcome_roundtrips_with_none_commit_sequence() -> None:
     outcome = CommandOutcome(command_id="cmd-1", status=OutcomeStatus.BLOCKED)
     assert CommandOutcome.from_json(outcome.to_json()) == outcome
+
+
+# --- Gateway framing wire-shape parity (Rust-port Phase 3) ---
+#
+# These mirror `rust/crates/lorecraft-protocol/src/gateway.rs`. The load-bearing
+# checks are the tagged `{"type": ...}` shape assertions (matching serde's
+# internally-tagged enums) plus recursive round-trips through the dispatch helpers.
+# The Rust and Python sides are hand-kept in agreement, so these shapes are the
+# cross-language contract for the gateway transport.
+
+
+def _sample_directive() -> DeliveryDirective:
+    return DeliveryDirective(
+        target=RoomTarget(id="tavern"),
+        exclude="player-1",
+        payload={"type": "feed_append", "text": "You go north."},
+    )
+
+
+def test_disconnect_reason_wire_shapes() -> None:
+    assert ClientClose().to_json() == {"type": "ClientClose"}
+    assert GracefulQuit().to_json() == {"type": "GracefulQuit"}
+    for reason in (ClientClose(), GracefulQuit()):
+        assert disconnect_reason_from_json(reason.to_json()) == reason
+
+
+def test_delivery_target_wire_shapes() -> None:
+    cases = [
+        (PlayerTarget(id="player-1"), {"type": "Player", "id": "player-1"}),
+        (RoomTarget(id="tavern"), {"type": "Room", "id": "tavern"}),
+        (GlobalTarget(), {"type": "Global"}),
+    ]
+    for target, shape in cases:
+        assert target.to_json() == shape
+        assert delivery_target_from_json(target.to_json()) == target
+
+
+def test_delivery_directive_roundtrips_and_keeps_payload_opaque() -> None:
+    directive = _sample_directive()
+    dumped = directive.to_json()
+    # payload relayed verbatim; target is a nested tagged object; exclude preserved.
+    assert dumped["payload"] == {"type": "feed_append", "text": "You go north."}
+    assert dumped["target"] == {"type": "Room", "id": "tavern"}
+    assert dumped["exclude"] == "player-1"
+    assert DeliveryDirective.from_json(dumped) == directive
+
+
+def test_delivery_directive_roundtrips_with_no_exclude() -> None:
+    directive = DeliveryDirective(
+        target=GlobalTarget(), exclude=None, payload={"tick": 1}
+    )
+    dumped = directive.to_json()
+    assert dumped["exclude"] is None
+    assert DeliveryDirective.from_json(dumped) == directive
+
+
+def _sample_envelope() -> CommandEnvelope:
+    return CommandEnvelope(
+        protocol_version=1,
+        world_id="world-1",
+        actor_id="actor-1",
+        player_id="player-1",
+        session_id="session-1",
+        command_id="cmd-1",
+        receive_sequence=42,
+        deadline_ms=5000,
+        raw="look",
+    )
+
+
+def test_every_gateway_inbound_variant_roundtrips_and_tags() -> None:
+    variants: list[tuple[object, str]] = [
+        (RedeemTicket(ticket="tkt-1"), "RedeemTicket"),
+        (ValidateAdminToken(token="jwt-1"), "ValidateAdminToken"),
+        (Connected(player_id="player-1"), "Connected"),
+        (Disconnected(player_id="player-1", reason=ClientClose()), "Disconnected"),
+        (GatewayCommand(envelope=_sample_envelope()), "Command"),
+    ]
+    for frame, tag in variants:
+        dumped = frame.to_json()  # type: ignore[attr-defined]
+        assert dumped["type"] == tag
+        assert gateway_inbound_from_json(dumped) == frame
+
+
+def test_gateway_command_flattens_envelope_fields() -> None:
+    frame = GatewayCommand(envelope=_sample_envelope())
+    dumped = frame.to_json()
+    # The envelope is flattened alongside the tag (Rust newtype variant shape).
+    assert dumped["type"] == "Command"
+    assert dumped["raw"] == "look"
+    assert dumped["world_id"] == "world-1"
+    assert dumped["command_id"] == "cmd-1"
+    assert gateway_inbound_from_json(dumped) == frame
+
+
+def test_disconnected_nests_reason_tag() -> None:
+    frame = Disconnected(player_id="player-1", reason=GracefulQuit())
+    assert frame.to_json() == {
+        "type": "Disconnected",
+        "player_id": "player-1",
+        "reason": {"type": "GracefulQuit"},
+    }
+
+
+def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
+    variants: list[tuple[object, str]] = [
+        (AuthResult(accepted=True, player_id="player-1"), "AuthResult"),
+        (
+            ConnectAck(
+                session_id="session-1",
+                room_id="tavern",
+                direct_frames=[{"type": "state_change"}],
+            ),
+            "ConnectAck",
+        ),
+        (
+            CommandReply(
+                command_id="cmd-1",
+                direct_reply={"command": "look", "messages": []},
+                deliveries=[_sample_directive()],
+            ),
+            "CommandReply",
+        ),
+        (Deliver(directive=_sample_directive()), "Deliver"),
+    ]
+    for frame, tag in variants:
+        dumped = frame.to_json()  # type: ignore[attr-defined]
+        assert dumped["type"] == tag
+        assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_auth_result_reject_serializes_null_player_id() -> None:
+    frame = AuthResult(accepted=False, player_id=None)
+    assert frame.to_json() == {
+        "type": "AuthResult",
+        "accepted": False,
+        "player_id": None,
+    }
+    assert gateway_outbound_from_json(frame.to_json()) == frame
+
+
+def test_command_reply_carries_correlation_id() -> None:
+    # OPEN ITEM 1: the reply is correlated to its command by `command_id`.
+    frame = CommandReply(command_id="cmd-42", direct_reply={"ok": True}, deliveries=[])
+    dumped = frame.to_json()
+    assert dumped["type"] == "CommandReply"
+    assert dumped["command_id"] == "cmd-42"
+    assert dumped["deliveries"] == []
+    assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_command_reply_defaults_empty_deliveries() -> None:
+    frame = CommandReply(command_id="cmd-1", direct_reply=None)
+    assert frame.deliveries == []
+    assert gateway_outbound_from_json(frame.to_json()) == frame
