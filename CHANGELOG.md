@@ -4,6 +4,12 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.96.1] - 2026-07-13
+
+### Docs
+
+- **Roadmap**: Refreshed "Where things stand" summary to reflect completion and merge of Sprints 74, 75, and 76 to `main` (all now shipped as v0.95.0–v0.96.0).
+
 ## [0.96.0] - 2026-07-13
 
 ### Added
