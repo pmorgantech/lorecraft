@@ -2948,6 +2948,41 @@ items:
     value: 3
     category: food
 
+  # --- Foraged consumables (Sprint 74.5): yielded by the `forage` verb; see
+  # world_content/forage.yaml for which terrain offers which. ---
+  - id: wild_berries
+    name: Wild Berries
+    description: >-
+      A double handful of dark, sun-warm berries picked straight from the
+      bramble. Sweet, a little tart, and gone in a few mouthfuls.
+    takeable: true
+    tradeable: true
+    value: 1
+    weight: 0.2
+    category: food
+
+  - id: forager_mushrooms
+    name: Forager's Mushrooms
+    description: >-
+      Firm brown caps gathered from a shaded log, the safe kind a careful
+      forager learns to trust. Good roasted, passable raw.
+    takeable: true
+    tradeable: true
+    value: 2
+    weight: 0.3
+    category: food
+
+  - id: wild_hazelnuts
+    name: Wild Hazelnuts
+    description: >-
+      A pocketful of hard-shelled hazelnuts prised from a roadside thicket.
+      Fiddly to crack, but filling once you do.
+    takeable: true
+    tradeable: true
+    value: 2
+    weight: 0.3
+    category: food
+
   - id: sea_glass_shard
     name: Sea-Glass Shard
     description: >-

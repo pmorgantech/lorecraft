@@ -1,0 +1,16 @@
+# Forage table (Sprint 74.5) — what the `forage` verb can yield, by terrain.
+#
+# The `forage` verb (unlocked by the `forage` skill-tree node) rolls a survival
+# check in an outdoor room and, on success, yields one of the item ids listed for
+# that room's terrain plus any listed under the "*" wildcard. Item ids reference
+# consumable definitions in world_content/world.yaml.
+version: 1
+entries:
+  - terrain: "*"
+    items: [wild_berries, wild_hazelnuts]
+  - terrain: forest
+    items: [forager_mushrooms, wild_hazelnuts]
+  - terrain: normal
+    items: [wild_berries]
+  - terrain: road
+    items: [wild_hazelnuts]
