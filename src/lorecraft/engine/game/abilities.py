@@ -14,6 +14,7 @@ See `docs/discipline_ability_system.md` §2 (the Tier 1 mechanism list) and §5.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from lorecraft.engine.models.player import PlayerStats
@@ -156,4 +157,144 @@ def check_acquisition(
         rank_met=rank_met,
         level_met=level_met,
         missing_prerequisites=missing,
+    )
+
+
+# --- Usage: can this ability be *performed* right now? ------------------------
+
+
+@dataclass(frozen=True)
+class ActorState:
+    """A snapshot of one entity's perform-time state, assembled by the caller.
+
+    The Tier 2 caller builds this from the entity's live `Player.flags`,
+    held `ActiveEffect` rows, and resource meters (§5.3) — this module never
+    touches the DB. Used for both the acting entity and (optionally) its target.
+
+    Attributes:
+        flags: The entity's truthy flag keys (e.g. ``{"state.hidden"}``). Only
+            the ``state.<name>`` namespace is consulted for usage; other flags
+            are harmless if present.
+        active_effects: `effect_key`s of the entity's currently-held
+            `ActiveEffect`s (transient states like ``"burning"``).
+        resources: Current resource-meter values keyed by resource type
+            (e.g. ``{"stamina": 40.0}``).
+        cooldowns: Per-ability cooldown expiry epochs — ``ability_id`` to the
+            epoch at/after which it is usable again. A missing entry means the
+            ability is off cooldown.
+    """
+
+    flags: frozenset[str] = frozenset()
+    active_effects: frozenset[str] = frozenset()
+    resources: Mapping[str, float] = field(default_factory=dict)
+    cooldowns: Mapping[str, float] = field(default_factory=dict)
+
+    def holds_state(self, state_name: str) -> bool:
+        """True if this entity holds ``state_name`` durably or transiently (§5.3)."""
+        return (
+            f"{STATE_FLAG_PREFIX}{state_name}" in self.flags
+            or state_name in self.active_effects
+        )
+
+
+@dataclass(frozen=True)
+class WorldState:
+    """The ambient perform-time context (current time + local terrain).
+
+    Attributes:
+        now_epoch: Current game epoch, compared against cooldown expiries.
+        terrain: Terrain tags of the actor's current location (e.g.
+            ``{"outdoor", "forest"}``) — matched against an ability's required
+            terrain.
+    """
+
+    now_epoch: float = 0.0
+    terrain: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class UsageResult:
+    """Outcome of :func:`check_usage`.
+
+    `usable` is the conjunction of every sub-check; the individual booleans and
+    the missing-state tuples let a caller narrate the specific block.
+    """
+
+    usable: bool
+    character_states_met: bool
+    target_states_met: bool
+    terrain_met: bool
+    resource_met: bool
+    cooldown_ready: bool
+    missing_character_states: tuple[str, ...] = ()
+    missing_target_states: tuple[str, ...] = ()
+
+
+def check_usage(
+    actor_state: ActorState,
+    ability: AbilityDef,
+    target_state: ActorState | None,
+    world_state: WorldState,
+) -> UsageResult:
+    """Generic "can this ability be performed right now" check (§2, §5.3).
+
+    New capability with no equivalent in today's system — verbs currently
+    hardcode their own gating in Python (`forage`'s `Room.indoor == False`). This
+    evaluates an ability's data-driven `usage` descriptor generically:
+
+    - **character/target states** — every required state must be held by the
+      actor (resp. target) as a durable ``state.<name>`` flag or a transient held
+      `ActiveEffect` (§5.3). A target requirement with no target present fails.
+    - **terrain** — satisfied if any one required terrain tag is present in the
+      location's tags (empty requirement = any terrain).
+    - **resource** — the actor must have enough of the declared resource.
+    - **cooldown** — the ability must be off cooldown at ``world_state.now_epoch``.
+
+    Knows nothing about *which* states/terrain/resources mean what — that is all
+    data on the `AbilityDef`.
+    """
+    req = ability.usage
+
+    missing_character = tuple(
+        s for s in req.character_states if not actor_state.holds_state(s)
+    )
+    character_states_met = not missing_character
+
+    if req.target_states:
+        if target_state is None:
+            missing_target = req.target_states
+        else:
+            missing_target = tuple(
+                s for s in req.target_states if not target_state.holds_state(s)
+            )
+    else:
+        missing_target = ()
+    target_states_met = not missing_target
+
+    terrain_met = not req.terrain or bool(set(req.terrain) & world_state.terrain)
+
+    if req.resource is not None and req.resource.cost > 0:
+        available = actor_state.resources.get(req.resource.type, 0.0)
+        resource_met = available >= req.resource.cost
+    else:
+        resource_met = True
+
+    expiry = actor_state.cooldowns.get(ability.id)
+    cooldown_ready = expiry is None or world_state.now_epoch >= expiry
+
+    return UsageResult(
+        usable=(
+            character_states_met
+            and target_states_met
+            and terrain_met
+            and resource_met
+            and cooldown_ready
+        ),
+        character_states_met=character_states_met,
+        target_states_met=target_states_met,
+        terrain_met=terrain_met,
+        resource_met=resource_met,
+        cooldown_ready=cooldown_ready,
+        missing_character_states=missing_character,
+        missing_target_states=missing_target,
     )
