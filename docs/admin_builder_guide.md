@@ -362,7 +362,7 @@ stages:
       items: [travel_ration]     # spawned on the player (skips ids already carried)
       xp: 50                     # banked toward the level curve, below
       coins: 25                  # canonical key (`money` is a tolerated alias)
-      skill_points: 1            # banked; spending them is a future sprint
+      skill_points: 1            # banked; spent on the skill tree, below
 ```
 
 All four keys are optional and additive — grant any subset. `coins`/`money` is the only
@@ -412,6 +412,112 @@ the rest non-negative) and rejected with `422` otherwise. Unlike the clock's `ti
 currently caches progression config in runtime state — the reward interpreter reads
 `ProgressionConfig` fresh from the DB on every grant — so a plain commit is enough; the very
 next reward uses the new numbers.
+
+### Skill tree & abilities (Sprint 74)
+
+The skill points a player earns from leveling (above) are spent on a **skill tree**: a set of
+named nodes, each unlocking an **ability**. The tree is content, authored in
+`world_content/skill_tree.yaml` and loaded into an in-memory `SkillTreeRegistry` at server
+startup — the same pattern as `marks.yaml`/`hunts.yaml`, not the `world.yaml`/DB-import path
+`ProgressionConfig` uses. **No node ids are hardcoded in `src/`.**
+
+#### Node schema
+
+```yaml
+version: 1
+nodes:
+  - id: forage                    # unique id; also the argument to `train <id>`
+    name: Forage                  # display name shown in `train`/`abilities`
+    description: >-
+      Learn to read the wild for food. Enables the `forage` verb in outdoor
+      rooms, where a survival check turns up something edible.
+    cost: 1                       # skill points required; must be >= 1
+    prerequisites: []             # node ids that must already be trained
+    unlock:
+      enables_verb: forage        # (A) active-verb marker — documentation only,
+                                   #     the verb itself is code (see below)
+
+  - id: mule
+    name: Mule
+    description: A trained back and better packing — you carry more before slowing.
+    cost: 1
+    prerequisites: []
+    unlock:
+      modifier:                   # (B) passive-bonus node
+        key: carry_capacity       # namespaced modifier key (see engine/game/modifiers.py)
+        kind: add                 # "add" or "mult"
+        amount: 20
+
+  - id: silver_tongue
+    name: Silver Tongue
+    description: A persuasive turn of phrase opens conversations that stay shut to others.
+    cost: 1
+    prerequisites: []
+    unlock: {}                    # (C) interaction/dialogue node — flag only, no
+                                   #     modifier or enables_verb
+```
+
+Every node's `unlock.flags` always includes `ability.<id>` — it's injected automatically if
+omitted, so authors don't have to repeat it. That flag is what a node purchase actually sets on
+the player and is the single gate all three ability flavors converge on:
+
+- **(A) Active-verb nodes** — `unlock.enables_verb` is a documentation-only marker naming the
+  verb the ability unlocks; the verb itself is real code (e.g. `features/exploration/forage.py`,
+  `features/exploration/sense.py`, `features/movement/service.py::pick`) whose command
+  registration gates on `conditions=["actor_has_flag:ability.<id>", ...]`. Adding a new
+  active-verb ability therefore always needs a matching code change — the YAML alone can't
+  create a new verb.
+- **(B) Passive-bonus nodes** — `unlock.modifier` is a `{key, kind, amount}` block matching the
+  Tier 1 `engine.game.modifiers.Modifier` shape (`kind` is `add` or `mult`; namespaced `key`s
+  like `carry_capacity`, `skill.perception`, `price.buy`). Every unlocked node carrying a
+  `modifier` is fed to the modifier resolver by `SkillTreeModifierSource`
+  (`features/progression/modifier_source.py`) — no engine-code change needed to add a new
+  passive as long as its `key` is one an existing resolver already reads (see the worked
+  `haggler` example below for what happens when it isn't).
+- **(C) Interaction/dialogue nodes** — `unlock` carries only the flag (no `modifier`, no
+  `enables_verb`). Gate a `world.yaml` dialogue choice or NPC context on
+  `actor_has_flag: [ability.<id>]` and the option appears only once the node is trained — zero
+  engine code. Worked example: the innkeeper Mira's dialogue tree
+  (`dialogue_trees: innkeeper_dialogue`) has a persuasion-flavored choice gated on
+  `actor_has_flag: [ability.silver_tongue]`, unlocked by the `silver_tongue` node above.
+
+#### Validation rules
+
+Enforced by `SkillTreeNode`/`SkillTreeDocument` (`features/progression/skill_tree.py`) at load
+time — a malformed tree logs a warning and the registry stays empty rather than crashing boot:
+
+- `cost` must be `>= 1`.
+- Every `prerequisites` entry must name a node id that exists elsewhere in the same document (no
+  dangling prerequisites), and a node may not list itself as its own prerequisite.
+- No prerequisite cycles — the whole prerequisite graph must be a DAG (detected via a
+  standard grey/black DFS walk).
+- Node ids must be unique and non-empty within the document.
+
+#### A passive node needs its `modifier.key` to be actually read somewhere
+
+A passive node's `modifier` only has an effect if some resolver in the codebase actually calls
+`resolve_for(...)`/`resolve(...)` with that same `key` — the modifier source is a generic pump,
+not a guarantee the value is consumed. This bit the `haggler` node during Sprint 74 review: it
+shipped with `key: price.buy, kind: mult, amount: 0.95`, but `EconomyService.buy_price` didn't
+yet resolve `price.buy` at all, so training Haggler silently did nothing. The fix
+(`features/economy/service.py::buy_price`) added a `_skill_price_mult` step that calls
+`resolve_for(ctx.session, "player", ctx.player.id, "price.buy", base=1.0)` — the same
+read-through pattern `encumbrance/rules.py::resolve_carry_capacity` already used for
+`carry_capacity` — and folded it into the existing barter/reputation discount product. If you
+add a passive node with a new `modifier.key`, verify some Tier 1/Tier 2 code actually resolves
+that key before shipping it; an unconsumed modifier fails silently, not loudly.
+
+#### Not live-tunable — YAML + restart, not YAML + reseed
+
+Unlike `ProgressionConfig` (live-editable from the admin console's Progression tab, no restart)
+and unlike `world.yaml` content (imported into the DB via the World CLI, so a change needs a
+`world_cli import`, i.e. a reseed), `skill_tree.yaml` is read directly into an in-memory
+registry once at **server startup** (`main.py::_load_skill_tree_definitions`) — editing it takes
+effect on the **next process restart**, not a DB reseed and not live. This is a deliberate scope
+decision (roadmap 74-OI-6), not a gap: node costs and prerequisites are structural tree shape,
+not a hot balance dial an admin needs to retune mid-session the way per-level coin rewards are.
+Revisit moving tree costs onto a `ProgressionConfig`-style live-tunable DB row only if admins
+actually ask to retune skill-tree costs without a restart.
 
 ## The World CLI
 

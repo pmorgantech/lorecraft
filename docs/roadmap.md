@@ -59,10 +59,15 @@ additive columns, plus deliberate data migrations for the two Sprint 71.2 PK-adj
 built `db.py` handling for. Foundation-band infrastructure (data-integrity / startup-robustness),
 not a feature. **Merged to main as v0.94.0.**
 
-**Next up: [Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)**
-(design complete, not yet started) — the skill-point *sink* Sprint 73 set up: spending points
-earned this sprint on a data-driven tree that unlocks abilities in all three flavors (active
-utility verbs, passive modifiers, interaction/dialogue unlocks).
+**[Sprint 74 — Skill tree & ability unlocks](#sprint-74--skill-tree--ability-unlocks)
+is implementation-complete** — all of 74.1–74.8 shipped as commits on branch
+`sprint-74-skill-tree` (full task-level detail in that section's table above), plus a
+mid-review fix for an unconsumed `haggler` price modifier — see that section's callout rows.
+Delivers the skill-point *sink* Sprint 73 set up: a data-driven `world_content/skill_tree.yaml`
+tree, bought with skill points, unlocking abilities in all three flavors — active utility verbs
+(`forage`/`sense`/`pick`), passive modifiers (`mule`/`sharp_eyes`/`haggler`), and an
+interaction/dialogue unlock (`silver_tongue`, gating a persuasion option in the innkeeper Mira's
+dialogue tree). Awaiting Integrator merge.
 
 **Set aside to [`wishlist.md`](wishlist.md):** combat & PvP (ready-to-restore specs — a supporting
 system, not the centerpiece); the multiplayer trade/transit **test pass**; and the deferred
@@ -637,12 +642,43 @@ block that may combine `flags` (always — the `ability.<id>` flag), a `modifier
 | 74.5 | **Active-verb gating pattern + reference verb `forage` (flavor A).** Establish the pattern: a verb registers with `conditions=[..., "actor_has_flag:ability.<id>"]` so it is available (and `help`-listed) only once unlocked. Ship the reference implementation: **`forage`** — in an outdoor room (`Room.indoor == False`), roll `skill_check(survival)` (`game/checks.py`, the `survival` STANDARD_SKILL already exists) to yield a foraged consumable (the `consumables` feature already handles `eat`/`drink`), gated on `ability.forage`. Lives in the thematically-appropriate feature, not `progression` (see 74-OI-5). Unit tests: verb hidden without the flag, succeeds/fails on the skill roll with the flag. | [x] |
 | 74.6 | **Two more active verbs — `sense` + `pick` (flavor A, ≥3 example verbs total).** **`sense`** (aka `perceive`): an enhanced `search` that rolls `skill_check(perception)` to reveal hidden items *and* concealed NPCs in the room, gated on `ability.keen_senses`. **`pick`**: attempt a locked exit *without* a key via `skill_check(lockpicking)` — the world already ships locked doors (Vault Hall) and a key/`unlock` flow, so this is the no-key path — gated on `ability.pick_locks`. Each in its thematic feature (exploration / movement-or-lockpicking), each with hidden-without-flag + skill-roll tests. These three (survival/perception/lockpicking) map onto three existing `STANDARD_SKILLS`, so no invented content. | [x] |
 | 74.7 | **Interaction/dialogue unlock example (flavor C).** Author example `world_content` proving the pure-data path: a `skill_tree.yaml` node whose `unlock.flags` sets `ability.<id>`, plus a `world.yaml` dialogue/context branch gated on `actor_has_flag:ability.<id>` (e.g. a `persuasion`-flavored dialogue option that only appears once an ability is trained). Zero engine work — validates that builders can add interaction abilities without code. | [x] |
-| 74.8 | **UI + docs.** Surface unlocked abilities + spendable skill points (extend `score`/Stats pane or a small `abilities` view listing owned nodes and available buys). `docs/user_guide.md` (earning/spending skill points; that abilities come in active-verb, passive-bonus, and interaction flavors; the starter verbs `forage`/`sense`/`pick`). `docs/admin_builder_guide.md` (authoring `skill_tree.yaml` nodes; the `unlock` block; gating content on `actor_has_flag:ability.<id>`). Regenerate `docs/scripting_api.md` via `make scripting-docs` **only if** an optional `actor_has_ability` alias is added (74-OI-5b) — otherwise no new `register_spec`. | [~] |
+| 74.8 | **UI + docs.** Surface unlocked abilities + spendable skill points (extend `score`/Stats pane or a small `abilities` view listing owned nodes and available buys). `docs/user_guide.md` (earning/spending skill points; that abilities come in active-verb, passive-bonus, and interaction flavors; the starter verbs `forage`/`sense`/`pick`). `docs/admin_builder_guide.md` (authoring `skill_tree.yaml` nodes; the `unlock` block; gating content on `actor_has_flag:ability.<id>`). Regenerate `docs/scripting_api.md` via `make scripting-docs` **only if** an optional `actor_has_ability` alias is added (74-OI-5b) — otherwise no new `register_spec`. | [x] |
 
-> **74.8 status ([~] partial):** the backend read-only `abilities` query command shipped with
-> 74.3 (`features/progression/commands.py`, alongside `train`/`learn`). The `docs/user_guide.md` +
-> `docs/admin_builder_guide.md` prose and the Stats-pane webui surfacing remain — deliberately left
-> to the Docs Writer / Frontend agents rather than done here.
+> **74.8 status ([x] complete):** the UI slice shipped with 74.3 as the read-only `abilities`
+> query command (`features/progression/commands.py`, alongside `train`/`learn`) — a text-command
+> surface, the same shape as `quests`/`journal`, rather than a dedicated Stats-pane widget; no
+> webui/frontend files were touched anywhere in the Sprint 74 diff. The docs half
+> (`docs/user_guide.md` + `docs/admin_builder_guide.md`) shipped separately by the Docs Writer,
+> completing the task. No `register_spec` calls were touched anywhere in the Sprint 74 diff
+> (verified by grep across `features/progression`/`exploration`/`movement`), so
+> `make scripting-docs` was correctly skipped — 74-OI-5b (the `actor_has_ability` alias) was
+> deferred as recommended, not built. A dedicated Stats-pane/webui surfacing of abilities remains
+> a possible follow-up if a future sprint wants it, but is not required by this task.
+
+**Two flagged deviations from the design above, for the historical record:**
+
+- **`pick` grammar alias removed.** Before Sprint 74, bare `pick` was a `take` alias
+  (`grammar.py`); 74.6 removed it to free the `pick` verb for lockpicking (`pick <direction>`).
+  `take`/`get`/`grab` remain synonyms, and `pick up <item>` still means take via the phrasal-verb
+  table — only the bare `pick <noun>` form changed meaning. Documented, reversible, and no test
+  relied on the old alias.
+- **`sense`/`perceive` reveals what the engine can actually conceal, not a literal "hidden
+  items/concealed NPCs" system.** The engine has no per-item or per-NPC concealment field, so
+  `sense` (74.6) reveals the one real concealment mechanism that exists — hidden exits
+  (`Exit.hidden`, the same mechanism `search` reveals) — and additionally narrates every NPC and
+  item actually present in the room as a perception-sweep readout. This satisfies the ability's
+  intent (a perception check that tells you more than a blind look) without inventing new
+  schema. Flagged as a candidate follow-up if true per-entity concealment (an item or NPC that is
+  present but normally unlisted until "sensed") is ever wanted — it would need a new field on
+  `Item`/`NPC`, not just a doc change.
+
+**Mid-review fix (haggler skill node):** the `haggler` passive node shipped in 74.6 with an
+`unlock.modifier` of `price.buy mult 0.95`, but nothing in `features/economy/service.py` resolved
+`price.buy` yet — a Code Reviewer blocking finding, since the modifier was contributed to the
+resolver but silently had no effect. Fixed in `a3644ea`: `EconomyService.buy_price` now resolves
+`price.buy` via `resolve_for(..., base=1.0)` — the same read-through pattern
+`resolve_carry_capacity` uses — and folds it into the existing barter/reputation discount
+product.
 
 ### Sprint 74 open items (summary)
 
@@ -667,7 +703,7 @@ block that may combine `flags` (always — the `ability.<id>` flag), a `modifier
   prereqs); tune skill-point costs against the ~1-point-per-level earn rate from 73.5 once both exist.
   The active-verbs decision suggests seeding the tree with at least the three verb-unlock nodes
   (`forage`/`keen_senses`/`pick_locks`) plus 2–3 passive nodes.
-- **74-OI-6 — NEW, from the Sprint 73 mechanism/policy correction — is `skill_tree.yaml` "admin-tunable" enough?** The tree (node costs/rewards) is YAML-seeded → DB at import, matching the `economy.regions` precedent: data-driven but **not live** (a cost change needs a reseed). This mirrors the Sprint 73 admin-tunable finding. → **Recommend YAML+reseed for v1** — node costs/prereqs are *structural* content, not a hot balance dial like per-level coin rewards, so the reseed cadence is acceptable; revisit migrating node costs onto the same live `ProgressionConfig`-style mechanism (73.4) only if admins ask to retune tree costs without a reseed. Keeps Sprint 74 consistent with 73's split (Tier 1 reads data; Tier 2/config owns the opinionated, potentially-live values).
+- **74-OI-6 — NEW, from the Sprint 73 mechanism/policy correction — is `skill_tree.yaml` "admin-tunable" enough?** The tree (node costs/rewards) is YAML-seeded, matching the `economy.regions` precedent: data-driven but **not live** (a cost change needs a restart to take effect). This mirrors the Sprint 73 admin-tunable finding. → **Recommend YAML+restart for v1** — node costs/prereqs are *structural* content, not a hot balance dial like per-level coin rewards, so the restart cadence is acceptable; revisit migrating node costs onto the same live `ProgressionConfig`-style mechanism (73.4) only if admins ask to retune tree costs without a restart. Keeps Sprint 74 consistent with 73's split (Tier 1 reads data; Tier 2/config owns the opinionated, potentially-live values). **As shipped:** `skill_tree.yaml` is read directly into an in-memory `SkillTreeRegistry` at server startup (`main.py::_load_skill_tree_definitions`) — the `marks.yaml`/`hunts.yaml` pattern, not the `world.yaml`-DB-import pattern `ProgressionConfig` uses. So the accurate framing is **YAML + engine restart**, not "YAML + DB reseed" — there is no DB row to reseed at all; a plain process restart is enough to pick up an edited tree.
 - **74-OI-4 — retroactive passives / respec (recommendation stands):** passives apply immediately
   (resolver recomputes per use — free); **no respec** in v1 (defer).
 

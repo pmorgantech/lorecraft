@@ -311,12 +311,51 @@ its own distinct color, and you're paid coins and skill points on the spot. Thos
 also admin-configured rather than a fixed rate, so don't assume one server's payout matches
 another's.
 
-**Skill points** are a banked currency for now — your running total shows in the **Stats**
-pane, but spending them (a skill tree, ability unlocks) isn't available yet; consider them
-saved up for a future update.
+**Skill points** are the currency you spend on the skill tree — see
+[Skill Tree & Abilities](#skill-tree--abilities) below for how to spend them.
 
 `score` (or the **Stats** pane) shows your current level and XP progress (`X/Y XP` toward the
 next level) at a glance.
+
+## Skill Tree & Abilities
+
+```
+train [ability]     — spend skill points to unlock an ability (no arg lists what's trainable) (also: learn)
+abilities            — list the abilities you know and what you can currently train (also: abils)
+```
+
+The skill points you earn from [leveling up](#experience--leveling) are spent on a **skill
+tree** of named abilities. Each ability costs a number of skill points and may require another
+ability first (a prerequisite); once trained, an ability is yours for good — there's no
+respec.
+
+Abilities come in three flavors, and a given ability is always exactly one of them:
+
+- **Active-verb abilities** unlock a new command you can use once trained. Attempting the verb
+  before you've trained it behaves as if the command doesn't exist — it won't even show up in
+  `help` — so if you want to `forage`, `sense`, or `pick` a lock, train the matching ability
+  first.
+- **Passive-bonus abilities** apply automatically the moment you train them — no verb to run,
+  just a standing bonus (for example, carrying more before you're overloaded, or paying less
+  at a shop).
+- **Interaction/dialogue abilities** don't change what you can *do* so much as what people will
+  *tell* you — they unlock extra conversation options with NPCs who respond differently once
+  they know you have a certain knack (a silver tongue, say).
+
+Run `train` with no argument to see what's ready to buy right now versus what's still locked
+(and why — not enough points, or a prerequisite you haven't trained yet). `train <ability>` (or
+`learn <ability>`) spends the points on a specific ability by its name; you'll get a clear
+reason if it fails — not enough skill points, a missing prerequisite, or you already know it.
+`abilities` (or `abils`) is the read-only counterpart: it lists what you already know alongside
+what you're currently able to train, without spending anything.
+
+The three starter active-verb abilities:
+
+| Ability | Verb | What it does |
+|---------|------|----------------|
+| Forage | `forage` | Outdoors only. Rolls a survival check; on success, turns up a consumable item you can `eat`/`drink` later. |
+| Keen Senses | `sense` (also: `perceive`) | An enhanced search: rolls a perception check to reveal any hidden exits in the room, plus who and what else is present. |
+| Pick Locks | `pick <direction>` | Attempts a locked exit without its key via a lockpicking check — the alternative to `unlock` when you don't have the right key. |
 
 ## Trading
 
@@ -483,6 +522,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `go <direction>` | `north`/`south`/`east`/`west` (bare) | Move to an adjacent room |
 | `unlock <direction>` | | Unlock an exit if you carry its key |
 | `lock <direction>` | | Lock an exit if you carry its key |
+| `pick <direction>` | | Pick a locked exit without its key (requires the Pick Locks ability) |
 | `follow <player>` | | Move with a player when they move (bare `follow` shows status) |
 | `unfollow` | | Stop following |
 | `look` | | Describe your surroundings |
@@ -511,6 +551,10 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `search` | | Look for hidden exits and secrets in the room |
 | `journal` | | Review places visited, people met, items discovered, lore learned, and active quests |
 | `marks` | | List the marks you have earned by discovery |
+| `train [ability]` | `learn` | Spend skill points to unlock an ability (no arg lists what's trainable) |
+| `abilities` | `abils` | List the abilities you know and what you can currently train |
+| `forage` | | Search the wild outdoors for something edible (requires the Forage ability) |
+| `sense` | `perceive` | A keen perception sweep of the room (requires the Keen Senses ability) |
 | `rest` | | Catch your breath and recover a little stamina |
 | `camp` | | Make camp and recover a good deal of stamina |
 | `sleep` | | Sleep deeply and recover all your stamina |
