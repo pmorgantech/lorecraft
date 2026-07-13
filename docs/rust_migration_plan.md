@@ -1786,7 +1786,137 @@ overclaimed):
 the design spec's own stated sequencing (3a before 3b before 3c) — do not skip
 ahead.
 
+### Kickoff status — sub-slice 3c (2026-07-13)
+
+**Sub-slice 3c is complete and exit-check verified. The admin `/admin/ws` cutover
+via the Rust gateway, backpressure/slow-client policy, per-player rate limiting,
+and coalescing frame delivery for efficiency are now implemented and tested.**
+**All three sub-slices (3a / 3b / 3c) have landed, and the Phase 3 phase-level exit
+criterion is MET:** both client types (player and admin) run through the Rust
+gateway, and disconnect/reconnect + slow-client tests match current semantics.
+
+Six commits landed on branch `rust-port-phase3-impl`, all after the 3b docs
+commit `4295bac`:
+
+- `24f9309` — protocol (additive, both languages): distinct `AdminAuthResult{accepted}`
+  frame (a validated admin is structurally unroutable into the player session path —
+  resolves the deferred admin `AuthResult.player_id` shape), `DeliveryTarget::Admin`
+  (fan-out to all admin consoles), `DeliveryDirective.coalesce_key: Option<String>`.
+- `a2ed5b2` — `lorecraft-events` MECHANISM: consecutive-overflow slow-client
+  detection → `SlowConsumer` disconnect (WS 1013), `AdminRegistry` (push-only,
+  deterministic fan-out), `CoalescingQueue` (keep-latest by coalesce_key;
+  feed_append/keyless never dropped), `TokenBucket` rate-limit primitive.
+- `702cf55` — Rust server: admin `/admin/ws` cutover (accept-before-validate →
+  close 1008 on reject, preserving the admin UI's 1008-vs-1006 distinction;
+  `validate_admin_token` handoff), `DisconnectHub` (watch-channel close propagation
+  that closes a slow consumer with 1013 + deregisters WITHOUT blocking a co-located
+  sibling), coalescing writer (`OutboundFrame{payload,coalesce_key}`), player command
+  rate-limit (in-band `{"type":"error","code":"rate_limited"}` frame, generous default).
+- `086c680` — Python: `AdminGatewaySink` routes `AdminBroadcaster` pushes to Rust as
+  `Deliver{DeliveryTarget.Admin}` frames in gateway mode; adapter `ValidateAdminToken`
+  now returns `AdminAuthResult`; `coalesce_key_for(payload)` POLICY helper (Tier 2:
+  `state_change`→`"state_change:<sorted-panels>"`, admin `content_changed`→
+  `"content_changed:<resource>"`, coalescible; `feed_append`/chat/join-leave/
+  `time_update`/`audit_appended`→keyless). Flag-off byte-identical.
+- `67015fe` — tests: `admin_server` e2e fixture Rust-fronted under `LORECRAFT_THROUGH_RUST`;
+  the NEW slow-client backpressure exit test + a rate-limit test.
+- `a495667` — bin env-knobs (`LORECRAFT_GATEWAY_QUEUE_DEPTH`/`_MAX_OVERFLOW`/
+  `_COMMAND_BURST`/`_COMMAND_RATE`/`_SEND_BUFFER_BYTES` — static operational
+  tunables, default unset = production unchanged) + slow-client test rewrite to a
+  genuinely-stalled raw non-reading socket (fixed a prior FALSE-GREEN where the test
+  silently skipped; now deterministic ~19s, host-independent, hard-asserts the teardown,
+  cannot skip).
+
+**3c's own exit check is met:** "a new slow-client test shows a stalled consumer is
+bounded/disconnected without blocking a co-located client; well-behaved clients
+unaffected" — proven via a deterministic ~18.77s raw-socket stall (genuinely stops
+reading, cannot skip), and a rate-limit test. Admin e2e through Rust with token
+validation and the 1008-vs-1006 distinction preserved.
+
+**Code Review:** zero blocking findings across all six commits. Four advisory
+(non-blocking) notes, flagged for follow-up:
+
+1. `AdminGatewaySink` schedules `push_deliver` via `create_task` without retaining
+   the handle (mirrors the existing `main.py` clock-broadcast idiom; a GC-safety
+   hardening candidate — retain-in-a-set + done-callback).
+2. `coalesce_key_for` maps a panel-less `state_change` to `"state_change:"` (collapses
+   all such frames — almost certainly intended, worth a conscious confirm).
+3. A `writer.rs` doc-comment prose imprecision (behavior correct).
+4. `SEND_BUFFER_BYTES` env-parse hand-inlined vs the shared helper (justified).
+
+**Test & QA, full independent re-run:**
+
+- Python: `make lint` clean; `make typecheck` 0 errors; `make test` 1513 passed / 1
+  skipped; `make test-cov` 91.02% (gate 80%).
+- Rust (from `rust/`): `cargo build --all` clean; `cargo test --all` 108 tests
+  passed across 14 crates; `cargo clippy --all-targets -- -D warnings` clean;
+  `cargo fmt --all -- --check` clean.
+- E2E lane: standard `make test-e2e` 50 passed + `make test-simulation` 17 passed.
+- THROUGH-RUST exit checks: 20/20 — admin e2e (bad-token→1008), player e2e
+  (reconnect + multiplayer), simulation multiplayer, the slow-client backpressure
+  test (runs deterministically ~18.77s, does NOT skip: a stalled consumer disconnected
+  without blocking a co-located well-behaved consumer), rate-limit, bad-ticket→1008.
+
+**Phase 3 — COMPLETE** (all three sub-slices 3a/3b/3c are implemented, reviewed,
+and tested green). **The phase-level exit criterion is MET:** both client types
+(player `/ws` via 3b, admin `/admin/ws` via 3c) run through the Rust gateway,
+disconnect/reconnect + slow-client tests match current semantics, and auth handoff
+preserves the admin UI's 1008-vs-1006 distinction. Additionally, the deferred admin
+`AuthResult.player_id` shape is resolved (now `AdminAuthResult`), and the admin-SSE-
+vs-buffering-proxy concern from 3b is resolved (the admin UI has no SSE/EventSource,
+so the buffering reverse proxy is sufficient).
+
+**Phase 3 follow-ups (before gateway on by default)** — consolidated list of
+still-open items from both 3b and 3c non-blocking advisories:
+
+**From 3b (correctness gaps + hardening):**
+
+1. **Rust `ConnectionRegistry` doesn't learn `POST /command` room moves** (correctness
+   gap). A `POST /command` room move updates only the Python adapter's mirror, not
+   Rust's authoritative `ConnectionRegistry` — so after a browser-UI move, if the mover
+   sits still and a third party enters the mover's NEW room, the mover misses that later
+   room broadcast. Needs a Python→Rust move instruction in the `GatewayInbound` protocol.
+2. **Graceful-quit via `POST /command`** (design decision 8). The `disconnect=True`
+   teardown still uses the real `ConnectionManager`; in gateway mode the Rust side owns
+   the socket, so a proper close needs a new Python→Rust close instruction. A
+   `TODO(decision 8)` marks it in `frontend.py`.
+3. **"Dark" autonomous broadcasters** (mechanical gap). Only clock + weather narration
+   route through the gateway; `NpcBehaviorService`, `TransitService`, `QuestTimerService`,
+   `WeatherFrontService` storm effects, and `MobileRouteService` still target the real
+   `ConnectionManager` and are dark to gateway clients. A guard test covers clock/weather;
+   the rest is the same mechanical `broadcast_manager` swap once verified.
+4. **Unbounded Python push queue** (hardening). `_ClientLink.outbound` in the adapter
+   has no depth limit; the Rust side is bounded. A late-phase hardening item to prevent
+   memory growth under slow-client conditions before going to production.
+5. **`players_here` presence dots** (cosmetic staleness). On the actor's own panel, the
+   live presence dots remain cosmetically stale in gateway mode — Rust sees the right set,
+   but the update message to the actor itself may reflect a slightly earlier snapshot.
+   Low priority, non-functional.
+6. **CI browser e2e coverage.** The exit tests (Playwright+Chromium) were verified
+   in-env; ensure CI has the `.[e2e]` extras + `playwright install chromium` in the
+   build matrix for ongoing automated coverage.
+
+**From 3c (advisory notes, non-blocking):**
+
+7. `AdminGatewaySink` `create_task` handle retention (GC-safety hardening).
+8. `coalesce_key_for` panel-less `state_change` collapse confirmation.
+9. `writer.rs` doc-comment prose clarity.
+10. `SEND_BUFFER_BYTES` env-parse consistency.
+
+**Recommended next increment:** Phase 4 (migrate one vertical gameplay slice —
+`look`, then movement), per the migration plan's own stated sequence. First vertical
+slice: Rust parsing/routing for the selected verb, Rust repository reads/writes,
+Rust transaction and effect validation, Rust audit/outbox commit, golden replay
+comparison via the `look_only.audit.json` parity target.
+
 ### Where things stand / Next
+
+Phase 0 (evidence gate), Phase 1 (language-neutral contracts), Phase 2 (Rust
+world-actor skeleton + shadow runner for `look`), and **Phase 3 (transport +
+connection ownership — all three sub-slices 3a/3b/3c, player and admin client
+cutover, backpressure/slow-client policy, disconnect/reconnect, rate-limiting)**
+are complete and tested green. The phase-level exit criterion — both client types
+through Rust; disconnect/reconnect + slow-client tests match — is MET.
 
 After this lands, the natural next increment is Phase 4 — migrate one vertical
 gameplay slice (`look`, then movement) so Rust owns parsing/repo-reads/

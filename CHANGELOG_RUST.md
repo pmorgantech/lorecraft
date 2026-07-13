@@ -75,11 +75,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   players before link tears down.
 - Fixed EXIT-BLOCKING `POST /command` broadcast routing: `broadcast_command_effects`
   now routes through `GatewayPushManager` so cross-player broadcasts from
-  non-WS commands reach Rust-connected browsers. **Sub-slice 3c (admin cutover
-  + backpressure/slow-client policy) is not yet built** — Phase 3 phase-level
-  exit criterion remains open; 6 known follow-ups flagged (room-move staleness,
-  graceful-quit via POST, dark broadcasters, unbounded Python queue, presence
-  dots, CI Playwright setup).
+  non-WS commands reach Rust-connected browsers.
+- Sub-slice 3c implementation (admin `/admin/ws` cutover + backpressure/slow-client
+  policy): distinct `AdminAuthResult{accepted}` frame in `lorecraft-protocol` (resolves
+  the deferred admin `AuthResult.player_id` shape), `DeliveryTarget::Admin` for
+  fan-out to all admin consoles, `DeliveryDirective.coalesce_key: Option<String>` for
+  efficient frame deduplication.
+- Rust `lorecraft-events::backpressure`: consecutive-overflow slow-client detection
+  → `SlowConsumer` disconnect (WS 1013), `AdminRegistry` (push-only deterministic
+  fan-out), `CoalescingQueue` (keep-latest by key; feed_append/keyless never dropped),
+  `TokenBucket` rate-limit primitive.
+- Rust admin `/admin/ws` cutover: accept-before-validate semantics with close 1008 on
+  reject (preserving admin UI's 1008-vs-1006 distinction from current Python handler);
+  `validate_admin_token` handoff; `DisconnectHub` watch-channel close propagation
+  that closes slow consumers with 1013 without blocking co-located siblings; coalescing
+  writer; player command rate-limit with in-band `{"type":"error","code":"rate_limited"}`
+  frame.
+- Python `AdminGatewaySink`: routes `AdminBroadcaster` pushes to Rust as
+  `Deliver{DeliveryTarget.Admin}` frames; adapter `ValidateAdminToken` now returns
+  `AdminAuthResult`; policy helper `coalesce_key_for(payload)` (Tier 2: `state_change`
+  with sorted-panel keys, admin `content_changed` with resource key, coalescible;
+  feed_append/chat/join-leave/time_update/audit_appended keyless). Flag-off remains
+  byte-identical.
+- Operational env-knobs for backpressure/rate-limit tuning: `LORECRAFT_GATEWAY_QUEUE_DEPTH`,
+  `_MAX_OVERFLOW`, `_COMMAND_BURST`, `_COMMAND_RATE`, `_SEND_BUFFER_BYTES` (static config,
+  defaults unset = production unchanged; flagged as future operational live-tunable
+  candidates per AGENTS.md pattern).
+- Fixed FALSE-GREEN slow-client test: replaced implicit-skip test with deterministic
+  raw-socket stall (genuinely stops reading, ~18.77s, cannot skip, hard-asserts
+  teardown without blocking a co-located well-behaved consumer).
+
+### Fixed
+- Slow-client backpressure test no longer skips silently — now a genuinely-stalled
+  raw non-reading socket producing deterministic, host-independent behavior.
+
+### Phase 3 completion note
+**All three sub-slices (3a / 3b / 3c) are now complete.** The phase-level exit
+criterion is MET: both player and admin clients run through the Rust gateway;
+disconnect/reconnect + slow-client tests match current Python semantics. Ten follow-ups
+flagged (6 from 3b correctness gaps / hardening, 4 from 3c advisories) — must be
+addressed before "gateway enabled by default" but do not block Phase 3's phase-level
+gate. See `docs/rust_migration_plan.md`'s Phase 3 section for the consolidated
+follow-up list and the natural next increment (Phase 4: vertical gameplay slice).
 
 ---
 

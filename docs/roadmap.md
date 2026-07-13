@@ -74,12 +74,15 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
 
 *(Separate track, own branch/versioning per [`../CHANGELOG_RUST.md`](../CHANGELOG_RUST.md):
-the `rust-port` branch's Phase 3 transport/connection-ownership migration has sub-slice 3a
-(forwarding protocol + Python adapter + Rust gateway plumbing) and sub-slice 3b (player `/ws`
-cutover via Rust front-door, all exit tests through Rust-verified) landed as of 2026-07-13 —
-see [`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 3 kickoff status sections for
-detail; sub-slice 3c (admin cutover + backpressure) is still pending, and the phase-level
-exit criterion is NOT yet fully met.)*
+the `rust-port` branch's Phase 3 transport/connection-ownership migration is COMPLETE as of
+2026-07-13. All three sub-slices have landed: 3a (forwarding protocol + Python adapter + Rust
+gateway plumbing), 3b (player `/ws` cutover via Rust front-door with all exit tests through
+Rust-verified), and 3c (admin `/admin/ws` cutover + backpressure/slow-client policy + rate-limiting).
+The phase-level exit criterion is MET: both player and admin clients run through the Rust gateway,
+disconnect/reconnect and slow-client tests match current Python semantics. See
+[`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 3 kickoff status sections (3a/3b/3c) for
+detail. Natural next increment: Phase 4 (first vertical gameplay slice — `look`, then movement,
+Rust-owned))*
 
 ---
 
