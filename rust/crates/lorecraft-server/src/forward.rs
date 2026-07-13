@@ -25,11 +25,35 @@
 //!   Its own `deliveries` are **also**
 //!   relayed into the shared [`ConnectionRegistry`] via
 //!   [`lorecraft_events::dispatch`] as an independent side effect.
+//! - An `AuthResult` or `ConnectAck` completes the single **pending control
+//!   slot** (see below) — no correlation id is needed for these.
 //! - A `Deliver` has no pending request to complete, so its `directive` is relayed
 //!   straight into the registry.
 //!
 //! Writes are serialized behind a [`tokio::sync::Mutex`] on the write half so
 //! concurrent [`ForwardClient::send_command`] callers never interleave frames.
+//!
+//! ## One `ForwardClient` per player connection (Phase 3b resolution)
+//!
+//! **Resolved design choice:** each player WebSocket connection opens its **own
+//! dedicated `ForwardClient`** (its own UDS connection to the Python adapter),
+//! rather than multiplexing every player over one shared link. Rationale:
+//!
+//! - The `RedeemTicket → AuthResult` and `Connected → ConnectAck` handshake steps
+//!   arrive strictly **in order** on the dedicated link (at most one handshake
+//!   step is ever outstanding per link), so no correlation id is needed for
+//!   auth/connect — a single pending-control-reply slot suffices.
+//! - `Command → CommandReply` still correlates by `command_id` (kept from 3a),
+//!   which also keeps the client correct if it is ever shared.
+//! - The link's own async `Deliver` pushes are routed into the **shared**
+//!   [`ConnectionRegistry`], so cross-player deliveries produced on the *acting*
+//!   player's link (as `CommandReply.deliveries` or standalone `Deliver`s) are
+//!   fanned out to every recipient's outbound queue — a player never needs a
+//!   frame routed down some *other* player's link.
+//!
+//! The Python adapter (`src/lorecraft/gateway/adapter.py`) serves each accepted
+//! UDS connection independently (`asyncio.start_unix_server`) against one shared
+//! directive-recording manager, so N concurrent links are supported by design.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -37,7 +61,8 @@ use std::sync::Arc;
 
 use lorecraft_events::{dispatch, ConnectionRegistry};
 use lorecraft_protocol::envelope::CommandEnvelope;
-use lorecraft_protocol::gateway::{GatewayInbound, GatewayOutbound};
+use lorecraft_protocol::gateway::{DisconnectReason, GatewayInbound, GatewayOutbound};
+use lorecraft_protocol::ids::{PlayerId, SessionId};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::UnixStream;
@@ -52,6 +77,34 @@ const LENGTH_PREFIX_BYTES: usize = 4;
 /// [`CommandId`](lorecraft_protocol::ids::CommandId) does not derive `Hash` in the
 /// protocol crate.
 type PendingReplies = Arc<Mutex<HashMap<String, oneshot::Sender<GatewayOutbound>>>>;
+
+/// The single pending **control** reply slot for the sequential
+/// `RedeemTicket → AuthResult` / `Connected → ConnectAck` handshake steps.
+///
+/// Per-link handshakes are strictly sequential (at most one outstanding — see the
+/// module docs), so one slot suffices; no keyed correlation map is needed.
+type PendingControl = Arc<Mutex<Option<oneshot::Sender<GatewayOutbound>>>>;
+
+/// The decoded outcome of a `RedeemTicket` (or `ValidateAdminToken`) handoff.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthDecision {
+    /// Whether Python accepted the credential.
+    pub accepted: bool,
+    /// The authenticated player on acceptance (player-ticket path), else `None`.
+    pub player_id: Option<PlayerId>,
+}
+
+/// The decoded acknowledgement of a `Connected` lifecycle handshake.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SessionAck {
+    /// The session Python minted or resumed for this connection.
+    pub session_id: SessionId,
+    /// The room the player is currently in.
+    pub room_id: String,
+    /// Opaque legacy frames to deliver directly to the connecting client
+    /// (`connected`, plus `reconnect_sync` on a grace resume).
+    pub direct_frames: Vec<serde_json::Value>,
+}
 
 /// A failure of the forwarding client.
 #[derive(Debug, thiserror::Error)]
@@ -73,6 +126,11 @@ pub enum ForwardError {
     /// [`GatewayOutbound::CommandReply`] — a protocol violation.
     #[error("unexpected non-CommandReply frame answered a command")]
     UnexpectedReply,
+    /// A second control handshake (`RedeemTicket`/`Connected`) was started while
+    /// one was still pending on this link — a caller bug, since per-link
+    /// handshakes are strictly sequential (see the module docs).
+    #[error("a control handshake is already in flight on this link")]
+    HandshakeInFlight,
 }
 
 /// The Rust-side framed UDS client that forwards commands to the Python adapter
@@ -82,6 +140,8 @@ pub struct ForwardClient {
     write: Mutex<OwnedWriteHalf>,
     /// In-flight command correlation slots (see [`PendingReplies`]).
     pending: PendingReplies,
+    /// The single pending control-handshake slot (see [`PendingControl`]).
+    control: PendingControl,
     /// The background demultiplexing read loop; aborted on drop.
     read_task: JoinHandle<()>,
 }
@@ -100,12 +160,97 @@ impl ForwardClient {
         let stream = UnixStream::connect(socket_path).await?;
         let (read, write) = stream.into_split();
         let pending: PendingReplies = Arc::new(Mutex::new(HashMap::new()));
-        let read_task = tokio::spawn(read_loop(read, registry, Arc::clone(&pending)));
+        let control: PendingControl = Arc::new(Mutex::new(None));
+        let read_task = tokio::spawn(read_loop(
+            read,
+            registry,
+            Arc::clone(&pending),
+            Arc::clone(&control),
+        ));
         Ok(Self {
             write: Mutex::new(write),
             pending,
+            control,
             read_task,
         })
+    }
+
+    /// Redeem a single-use player WS ticket: write a
+    /// [`GatewayInbound::RedeemTicket`] and await the routed
+    /// [`GatewayOutbound::AuthResult`].
+    pub async fn redeem_ticket(&self, ticket: &str) -> Result<AuthDecision, ForwardError> {
+        let frame = GatewayInbound::RedeemTicket {
+            ticket: ticket.to_owned(),
+        };
+        match self.send_control(frame).await? {
+            GatewayOutbound::AuthResult {
+                accepted,
+                player_id,
+            } => Ok(AuthDecision {
+                accepted,
+                player_id,
+            }),
+            _ => Err(ForwardError::UnexpectedReply),
+        }
+    }
+
+    /// Run the `Connected` lifecycle handshake: write a
+    /// [`GatewayInbound::Connected`] and await the routed
+    /// [`GatewayOutbound::ConnectAck`].
+    ///
+    /// **Caller must apply a timeout**: the Python adapter acks *nothing* for an
+    /// unknown player or a missing room this phase (it logs and returns no
+    /// frame), so an un-timed await could hang forever.
+    pub async fn connect_session(&self, player_id: PlayerId) -> Result<SessionAck, ForwardError> {
+        let frame = GatewayInbound::Connected { player_id };
+        match self.send_control(frame).await? {
+            GatewayOutbound::ConnectAck {
+                session_id,
+                room_id,
+                direct_frames,
+            } => Ok(SessionAck {
+                session_id,
+                room_id,
+                direct_frames,
+            }),
+            _ => Err(ForwardError::UnexpectedReply),
+        }
+    }
+
+    /// Notify Python that this player's connection ended. Fire-and-forget: no
+    /// reply frame is defined for `Disconnected`; the teardown's own fan-out
+    /// (`player_left`, flicker narration) flows back as `Deliver` pushes that the
+    /// read loop dispatches into the shared registry.
+    pub async fn send_disconnected(
+        &self,
+        player_id: PlayerId,
+        reason: DisconnectReason,
+    ) -> Result<(), ForwardError> {
+        self.write_frame(&GatewayInbound::Disconnected { player_id, reason })
+            .await
+    }
+
+    /// Write a control frame and await the single routed control reply.
+    ///
+    /// Per-link control handshakes are strictly sequential (module docs), so the
+    /// slot being occupied is a caller bug surfaced as
+    /// [`ForwardError::HandshakeInFlight`], never silently overwritten.
+    async fn send_control(&self, frame: GatewayInbound) -> Result<GatewayOutbound, ForwardError> {
+        let (tx, rx) = oneshot::channel();
+        {
+            let mut slot = self.control.lock().await;
+            if slot.is_some() {
+                return Err(ForwardError::HandshakeInFlight);
+            }
+            *slot = Some(tx);
+        }
+        if let Err(err) = self.write_frame(&frame).await {
+            // Reclaim the slot so a retry on this link is possible.
+            self.control.lock().await.take();
+            return Err(err);
+        }
+        // Sender dropped without sending: the read loop ended mid-handshake.
+        rx.await.map_err(|_| ForwardError::ConnectionClosed)
     }
 
     /// Forward one [`CommandEnvelope`] to Python and await its correlated
@@ -174,10 +319,11 @@ async fn read_loop(
     mut read: OwnedReadHalf,
     registry: Arc<ConnectionRegistry>,
     pending: PendingReplies,
+    control: PendingControl,
 ) {
     loop {
         match read_frame(&mut read).await {
-            Ok(Some(frame)) => demultiplex(frame, &registry, &pending).await,
+            Ok(Some(frame)) => demultiplex(frame, &registry, &pending, &control).await,
             Ok(None) => break, // clean end-of-stream: peer closed
             Err(err) => {
                 // Not silent: a decode/transport fault ends the link, and the
@@ -189,6 +335,7 @@ async fn read_loop(
     }
     // Fail all in-flight requests: dropping the senders wakes their receivers.
     pending.lock().await.clear();
+    control.lock().await.take();
 }
 
 /// Route one decoded outbound frame to its pending request and/or the registry.
@@ -196,6 +343,7 @@ async fn demultiplex(
     frame: GatewayOutbound,
     registry: &ConnectionRegistry,
     pending: &PendingReplies,
+    control: &PendingControl,
 ) {
     match frame {
         GatewayOutbound::CommandReply {
@@ -239,14 +387,17 @@ async fn demultiplex(
                 );
             }
         }
-        // Correlated auth/session handshakes are handled by the ws_player (3b) and
-        // ws_admin (3c) cutovers; in 3a no RedeemTicket/Connected is ever sent, so
-        // these are unexpected here rather than silently meaningful.
-        GatewayOutbound::AuthResult { .. } => {
-            tracing::debug!("received AuthResult; auth handoff lands in Phase 3b/3c");
-        }
-        GatewayOutbound::ConnectAck { .. } => {
-            tracing::debug!("received ConnectAck; connection lifecycle lands in Phase 3b");
+        // Control replies for the sequential per-link handshakes: complete the
+        // single pending control slot. An unsolicited one (no waiter) is a
+        // protocol anomaly worth surfacing, never silently dropped.
+        frame @ (GatewayOutbound::AuthResult { .. } | GatewayOutbound::ConnectAck { .. }) => {
+            let waiter = control.lock().await.take();
+            match waiter {
+                Some(tx) => {
+                    let _ = tx.send(frame);
+                }
+                None => tracing::warn!("control reply arrived with no pending handshake"),
+            }
         }
     }
 }
@@ -421,6 +572,107 @@ mod tests {
             .expect("connect");
 
         let result = client.send_command(sample_envelope("cmd-2", "look")).await;
+        assert!(matches!(result, Err(ForwardError::ConnectionClosed)));
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// The 3b control-handshake routing: a `RedeemTicket` is answered by the
+    /// routed `AuthResult`, then (sequentially on the same link) a `Connected` is
+    /// answered by the routed `ConnectAck` — no correlation id involved.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn sequential_control_handshakes_route_auth_result_then_connect_ack() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, mut write) = stream.into_split();
+
+            match read_inbound(&mut read).await {
+                GatewayInbound::RedeemTicket { ticket } => assert_eq!(ticket, "tkt-1"),
+                other => panic!("expected RedeemTicket, got {other:?}"),
+            }
+            let auth = GatewayOutbound::AuthResult {
+                accepted: true,
+                player_id: Some(PlayerId("player-9".into())),
+            };
+            write
+                .write_all(&encode_frame(&auth))
+                .await
+                .expect("write auth");
+
+            match read_inbound(&mut read).await {
+                GatewayInbound::Connected { player_id } => {
+                    assert_eq!(player_id, PlayerId("player-9".into()));
+                }
+                other => panic!("expected Connected, got {other:?}"),
+            }
+            let ack = GatewayOutbound::ConnectAck {
+                session_id: SessionId("sess-9".into()),
+                room_id: "tavern".into(),
+                direct_frames: vec![json!({"type": "connected", "player_id": "player-9"})],
+            };
+            write
+                .write_all(&encode_frame(&ack))
+                .await
+                .expect("write ack");
+            write.flush().await.expect("flush");
+            // Keep the link open so the client's read loop stays alive.
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        });
+
+        let registry = Arc::new(ConnectionRegistry::new());
+        let client = ForwardClient::connect(&socket_path, registry)
+            .await
+            .expect("connect");
+
+        let decision = client.redeem_ticket("tkt-1").await.expect("redeem");
+        assert_eq!(
+            decision,
+            AuthDecision {
+                accepted: true,
+                player_id: Some(PlayerId("player-9".into())),
+            }
+        );
+
+        let ack = client
+            .connect_session(PlayerId("player-9".into()))
+            .await
+            .expect("connect_session");
+        assert_eq!(ack.session_id, SessionId("sess-9".into()));
+        assert_eq!(ack.room_id, "tavern");
+        assert_eq!(
+            ack.direct_frames,
+            vec![json!({"type": "connected", "player_id": "player-9"})]
+        );
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// A dropped link mid-handshake fails the control waiter with
+    /// `ConnectionClosed` rather than hanging it.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn dropped_connection_fails_pending_control_handshake() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, write) = stream.into_split();
+            let _ = read_inbound(&mut read).await; // read the RedeemTicket
+            drop(write); // close without answering
+            drop(read);
+        });
+
+        let registry = Arc::new(ConnectionRegistry::new());
+        let client = ForwardClient::connect(&socket_path, registry)
+            .await
+            .expect("connect");
+
+        let result = client.redeem_ticket("tkt-x").await;
         assert!(matches!(result, Err(ForwardError::ConnectionClosed)));
 
         peer.await.expect("mock peer joins cleanly");

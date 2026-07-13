@@ -1,12 +1,13 @@
 //! `gateway.rs` — the Axum app skeleton: config, shared state, and router.
 //!
-//! This is the "app skeleton" the 3a checklist asks for. It boots an Axum
-//! [`Router`] with a real `GET /healthz` route and the (stubbed) player/admin WS
-//! route seams, sharing a [`GatewayState`] that threads the static
-//! [`GatewayConfig`], the authoritative [`ConnectionRegistry`], and the
-//! [`ForwardClient`] into every handler. The live `/ws`/`/admin/ws` upgrades are
-//! filled in by [`crate::ws_player`] (3b) and [`crate::ws_admin`] (3c) — 3a serves
-//! no real clients (design spec: "routes not yet serving real clients").
+//! It boots an Axum [`Router`] with a real `GET /healthz` route, the **live**
+//! player `/ws` route ([`crate::ws_player`], Phase 3b), and the still-stubbed
+//! admin `/admin/ws` seam ([`crate::ws_admin`], filled in by 3c), sharing a
+//! [`GatewayState`] that threads the static [`GatewayConfig`], the authoritative
+//! [`ConnectionRegistry`], and the shared [`ForwardClient`] into every handler.
+//! (The player WS handler opens its own per-connection `ForwardClient`; the
+//! shared one serves the health check and, later, admin push — see
+//! `forward.rs`'s module docs for the per-connection-link design decision.)
 //!
 //! Config is **static** this phase (design decision 12): the dials here
 //! (bind address, socket path, world id, deadline, queue depth) are *operational*,
@@ -39,6 +40,11 @@ pub struct GatewayConfig {
     pub default_deadline_ms: u64,
     /// Depth of each connection's bounded outbound queue.
     pub outbound_queue_depth: usize,
+    /// Timeout applied to each connect-time handshake step
+    /// (`RedeemTicket → AuthResult`, `Connected → ConnectAck`). Required because
+    /// the Python adapter acks nothing for an unknown player this phase, so an
+    /// un-timed await could hang the upgrade task forever.
+    pub handshake_timeout_ms: u64,
 }
 
 impl Default for GatewayConfig {
@@ -49,6 +55,7 @@ impl Default for GatewayConfig {
             world_id: "world-1".to_string(),
             default_deadline_ms: 5_000,
             outbound_queue_depth: DEFAULT_OUTBOUND_QUEUE_DEPTH,
+            handshake_timeout_ms: 5_000,
         }
     }
 }

@@ -8,10 +8,8 @@
 //! [`AuthResult`](lorecraft_protocol::gateway::GatewayOutbound). Rust never sees
 //! the JWT secret.
 //!
-//! This module is an intentional 3a **stub** establishing the file layout decision
-//! 9 specifies: the real handoff (which correlates an `AuthResult` frame back to a
-//! pending redemption) is filled in when the sockets go live — player ticket auth
-//! in Phase 3b, admin token auth in Phase 3c — so those diffs are additive here.
+//! Player ticket redemption ([`redeem_player_ticket`]) is live as of Phase 3b;
+//! admin token validation remains a 3c stub.
 
 use lorecraft_protocol::ids::PlayerId;
 
@@ -32,13 +30,25 @@ pub enum AuthError {
 /// Redeem a single-use player WS `?ticket=` via the Python adapter, resolving the
 /// authenticated [`PlayerId`] on success.
 ///
-/// Phase 3b fills this in: forward a `RedeemTicket` and await the correlated
-/// `AuthResult`. Stubbed in 3a because 3a performs no live cutover.
+/// Forwards a `RedeemTicket` on the (per-connection) `forward` link and maps the
+/// routed `AuthResult`:
+///
+/// - accepted **with** a player id → `Ok(PlayerId)`;
+/// - rejected, or accepted without a player id (a malformed/adminesque result
+///   that cannot authenticate a *player* socket) → [`AuthError::Rejected`];
+/// - any transport failure → [`AuthError::Transport`].
 pub async fn redeem_player_ticket(
-    _forward: &ForwardClient,
-    _ticket: &str,
+    forward: &ForwardClient,
+    ticket: &str,
 ) -> Result<PlayerId, AuthError> {
-    todo!("player ticket redemption handoff is wired in Phase 3b")
+    match forward.redeem_ticket(ticket).await {
+        Ok(decision) if decision.accepted => decision.player_id.ok_or(AuthError::Rejected),
+        Ok(_) => Err(AuthError::Rejected),
+        Err(err) => {
+            tracing::warn!(error = %err, "ticket redemption handoff failed at transport level");
+            Err(AuthError::Transport)
+        }
+    }
 }
 
 /// Validate an admin `?token=` JWT via the Python adapter.

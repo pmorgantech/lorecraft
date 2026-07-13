@@ -6,16 +6,17 @@
 //! frames (decision 2), relaying Python's fan-out directives into the Rust-owned
 //! [`lorecraft_events::ConnectionRegistry`]. This crate composes:
 //!
-//! - [`forward`] — the framed UDS client to the Python adapter (the substantive
-//!   3a deliverable): a background read loop demultiplexes correlated
-//!   `CommandReply`s from un-correlated `Deliver` pushes.
-//! - [`gateway`] — the Axum router/app skeleton + static config.
-//! - [`ws_player`] / [`ws_admin`] / [`auth`] — honestly-scoped stubs establishing
-//!   the file layout the 3b (player socket + ticket auth) and 3c (admin socket +
-//!   token auth) cutovers fill in additively.
-//!
-//! 3a scope is explicitly "routes not yet serving real clients" — the live
-//! `/ws`/`/admin/ws` cutover is 3b/3c.
+//! - [`forward`] — the framed UDS client to the Python adapter: a background
+//!   read loop demultiplexes correlated `CommandReply`s, sequential control
+//!   replies (`AuthResult`/`ConnectAck`), and un-correlated `Deliver` pushes.
+//!   One `ForwardClient` is opened **per player connection** (see its module
+//!   docs for the resolved design decision).
+//! - [`gateway`] — the Axum router/app + static config. The `lorecraft-gateway`
+//!   binary (`src/bin/gateway.rs`) serves it.
+//! - [`ws_player`] — the **live** player `/ws` cutover (Phase 3b): ticket auth
+//!   handoff, connect handshake, per-connection writer task, receive loop.
+//! - [`ws_admin`] / [`auth::validate_admin_token`] — 3c stubs (admin socket +
+//!   token auth land in sub-slice 3c).
 
 #![warn(missing_docs)]
 
@@ -25,7 +26,7 @@ pub mod gateway;
 pub mod ws_admin;
 pub mod ws_player;
 
-pub use forward::{ForwardClient, ForwardError};
+pub use forward::{AuthDecision, ForwardClient, ForwardError, SessionAck};
 pub use gateway::{build_router, GatewayConfig, GatewayState};
 pub use lorecraft_events;
 pub use lorecraft_protocol;
