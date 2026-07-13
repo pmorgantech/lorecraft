@@ -1564,15 +1564,106 @@ broken, and note it fully inverts only at Phase 4+.
    into the snapshot/effect model in a later phase so Rust resolves all
    recipients and the mirror disappears — noted as future work, not this phase.
 
-### Kickoff status
+### Kickoff status — sub-slice 3a (2026-07-13)
 
-*(Placeholder — to be filled in by the implementing Backend Engineers /
-Integrator after 3a/3b/3c land, matching the Phase 0/1 and Phase 2 "Kickoff
-status" sections above: branch names, commit hashes, Code Review outcome, Rust
-`cargo build`/`test`/`clippy`/`fmt` + Python `make lint`/`typecheck`/`test`
-results, and confirmation the phase-level exit criterion — both client types
+**Only sub-slice 3a has landed.** 3b (player `/ws` cutover) and 3c (admin
+cutover + backpressure) have **not** been built yet — see "Still pending"
+below. The phase-level exit criterion is therefore **not yet met**; this
+section documents 3a alone.
+
+Five commits landed on branch `rust-port-phase3-impl`, all after `51eb284`
+(the design-spec-only commit):
+
+- `447eb7b` — gateway protocol types: `GatewayInbound`/`GatewayOutbound`/
+  `DeliveryDirective`/`DeliveryTarget` in `lorecraft-protocol` + the Python
+  mirror `src/lorecraft/protocol/gateway.py`. Resolved OPEN ITEM 1 (async-push
+  vs. request/reply multiplexing) by adding `command_id` to `CommandReply` for
+  request/reply correlation over the multiplexed UDS stream.
+- `02d6a422` — Python `src/lorecraft/gateway/adapter.py` UDS listener +
+  `DirectiveConnectionManager`, plus a new `ConnectionManagerProtocol`
+  structural-typing seam in `engine/game/connection_manager.py` that makes the
+  manager injectable without any `cast`/`type: ignore`. Extracted the shared
+  command-handling core out of `main.py` into `webui/player/ws_command.py` +
+  `ui_snapshots.py` so both the live `/ws` handler and the new adapter call
+  identical logic.
+- `aee1a7a` — Rust `lorecraft-events` crate: `ConnectionRegistry` (three
+  sorted-read connection maps) + `dispatch.rs` bounded, non-blocking
+  `try_send` fan-out, proving the headline property that one slow/full
+  recipient queue never stalls delivery to a sibling recipient.
+- `47acb50` — Rust `lorecraft-server` crate: `forward.rs` UDS framed client
+  demultiplexing correlated `CommandReply`s from uncorrelated `Deliver`
+  pushes, plus an Axum app skeleton with a working health-check route and
+  honestly-scoped `ws_player.rs`/`ws_admin.rs`/`auth.rs` stubs for 3b/3c to
+  fill in. Added `tokio` as the workspace's first async dependency and pinned
+  `axum = "=0.8.4"` exactly, since 0.8.9+ requires rustc 1.80 above this
+  workspace's 1.75 MSRV.
+- `7720a9a` — test-only: a new cross-manager `DeliveryDirective` parity test
+  proving the adapter's recorded directives resolve to the same payloads the
+  real `ConnectionManager` would actually send to a room-mate, closing the
+  "same `DeliveryDirective` set" half of 3a's exit check; the "byte-identical
+  `command_result`" half was already covered by earlier per-task tests.
+
+**3a's own exit check is met:** "a synthetic command driven Rust→Python→Rust
+produces the byte-identical `command_result` payload and the same set of
+`DeliveryDirective`s the real `ConnectionManager` path produces today (parity
+harness), with no real client cutover" — proven via a hermetic real-UDS-socket
+round-trip (a raw `asyncio` client standing in for Rust's `forward.rs`, since
+both speak the identical length-prefixed-JSON wire format) plus the
+two-player parity comparison added in `7720a9a`. No real client (`/ws` or
+`/admin/ws`) was cut over — both still run through the pre-existing Python
+handlers, exactly as designed.
+
+**Code Review:** zero blocking findings across all five commits. Four
+advisory (non-blocking) notes, all forward-looking for the 3b/3c implementer,
+not defects in 3a:
+
+1. Once 3b actually starts the UDS listener live, the socket file should get
+   restrictive permissions (0600) since the channel is intentionally
+   unauthenticated internally and currently trusts `player_id` on faith —
+   inert risk today since nothing starts the listener yet.
+2. A lock-discipline note: lifecycle-event and command-handling directive
+   draining share one buffer safely today only because there's a single Rust
+   peer and no real `await` in the delivery methods — worth a comment or
+   shared-lock fix before a second peer/async delivery method could exist.
+3. The axum `=0.8.4` exact pin is sound but forgoes intra-0.8.x patch
+   pickup — a `>=0.8.4, <0.8.9` range would preserve the MSRV ceiling while
+   allowing patches, flagged for whoever owns workspace toolchain policy.
+4. `start_unix_server` doesn't unlink a stale socket file from a prior crash,
+   and `stop()` doesn't unlink either — a live-restart robustness gap for 3b
+   to close when it wires the listener into a real process lifecycle.
+
+**Test & QA, full independent re-run:**
+
+- Python: `make lint` clean; `make typecheck` 0 errors; `make test` 1471
+  passed / 2 skipped; `make test-cov` 90.96% (gate 80%);
+  `tests/unit/test_tier_boundaries.py` 2 passed, confirming
+  `src/lorecraft/gateway/` is not imported by anything under `engine/`.
+- Rust (from `rust/`): `cargo build --all` clean; `cargo test --all` 60
+  passed across 8 crates (core 5, feature-look 5, protocol 20, replay 8,
+  runtime 4, scheduler 6, events 10, server 2); `cargo clippy --all-targets
+  -- -D warnings` clean; `cargo fmt --all -- --check` clean.
+- One flagged non-blocking observation, **not** part of Phase 3a's own
+  changes: a first full-suite run hit 3 transient failures in
+  `tests/unit/test_save.py` ("No MeterDef registered for key 'hp'") that were
+  not reproducible on an immediate re-run or in isolation — looks like a
+  pre-existing test-order/xdist-file-distribution flake unconnected to any of
+  the five Phase 3a commits (none touch MeterDef/progression code). Noted
+  plainly as a pre-existing item worth separate investigation, not
+  attributed to this phase's work.
+
+**Still pending / explicitly NOT done:** sub-slice 3b (player `/ws` cutover
+through Rust — real client traffic still goes through the existing Python
+`/ws` handler; `ws_player.rs`/`auth.rs`'s ticket-handoff logic is still a
+stub) and sub-slice 3c (admin `/admin/ws` cutover + backpressure/slow-client
+policy — `ws_admin.rs` is still a stub, `lorecraft-events::backpressure`
+doesn't exist yet). **The phase-level exit criterion — both client types
 through the Rust gateway, disconnect/reconnect + slow-client tests matching
-current semantics — is met.)*
+current semantics — is NOT yet met** — only the 3a foundation is proven. This
+is stated explicitly so a future reader doesn't assume Phase 3 is complete.
+
+**Recommended next increment:** sub-slice 3b (player `/ws` cutover), per the
+design spec's own stated sequencing (3a before 3b before 3c) — do not skip
+ahead to 3c.
 
 ### Where things stand / Next
 

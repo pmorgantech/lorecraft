@@ -73,6 +73,12 @@ help. Revisit the latter only if a *post-WAL* realistic-load test shows a hard s
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
 
+*(Separate track, own branch/versioning per [`../CHANGELOG_RUST.md`](../CHANGELOG_RUST.md):
+the `rust-port` branch's Phase 3 transport/connection-ownership migration has sub-slice 3a
+(forwarding protocol + Python adapter + Rust gateway plumbing, no live client cutover)
+landed as of 2026-07-13 — see [`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 3
+"Kickoff status — sub-slice 3a" for detail; sub-slices 3b/3c are still pending.)*
+
 ---
 
 ## Recently completed (56–69)

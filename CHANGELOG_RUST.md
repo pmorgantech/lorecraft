@@ -21,6 +21,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   protocol types, the `DirectiveConnectionManager` design for reusing existing
   Python fan-out logic, auth-handoff and disconnect/reconnect semantics, and
   the new-protective (not ported) backpressure/slow-client policy.
+- Sub-slice 3a implementation (forwarding protocol + Python adapter + Rust
+  gateway plumbing, no live client cutover): `GatewayInbound`/
+  `GatewayOutbound`/`DeliveryDirective`/`DeliveryTarget` gateway-framing
+  protocol types in `lorecraft-protocol` plus the Python mirror
+  `src/lorecraft/protocol/gateway.py`, with `command_id` added to
+  `CommandReply` for request/reply correlation over the multiplexed UDS
+  stream.
+- Python `src/lorecraft/gateway/adapter.py` — a UDS listener + the
+  `DirectiveConnectionManager`, backed by a new `ConnectionManagerProtocol`
+  structural-typing seam in `engine/game/connection_manager.py` so the
+  connection manager is injectable without `cast`/`type: ignore`; the shared
+  command-handling core was extracted out of `main.py` into
+  `webui/player/ws_command.py` + `ui_snapshots.py` so both the live `/ws`
+  handler and the new adapter run identical logic.
+- Rust `lorecraft-events` crate: `ConnectionRegistry` (three sorted-read
+  connection maps) and `dispatch.rs` bounded, non-blocking `try_send` fan-out,
+  proving one slow/full recipient queue never stalls delivery to a sibling
+  recipient.
+- Rust `lorecraft-server` crate: `forward.rs` UDS framed client
+  demultiplexing correlated `CommandReply`s from uncorrelated `Deliver`
+  pushes, an Axum app skeleton with a working health-check route, and
+  honestly-scoped `ws_player.rs`/`ws_admin.rs`/`auth.rs` stubs for sub-slices
+  3b/3c; added `tokio` as the workspace's first async dependency and pinned
+  `axum = "=0.8.4"` exactly (0.8.9+ requires rustc 1.80, above this
+  workspace's 1.75 MSRV).
+- A cross-manager `DeliveryDirective` parity harness proving the adapter's
+  recorded directives resolve to the same payloads the real
+  `ConnectionManager` would send to a room-mate, closing sub-slice 3a's exit
+  check. **Sub-slices 3b (player `/ws` cutover) and 3c (admin cutover +
+  backpressure) are not yet built** — the Phase 3 phase-level exit criterion
+  remains open.
 
 ---
 
