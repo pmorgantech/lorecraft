@@ -1480,14 +1480,20 @@ async function loadEconomyRegions() {
   allEconomyRegions = regions;
   for (const r of regions) {
     const tr = document.createElement("tr");
+    // NB: r.zone is bound into the Save handler via addEventListener below,
+    // not interpolated into an inline onclick="" attribute string -- HTML-
+    // entity-escaping (esc()) doesn't protect a JS-source attribute context
+    // since the browser decodes entities before treating the attribute as
+    // code, so a zone containing a quote could otherwise break out.
     tr.innerHTML = `
       <td style="font-family:monospace;color:var(--amber)">${esc(r.zone)}</td>
       <td><input id="eco-mult-${esc(r.zone)}" type="number" min="0" step="0.05" value="${r.region_mult}" style="width:90px;" /></td>
       <td><textarea id="eco-bias-${esc(r.zone)}" rows="2" style="width:220px;font-family:monospace;font-size:0.8rem;">${esc(JSON.stringify(r.bias || {}))}</textarea></td>
       <td style="min-width:140px;">
-        <button id="eco-save-${esc(r.zone)}" onclick="saveEconomyRegion('${esc(r.zone)}')">Save</button>
+        <button id="eco-save-${esc(r.zone)}">Save</button>
         <div id="eco-status-${esc(r.zone)}" role="status" aria-live="polite" style="font-size:0.75rem;min-height:1.2em;margin-top:0.25rem;"></div>
       </td>`;
+    tr.querySelector("button").addEventListener("click", () => saveEconomyRegion(r.zone));
     tbody.appendChild(tr);
   }
   updateEconomyEditUI();
@@ -1527,14 +1533,22 @@ async function saveEconomyRegion(zone) {
   statusEl.style.color = "var(--text-dim)";
   statusEl.textContent = "Saving…";
   try {
-    const result = await api("POST", `/admin/economy/regions/${zone}`, {region_mult, bias});
+    const result = await api("POST", `/admin/economy/regions/${encodeURIComponent(zone)}`, {region_mult, bias});
     if (result && result.detail) {
       statusEl.style.color = "var(--danger)";
       statusEl.textContent = result.detail;
     } else {
-      statusEl.style.color = "var(--phosphor)";
-      statusEl.textContent = "Saved.";
+      // Reload the table (source of truth) BEFORE showing "Saved." --
+      // loadEconomyRegions() rebuilds every row (tbody.innerHTML = ""), which
+      // would otherwise destroy this row's status element (and the message
+      // in it) out from under a human or an e2e test trying to read it.
+      // Re-locate the freshly-rendered element for this zone afterwards.
       await loadEconomyRegions();
+      const newStatusEl = document.getElementById(`eco-status-${zone}`);
+      if (newStatusEl) {
+        newStatusEl.style.color = "var(--phosphor)";
+        newStatusEl.textContent = "Saved.";
+      }
     }
   } finally {
     updateEconomyEditUI();
@@ -2038,7 +2052,8 @@ function esc(s) {
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;");
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
 }
 function badge(text, color) {
   return `<span class="badge badge-${color}">${esc(text)}</span>`;

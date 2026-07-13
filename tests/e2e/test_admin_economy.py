@@ -50,27 +50,42 @@ def test_editing_region_mult_persists_and_reflects_on_reload(
     admin_login(page, admin_server)
     _open_economy_tab(page)
 
-    page.fill("#eco-mult-cogsworth", "0.9")
-    page.fill("#eco-bias-cogsworth", '{"gem": 2.0}')
+    # This mutates the seeded `cogsworth` region -- restore it in `finally` so
+    # the shared zone is left exactly as world.yaml seeded it regardless of
+    # test order or a re-run of just this test (test_tab_loads_regions_seeded_
+    # from_world_yaml asserts cogsworth's pristine 1.1/{} values). `admin_server`
+    # already gives each test its own tmp_path DB today, but restoring here is
+    # cheap defense against that isolation assumption changing later.
+    try:
+        page.fill("#eco-mult-cogsworth", "0.9")
+        page.fill("#eco-bias-cogsworth", '{"gem": 2.0}')
 
-    with page.expect_response("**/admin/economy/regions/cogsworth"):
-        page.click("#eco-save-cogsworth")
-    page.wait_for_function(
-        "() => document.getElementById('eco-status-cogsworth').textContent.includes('Saved')"
-    )
+        with page.expect_response("**/admin/economy/regions/cogsworth"):
+            page.click("#eco-save-cogsworth")
+        page.wait_for_function(
+            "() => document.getElementById('eco-status-cogsworth').textContent.includes('Saved')"
+        )
 
-    # A follow-up load (simulating a fresh admin session, not a page reload of
-    # stale form state) must reflect the change -- proving it's live in the
-    # DB, not just held in the form -- no restart/reseed required.
-    page.click('.tab[data-tab="dashboard"]')
-    _open_economy_tab(page)
-    page.wait_for_function(
-        "() => document.getElementById('eco-mult-cogsworth').value === '0.9'"
-    )
-    assert page.input_value("#eco-bias-cogsworth") == '{"gem":2}'
+        # A follow-up load (simulating a fresh admin session, not a page reload of
+        # stale form state) must reflect the change -- proving it's live in the
+        # DB, not just held in the form -- no restart/reseed required.
+        page.click('.tab[data-tab="dashboard"]')
+        _open_economy_tab(page)
+        page.wait_for_function(
+            "() => document.getElementById('eco-mult-cogsworth').value === '0.9'"
+        )
+        assert page.input_value("#eco-bias-cogsworth") == '{"gem":2}'
 
-    # An untouched zone's row must be unaffected by the edit above.
-    assert page.input_value("#eco-mult-whisperwood") == "1.05"
+        # An untouched zone's row must be unaffected by the edit above.
+        assert page.input_value("#eco-mult-whisperwood") == "1.05"
+    finally:
+        page.fill("#eco-mult-cogsworth", "1.1")
+        page.fill("#eco-bias-cogsworth", "{}")
+        with page.expect_response("**/admin/economy/regions/cogsworth"):
+            page.click("#eco-save-cogsworth")
+        page.wait_for_function(
+            "() => document.getElementById('eco-status-cogsworth').textContent.includes('Saved')"
+        )
 
 
 def test_save_controls_gated_to_superadmin_role(page: Any, admin_server: str) -> None:
