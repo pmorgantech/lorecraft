@@ -1,12 +1,14 @@
 # Discipline / Ability System — Design & Implementation Guide
 
-> **Status:** Design proposal (2026-07-13). Not yet on the roadmap as a numbered sprint —
-> see the "Sprint 77 (proposed)" summary in [`roadmap.md`](roadmap.md)'s Backlog.
+> **Status:** Design finalized (2026-07-13), reviewed by Research/Planning, and queued on the
+> roadmap as **Sprint 77** (Tier 1 mechanism) and **Sprint 78** (Tier 2 policy & content) — see
+> those sections in [`roadmap.md`](roadmap.md). "Finalized" means the design is ready to build,
+> **not** that any of it is implemented yet — all Sprint 77/78 tasks start unchecked.
 > **Origin:** user-provided design brief (2026-07-13) proposing a Discipline → Ability model
 > for MUD progression systems, reworked here to fit Lorecraft's existing Tier 1/2 architecture,
 > data-driven conventions, and **combat-shelved** status.
 > **Companion docs:** [`engine_core.md`](engine_core.md) (Tier 1/2/3 boundary),
-> [`combat_system.md`](combat_system.md) (shelved combat design — see §7, "Combat seam"),
+> [`combat_system.md`](combat_system.md) (shelved combat design — see §8, "Combat seam"),
 > [`roadmap.md`](roadmap.md) §73 design (mechanism/policy split precedent this guide follows),
 > §74 (the skill-tree system this guide replaces).
 
@@ -40,10 +42,10 @@ an additive layer alongside them.
 
 **Combat note (important):** the user's source brief's seed disciplines (Swordsmanship,
 Defense, Pyromancy, Necromancy) are combat-flavored. Lorecraft has combat/PvP explicitly
-shelved (`wishlist.md` → *Combat, reframed*; `AGENTS.md` "foundation before features"). §6
+shelved (`wishlist.md` → *Combat, reframed*; `AGENTS.md` "foundation before features"). §7
 below proposes a **non-combat seed set** grounded in Lorecraft's actual world and existing
 content instead. The underlying *mechanism* stays generic enough that `combat_system.md`'s
-shelved design can plug in as additional Disciplines later without a redesign — see §7.
+shelved design can plug in as additional Disciplines later without a redesign — see §8.
 
 ---
 
@@ -108,7 +110,7 @@ data-driven mechanism module, no IO, no session, no hardcoded ability IDs):
 
 - **`AbilityDef`** — a value object holding one ability's *structural* data (id, discipline
   id, tier, ability_type, activation_type, prerequisites, cost, usage-requirement
-  descriptors — see §4). Constructed from data the caller passes in (loaded from YAML by
+  descriptors — see §5). Constructed from data the caller passes in (loaded from YAML by
   Tier 2), never hardcoded.
 - **`check_acquisition(player_state, ability: AbilityDef, discipline_rank: int) -> AcquisitionResult`**
   — the generic "can this player learn this ability" mechanism: cost affordable, prerequisites
@@ -118,7 +120,7 @@ data-driven mechanism module, no IO, no session, no hardcoded ability IDs):
 - **`check_usage(actor_state, ability: AbilityDef, target_state, world_state) -> UsageResult`**
   — the generic "can this ability be performed right now" mechanism: weapon-tag match,
   character-state match (via the existing `Player.flags`/`ActiveEffect` state system — see
-  §4.3), target-state match, cooldown/resource affordability. This is new — today's system has
+  §5.3), target-state match, cooldown/resource affordability. This is new — today's system has
   no usage-requirement mechanism at all (a `forage`-flavor node's only "usage requirement" is
   hardcoded into the verb's own Python `conditions=[...]`, not data). Generalizing this into
   Tier 1 is the single biggest structural addition this guide proposes.
@@ -126,11 +128,18 @@ data-driven mechanism module, no IO, no session, no hardcoded ability IDs):
   *existing* `engine/game/modifiers.py::resolve()` and `engine/game/checks.py::skill_check()`
   Tier 1 primitives; proficiency growth-by-use logic itself is lifted near-verbatim from
   `SkillService.record_use()` (already Tier 1-appropriate in character, just misplaced under
-  `features/skills/` today — see §5's migration note).
+  `features/skills/` today — see §6's migration note). **Important correction to "near-verbatim":**
+  `SkillService.record_use()` (`features/skills/service.py:17,19,30`) currently bakes
+  `IMPROVE_CHANCE = 0.1` and `MAX_LEVEL = 100` in as **module-level constants** — that's policy
+  masquerading as mechanism. The ported Tier 1 function must take them as parameters instead —
+  e.g. `resolve_proficiency(base_level, modifiers, improve_chance, max_rank)` — supplied by the
+  Tier 2 caller (from `world_content/disciplines.yaml` or a config row), not hardcoded in
+  `engine/game/abilities.py`. The mechanism knows *how* to roll a chance and cap a level; it
+  must not know *what* the chance or cap should be for any given discipline.
 - **Cooldown/resource primitives** — a small, generic `ResourceLedger`-style check (does the
   actor have enough of `resource_type` — stamina is the only resource that exists in Lorecraft
   today, via the `fatigue` feature's meter) and a cooldown-timestamp check, both keyed off
-  `ActiveEffect`/meter primitives that already exist (§4.3). **Not** a new resource-type
+  `ActiveEffect`/meter primitives that already exist (§5.3). **Not** a new resource-type
   registry — Lorecraft has exactly one resource (stamina) today; don't build a generic
   multi-resource system speculatively (mana/rage/energy) with nothing to consume it.
 
@@ -143,12 +152,12 @@ are. All of that is data, supplied by the Tier 2 caller — exactly the line Spr
 `features/progression/skill_tree.py`) — the opinionated, data-driven policy layer
 
 - **`DisciplineDef`** / **`DisciplineRegistry`** — loaded from `world_content/disciplines.yaml`
-  (see §4 for schema), mirroring the existing `SkillTreeRegistry` load pattern exactly (marks-
+  (see §5 for schema), mirroring the existing `SkillTreeRegistry` load pattern exactly (marks-
   def pattern, `discover_features()`-compatible).
 - **`AbilityRegistry`** — loaded from the same YAML (or a companion `abilities.yaml` — see
-  §4.4 for the file-split recommendation), each entry validated into the Tier 1 `AbilityDef`
+  §5.4 for the file-split recommendation), each entry validated into the Tier 1 `AbilityDef`
   shape plus Tier-2-only fields (display name, description, flavor text).
-- **Per-player state**: extends `PlayerStats` — see §5.2 for the exact field changes (this is
+- **Per-player state**: extends `PlayerStats` — see §6.2 for the exact field changes (this is
   a real schema migration, flagged for Database Specialist review when implemented).
 - **`train`/`learn` command** — same UX shape as today's, now driving the generalized Tier 1
   `check_acquisition` instead of the flat cost+prerequisite check.
@@ -162,7 +171,40 @@ are. All of that is data, supplied by the Tier 2 caller — exactly the line Spr
 
 ---
 
-## 3. Reconciling "Discipline rank" vs. "character level"
+## 3. Live-tunability
+
+Per `AGENTS.md`'s "Prefer live-tunable configuration where sensible" principle, this design
+draws an explicit line between content that only takes effect after a deploy/reseed and dials
+an admin would plausibly want to retune on a running server without restarting.
+
+**Static YAML only** (structure — changing it is content authoring, not game-balance
+retuning; requires a code deploy or a manual file edit + cold-boot reseed, same as
+`skill_tree.yaml` today):
+
+- Discipline and ability *structure* — names, descriptions, prerequisites, flavor text,
+  `ability_type`/`activation_type`, the `unlock:` payload shape.
+- The 5-discipline seed taxonomy itself (§7).
+
+**Candidates for a live-tunable DB singleton** (the `WorldClock`/`ProgressionConfig` pattern —
+a DB-backed row, YAML-seeded for initial authoring, mutated live through an admin POST
+endpoint that updates the DB *and* the running server state in the same call, no restart):
+
+- Per-ability `cost` (skill points to acquire).
+- `cooldown_seconds` and resource costs (§5.2's `usage.resource`/`usage.cooldown_seconds`).
+- Proficiency-growth tuning — `improve_chance` and `max_rank`, the two values §2 calls out as
+  needing to be parameters rather than hardcoded constants (today's `IMPROVE_CHANCE`/
+  `MAX_LEVEL` in `features/skills/service.py:17,19`).
+
+**OPEN ITEM — deliberately deferred, not decided here.** This sprint should ship all of the
+above as **static YAML**, matching `skill_tree.yaml`'s current precedent exactly. Wiring any of
+the "candidates" list into a live-tunable admin singleton (following the Sprint 76 economy
+pattern) is real, separable follow-up scope — worth doing only if admins actually ask to retune
+ability costs/cooldowns/proficiency curves without a reseed. Don't build it speculatively ahead
+of that demand; flag it in the roadmap backlog instead (see `roadmap.md`).
+
+---
+
+## 4. Reconciling "Discipline rank" vs. "character level"
 
 The source brief's `required_rank` (a per-discipline numeric gate, separate from
 `required_level`) doesn't exist in Lorecraft today — only a flat character `level`
@@ -184,9 +226,9 @@ The source brief's `required_rank` (a per-discipline numeric gate, separate from
 
 ---
 
-## 4. Data schema (YAML — this is the load-bearing "data-driven, not code" requirement)
+## 5. Data schema (YAML — this is the load-bearing "data-driven, not code" requirement)
 
-### 4.1 Discipline record (`world_content/disciplines.yaml`)
+### 5.1 Discipline record (`world_content/disciplines.yaml`)
 
 ```yaml
 version: 1
@@ -197,7 +239,7 @@ disciplines:
     governing_stat: fortitude   # mirrors today's SkillDef.governing_stat
 ```
 
-### 4.2 Ability record (`world_content/abilities.yaml` — see §4.4 for why split from
+### 5.2 Ability record (`world_content/abilities.yaml` — see §5.4 for why split from
 disciplines.yaml)
 
 Directly generalizes today's `SkillTreeNode`, adding the fields §2's Tier 1 mechanism needs:
@@ -208,7 +250,7 @@ Directly generalizes today's `SkillTreeNode`, adding the fields §2's Tier 1 mec
   discipline: survival
   branch: foraging          # optional; groups abilities within a discipline for UI/tree display
   tier: 1
-  ability_type: active      # active | passive | interaction | reaction (see §4.5 — trimmed from
+  ability_type: active      # active | passive | interaction | reaction (see §5.5 — trimmed from
                              # the source brief's 10 types; see rationale)
   activation_type: instant  # instant | maintained | triggered (trimmed from the source brief's
                              # 6 types — see rationale)
@@ -229,24 +271,24 @@ Directly generalizes today's `SkillTreeNode`, adding the fields §2's Tier 1 mec
     cooldown_seconds: 0
   unlock:                   # what it GRANTS (unchanged shape from today's SkillTreeNode.unlock)
     enables_verb: forage
-  proficiency_model: none   # none | success_only | success_and_magnitude (see §4.6)
+  proficiency_model: none   # none | success_only | success_and_magnitude (see §5.6)
   mutually_exclusive_group: null
   tags: [outdoor, gathering]
 ```
 
-### 4.3 The generic state system
+### 5.3 The generic state system
 
 The source brief calls for a generic state vocabulary (`hidden`, `burning`, `bleeding`,
 `prone`, `guarding`, `marked`). **Lorecraft already has the precedent — don't build a new
 one.** `engine/models/meters.py::ActiveEffect` (clock-driven buff/debuff, `effect_key` +
 `payload` + `expires_at_epoch`, swept by `EffectService._on_time_advanced()`) is exactly this
 mechanism, already Tier 1, already used by the `consumables` feature's `apply_effect`
-descriptors. `usage_requirements.character_states`/`target_states` in §4.2's schema should
+descriptors. `usage_requirements.character_states`/`target_states` in §5.2's schema should
 resolve against **held `ActiveEffect.effect_key`s** (for transient states like "burning") plus
 **`Player.flags`** (for durable states, the same flag namespace `ability.<id>` already uses,
 just a different prefix — e.g. `state.hidden`). No new state-tracking table needed.
 
-### 4.4 Why split `disciplines.yaml` from `abilities.yaml`
+### 5.4 Why split `disciplines.yaml` from `abilities.yaml`
 
 The source brief's example puts everything in one flat list. Recommend splitting because
 disciplines are few and rarely change (content-authoring cadence: rare) while abilities will
@@ -255,7 +297,7 @@ splitting `world.yaml` rooms from `skill_tree.yaml` nodes today. Keeps diffs sma
 merge-conflict-prone content (abilities) separate from stable structural content
 (disciplines).
 
-### 4.5 Trimmed `ability_type`/`activation_type` enums — rationale
+### 5.5 Trimmed `ability_type`/`activation_type` enums — rationale
 
 The source brief proposes 10 ability types and 6 activation types, largely to support combat
 (`stance`, `spell`, `ritual`, `craft`, `movement`, `social`, `gathering` — several of which are
@@ -270,7 +312,7 @@ enum member list validated by the engine — **adding `spell`/`ritual`/`stance` 
 combat unshelves is a content change, not an engine change**, so trimming now costs nothing
 and avoids designing UI/copy for ability types with zero content.
 
-### 4.6 `proficiency_model` — trimmed from the source brief's freeform string
+### 5.6 `proficiency_model` — trimmed from the source brief's freeform string
 
 Recommend a closed enum (`none | success_only | success_and_magnitude`) rather than the source
 brief's implied freeform strings (`accuracy_and_damage`, `success_and_damage` — both
@@ -282,16 +324,27 @@ future case where proficiency also scales an effect's strength (no current conte
 
 ---
 
-## 5. Migration plan
+## 6. Migration plan
 
-### 5.1 Content migration (mechanical, low risk)
+### 6.1 Content migration (mechanical, low risk)
 
-Today's 7 `skill_tree.yaml` nodes map onto disciplines cleanly (see §6 for the full mapping) —
+Today's 7 `skill_tree.yaml` nodes map onto disciplines cleanly (see §7 for the full mapping) —
 this is a content-authoring pass, not new engine work, once §2's Tier 1/Tier 2 modules exist.
 
-### 5.2 Schema migration (`PlayerStats` — flag for Database Specialist review)
+**One node needs a modifier-key remap, not just a re-file.** `sharp_eyes`'s modifier
+(`world_content/skill_tree.yaml:56-65`) targets `key: skill.perception` — a reference into the
+old flat `SkillRegistry` namespace being deleted (§6.3). Once `features/skills/` is gone, that
+key has no home under the new `discipline_ranks.<discipline>` namespace and the modifier would
+silently no-op (the resolver simply finds nothing to multiply). It must be remapped during
+Phase C to `discipline_ranks.subterfuge` (or whatever final key the implementer settles on for
+"perception-flavored checks under the Subterfuge discipline") so `skill_check()` still picks it
+up. This is the **only** key-remap breakage found in the migration — every other node's
+modifier key (`carry_capacity`, `price.buy`, and any future `skill.<name> mult`) either doesn't
+reference the old flat skill catalog at all or is already namespaced independently of it.
 
-- `skills: JsonObject` → rename/repurpose as `discipline_ranks: JsonObject` (§3) — same dict
+### 6.2 Schema migration (`PlayerStats` — flag for Database Specialist review)
+
+- `skills: JsonObject` → rename/repurpose as `discipline_ranks: JsonObject` (§4) — same dict
   shape, different keys (discipline ids instead of flat skill names). A straightforward
   reflection-scanner-compatible additive column if renamed rather than reused in place (see
   the Sprint 75 precedent, `_ensure_additive_columns` — this migration should follow the same
@@ -299,10 +352,10 @@ this is a content-authoring pass, not new engine work, once §2's Tier 1/Tier 2 
 - `unlocked_nodes: list[str]` → keep as-is; still the query/UI record for owned abilities,
   vocabulary otherwise unchanged (a "node" *is* an "ability" now, just renamed in code/docs).
 - `Player.flags` — `ability.<id>` prefix unchanged; new `state.<name>` prefix added for
-  transient usage-requirement states (§4.3) — additive, no migration needed (flags dict is
+  transient usage-requirement states (§5.3) — additive, no migration needed (flags dict is
   already schemaless JSON).
 
-### 5.3 Code migration
+### 6.3 Code migration
 
 - Delete `features/skills/definitions.py` (`SkillRegistry`, `STANDARD_SKILLS`) — absorbed into
   `features/disciplines/`'s ability registry. Pre-1.0, no alias kept (matches the `area_id`
@@ -321,7 +374,7 @@ this is a content-authoring pass, not new engine work, once §2's Tier 1/Tier 2 
 
 ---
 
-## 6. Proposed non-combat seed disciplines (replaces the source brief's combat-flavored set)
+## 7. Proposed non-combat seed disciplines (replaces the source brief's combat-flavored set)
 
 Curated to (a) absorb all 7 existing nodes + all 6 existing skills with zero combat content,
 (b) fit Lorecraft's actual world (Cogsworth/Whisperwood/Port Veridian, no weapons-as-abilities
@@ -332,15 +385,21 @@ sketches for a combat-heavy game:
 | Discipline | Absorbs | Purpose |
 |---|---|---|
 | **Survival** | `forage` (existing), `survival`+`cartography` skills | Outdoor competence — foraging, tracking, pathfinding, camping |
-| **Subterfuge** | `pick_locks`, `keen_senses` (existing), `lockpicking`+`perception` skills | Stealth and unseen access — locks, awareness, sneaking |
+| **Subterfuge** | `pick_locks`, `keen_senses`, `sharp_eyes` (existing), `lockpicking`+`perception` skills | Stealth and unseen access — locks, awareness, sneaking |
 | **Commerce** | `haggler` (existing), `bartering` skill | Trade and pricing — ties into the `economy` feature's `price.buy` modifier precedent |
 | **Rhetoric** | `silver_tongue` (existing), `persuasion` skill | Social/dialogue unlocks — interaction-flavor abilities, ties into NPC dialogue gating |
 | **Fortitude** | `mule` (existing) | Physical resilience — carry capacity and (future) endurance-flavored passives |
 
+All 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`, `sharp_eyes`,
+`haggler`, `silver_tongue`) now fit cleanly into these 5 disciplines — no leftover node, no
+discipline invented solely to hold one orphan.
+
 Each existing ability keeps its id/behavior unchanged — only gains a `discipline:` field and,
-for the three that were skill-tree-only, a paired discipline-rank contribution from the
+for the four that were skill-tree-only, a paired discipline-rank contribution from the
 matching legacy skill (e.g. `pick_locks`'s discipline is `subterfuge`, and using it now also
 nudges `discipline_ranks.subterfuge`, replacing the old flat `skills.lockpicking` bump).
+`sharp_eyes` (prereq `keen_senses`, a passive modifier on perception) is also `subterfuge` —
+see §6.1 for a modifier-key remap this one needs that the others don't.
 
 **Deliberately excluded from v1**, matching the source brief's own disciplines but requiring
 combat: Swordsmanship, Defense, Pyromancy, Restoration, Necromancy, Leadership (the
@@ -350,22 +409,22 @@ build ahead of content).
 
 ---
 
-## 7. Combat seam — how this stays open for `combat_system.md` later
+## 8. Combat seam — how this stays open for `combat_system.md` later
 
 `combat_system.md`'s shelved design already specifies Tier 1 primitives this guide reuses
 directly (modifier resolver, seedable `skill_check`, timed effects) — no conflict. When/if
 combat unshelves, its abilities (Swordsmanship/Defense-style) become **additional
-disciplines** authored the same way §6's do, using the `ability_type`/`activation_type`
-values §4.5 trimmed out but didn't forbid (`stance`, `spell`, `reaction`-with-`triggered`
+disciplines** authored the same way §7's do, using the `ability_type`/`activation_type`
+values §5.5 trimmed out but didn't forbid (`stance`, `spell`, `reaction`-with-`triggered`
 already fit the schema; `weapon_tags`/`cooldown_seconds`/`resource.type: stamina` are already
-in §4.2's schema, unused by any v1 ability but ready). **No engine change needed to add combat
+in §5.2's schema, unused by any v1 ability but ready). **No engine change needed to add combat
 abilities later** — purely a content-authoring + (if a second resource type like "rage" is
 wanted) a small `ResourceLedger` extension. This is the "generic engine, opinionated content"
 line held correctly.
 
 ---
 
-## 8. Phased implementation plan (roadmap-ready)
+## 9. Phased implementation plan (roadmap-ready)
 
 Mirrors the Sprint 73/74 mechanism-then-policy sequencing precedent:
 
@@ -374,9 +433,9 @@ Mirrors the Sprint 73/74 mechanism-then-policy sequencing precedent:
    Pure, unit-tested, no content yet.
 2. **Phase B — Tier 2 registry + schema.** `features/disciplines/` package,
    `world_content/disciplines.yaml` + `abilities.yaml` loaders, `PlayerStats` migration
-   (§5.2, Database Specialist gate).
+   (§6.2, Database Specialist gate).
 3. **Phase C — Content migration.** Port the 7 existing nodes + 6 existing skills into the 5
-   disciplines (§6), zero new abilities yet — proves the migration is lossless before adding
+   disciplines (§7), zero new abilities yet — proves the migration is lossless before adding
    scope.
 4. **Phase D — `train`/`learn`/`abilities`/`skills` command rework**, folding in the "one
    `ctx.say()` per command" fix already flagged in `roadmap.md`'s Backlog (same commands, same

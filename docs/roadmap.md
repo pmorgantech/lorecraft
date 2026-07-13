@@ -11,10 +11,14 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-13, v0.96.0 on main; Sprints 73, 74, 75 & 76 all merged)
+## Where things stand (2026-07-13, v0.96.0 on main; Sprints 1–76 all shipped; 77–78 designed & queued)
 
 **Everything through Sprint 76 is merged to main** (currently at v0.96.0, which ships Sprints 73,
-74, 75, and 76 in sequence — see `../CHANGELOG.md`).
+74, 75, and 76 in sequence — see `../CHANGELOG.md`). All numbered sprints 1 through 76 are now
+shipped. **Sprints 77 and 78 (the Discipline/Ability system — see those sections below and
+[`discipline_ability_system.md`](discipline_ability_system.md)) are fully designed, reviewed by
+Research/Planning, and queued for Backend Engineer** — design-finalized is not the same as
+built; every 77/78 task starts unchecked.
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -955,52 +959,75 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
 
 ---
 
-## Sprint 77 (proposed) — Discipline / Ability system rework
+## Sprint 77 — Discipline/Ability system: Tier 1 mechanism (Phases A–B.1)
 
-**Not yet started — design-only.** Full design in
-[`discipline_ability_system.md`](discipline_ability_system.md) (added 2026-07-13, user-driven).
-Origin: the user found Lorecraft's current skills-vs-abilities split genuinely confusing (two
-separate systems both called "skill" — a flat numeric `SkillRegistry` catalog vs. the Sprint 74
-skill-tree's `ability.<id>` nodes — that don't share storage or vocabulary) and provided a
-detailed Discipline → Ability design brief to replace both with one coherent, fully data-driven
-model.
+**Not yet started — design is finalized and reviewed by Research/Planning; queued for Backend
+Engineer.** Full design in [`discipline_ability_system.md`](discipline_ability_system.md)
+(added 2026-07-13, user-driven; Research/Planning audit pass completed 2026-07-13 with four
+cautions, all folded into the design — the `resolve_proficiency` parameterization note (§2),
+the new Live-tunability subsection (§3), the seed-discipline mapping-table fix (§7), and the
+content-migration modifier-key-remap note (§6.1)). Origin: the user found Lorecraft's current
+skills-vs-abilities split
+genuinely confusing (two separate systems both called "skill" — a flat numeric `SkillRegistry`
+catalog vs. the Sprint 74 skill-tree's `ability.<id>` nodes — that don't share storage or
+vocabulary) and provided a detailed Discipline → Ability design brief to replace both with one
+coherent, fully data-driven model. **"Design finalized" means ready to build, not built** — every
+task below starts unchecked.
 
-**Scope summary** (full detail in the guide — this is a pointer, not a duplicate):
+**Scope: Phase A (Tier 1 mechanism) plus the start of Phase B (Tier 2 scaffolding), stopping
+short of content/migration/commands** — those are Sprint 78. Mirrors the Sprint 73/74
+mechanism-then-policy split precedent.
 
-- **Discipline** (themed body of practice, e.g. *Survival*, *Subterfuge*) → **Ability**
-  (concrete active verb / passive / interaction — generalizes today's `SkillTreeNode`) →
-  **Proficiency** (per-discipline numeric competence, replaces the flat `SkillRegistry` levels).
-- **Tier 1** (`engine/game/abilities.py`, new): generic acquisition-check + **usage-check**
-  mechanisms (the latter is genuinely new capability — today's verbs hardcode their own gating
-  in Python; the new model makes usage requirements data, not code) + proficiency resolution,
-  reusing existing Tier 1 primitives (`modifiers.py`, `checks.py::skill_check`,
-  `ActiveEffect`) rather than inventing parallel ones.
-- **Tier 2** (`features/disciplines/`, replaces `features/skills/` +
-  `features/progression/skill_tree.py`): the registries, `world_content/disciplines.yaml` +
-  `abilities.yaml`, and a `PlayerStats` schema migration (`skills` → `discipline_ranks`,
-  flagged for Database Specialist review).
-- **Non-combat seed set** (5 disciplines — Survival, Subterfuge, Commerce, Rhetoric, Fortitude
-  — absorbing all 7 existing skill-tree nodes and all 6 existing flat skills with zero new
-  combat content): the source brief's own example disciplines (Swordsmanship, Defense,
-  Pyromancy, Necromancy) are combat-flavored and **not used as-is** — Lorecraft has combat/PvP
-  explicitly shelved. The guide leaves an explicit seam (§7) so `combat_system.md`'s shelved
-  design can plug in as additional disciplines later with no engine rework, when/if combat is
-  ever unshelved.
-- **Six phases** (A: Tier 1 mechanism → B: Tier 2 registries/schema → C: lossless content
-  migration → D: command rework, folding in the already-flagged "one `ctx.say()` per command"
-  fix for `abilities`/`skills`/`train` → E: retrofit existing verbs onto data-driven usage
-  requirements → F: docs), mirroring the Sprint 73→74 mechanism-then-policy sequencing.
+| # | Task | Status |
+|---|------|--------|
+| 77.1 | **`engine/game/abilities.py` — `AbilityDef`.** New Tier 1 value object (mirrors `engine/game/leveling.py`'s shape): id, discipline id, tier, `ability_type`, `activation_type`, prerequisites, cost, usage-requirement descriptors. Pure data, no hardcoded ability IDs (`discipline_ability_system.md` §2). | [ ] |
+| 77.2 | **`check_acquisition(player_state, ability, discipline_rank) -> AcquisitionResult`.** Generic "can this player learn this ability" mechanism — cost affordable, prerequisites held, discipline rank + level met. Knows nothing about what an ability unlocks (§2). | [ ] |
+| 77.3 | **`check_usage(actor_state, ability, target_state, world_state) -> UsageResult`.** Generic "can this ability be performed right now" mechanism — character/target-state match via existing `Player.flags`/`ActiveEffect`, cooldown/resource affordability. **Genuinely new capability** — today's verbs hardcode their own gating in Python; this is the single biggest structural addition (§2, §5.3). | [ ] |
+| 77.4 | **`resolve_proficiency(base_level, modifiers, improve_chance, max_rank) -> float`.** Thin wrapper composing the existing `modifiers.py::resolve()` and `checks.py::skill_check()` Tier 1 primitives. **Parameterized, not hardcoded**: `improve_chance` and `max_rank` are supplied by the Tier 2 caller (from YAML/config), not baked in as module constants the way `features/skills/service.py`'s `IMPROVE_CHANCE`/`MAX_LEVEL` are today — that would leak policy into the mechanism layer (§2). | [ ] |
+| 77.5 | **Cooldown/resource primitives.** A small, generic `ResourceLedger`-style affordability check (stamina is the only resource Lorecraft has today — no speculative multi-resource system) plus a cooldown-timestamp check, both keyed off existing `ActiveEffect`/meter primitives. No new resource-type registry (§2). | [ ] |
+| 77.6 | **Unit tests for 77.1–77.5.** Pure Tier 1 module, no content yet — cover acquisition/usage/proficiency/cooldown edge cases with synthetic `AbilityDef`s, not real disciplines (those arrive in Sprint 78). | [ ] |
+| 77.7 | **Phase B.1 — `features/disciplines/` package skeleton.** New Tier 2 package (manifest-only stub at this stage) that will host the registries Sprint 78 builds out; establishes the package location and import boundaries (may import `engine.*`, never a web host) ahead of the registry/schema work. | [ ] |
+| 77.8 | **Docs.** This roadmap section plus confirmation that `discipline_ability_system.md` accurately reflects the shipped Tier 1 module's actual signatures (update if implementation deviates from the design in any parameter name/shape). | [ ] |
 
-**Scale note**: this is comparable in size to the Sprint 73+74 pair (a Tier 1 mechanism sprint
-followed by a Tier 2 content/policy sprint) — likely warrants splitting into two sprint numbers
-(mechanism, then content/migration) when picked up, rather than one large sprint, following
-that precedent. Not split into 77/78 yet since scope hasn't been reviewed/confirmed.
+**Tier boundary:** 77.1–77.6 are pure **Tier 1** (`engine/game/abilities.py`) — no discipline
+identities, ability content, or policy values hardcoded anywhere in this sprint. 77.7 opens the
+**Tier 2** package location only (no registries/schema yet — those are Sprint 78).
 
-**Before implementation starts**: this is a genuine replacement of two shipped systems
-(Sprint 24's `SkillRegistry`/`STANDARD_SKILLS`, Sprint 74's skill tree) — a Research/Planning
-pass reviewing the full guide against the current codebase (which may have moved since
-2026-07-13) is warranted before Backend Engineer work begins, per the orchestrator's own
-routing rule for non-trivial design work.
+---
+
+## Sprint 78 — Discipline/Ability system: Tier 2 policy & content (Phases B.2–F)
+
+**Not yet started — depends on Sprint 77's Tier 1 mechanism landing first.** Builds the
+opinionated, data-driven policy layer on top of Sprint 77's mechanism: registries, YAML content,
+the `PlayerStats` schema migration, content migration (including the one modifier-key remap
+Research/Planning's audit flagged), and the command rework. Full detail in
+[`discipline_ability_system.md`](discipline_ability_system.md) §4–§9.
+
+| # | Task | Status |
+|---|------|--------|
+| 78.1 | **`DisciplineDef`/`DisciplineRegistry`.** Loaded from `world_content/disciplines.yaml`, mirroring the existing `SkillTreeRegistry` load pattern (marks-def, `discover_features()`-compatible). Static YAML only — discipline structure is not a live-tunable dial (§3). | [ ] |
+| 78.2 | **`AbilityRegistry`.** Loaded from `world_content/abilities.yaml` (split from `disciplines.yaml` per §5.4's rationale — disciplines change rarely, abilities change often), each entry validated into the Tier 1 `AbilityDef` shape plus Tier-2-only display fields. | [ ] |
+| 78.3 | **`PlayerStats` schema migration (Database Specialist gate).** `skills: JsonObject` → `discipline_ranks: JsonObject` (same dict shape, different keys); `unlocked_nodes` kept as-is (a "node" is an "ability" now, vocabulary-only). Follow the Sprint 75 generic reflection-scanner pattern, not a hand-written shim (§4, §6.2). | [ ] |
+| 78.4 | **Content migration — 5-discipline non-combat seed set.** Survival, Subterfuge, Commerce, Rhetoric, Fortitude, absorbing all 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`, `sharp_eyes`, `haggler`, `silver_tongue`) and all 6 flat skills, zero new combat content (§7). | [ ] |
+| 78.5 | **`sharp_eyes` modifier-key remap.** Its modifier (`world_content/skill_tree.yaml:56-65`) targets `key: skill.perception`, a reference into the flat `SkillRegistry` namespace being deleted. Must be remapped to `discipline_ranks.subterfuge` (or the final key the implementer settles on) during this migration or the modifier silently no-ops — the **only** key-remap breakage found in the audit; every other node's modifier key doesn't reference the old flat skill catalog (§6.1). | [ ] |
+| 78.6 | **Code migration.** Delete `features/skills/definitions.py` (no back-compat alias, matches the `area_id` disposition precedent); `features/progression/skill_tree.py` → `features/disciplines/abilities.py` (renamed/extended); `engine/game/checks.py::skill_check()` and `engine/game/modifiers.py` unchanged (§6.3). | [ ] |
+| 78.7 | **Command rework — `train`/`learn`/`abilities`/`skills` → unified discipline/ability commands.** Driven by the generalized `check_acquisition`, folding in the already-flagged "one `ctx.say()` per command" fix for these commands' listings while their underlying data model changes shape anyway. | [ ] |
+| 78.8 | **Retrofit existing verbs onto `check_usage`.** `features/exploration/forage.py`, `sense.py`, movement/lockpicking's `pick` — replace hardcoded Python conditions (e.g. `Room.indoor == False`) with data-driven `usage:` YAML read through `check_usage`, proving the new mechanism actually replaces the old gating, not just duplicates it (§6.3). | [ ] |
+| 78.9 | **Backend + Frontend unit/e2e tests.** Registry loading, acquisition/usage flows end-to-end through the real content, command output, schema migration round-trip. | [ ] |
+| 78.10 | **Full Test & QA pass** (lint + typecheck + test, e2e) before merge. | [ ] |
+| 78.11 | **Docs.** `docs/user_guide.md` (disciplines/abilities/proficiency explained to players), `docs/admin_builder_guide.md` (authoring new abilities/disciplines), this roadmap section. | [ ] |
+
+**OPEN ITEM carried from the design audit — not resolved here, flagged for a future sprint if
+demand appears:** per-ability `cost`, `cooldown_seconds`, resource costs, and proficiency-growth
+tuning (`improve_chance`/`max_rank`) are shipped as **static YAML** in this sprint, matching
+`skill_tree.yaml`'s existing precedent. They are *candidates* for a live-tunable DB-singleton
+admin control (the `WorldClock`/Sprint 76 economy pattern) — worth building only if admins
+actually ask to retune these without a reseed. Don't build it speculatively ahead of that
+demand (`discipline_ability_system.md` §3).
+
+**Tier boundary:** all of 78.1–78.8 are **Tier 2** (`features/disciplines/`) + content
+(`world_content/*.yaml`) + composition-layer command wiring. **No further `engine/` changes**
+beyond what Sprint 77 already shipped.
 
 ---
 
@@ -1070,12 +1097,16 @@ routing rule for non-trivial design work.
   + composition-layer work, no `engine/` changes; Database Specialist gate skipped). Branch
   `sprint-76-economy-live-tuning`, all tasks `[x]` — see the Sprint 76 section above for the full
   commit list.
-- **77 tentatively claimed** by the proposed Discipline/Ability system rework (design-only,
-  not started — see the "Sprint 77 (proposed)" section above). May split into 77/78 (mechanism
-  then content, mirroring Sprint 73/74) once scope is reviewed and confirmed. **Next genuinely
-  free sprint number: 78** (or 79, if 77/78 both get claimed by the split) — check the Sprint 77
-  section's final scope before assuming either number is free. Don't recycle a number that
-  appears here or in [`roadmap_completed.md`](roadmap_completed.md).
+- **Used (in design, implementing 77–78):** Discipline/Ability system (user-driven design brief,
+  reworked to fit Lorecraft's combat-shelved status and Tier 1/2 architecture). **77 and 78 are
+  reserved** — design finalized and Research/Planning-reviewed 2026-07-13 (see
+  [`discipline_ability_system.md`](discipline_ability_system.md)), split into **Sprint 77**
+  (Tier 1 mechanism — `engine/game/abilities.py`, Phases A–B.1) and **Sprint 78** (Tier 2
+  policy/content — `features/disciplines/`, schema + content migration, command rework,
+  Phases B.2–F), mirroring the Sprint 73/74 mechanism-then-policy precedent. Neither sprint has
+  started implementation — see the Sprint 77/78 sections above for full task tables. **Next
+  genuinely free sprint number: 79.** Don't recycle a number that appears here or in
+  [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
