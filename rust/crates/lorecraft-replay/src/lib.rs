@@ -23,7 +23,7 @@
 
 use std::fmt::Write;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 /// Errors produced while canonicalizing or hashing a value.
@@ -98,6 +98,43 @@ pub fn hash_bytes(bytes: &[u8]) -> String {
 pub fn hash_canonical(value: &impl Serialize) -> Result<String, ReplayError> {
     let canonical = canonical_json(value)?;
     Ok(hash_bytes(canonical.as_bytes()))
+}
+
+/// The canonical post-command player-state snapshot hashed for movement (and
+/// future mutating-verb) parity — the Phase-0-deferred `hash_state` shape
+/// (migration plan Decision 4).
+///
+/// It captures exactly the parity-relevant player mutations a movement command
+/// makes: the room the player ends in (`current_room_id`) and the accumulated
+/// `visited_rooms` list. Both languages produce an identical value, so
+/// [`hash_state`] over it is a single cross-language digest to compare (the same
+/// discipline as the `look_only` `ScriptResult` hash, extended to a mutating verb).
+///
+/// **Ordering is load-bearing.** `visited_rooms` preserves the Python engine's
+/// insertion order (`ctx.player.visited_rooms = [*visited, target]`): canonical
+/// JSON sorts object *keys* but never reorders arrays, so the two sides must build
+/// this list in the same order for the hashes to agree. It is deliberately **not**
+/// sorted here.
+///
+/// The field set is intentionally minimal — more parity-relevant fields can be
+/// added as later mutating verbs migrate; every addition is a wire/hash change and
+/// must land in both languages together.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PlayerStateSnapshot {
+    /// The room the player is in after the command committed.
+    pub current_room_id: String,
+    /// The player's visited-rooms list, in insertion order (never re-sorted).
+    pub visited_rooms: Vec<String>,
+}
+
+/// Hash a post-command [`PlayerStateSnapshot`] to a SHA-256 hex digest over its
+/// canonical JSON — the Rust mirror of `replay_hash.hash_state` (Python).
+///
+/// Reuses [`canonical_json`] + [`hash_bytes`] so it shares the exact
+/// canonicalization discipline (sorted keys, compact, floats rejected) as the
+/// event-trail hash, guaranteeing byte-for-byte cross-language agreement.
+pub fn hash_state(snapshot: &PlayerStateSnapshot) -> Result<String, ReplayError> {
+    hash_canonical(snapshot)
 }
 
 #[cfg(test)]
@@ -202,5 +239,52 @@ mod tests {
         let value = json!({"name": "café"});
         // Not \u-escaped, matching Python ensure_ascii=False.
         assert_eq!(canonical_json(&value).unwrap(), r#"{"name":"café"}"#);
+    }
+
+    #[test]
+    fn player_state_snapshot_canonical_form_is_stable() {
+        let snap = PlayerStateSnapshot {
+            current_room_id: "village_square".into(),
+            visited_rooms: vec!["village_square".into(), "north_road".into()],
+        };
+        // Object keys sorted; the visited_rooms array order is preserved verbatim.
+        assert_eq!(
+            canonical_json(&snap).unwrap(),
+            r#"{"current_room_id":"village_square","visited_rooms":["village_square","north_road"]}"#
+        );
+    }
+
+    /// THE CROSS-LANGUAGE hash_state ORACLE: this fixed snapshot must hash to the
+    /// same SHA-256 in Rust and Python (`tests/unit/test_replay_hash.py`'s
+    /// `test_hash_state_matches_cross_language_oracle`). The constant was captured
+    /// from the Python side; if either canonicalizer drifts, one of the two tests
+    /// fails. This is the movement analogue of the `look_only` result-hash parity.
+    #[test]
+    fn hash_state_matches_cross_language_oracle() {
+        let snap = PlayerStateSnapshot {
+            current_room_id: "village_square".into(),
+            visited_rooms: vec!["village_square".into(), "north_road".into()],
+        };
+        assert_eq!(
+            hash_state(&snap).unwrap(),
+            "66e04b31205d6a2e01c7058ddcb5421f6c1e24fec1479c59ba19ecb5f586c904"
+        );
+    }
+
+    #[test]
+    fn hash_state_is_order_sensitive_in_visited_rooms() {
+        // visited_rooms order changes the digest (arrays are never re-sorted).
+        let forward = PlayerStateSnapshot {
+            current_room_id: "r".into(),
+            visited_rooms: vec!["a".into(), "b".into()],
+        };
+        let reversed = PlayerStateSnapshot {
+            current_room_id: "r".into(),
+            visited_rooms: vec!["b".into(), "a".into()],
+        };
+        assert_ne!(
+            hash_state(&forward).unwrap(),
+            hash_state(&reversed).unwrap()
+        );
     }
 }

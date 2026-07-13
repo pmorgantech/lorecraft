@@ -31,32 +31,51 @@
 
 use std::collections::HashSet;
 
+use lorecraft_feature_move::Direction;
+
 /// A verb whose command pipeline Rust owns this phase.
 ///
-/// A closed enum (no catch-all) so adding a migrated verb — movement lands at
-/// 4c — forces every dispatch site ([`crate::execute`]) to handle it. For 4a the
-/// only variant is [`MigratedVerb::Look`].
+/// A closed enum (no catch-all) so adding a migrated verb forces every dispatch
+/// site ([`crate::execute`]) to handle it. As of 4c the variants are
+/// [`MigratedVerb::Look`] (read-only) and [`MigratedVerb::Move`] (a bare cardinal
+/// direction, carrying the parsed [`Direction`]).
+///
+/// **Movement is headless-only this phase.** A `Move` variant is only ever produced
+/// when the allow-list explicitly contains the direction word; the default
+/// allow-list is empty ([`crate::gateway::GatewayConfig`]) and no direction is added
+/// to it, so no real client routes a move to Rust until the later live-cutover task
+/// — only a test/harness that sets `LORECRAFT_RUST_VERBS` to include a direction
+/// exercises the movement path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MigratedVerb {
     /// The read-only `look` verb (Phase 2 port, [`lorecraft_feature_look`]).
     Look,
+    /// A movement in a bare cardinal direction (`north`, `n`, …), 4c port
+    /// ([`lorecraft_feature_move`]). Carries the resolved [`Direction`]; a `go <dir>`
+    /// line (two tokens) still falls back to Python via the argument rule.
+    Move(Direction),
 }
 
 impl MigratedVerb {
-    /// The canonical verb string this variant routes for (the allow-list key).
+    /// The canonical verb string this variant routes for (the allow-list key). For
+    /// [`MigratedVerb::Move`] this is the canonical direction word (`"north"`, …),
+    /// which is what an operator lists in `LORECRAFT_RUST_VERBS` to enable it.
     pub fn verb(self) -> &'static str {
         match self {
             MigratedVerb::Look => "look",
+            MigratedVerb::Move(direction) => direction.as_str(),
         }
     }
 
     /// Resolve a canonical (already normalized) verb to its migrated variant, or
-    /// `None` if Rust does not own that verb this phase.
+    /// `None` if Rust does not own that verb this phase. A bare direction word maps
+    /// to [`MigratedVerb::Move`]; a bare `go` (with no direction) is *not* migrated
+    /// and falls back to Python (matching the Python service's `"Go where?"`).
     fn from_verb(verb: &str) -> Option<Self> {
-        match verb {
-            "look" => Some(MigratedVerb::Look),
-            _ => None,
+        if verb == "look" {
+            return Some(MigratedVerb::Look);
         }
+        Direction::from_canonical(verb).map(MigratedVerb::Move)
     }
 }
 
@@ -183,18 +202,43 @@ mod tests {
     }
 
     #[test]
-    fn go_north_is_not_migrated_in_4a_and_falls_back_to_python() {
-        // Movement is not a migrated verb this phase; `go north` also carries an
-        // argument. Even if the allow-list were mis-set to include `go`, `go north`
-        // has two tokens and `go` is not a migrated verb, so it stays Python.
+    fn bare_direction_routes_to_rust_move_when_allow_listed() {
+        // A bare cardinal direction is a single token and — with its canonical word
+        // in the allow-list — routes to the Rust movement feature.
         assert_eq!(
-            decide("go north", &allow(&["look", "go"])),
-            RouteDecision::Python
+            decide("north", &allow(&["north"])),
+            RouteDecision::RustExecute(MigratedVerb::Move(Direction::North))
         );
-        // A bare movement alias is a single token, but movement is not migrated in
-        // 4a, so it still routes to Python.
+        // Aliases normalize before both the typed token and the allow-list entry, so
+        // a typed `n` matches an allow-listed `north`.
+        assert_eq!(
+            decide("n", &allow(&["north"])),
+            RouteDecision::RustExecute(MigratedVerb::Move(Direction::North))
+        );
+    }
+
+    #[test]
+    fn movement_is_not_in_the_default_allow_list() {
+        // Headless-only this phase: with the default (empty) allow-list, and even
+        // with a `look`-only list, a bare direction routes to Python.
+        assert_eq!(decide("north", &HashSet::new()), RouteDecision::Python);
         assert_eq!(decide("north", &allow(&["look"])), RouteDecision::Python);
         assert_eq!(decide("n", &allow(&["look"])), RouteDecision::Python);
+    }
+
+    #[test]
+    fn go_with_argument_falls_back_to_python() {
+        // `go north` carries an argument (two tokens), so — like `look at rock` —
+        // Python still owns parse/disambiguation this phase, regardless of the list.
+        assert_eq!(
+            decide("go north", &allow(&["look", "north", "go"])),
+            RouteDecision::Python
+        );
+        // A bare `go` (no direction) is not a migrated verb: Python says "Go where?".
+        assert_eq!(
+            decide("go", &allow(&["go", "north"])),
+            RouteDecision::Python
+        );
     }
 
     #[test]
@@ -222,6 +266,13 @@ mod tests {
     fn migrated_verb_round_trips_its_verb_string() {
         assert_eq!(MigratedVerb::Look.verb(), "look");
         assert_eq!(MigratedVerb::from_verb("look"), Some(MigratedVerb::Look));
+        // A bare direction is a migrated Move whose allow-list key is its word.
+        assert_eq!(
+            MigratedVerb::from_verb("north"),
+            Some(MigratedVerb::Move(Direction::North))
+        );
+        assert_eq!(MigratedVerb::Move(Direction::North).verb(), "north");
+        // `go` (bare, no direction) is not migrated.
         assert_eq!(MigratedVerb::from_verb("go"), None);
     }
 }

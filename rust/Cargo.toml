@@ -11,6 +11,7 @@ members = [
     "crates/lorecraft-script-luau",
     "crates/lorecraft-replay",
     "crates/lorecraft-feature-look",
+    "crates/lorecraft-feature-move",
 ]
 
 resolver = "2"

@@ -23,6 +23,7 @@ from lorecraft.protocol import (
     CommandReply,
     ConnectAck,
     Connected,
+    DeferToPython,
     Deliver,
     DeliveryDirective,
     Diagnostic,
@@ -134,9 +135,48 @@ def test_command_outcome_defaults() -> None:
     outcome = CommandOutcome(command_id="cmd-1", status=OutcomeStatus.EXECUTED)
     assert outcome.messages == []
     assert outcome.applied_effects == []
+    assert outcome.room_narration == []
+    assert outcome.arrival_narration == []
     # str-enum serializes to the Rust variant name.
     assert outcome.status.value == "Executed"
     assert _canonical({"status": outcome.status.value}) == '{"status":"Executed"}'
+
+
+def test_command_outcome_omits_empty_narration_on_wire() -> None:
+    # A read-only/blocked outcome with no room-directed narration must not emit the
+    # additive fields, so its wire shape stays byte-identical to before they existed
+    # (mirrors the Rust `skip_serializing_if = "Vec::is_empty"`).
+    dumped = CommandOutcome(command_id="cmd-1", status=OutcomeStatus.EXECUTED).to_json()
+    assert "room_narration" not in dumped
+    assert "arrival_narration" not in dumped
+
+
+def test_command_outcome_roundtrips_room_and_arrival_narration() -> None:
+    # A move carries one origin-room line and one destination-room line; both must
+    # survive the JSON round trip and appear on the wire.
+    outcome = CommandOutcome(
+        command_id="cmd-2",
+        status=OutcomeStatus.EXECUTED,
+        applied_effects=[MoveEntity(entity="player-1", from_="a", to="b")],
+        room_narration=["alice leaves north."],
+        arrival_narration=["alice arrives from the south."],
+    )
+    dumped = outcome.to_json()
+    assert dumped["room_narration"] == ["alice leaves north."]
+    assert dumped["arrival_narration"] == ["alice arrives from the south."]
+    assert CommandOutcome.from_json(dumped) == outcome
+    # A legacy outcome missing both keys deserializes with empty narration lists.
+    legacy = {
+        "command_id": "cmd-3",
+        "status": "Executed",
+        "commit_sequence": None,
+        "messages": [],
+        "applied_effects": [],
+        "diagnostics": [],
+    }
+    restored = CommandOutcome.from_json(legacy)
+    assert restored.room_narration == []
+    assert restored.arrival_narration == []
 
 
 # --- Effect wire-shape parity (matches Rust #[serde(tag = "type")]) ---
@@ -560,6 +600,7 @@ def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
             ),
             "ExecutionRejected",
         ),
+        (DeferToPython(command_id="cmd-1"), "DeferToPython"),
         (Deliver(directive=_sample_directive()), "Deliver"),
         (
             MovePlayer(player_id="player-1", from_room="tavern", to_room="square"),
@@ -570,6 +611,17 @@ def test_every_gateway_outbound_variant_roundtrips_and_tags() -> None:
         dumped = frame.to_json()  # type: ignore[attr-defined]
         assert dumped["type"] == tag
         assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_defer_to_python_wire_shape_carries_only_correlation_id() -> None:
+    # The Phase 4c defer frame re-routes a command to Python; it carries just its tag
+    # + correlation id (no reply, no deliveries), matching the Rust struct variant.
+    frame = DeferToPython(command_id="cmd-skill")
+    dumped = frame.to_json()
+    assert dumped == {"type": "DeferToPython", "command_id": "cmd-skill"}
+    assert "direct_reply" not in dumped
+    assert "deliveries" not in dumped
+    assert gateway_outbound_from_json(dumped) == frame
 
 
 def test_execution_rejected_wire_shape_carries_correlation_and_no_deliveries() -> None:

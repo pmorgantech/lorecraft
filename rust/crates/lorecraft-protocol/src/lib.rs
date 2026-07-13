@@ -208,8 +208,52 @@ mod tests {
             }],
             applied_effects: vec![],
             diagnostics: vec![],
+            room_narration: vec![],
+            arrival_narration: vec![],
         };
         assert_round_trip(&outcome);
+        // A read-only outcome omits the narration fields entirely (byte-identical
+        // to the pre-narration wire shape).
+        let value = serde_json::to_value(&outcome).unwrap();
+        assert!(value.get("room_narration").is_none());
+        assert!(value.get("arrival_narration").is_none());
+    }
+
+    #[test]
+    fn command_outcome_carries_room_and_arrival_narration() {
+        let outcome = CommandOutcome {
+            command_id: CommandId("cmd-2".into()),
+            status: OutcomeStatus::Executed,
+            commit_sequence: None,
+            messages: vec![],
+            applied_effects: vec![Effect::MoveEntity {
+                entity: "player-1".into(),
+                from: "village_square".into(),
+                to: "north_road".into(),
+            }],
+            diagnostics: vec![],
+            room_narration: vec!["alice leaves north.".into()],
+            arrival_narration: vec!["alice arrives from the south.".into()],
+        };
+        let value = serde_json::to_value(&outcome).unwrap();
+        assert_eq!(value["room_narration"], json!(["alice leaves north."]));
+        assert_eq!(
+            value["arrival_narration"],
+            json!(["alice arrives from the south."])
+        );
+        assert_round_trip(&outcome);
+        // A legacy outcome missing both fields still deserializes (default empty).
+        let legacy = json!({
+            "command_id": "cmd-3",
+            "status": "Executed",
+            "commit_sequence": null,
+            "messages": [],
+            "applied_effects": [],
+            "diagnostics": [],
+        });
+        let back: CommandOutcome = serde_json::from_value(legacy).unwrap();
+        assert!(back.room_narration.is_empty());
+        assert!(back.arrival_narration.is_empty());
     }
 
     #[test]

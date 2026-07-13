@@ -75,6 +75,18 @@ def require_str_list(data: JsonObject, key: str) -> list[str]:
     return [item for item in items if isinstance(item, str)]
 
 
+def optional_str_list(data: JsonObject, key: str) -> list[str]:
+    """An array-of-strings field that defaults to ``[]`` when the key is absent.
+
+    Mirrors the Rust ``#[serde(default)]`` on an additive ``Vec<String>`` field: a
+    missing key yields the empty list, but a present-but-mistyped value still
+    raises. Used for the additive narration lists on ``CommandOutcome``.
+    """
+    if key not in data:
+        return []
+    return require_str_list(data, key)
+
+
 def require_object(value: JsonValue) -> JsonObject:
     """Assert an already-extracted list element is a JSON object."""
     if not isinstance(value, dict):

@@ -283,6 +283,32 @@ pub enum GatewayOutbound {
         /// payload (relayed verbatim, exactly like `OutcomeApplied.direct_reply`).
         direct_reply: serde_json::Value,
     },
+    /// Phase 4c defer (Python->Rust): **this routed command is not Rust-executable
+    /// this phase — run it entirely in Python instead.** Answered in place of a
+    /// [`Self::SnapshotReady`] on the [`GatewayInbound::BuildSnapshot`] leg,
+    /// correlated by `command_id`.
+    ///
+    /// Unlike [`Self::ExecutionRejected`] (which *ends* the round-trip with a
+    /// terminal client reply), `DeferToPython` tells the Rust driver to fall back to
+    /// the ordinary Phase-3 forward path: it re-sends the original
+    /// [`CommandEnvelope`] as a [`GatewayInbound::Command`] and returns the
+    /// resulting [`Self::CommandReply`] — so Python executes the whole verb (mutation,
+    /// audit, broadcast) exactly as an un-migrated command would.
+    ///
+    /// The motivating case (movement, migration-plan OPEN ITEM #3): a `go <dir>`
+    /// whose **target terrain is skill-gated** draws RNG via `SkillService.record_use`.
+    /// Cross-language RNG parity is deferred to Phase 5, so the skill-gate + RNG draw
+    /// **must stay in Python** this phase. Python's `BuildSnapshot` handler detects a
+    /// skill-gated target and returns this frame rather than a snapshot, keeping the
+    /// RNG-drawing path entirely Python-side while non-skill-gated moves still execute
+    /// in Rust. It carries **no** payload beyond the correlation id — the command is
+    /// not being answered, it is being re-routed.
+    DeferToPython {
+        /// Correlates this defer to the executing command's [`CommandId`] (the same
+        /// key its [`GatewayInbound::BuildSnapshot`] used). Rust re-forwards the
+        /// original envelope under this id.
+        command_id: CommandId,
+    },
     /// An unsolicited async push (clock ticks, weather, cross-player deliveries).
     /// Carries no correlation id because it is not a reply to any inbound frame.
     Deliver {
@@ -484,6 +510,8 @@ mod tests {
                 level: "info".into(),
                 message: "ok".into(),
             }],
+            room_narration: vec![],
+            arrival_narration: vec![],
         }
     }
 
@@ -627,6 +655,12 @@ mod tests {
                     direct_reply: json!({"type": "system", "text": "frozen"}),
                 },
                 "ExecutionRejected",
+            ),
+            (
+                GatewayOutbound::DeferToPython {
+                    command_id: CommandId("cmd-1".into()),
+                },
+                "DeferToPython",
             ),
             (
                 GatewayOutbound::Deliver {
@@ -909,6 +943,23 @@ mod tests {
             json!("error")
         );
         assert_round_trip(&err_frame);
+    }
+
+    #[test]
+    fn defer_to_python_carries_only_correlation_id() {
+        // The 4c defer frame carries just its tag + correlation id — no reply, no
+        // deliveries: the command is being re-routed to Python, not answered.
+        let frame = GatewayOutbound::DeferToPython {
+            command_id: CommandId("cmd-skill".into()),
+        };
+        let value = serde_json::to_value(&frame).unwrap();
+        assert_eq!(
+            value,
+            json!({"type": "DeferToPython", "command_id": "cmd-skill"})
+        );
+        assert!(value.get("direct_reply").is_none());
+        assert!(value.get("deliveries").is_none());
+        assert_round_trip(&frame);
     }
 
     #[test]

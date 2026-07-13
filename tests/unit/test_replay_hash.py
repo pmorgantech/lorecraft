@@ -11,7 +11,12 @@ from __future__ import annotations
 import pytest
 
 from lorecraft.engine.models.audit import AuditEvent
-from lorecraft.tools.replay_hash import canonical_json, hash_events
+from lorecraft.tools.replay_hash import (
+    canonical_json,
+    hash_events,
+    hash_state,
+    player_state_snapshot,
+)
 
 
 def _event(
@@ -115,3 +120,31 @@ def test_canonical_json_rejects_integer_valued_float() -> None:
 def test_canonical_json_rejects_nested_integer_valued_float() -> None:
     with pytest.raises(TypeError, match="canonical_json rejects floats"):
         canonical_json({"a": [1, 2.0]})
+
+
+# --- hash_state (movement state-snapshot parity, Decision 4) ----------------
+
+# The cross-language oracle: this fixed snapshot must hash to this exact digest in
+# BOTH Python and Rust (`lorecraft-replay`'s `hash_state_matches_cross_language_oracle`).
+# Captured once from `canonical_json` + sha256; if either canonicaliser drifts, one
+# of the two tests fails. The movement analogue of the `look_only` result-hash parity.
+_HASH_STATE_ORACLE = "66e04b31205d6a2e01c7058ddcb5421f6c1e24fec1479c59ba19ecb5f586c904"
+
+
+def test_hash_state_matches_cross_language_oracle() -> None:
+    snapshot = player_state_snapshot("village_square", ["village_square", "north_road"])
+    assert hash_state(snapshot) == _HASH_STATE_ORACLE
+
+
+def test_player_state_snapshot_preserves_visited_room_order() -> None:
+    # visited_rooms is copied verbatim, never sorted — canonical form keeps order.
+    snapshot = player_state_snapshot("r", ["b", "a"])
+    assert canonical_json(dict(snapshot)) == (
+        b'{"current_room_id":"r","visited_rooms":["b","a"]}'
+    )
+
+
+def test_hash_state_is_order_sensitive_in_visited_rooms() -> None:
+    forward = player_state_snapshot("r", ["a", "b"])
+    reversed_ = player_state_snapshot("r", ["b", "a"])
+    assert hash_state(forward) != hash_state(reversed_)

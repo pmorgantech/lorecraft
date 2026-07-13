@@ -21,9 +21,9 @@ the boundary rather than trusting two languages to format `0.1` identically.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from hashlib import sha256
-from typing import cast
+from typing import TypedDict, cast
 
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.tools.session_replay import normalize_events
@@ -81,3 +81,48 @@ def hash_events(events: Iterable[AuditEvent]) -> str:
     # JsonValue) — canonical_json still validates the structure at runtime.
     trail = cast(JsonValue, normalize_events(events))
     return sha256(canonical_json(trail)).hexdigest()
+
+
+class PlayerStateSnapshot(TypedDict):
+    """The canonical post-command player-state snapshot hashed for movement parity.
+
+    Python mirror of the Rust ``lorecraft_replay::PlayerStateSnapshot``. It captures
+    exactly the parity-relevant player mutations a movement command makes: the room
+    the player ends in and the accumulated ``visited_rooms`` list. Both languages
+    produce an identical value, so ``hash_state`` over it is a single cross-language
+    digest to compare — the ``look_only`` result-hash discipline extended to a
+    mutating verb (migration plan Decision 4).
+
+    ``visited_rooms`` preserves the engine's insertion order
+    (``ctx.player.visited_rooms = [*visited, target]``); ``canonical_json`` sorts
+    object *keys* but never reorders arrays, so it is deliberately **not** sorted.
+    """
+
+    current_room_id: str
+    visited_rooms: list[str]
+
+
+def player_state_snapshot(
+    current_room_id: str, visited_rooms: Sequence[str]
+) -> PlayerStateSnapshot:
+    """Build a :class:`PlayerStateSnapshot` from a player's post-command fields.
+
+    A tiny constructor so callers (the movement effect-applier, the parity harness)
+    produce the exact canonical shape without hand-assembling the dict — the
+    ``visited_rooms`` order is copied verbatim, never sorted.
+    """
+    return PlayerStateSnapshot(
+        current_room_id=current_room_id,
+        visited_rooms=list(visited_rooms),
+    )
+
+
+def hash_state(snapshot: PlayerStateSnapshot) -> str:
+    """Return the SHA-256 hex digest of a post-command player-state snapshot.
+
+    The Python side of the cross-language ``hash_state`` (the Rust mirror is
+    ``lorecraft_replay::hash_state``). Reuses :func:`canonical_json` so it shares the
+    exact byte-canonicalisation (sorted keys, compact, floats rejected) as
+    :func:`hash_events`, guaranteeing the two languages agree digit-for-digit.
+    """
+    return sha256(canonical_json(cast(JsonValue, snapshot))).hexdigest()

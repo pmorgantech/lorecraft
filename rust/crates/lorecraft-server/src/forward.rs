@@ -125,6 +125,11 @@ pub struct AuthDecision {
 /// A `Rejected` outcome means the driver must **not** run the feature or the
 /// `ApplyOutcome` leg — it simply returns the carried reply to the client (see the
 /// Phase 4b hardening notes on [`GatewayOutbound::ExecutionRejected`]).
+///
+/// A `Defer` outcome (Phase 4c) means the routed command is not Rust-executable this
+/// phase (e.g. a skill-gated move whose RNG draw stays Python — migration-plan OPEN
+/// ITEM #3); the driver re-forwards the original envelope down the ordinary
+/// Phase-3 [`ForwardClient::send_command`] path so Python runs the whole command.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SnapshotOutcome {
     /// Python materialized the snapshot; run the migrated feature against it.
@@ -132,6 +137,9 @@ pub enum SnapshotOutcome {
     /// Python short-circuited the round-trip; send this reply to the client and
     /// run no further legs.
     Rejected(serde_json::Value),
+    /// Python declined to build a snapshot: run the whole command in Python via the
+    /// ordinary forward path (the driver re-sends the original envelope).
+    Defer,
 }
 
 /// The decoded acknowledgement of a `Connected` lifecycle handshake.
@@ -411,6 +419,9 @@ impl ForwardClient {
             GatewayOutbound::ExecutionRejected { direct_reply, .. } => {
                 Ok(SnapshotOutcome::Rejected(direct_reply))
             }
+            // Phase 4c: Python declined to build a snapshot (e.g. skill-gated move);
+            // the driver re-forwards the raw command to run it entirely in Python.
+            GatewayOutbound::DeferToPython { .. } => Ok(SnapshotOutcome::Defer),
             _ => Err(ForwardError::UnexpectedReply),
         }
     }
@@ -690,6 +701,23 @@ async fn demultiplex(
                 None => tracing::warn!(
                     command_id = %key,
                     "execution-rejected reply had no matching pending execution"
+                ),
+            }
+        }
+        // Phase 4c defer: answers the `BuildSnapshot` leg in place of a
+        // `SnapshotReady`, telling the driver to re-forward the command to Python.
+        // Correlated by `command_id` through the same `exec` map. An unsolicited one
+        // (no waiter) is a protocol anomaly worth surfacing, never silently dropped.
+        GatewayOutbound::DeferToPython { command_id } => {
+            let key = command_id.0.clone();
+            let waiter = exec.lock().await.remove(&key);
+            match waiter {
+                Some(tx) => {
+                    let _ = tx.send(GatewayOutbound::DeferToPython { command_id });
+                }
+                None => tracing::warn!(
+                    command_id = %key,
+                    "defer-to-python reply had no matching pending execution"
                 ),
             }
         }
@@ -1212,6 +1240,46 @@ mod tests {
             .await
             .expect("build_snapshot");
         assert_eq!(outcome, SnapshotOutcome::Rejected(frozen));
+
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// Phase 4c: `build_snapshot` surfaces a Python `DeferToPython` as
+    /// [`SnapshotOutcome::Defer`] (not `Ready`/`Rejected`), so the driver re-forwards
+    /// the command to Python instead of executing it in Rust.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn build_snapshot_returns_defer_on_defer_to_python() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, mut write) = stream.into_split();
+            let command_id = match read_inbound(&mut read).await {
+                GatewayInbound::BuildSnapshot { envelope } => envelope.command_id,
+                other => panic!("expected BuildSnapshot, got {other:?}"),
+            };
+            write
+                .write_all(&encode_frame(&GatewayOutbound::DeferToPython {
+                    command_id,
+                }))
+                .await
+                .expect("write defer");
+            write.flush().await.expect("flush");
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        });
+
+        let registry = Arc::new(ConnectionRegistry::new());
+        let client = ForwardClient::connect(&socket_path, ctx(registry))
+            .await
+            .expect("connect");
+
+        let outcome = client
+            .build_snapshot(sample_envelope("cmd-skill", "north"))
+            .await
+            .expect("build_snapshot");
+        assert_eq!(outcome, SnapshotOutcome::Defer);
 
         peer.await.expect("mock peer joins cleanly");
     }

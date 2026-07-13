@@ -13,6 +13,7 @@ from typing import Self
 from lorecraft.errors import ValidationError
 from lorecraft.protocol._coerce import (
     optional_int,
+    optional_str_list,
     require_int,
     require_list,
     require_object,
@@ -112,11 +113,21 @@ class CommandOutcome:
     messages: list[OutboundMessage] = field(default_factory=list)
     applied_effects: list[Effect] = field(default_factory=list)
     diagnostics: list[Diagnostic] = field(default_factory=list)
+    # Narration routed to the actor's ORIGIN room (the room they were in when the
+    # command ran), excluding the actor — the engine's ``ctx.room_messages``
+    # (``ctx.tell_room``). Empty for verbs that produce none (e.g. ``look``). The
+    # movement effect-applier appends these onto ``ctx.room_messages`` before
+    # ``broadcast_command_effects`` routes them to the origin room.
+    room_narration: list[str] = field(default_factory=list)
+    # Narration routed to the actor's DESTINATION room (the post-command room),
+    # excluding the actor — the engine's ``ctx.arrival_messages``
+    # (``ctx.tell_arrival``). Empty for verbs that do not move the actor.
+    arrival_narration: list[str] = field(default_factory=list)
 
     def to_json(self) -> JsonObject:
         # Nested effects/messages carry their own ``{"type": ...}`` discriminator;
         # recurse through their ``to_json`` rather than flattening with asdict.
-        return {
+        out: JsonObject = {
             "command_id": self.command_id,
             "status": self.status.value,
             "commit_sequence": self.commit_sequence,
@@ -124,6 +135,14 @@ class CommandOutcome:
             "applied_effects": [effect.to_json() for effect in self.applied_effects],
             "diagnostics": [diagnostic.to_json() for diagnostic in self.diagnostics],
         }
+        # Additive + defaulted to empty: mirror the Rust
+        # ``skip_serializing_if = "Vec::is_empty"`` so a read-only outcome's wire
+        # shape (e.g. ``look``) stays byte-identical to before the fields existed.
+        if self.room_narration:
+            out["room_narration"] = list(self.room_narration)
+        if self.arrival_narration:
+            out["arrival_narration"] = list(self.arrival_narration)
+        return out
 
     @classmethod
     def from_json(cls, data: JsonObject) -> Self:
@@ -148,4 +167,7 @@ class CommandOutcome:
                 Diagnostic.from_json(require_object(item))
                 for item in require_list(data, "diagnostics")
             ],
+            # Default to empty when the key is absent (a legacy/read-only outcome).
+            room_narration=optional_str_list(data, "room_narration"),
+            arrival_narration=optional_str_list(data, "arrival_narration"),
         )

@@ -60,10 +60,28 @@ pub struct CommandOutcome {
     pub status: OutcomeStatus,
     /// Commit sequence assigned if the command committed state, else `None`.
     pub commit_sequence: Option<u64>,
-    /// Messages to deliver to the client, in order.
+    /// Messages to deliver to the client (the acting player's own feed), in order.
     pub messages: Vec<OutboundMessage>,
     /// Effects the engine actually applied.
     pub applied_effects: Vec<Effect>,
     /// Diagnostics produced during execution.
     pub diagnostics: Vec<Diagnostic>,
+    /// Narration routed to the actor's **origin** room (the room they were in when
+    /// the command ran), excluding the actor — the Python engine's
+    /// `ctx.room_messages` (`ctx.tell_room`). Empty for verbs that produce none
+    /// (e.g. `look`). This is a *routing* concept (deliver to the origin room), not
+    /// a feature opinion: the feature supplies the text, the applier routes it.
+    ///
+    /// Additive and defaulted to empty: skipped on serialization when empty, so
+    /// every pre-existing outcome's wire shape (e.g. `look`) is byte-identical.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub room_narration: Vec<String>,
+    /// Narration routed to the actor's **destination** room (the post-command
+    /// room), excluding the actor — the Python engine's `ctx.arrival_messages`
+    /// (`ctx.tell_arrival`). Empty for verbs that do not move the actor.
+    ///
+    /// Additive and defaulted to empty: skipped on serialization when empty (see
+    /// [`Self::room_narration`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arrival_narration: Vec<String>,
 }

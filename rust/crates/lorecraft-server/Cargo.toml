@@ -14,6 +14,10 @@ lorecraft-events = { path = "../lorecraft-events" }
 # Phase 4: the Rust `look` policy the execution driver runs (Tier 2). Re-exported
 # from the crate root so integration tests can drive it directly.
 lorecraft-feature-look = { path = "../lorecraft-feature-look" }
+# Phase 4c: the Rust `movement` policy (Tier 2). Provides `Direction` (for routing)
+# and `move_effects` (for the execution driver). Headless only this phase — not in
+# the default allow-list.
+lorecraft-feature-move = { path = "../lorecraft-feature-move" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"

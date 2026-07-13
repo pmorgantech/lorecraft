@@ -556,6 +556,35 @@ class ExecutionRejected(GatewayOutbound):
 
 
 @dataclass(frozen=True, slots=True)
+class DeferToPython(GatewayOutbound):
+    """Phase 4c defer (Python->Rust): **this routed command is not Rust-executable
+    this phase — run it entirely in Python instead.** Answered in place of a
+    ``SnapshotReady`` on the ``BuildSnapshot`` leg, correlated by ``command_id``.
+
+    Unlike ``ExecutionRejected`` (which *ends* the round-trip with a terminal client
+    reply), ``DeferToPython`` tells the Rust driver to fall back to the ordinary
+    Phase-3 forward path: it re-sends the original ``CommandEnvelope`` as a
+    ``GatewayCommand`` and returns the resulting ``CommandReply`` — so Python executes
+    the whole verb (mutation, audit, broadcast) exactly as an un-migrated command.
+
+    **Where Python emits it (task 2 contract).** The movement ``BuildSnapshot``
+    handler must return this frame when the ``go <dir>`` target-room terrain is
+    **skill-gated** (``terrain_def.required_skill is not None``). That path draws RNG
+    via ``SkillService.record_use``; cross-language RNG parity is deferred to Phase 5
+    (migration-plan OPEN ITEM #3), so the skill gate + RNG draw **stay in Python** and
+    the command must not execute in Rust. Non-skill-gated moves return a normal
+    ``SnapshotReady`` and execute in ``lorecraft-feature-move``. It carries **no**
+    payload beyond the correlation id — the command is not being answered, it is being
+    re-routed. Mirrors the Rust ``GatewayOutbound::DeferToPython`` struct variant."""
+
+    TAG: ClassVar[str] = "DeferToPython"
+    command_id: CommandId
+
+    def to_json(self) -> JsonObject:
+        return {"type": self.TAG, "command_id": self.command_id}
+
+
+@dataclass(frozen=True, slots=True)
 class Deliver(GatewayOutbound):
     """An unsolicited async push. Carries no correlation id (not a reply)."""
 
@@ -657,6 +686,8 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
             command_id=require_str(data, "command_id"),
             direct_reply=data.get("direct_reply"),
         )
+    if tag == DeferToPython.TAG:
+        return DeferToPython(command_id=require_str(data, "command_id"))
     if tag == Deliver.TAG:
         return Deliver(
             directive=DeliveryDirective.from_json(require_dict(data, "directive"))
