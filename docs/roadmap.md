@@ -938,10 +938,62 @@ for this sprint's implementation gate.
 | ~~Sprint 73 cleanup: stale defensive `PlayerStats` fallbacks~~ | Added 2026-07-12. **Done 2026-07-13** (commit `70ffcab` on `sprint73-cleanup-backlog`). Removed the dead `is not None`/`or PlayerStats(...)` fallbacks at all real call sites (`webui/player/session.py`'s encumbrance-snapshot strength default and attributes-block fallback; `engine/services/save.py`'s `_apply_stats_snapshot`; six feature-service `record_use` guard sites). A follow-up (commit `92edad1`, after a Code Reviewer catch) restored the `.stats()` call's get-or-create *side effect* at those six sites — the truthiness check was dead, but the `.stats()` call itself was load-bearing for a brand-new character's first skill-use action — with a regression test added. |
 | ~~Sprint 73: low-probability first-stats-access race~~ | Added 2026-07-12. **Investigated 2026-07-13, accepted risk — no code change.** Traced the commit flow (one `Session` per websocket command, committed centrally in `main.py`) with SQLite in WAL mode (serializes writers) and `PlayerStats.player_id` as PK: the outcome of the race is a clean PK `IntegrityError` at commit time (caught, logged as an in-game error, no corruption, no duplicate row, succeeds on retry), not data corruption. A correct fix would need `begin_nested()`/SAVEPOINT scoping (per the precedent in `engine/services/effects.py:115`) to avoid a naive flush+rollback discarding other pending changes in the same unit of work — judged disproportionate to the risk. Revisit only if the DB moves to a true multi-writer backend or an engine-wide busy-timeout/retry policy is added. |
 | ~~Sprint 73: `test_progression_ui.py` still seeds `PlayerStats` directly~~ | Added 2026-07-12. **Done 2026-07-13** (commit `1a050de` on `sprint73-cleanup-backlog`). Removed the `_seed_player_stats()` workaround and both call sites; rewrote the module docstring's "known backend gap" paragraph into past-tense historical context pointing at the fixing commit `c3b818a`. Both tests now exercise the real `PlayerRepo.stats()` get-or-create path organically via `create_character()` + quest completion. |
+| **Info commands render as disjointed chat lines instead of one cohesive block (`score`, `abilities`, `train`, `traits`, `skills`, `reputation`)** | Added 2026-07-13, root-caused via two Explore agent investigations (not yet fixed). **User-reported symptom** (screenshot, `score`): output shows each line ("=== Score ===", "Level 1...", "Quests:...", etc.) with its *own* timestamp and its own colored left border, reading as N disjointed chat messages rather than one panel — visually incohesive next to `help`'s output, which renders as one clean block. **General principle (user, 2026-07-13): command output should always be wrapped into one `ctx.say()` call.** `help_command` (`src/lorecraft/commands/meta.py:241-283`) is the reference — builds a `list[str]` of lines, joins with `"\n"`, calls `ctx.say()` **once**, tagged `MessageType.HELP` (gets `white-space: pre-line` block rendering, `feed_items.html:19`, plus `.msg-help` block CSS). **Six confirmed offender commands, same bug pattern (multiple untagged `ctx.say()` calls, each becoming its own separate `Message`/feed item via `frontend.py`'s per-message loop, `frontend.py:865-883`, and `feed_items.html`'s per-item Jinja loop)**: <br>• `score` — `features/character/service.py:101-108`, 6 calls <br>• `abilities` — `features/progression/commands.py:59-72`, up to 7 calls (2 fixed + 1 per owned/available skill-tree node) <br>• `train` (no-arg listing) — `features/progression/commands.py:78-88`, same pattern, up to 7 calls <br>• `traits` — `features/character/service.py:18,22,27`, 2 + 1 per held trait <br>• `skills` — `features/character/service.py:36,40`, 1 + 1 per skill (7 today, fixed 6-skill catalogue) <br>• `reputation` — `features/character/service.py:48,52,55`, 2 + 1 per reputation row (found adjacent to the others, not originally asked about but same file/pattern) <br>**Fix shape per command** (not yet decided — flag for the picking-up session): (a) consolidate each command's `ctx.say()` calls into 1, joined lines, mirroring `help_command`'s pattern exactly; (b) tag with a `MessageType` that gets block-style CSS — either reuse `MessageType.HELP`/`.msg-help` across all of them (simplest, one shared visual language for "info panel" commands) or introduce distinct types per command/family with their own `#feed .msg.msg-<type>` CSS rules following the *exact* `!important` + `#feed`-prefix pattern `.msg-help` established (see the gotcha comment at `custom.css:78-100` — a plain `.msg-<type> {...}` rule silently loses to `#feed .msg` and to the `.narrative` base-class tie without both fixes) — **this shared-vs-distinct-type decision is a genuine design fork the picking-up session should make explicitly**, not default silently. **Broader audit still warranted beyond these six**: grep for other commands making 3+ consecutive `ctx.say()` calls and check each is intentionally separate narration (vs. one block that should be joined) — the six above were found via two targeted investigations (`score`+`help` comparison, then `abilities`/`traits`/`skills`), not an exhaustive codebase sweep. |
+| **`help`'s CSS styling — resolved as working-as-designed, not a bug; leave alone** | Added 2026-07-13 (user). The tracked issue **`issue-fd64ee3e`** (`docs/issues.yaml`, filed 2026-07-05, status `open` as of writing) documents a live-deployment investigation that ruled out caching/stale-server/stale-checkout but stalled without confirming the `msg-help` class actually renders. **User has now visually confirmed live `help` output matches the coded design** (accent-colored border + `font-weight: 600` + accent-colored text, per `custom.css:101-107`) — they simply don't love the aesthetic, which is a taste/design question, not a rendering bug. **No roadmap action needed for `help`** — worth closing `issue-fd64ee3e` as resolved (not actioned here; roadmap.md doesn't own `docs/issues.yaml` entries) the next time someone touches that tracker. Note for context only: `.msg-help`'s CSS never included a font-size change, only color + weight — if a future redesign is wanted, that's new scope, not the original 71.4 spec. |
+| **Vitals (health/stamina/money) should always display near the command input, in the `classic` layout's format, across all layouts** | Added 2026-07-13 (user), investigated via Explore agent — genuinely new scope, not a regression (confirmed: `docs/user_guide.md`/`docs/architecture.md` never documented this as a goal for non-classic layouts). **Current state, precisely**: only **`classic`** (`templates/partials/game_classic.html:29`) places anything near the input — a single-line bracketed `#vitals` div (`partials/vitals.html`, e.g. `[ STA 42/60 · 137 coins ]`) directly above the command `&lt;input&gt;`, inside the same `&lt;form&gt;`. But `vitals_snapshot()` (`webui/player/session.py:400-419`) **deliberately excludes HP** — its own docstring says *"Lorecraft has no HP/MP/MV, so this surfaces the real meters instead of inventing MUD stats,"* showing only stamina + coins. The other four layouts (**Standard, Dock, E-reader, Immersive** — full list `preferences.py:67`) have **nothing near the input at all**: Standard/Dock tuck a full multi-value Stats tab/shade (`partials/stats_panel.html`, via `stats_snapshot()`, `session.py:438-478` — Health+Stamina meter bars, Coins, Attributes, Level/XP/Skill-Points, Traits, Marks, Reputation, Effects) into a separate right-column panel requiring a click; E-reader/Immersive have **no persistent vitals element whatsoever** — stats are only reachable by triggering the `score` command, which prints transiently into the scrolling chronicle. **The one place all three (HP + stamina + coins) already converge is `stats_panel.html`/`stats_snapshot()`** — the HP meter data already exists and is already fetched there (`meters.get(session, "player", player_id, "hp")`, `session.py:462-469`); it's `vitals_snapshot()`/`vitals.html` (the compact near-input line) that's missing it, not a data gap. **Fix shape** (two independent parts, not yet decided in detail — flag for the picking-up session): (a) **extend `vitals_snapshot()`/`vitals.html`** to add an HP segment to the bracketed line (mirroring the existing `STA`/coins format the user explicitly likes — e.g. `[ HP 18/20 · STA 42/60 · 137 coins ]`), affecting `classic` too since it's currently missing HP there as well; (b) **broadcast the `#vitals` div to the other four layouts** — mechanically straightforward per-template (each layout's command `&lt;form&gt;` is already a well-isolated block: Standard `game.html:169-197`, Dock `game_dock.html:65-76`, E-reader `game_ereader.html:62-76`, Immersive `game_immersive.html:72-79` — add a `&lt;div id="vitals"&gt;{% include "partials/vitals.html" %}&lt;/div&gt;` above each `&lt;input&gt;`, same as `game_classic.html:26-35`'s existing pattern), but requires generalizing two currently-classic-only gates: the initial-render population (`frontend.py:524-530`) and the post-command HTMX out-of-band refresh (`frontend.py:956-968`, `hx-swap-oob="true"`) both currently check `prefs.layout == "classic"` specifically. **Design question left open**: should the near-input compact vitals line *replace* Standard/Dock's existing detailed Stats tab/shade, or *complement* it (compact line near input for at-a-glance vitals, full panel still available for the detailed readout) — recommend complement, since classic itself already coexists with the `score` command for full detail and this preserves that established pattern rather than removing an existing feature. |
 
 *Already-implemented items previously listed here (bug/todo letterbox, encumbrance/wear slots, the
 simulation CLI, the analytics dashboard) were promoted to shipped sprints — see
 [`roadmap_completed.md`](roadmap_completed.md).*
+
+---
+
+## Sprint 77 (proposed) — Discipline / Ability system rework
+
+**Not yet started — design-only.** Full design in
+[`discipline_ability_system.md`](discipline_ability_system.md) (added 2026-07-13, user-driven).
+Origin: the user found Lorecraft's current skills-vs-abilities split genuinely confusing (two
+separate systems both called "skill" — a flat numeric `SkillRegistry` catalog vs. the Sprint 74
+skill-tree's `ability.<id>` nodes — that don't share storage or vocabulary) and provided a
+detailed Discipline → Ability design brief to replace both with one coherent, fully data-driven
+model.
+
+**Scope summary** (full detail in the guide — this is a pointer, not a duplicate):
+
+- **Discipline** (themed body of practice, e.g. *Survival*, *Subterfuge*) → **Ability**
+  (concrete active verb / passive / interaction — generalizes today's `SkillTreeNode`) →
+  **Proficiency** (per-discipline numeric competence, replaces the flat `SkillRegistry` levels).
+- **Tier 1** (`engine/game/abilities.py`, new): generic acquisition-check + **usage-check**
+  mechanisms (the latter is genuinely new capability — today's verbs hardcode their own gating
+  in Python; the new model makes usage requirements data, not code) + proficiency resolution,
+  reusing existing Tier 1 primitives (`modifiers.py`, `checks.py::skill_check`,
+  `ActiveEffect`) rather than inventing parallel ones.
+- **Tier 2** (`features/disciplines/`, replaces `features/skills/` +
+  `features/progression/skill_tree.py`): the registries, `world_content/disciplines.yaml` +
+  `abilities.yaml`, and a `PlayerStats` schema migration (`skills` → `discipline_ranks`,
+  flagged for Database Specialist review).
+- **Non-combat seed set** (5 disciplines — Survival, Subterfuge, Commerce, Rhetoric, Fortitude
+  — absorbing all 7 existing skill-tree nodes and all 6 existing flat skills with zero new
+  combat content): the source brief's own example disciplines (Swordsmanship, Defense,
+  Pyromancy, Necromancy) are combat-flavored and **not used as-is** — Lorecraft has combat/PvP
+  explicitly shelved. The guide leaves an explicit seam (§7) so `combat_system.md`'s shelved
+  design can plug in as additional disciplines later with no engine rework, when/if combat is
+  ever unshelved.
+- **Six phases** (A: Tier 1 mechanism → B: Tier 2 registries/schema → C: lossless content
+  migration → D: command rework, folding in the already-flagged "one `ctx.say()` per command"
+  fix for `abilities`/`skills`/`train` → E: retrofit existing verbs onto data-driven usage
+  requirements → F: docs), mirroring the Sprint 73→74 mechanism-then-policy sequencing.
+
+**Scale note**: this is comparable in size to the Sprint 73+74 pair (a Tier 1 mechanism sprint
+followed by a Tier 2 content/policy sprint) — likely warrants splitting into two sprint numbers
+(mechanism, then content/migration) when picked up, rather than one large sprint, following
+that precedent. Not split into 77/78 yet since scope hasn't been reviewed/confirmed.
+
+**Before implementation starts**: this is a genuine replacement of two shipped systems
+(Sprint 24's `SkillRegistry`/`STANDARD_SKILLS`, Sprint 74's skill tree) — a Research/Planning
+pass reviewing the full guide against the current codebase (which may have moved since
+2026-07-13) is warranted before Backend Engineer work begins, per the orchestrator's own
+routing rule for non-trivial design work.
 
 ---
 
@@ -1011,8 +1063,12 @@ simulation CLI, the analytics dashboard) were promoted to shipped sprints — se
   + composition-layer work, no `engine/` changes; Database Specialist gate skipped). Branch
   `sprint-76-economy-live-tuning`, all tasks `[x]` — see the Sprint 76 section above for the full
   commit list.
-- **Next new sprint: 77.** Don't recycle a number that appears here or in
-  [`roadmap_completed.md`](roadmap_completed.md).
+- **77 tentatively claimed** by the proposed Discipline/Ability system rework (design-only,
+  not started — see the "Sprint 77 (proposed)" section above). May split into 77/78 (mechanism
+  then content, mirroring Sprint 73/74) once scope is reviewed and confirmed. **Next genuinely
+  free sprint number: 78** (or 79, if 77/78 both get claimed by the split) — check the Sprint 77
+  section's final scope before assuming either number is free. Don't recycle a number that
+  appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
