@@ -1,10 +1,10 @@
-"""Browser end-to-end tests for auth & session lifecycle (Sprint 50, Priority 2).
+"""Browser e2e tests for the lobby login path (Sprint 50, Priority 2).
 
-Only the create-and-enter happy path was covered before this. These exercise
-the real security surface of the lobby: logging in to an existing character,
-rejecting a wrong password, refusing to silently create an account for an
-unknown username, session persistence across reload, and unauthenticated
-access to /game.
+Split from test_auth_flows.py (2026-07-13) for xdist file-level
+parallelism. These exercise the real security surface of the lobby: logging
+in to an existing character, rejecting a wrong password, refusing to
+silently create an account for an unknown username, and rejecting a second
+concurrent login for an already-active character.
 
 Observed server behavior (frontend.py):
 - A failed lobby login (`POST /lobby/enter`) re-renders `lobby.html` with an
@@ -12,8 +12,6 @@ Observed server behavior (frontend.py):
   `/auth/*` API uses those codes; the browser form path does not.) So these
   tests assert the security-relevant *observable* outcome — the user stays on
   the lobby and never reaches /game — rather than a specific status code.
-- Unauthenticated `/game` raises **401** ("No active session") because the
-  test server leaves `allow_query_player_id` at its Settings default (False).
 """
 
 from __future__ import annotations
@@ -126,34 +124,4 @@ def test_unknown_username_does_not_silently_create_account(
 
     page.locator("[role=alert]").wait_for()
     assert not re.search(r"/game$", page.url)
-    assert page.locator("#command-input").count() == 0
-
-
-def test_session_persists_across_reload(page: Any, live_server: str) -> None:
-    """P2.4: the signed session cookie keeps the player in /game across a reload."""
-    username = f"e2e_{uuid.uuid4().hex[:8]}"
-    create_character(page, live_server, username)
-    page.locator("#room-description", has_text="Village Square of Ashmoore").wait_for()
-
-    page.reload()
-
-    # Still authenticated in /game as the same character.
-    assert re.search(r"/game$", page.url)
-    page.locator("#room-description", has_text="Village Square of Ashmoore").wait_for()
-    assert username in page.locator("body").inner_text()
-
-
-def test_unauthenticated_game_is_refused(new_page: Any, live_server: str) -> None:
-    """P2.5: hitting /game with no session does not grant access.
-
-    Current behavior is a raw 401 ("No active session") from get_current_player
-    (the test server keeps allow_query_player_id=False). The essential property
-    is that the game UI is never rendered for an unauthenticated request.
-    """
-    page = new_page()
-    response = page.goto(f"{live_server}/game")
-
-    assert response is not None
-    assert response.status == 401
-    # The game UI never renders.
     assert page.locator("#command-input").count() == 0

@@ -1,8 +1,9 @@
-"""Browser e2e: admin Issues tab filtering, sorting, and live updates.
+"""Browser e2e: admin Issues tab default filter and sorting.
 
-Seeds issues via the REST API, then drives the real admin console in a headless
-browser to verify the client-side default filter (hide resolved/deferred),
-selectable sort, and live-refresh when an issue is created out-of-band.
+Split from test_admin_issues.py (2026-07-13) for xdist file-level
+parallelism. Seeds issues via the REST API, then drives the real admin
+console in a headless browser to verify the client-side default filter (hide
+resolved/deferred) and selectable sort.
 """
 
 from __future__ import annotations
@@ -115,66 +116,3 @@ def test_sort_by_recently_created(page: Any, admin_server: str) -> None:
         arg=third,
     )
     assert _displayed_ids(page) == [third, second, first]
-
-
-def test_edit_priority_via_row_select(page: Any, admin_server: str) -> None:
-    token = _token(admin_server)
-    issue_id = _seed_issue(admin_server, token, "Reprioritize me", priority="low")
-
-    _open_issues_tab(page, admin_server)
-    page.wait_for_selector(f"#issue-caret-{issue_id}")
-
-    row = page.locator(f"tr:has(#issue-caret-{issue_id})")
-    priority_select = row.locator("select").nth(1)
-    assert priority_select.input_value() == "low"
-    priority_select.select_option("critical")
-
-    # The change PUTs to the backend and reloads the list; wait for the
-    # re-rendered row to reflect the new priority before asserting server state.
-    page.wait_for_selector(
-        f"tr:has(#issue-caret-{issue_id}) option[value='critical'][selected]",
-        state="attached",
-    )
-    headers = {"Authorization": f"Bearer {token}"}
-    resp = httpx.get(f"{admin_server}/admin/issues/{issue_id}", headers=headers)
-    assert resp.json()["priority"] == "critical"
-
-
-def test_edit_description_via_detail_textarea(page: Any, admin_server: str) -> None:
-    token = _token(admin_server)
-    issue_id = _seed_issue(admin_server, token, "Needs a description")
-
-    _open_issues_tab(page, admin_server)
-    page.wait_for_selector(f"#issue-caret-{issue_id}")
-
-    # Open the detail row (click anywhere on the summary row outside a select).
-    page.click(f"#issue-caret-{issue_id}")
-    textarea = page.locator(f"#issue-desc-{issue_id}")
-    textarea.fill("Steps to reproduce: do the thing.")
-    page.click(f"tr#issue-detail-{issue_id} button:has-text('Save')")
-
-    # Save PUTs + reloads; wait for the fresh detail row's textarea to carry
-    # the server-confirmed value back before asserting on the API directly.
-    page.wait_for_function(
-        "(id) => { const ta = document.getElementById(`issue-desc-${id}`);"
-        " return ta && ta.value === 'Steps to reproduce: do the thing.'; }",
-        arg=issue_id,
-    )
-    headers = {"Authorization": f"Bearer {token}"}
-    resp = httpx.get(f"{admin_server}/admin/issues/{issue_id}", headers=headers)
-    assert resp.json()["description"] == "Steps to reproduce: do the thing."
-
-
-def test_issue_tab_live_updates_on_out_of_band_create(
-    page: Any, admin_server: str
-) -> None:
-    _open_issues_tab(page, admin_server)
-    page.wait_for_selector("#issues-tbody")
-
-    # A create the open tab did not initiate (another admin, or a player report
-    # via the ISSUE_FILED broadcast) must appear without a manual reload.
-    token = _token(admin_server)
-    new_id = _seed_issue(admin_server, token, "Live update marker", priority="high")
-
-    page.wait_for_selector(f"#issue-caret-{new_id}", timeout=5000)
-    assert new_id in _displayed_ids(page)
