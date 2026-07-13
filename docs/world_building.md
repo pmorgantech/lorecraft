@@ -452,27 +452,29 @@ since it never runs out.
 
 ### Regional pricing
 
-An optional top-level `economy.regions` block gives each room's `area_id` a price
+An optional top-level `economy.regions` block gives each room's `zone` a price
 multiplier and per-item bias, so the same good costs different amounts in different
 places — the core of the buy-low/sell-high loop:
 
 ```yaml
 economy:
   regions:
-    - area_id: coast
+    - zone: coast
       region_mult: 1.0
       bias: { salt_sack: 0.6, furs: 1.4 }   # cheap salt, dear furs, on the coast
-    - area_id: highlands
+    - zone: highlands
       region_mult: 1.1
       bias: { salt_sack: 1.5, furs: 0.7 }   # the reverse inland
 ```
 
-Effective price = `value × quality_mult × area's region_mult × shop's region_mult ×
+Effective price = `value × quality_mult × zone's region_mult × shop's region_mult ×
 item's bias × demand_mult × discounts`. Demand rises as a shop's stock depletes and
 falls as it's flooded (bounded, so prices never run away) — dumping goods on one town
 tanks the local price, rewarding players who spread sales across the network. A room
-whose area has no `economy.regions` entry (or a world with no `economy:` block at all)
-just uses a neutral 1.0 multiplier.
+whose zone has no `economy.regions` entry (or a world with no `economy:` block at all)
+just uses a neutral 1.0 multiplier. Once imported, `region_mult`/`bias` are **also**
+live-tunable per zone from the admin console's **Economy** tab — see
+[admin_builder_guide.md § Region pricing](admin_builder_guide.md#region-pricing-sprint-76).
 
 ### Banks
 

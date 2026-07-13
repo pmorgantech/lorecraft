@@ -125,7 +125,7 @@ password}`, returning access + refresh tokens).
 
 ## Admin Web Panel Tour
 
-Eleven tabs, each backed by REST endpoints under `/admin/*`:
+Twelve tabs, each backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
@@ -135,6 +135,7 @@ Eleven tabs, each backed by REST endpoints under `/admin/*`:
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override. A weather override **announces the change to every player's feed** (e.g. "A light rain begins to fall."); re-setting the current weather is silent | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
 | **Progression** | Live-tune the XP curve (`base`/`step`) and per-level rewards (`coins_per_level`/`skill_points_per_level`) — no restart or reseed. See [Live-tuning progression from the admin console](#live-tuning-progression-from-the-admin-console) | `GET/POST /admin/progression/config` |
+| **Economy** | Live-tune each zone's price multiplier (`region_mult`) and per-item price bias — no restart or reseed. Viewing is open to any admin role; editing requires superadmin. See [Region pricing (Sprint 76)](#region-pricing-sprint-76) | `GET /admin/economy/regions`, `POST /admin/economy/regions/{zone}` |
 | **Issues** | Repo-tracked issue tracker CRUD. **Resolved/deferred are hidden by default** — a "Hide status" checkbox group toggles any status in/out of view; plus a **priority** filter and a **sort** selector (Priority / Recently updated / Recently created). Filter+sort run client-side (hide/sort choices persist per browser); a header count shows `N shown · M hidden`. `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write. Table shows opened-by + created/updated dates (🕑 toggles absolute dates ↔ relative ages); rows expand (click) to description, tags, links, assignee, timestamps. Live-refreshes on any change — admin edits **and** in-game player `report`s | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
 | **News** | Announcements CRUD (also feeds the in-game `news` command and `/api/news/feed` RSS) | `GET/POST/PUT/DELETE /admin/news` |
 | **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
@@ -412,6 +413,45 @@ the rest non-negative) and rejected with `422` otherwise. Unlike the clock's `ti
 currently caches progression config in runtime state — the reward interpreter reads
 `ProgressionConfig` fresh from the DB on every grant — so a plain commit is enough; the very
 next reward uses the new numbers.
+
+### Region pricing (Sprint 76)
+
+Regional price multipliers and per-item bias (`RegionPricing` —
+`src/lorecraft/features/economy/models.py`, keyed on `Room.zone`) are authored in
+`world_content/world.yaml`'s `economy.regions:` list and YAML-seeded at import — see
+[world_building.md § Regional pricing](world_building.md#regional-pricing) for the full
+authoring format and [trade_economy.md § 5](trade_economy.md#5-regional-pricing-the-transittrade-pairing)
+for how `region_mult`/`bias` feed the buy/sell price formula. Since Sprint 71.2 that table has
+always been read **live** from the DB on every transaction (`features/economy/service.py`); what
+Sprint 76 adds is the missing admin layer to retune it without a reseed, mirroring the
+`WorldClock` and Sprint 73.4 `ProgressionConfig` live-tune precedents.
+
+From the admin console's **Economy** tab:
+
+- **Viewing** the region table (zone, region multiplier, bias) is available to any
+  authenticated admin role (`GET /admin/economy/regions`, observer-gated — the lowest role).
+- **Editing** a zone's `region_mult` and/or `bias` requires the **superadmin** role
+  (`POST /admin/economy/regions/{zone}`); inputs are disabled with a "Requires superadmin
+  role" tooltip for lesser roles, the same pattern as the Progression tab.
+
+The UI is a table with one row per zone (not a single config object like Progression) — each
+row has a `region_mult` number input and a `bias` field edited as a **JSON textarea**
+(`{"item_id": multiplier, ...}`), with a per-row **Save** button. Two semantics to know before
+editing:
+
+- **`region_mult` must be positive** (`> 0`) — zero or negative is rejected client-side and
+  with a `422` server-side.
+- **`bias` is a full replacement, not a merge.** Whatever JSON object you save becomes the
+  entire bias map for that zone; omitting a previously-set item id clears its bias rather than
+  leaving it untouched. The POST body treats `region_mult` and `bias` as independently optional
+  (an admin can retune just one without restating the other), but when `bias` **is** included it
+  wholesale-replaces the stored map. The textarea is pre-filled with the zone's current bias on
+  load, so retuning one item's multiplier means editing that one key in place rather than typing
+  the whole map from scratch.
+
+Like Progression, nothing caches `RegionPricing` in runtime state — `features/economy/service.py`
+reads the row fresh from the DB on every transaction — so a save takes effect on the very next
+buy/sell, no restart required.
 
 ### Skill tree & abilities (Sprint 74)
 
@@ -757,6 +797,7 @@ working example.
 |-----|--------|
 | [world_building.md](world_building.md) | Room/exit/item YAML schema |
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | NPC, dialogue tree, and quest YAML schema |
+| [trade_economy.md](trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | Changeset lifecycle, builder mode, optimistic locking |
 | [tooling_infrastructure.md](tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
 | [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, and (Sprint 57) request tracing + crash reports |

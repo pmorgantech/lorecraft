@@ -218,11 +218,11 @@ Additive `economy:` / shop sections; worlds without them are unaffected:
 ```yaml
 economy:
   currency: coins
-  regions:                      # area price multipliers + per-good bias
-    - area_id: coast
+  regions:                      # per-zone price multipliers + per-good bias
+    - zone: coast
       region_mult: 1.0
       bias: { salt: 0.6, furs: 1.4 }
-    - area_id: highlands
+    - zone: highlands
       region_mult: 1.1
       bias: { salt: 1.5, furs: 0.7 }
   banks:
@@ -247,7 +247,9 @@ npcs:
 ```
 
 Validators (`lorecraft.tools.validators`): shop stock item ids exist; `value` present on any
-`tradeable` shop item; bank `npc_id` exists; region `area_id` exists; bias keys resolve to items.
+`tradeable` shop item; bank `npc_id` exists; region `zone` exists; bias keys resolve to items.
+`region_mult`/`bias` are also live-tunable per zone from the admin console's **Economy** tab
+without a reseed — see [admin_builder_guide.md § Region pricing](admin_builder_guide.md#region-pricing-sprint-76).
 
 ---
 
