@@ -21,7 +21,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lorecraft.config import Settings
-from lorecraft.gateway.adapter import GatewayAdapter, encode_frame, read_frame
+from lorecraft.gateway.adapter import (
+    GatewayAdapter,
+    GatewayPushManager,
+    encode_frame,
+    read_frame,
+)
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
 from lorecraft.main import create_app
 from lorecraft.protocol import PROTOCOL_VERSION
@@ -33,12 +38,15 @@ from lorecraft.protocol.gateway import (
     ConnectAck,
     CommandReply,
     Deliver,
+    DeliveryDirective,
     Disconnected,
     GatewayCommand,
     GatewayOutbound,
+    GlobalTarget,
     GracefulQuit,
     PlayerTarget,
     RedeemTicket,
+    RoomTarget,
     ValidateAdminToken,
     gateway_outbound_from_json,
 )
@@ -472,3 +480,200 @@ def test_lifecycle_and_command_drains_do_not_cross_contaminate(
         if isinstance(f, Deliver) and isinstance(f.directive.payload, dict)
     }
     assert lifecycle_types == {"player_joined"}  # nothing of the command leaked
+
+
+# --- autonomous push (clock/weather Deliver relay) ---------------------------
+
+
+async def _await_link(adapter: GatewayAdapter) -> None:
+    """Wait until the adapter has registered one accepted client link."""
+    for _ in range(200):
+        if adapter._links:  # pyright: ignore[reportPrivateUsage]
+            return
+        await asyncio.sleep(0.005)
+    raise AssertionError("adapter never registered the client link")
+
+
+def test_push_deliver_writes_deliver_frame_to_active_link(
+    state: AppState, tmp_path: Path
+) -> None:
+    """An autonomous `push_deliver` reaches an active link as a `Deliver` frame
+    carrying the directive verbatim (the clock/weather relay path)."""
+
+    async def scenario() -> None:
+        adapter = GatewayAdapter(state, socket_path=str(tmp_path / "push.sock"))
+        await adapter.start()
+        try:
+            reader, writer = await asyncio.open_unix_connection(
+                str(tmp_path / "push.sock")
+            )
+            await _await_link(adapter)
+            directive = DeliveryDirective(
+                target=GlobalTarget(),
+                exclude=None,
+                payload={"type": "time_update", "hour": 7},
+            )
+            await adapter.push_deliver(directive)
+
+            raw = await asyncio.wait_for(read_frame(reader), timeout=2)
+            assert raw is not None
+            frame = gateway_outbound_from_json(raw)
+            assert isinstance(frame, Deliver)
+            assert isinstance(frame.directive.target, GlobalTarget)
+            assert frame.directive.payload == {"type": "time_update", "hour": 7}
+            writer.close()
+            await writer.wait_closed()
+        finally:
+            await adapter.stop()
+
+    asyncio.run(scenario())
+
+
+def test_push_deliver_no_active_connections_is_noop(
+    state: AppState, tmp_path: Path
+) -> None:
+    """With zero active links, `push_deliver` is a harmless no-op — nobody is
+    connected through the gateway to receive the broadcast."""
+
+    async def scenario() -> None:
+        adapter = GatewayAdapter(state, socket_path=str(tmp_path / "noop.sock"))
+        await adapter.start()
+        try:
+            assert not adapter._links  # pyright: ignore[reportPrivateUsage]
+            # Must not raise, must not block.
+            await adapter.push_deliver(
+                DeliveryDirective(
+                    target=GlobalTarget(), exclude=None, payload={"type": "time_update"}
+                )
+            )
+        finally:
+            await adapter.stop()
+
+    asyncio.run(scenario())
+
+
+def test_push_deliver_and_reply_never_corrupt_frames(
+    state: AppState, tmp_path: Path
+) -> None:
+    """Concurrent autonomous pushes and a command-lifecycle reply share one
+    single-writer queue, so no two writes ever interleave on the `StreamWriter`:
+    every frame read back decodes cleanly and the counts are exact."""
+
+    async def scenario() -> None:
+        sock = str(tmp_path / "sync.sock")
+        adapter = GatewayAdapter(state, socket_path=sock)
+        await adapter.start()
+        try:
+            reader, writer = await asyncio.open_unix_connection(sock)
+            await _await_link(adapter)
+
+            # Drive a Connected handshake (reply path: ConnectAck + one
+            # player_joined Deliver) and five autonomous pushes concurrently
+            # through the shared per-connection writer.
+            writer.write(encode_frame(Connected(player_id=PLAYER_ID).to_json()))
+            await writer.drain()
+            await asyncio.gather(
+                *[
+                    adapter.push_deliver(
+                        DeliveryDirective(
+                            target=GlobalTarget(),
+                            exclude=None,
+                            payload={"type": "time_update", "n": i},
+                        )
+                    )
+                    for i in range(5)
+                ]
+            )
+
+            frames: list[GatewayOutbound] = []
+            for _ in range(7):  # 1 ConnectAck + 1 connect Deliver + 5 pushes
+                raw = await asyncio.wait_for(read_frame(reader), timeout=2)
+                assert raw is not None
+                frames.append(gateway_outbound_from_json(raw))
+
+            acks = [f for f in frames if isinstance(f, ConnectAck)]
+            delivers = [f for f in frames if isinstance(f, Deliver)]
+            assert len(acks) == 1
+            assert len(delivers) == 6  # one player_joined + five time_update pushes
+            pushed = [
+                d.directive.payload
+                for d in delivers
+                if isinstance(d.directive.payload, dict)
+                and d.directive.payload.get("type") == "time_update"
+            ]
+            assert len(pushed) == 5
+            writer.close()
+            await writer.wait_closed()
+        finally:
+            await adapter.stop()
+
+    asyncio.run(scenario())
+
+
+class _CapturingAdapter:
+    """A stand-in for `GatewayAdapter` that captures pushed directives and
+    exposes a real `DirectiveConnectionManager` mirror for selection."""
+
+    def __init__(self) -> None:
+        self.manager = DirectiveConnectionManager()
+        self.pushed: list[DeliveryDirective] = []
+
+    async def push_deliver(self, directive: DeliveryDirective) -> None:
+        self.pushed.append(directive)
+
+
+def test_gateway_push_manager_maps_broadcasts_like_directive_manager() -> None:
+    """The push wrapper builds the exact same `DeliveryDirective` wire shapes as
+    the command-path `DirectiveConnectionManager`, and flushes via `push_deliver`."""
+    fake = _CapturingAdapter()
+    wrapper = GatewayPushManager()
+    wrapper.bind(fake)  # type: ignore[arg-type]
+
+    async def via_wrapper() -> None:
+        await wrapper.broadcast_global({"type": "time_update"})
+        await wrapper.broadcast_to_room("tavern", {"type": "x"}, exclude="p1")
+        await wrapper.send_to_player("p2", {"type": "y"})
+
+    asyncio.run(via_wrapper())
+
+    baseline = DirectiveConnectionManager()
+
+    async def via_baseline() -> None:
+        await baseline.broadcast_global({"type": "time_update"})
+        await baseline.broadcast_to_room("tavern", {"type": "x"}, exclude="p1")
+        await baseline.send_to_player("p2", {"type": "y"})
+
+    asyncio.run(via_baseline())
+
+    # Byte-identical wire shapes to the command path (target + exclude + payload).
+    assert [d.to_json() for d in fake.pushed] == [
+        d.to_json() for d in baseline.deliveries
+    ]
+    assert isinstance(fake.pushed[0].target, GlobalTarget)
+    assert isinstance(fake.pushed[1].target, RoomTarget)
+    assert isinstance(fake.pushed[2].target, PlayerTarget)
+
+
+def test_gateway_push_manager_selection_delegates_to_mirror() -> None:
+    """Selection answers from the adapter's connection mirror so a world-level
+    broadcast filters to rooms with an actual gateway audience."""
+    fake = _CapturingAdapter()
+    wrapper = GatewayPushManager()
+    wrapper.bind(fake)  # type: ignore[arg-type]
+    fake.manager.mark_connected("p1", "tavern")
+
+    assert wrapper.occupied_rooms() == ["tavern"]
+    assert wrapper.players_in_room("tavern") == ["p1"]
+    assert wrapper.connected_player_ids() == ["p1"]
+    assert wrapper.is_connected("p1") is True
+
+
+def test_gateway_push_manager_unbound_is_noop() -> None:
+    """Before the adapter is bound (startup window) delivery is a no-op and
+    selection is empty — no audience exists yet."""
+    wrapper = GatewayPushManager()
+    asyncio.run(wrapper.broadcast_global({"type": "time_update"}))  # must not raise
+    assert wrapper.occupied_rooms() == []
+    assert wrapper.players_in_room("tavern") == []
+    assert wrapper.connected_player_ids() == []
+    assert wrapper.is_connected("p1") is False

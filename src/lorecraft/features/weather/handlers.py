@@ -7,7 +7,7 @@ from typing import Protocol
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.engine.game.connection_manager import ConnectionManagerProtocol
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.world_context import broadcast_room_async
@@ -53,7 +53,7 @@ def weather_change_line(previous_weather: str, weather: str) -> str | None:
 
 
 def narrate_weather_outdoors(
-    manager: ConnectionManager, game_engine: Engine, line: str
+    manager: ConnectionManagerProtocol, game_engine: Engine, line: str
 ) -> None:
     """Announce an ambient weather line to every occupied *outdoor* room.
 
@@ -94,7 +94,7 @@ def apply_daily_weather(clock: WorldClock, choice: WeatherChoice) -> bool:
 def register_weather_handlers(
     bus: EventBus,
     game_engine: Engine,
-    manager: ConnectionManager,
+    manager: ConnectionManagerProtocol,
     *,
     rng: GameRng,
 ) -> None:

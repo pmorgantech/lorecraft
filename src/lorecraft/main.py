@@ -52,8 +52,11 @@ from lorecraft.services.container import ServiceContainer
 from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.config import Settings, load_settings
 from lorecraft.db import create_audit_engine, create_game_engine, create_tables
-from lorecraft.gateway.adapter import GatewayAdapter
-from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.gateway.adapter import GatewayAdapter, GatewayPushManager
+from lorecraft.engine.game.connection_manager import (
+    ConnectionManager,
+    ConnectionManagerProtocol,
+)
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.message_types import MessageType
@@ -150,6 +153,21 @@ def create_app(
             help_session.commit()
 
         manager = ConnectionManager()
+        # Autonomous (server-initiated) broadcasts — the world-clock `time_update`
+        # and weather narration, neither triggered by a player command — target
+        # `broadcast_manager`. Flag OFF (rollback / legacy `/ws`): the real
+        # `ConnectionManager`, byte-identical to before. Gateway mode: a
+        # late-bound push manager that relays them to Rust as standalone `Deliver`
+        # frames, because gateway clients live in Rust's authoritative registry,
+        # not this manager's (empty) socket pool. It is bound to the adapter once
+        # the adapter is constructed below. Only ONE transport is live at a time
+        # (gateway_enabled is the cutover toggle), so the two connection sets are
+        # disjoint and no client is ever double-delivered.
+        gateway_push_manager: GatewayPushManager | None = None
+        broadcast_manager: ConnectionManagerProtocol = manager
+        if resolved_settings.gateway_enabled:
+            gateway_push_manager = GatewayPushManager()
+            broadcast_manager = gateway_push_manager
         bus = EventBus()
         registry = CommandRegistry()
         rules = RuleEngine()
@@ -161,7 +179,9 @@ def create_app(
             bus=bus,
             time_ratio=resolved_settings.world_time_ratio,
         )
-        register_weather_handlers(bus, resolved_game_engine, manager, rng=app_rng)
+        register_weather_handlers(
+            bus, resolved_game_engine, broadcast_manager, rng=app_rng
+        )
         register_celestial_handlers(bus)
         _load_celestial_content(resolved_settings.celestial_yaml_path)
         register_tide_gate_handlers(bus, resolved_game_engine)
@@ -307,7 +327,7 @@ def create_app(
                 with Session(resolved_game_engine) as session:
                     clock = RoomRepo(session).world_clock()
                     if clock is not None:
-                        await manager.broadcast_global(
+                        await broadcast_manager.broadcast_global(
                             {
                                 "type": "time_update",
                                 "hour": clock.current_hour,
@@ -408,6 +428,11 @@ def create_app(
             gateway_adapter = GatewayAdapter(
                 state, socket_path=resolved_settings.gateway_socket_path
             )
+            # Late-bind the autonomous-broadcast push manager to the now-built
+            # adapter so clock/weather broadcasts relay through it (they were
+            # registered on the bus above, before the adapter existed).
+            if gateway_push_manager is not None:
+                gateway_push_manager.bind(gateway_adapter)
             await gateway_adapter.start()
         app.state.gateway_adapter = gateway_adapter
         app.state.lorecraft = state

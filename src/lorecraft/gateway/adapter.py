@@ -45,11 +45,15 @@ from lorecraft.protocol.gateway import (
     ConnectAck,
     CommandReply,
     Deliver,
+    DeliveryDirective,
     Disconnected,
     GatewayCommand,
     GatewayInbound,
     GatewayOutbound,
+    GlobalTarget,
+    PlayerTarget,
     RedeemTicket,
+    RoomTarget,
     ValidateAdminToken,
     gateway_inbound_from_json,
 )
@@ -94,6 +98,21 @@ async def read_frame(reader: asyncio.StreamReader) -> JsonObject | None:
     return decoded
 
 
+class _ClientLink:
+    """One accepted UDS connection to the Rust peer.
+
+    Both request→reply frames and autonomous `push_deliver` frames are enqueued
+    on `outbound` and written by a single dedicated writer task, so no two
+    coroutines ever write the underlying `StreamWriter` concurrently.
+    """
+
+    __slots__ = ("writer", "outbound")
+
+    def __init__(self, writer: asyncio.StreamWriter) -> None:
+        self.writer = writer
+        self.outbound: asyncio.Queue[GatewayOutbound] = asyncio.Queue()
+
+
 class GatewayAdapter:
     """Length-prefixed-JSON UDS server dispatching `GatewayInbound` frames."""
 
@@ -117,6 +136,10 @@ class GatewayAdapter:
         # comment there for the interleaving hazard it prevents.
         self._directive_lock = asyncio.Lock()
         self._server: asyncio.AbstractServer | None = None
+        # Currently-active client links (one per accepted UDS connection). Used
+        # by `push_deliver` to relay an autonomous, server-initiated broadcast to
+        # the Rust peer down a single link (Rust fans out from its own registry).
+        self._links: set[_ClientLink] = set()
 
     @property
     def manager(self) -> DirectiveConnectionManager:
@@ -175,6 +198,15 @@ class GatewayAdapter:
     async def _handle_client(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
+        # A single dedicated writer task per connection drains `link.outbound`, so
+        # the request→reply frames enqueued below and the autonomous frames
+        # `push_deliver` enqueues never write the `StreamWriter` concurrently —
+        # the admin-console per-connection queue+writer precedent
+        # (webui/admin/websocket.py). The link is tracked for `push_deliver` for
+        # exactly as long as the connection is served.
+        link = _ClientLink(writer)
+        self._links.add(link)
+        sender = asyncio.create_task(self._drain_outbound(link))
         try:
             while True:
                 try:
@@ -192,10 +224,48 @@ class GatewayAdapter:
                     log.exception("gateway_inbound_dispatch_failed")
                     continue
                 for frame in outbound:
-                    writer.write(encode_frame(frame.to_json()))
-                await writer.drain()
+                    await link.outbound.put(frame)
         finally:
+            self._links.discard(link)
+            sender.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await sender
             writer.close()
+
+    async def _drain_outbound(self, link: _ClientLink) -> None:
+        """Serialize and write every queued frame for one connection, in order.
+
+        The sole writer of this connection's `StreamWriter`, so command replies
+        and autonomous `push_deliver` frames never interleave a partial write. A
+        transport failure (peer reset mid-write) ends the loop; `_handle_client`'s
+        read side independently sees EOF and tears the connection down.
+        """
+        try:
+            while True:
+                frame = await link.outbound.get()
+                link.writer.write(encode_frame(frame.to_json()))
+                await link.writer.drain()
+        except (ConnectionResetError, BrokenPipeError):
+            return
+
+    async def push_deliver(self, directive: DeliveryDirective) -> None:
+        """Proactively relay an autonomous fan-out to the Rust peer.
+
+        Server-initiated broadcasts (world-clock `time_update`, weather
+        narration) are not replies to any command, so they're enqueued directly
+        as a standalone `Deliver` frame — never through a command's `deliveries`
+        buffer or under `_directive_lock` (flush-now, not record-then-drain).
+
+        Sent to exactly ONE active link: Rust resolves recipients from its own
+        authoritative registry regardless of which link a frame arrives on, so
+        pushing down every link would fan the same broadcast out N times. With no
+        active links it is a harmless no-op — nobody is connected through the
+        gateway to receive it.
+        """
+        link = next(iter(self._links), None)
+        if link is None:
+            return
+        await link.outbound.put(Deliver(directive=directive))
 
     # -- dispatch (socket-free; unit-testable) ------------------------------
 
@@ -425,3 +495,91 @@ class GatewayAdapter:
             direct_reply=direct_reply,
             deliveries=deliveries,
         )
+
+
+class GatewayPushManager:
+    """A `ConnectionManagerProtocol` that flushes *autonomous* broadcasts to Rust.
+
+    Server-initiated broadcasts (the world-clock ``time_update`` and weather
+    narration) are not triggered by any player command, so they bypass the
+    command-path :class:`DirectiveConnectionManager`. In gateway mode they are
+    routed here instead of to the real ``ConnectionManager`` — whose socket pool
+    is empty, since clients connect to Rust — and each delivery method builds a
+    :class:`DeliveryDirective` and pushes it to the adapter immediately as a
+    standalone ``Deliver`` frame (flush-now, *not* record-then-drain). The
+    ``target``/``exclude`` mapping is identical to
+    :class:`DirectiveConnectionManager`'s so the wire payloads match byte-for-byte.
+
+    Selection methods answer from the adapter's advisory connection mirror so a
+    world-level broadcast still filters to rooms that actually have a gateway
+    audience (e.g. weather narration's ``occupied_rooms`` gate).
+
+    **Late-bound.** The autonomous handlers are registered on the bus *before*
+    the adapter is constructed in the app lifespan, so the adapter is injected
+    via :meth:`bind` afterwards. Before it is bound — and whenever no gateway
+    client is connected — delivery is a harmless no-op and selection is empty
+    (there is no audience yet).
+    """
+
+    def __init__(self) -> None:
+        self._adapter: GatewayAdapter | None = None
+
+    def bind(self, adapter: GatewayAdapter) -> None:
+        """Attach the live adapter once the lifespan has constructed it."""
+        self._adapter = adapter
+
+    async def _push(self, directive: DeliveryDirective) -> None:
+        if self._adapter is None:
+            return
+        await self._adapter.push_deliver(directive)
+
+    # -- ConnectionManagerProtocol: delivery (pushes standalone Deliver frames) --
+
+    async def send_to_player(self, player_id: str, message: JsonObject) -> None:
+        await self._push(
+            DeliveryDirective(
+                target=PlayerTarget(id=player_id), exclude=None, payload=message
+            )
+        )
+
+    async def broadcast_to_room(
+        self, room_id: str, message: JsonObject, exclude: str | None = None
+    ) -> None:
+        await self._push(
+            DeliveryDirective(
+                target=RoomTarget(id=room_id), exclude=exclude, payload=message
+            )
+        )
+
+    async def broadcast_global(
+        self, message: JsonObject, exclude: str | None = None
+    ) -> None:
+        await self._push(
+            DeliveryDirective(target=GlobalTarget(), exclude=exclude, payload=message)
+        )
+
+    # -- ConnectionManagerProtocol: selection (reads the adapter's mirror) ------
+
+    def move_player(self, player_id: str, from_room: str | None, to_room: str) -> None:
+        if self._adapter is not None:
+            self._adapter.manager.move_player(player_id, from_room, to_room)
+
+    def players_in_room(self, room_id: str) -> list[str]:
+        if self._adapter is None:
+            return []
+        return self._adapter.manager.players_in_room(room_id)
+
+    def occupied_rooms(self) -> list[str]:
+        if self._adapter is None:
+            return []
+        return self._adapter.manager.occupied_rooms()
+
+    def connected_player_ids(self) -> list[str]:
+        if self._adapter is None:
+            return []
+        return self._adapter.manager.connected_player_ids()
+
+    def is_connected(self, player_id: str) -> bool:
+        if self._adapter is None:
+            return False
+        return self._adapter.manager.is_connected(player_id)
