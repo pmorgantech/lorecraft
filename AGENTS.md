@@ -1,17 +1,21 @@
 # Repository agent instructions
 
-## Current focus: foundation before features (2026-07-01)
+## Current focus: Rust migration (2026-07-12)
 
-The core engine must be very well designed, well tooled, well tested, and internally
-consistent **before** expanding commands or adding combat/trading/PvP. Do not skimp on
-code design and quality.
+**IMPORTANT BRANCH RULE:** This branch (`rust-port`) is the integration/main branch for the
+Rust migration effort. **Never work on or push to `main` or `develop` branches from this
+worktree.** The Python engine remains authoritative in `main`; all Rust-port work happens
+here.
 
-- `CODE_AUDIT.md` findings + the `docs/roadmap.md` foundation band (Sprints 5–15) are the
-  active work queue. Feature sprints (16+) are gated behind the roadmap's foundation exit criteria.
-- When touching code, leave it more consistent than found: typed errors from
-  `lorecraft/errors.py` (once it exists) instead of silent `except Exception`; no new
-  `cast(GameContext, ctx)`; one service-wiring style; no new mixed-concern mega-modules.
-- Prefer finishing or removing a half-done seam over adding a new one.
+All agents working on Rust migration tasks:
+- Check out and base new branches from `rust-port`, never `main` or `develop`.
+- Commit changes to feature branches, then integrate via pull request to `rust-port`.
+- Treat `rust-port` as the long-lived integration point for all Rust work.
+- Keep `main` untouched — it remains the production Python engine.
+
+The core engine is being ported to Rust following the architectural recommendations in
+`docs/rust_migration_plan.md`. See that document for the phased approach, scripting boundary,
+and actor model design.
 
 ## Codebase structure (tier split, 2026-07-05)
 
