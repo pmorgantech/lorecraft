@@ -576,6 +576,7 @@ mod tests {
                     },
                     exclude: None,
                     payload: json!({"type": "feed_append", "text": "someone looks around."}),
+                    coalesce_key: None,
                 }],
             };
             write
@@ -756,6 +757,7 @@ mod tests {
                     },
                     exclude: None,
                     payload: json!({"type": "player_left", "player_id": "leaver"}),
+                    coalesce_key: None,
                 },
             };
             write

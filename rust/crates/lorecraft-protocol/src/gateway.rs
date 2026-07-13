@@ -191,6 +191,17 @@ pub struct DeliveryDirective {
     pub exclude: Option<PlayerId>,
     /// The opaque legacy frame to relay verbatim. Neither side interprets it.
     pub payload: serde_json::Value,
+    /// Optional coalescing key stamped by the **policy owner** (Python) so the
+    /// Rust outbound-queue *mechanism* can keep-latest without interpreting the
+    /// opaque `payload` (Phase 3c coalescing, design decision 10). Two queued
+    /// frames sharing a non-`None` key are idempotent panel refreshes and
+    /// collapse to the latest; a `None` key (e.g. `feed_append`) always queues.
+    ///
+    /// Additive and defaulted to `None`: the field is skipped on serialization
+    /// when absent, so every pre-existing frame's wire shape is byte-identical.
+    /// Python stamps it in a later task (this task only plumbs + honors it).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coalesce_key: Option<String>,
 }
 
 /// The recipient set for a [`DeliveryDirective`]. Internally tagged
@@ -255,6 +266,7 @@ mod tests {
             },
             exclude: Some(PlayerId("player-1".into())),
             payload: json!({"type": "feed_append", "text": "You go north."}),
+            coalesce_key: None,
         }
     }
 
@@ -464,6 +476,43 @@ mod tests {
         // Payload is relayed verbatim, not reinterpreted.
         assert_eq!(value["payload"]["type"], json!("feed_append"));
         assert_eq!(value["exclude"], json!("player-1"));
+        assert_round_trip(&directive);
+    }
+
+    #[test]
+    fn coalesce_key_defaults_none_and_is_absent_on_the_wire() {
+        // An unset `coalesce_key` must not appear in the serialized frame so every
+        // pre-existing directive is byte-identical to before the field was added.
+        let directive = sample_directive();
+        assert_eq!(directive.coalesce_key, None);
+        let value = serde_json::to_value(&directive).unwrap();
+        assert!(
+            value.get("coalesce_key").is_none(),
+            "absent key must be skipped, not serialized as null"
+        );
+        // A frame produced *without* the field must still deserialize (default None).
+        let legacy = json!({
+            "target": {"type": "Global"},
+            "exclude": null,
+            "payload": {"type": "clock_tick"},
+        });
+        let back: DeliveryDirective = serde_json::from_value(legacy).unwrap();
+        assert_eq!(back.coalesce_key, None);
+    }
+
+    #[test]
+    fn coalesce_key_present_round_trips_and_is_serialized() {
+        // When the policy owner stamps a key it survives the round trip verbatim.
+        let directive = DeliveryDirective {
+            target: DeliveryTarget::Player {
+                id: PlayerId("player-1".into()),
+            },
+            exclude: None,
+            payload: json!({"type": "state_change", "panel": "inventory"}),
+            coalesce_key: Some("panel:inventory".into()),
+        };
+        let value = serde_json::to_value(&directive).unwrap();
+        assert_eq!(value["coalesce_key"], json!("panel:inventory"));
         assert_round_trip(&directive);
     }
 }

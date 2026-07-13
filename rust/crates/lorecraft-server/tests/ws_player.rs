@@ -118,6 +118,7 @@ async fn serve_connection(
                         },
                         exclude: Some(env.player_id.clone()),
                         payload: json!({"type": "feed_append", "text": "someone waves."}),
+                        coalesce_key: None,
                     }]
                 } else {
                     vec![]
@@ -140,6 +141,7 @@ async fn serve_connection(
                         },
                         exclude: None,
                         payload: json!({"type": "player_left", "player_id": player_id.0}),
+                        coalesce_key: None,
                     },
                 },
                 GatewayOutbound::DisconnectAck,

@@ -390,6 +390,31 @@ def test_delivery_directive_roundtrips_with_no_exclude() -> None:
     assert DeliveryDirective.from_json(dumped) == directive
 
 
+def test_delivery_directive_coalesce_key_defaults_none_and_is_absent_on_wire() -> None:
+    # An unset coalesce_key must not appear in the serialized frame, so every
+    # pre-existing directive is byte-identical to before the field was added
+    # (mirrors the Rust skip_serializing_if = "Option::is_none").
+    directive = _sample_directive()
+    assert directive.coalesce_key is None
+    dumped = directive.to_json()
+    assert "coalesce_key" not in dumped
+    # A legacy frame produced without the field still deserializes (default None).
+    legacy = {"target": {"type": "Global"}, "exclude": None, "payload": {"tick": 1}}
+    assert DeliveryDirective.from_json(legacy).coalesce_key is None
+
+
+def test_delivery_directive_coalesce_key_present_roundtrips() -> None:
+    directive = DeliveryDirective(
+        target=PlayerTarget(id="player-1"),
+        exclude=None,
+        payload={"type": "state_change", "panel": "inventory"},
+        coalesce_key="panel:inventory",
+    )
+    dumped = directive.to_json()
+    assert dumped["coalesce_key"] == "panel:inventory"
+    assert DeliveryDirective.from_json(dumped) == directive
+
+
 def _sample_envelope() -> CommandEnvelope:
     return CommandEnvelope(
         protocol_version=1,

@@ -182,18 +182,31 @@ class DeliveryDirective:
 
     Rust resolves ``target``/``exclude`` against its authoritative connection map and
     relays ``payload`` without interpreting it.
+
+    ``coalesce_key`` is the optional Phase 3c coalescing key (design decision 10).
+    Python is the **policy owner**: it stamps a stable per-panel key on idempotent
+    ``state_change``/panel-refresh directives so Rust's outbound-queue *mechanism* can
+    keep-latest without interpreting the opaque ``payload``, and leaves it ``None`` for
+    ``feed_append`` (every one matters). It is additive and defaults to ``None``: to
+    keep every pre-existing frame's wire shape byte-identical it is **omitted** from
+    ``to_json`` when unset, mirroring the Rust ``skip_serializing_if = "Option::is_none"``.
+    This task only plumbs the field; the actual per-directive stamping is a later task.
     """
 
     target: DeliveryTarget
     exclude: PlayerId | None
     payload: JsonValue
+    coalesce_key: str | None = None
 
     def to_json(self) -> JsonObject:
-        return {
+        out: JsonObject = {
             "target": self.target.to_json(),
             "exclude": self.exclude,
             "payload": self.payload,
         }
+        if self.coalesce_key is not None:
+            out["coalesce_key"] = self.coalesce_key
+        return out
 
     @classmethod
     def from_json(cls, data: JsonObject) -> Self:
@@ -201,6 +214,7 @@ class DeliveryDirective:
             target=delivery_target_from_json(require_dict(data, "target")),
             exclude=optional_str(data, "exclude"),
             payload=data.get("payload"),
+            coalesce_key=optional_str(data, "coalesce_key"),
         )
 
 

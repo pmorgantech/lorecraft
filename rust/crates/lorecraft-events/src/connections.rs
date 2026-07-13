@@ -19,10 +19,13 @@
 //! crate (see `lorecraft-protocol::gateway` module docs).
 
 use std::collections::{BTreeSet, HashMap};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use lorecraft_protocol::PlayerId;
 use tokio::sync::mpsc;
+
+use crate::admins::{AdminId, AdminRegistry};
+use crate::backpressure::OverflowTracker;
 
 /// The opaque outbound payload relayed to a connection. It is the legacy frame
 /// carried verbatim by `DeliveryDirective.payload`; the registry never inspects
@@ -34,12 +37,40 @@ pub type OutboundPayload = serde_json::Value;
 /// `lorecraft-server` (task 4).
 pub type OutboundSender = mpsc::Sender<OutboundPayload>;
 
-/// The three connection maps, guarded together so lifecycle mutations stay
+/// A single connection's outbound handle: its bounded-queue sender plus the
+/// per-connection [`OverflowTracker`] the backpressure mechanism advances on each
+/// relay outcome.
+///
+/// Held behind an [`Arc`] in the registries so `dispatch` can clone the handle out
+/// from under a read lock and then `try_send` + update the tracker with the lock
+/// released — a full or dead queue can never hold the shared map, and a concurrent
+/// deregister cannot invalidate an in-flight relay (the `Arc` keeps the tracker
+/// alive until the relay drops it). Shared verbatim by player and admin
+/// connections; admins simply carry no room/player id.
+#[derive(Debug)]
+pub(crate) struct Conn {
+    /// The bounded outbound queue sender.
+    pub(crate) sender: OutboundSender,
+    /// Sustained-overflow detector for this connection.
+    pub(crate) overflow: OverflowTracker,
+}
+
+impl Conn {
+    /// Wrap a fresh outbound sender with a clean overflow tracker.
+    pub(crate) fn new(sender: OutboundSender) -> Self {
+        Self {
+            sender,
+            overflow: OverflowTracker::new(),
+        }
+    }
+}
+
+/// The three player-connection maps, guarded together so lifecycle mutations stay
 /// consistent under concurrency.
 #[derive(Default)]
 struct Inner {
-    /// `player -> outbound sender`.
-    connections: HashMap<String, OutboundSender>,
+    /// `player -> outbound connection handle`.
+    connections: HashMap<String, Arc<Conn>>,
     /// `player -> current room id`.
     player_rooms: HashMap<String, String>,
     /// `room -> sorted set of players`.
@@ -47,9 +78,14 @@ struct Inner {
 }
 
 /// The authoritative Rust-side connection + room-membership map.
+///
+/// It owns two sibling registries: the player-keyed maps ([`Inner`]) and the
+/// push-only [`AdminRegistry`]. Admin methods delegate to the latter so callers
+/// (and `dispatch`) resolve every recipient class through one registry handle.
 #[derive(Default)]
 pub struct ConnectionRegistry {
     inner: RwLock<Inner>,
+    admins: AdminRegistry,
 }
 
 impl ConnectionRegistry {
@@ -67,7 +103,9 @@ impl ConnectionRegistry {
     /// Re-registering an already-known player replaces the stored sender.
     pub fn register(&self, player_id: PlayerId, sender: OutboundSender, room_id: Option<String>) {
         let mut inner = self.inner.write().expect("registry lock poisoned");
-        inner.connections.insert(player_id.0.clone(), sender);
+        inner
+            .connections
+            .insert(player_id.0.clone(), Arc::new(Conn::new(sender)));
         if let Some(room) = room_id {
             let from = inner.player_rooms.get(&player_id.0).cloned();
             Self::apply_move(&mut inner, &player_id.0, from.as_deref(), &room);
@@ -75,18 +113,43 @@ impl ConnectionRegistry {
     }
 
     /// Remove a connection from both the player map and its room's set, returning
-    /// the removed outbound sender if the player was connected. Mirrors Python
-    /// `ConnectionManager.disconnect`. Dropping the returned sender closes the
-    /// bounded channel, which the writer task observes as end-of-stream.
-    pub fn deregister(&self, player_id: &PlayerId) -> Option<OutboundSender> {
+    /// whether the player was connected. Mirrors Python
+    /// `ConnectionManager.disconnect`. Dropping the stored connection handle (and
+    /// thus its sender, once no in-flight fan-out holds a clone) closes the bounded
+    /// channel, which the writer task observes as end-of-stream.
+    pub fn deregister(&self, player_id: &PlayerId) -> bool {
         let mut inner = self.inner.write().expect("registry lock poisoned");
-        let sender = inner.connections.remove(&player_id.0);
+        let was_connected = inner.connections.remove(&player_id.0).is_some();
         if let Some(room) = inner.player_rooms.remove(&player_id.0) {
             if let Some(players) = inner.room_players.get_mut(&room) {
                 players.remove(&player_id.0);
             }
         }
-        sender
+        was_connected
+    }
+
+    /// Register an admin console's outbound sender, returning the [`AdminId`] used
+    /// to deregister it on socket close. Delegates to the sibling [`AdminRegistry`];
+    /// admin connections are push-only and carry no room/player id (see the resolved
+    /// admin-push design in `lorecraft-protocol::gateway`).
+    pub fn register_admin(&self, sender: OutboundSender) -> AdminId {
+        self.admins.register(sender)
+    }
+
+    /// Deregister an admin console, returning whether it was present.
+    pub fn deregister_admin(&self, id: AdminId) -> bool {
+        self.admins.deregister(id)
+    }
+
+    /// Number of connected admin consoles.
+    pub fn admin_count(&self) -> usize {
+        self.admins.count()
+    }
+
+    /// Borrow the sibling admin registry (used by `dispatch` to fan out an
+    /// `Admin`-targeted directive).
+    pub(crate) fn admins(&self) -> &AdminRegistry {
+        &self.admins
     }
 
     /// Move a player from `from_room` to `to_room`, keeping the `player -> room`
@@ -133,12 +196,12 @@ impl ConnectionRegistry {
             .insert(player_id.to_string());
     }
 
-    /// Clone the outbound sender for a player, if connected. Used by `dispatch`
-    /// to resolve a recipient into a concrete channel handle without holding the
-    /// registry lock across the (non-blocking) `try_send`.
-    pub(crate) fn sender_for(&self, player_id: &PlayerId) -> Option<OutboundSender> {
+    /// Clone the outbound connection handle for a player, if connected. Used by
+    /// `dispatch` to resolve a recipient into a concrete sender + overflow tracker
+    /// without holding the registry lock across the (non-blocking) `try_send`.
+    pub(crate) fn conn_for(&self, player_id: &PlayerId) -> Option<Arc<Conn>> {
         let inner = self.inner.read().expect("registry lock poisoned");
-        inner.connections.get(&player_id.0).cloned()
+        inner.connections.get(&player_id.0).map(Arc::clone)
     }
 
     /// Players currently in `room_id`, **sorted**. Mirrors Python
@@ -228,8 +291,7 @@ mod tests {
         );
 
         // Deregister alpha; tavern becomes empty and drops out of occupied_rooms.
-        let removed = reg.deregister(&pid("alpha"));
-        assert!(removed.is_some());
+        assert!(reg.deregister(&pid("alpha")));
         assert!(!reg.is_connected(&pid("alpha")));
         assert!(reg.players_in_room("tavern").is_empty());
         assert_eq!(reg.occupied_rooms(), vec!["square".to_string()]);
@@ -275,6 +337,18 @@ mod tests {
     #[test]
     fn deregister_unknown_player_is_noop() {
         let reg = ConnectionRegistry::new();
-        assert!(reg.deregister(&pid("ghost")).is_none());
+        assert!(!reg.deregister(&pid("ghost")));
+    }
+
+    #[test]
+    fn admin_registry_is_accessible_through_the_connection_registry() {
+        let reg = ConnectionRegistry::new();
+        let (tx, _rx) = open_channel();
+        let id = reg.register_admin(tx);
+        assert_eq!(reg.admin_count(), 1);
+        // Admins are a separate namespace from players — no player was registered.
+        assert!(reg.connected_player_ids().is_empty());
+        assert!(reg.deregister_admin(id));
+        assert_eq!(reg.admin_count(), 0);
     }
 }
