@@ -1006,9 +1006,11 @@ identities, ability content, or policy values hardcoded anywhere in this sprint.
 
 **Not yet started — depends on Sprint 77's Tier 1 mechanism landing first.** Builds the
 opinionated, data-driven policy layer on top of Sprint 77's mechanism: registries, YAML content,
-the `PlayerStats` schema migration, content migration (including the one modifier-key remap
-Research/Planning's audit flagged), and the command rework. Full detail in
-[`discipline_ability_system.md`](discipline_ability_system.md) §4–§9.
+the `PlayerStats` schema migration, content migration, and the command rework. Full detail in
+[`discipline_ability_system.md`](discipline_ability_system.md) §4–§9. **Design correction
+(2026-07-13):** the design doc originally directed a `sharp_eyes` modifier-key remap (78.5,
+below) as part of content migration; that premise was found false and the remap is dropped —
+see §6.1's Option A and 78.5's row for the corrected reasoning.
 
 | # | Task | Status |
 |---|------|--------|
@@ -1016,7 +1018,7 @@ Research/Planning's audit flagged), and the command rework. Full detail in
 | 78.2 | **`AbilityRegistry`.** Loaded from `world_content/abilities.yaml` (split from `disciplines.yaml` per §5.4's rationale — disciplines change rarely, abilities change often), each entry validated into the Tier 1 `AbilityDef` shape plus Tier-2-only display fields. | [ ] |
 | 78.3 | **`PlayerStats` schema migration (Database Specialist gate).** `skills: JsonObject` → `discipline_ranks: JsonObject` (same dict shape, different keys); `unlocked_nodes` kept as-is (a "node" is an "ability" now, vocabulary-only). Follow the Sprint 75 generic reflection-scanner pattern, not a hand-written shim (§4, §6.2). | [ ] |
 | 78.4 | **Content migration — 5-discipline non-combat seed set.** Survival, Subterfuge, Commerce, Rhetoric, Fortitude, absorbing all 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`, `sharp_eyes`, `haggler`, `silver_tongue`) and all 6 flat skills, zero new combat content (§7). | [ ] |
-| 78.5 | **`sharp_eyes` modifier-key remap.** Its modifier (`world_content/skill_tree.yaml:56-65`) targets `key: skill.perception`, a reference into the flat `SkillRegistry` namespace being deleted. Must be remapped to `discipline_ranks.subterfuge` (or the final key the implementer settles on) during this migration or the modifier silently no-ops — the **only** key-remap breakage found in the audit; every other node's modifier key doesn't reference the old flat skill catalog (§6.1). | [ ] |
+| 78.5 | ~~`sharp_eyes` modifier-key remap.~~ **Dropped, superseded 2026-07-13 by the Option A namespace-retention decision — see [`discipline_ability_system.md`](discipline_ability_system.md) §6.1.** The original premise (that `skill.perception` was the *only* reference to the flat namespace, and had to be remapped to `discipline_ranks.subterfuge`) was false — a fuller audit found six live `skill.<name>` references across `traits/standard.py`, `consumables/buffs.py`, `items/effects.py`, `marks.yaml`, and `webui/player/frontend.py`, not just `sharp_eyes`. Research/Planning's resolved direction: `skill.<name>` is retained **permanently** as the check/modifier-key namespace (it's orthogonal to the `features/skills/` package's existence, not a back-compat alias); only the flat `SkillRegistry` catalog and `PlayerStats.skills` storage are deleted, with each check's base value re-sourced from `discipline_ranks.<discipline>` instead. No remap needed anywhere — this task is moot. | [ ] dropped |
 | 78.6 | **Code migration.** Delete `features/skills/definitions.py` (no back-compat alias, matches the `area_id` disposition precedent); `features/progression/skill_tree.py` → `features/disciplines/abilities.py` (renamed/extended); `engine/game/checks.py::skill_check()` and `engine/game/modifiers.py` unchanged (§6.3). | [ ] |
 | 78.7 | **Command rework — `train`/`learn`/`abilities`/`skills` → unified discipline/ability commands.** Driven by the generalized `check_acquisition`, folding in the already-flagged "one `ctx.say()` per command" fix for these commands' listings while their underlying data model changes shape anyway. | [ ] |
 | 78.8 | **Retrofit existing verbs onto `check_usage`.** `features/exploration/forage.py`, `sense.py`, movement/lockpicking's `pick` — replace hardcoded Python conditions (e.g. `Room.indoor == False`) with data-driven `usage:` YAML read through `check_usage`, proving the new mechanism actually replaces the old gating, not just duplicates it (§6.3). | [ ] |

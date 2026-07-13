@@ -341,21 +341,61 @@ future case where proficiency also scales an effect's strength (no current conte
 
 ## 6. Migration plan
 
-### 6.1 Content migration (mechanical, low risk)
+### 6.1 Content migration (mechanical, low risk) — corrected 2026-07-13, supersedes the
+original remap plan below
 
-Today's 7 `skill_tree.yaml` nodes map onto disciplines cleanly (see §7 for the full mapping) —
-this is a content-authoring pass, not new engine work, once §2's Tier 1/Tier 2 modules exist.
+**Correction to this guide's earlier draft.** An earlier revision of this section claimed
+`sharp_eyes`'s modifier key `skill.perception` was "the only" reference to the flat
+`skill.<name>` namespace and directed a remap to `discipline_ranks.subterfuge` (tracked as
+roadmap task 78.5). **That premise is false and the remap is dropped.** `skill.<name>` is not
+owned by `features/skills/` — `engine/game/checks.py::skill_check()`'s `key` parameter is an
+arbitrary resolver string (see the module docstring: "this module only defines *how* a check
+resolves," not *which namespace `key` lives in*). Auditing the codebase turns up **six** live
+references to the `skill.<name>` namespace, not one:
 
-**One node needs a modifier-key remap, not just a re-file.** `sharp_eyes`'s modifier
-(`world_content/skill_tree.yaml:56-65`) targets `key: skill.perception` — a reference into the
-old flat `SkillRegistry` namespace being deleted (§6.3). Once `features/skills/` is gone, that
-key has no home under the new `discipline_ranks.<discipline>` namespace and the modifier would
-silently no-op (the resolver simply finds nothing to multiply). It must be remapped during
-Phase C to `discipline_ranks.subterfuge` (or whatever final key the implementer settles on for
-"perception-flavored checks under the Subterfuge discipline") so `skill_check()` still picks it
-up. This is the **only** key-remap breakage found in the migration — every other node's
-modifier key (`carry_capacity`, `price.buy`, and any future `skill.<name> mult`) either doesn't
-reference the old flat skill catalog at all or is already namespaced independently of it.
+- `world_content/skill_tree.yaml` — `sharp_eyes`'s modifier, `key: skill.perception`.
+- `features/traits/standard.py` — `keen_eyed` → `skill.perception`, `silver_tongued` →
+  `skill.persuasion`, `sure_footed` → `skill.survival`.
+- `features/consumables/buffs.py` — `keen_minded` → `skill.perception`.
+- `features/items/effects.py` — content-driven `key=f"skill.{skill}"` built from `world.yaml`
+  item content (arbitrary skill names, not just perception).
+- `world_content/marks.yaml` — a mark referencing `skill.cartography`.
+- `webui/player/frontend.py`'s `_cartography_level` helper — reads `skill.cartography` (also
+  imports the doomed `SkillService` for its base value — see §6.3, this one needs an actual
+  code rewire, not just a docs note).
+
+Remapping even one of these to `discipline_ranks.<discipline>` would break the others unless
+all six moved together, and moving all six is itself the wrong call — see below.
+
+**Resolved direction (Option A — decisive, not up for re-litigating): `skill.<name>` is
+RETAINED PERMANENTLY as the check/modifier-key namespace.** It is a stable per-check-flavor
+naming convention, orthogonal to whether the `features/skills/` *package* exists — not a
+back-compat alias, and not comparable to the Sprint 71.2 `area_id` "no alias" precedent (there
+is no dual-naming here, just one namespace outliving its originating package). What is actually
+being deleted is the flat `SkillRegistry` catalog (`features/skills/definitions.py`) and
+`PlayerStats.skills` storage (§6.2); each check's *base value* is re-sourced from the relevant
+discipline's rank (`discipline_ranks.<discipline>`, §4) instead of the old flat skill level,
+while the `key=` argument passed to `skill_check()`/`resolve()` stays exactly as it is today
+(`skill.perception`, `skill.persuasion`, `skill.survival`, `skill.cartography`, …) so all six
+sites above keep working with **zero content or call-site changes** to their `key=` strings.
+`sharp_eyes` needs **no remap** — roadmap task 78.5 is moot and has been marked dropped (see
+`roadmap.md`).
+
+**Why Option A is correct, not just convenient:** collapsing per-check-flavor keys onto the
+coarser `discipline_ranks.<id>` accumulator keys would conflate two different layers. `subterfuge`
+alone would need to back both `keen_eyed`'s perception modifier and a hypothetical future
+lockpicking modifier — both targeting the same `discipline_ranks.subterfuge` key would become
+indistinguishable to the modifier resolver (`resolve()` sums/multiplies whatever it finds under
+a key; two unrelated modifiers sharing one key can't be told apart or selectively disabled). The
+discipline-rank dict (`discipline_ranks: dict[str, int]`) is the **accumulator/growth layer** —
+coarse, one entry per discipline, existing purely to feed a check's *base* value. `skill.<name>`
+stays the **per-check resolver-key layer** — fine-grained, one entry per check flavor, existing
+purely so modifiers can target one specific kind of check. These are different jobs and must
+stay separate keys even though both ultimately trace back to the same discipline.
+
+Tier 1 (`engine/game/checks.py` and `engine/game/modifiers.py`) remains completely untouched by
+this correction, exactly as §6.3 already states — this is a Tier 2 base-value sourcing change
+only, not a `key=` rename anywhere.
 
 ### 6.2 Schema migration (`PlayerStats` — flag for Database Specialist review)
 
@@ -386,6 +426,16 @@ reference the old flat skill catalog at all or is already namespaced independent
   data-driven `check_usage` call in place of (or alongside, during transition) its bespoke
   Python condition; `Room.indoor == False`-style checks become
   `usage.terrain: [outdoor]` data.
+- **`webui/player/frontend.py`'s `_cartography_level` helper — a real code change, not just a
+  docs note.** It currently does `from lorecraft.features.skills.service import SkillService`
+  and calls `SkillService().get_level(db, player_id, "cartography")` for its base value before
+  resolving the `skill.cartography` modifier key. Once `features/skills/` is deleted (this
+  section, above), that import breaks. During Phase C, rewire the base-value lookup to read
+  `PlayerStats.discipline_ranks["survival"]` instead (cartography folds into Survival per §7's
+  table) — the `resolve_for(db, "player", player_id, "skill.cartography", base=base)` call
+  underneath keeps its `skill.cartography` resolve key unchanged, per §6.1's Option A. Flagged
+  explicitly here because it's the one site in the migration that needs an actual code edit in
+  a web-host file, not a content-only change.
 
 ---
 
@@ -394,8 +444,14 @@ reference the old flat skill catalog at all or is already namespaced independent
 Curated to (a) absorb all 7 existing nodes + all 6 existing skills with zero combat content,
 (b) fit Lorecraft's actual world (Cogsworth/Whisperwood/Port Veridian, no weapons-as-abilities
 system, no spellcasting), (c) follow "several short branches, not one giant constellation" —
-5 disciplines for a starting ~13-ability roster, not 8 disciplines for 40+ as the source brief
-sketches for a combat-heavy game:
+5 disciplines for a starting **7-ability roster** (corrected — an earlier draft of this section
+said "~13-ability roster"; that was wrong. Per §4, skills become rank *accumulators*, not
+separate abilities, and §6.2's `discipline_ranks` dict is keyed by discipline id — 5 keys, not
+11. `world_content/abilities.yaml` will hold exactly the 7 existing skill-tree nodes below; the
+6 former flat skills — perception, lockpicking, bartering, cartography, survival, persuasion —
+become pure discipline-rank accumulators with **no standalone ability entry each**, they only
+feed a discipline's rank and a check's base value per §6.1's Option A), not 8 disciplines for
+40+ as the source brief sketches for a combat-heavy game:
 
 | Discipline | Absorbs | Purpose |
 |---|---|---|
@@ -414,7 +470,8 @@ for the four that were skill-tree-only, a paired discipline-rank contribution fr
 matching legacy skill (e.g. `pick_locks`'s discipline is `subterfuge`, and using it now also
 nudges `discipline_ranks.subterfuge`, replacing the old flat `skills.lockpicking` bump).
 `sharp_eyes` (prereq `keen_senses`, a passive modifier on perception) is also `subterfuge` —
-see §6.1 for a modifier-key remap this one needs that the others don't.
+its modifier key (`skill.perception`) needs **no remap**; see §6.1 (Option A) for why the
+`skill.<name>` namespace is retained permanently rather than remapped to `discipline_ranks.*`.
 
 **Deliberately excluded from v1**, matching the source brief's own disciplines but requiring
 combat: Swordsmanship, Defense, Pyromancy, Restoration, Necromancy, Leadership (the
