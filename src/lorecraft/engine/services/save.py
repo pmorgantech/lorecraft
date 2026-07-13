@@ -338,6 +338,9 @@ def _stats_snapshot(ctx: GameContext, stats: PlayerStats | None) -> JsonObject:
         "xp_to_next": stats.xp_to_next,
         "skill_points": stats.skill_points,
         "skills": dict(stats.skills),
+        # Skill-tree purchases (Sprint 74). The paired `ability.<id>` flags live
+        # in Player.flags, already snapshotted separately (save_slot.flags).
+        "unlocked_nodes": list(stats.unlocked_nodes),
         # v2 (Sprint 19): runtime hp lives in Meter("player", id, "hp"), not
         # PlayerStats.current_hp (deleted). See _apply_stats_snapshot for the
         # v1 (flat "current_hp" int) conversion-on-read.
@@ -372,6 +375,9 @@ def _apply_stats_snapshot(ctx: GameContext, snapshot: JsonObject) -> None:
     skills = snapshot.get("skills")
     if isinstance(skills, dict):
         stats.skills = dict(skills)
+    unlocked_nodes = snapshot.get("unlocked_nodes")
+    if isinstance(unlocked_nodes, list):
+        stats.unlocked_nodes = [str(node) for node in unlocked_nodes]
 
     hp_value: object = None
     meters_snapshot = snapshot.get("meters")

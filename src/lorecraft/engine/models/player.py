@@ -56,6 +56,12 @@ class PlayerStats(SQLModel, table=True):
     skills: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     # Innate traits (Sprint 19 adds the column; Tier 2 populates it — empty by default).
     traits: list[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # Skill-tree nodes bought with skill points (Sprint 74). This list is the
+    # query/UI record; the load-bearing gate is the `ability.<id>` flag each
+    # purchase also sets on Player.flags (flavors A/C read the flag). Both are
+    # written together on purchase and round-trip through save/load. Which nodes
+    # exist and what they grant is Tier 2 policy (features/progression skill_tree).
+    unlocked_nodes: list[str] = Field(default_factory=list, sa_column=Column(JSON))
 
 
 class SaveSlot(SQLModel, table=True):

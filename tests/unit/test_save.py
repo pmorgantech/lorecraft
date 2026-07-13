@@ -129,6 +129,49 @@ def test_save_slot_round_trips_skill_points() -> None:
     assert save_slot.stats_snapshot["skill_points"] == 7
 
 
+def test_save_slot_round_trips_unlocked_nodes_and_ability_flags() -> None:
+    """Sprint 74.2 dual-write: the `unlocked_nodes` list (PlayerStats) and the
+    paired `ability.<id>` flags (Player.flags) both survive save/load."""
+    game_engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=game_engine, audit_engine=audit_engine)
+    manager = ConnectionManager()
+
+    with Session(game_engine) as game_session, Session(audit_engine) as audit_session:
+        player = _seed_save_world(game_session)
+        stats = game_session.get(PlayerStats, "player-1")
+        assert stats is not None
+        stats.unlocked_nodes = ["forage", "mule"]
+        player.flags = {**player.flags, "ability.forage": True, "ability.mule": True}
+        game_session.add(stats)
+        game_session.commit()
+        ctx = _build_context(game_session, audit_session, player, manager)
+
+        SaveSlotService().save("slot1", ctx)
+        game_session.commit()
+
+        # Wipe both halves, then restore.
+        stats.unlocked_nodes = []
+        player.flags = {}
+        game_session.add(stats)
+        game_session.commit()
+
+        SaveSlotService().load("slot1", ctx)
+        game_session.commit()
+
+        reloaded_stats = game_session.get(PlayerStats, "player-1")
+        reloaded_player = game_session.get(Player, "player-1")
+        save_slot = game_session.exec(select(SaveSlot)).first()
+
+    assert reloaded_stats is not None
+    assert reloaded_stats.unlocked_nodes == ["forage", "mule"]
+    assert reloaded_player is not None
+    assert reloaded_player.flags.get("ability.forage") is True
+    assert reloaded_player.flags.get("ability.mule") is True
+    assert save_slot is not None
+    assert save_slot.stats_snapshot["unlocked_nodes"] == ["forage", "mule"]
+
+
 def test_session_safety_grace_reconnect_and_expiry_are_audited() -> None:
     game_engine = create_engine("sqlite://")
     audit_engine = create_engine("sqlite://")
