@@ -21,33 +21,26 @@ same way `test_gameplay_flows.py::test_dialogue_choice_starts_quest` starts
 it -- deterministic, unlike exploration's `search` command (RNG skill-check
 gated).
 
-**Known backend gap worked around here (found verifying this task, reported
-separately -- not this agent's lane to fix):** nothing in the engine ever
-creates a fresh character's *first* `PlayerStats` row -- not character
-creation, not `save`/`load` (an empty snapshot round-trips to another empty
-snapshot; `_apply_stats_snapshot` no-ops on `not snapshot`). Every XP/reward
-grant (`apply_rewards`, `engine/game/leveling.py`) is correctly gated behind
-`ctx.player_repo.stats(player_id) is not None`, so a brand-new character can
-never actually level up in production today -- confirmed by direct DB
-inspection: `playerstats` stays empty through `save` + `load` + a completed
-quest reward. Until that's fixed (PlayerRepo.stats() get-or-create, or an
-eager row at character creation -- Backend Engineer's call), this test seeds
-the row directly as a test precondition (not a production change) via the
-same sqlite file `admin_server` already created, reachable through the
-shared per-test `tmp_path` fixture.
+Previously this test had to seed a fresh character's `PlayerStats` row
+directly into the test sqlite DB as a workaround: nothing in the engine used
+to create that first row on its own (not character creation, not
+`save`/`load`), so `apply_rewards`' `ctx.player_repo.stats(player_id) is not
+None` gate meant a brand-new character could never actually level up. That
+gap is fixed as of commit c3b818a -- `PlayerRepo.stats()` is now
+get-or-create, always returning a real persisted row. This test now relies
+entirely on that real code path: `create_character()` plus the quest
+completion below is what creates the character's first stats row, with no
+direct DB seeding.
 """
 
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
-from sqlmodel import Session, create_engine, select
 
-from lorecraft.engine.models.player import Player, PlayerStats
 from tests.e2e._helpers import create_character, send_command
 from tests.e2e.conftest import ADMIN_PASS, ADMIN_USER
 
@@ -65,17 +58,6 @@ def _tune_progression_config(base_url: str, **fields: int) -> None:
         headers={"Authorization": f"Bearer {token}"},
     )
     resp.raise_for_status()
-
-
-def _seed_player_stats(tmp_path: Path, username: str) -> None:
-    """Work around the missing-first-PlayerStats-row gap (see module docstring)
-    by inserting one directly into the same sqlite file `admin_server` uses
-    (`tmp_path / "e2e-game.db"`, per `tests/e2e/conftest.py`)."""
-    engine = create_engine(f"sqlite:///{tmp_path / 'e2e-game.db'}")
-    with Session(engine) as session:
-        player = session.exec(select(Player).where(Player.username == username)).one()
-        session.add(PlayerStats(player_id=player.id))
-        session.commit()
 
 
 def _complete_investigate_lights_quest(page: Any) -> None:
@@ -102,9 +84,7 @@ def _complete_investigate_lights_quest(page: Any) -> None:
     page.locator("#room-description", has_text="Market Stalls").wait_for()
 
 
-def test_level_up_message_gets_distinct_styling(
-    page: Any, admin_server: str, tmp_path: Path
-) -> None:
+def test_level_up_message_gets_distinct_styling(page: Any, admin_server: str) -> None:
     # investigate_lights' visit_market stage grants exactly 50 xp -- tune the
     # curve's base cost down to that so completing the quest levels the
     # player up deterministically, with no XP grinding in the test.
@@ -112,8 +92,10 @@ def test_level_up_message_gets_distinct_styling(
 
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, admin_server, username)
-    _seed_player_stats(tmp_path, username)
 
+    # No PlayerStats seeding: create_character + the quest completion below
+    # exercise PlayerRepo.stats()'s get-or-create for real, the first time
+    # this character's stats row is ever touched (see module docstring).
     _complete_investigate_lights_quest(page)
 
     message = page.locator("#feed .msg.msg-level", has_text="You reach level 2!")
@@ -124,16 +106,13 @@ def test_level_up_message_gets_distinct_styling(
     assert font_weight not in ("normal", "400")
 
 
-def test_stats_pane_live_updates_on_level_up(
-    page: Any, admin_server: str, tmp_path: Path
-) -> None:
+def test_stats_pane_live_updates_on_level_up(page: Any, admin_server: str) -> None:
     _tune_progression_config(
         admin_server, base=50, step=1000, coins_per_level=10, skill_points_per_level=3
     )
 
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, admin_server, username)
-    _seed_player_stats(tmp_path, username)
 
     # Open the Stats tab before leveling so the OOB swap's target element is
     # already the one visibly on-screen (it also works while hidden, since
