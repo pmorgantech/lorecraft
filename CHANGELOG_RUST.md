@@ -19,6 +19,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   RNG parity, fixture-capture design (`rust/fixtures/look_only/`), and the
   recursive `to_json`/`from_json` prerequisite carried over from the Phase 0/1
   kickoff follow-ups.
+- Recursive `to_json`/`from_json` on the Python protocol container types
+  (`CommandEnvelope`, `CommandOutcome`, `ScriptRequest`, `ScriptResult`, and
+  friends), plus a fixture-capture golden test and the checked-in
+  `rust/fixtures/look_only/{request.json,expected_result_hash.txt}` artifacts used
+  as the cross-language parity input.
+- Rust world-actor skeleton: a bounded input queue with deterministic
+  drain-then-sort-then-dispatch ordering in `lorecraft-runtime`, a logical clock and
+  `(logical_time, receive_sequence)` ordering-key comparator in
+  `lorecraft-scheduler`, and per-stream RNG derivation (`derive_stream(world_seed,
+  stream_id) -> ChaCha8Rng`) in `lorecraft-core`.
+- `lorecraft-replay` — canonical-JSON serialization and sha256 hashing ported from
+  Python's `replay_hash.py`, including matching float-reject behavior (an
+  integer-valued float such as `2.0` is rejected on both sides).
+- New `lorecraft-feature-look` crate — a Rust port of `look_pure.py`'s
+  `look_effects` policy function, kept out of `lorecraft-runtime`/`-core`/
+  `-scheduler` to avoid a Tier 1/Tier 2 policy leak.
+- Cross-language `look` `ScriptResult` parity proof: the Rust
+  `look_only_fixture_parity` test hashes its `look_effects` output and asserts it
+  matches the Python-captured golden hash — both sides produce
+  `ff78f14d4adff1daf3fa1c6a4ce3aa4a537f4384ff29011dca14460c7b2c95ca`, closing out
+  Phase 2's exit criterion.
 
 ---
 
