@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial Rust workspace setup with Cargo.toml and crate stubs
 - `rust/crates/lorecraft-protocol` — protocol types, versioning, and serialization
 - `docs/rust_migration_plan.md` — comprehensive architecture guide for the port
+- `docs/rust_migration_plan.md` — Phase 0/1 kickoff design spec: replay hashing,
+  slow-handler and mutation-scan tooling (Phase 0), and `lorecraft-protocol` crate +
+  Python `protocol/` mirror contracts with a `look` pure-function adapter (Phase 1)
 - Agent configuration updates (`AGENTS.md`, `.claude/agents/`) scoped for Rust + Python work
 - `README.md` updates with Rust tooling requirements and worktree setup guidance
 
