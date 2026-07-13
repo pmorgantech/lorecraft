@@ -14,10 +14,14 @@ See `docs/discipline_ability_system.md` §2 (the Tier 1 mechanism list) and §5.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 
+from lorecraft.engine.game.checks import skill_check
+from lorecraft.engine.game.modifiers import Modifier, resolve
+from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.models.player import PlayerStats
+from lorecraft.errors import ValidationError
 
 # The `Player.flags` namespace prefix for *durable* usage-requirement states
 # (§5.3). A required character/target state ``hidden`` is satisfied by a
@@ -25,6 +29,12 @@ from lorecraft.engine.models.player import PlayerStats
 # ``effect_key`` is ``hidden`` (transient). Distinct from the existing
 # ``ability.<id>`` flag prefix, which records *ownership* of an ability.
 STATE_FLAG_PREFIX = "state."
+
+# Modifier key the proficiency-growth roll resolves against, so a Tier 2 source
+# (a "fast learner" trait, a teaching bonus) can nudge the learn rate without
+# this mechanism knowing what those sources are. A namespaced mechanism key, not
+# world content.
+PROFICIENCY_IMPROVE_KEY = "proficiency.improve_chance"
 
 
 @dataclass(frozen=True)
@@ -298,3 +308,58 @@ def check_usage(
         missing_character_states=missing_character,
         missing_target_states=missing_target,
     )
+
+
+# --- Proficiency: use-based growth of a per-discipline/ability competence -----
+
+
+def resolve_proficiency(
+    rng: GameRng,
+    base_level: int,
+    modifiers: Iterable[Modifier],
+    improve_chance: float,
+    max_rank: int,
+) -> float:
+    """Roll one use-based proficiency-growth step and return the new level (§2).
+
+    Generalizes `SkillService.record_use()`'s "learn by doing" mechanic, with its
+    two policy dials — `improve_chance` and `max_rank` — lifted out of the module
+    constants they are today (`features/skills/service.py`'s
+    `IMPROVE_CHANCE`/`MAX_LEVEL`) into **parameters** the Tier 2 caller supplies
+    from config. The mechanism knows *how* to roll a chance and cap a level; it
+    never decides *what* the chance or cap should be.
+
+    Composition (both are existing Tier 1 primitives):
+
+    - `modifiers.py::resolve()` scales the base improve chance by any modifier
+      keyed to :data:`PROFICIENCY_IMPROVE_KEY`, so a "fast learner" trait or
+      teaching bonus can raise the learn rate data-drivenly.
+    - `checks.py::skill_check()` performs the actual roll (the chance expressed on
+      a 0-100 target scale). This inherits `skill_check`'s ``CHECK_FLOOR``/
+      ``CHECK_CEIL`` bounds — there is always at least a 5% and at most a 95%
+      chance to improve, so learning is never impossible nor guaranteed.
+
+    Note: `rng` (the sole sanctioned `GameRng`) is required — growth is a
+    randomized roll, and `skill_check` cannot be composed without it — so it is
+    threaded as the first parameter, mirroring `skill_check`'s own convention.
+    Returns the (possibly incremented) proficiency as a float; the caller ints/
+    persists it at its own edge.
+    """
+    if not 0.0 <= improve_chance <= 1.0:
+        raise ValidationError(
+            f"improve_chance must be in [0, 1], got {improve_chance}",
+            code="validation_improve_chance",
+        )
+    if max_rank < 0:
+        raise ValidationError(
+            f"max_rank must be non-negative, got {max_rank}",
+            code="validation_max_rank",
+        )
+    if base_level >= max_rank:
+        return float(max_rank)
+
+    learn_target = resolve(PROFICIENCY_IMPROVE_KEY, improve_chance * 100.0, modifiers)
+    result = skill_check(
+        rng, base=learn_target, difficulty=0, key=PROFICIENCY_IMPROVE_KEY
+    )
+    return float(base_level + (1 if result.success else 0))
