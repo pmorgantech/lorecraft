@@ -124,10 +124,7 @@ class ForageService:
             key=f"skill.{_SURVIVAL_SKILL}",
         )
 
-        if ctx.player_repo.stats(ctx.player.id) is not None:
-            self._skills.record_use(
-                ctx.session, ctx.rng, ctx.player.id, _SURVIVAL_SKILL
-            )
+        self._skills.record_use(ctx.session, ctx.rng, ctx.player.id, _SURVIVAL_SKILL)
 
         if not result.success:
             ctx.say("You forage the area but turn up nothing edible.")

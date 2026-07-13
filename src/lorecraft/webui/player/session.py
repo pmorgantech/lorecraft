@@ -23,7 +23,7 @@ from lorecraft.features.items.rules import register_item_rules
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
-from lorecraft.engine.models.player import Player, PlayerStats
+from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
@@ -322,11 +322,10 @@ def encumbrance_snapshot_for(
     session: DBSession, player_repo: PlayerRepo, player_id: str
 ) -> dict[str, float | str]:
     """Carry-weight summary for the inventory panel (Sprint 49). Reads the
-    player's strength for capacity; defaults to 10 if stats are missing."""
+    player's strength for capacity."""
     from lorecraft.features.encumbrance.rules import encumbrance_snapshot
 
-    stats = player_repo.stats(player_id)
-    strength = stats.strength if stats is not None else 10
+    strength = player_repo.stats(player_id).strength
     return encumbrance_snapshot(session, player_id, strength)
 
 
@@ -478,12 +477,10 @@ def stats_snapshot(
         )
     out["meter_bars"] = meter_bars
 
-    # Attributes + level always show, even before a PlayerStats row exists
-    # (one is only ever persisted on save-load, see save.py) — a fresh
-    # character's sheet is the model's own declared defaults (all 10,
-    # level 1), the same "read-time default, no new schema" convention the
-    # `score` command already uses for level/xp.
-    stats = player_repo.stats(player_id) or PlayerStats(player_id=player_id)
+    # Attributes + level always show. player_repo.stats() is get-or-create,
+    # so a fresh character (no row persisted yet) reads the model's own
+    # declared defaults (all 10, level 1).
+    stats = player_repo.stats(player_id)
     out["attributes"] = {
         "Strength": stats.strength,
         "Agility": stats.agility,

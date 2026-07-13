@@ -50,10 +50,7 @@ class SenseService:
             key=f"skill.{_PERCEPTION_SKILL}",
         )
 
-        if ctx.player_repo.stats(ctx.player.id) is not None:
-            self._skills.record_use(
-                ctx.session, ctx.rng, ctx.player.id, _PERCEPTION_SKILL
-            )
+        self._skills.record_use(ctx.session, ctx.rng, ctx.player.id, _PERCEPTION_SKILL)
 
         if not result.success:
             ctx.say("You focus your senses but notice nothing unusual.")

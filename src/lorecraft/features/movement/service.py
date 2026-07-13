@@ -89,8 +89,7 @@ class MovementService:
             ),
             key="skill.lockpicking",
         )
-        if ctx.player_repo.stats(ctx.player.id) is not None:
-            _skills.record_use(ctx.session, ctx.rng, ctx.player.id, "lockpicking")
+        _skills.record_use(ctx.session, ctx.rng, ctx.player.id, "lockpicking")
 
         if not result.success:
             ctx.say(f"You work the lock on the way {normalized}, but it holds.")
@@ -144,10 +143,9 @@ class MovementService:
                     MessageType.WARNING,
                 )
                 return
-            if ctx.player_repo.stats(ctx.player.id) is not None:
-                _skills.record_use(
-                    ctx.session, ctx.rng, ctx.player.id, terrain_def.required_skill
-                )
+            _skills.record_use(
+                ctx.session, ctx.rng, ctx.player.id, terrain_def.required_skill
+            )
 
         previous_room_id = ctx.room.id
         ctx.player.current_room_id = target_room.id

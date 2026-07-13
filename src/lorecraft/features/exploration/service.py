@@ -37,8 +37,7 @@ class ExplorationService:
             key="skill.perception",
         )
 
-        if ctx.player_repo.stats(ctx.player.id) is not None:
-            self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "perception")
+        self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "perception")
 
         if not result.success:
             ctx.say("You search the area but find nothing new.")

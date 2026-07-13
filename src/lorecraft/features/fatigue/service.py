@@ -115,8 +115,7 @@ class FatigueService:
             modifiers=modifiers,
             key="skill.survival",
         )
-        if ctx.player_repo.stats(ctx.player.id) is not None:
-            self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "survival")
+        self.skills.record_use(ctx.session, ctx.rng, ctx.player.id, "survival")
 
         if result.success:
             ctx.say("You bed down as best you can and manage a full night's rest.")

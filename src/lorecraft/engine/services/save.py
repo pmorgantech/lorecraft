@@ -352,9 +352,6 @@ def _apply_stats_snapshot(ctx: GameContext, snapshot: JsonObject) -> None:
     if not snapshot:
         return
     stats = ctx.player_repo.stats(ctx.player.id)
-    if stats is None:
-        stats = PlayerStats(player_id=ctx.player.id)
-        ctx.player_repo.save_stats(stats)
 
     for field in (
         "strength",
