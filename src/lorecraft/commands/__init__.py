@@ -23,7 +23,7 @@ from lorecraft.features.economy.commands import register_economy_commands
 from lorecraft.features.exploration.commands import register_exploration_commands
 from lorecraft.features.inventory.commands import register_inventory_commands
 from lorecraft.features.quests.commands import register_quest_commands
-from lorecraft.features.progression.commands import register_progression_commands
+from lorecraft.features.disciplines.commands import register_discipline_commands
 from lorecraft.commands.meta import register_meta_commands
 from lorecraft.features.movement.commands import register_movement_commands
 from lorecraft.commands.news import register_news_commands
@@ -81,10 +81,10 @@ def register_all_commands(
     if services.quest is not None:
         with registry.category("quests"):
             register_quest_commands(registry)
-    # Progression verbs (train/learn/abilities) — always on; they read the
-    # skill-tree registry, which is simply empty when no tree content loaded.
+    # Discipline verbs (train/learn/abilities) — always on; they read the ability
+    # registry, which is simply empty when no ability content is loaded.
     with registry.category("progression"):
-        register_progression_commands(registry)
+        register_discipline_commands(registry)
     if services.character_info is not None:
         with registry.category("character"):
             register_character_commands(registry, services.character_info)
