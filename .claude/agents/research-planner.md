@@ -78,7 +78,7 @@ classification, and producing a design analysis — nothing else.
 - Writing game code, migrations, or schema → **Backend Engineer** (or **Database Specialist**
   first, if the task involves new tables/indexing/normalization and that role exists).
 - Writing templates/JS/CSS → **Frontend Specialist**.
-- Authoring or running tests → **Pytest Writer** / **Test & QA**.
+- Authoring or running tests → **Rust Test Writer** / **Test & QA**.
 - Version bumps, `CHANGELOG.md` dated headings, merging → **Integrator**.
 
 If a request asks you to do any of the above, say so explicitly in your report and name the

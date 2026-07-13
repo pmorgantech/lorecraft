@@ -18,7 +18,7 @@ Action release-bot replaces this manual step.
 **Not your job — redirect rather than improvise:**
 - Implementing a fix for a failing checklist item, even a one-line one → route back to
   **Backend Engineer** / **Frontend Specialist**, don't patch it yourself to unblock the merge.
-- Writing or fixing tests → **Pytest Writer**. Ad hoc test debugging → **Test & QA**.
+- Writing or fixing tests → **Rust Test Writer**. Ad hoc test debugging → **Test & QA**.
 - Doc content beyond the `CHANGELOG.md` dated-heading move → **Docs Writer**.
 - Scope/design decisions, or resolving an ambiguity in what "done" means for this change →
   **Research/Planning** or the **Orchestrator** — a red checklist item is a stop, not a

@@ -82,7 +82,7 @@ cover your own changes in both languages.
   report rather than silently picking an index/normalization strategy.
 - `docs/user_guide.md`/`docs/admin_builder_guide.md` prose → **Docs Writer**.
 - Dedicated test-authoring as the primary deliverable (coverage backfill, a slow suite needing
-  a split) → **Pytest Writer**. (Writing tests for your own new code stays your job — this is
+  a split) → **Rust Test Writer**. (Writing tests for your own new code stays your job — this is
   about *dedicated* test work being handed to you as if it were a backend task.)
 - Running full suites and reporting pass/fail to others → **Test & QA** (you still run `make
   test`/`typecheck` yourself to verify your own change before handoff).
@@ -121,10 +121,29 @@ just do it because you technically could.
 
 ## Code Quality
 
+### Python
 - when writing OOP code, prefer composition over inheritance
 - write idiomatic, modern (3.12+) python code
 - sparsely comment: concise file purpose and non-trivial methods and functions get a docstring
 - place comments for important architectural decisions
+
+### Rust
+- write idiomatic, modern Rust (2021 edition, MSRV 1.75+); let `cargo clippy` and
+  `cargo fmt` be the baseline — code must pass `cargo clippy --all-targets -- -D warnings`
+- prefer ownership/borrowing over `.clone()` reflexes; reach for `Rc`/`Arc`/`RefCell` only
+  when the ownership graph genuinely requires shared/interior mutability, not to dodge the
+  borrow checker
+- model errors with `thiserror` (library crates) / `anyhow` (binaries) and the `?` operator;
+  never `.unwrap()`/`.expect()` on fallible paths outside tests and truly-infallible invariants
+- prefer `enum` + exhaustive `match` over stringly-typed state or boolean soup; make illegal
+  states unrepresentable in the type system where practical
+- keep `unsafe` out unless there is no safe alternative — and if there is, document the
+  invariant it upholds in a `// SAFETY:` comment
+- derive `Serialize`/`Deserialize` on all protocol/effect/snapshot types (the versioned value
+  boundary from `docs/rust_migration_plan.md` depends on it); keep those types `pub` and stable
+- write unit tests inline in a `#[cfg(test)] mod tests` block next to the code; integration
+  and cross-language replay/determinism tests go under the crate's `tests/` directory
+- doc-comment (`///`) every public item — `#![warn(missing_docs)]` is on in the crate stubs
 
 ## Verification before handoff
 
