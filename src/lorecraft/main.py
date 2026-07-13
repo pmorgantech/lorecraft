@@ -250,6 +250,10 @@ def create_app(
         if services.marks is not None:
             _load_mark_definitions(resolved_settings.marks_yaml_path)
             services.marks.register(bus)
+        if "progression" in enabled_set:
+            _load_skill_tree_definitions(resolved_settings.skill_tree_yaml_path)
+        if services.exploration is not None:
+            _load_forage_definitions(resolved_settings.forage_yaml_path)
         if "context_commands" in enabled_set:
             _load_context_commands(resolved_game_engine)
 
@@ -782,6 +786,43 @@ def _load_mark_definitions(marks_yaml_path: str) -> None:
         registry.load_document(load_marks_yaml(marks_yaml_path))
     except Exception as exc:  # malformed mark content shouldn't crash boot
         log.warning("failed to load marks from %s: %s", marks_yaml_path, exc)
+
+
+def _load_skill_tree_definitions(skill_tree_yaml_path: str) -> None:
+    """Load skill-tree node definitions (Sprint 74) into the in-memory registry
+    at startup. A missing file is fine — it just means no abilities are defined."""
+    from pathlib import Path
+
+    from lorecraft.features.progression.skill_tree import (
+        get_registry,
+        load_skill_tree_yaml,
+    )
+
+    registry = get_registry()
+    registry.clear()
+    if not Path(skill_tree_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_skill_tree_yaml(skill_tree_yaml_path))
+    except Exception as exc:  # malformed tree content shouldn't crash boot
+        log.warning("failed to load skill tree from %s: %s", skill_tree_yaml_path, exc)
+
+
+def _load_forage_definitions(forage_yaml_path: str) -> None:
+    """Load forage-table definitions (Sprint 74.5) into the in-memory registry at
+    startup. A missing file is fine — `forage` then yields nothing."""
+    from pathlib import Path
+
+    from lorecraft.features.exploration.forage import get_registry, load_forage_yaml
+
+    registry = get_registry()
+    registry.clear()
+    if not Path(forage_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_forage_yaml(forage_yaml_path))
+    except Exception as exc:  # malformed forage content shouldn't crash boot
+        log.warning("failed to load forage table from %s: %s", forage_yaml_path, exc)
 
 
 def _load_context_commands(game_engine: Engine) -> None:

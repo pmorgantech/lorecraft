@@ -1,0 +1,87 @@
+# Skill tree (Sprint 74) — nodes bought with skill points to unlock abilities.
+#
+# Each node converges on the `ability.<id>` player flag (injected into unlock.flags
+# automatically if omitted). Three ability flavors, all authored here as data:
+#   (A) active verb    — `unlock.enables_verb` marks the code verb gated on the flag
+#   (B) passive bonus  — `unlock.modifier` feeds the engine modifier resolver
+#   (C) interaction    — flag alone; world.yaml dialogue gates on it (zero engine code)
+#
+# Costs are small integers calibrated against ~1 skill point per level
+# (progression.skill_points_per_level). Shallow first pass: mostly flat tiers.
+version: 1
+nodes:
+  # --- (A) Active-verb unlock nodes ---
+  - id: forage
+    name: Forage
+    description: >-
+      Learn to read the wild for food. Enables the `forage` verb in outdoor
+      rooms, where a survival check turns up something edible.
+    cost: 1
+    prerequisites: []
+    unlock:
+      enables_verb: forage
+
+  - id: keen_senses
+    name: Keen Senses
+    description: >-
+      Heighten your awareness. Enables the `sense` verb, a perception sweep that
+      reveals hidden ways and notices who and what is present.
+    cost: 1
+    prerequisites: []
+    unlock:
+      enables_verb: sense
+
+  - id: pick_locks
+    name: Pick Locks
+    description: >-
+      Coax a locked door open without its key. Enables the `pick` verb, resolved
+      by a lockpicking check.
+    cost: 2
+    prerequisites: []
+    unlock:
+      enables_verb: pick
+
+  # --- (B) Passive-modifier nodes ---
+  - id: mule
+    name: Mule
+    description: A trained back and better packing — you carry more before slowing.
+    cost: 1
+    prerequisites: []
+    unlock:
+      modifier:
+        key: carry_capacity
+        kind: add
+        amount: 20
+
+  - id: sharp_eyes
+    name: Sharp Eyes
+    description: Practice sharpens perception on every check that leans on it.
+    cost: 2
+    prerequisites: [keen_senses]
+    unlock:
+      modifier:
+        key: skill.perception
+        kind: mult
+        amount: 1.1
+
+  - id: haggler
+    name: Haggler
+    description: A merchant's patter shaves a little off everything you buy.
+    cost: 2
+    prerequisites: []
+    unlock:
+      modifier:
+        key: price.buy
+        kind: mult
+        amount: 0.95
+
+  # --- (C) Interaction / dialogue unlock node (zero engine code) ---
+  - id: silver_tongue
+    name: Silver Tongue
+    description: >-
+      A persuasive turn of phrase opens conversations that stay shut to others.
+      Gates dialogue options flagged `actor_has_flag:ability.silver_tongue`.
+    cost: 1
+    prerequisites: []
+    unlock:
+      enables_verb: null
