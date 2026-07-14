@@ -4,6 +4,23 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.100.0] - 2026-07-14
+
+### Added
+
+- Added the Ashmoore graveyard zone with interactive tombstones, dark crypts,
+  undead NPC templates, and spawn controllers for tombstone skeletons, bell
+  ghosts, and crypt wights.
+- Added the Brass Vaults steampunk zone above Ashmoore's Inner Vault, with
+  descriptive rooms, steampunk items and wearables, patrolling/wandering
+  mechanical hazards, and ten local quests offered by Forewoman Cassia.
+
+### Fixed
+
+- Made the Ashmoore cave entrance's Dented Oil Lantern and Cogsworth's Brass Oil
+  Lantern actual `light: 1` light sources so equipped, lit lanterns satisfy dark
+  room checks.
+
 ## [0.99.0] - 2026-07-14
 
 ### Added

@@ -515,6 +515,11 @@ Like Progression, nothing caches `RegionPricing` in runtime state — `features/
 reads the row fresh from the DB on every transaction — so a save takes effect on the very next
 buy/sell, no restart required.
 
+The seeded world currently includes economy rows for `ashmoore`, `ashmoore_graveyard`,
+`brass_vaults`, `cogsworth`, `whisperwood`, and `port_veridian`. When adding a new authored
+zone with shops or intended pricing differences, add a matching `economy.regions` row before
+importing so the admin Economy tab can tune it live afterward.
+
 ### Disciplines & abilities (Sprint 78)
 
 The skill points a player earns from leveling (above) are spent on **abilities**, each filed

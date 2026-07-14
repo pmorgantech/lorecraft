@@ -164,8 +164,11 @@ rooms:
     indoor: true
     description: >-
       Beyond the iron door, the vault is a bare, quiet room of close-fitted
-      stone. Whatever it once guarded is long gone. The only way out is back
-      west through the door.
+      stone. Whatever it once guarded is long gone, unless the brass-rimmed
+      hatch in the ceiling counts as a kind of treasure. Its edges tick softly,
+      as if the old lockwork above is still listening. The ordinary way out is
+      back west through the door; a ladder set into the north wall climbs up
+      through the hatch.
     map_x: 6
     map_y: 10
     zone: ashmoore
@@ -174,6 +177,8 @@ rooms:
     exits:
       - direction: west
         target_room_id: vault_hall
+      - direction: up
+        target_room_id: brassbound_lift
 
   - id: market_stalls
     name: The Market Stalls
@@ -235,6 +240,8 @@ rooms:
         target_room_id: village_square
       - direction: south
         target_room_id: forest_path
+      - direction: east
+        target_room_id: graveyard_gate
 
   # -------------------------------------------------------------------------
   # AREA: wilderness — The Forest and Its Margins
@@ -501,6 +508,485 @@ rooms:
     exits:
       - direction: east
         target_room_id: cave_chamber
+
+  # -------------------------------------------------------------------------
+  # AREA: ashmoore_graveyard — The Old Hill Graveyard
+  # -------------------------------------------------------------------------
+
+  - id: graveyard_gate
+    name: The Graveyard Gate
+    description: >-
+      A crooked iron gate stands in a leaning wall of fieldstone, its hinges
+      furred with orange rust and its latch wrapped in black mourning ribbon.
+      Beyond it, the graveyard climbs the hill in terraces: old family plots,
+      cheap pauper rows, and a chapel-yard where the grass grows silver even in
+      daylight. The road back to Ashmoore's south gate lies west; the path
+      curls east between tombstones that look recently disturbed.
+    map_x: 6
+    map_y: 6
+    zone: ashmoore_graveyard
+    room_type: wilderness
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: south_gate
+      - direction: east
+        target_room_id: pauper_rows
+      - direction: north
+        target_room_id: caretakers_shed
+
+  - id: caretakers_shed
+    name: The Caretaker's Shed
+    indoor: true
+    description: >-
+      The shed smells of wet rope, tallow, cold ashes, and soil turned too many
+      times. Shovels hang by size from pegs. A workbench under the single dirty
+      window holds chipped urns, grave rubbings, and a neat ledger whose pages
+      are weighted open with a skull-shaped paperweight. Someone has scratched
+      tally marks inside the doorframe, then tried to plane them away.
+    map_x: 6
+    map_y: 7
+    zone: ashmoore_graveyard
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: graveyard_gate
+      - direction: east
+        target_room_id: mourner_path
+
+  - id: pauper_rows
+    name: The Pauper Rows
+    description: >-
+      Narrow graves crowd shoulder to shoulder where the hill's soil is thinnest.
+      Most markers are simple slates with names scratched by uncertain hands:
+      apprentices, travelers, nameless fever-dead, and debtors whose families
+      could not afford a proper stone. Several plots have collapsed inward as if
+      something beneath them sat up. Loose finger-bones gleam among the roots.
+    map_x: 7
+    map_y: 6
+    zone: ashmoore_graveyard
+    room_type: wilderness
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: graveyard_gate
+      - direction: east
+        target_room_id: cracked_mausoleum
+      - direction: north
+        target_room_id: mourner_path
+
+  - id: mourner_path
+    name: The Mourner's Path
+    description: >-
+      Yew branches interlace overhead, turning the path into a dim green tunnel.
+      Ribbons, locks of hair, and rain-softened prayer cards hang from the lower
+      boughs. Every few steps a bell the size of a thimble is tied to a branch,
+      and every bell moves without wind. The path bends between the caretaker's
+      shed, the pauper rows, and a ring of older family vaults.
+    map_x: 7
+    map_y: 7
+    zone: ashmoore_graveyard
+    room_type: wilderness
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: caretakers_shed
+      - direction: south
+        target_room_id: pauper_rows
+      - direction: east
+        target_room_id: bell_crypt
+      - direction: north
+        target_room_id: ossuary_steps
+
+  - id: cracked_mausoleum
+    name: The Cracked Mausoleum
+    indoor: true
+    description: >-
+      The old Varrow mausoleum has split from lintel to foundation, and the
+      crack down its marble face is wide enough for rain, ivy, and grave-cold
+      fingers. Inside, bronze nameplates hang crooked over empty shelves. Dust
+      lies everywhere except on the floor, where many bare footprints cross and
+      recross each other in a patient, circular march.
+    map_x: 8
+    map_y: 6
+    zone: ashmoore_graveyard
+    room_type: cave
+    light_level: 0
+    exits:
+      - direction: west
+        target_room_id: pauper_rows
+      - direction: north
+        target_room_id: bell_crypt
+
+  - id: bell_crypt
+    name: The Bell Crypt
+    indoor: true
+    description: >-
+      Burial niches line the walls in three tiers, each sealed with brick and
+      lime except where the seals have been broken from within. Thin cords run
+      from several coffins to a frame of tarnished bells above the central aisle:
+      a dead-ringer's mercy system, meant to save the mistakenly buried. The
+      bells twitch and murmur now, though no living hand pulls the strings.
+    map_x: 8
+    map_y: 7
+    zone: ashmoore_graveyard
+    room_type: cave
+    light_level: 0
+    exits:
+      - direction: west
+        target_room_id: mourner_path
+      - direction: south
+        target_room_id: cracked_mausoleum
+      - direction: up
+        target_room_id: angel_overlook
+
+  - id: ossuary_steps
+    name: The Ossuary Steps
+    description: >-
+      Limestone steps climb to an old bone-house built into the hill. The rail is
+      carved with saints whose faces have been rubbed away by generations of
+      fearful hands. Candle soot blackens the arch. Beneath it, little offerings
+      have been laid in rows: buttons, teeth, river stones, toy soldiers, wedding
+      rings, and once-bright cogs gone green with age.
+    map_x: 7
+    map_y: 8
+    zone: ashmoore_graveyard
+    room_type: wilderness
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: mourner_path
+      - direction: north
+        target_room_id: ossuary
+
+  - id: ossuary
+    name: The Ossuary
+    indoor: true
+    description: >-
+      Bones are stacked with devotional precision from floor to vaulted ceiling:
+      femurs in herringbone courses, skulls in niches, hands wired into wreaths
+      around clay lamps. The air is powder-dry and tastes faintly of old chalk.
+      In the center stands a long stone table where someone has arranged three
+      skeletons as if for a formal dinner and left a place open at the end.
+    map_x: 7
+    map_y: 9
+    zone: ashmoore_graveyard
+    room_type: cave
+    light_level: 0
+    exits:
+      - direction: south
+        target_room_id: ossuary_steps
+      - direction: east
+        target_room_id: angel_overlook
+
+  - id: angel_overlook
+    name: The Weeping Angel Overlook
+    description: >-
+      A marble angel kneels at the hill's crown, both hands pressed over a face
+      worn smooth by rain. From here Ashmoore's rooftops look warm and very far
+      away. Behind the statue, a circle of ancient tombstones leans inward like
+      judges at a trial. Their names have been chiseled out and replaced with
+      tiny brass bells, each clapper made from a finger-bone.
+    map_x: 8
+    map_y: 8
+    zone: ashmoore_graveyard
+    room_type: wilderness
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: ossuary
+      - direction: down
+        target_room_id: bell_crypt
+
+  # -------------------------------------------------------------------------
+  # AREA: brass_vaults — The Pneumatic Vaultworks
+  # -------------------------------------------------------------------------
+
+  - id: brassbound_lift
+    name: The Brassbound Lift
+    indoor: true
+    description: >-
+      Above Ashmoore's inner vault waits a cylindrical lift cage of ribbed brass,
+      smoked glass, and black leather hand-straps. Its floor trembles with the
+      pressure of hidden pistons. The old vault below feels suddenly modest; up
+      here the walls are full of whispering tubes, numbered valves, and pressure
+      gauges whose needles twitch as if measuring your heartbeat. A grated door
+      opens east into a buried station.
+    map_x: 6
+    map_y: 10
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: down
+        target_room_id: inner_vault
+      - direction: east
+        target_room_id: pneumatic_station
+
+  - id: pneumatic_station
+    name: Pneumatic Station Seven
+    indoor: true
+    description: >-
+      Brass message-tubes web the ceiling, hissing and clacking as capsule cars
+      shoot between unseen departments. A platform of green tile runs beside a
+      narrow pressure tram no wider than a coffin. The timetable is printed in
+      three inks, none dry, and every destination has been amended by hand. The
+      lift lies west; a concourse opens east under a vault of copper ribs.
+    map_x: 7
+    map_y: 10
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    ambient_events:
+      - every_ticks: 4
+        chance: 0.6
+        text: "A message capsule punches through the overhead tubes with a bright metallic thunk."
+      - every_ticks: 7
+        chance: 0.35
+        text: "The pressure tram sighs, shudders, and settles half an inch lower on its springs."
+    exits:
+      - direction: west
+        target_room_id: brassbound_lift
+      - direction: east
+        target_room_id: copper_concourse
+      - direction: south
+        target_room_id: ticket_clock
+
+  - id: ticket_clock
+    name: The Ticket Clock
+    indoor: true
+    description: >-
+      A kiosk-sized clock fills this alcove, its twelve faces showing twelve
+      different times and twelve different prices. Brass fingers stamp tickets
+      in a furious, elegant dance. Behind the glass, drawers full of punched
+      cards open and shut by themselves, sorting fares, favors, fines, and
+      excuses into separate little graves.
+    map_x: 7
+    map_y: 9
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: pneumatic_station
+
+  - id: copper_concourse
+    name: The Copper Concourse
+    indoor: true
+    description: >-
+      The concourse is broad enough for a parade and busy enough for a riot, if
+      the buried city still had either. Copper ribs arch overhead like the inside
+      of a mechanical whale. Shopfronts with roll-down grilles face a central
+      clock fountain whose water ticks upward in beadlike pulses before falling
+      back into its basin precisely on the second.
+    map_x: 8
+    map_y: 10
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: pneumatic_station
+      - direction: north
+        target_room_id: gearwright_bazaar
+      - direction: east
+        target_room_id: regulator_court
+      - direction: south
+        target_room_id: boiler_gallery
+
+  - id: gearwright_bazaar
+    name: The Gearwright Bazaar
+    indoor: true
+    description: >-
+      Worktables, velvet trays, and folding cabinets crowd the bazaar in bright
+      disorder. Vendors have abandoned the stalls, but their inventions remain:
+      spring-loaded umbrellas, clockwork songbirds, self-filling inkwells, and
+      a row of brass spectacles that turn to follow movement. Everything smells
+      of oil, ozone, and old money.
+    map_x: 8
+    map_y: 11
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: copper_concourse
+      - direction: east
+        target_room_id: chronometer_archive
+
+  - id: chronometer_archive
+    name: The Chronometer Archive
+    indoor: true
+    description: >-
+      The archive shelves no books, only clocks: marine chronometers, railway
+      regulators, pocket watches, tower escapements, and tiny coffin-shaped
+      timers labeled with names instead of hours. The whole room ticks in layered
+      argument. A brass automaton at the central desk stamps overdue notices for
+      patrons who must have died a century ago.
+    map_x: 9
+    map_y: 11
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: gearwright_bazaar
+      - direction: east
+        target_room_id: observatory_gantry
+
+  - id: observatory_gantry
+    name: The Observatory Gantry
+    indoor: true
+    description: >-
+      A skeletal gantry projects into a domed chamber painted with constellations
+      no surface astronomer would recognize. The telescope is aimed not at the
+      sky but downward, through a shaft of lenses that pierces the hill below.
+      When the gears turn, they show the hidden motions of water, ore, roots,
+      graves, and all the quiet things under Ashmoore.
+    map_x: 10
+    map_y: 11
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: chronometer_archive
+
+  - id: regulator_court
+    name: Regulator Court
+    indoor: true
+    description: >-
+      A circular court of black-and-white tile surrounds a brass governor
+      assembly taller than a gallows. Weighted arms spin overhead with judicial
+      dignity, slowing and quickening the buried district's pressure lines. The
+      walls are carved with municipal mottoes about thrift, punctuality, and the
+      moral dangers of unlicensed steam.
+    map_x: 9
+    map_y: 10
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: copper_concourse
+      - direction: east
+        target_room_id: pressure_lock
+      - direction: south
+        target_room_id: boiler_gallery
+
+  - id: pressure_lock
+    name: The Pressure Lock
+    indoor: true
+    description: >-
+      Two riveted doors face each other across a short chamber of black iron.
+      Warning plates list penalties for opening both at once, then list the
+      penalties again in larger type. The floor is damp with condensed steam,
+      and the air tastes metallic. Beyond the east door, blue furnace-light
+      flashes through narrow safety glass.
+    map_x: 10
+    map_y: 10
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: regulator_court
+      - direction: east
+        target_room_id: aetheric_engine_room
+
+  - id: aetheric_engine_room
+    name: The Aetheric Engine Room
+    indoor: true
+    description: >-
+      The engine is a cathedral of motion: pistons as thick as trees, flywheels
+      turning behind brass cages, blue-white arcs leaping between ceramic pylons,
+      and a glass heart full of lambent vapor that rises and falls like breath.
+      Every surface is engraved with maintenance prayers. Every prayer has been
+      corrected in a different hand.
+    map_x: 11
+    map_y: 10
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: pressure_lock
+      - direction: south
+        target_room_id: sootworks
+
+  - id: boiler_gallery
+    name: The Boiler Gallery
+    indoor: true
+    description: >-
+      Long ranks of riveted boilers line a brick gallery under a red glow. Their
+      inspection windows pulse like sleepy eyes. Catwalks cross overhead in a
+      grating maze, and little service lifts carry coal, tools, and stamped work
+      orders from nowhere to nowhere. The heat dries sweat before it can fall.
+    map_x: 8
+    map_y: 9
+    map_z: 1
+    zone: brass_vaults
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: copper_concourse
+      - direction: east
+        target_room_id: regulator_court
+      - direction: south
+        target_room_id: sootworks
+
+  - id: sootworks
+    name: The Sootworks
+    indoor: true
+    description: >-
+      Soot lies ankle-deep where old exhaust tunnels converge beneath the boiler
+      gallery. The walls sweat black water. Stenciled arrows point toward vents,
+      scrubbers, sump pumps, and refuge bells, but half the signs have been
+      turned around. Something has dragged narrow wheeled tracks through the ash.
+    map_x: 8
+    map_y: 8
+    map_z: 1
+    zone: brass_vaults
+    room_type: cave
+    light_level: 0
+    exits:
+      - direction: north
+        target_room_id: boiler_gallery
+      - direction: east
+        target_room_id: aetheric_engine_room
+      - direction: south
+        target_room_id: soot_sump
+
+  - id: soot_sump
+    name: The Soot Sump
+    indoor: true
+    description: >-
+      A round sump plunges into warm black water under a forest of dripping
+      pipes. Brass grates ring the edge, each locked with a numbered seal. The
+      lamps here have burned out, leaving only the dull red wink of pressure
+      gauges and the occasional pale shimmer of aether leaking from a cracked
+      valve. The darkness feels greasy enough to touch.
+    map_x: 8
+    map_y: 7
+    map_z: 1
+    zone: brass_vaults
+    room_type: cave
+    light_level: 0
+    exits:
+      - direction: north
+        target_room_id: sootworks
 
   # -------------------------------------------------------------------------
   # AREA: cogsworth — Steampunk City (Phase 1 Foundation)
@@ -2593,6 +3079,11 @@ items:
       difference between navigation and disaster.
     takeable: true
     tradeable: true
+    slot: main_hand
+    weight: 1.5
+    value: 8
+    category: utility
+    light: 1
 
   - id: bone_fragment
     name: Gnawed Bone Fragment
@@ -2759,8 +3250,11 @@ items:
       can be precisely adjusted.
     takeable: true
     tradeable: true
+    slot: main_hand
+    weight: 1.6
     value: 30
-    category: trade_good
+    category: utility
+    light: 1
 
   - id: brass_key_tower
     name: Tower Maintenance Key
@@ -4790,6 +5284,341 @@ items:
 # Room Items — where things are placed at world start
 # ---------------------------------------------------------------------------
 
+  # --- Ashmoore Graveyard: tombstones, relics, and funeral gear ---
+  - id: paupers_tombstone
+    name: Pauper's Tombstone
+    aliases: [tombstone, grave, marker, slate]
+    description: >-
+      A narrow slate marker with a name scratched so shallowly that rain has
+      nearly erased it. The earth before it is split by several pale knuckles of
+      root, or perhaps by knuckles of another kind.
+    takeable: false
+    tradeable: false
+    context_commands:
+      read:
+        aliases: [study]
+        help: read the pauper's worn tombstone
+        say: >-
+          You trace the shallow letters: "Edrin Vale, who owed nothing at the end."
+          Under the name someone later carved, "Count the bells before midnight."
+        side_effects:
+          start_quest: graveyard_count_the_bells
+          set_flags: ["graveyard:read_pauper_stone"]
+      disturb:
+        aliases: [tap, knock]
+        help: disturb the pauper's grave marker
+        say: >-
+          The tombstone rocks once. Soil trickles into the sunken grave, and
+          something below answers with a patient scrape.
+        side_effects:
+          set_flags: ["graveyard:disturbed_pauper_stone"]
+
+  - id: varrow_tombstone
+    name: Varrow Family Tombstone
+    aliases: [tombstone, grave, varrow, marker]
+    description: >-
+      A black marble marker for the Varrow family, expensive once and resentful
+      still. Its inscription is inlaid with tarnished brass, and every birthdate
+      has been amended by a later, shakier hand.
+    takeable: false
+    tradeable: false
+    context_commands:
+      read:
+        aliases: [study]
+        help: read the Varrow family tombstone
+        say: >-
+          The Varrow epitaph promises silence, dignity, and perpetual rest. The
+          fresh crack through the word "perpetual" seems pointed.
+        side_effects:
+          start_quest: graveyard_silence_varrow
+          set_flags: ["graveyard:read_varrow_stone"]
+
+  - id: bellfinger_tombstone
+    name: Bellfinger Tombstone
+    aliases: [tombstone, grave, bell, marker]
+    description: >-
+      This marker has no name at all, only six tiny bells tied through holes in
+      the stone with black thread. Each clapper is carved from a finger bone.
+    takeable: false
+    tradeable: false
+    context_commands:
+      read:
+        aliases: [listen]
+        help: listen to the bellfinger tombstone
+        say: >-
+          You lean close. The smallest bell rings once inside your skull, and a
+          whisper says, "Find the hand that rang us."
+        side_effects:
+          start_quest: graveyard_find_the_hand
+          set_flags: ["graveyard:heard_bellfinger"]
+
+  - id: grave_bell_clapper
+    name: Grave-Bell Clapper
+    description: >-
+      A tiny bell clapper carved from polished bone and drilled through with
+      impossible precision. It is cold enough to numb your fingertips.
+    takeable: true
+    tradeable: false
+    weight: 0.1
+    value: 6
+    category: trade_good
+
+  - id: cracked_funeral_mask
+    name: Cracked Funeral Mask
+    description: >-
+      A thin ceramic mask painted with closed eyes and a peaceful mouth. The
+      crack across it gives the expression a worrying second meaning.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 18
+    category: trade_good
+
+  - id: bone_lantern
+    name: Bone Lantern
+    description: >-
+      A little lantern made from white ribs wired around smoked glass. Its blue
+      flame burns without heat and makes nearby shadows look as if they are
+      remembering their owners.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 1.2
+    value: 34
+    category: utility
+    light: 1
+    quality: fine
+
+  - id: grave_wardens_coat
+    name: Grave-Warden's Coat
+    description: >-
+      A long black coat of waxed canvas, reinforced at shoulder and cuff with
+      old funeral brass. The inside pockets are sized for chalk, prayer-cords,
+      and a knife narrow enough to slip between coffin boards.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 3.2
+    value: 52
+    category: armor
+    quality: fine
+
+  - id: ossuary_keyring
+    name: Ossuary Keyring
+    description: >-
+      A ring of little iron keys, each labeled with a bone-shaped tag and a
+      number that no longer matches any door you can find.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 22
+    category: trade_good
+
+  # --- Brass Vaults: steampunk machinery, wearables, and quest objects ---
+  - id: aether_lantern
+    name: Aether Lantern
+    description: >-
+      A hexagonal brass lantern holding a bead of blue-white vapor inside a
+      magnetized glass cage. It hums softly when carried and throws a clean,
+      cold light that makes soot and copper shine.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 1.4
+    value: 46
+    category: utility
+    light: 1
+    quality: fine
+
+  - id: smoked_glass_goggles
+    name: Smoked-Glass Goggles
+    description: >-
+      Brass-rimmed goggles with smoked lenses, side shields, and a tiny focusing
+      gear above each brow. They make the world look older, sharper, and more
+      likely to explode.
+    takeable: true
+    tradeable: true
+    slot: head
+    wearable: true
+    weight: 0.5
+    value: 38
+    category: armor
+    quality: fine
+
+  - id: pressure_engineers_coat
+    name: Pressure Engineer's Coat
+    description: >-
+      A dark brown leather coat crossed by brass buckles, copper grounding
+      braid, and pockets sized for gauges, valves, and emergency biscuits. The
+      sleeves are scorched but carefully patched.
+    takeable: true
+    tradeable: true
+    slot: torso
+    wearable: true
+    weight: 3.6
+    value: 78
+    category: armor
+    quality: fine
+
+  - id: gearlace_gloves
+    name: Gearlace Gloves
+    description: >-
+      Thin black gloves stitched with copper thread and little gear teeth along
+      the knuckles. They grip slick brass well and leave faint oil-smudged
+      fingerprints shaped like clock faces.
+    takeable: true
+    tradeable: true
+    slot: hands
+    wearable: true
+    weight: 0.4
+    value: 42
+    category: armor
+    quality: fine
+
+  - id: regulator_boots
+    name: Regulator Boots
+    description: >-
+      Heavy boots with iron soles and spring-loaded heels meant for catwalks,
+      wet tile, and sudden pressure drops. Each step lands with a decisive
+      engineer's clack.
+    takeable: true
+    tradeable: true
+    slot: feet
+    wearable: true
+    weight: 2.2
+    value: 48
+    category: armor
+    quality: fine
+
+  - id: springwound_cane
+    name: Springwound Cane
+    description: >-
+      A gentleman's cane of blackwood and brass. The grip winds with a ratchet,
+      storing a sharp mechanical snap that could prod a stuck gear or ruin a
+      footpad's afternoon.
+    takeable: true
+    tradeable: true
+    slot: main_hand
+    weight: 1.1
+    value: 54
+    category: weapon
+    quality: fine
+
+  - id: pressure_gauge
+    name: Calibrated Pressure Gauge
+    description: >-
+      A round brass gauge with a porcelain face, a red danger band, and a needle
+      that quivers whenever anyone nearby lies about maintenance.
+    takeable: true
+    tradeable: true
+    weight: 0.8
+    value: 24
+    category: trade_good
+
+  - id: punched_ticket_roll
+    name: Punched Ticket Roll
+    description: >-
+      A roll of green paper tickets, each punched with a different fare code and
+      destination glyph. The ink still smells fresh.
+    takeable: true
+    tradeable: true
+    weight: 0.3
+    value: 12
+    category: trade_good
+
+  - id: tram_manifest
+    name: Pneumatic Tram Manifest
+    description: >-
+      A stiff card listing capsule times, valve numbers, and handwritten warnings
+      about unauthorized cargo, singing boilers, and one missing inspector.
+    takeable: true
+    tradeable: false
+    weight: 0.2
+    value: 15
+    category: trade_good
+
+  - id: regulator_seal
+    name: Regulator Seal
+    description: >-
+      A brass seal stamped with the buried district's civic crest: a key, a
+      kettle, and a clock face all sharing one stern expression.
+    takeable: true
+    tradeable: false
+    weight: 0.2
+    value: 20
+    category: trade_good
+
+  - id: aetheric_coil
+    name: Aetheric Coil
+    description: >-
+      A tight helix of copper and blue ceramic. It prickles against your palm
+      like bottled lightning trying to remember the weather.
+    takeable: true
+    tradeable: true
+    weight: 0.7
+    value: 36
+    category: trade_good
+    quality: fine
+
+  - id: soot_filter
+    name: Soot Filter
+    description: >-
+      A blackened mesh cartridge framed in brass and packed with gray fiber. It
+      smells of smoke, hot rain, and machinery breathing through bad lungs.
+    takeable: true
+    tradeable: true
+    weight: 0.9
+    value: 16
+    category: trade_good
+
+  - id: clockwork_songbird
+    name: Clockwork Songbird
+    description: >-
+      A palm-sized bird of brass feathers, ruby glass eyes, and a spring no
+      larger than a thumbnail. It clicks twice when handled, then sings one
+      perfect, melancholy note.
+    takeable: true
+    tradeable: true
+    weight: 0.4
+    value: 60
+    category: trade_good
+    quality: superior
+
+  - id: observatory_lens
+    name: Observatory Lens
+    description: >-
+      A thick crystal lens in a copper retaining ring. Look through it and
+      ordinary stone shows faint veins of water, root, and buried metal.
+    takeable: true
+    tradeable: false
+    weight: 1.0
+    value: 40
+    category: trade_good
+
+  - id: boiler_sigil
+    name: Boiler Sigil
+    description: >-
+      A stamped brass charm wired to a strip of red leather. Boiler crews wore
+      these when entering pressure galleries and touched them before opening a
+      hot valve.
+    takeable: true
+    tradeable: true
+    weight: 0.2
+    value: 18
+    category: trade_good
+
+  - id: sump_valve_wheel
+    name: Sump Valve Wheel
+    description: >-
+      A small red valve wheel cracked loose from a drainage manifold. It is
+      tagged with the number seven and still damp with warm black water.
+    takeable: true
+    tradeable: true
+    weight: 1.3
+    value: 14
+    category: trade_good
+
 room_items:
   # Tidal islet (Sprint 54) — reachable only at low tide
   - room_id: tidal_islet
@@ -5390,6 +6219,82 @@ room_items:
 # ---------------------------------------------------------------------------
 # Dialogue, NPCs, Quests — starter social content for Ashmoore playtesting
 # ---------------------------------------------------------------------------
+
+  # Ashmoore graveyard
+  - room_id: pauper_rows
+    item_id: paupers_tombstone
+    quantity: 1
+  - room_id: pauper_rows
+    item_id: grave_bell_clapper
+    quantity: 1
+  - room_id: cracked_mausoleum
+    item_id: varrow_tombstone
+    quantity: 1
+  - room_id: cracked_mausoleum
+    item_id: cracked_funeral_mask
+    quantity: 1
+  - room_id: bell_crypt
+    item_id: bellfinger_tombstone
+    quantity: 1
+  - room_id: bell_crypt
+    item_id: bone_lantern
+    quantity: 1
+  - room_id: caretakers_shed
+    item_id: grave_wardens_coat
+    quantity: 1
+  - room_id: ossuary
+    item_id: ossuary_keyring
+    quantity: 1
+
+  # Brass Vaults
+  - room_id: brassbound_lift
+    item_id: aether_lantern
+    quantity: 1
+  - room_id: ticket_clock
+    item_id: punched_ticket_roll
+    quantity: 1
+  - room_id: pneumatic_station
+    item_id: tram_manifest
+    quantity: 1
+  - room_id: gearwright_bazaar
+    item_id: smoked_glass_goggles
+    quantity: 1
+  - room_id: gearwright_bazaar
+    item_id: clockwork_songbird
+    quantity: 1
+  - room_id: chronometer_archive
+    item_id: pressure_gauge
+    quantity: 1
+  - room_id: observatory_gantry
+    item_id: observatory_lens
+    quantity: 1
+  - room_id: regulator_court
+    item_id: regulator_seal
+    quantity: 1
+  - room_id: pressure_lock
+    item_id: gearlace_gloves
+    quantity: 1
+  - room_id: aetheric_engine_room
+    item_id: aetheric_coil
+    quantity: 1
+  - room_id: boiler_gallery
+    item_id: boiler_sigil
+    quantity: 1
+  - room_id: boiler_gallery
+    item_id: pressure_engineers_coat
+    quantity: 1
+  - room_id: sootworks
+    item_id: soot_filter
+    quantity: 1
+  - room_id: soot_sump
+    item_id: sump_valve_wheel
+    quantity: 1
+  - room_id: copper_concourse
+    item_id: springwound_cane
+    quantity: 1
+  - room_id: copper_concourse
+    item_id: regulator_boots
+    quantity: 1
 
 dialogue_trees:
   - id: innkeeper_dialogue
@@ -6661,6 +7566,187 @@ dialogue_trees:
             side_effects:
               end_dialogue: true
 
+  - id: grave_warden_elsbet_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          The grave-warden shuts a ledger with one gloved finger marking her
+          place. "If you're here to mourn, keep to the paths. If you're here to
+          help, the dead have been restless since the bells began ringing under
+          the hill."
+        side_effects: {}
+        choices:
+          - label: What should I do first?
+            next_node: first_work
+          - label: Why are the bells ringing?
+            next_node: bell_lore
+          - label: I'll keep to the paths.
+            side_effects:
+              end_dialogue: true
+      first_work:
+        text: >-
+          "Read the stones that still allow reading. The pauper row tells you
+          who has been waking; the Varrow tomb tells you who refuses shame; the
+          bellfinger stone tells you what the crypt wants back."
+        side_effects:
+          start_quest: graveyard_count_the_bells
+        choices:
+          - label: I'll read the stones.
+            side_effects:
+              end_dialogue: true
+      bell_lore:
+        text: >-
+          "Dead-ringer bells were mercy once. Now they are invitation. When a
+          grave-bell rings with no hand on the cord, something under the soil
+          believes it has been summoned."
+        side_effects:
+          start_quest: graveyard_find_the_hand
+        choices:
+          - label: Then I will find the hand.
+            side_effects:
+              end_dialogue: true
+
+  - id: vault_forewoman_cassia_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          A woman in a pressure engineer's coat stands beside a brass job board,
+          pencil tucked behind one ear and soot on both cuffs. "Station Seven is
+          awake, understaffed, and disagreeable. Pick a problem, write your name
+          beside it, and try not to vent the district."
+        side_effects: {}
+        choices:
+          - label: I can inspect the station.
+            next_node: station_inspection
+          - label: I can check the ticket clock.
+            next_node: ticket_clock
+          - label: I can recover a tram manifest.
+            next_node: tram_manifest
+          - label: I can audit the regulators.
+            next_node: regulator_audit
+          - label: I can repair the aetheric coil.
+            next_node: coil_repair
+          - label: I can clean the soot filters.
+            next_node: soot_filters
+          - label: I can survey the observatory.
+            next_node: observatory_survey
+          - label: I can retrieve the songbird.
+            next_node: songbird_recovery
+          - label: I can map the sump.
+            next_node: sump_mapping
+          - label: I can walk the full pressure circuit.
+            next_node: pressure_circuit
+          - label: Not just now.
+            side_effects:
+              end_dialogue: true
+      station_inspection:
+        text: >-
+          "Start simple. Walk the lift, the station, and the concourse. If the
+          district lets you cross those three rooms without screaming, we call
+          that a baseline inspection."
+        side_effects:
+          start_quest: brass_vaults_station_inspection
+        choices:
+          - label: Baseline inspection, understood.
+            side_effects:
+              end_dialogue: true
+      ticket_clock:
+        text: >-
+          "The ticket clock has been selling yesterday's fares for tomorrow's
+          trains. Bring me a punched roll before it invoices the mayor's
+          grandchildren."
+        side_effects:
+          start_quest: brass_vaults_ticket_clock
+        choices:
+          - label: I'll fetch the ticket roll.
+            side_effects:
+              end_dialogue: true
+      tram_manifest:
+        text: >-
+          "A manifest vanished from Station Seven. If it reached the tubes, we
+          may have cargo orbiting the hill forever. Find the card before it finds
+          a lawyer."
+        side_effects:
+          start_quest: brass_vaults_manifest_run
+        choices:
+          - label: I'll recover the manifest.
+            side_effects:
+              end_dialogue: true
+      regulator_audit:
+        text: >-
+          "Regulator Court is spinning two beats fast. Bring back the civic seal
+          from the governor assembly so I know you got close enough to read the
+          warning plates."
+        side_effects:
+          start_quest: brass_vaults_regulator_audit
+        choices:
+          - label: I'll audit the regulator.
+            side_effects:
+              end_dialogue: true
+      coil_repair:
+        text: >-
+          "The aetheric engine is arcing blue. Pretty means dangerous. Pull the
+          spare coil and keep your fingers out of anything singing hymns."
+        side_effects:
+          start_quest: brass_vaults_aetheric_coil
+        choices:
+          - label: I'll bring the coil.
+            side_effects:
+              end_dialogue: true
+      soot_filters:
+        text: >-
+          "The boilers breathe through soot filters older than most dynasties.
+          Bring one up from the works so I can shame procurement with evidence."
+        side_effects:
+          start_quest: brass_vaults_soot_filter
+        choices:
+          - label: I'll get a filter.
+            side_effects:
+              end_dialogue: true
+      observatory_survey:
+        text: >-
+          "The downward telescope has started sketching grave lines under town.
+          Fetch its lens and note whether it shows anything with too many teeth."
+        side_effects:
+          start_quest: brass_vaults_observatory_lens
+        choices:
+          - label: I'll survey the gantry.
+            side_effects:
+              end_dialogue: true
+      songbird_recovery:
+        text: >-
+          "A clockwork songbird flew three inches from the bazaar display and
+          declared independence. If you find it, cup it gently. It has opinions
+          and a delicate mainspring."
+        side_effects:
+          start_quest: brass_vaults_songbird
+        choices:
+          - label: I'll recover the bird.
+            side_effects:
+              end_dialogue: true
+      sump_mapping:
+        text: >-
+          "The sump map dissolved. Bring back the red valve wheel from the bottom
+          run, and if the water asks your name, give it mine."
+        side_effects:
+          start_quest: brass_vaults_sump_valve
+        choices:
+          - label: I'll map the sump.
+            side_effects:
+              end_dialogue: true
+      pressure_circuit:
+        text: >-
+          "Full circuit: station, concourse, court, engine, boilers, sootworks,
+          sump. Walk it in one piece and I'll sign you as provisionally useful."
+        side_effects:
+          start_quest: brass_vaults_pressure_circuit
+        choices:
+          - label: I'll walk the circuit.
+            side_effects:
+              end_dialogue: true
+
 npcs:
   - id: innkeeper
     name: Mira the Innkeeper
@@ -7303,6 +8389,176 @@ npcs:
       reverses: false
       loop: true
 
+  # -------------------------------------------------------------------------
+  # AREA: ashmoore_graveyard — Graveyard NPCs and undead templates
+  # -------------------------------------------------------------------------
+
+  - id: grave_warden_elsbet
+    name: Grave-Warden Elsbet
+    description: >-
+      A narrow woman in a waxed black coat, with silver hair pinned under a
+      hatband of mourning ribbon. She carries a ledger, a shovel, and the tired
+      authority of someone who has argued with the dead and won often enough.
+    home_room_id: caretakers_shed
+    current_room_id: caretakers_shed
+    dialogue_tree_id: grave_warden_elsbet_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Elsbet marks a line in her ledger, then looks up as if she had already counted you."
+
+  - id: tombstone_skeleton
+    name: Tombstone Skeleton
+    description: >-
+      A yellowed skeleton with grave soil packed into every joint and a chip of
+      slate wedged between its ribs. It moves with the stiff indignation of
+      someone woken before dawn.
+    home_room_id: pauper_rows
+    current_room_id: pauper_rows
+    behavior: defensive
+    max_hp: 35
+    loot_table:
+      bone_fragment: 1
+      grave_bell_clapper: 1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Soil spills from a nearby grave as a skeleton hauls itself upright."
+    ai:
+      mode: wander
+      move_every: 4
+      area: ashmoore_graveyard
+
+  - id: bell_ghost
+    name: Bell Ghost
+    description: >-
+      A translucent mourner whose outline shivers with the sound of tiny bells.
+      Its face is hidden by a veil of moon-pale vapor, and its hands are turned
+      palms-up as if still waiting for burial coins.
+    home_room_id: bell_crypt
+    current_room_id: bell_crypt
+    behavior: defensive
+    max_hp: 28
+    loot_table:
+      grave_bell_clapper: 1
+      cracked_funeral_mask: 1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "A bell rings under the floor, and a pale ghost drifts from the nearest tombstone."
+    ai:
+      mode: wander
+      move_every: 5
+      area: ashmoore_graveyard
+
+  - id: crypt_wight
+    name: Crypt Wight
+    description: >-
+      A hunched undead thing in scraps of burial finery, its fingers black with
+      old silver polish and its jaw wired shut with funeral thread. Brass bells
+      have been sewn into its sleeves, but they make no sound when it moves.
+    home_room_id: cracked_mausoleum
+    current_room_id: cracked_mausoleum
+    behavior: defensive
+    max_hp: 60
+    loot_table:
+      cracked_funeral_mask: 1
+      ossuary_keyring: 1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "A sealed tomb cracks open with a sigh, and something old steps out."
+    ai:
+      mode: patrol
+      move_every: 6
+      route: [cracked_mausoleum, bell_crypt, angel_overlook, ossuary]
+
+  # -------------------------------------------------------------------------
+  # AREA: brass_vaults — Steampunk NPCs and mobile hazards
+  # -------------------------------------------------------------------------
+
+  - id: vault_forewoman_cassia
+    name: Forewoman Cassia Vane
+    description: >-
+      A practical engineer with soot-dark cuffs, a brass whistle, and an
+      expression calibrated to find faults in people and pressure systems with
+      equal speed. Her job board is more organized than the district it governs.
+    home_room_id: copper_concourse
+    current_room_id: copper_concourse
+    dialogue_tree_id: vault_forewoman_cassia_dialogue
+    behavior: defensive
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Forewoman Cassia taps her pencil against the job board and adds one more problem to the list."
+
+  - id: brass_patrolman
+    name: Brass Patrolman
+    description: >-
+      A man-height automaton in municipal blue enamel, with a whistle built into
+      its chest and waxed mustaches bolted beneath its glass eyes. Its baton arm
+      ratchets one click every time it sees a rule being bent.
+    home_room_id: regulator_court
+    current_room_id: regulator_court
+    behavior: defensive
+    max_hp: 55
+    loot_table:
+      gear_small_brass: 1
+      regulator_seal: 1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "A brass patrolman turns toward you and emits a questioning whistle."
+    ai:
+      mode: patrol
+      move_every: 3
+      route: [copper_concourse, regulator_court, pressure_lock, aetheric_engine_room, boiler_gallery]
+
+  - id: soot_crawler
+    name: Soot Crawler
+    description: >-
+      A low maintenance automaton on eight jointed legs, half broom and half
+      spider. Its belly is packed with soot, and its copper feelers taste the air
+      for ash, heat, and unfiled work orders.
+    home_room_id: sootworks
+    current_room_id: sootworks
+    behavior: defensive
+    max_hp: 32
+    loot_table:
+      soot_filter: 1
+      mechanical_components: 1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "A soot crawler skitters out from under a pipe, feelers clicking."
+    ai:
+      mode: wander
+      move_every: 4
+      area: brass_vaults
+
+  - id: aetheric_warden
+    name: Aetheric Warden
+    description: >-
+      A floating brass cage surrounding a blue-white core of captive vapor. It
+      speaks in static, warning chimes, and the little lightning crawling over
+      its ribs seems to disapprove of organic uncertainty.
+    home_room_id: aetheric_engine_room
+    current_room_id: aetheric_engine_room
+    behavior: defensive
+    max_hp: 48
+    loot_table:
+      aetheric_coil: 1
+      pressure_gauge: 1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Blue light flares as an aetheric warden pivots in the air."
+    ai:
+      mode: patrol
+      move_every: 5
+      route: [aetheric_engine_room, pressure_lock, regulator_court, boiler_gallery, sootworks]
+
 economy:
   regions:
     # Sprint 71.2: economy pricing keys off `zone`. Ashmoore's former town/
@@ -7311,6 +8567,10 @@ economy:
     # multipliers never applied to a transaction).
     - zone: ashmoore
       region_mult: 1.0
+    - zone: ashmoore_graveyard
+      region_mult: 0.9
+    - zone: brass_vaults
+      region_mult: 1.15
     - zone: cogsworth
       region_mult: 1.1
     - zone: whisperwood
@@ -7555,6 +8815,297 @@ quests:
         rewards:
           items: [sea_glass_pendant, copper_coin]
           xp: 40
+
+  # --- Ashmoore Graveyard quests ---
+  - id: graveyard_count_the_bells
+    title: Count the Grave-Bells
+    description: >-
+      Grave-Warden Elsbet asked you to read the pauper stones and account for
+      the bell that keeps ringing below the old hill graveyard.
+    stages:
+      - id: read_pauper_rows
+        description: Read the pauper's tombstone in the graveyard rows.
+        conditions:
+          - type: flag_set
+            flag: "graveyard:read_pauper_stone"
+      - id: recover_grave_bell_clapper
+        description: Recover a grave-bell clapper from the pauper rows or the dead that rise there.
+        conditions:
+          - type: item_in_inventory
+            item_id: grave_bell_clapper
+        completion_flags:
+          graveyard_bells_counted: true
+        rewards:
+          items: [bone_lantern, copper_coin]
+          xp: 45
+
+  - id: graveyard_silence_varrow
+    title: The Varrow Silence
+    description: >-
+      The Varrow mausoleum promises perpetual rest, but its broken tombstone
+      says otherwise.
+    stages:
+      - id: read_varrow_marker
+        description: Read the Varrow family tombstone.
+        conditions:
+          - type: flag_set
+            flag: "graveyard:read_varrow_stone"
+      - id: enter_cracked_mausoleum
+        description: Enter the cracked mausoleum and face whatever wakes there.
+        conditions:
+          - type: room_visited
+            room_id: cracked_mausoleum
+        completion_flags:
+          varrow_tomb_quieted: true
+        rewards:
+          items: [grave_wardens_coat, copper_coin]
+          xp: 50
+
+  - id: graveyard_find_the_hand
+    title: The Hand That Rang the Bell
+    description: >-
+      The bellfinger tombstone whispered that the crypt wants its missing hand
+      returned.
+    stages:
+      - id: hear_bellfinger_stone
+        description: Listen to the bellfinger tombstone in the bell crypt.
+        conditions:
+          - type: flag_set
+            flag: "graveyard:heard_bellfinger"
+      - id: reach_ossuary
+        description: Climb to the ossuary and search the bone-house.
+        conditions:
+          - type: room_visited
+            room_id: ossuary
+      - id: carry_ossuary_keys
+        description: Carry the ossuary keyring back from the bone-house.
+        conditions:
+          - type: item_in_inventory
+            item_id: ossuary_keyring
+        completion_flags:
+          bellfinger_hand_found: true
+        rewards:
+          items: [cracked_funeral_mask, copper_coin]
+          xp: 55
+
+  # --- Brass Vaults quests ---
+  - id: brass_vaults_station_inspection
+    title: Station Seven Baseline
+    description: >-
+      Forewoman Cassia wants a quick inspection of the lift, station, and copper
+      concourse before deeper repairs begin.
+    stages:
+      - id: visit_pneumatic_station
+        description: Inspect Pneumatic Station Seven.
+        conditions:
+          - type: room_visited
+            room_id: pneumatic_station
+      - id: visit_copper_concourse
+        description: Inspect the Copper Concourse.
+        conditions:
+          - type: room_visited
+            room_id: copper_concourse
+        completion_flags:
+          brass_station_inspected: true
+        rewards:
+          items: [punched_ticket_roll, copper_coin]
+          xp: 35
+
+  - id: brass_vaults_ticket_clock
+    title: The Ticket Clock Is Wrong
+    description: >-
+      The Ticket Clock is stamping the wrong fares. Cassia needs a punched roll
+      to prove it.
+    stages:
+      - id: collect_punched_ticket_roll
+        description: Recover the punched ticket roll from the Ticket Clock.
+        conditions:
+          - type: item_in_inventory
+            item_id: punched_ticket_roll
+        completion_flags:
+          brass_ticket_clock_audited: true
+        rewards:
+          items: [smoked_glass_goggles, copper_coin]
+          xp: 40
+
+  - id: brass_vaults_manifest_run
+    title: The Missing Manifest
+    description: >-
+      A pneumatic tram manifest has gone missing from Station Seven's tube
+      traffic.
+    stages:
+      - id: recover_tram_manifest
+        description: Find the pneumatic tram manifest.
+        conditions:
+          - type: item_in_inventory
+            item_id: tram_manifest
+        completion_flags:
+          brass_manifest_recovered: true
+        rewards:
+          items: [gearlace_gloves, copper_coin]
+          xp: 40
+
+  - id: brass_vaults_regulator_audit
+    title: Regulator Court Audit
+    description: >-
+      Cassia wants proof that you reached the governor assembly in Regulator Court.
+    stages:
+      - id: visit_regulator_court
+        description: Visit Regulator Court.
+        conditions:
+          - type: room_visited
+            room_id: regulator_court
+      - id: recover_regulator_seal
+        description: Recover the regulator seal.
+        conditions:
+          - type: item_in_inventory
+            item_id: regulator_seal
+        completion_flags:
+          brass_regulator_audited: true
+        rewards:
+          items: [regulator_boots, copper_coin]
+          xp: 50
+
+  - id: brass_vaults_aetheric_coil
+    title: The Blue-Arc Coil
+    description: >-
+      The aetheric engine is arcing dangerously; Cassia needs a spare coil
+      pulled before the district vents itself.
+    stages:
+      - id: reach_engine_room
+        description: Reach the Aetheric Engine Room.
+        conditions:
+          - type: room_visited
+            room_id: aetheric_engine_room
+      - id: recover_aetheric_coil
+        description: Recover an aetheric coil.
+        conditions:
+          - type: item_in_inventory
+            item_id: aetheric_coil
+        completion_flags:
+          brass_aetheric_coil_recovered: true
+        rewards:
+          items: [pressure_engineers_coat, copper_coin]
+          xp: 60
+
+  - id: brass_vaults_soot_filter
+    title: Proof of Bad Air
+    description: >-
+      The boilers need evidence, and evidence in this district comes black with
+      soot.
+    stages:
+      - id: enter_sootworks
+        description: Enter the Sootworks below the boiler gallery.
+        conditions:
+          - type: room_visited
+            room_id: sootworks
+      - id: collect_soot_filter
+        description: Recover a soot filter.
+        conditions:
+          - type: item_in_inventory
+            item_id: soot_filter
+        completion_flags:
+          brass_soot_filter_recovered: true
+        rewards:
+          items: [aether_lantern, copper_coin]
+          xp: 55
+
+  - id: brass_vaults_observatory_lens
+    title: The Downward Telescope
+    description: >-
+      The observatory looks through the hill instead of into the sky. Cassia
+      wants its lens inspected.
+    stages:
+      - id: visit_observatory_gantry
+        description: Walk the Observatory Gantry.
+        conditions:
+          - type: room_visited
+            room_id: observatory_gantry
+      - id: recover_observatory_lens
+        description: Recover the observatory lens.
+        conditions:
+          - type: item_in_inventory
+            item_id: observatory_lens
+        completion_flags:
+          brass_observatory_surveyed: true
+        rewards:
+          items: [springwound_cane, copper_coin]
+          xp: 55
+
+  - id: brass_vaults_songbird
+    title: The Independent Songbird
+    description: >-
+      A clockwork songbird has escaped its display in the Gearwright Bazaar.
+    stages:
+      - id: visit_gearwright_bazaar
+        description: Visit the Gearwright Bazaar.
+        conditions:
+          - type: room_visited
+            room_id: gearwright_bazaar
+      - id: recover_clockwork_songbird
+        description: Recover the clockwork songbird.
+        conditions:
+          - type: item_in_inventory
+            item_id: clockwork_songbird
+        completion_flags:
+          brass_songbird_recovered: true
+        rewards:
+          items: [pressure_gauge, copper_coin]
+          xp: 45
+
+  - id: brass_vaults_sump_valve
+    title: Valve Seven
+    description: >-
+      Cassia wants the sump mapped by way of the red valve wheel at the bottom
+      of the soot run.
+    stages:
+      - id: reach_soot_sump
+        description: Reach the Soot Sump.
+        conditions:
+          - type: room_visited
+            room_id: soot_sump
+      - id: recover_sump_valve
+        description: Recover the sump valve wheel.
+        conditions:
+          - type: item_in_inventory
+            item_id: sump_valve_wheel
+        completion_flags:
+          brass_sump_mapped: true
+        rewards:
+          items: [boiler_sigil, copper_coin]
+          xp: 60
+
+  - id: brass_vaults_pressure_circuit
+    title: Walk the Pressure Circuit
+    description: >-
+      Walk the Brass Vaults pressure circuit from station to sump and prove the
+      buried district is passable.
+    stages:
+      - id: visit_regulator_court
+        description: Visit Regulator Court.
+        conditions:
+          - type: room_visited
+            room_id: regulator_court
+      - id: visit_aetheric_engine_room
+        description: Visit the Aetheric Engine Room.
+        conditions:
+          - type: room_visited
+            room_id: aetheric_engine_room
+      - id: visit_boiler_gallery
+        description: Visit the Boiler Gallery.
+        conditions:
+          - type: room_visited
+            room_id: boiler_gallery
+      - id: visit_soot_sump
+        description: Reach the Soot Sump at the end of the circuit.
+        conditions:
+          - type: room_visited
+            room_id: soot_sump
+        completion_flags:
+          brass_pressure_circuit_walked: true
+        rewards:
+          items: [pressure_engineers_coat, regulator_boots, copper_coin]
+          xp: 75
 
 # ---------------------------------------------------------------------------
 # Transit lines — scheduled vehicles reached by `board` (not the walk graph)

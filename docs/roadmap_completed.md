@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-14, through v0.99.0).** The active, forward-looking
+> **Historical record (last extended 2026-07-14, through v0.100.0).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,7 +9,7 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, and **70–80**. Layout note: recent completions are
+> cycles, context-attached commands), **56–69**, and **70–81**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
@@ -19,7 +19,7 @@
 
 ---
 
-## Sprints 70–80 — QoL, admin/world cleanup, progression, disciplines, and zone climate (v0.78.0–v0.99.0, archived 2026-07-14)
+## Sprints 70–81 — QoL, admin/world cleanup, progression, disciplines, and zone climate (v0.78.0–v0.100.0, archived 2026-07-14)
 
 > Moved here from the active roadmap on 2026-07-14 once Sprint 80 closed. Full task
 > detail preserved below; per-version notes in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -968,6 +968,19 @@ room treasure, timed ambient room flavor, and visible fixed-route NPC movement.
 | 80.4 | **Ambient/timed room flavor events.** Add `Room.ambient_events` YAML/DB round-trip and a Tier 2 `RoomAmbientService` that emits authored room lines on world ticks for occupied rooms. | [x] v0.99.0 — `features/exploration/ambient.py`, Whisperwood/Cogsworth content, tests. |
 | 80.5 | **NPC-specific route hooks + broader autonomous NPC behavior.** Preserve the existing `wander`/`patrol` tick loop and add `NpcRouteLoader` for NPC `ai.mode: route`, wiring NPC-specific `RouteHooks` over the generic `MobileRouteService` to broadcast departure/arrival and update `NPC.current_room_id`. Convert Scout Wren to a looped route patrol. | [x] v0.99.0 — `features/npc_ai/routes.py`, `main.py` wiring, `world_content/world.yaml`, tests. |
 | 80.6 | **Admin UI support for multiple weather states.** Extend the Clock admin API/UI so admins can see the global weather plus each configured zone climate, and set a zone's local weather live. | [x] v0.99.0 — `/admin/clock` now returns `zone_weather`, `/admin/clock/zone-weather` updates one zone, and the web Clock tab renders per-zone selectors. |
+
+## Sprint 81 — Ashmoore graveyard and Brass Vaults content
+
+**Goal:** expand authored world content using the existing Phase A world-building surfaces:
+rooms, items, context-attached object commands, dialogue-started quests, NPC AI, and spawn
+controllers.
+
+| # | Task | Status |
+|---|------|--------|
+| 81.1 | **Ashmoore graveyard.** Add the Old Hill Graveyard off South Gate with interactive tombstones, dark crypt/ossuary rooms, graveyard relics and wearables, Grave-Warden Elsbet, and undead templates. | [x] v0.100.0 — `world_content/world.yaml`; validated with `world_cli validate`. |
+| 81.2 | **Tombstone undead spawns.** Add spawn controllers for tombstone skeletons, bell ghosts, and a crypt wight, all confined to `ashmoore_graveyard`. | [x] v0.100.0 — `world_content/spawns.yaml`; spawn refs checked against authored zones/templates. |
+| 81.3 | **Brass Vaults steampunk zone.** Add a steampunk zone reached by `up` from `inner_vault`, with descriptive rooms, steampunk items/wearables, dark maintenance rooms, Forewoman Cassia, patrolling/wandering mechanical hazards, and ten local quests. | [x] v0.100.0 — `world_content/world.yaml`; validated/import-checked. |
+| 81.4 | **Working cave light sources.** Make the Dented Oil Lantern and Brass Oil Lantern actual `light: 1` sources and document the `wield` + `light` player flow. | [x] v0.100.0 — `world_content/world.yaml`, `docs/user_guide.md`. |
 
 ---
 

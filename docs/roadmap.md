@@ -11,17 +11,19 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-14, v0.99.0 on develop; Sprints 1–80 all shipped)
+## Where things stand (2026-07-14, v0.100.0 on develop; Sprints 1–81 all shipped)
 
-**Everything through Sprint 80 is shipped on `develop`** (currently v0.99.0). `roadmap.md` now tracks
-remaining work only; the full task-level history for completed Sprints 1–80 lives in
+**Everything through Sprint 81 is shipped on `develop`** (currently v0.100.0). `roadmap.md` now tracks
+remaining work only; the full task-level history for completed Sprints 1–81 lives in
 [`roadmap_completed.md`](roadmap_completed.md), with release-level detail in
 [`../CHANGELOG.md`](../CHANGELOG.md).
 
 The latest completed band is archived as Sprints 77–80: the Discipline/Ability replacement for the
 old skills/skill-tree split, the Sprint 79 cleanup pass for its review follow-ups, and the Sprint
 80 world-system pass for zone climate, data-driven spawns, room loot tables, ambient room flavor,
-NPC route hooks, and admin multi-weather controls.
+NPC route hooks, and admin multi-weather controls. Sprint 81 adds the Ashmoore graveyard, the
+Brass Vaults steampunk zone, new mobile hazards, and local quest content using those world-system
+surfaces.
 
 Sprint 73's cleanup backlog and the 2026-07-13 UI-cohesion items are closed and preserved in
 [`roadmap_completed.md`](roadmap_completed.md).
@@ -55,7 +57,7 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used (complete):** 1–80, except for deliberately skipped/deferred numbers below. Full task
+- **Used (complete):** 1–81, except for deliberately skipped/deferred numbers below. Full task
   detail lives in [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
   (concurrency/threading gate), 61/63/64 (combat/PvP work), and 65 (multiplayer trade/transit

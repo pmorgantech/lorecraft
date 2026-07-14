@@ -12,3 +12,33 @@ spawns:
     template: vagrant_pike
     max_count: 2
     every_ticks: 12
+
+  graveyard_tombstone_skeletons:
+    area: ashmoore_graveyard
+    template: tombstone_skeleton
+    max_count: 4
+    every_ticks: 5
+
+  graveyard_bell_ghosts:
+    area: ashmoore_graveyard
+    template: bell_ghost
+    max_count: 2
+    every_ticks: 7
+
+  graveyard_crypt_wights:
+    area: ashmoore_graveyard
+    template: crypt_wight
+    max_count: 1
+    every_ticks: 10
+
+  brass_vaults_soot_crawlers:
+    area: brass_vaults
+    template: soot_crawler
+    max_count: 3
+    every_ticks: 6
+
+  brass_vaults_aetheric_wardens:
+    area: brass_vaults
+    template: aetheric_warden
+    max_count: 2
+    every_ticks: 9

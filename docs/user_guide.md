@@ -210,6 +210,16 @@ A room with no ambient light needs an equipped, lit light source (like a lit lan
 you can't see to look around, take items, or read descriptions — a lit source slowly burns
 through its fuel (durability) over time, so keep spares.
 
+For the Ashmoore caves, take the `Dented Oil Lantern` at the cave mouth, then:
+
+```
+wield lantern
+light lantern
+```
+
+The Brass Vaults also seed an `Aether Lantern` near their entrance for their darker
+maintenance rooms.
+
 **Disambiguation:** if your item name matches more than one thing, Lorecraft prompts you
 with a numbered list:
 
@@ -442,6 +452,11 @@ some hidden places can turn up randomized treasure the first time you discover t
 
 NPCs can move on their own. Some wander, some patrol a simple loop, and some follow a
 fixed route with visible departures and arrivals.
+
+Two newer explorable areas branch from Ashmoore: from `south_gate`, go `east` to reach
+the Old Hill Graveyard; from `inner_vault`, go `up` to reach the steampunk Brass Vaults.
+The graveyard has tombstones with local commands such as `read tombstone`, while Forewoman
+Cassia in the Brass Vaults offers ten local repair and survey quests.
 
 ## Talking to NPCs & Quests
 
