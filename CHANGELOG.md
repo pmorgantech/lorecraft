@@ -4,6 +4,28 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.98.1] - 2026-07-13
+
+### Fixed
+
+- **Scheduler: composite `(status, due_at_epoch)` index for the per-tick due-job
+  query.** `SchedulerRepo.due()`'s `WHERE status='pending' AND due_at_epoch <=
+  current_epoch` had only a single-column `due_at_epoch` index to work with.
+  Since `due_at_epoch` never exceeds the ever-advancing current epoch and
+  dispatched/cancelled jobs are never purged, that index matched nearly every
+  historical row on every tick, filtering for `status` one row at a time —
+  diagnosed live against the running dev server's DB (141,870 dispatched rows
+  vs. 6 pending; the bare query alone took ~25ms, roughly 40% of an observed
+  62ms `scheduler_tick` slow-operation warning). A new composite index leading
+  on `status` (the equality predicate) with `due_at_epoch` trailing (the range
+  predicate) lets SQLite seek directly into the pending partition regardless of
+  table size — verified against the same live data this drops the query to
+  ~0.3ms and changes the query plan from a `due_at_epoch` range scan to a
+  genuine `(status=? AND due_at_epoch<?)` seek. New databases get the index via
+  the model's `__table_args__`; a small idempotent migration (`CREATE INDEX IF
+  NOT EXISTS`) backfills existing ones, since the additive-column scanner only
+  reconciles columns, never indexes.
+
 ## [0.98.0] - 2026-07-13
 
 ### Added
