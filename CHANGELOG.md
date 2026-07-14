@@ -4,6 +4,31 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.104.2] - 2026-07-14
+
+### Documentation
+
+- Audited `architecture.md` for correctness: corrected the frontend stack (Jinja2 +
+  Alpine.js + HTMX + Tailwind, not "Vanilla JS"), updated the Tier 2 feature count from
+  24 to 33 and refreshed the illustrative package list (`skills` → `disciplines`/others),
+  re-pointed the combat deferral note from the retired "Sprints 61–65" to
+  `wishlist.md` (*Combat, reframed*), added a status banner to the Combat subsection noting
+  its progression model is superseded by Disciplines/Abilities, and removed a duplicated
+  "Build Order Recommendation" section plus a duplicated closing note (TOC renumbered to 29).
+- Rewrote the stale parts of `implementation_guides.md`: dropped the never-executed
+  `docs/features/` reorganization narrative, moved combat/death guides to a "Set aside"
+  bucket, marked the Discipline/Ability guide shipped, and fixed dangling `docs/features/*`
+  cross-references.
+- Fixed pre-tier-split module paths in `command_parser.md` / `parser_and_commands.md`
+  (`lorecraft.game.*` → `lorecraft.engine.game.*`), and the stale `24` feature count in
+  `architecture_tiers.md` / `tier_modules.md` (now 33, with the feature table refreshed).
+- Deduplicated `docs/`: completed the half-finished archival by moving eight shipped-feature
+  design docs (`inventory_equipment`, `trade_economy`, `transit_systems`, `scavenger_hunt`,
+  `session_replay`, `chat_feed_split`, `code_review_20260707`, `gamecontext_audit_20260710`)
+  out of `docs/` root into `docs/archive/` and re-pointing all inbound links. Fixed a
+  pre-existing broken `wishlist3.md` link in `genuine_gaps.md`. Verified zero broken
+  intra-doc `.md` links across the tree.
+
 ## [0.104.1] - 2026-07-14
 
 ### Added

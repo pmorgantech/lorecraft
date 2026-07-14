@@ -67,7 +67,7 @@ The codebase is split on three axes (the tier split, CHANGELOG 0.15.0–0.32.0):
 
 ## Tier 2 — `src/lorecraft/features/`
 
-Each feature is a self-contained package (a subset of `models.py` / `service.py` / `repo.py` / `commands.py` / `conditions.py` / `holders.py` / `presentation.py` / …) plus an `__init__.py` exporting a `FeatureManifest`. The 24 packages:
+Each feature is a self-contained package (a subset of `models.py` / `service.py` / `repo.py` / `commands.py` / `conditions.py` / `holders.py` / `presentation.py` / …) plus an `__init__.py` exporting a `FeatureManifest`. The 33 packages:
 
 | Feature | Owns (highlights) |
 |---------|-------------------|
@@ -81,7 +81,8 @@ Each feature is a self-contained package (a subset of `models.py` / `service.py`
 | `bank` | Bank accounts (`deposit`/`withdraw`/`balance`), bank holder |
 | `equipment` | Wear/wield slots, equipment modifier + trait sources, slot validators (deps: `traits`) |
 | `traits` | Standard boon/bane trait definitions + innate source |
-| `skills` | Skill definitions + use-based improvement |
+| `disciplines` | Disciplines & Abilities — unified Discipline → Ability model (replaced `skills`/`skill_tree`) |
+| `progression` | Progression & Leveling — XP curve, level-up payouts (Tier 2 policy over engine deltas) |
 | `exploration` | Search/fog-reveal, journal, cartography |
 | `fatigue` | Fatigue meter + skill-check penalty; `rest`/`sleep`/`camp` |
 | `warmth` | Warmth/thermals; `warmth_bonus` item effect |
@@ -92,9 +93,17 @@ Each feature is a self-contained package (a subset of `models.py` / `service.py`
 | `containers` | Container open/capacity/nesting validators (deps: `item_components`) |
 | `item_components` | Standard components (durability/openable/lit/container/mechanism) |
 | `items` | Item effect + rule definitions (bound-item enforcement, perks) |
-| `character` | Character-info service (`skills`/`traits`/`stats` commands) |
+| `character` | Character-info service (`abilities`/`traits`/`stats` commands) |
 | `encumbrance` | Encumbrance/weight bands |
 | `transit` | Transit lines/stops, vehicle state machine, `presentation.py` minimap panel |
+| `consumables` | Consumables — `eat`/`drink` and nourishment effects |
+| `celestial` | Celestial Cycles — moon/sun phase state over the world clock |
+| `npc_ai` | Autonomous NPC Behavior — wander/patrol route driving |
+| `spawns` | Area Spawn Controllers — data-driven mobile/item spawns |
+| `hunts` | Scavenger Hunts — spread-placement item hunts + coin reward tiers |
+| `marks` | Marks & Attunements — player marks/attunement state + conditions |
+| `follow` | Follow — party/leader follow movement |
+| `context_commands` | Context-attached commands — verbs bound to rooms/items/NPCs |
 
 `features/manifest.py` (`FeatureManifest`, registry) and `features/loader.py` (`discover_features` / `load_features` / `resolve_enabled_features` / `wire_features`) are the Tier 2 framework, not a feature.
 

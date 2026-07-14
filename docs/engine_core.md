@@ -169,7 +169,7 @@ class ItemInstance(SQLModel, table=True):
 
 **Decided:** an instance is *identity + state only*. Its **location lives on its `ItemStack`
 row** (§3.2) — never duplicated on the instance. (Supersedes the earlier draft in
-[`inventory_equipment.md`](inventory_equipment.md) §7 that put `owner_type`/`owner_id` and
+[`inventory_equipment.md`](archive/inventory_equipment.md) §7 that put `owner_type`/`owner_id` and
 typed `durability`/`is_open`/`lit` columns on the instance; those become component state.)
 
 **Component registry** (`game/components.py`):
@@ -267,7 +267,7 @@ class HolderRegistry:
 
 - **Tier 1 registers holder types** `player`, `room`, `container` (a container's `owner_id`
   is an `ItemInstance.id`). Tier 2 registers `shop` and `escrow`
-  ([`trade_economy.md`](trade_economy.md)); a corpse is **not** a holder type — it is an
+  ([`trade_economy.md`](archive/trade_economy.md)); a corpse is **not** a holder type — it is an
   ordinary `container` instance ([`death_resurrection.md`](death_resurrection.md)).
 - **Move validators** are the mechanical-capacity hook: the Tier 2 container component
   registers one on `container` (capacity, open/closed); the equipment module registers one on
@@ -615,7 +615,7 @@ class LedgerService:
 
 - **Escrow shape (decided):** `offer` moves **nothing** (it records intent); `accept`
   composes ONE `execute_exchange` with both directions as legs — this *is* the accept-time
-  revalidation ([`trade_economy.md`](trade_economy.md) §8). Trade-policy gates (tradeable,
+  revalidation ([`trade_economy.md`](archive/trade_economy.md) §8). Trade-policy gates (tradeable,
   bound, consent) are rules checked by the trade module **before** the call (§3.0 two-layer
   rule).
 - **Conservation invariant (test as such):** across any `execute_exchange`, the sum of all
@@ -847,14 +847,14 @@ and folded into §3 and into the feature docs:
   [`combat_system.md`](combat_system.md) updated to roll through `ctx.rng`.
 - **(c) Coins scalar vs coins-in-corpse** → **resolved** by §3.7: `CoinBalance` on any
   registered holder; no `Player.coins` column; corpse = container instance holder.
-  [`trade_economy.md`](trade_economy.md) + [`death_resurrection.md`](death_resurrection.md)
+  [`trade_economy.md`](archive/trade_economy.md) + [`death_resurrection.md`](death_resurrection.md)
   updated.
 - **(d) Modifier stacking undefined** → **resolved** by §3.5: fixed `add → mult → clamp`
   bucket order; percentages are `mult`; feature caps live in the feature.
 - **(e) `equipped_weapon_id` vs `Player.equipment` map** → **resolved** by §3.2: *both*
   drafts are superseded — equipment is a **slot-bearing `ItemStack`**
   (`Location("player", id, slot="main_hand")`); no JSON map, no ad-hoc column.
-  [`combat_system.md`](combat_system.md) + [`inventory_equipment.md`](inventory_equipment.md)
+  [`combat_system.md`](combat_system.md) + [`inventory_equipment.md`](archive/inventory_equipment.md)
   updated.
 - **(f) `bound` flag assumed, not designed** → **resolved**: `Item.bound` added in §3.2
   (Sprint 16); enforcement is Tier 2 rules/policy.
@@ -932,6 +932,6 @@ per-feature docs. That's fine **as long as they stay aligned and cross-linked**.
 
 *See [`roadmap.md`](roadmap.md) for sequencing, [`feature-registration.md`](feature-registration.md)
 for the registration pattern these primitives extend, and the per-feature docs
-([`inventory_equipment.md`](inventory_equipment.md), [`combat_system.md`](combat_system.md),
-[`trade_economy.md`](trade_economy.md), [`transit_systems.md`](transit_systems.md),
+([`inventory_equipment.md`](archive/inventory_equipment.md), [`combat_system.md`](combat_system.md),
+[`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md),
 [`death_resurrection.md`](death_resurrection.md)) for the use cases each primitive serves.*

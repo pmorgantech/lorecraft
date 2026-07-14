@@ -7,7 +7,7 @@ find test data for similar item names.
 Related references:
 
 - [command_parser.md](command_parser.md) — parser output model and pattern taxonomy
-- `src/lorecraft/game/command_patterns.py` — typed role helpers
+- `src/lorecraft/engine/game/command_patterns.py` — typed role helpers
 - `tests/fixtures/disambig_fixtures.py` — pytest-only similar-item test room
 
 ---
@@ -75,7 +75,7 @@ north / n / go north
 ```
 
 ```python
-from lorecraft.game.command_patterns import movement_direction
+from lorecraft.engine.game.command_patterns import movement_direction
 
 direction = movement_direction(parsed)
 if direction is None:
@@ -101,7 +101,7 @@ take red key / take 2 coin / take all / drop everything
 ```
 
 ```python
-from lorecraft.game.command_patterns import object_phrase
+from lorecraft.engine.game.command_patterns import object_phrase
 from lorecraft.services.inventory import InventoryService, parse_item_target
 
 phrase = object_phrase(parsed) or parsed.noun
@@ -351,7 +351,7 @@ python tools/parser_diag.py "take rusty iron"
 
 ```python
 # commands/social.py
-from lorecraft.game.command_patterns import speech_roles
+from lorecraft.engine.game.command_patterns import speech_roles
 
 @registry.register("tell")
 def tell_command(noun: str | None, ctx: object) -> None:

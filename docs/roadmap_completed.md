@@ -1222,7 +1222,7 @@ simulated players**, or a mix concurrently — for regression (golden audit-trai
 (p50/p95/p99), and soak/fuzz. Mostly a **consolidation** of pieces that already exist: the audit
 log (recording), the `VirtualPlayer`/`SimulationServer` harness (playback), `test_load.py` (N-player
 fan-out + metrics), and the seeded-`GameRng` audit-regression determinism. **Full plan:
-[`session_replay.md`](session_replay.md).** Supersedes the Backlog `lorecraft.tools.simulation` note.
+[`session_replay.md`](archive/session_replay.md).** Supersedes the Backlog `lorecraft.tools.simulation` note.
 
 | # | Task | Status |
 |---|------|--------|
@@ -1278,7 +1278,7 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 | # | Task | Status |
 |---|------|--------|
-| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [x] Spec: [`scavenger_hunt.md`](scavenger_hunt.md). Decisions: **flags** for per-player progress (persist via SaveSlot, journal-visible, no new table); **news items** for announcements (synchronous DB — sidesteps the async-from-scheduler broadcast problem, no live feed ping in v1); YAML defs loaded into an in-memory registry (weather/terrain pattern); completion = "find all" (count variant deferred); reuses scheduler / `ItemLocationService.spawn` / `ITEM_TAKEN` / `LedgerService` / `GameRng` — no new Tier 1 mechanism. (v0.40.7) |
+| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [x] Spec: [`scavenger_hunt.md`](archive/scavenger_hunt.md). Decisions: **flags** for per-player progress (persist via SaveSlot, journal-visible, no new table); **news items** for announcements (synchronous DB — sidesteps the async-from-scheduler broadcast problem, no live feed ping in v1); YAML defs loaded into an in-memory registry (weather/terrain pattern); completion = "find all" (count variant deferred); reuses scheduler / `ItemLocationService.spawn` / `ITEM_TAKEN` / `LedgerService` / `GameRng` — no new Tier 1 mechanism. (v0.40.7) |
 | 48.2 | Implement as a Tier 2 feature package (`features/…` + manifest, auto-discovered) per the spec; content-lint for event YAML references (item keys, room pools). | [x] `features/hunts/` (auto-discovered): `models.py` (Pydantic `HuntDef`/`HuntsDocument`, registry, `lint_hunts`), `service.py` (`open`/`close`/`ITEM_TAKEN` find + reward/`SCHEDULED_JOB_DUE` open-close), `commands.py` (read-only `hunts` verb). Progress in player flags, announcements as news items, coins via ledger. `LORECRAFT_HUNTS_YAML_PATH` config; loaded into the registry at startup. Wired into `ServiceContainer`/`register_all_commands`/`main`. (v0.40.8) |
 | 48.3 | Ashmoore example hunt + tests: event opens/closes on schedule, item found → progress → reward, audit-regression stays stable. | [x] `world_content/hunts.yaml` — the Harvest Trinket Hunt (3 trinket items added to `world.yaml` as definitions only) across village_square/market/inn. 10 unit tests (open spawns clues, find→progress→reward+lore, no double-reward, close despawns, scheduled open/close, content-lint clean/dirty, dup-id + negative-coin validation, shipped-content lints against the real world). Audit-regression golden **unchanged** (definitions aren't placed by default). |
 
@@ -1410,7 +1410,7 @@ e2e 36 green.
 
 ## Sprint 45 — Split the social/chat feed from the narrative feed (opt-in) — ✅ complete
 
-**Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output out of view. Split narrative feed from social/channel feed into two panes, as a toggleable player option. **Full plan: [`chat_feed_split.md`](chat_feed_split.md).**
+**Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output out of view. Split narrative feed from social/channel feed into two panes, as a toggleable player option. **Full plan: [`chat_feed_split.md`](archive/chat_feed_split.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1844,13 +1844,13 @@ exploration, which it serves.
 > Tier 2 feature band shifts to **[Sprints 22–35](#sprint-22--standard-item-components--definition-fields)**.
 
 > **Design docs:** [`engine_core.md`](engine_core.md) (Tier boundary + Tier 1 primitives — read first),
-> [`inventory_equipment.md`](inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
+> [`inventory_equipment.md`](archive/inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
 > [`death_resurrection.md`](death_resurrection.md) (death penalty; combat set aside to [`wishlist.md`](wishlist.md)),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
 > [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
-> registries), [`transit_systems.md`](transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
-> [`trade_economy.md`](trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
+> registries), [`transit_systems.md`](archive/transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
+> [`trade_economy.md`](archive/trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
 > design docs.
 
 ## Sprint 22 — Standard item components & definition fields ✅
@@ -1860,7 +1860,7 @@ Sprint 2.5 `open`/container/state prerequisite. The per-instance carrier, item-l
 component registry are **Tier 1 ([Sprint 16](#sprint-16--item-locationownership--instance-state))**; this sprint adds the Layer A `Item` definition
 fields and the *standard components* (durability, light, container, openable) on top, so items can
 be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.md) §3.1–3.2 and
-[`inventory_equipment.md`](inventory_equipment.md) §7.**
+[`inventory_equipment.md`](archive/inventory_equipment.md) §7.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1870,7 +1870,7 @@ be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.
 ## Sprint 23 — Inventory & equipment ✅
 
 **Goal:** Wear/wield slots, encumbrance, containers. Equipment grants **non-combat** effects
-(light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](inventory_equipment.md) §3–6, §9.**
+(light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](archive/inventory_equipment.md) §3–6, §9.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1924,7 +1924,7 @@ on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → 
 
 **Goal:** A living economy where *where* you buy/sell matters (pillar #2). Currency → NPC shops
 → regional pricing → banks. **Signature pairing:** the transit network ([Sprint 29](#sprint-29--transit--travel-systems)) is the trade
-network. **See [`trade_economy.md`](trade_economy.md).**
+network. **See [`trade_economy.md`](archive/trade_economy.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1938,7 +1938,7 @@ network. **See [`trade_economy.md`](trade_economy.md).**
 **Goal:** The signature Materia-Magica-inspired feature — multiple travel modes between areas
 (ferry, rail, balloon, caravan) that are slow or fast, run end-to-end (express) or make multiple
 stops (local), and animate on the minimap. Built on scheduler + world clock + weather + WS push.
-**See [`transit_systems.md`](transit_systems.md).**
+**See [`transit_systems.md`](archive/transit_systems.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -2030,4 +2030,4 @@ Earlier same day — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-
 
 Earlier same day — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift).
 
-Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](inventory_equipment.md), [`trade_economy.md`](trade_economy.md), [`transit_systems.md`](transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*
+Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](archive/inventory_equipment.md), [`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*

@@ -71,7 +71,7 @@ per use from base stats + equipment + traits + active effects:
 | `combat.speed` | agility-derived | haste/slow effects |
 
 The `armor` effect descriptor is registered by the combat feature (same descriptor registry
-as [`inventory_equipment.md`](inventory_equipment.md) §3). Weapon damage is **data on the
+as [`inventory_equipment.md`](archive/inventory_equipment.md) §3). Weapon damage is **data on the
 weapon**, also a descriptor — `effects: [{type: weapon_damage, min: 2, max: 7}]` — no new
 `Item` columns.
 
@@ -215,7 +215,7 @@ fight, which is why every roll goes through the seeded `rng` and iteration order
 ---
 
 *See [`engine_core.md`](engine_core.md) (primitives), [`death_resurrection.md`](death_resurrection.md)
-(death/respawn policy), [`inventory_equipment.md`](inventory_equipment.md) (weapon/armor as
+(death/respawn policy), [`inventory_equipment.md`](archive/inventory_equipment.md) (weapon/armor as
 effect descriptors), [`feature-registration.md`](feature-registration.md) (module layout), and
 [architecture.md §15](architecture.md#15-subsystem-combat-system) (original subsystem sketch,
 superseded where it conflicts with this doc).*

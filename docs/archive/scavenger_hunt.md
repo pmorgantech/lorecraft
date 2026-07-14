@@ -5,7 +5,7 @@ pool of rooms, and players hunt them down for a reward (coins, lore). The simple
 slice of the wishlist's *Instanced minigames / scenarios* idea: pure content on existing
 primitives (scheduler, item spawns, flags/journal, news), **no new engine mechanism**.
 
-Roadmap: [Sprint 48](roadmap.md#sprint-48--scavenger-hunt-events-design-first).
+Roadmap: [Sprint 48](../roadmap.md#sprint-48--scavenger-hunt-events-design-first).
 
 ## What it reuses (nothing new in Tier 1)
 
@@ -41,17 +41,30 @@ hunts:
     description: "Five lost trinkets are scattered about Ashmoore. Find them all."
     clue_items: [trinket_acorn, trinket_bell, trinket_feather]   # Item ids to find
     spawn_rooms: [village_square, market_stalls, wandering_crow_inn]  # room-id pool
+    spread_items: true              # avoid reusing rooms while rooms remain
     reward:
-      coins: 50
+      coins: 50                     # fallback when no speed tier matches
       lore: harvest_trinkets            # sets flag lore:harvest_trinkets (journal-visible)
+      tiers:
+        - max_elapsed_seconds: 60
+          coins: 2000
+        - max_elapsed_seconds: 120
+          coins: 250
+        - max_elapsed_seconds: 300
+          coins: 100
     duration_ticks: 240                 # closes this many game-ticks after opening
 ```
 
 - **Placement:** on open, each `clue_items` entry is spawned into a room chosen from `spawn_rooms`
   by the seeded `GameRng` (deterministic). Fewer rooms than items → items share rooms; more rooms →
-  a random subset is used.
+  a random subset is used. Set `spread_items: true` to choose without replacement while unused
+  rooms remain, which is useful for authored 3-7 item hunts that should be distributed between
+  rooms.
 - **Completion rule (v1):** find *all* `clue_items`. (A `find_count: N` variant is a trivial later
   extension — the progress check already counts found flags.)
+- **Timed rewards:** `reward.tiers` is optional. The timer starts when a player finds their first
+  clue item for that hunt and uses game-clock seconds. The first tier where
+  `elapsed < max_elapsed_seconds` wins; otherwise `reward.coins` is paid as the fallback.
 
 ## Lifecycle
 
@@ -59,9 +72,10 @@ hunts:
    `hunt:<id>:open` (on `WorldMeta`-style state / a small in-memory active-set + a scheduled close
    job), write an "opened" news item, and schedule the close job at `now + duration_ticks`.
 2. **Hunt** — `ITEM_TAKEN` handler: if the taken item is a clue of an *open* hunt, set
-   `player.flags["hunt:<id>:found:<item>"]`. If the player now holds all clue flags and isn't
-   already `hunt:<id>:done`, grant the reward (coins + lore flag), set `hunt:<id>:done`, and
-   `ctx.say` the payoff to the finder.
+   `player.flags["hunt:<id>:started_epoch"]` on the first clue and
+   `player.flags["hunt:<id>:found:<item>"]` on every clue. If the player now holds all clue flags
+   and isn't already `hunt:<id>:done`, choose the timed coin tier, grant the reward (coins + lore
+   flag), set `hunt:<id>:done`, and `ctx.say` the payoff to the finder.
 3. **Close** — `HuntService.close(hunt_id, session)`: despawn any un-taken clue stacks still in the
    pool rooms, clear the open flag, write a "closed" news item. Player `done`/`found` flags remain
    (a record of participation; the journal can surface completed hunts later).
@@ -80,7 +94,8 @@ Per-player progress is **player flags**, not a new `HuntProgress` table:
 A validator (in `tools/validators.py` / the hunts loader) checks each hunt:
 - every `clue_items` id resolves to a real `Item`;
 - every `spawn_rooms` id resolves to a real `Room`;
-- `reward.coins >= 0`; `duration_ticks > 0`; ids unique.
+- `reward.coins >= 0`; reward-tier `coins >= 0`; tier thresholds are positive;
+  `duration_ticks > 0`; ids unique.
 
 Wired into the world-content lint path so a bad hunt file fails fast, like room/item content.
 

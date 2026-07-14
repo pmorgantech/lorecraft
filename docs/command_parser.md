@@ -4,7 +4,7 @@ This document describes how the Lorecraft parser structures player input, how co
 handlers should consume that structure, and which **command patterns** apply to different
 verb families.
 
-For implementation details and diagnostics, see `src/lorecraft/game/parser.py` and
+For implementation details and diagnostics, see `src/lorecraft/engine/game/parser.py` and
 `tools/parser_diag.py`.
 
 For **authoring new commands**, item disambiguation behaviour, and the Key Gallery test
@@ -64,7 +64,7 @@ Roles are a flexible dictionary. Common keys:
 Handlers should identify their **pattern** and read the matching roles — not assume a single
 `noun` string covers every verb.
 
-Taxonomy and helpers live in `src/lorecraft/game/command_patterns.py`.
+Taxonomy and helpers live in `src/lorecraft/engine/game/command_patterns.py`.
 
 | Pattern | Verbs (examples) | Roles to read | Handler responsibility |
 |---------|------------------|---------------|------------------------|
@@ -104,7 +104,7 @@ works for movement and basic `take sword`, but **loses structure** for `give X t
 New handlers should accept the full `ParsedCommand` (or use pattern helpers):
 
 ```python
-from lorecraft.game.command_patterns import (
+from lorecraft.engine.game.command_patterns import (
     CommandPattern,
     pattern_for_verb,
     speech_roles,

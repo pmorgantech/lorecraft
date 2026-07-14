@@ -36,7 +36,8 @@
 25. [Testing Infrastructure](#25-testing-infrastructure)
 26. [Transaction & Event Lifecycle](#26-transaction--event-lifecycle)
 27. [Intentionally Deferred](#27-intentionally-deferred)
-28. [Build Order Recommendation](#28-build-order-recommendation)
+28. [Gaps & Future Considerations](#28-gaps--future-considerations)
+29. [Build Order Recommendation](#29-build-order-recommendation)
 
 ---
 
@@ -72,8 +73,8 @@ A persistent, multiplayer browser-based text adventure engine. Players connect v
 | Database ORM | SQLModel (Pydantic + SQLAlchemy) |
 | Database | SQLite (single file, single process) |
 | World authoring | YAML files seeded into SQLite |
-| Frontend | Vanilla JS + Tailwind CSS (CDN, no build step) |
-| Admin TUI | Textual (Python terminal UI library) |
+| Frontend | Jinja2 templates + Alpine.js + HTMX + Tailwind CSS (CDN, no build step) |
+| Admin TUI | Textual (Python terminal UI library; optional `admin-tui` extra) |
 | Testing | pytest + in-memory SQLite |
 
 ---
@@ -97,7 +98,7 @@ Every operation in the engine maps to exactly one of these five layers. When in 
 The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–0.32.0; design in [`tier_split_refactor.md`](tier_split_refactor.md), boundary in [`architecture_tiers.md`](architecture_tiers.md)):
 
 - **Tier 1 — `engine/`**: content-agnostic primitives. Runs headless; imports only `engine.*` and `lorecraft.types` — never `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`).
-- **Tier 2 — `features/`**: 24 optional, self-contained feature packages, each owning its own `models`/`service`/`repo`/`commands`/`conditions`/…, declared by a `FeatureManifest`. Discovered via `discover_features()` and gated by the enabled set.
+- **Tier 2 — `features/`**: 33 optional, self-contained feature packages, each owning its own `models`/`service`/`repo`/`commands`/`conditions`/…, declared by a `FeatureManifest`. Discovered via `discover_features()` and gated by the enabled set.
 - **Web — `webui/`**: the delivery hosts (`player/` HTMX UI + `admin/` console) that compose an engine + features. A feature may optionally ship a `presentation.py` picked up by the web host.
 - **Composition root** (`main.py`, `commands/`, `services/container.py`, `state.py`) may import features and web; the engine may not import any of them.
 
@@ -126,11 +127,13 @@ The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–
 │       │   ├── economy/               # e.g. models, service, repo, commands, holders, restock
 │       │   │   └── …                  #   (+ optional presentation.py for feature UI)
 │       │   ├── transit/               # …, presentation.py (registers the minimap panel)
-│       │   └── …                      # inventory, movement, npc, quests, trading, bank,
-│       │                              #   equipment, traits, skills, exploration, fatigue,
+│       │   └── …                      # inventory, movement, npc, npc_ai, npc_memory,
+│       │                              #   quests, trading, bank, equipment, traits,
+│       │                              #   disciplines, progression, exploration, fatigue,
 │       │                              #   warmth, terrain, weather, light, reputation,
-│       │                              #   containers, item_components, items, character,
-│       │                              #   npc_memory, encumbrance
+│       │                              #   containers, item_components, items, consumables,
+│       │                              #   character, encumbrance, celestial, context_commands,
+│       │                              #   follow, hunts, marks, spawns
 │       │
 │       ├── webui/                     # ── Web: delivery hosts (compose engine + features)
 │       │   ├── player/                # HTMX/Alpine/Jinja player UI
@@ -160,7 +163,7 @@ The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–
 └── world_content/                    # world.yaml (rooms/items/npcs/quests/dialogue/…)
 ```
 
-> **Note.** Combat/PvP subsystems (`features/combat`, `npc/combat_ai`, `models/combat`) are **not yet built** — deferred to roadmap Sprints 61–65. The stat/skill/equipment primitives they will consume already exist in `engine/` and the relevant `features/`.
+> **Note.** Combat/PvP subsystems (`features/combat`, `npc/combat_ai`, `models/combat`) are **not yet built** — set aside to [`wishlist.md`](wishlist.md) (*Combat, reframed* — ready-to-restore specs) as a supporting system rather than the centerpiece. The stat/equipment/discipline primitives they will consume already exist in `engine/` and the relevant `features/` (see the Discipline/Ability system, Sprints 77–78).
 
 ---
 
@@ -916,6 +919,14 @@ Quest progression is driven by event subscriptions, not polling. The `QuestServi
 ---
 
 ## 15. Subsystem: Combat System
+
+> **Status (2026-07-14):** Combat/PvP is **not built** and has been **set aside to
+> [`wishlist.md`](wishlist.md)** (*Combat, reframed*) as a ready-to-restore spec. The design
+> below is preserved as the reference to restore from. Note that its "Track 2 — Skill
+> Proficiency" progression model has since been **superseded** by the data-driven
+> **Discipline → Ability** system (Sprints 77–78; see
+> [`discipline_ability_system.md`](discipline_ability_system.md)), which is the seam combat
+> will consume when restored.
 
 ### Stat Model
 
@@ -1756,106 +1767,3 @@ Build in this sequence. The browser is split across the build order so client-fa
 ---
 
 *End of implementation guide. All systems described here have been designed across multiple architecture sessions. Where a system notes open questions (magic model, PvP griefing, changeset staleness), those are intentionally unresolved and should be designed before implementing that specific feature.*
-
----
-
-## 28. Build Order Recommendation
-
-Build in this sequence. The browser is split across the build order so client-facing protocol, context, event, and WebSocket behavior can be exercised as vertical slices instead of waiting until every gameplay subsystem exists. The early browser work is a harness, not the final frontend.
-
-### Phase 1 — Foundation (no gameplay yet)
-1. `config.py` — env-driven configuration
-2. `models/` — all SQLModel table definitions; `create_tables()` at startup
-3. `repos/` — thin data access wrappers
-4. `game/context.py` — `GameContext` and `TransactionContext`
-5. `game/connection_manager.py` — WebSocket connection pool
-6. `game/events.py` — `GameEvent` enum and `EventBus`
-7. `main.py` — FastAPI app, `/ws` WebSocket endpoint, startup/shutdown lifecycle
-8. **Test:** Can connect a WebSocket? Can send/receive JSON messages?
-
-### Phase 2 — Command Dispatch
-1. `game/parser.py` — raw text → `ParsedCommand`
-2. `game/registry.py` — command registration, condition evaluation
-3. `game/rules.py` — `RuleEngine` (empty rule set initially)
-4. `game/engine.py` — `handle_command()` with the full 13-step lifecycle
-5. `commands/meta.py` — `help`, `quit`
-6. `commands/movement.py` — `go`, cardinal directions
-7. `services/movement.py` — `MovementService`
-8. **Test:** Player can connect, `go north`, see a response, and change rooms.
-
-### Phase 2.5 — Minimal Web Client
-1. Single HTML file with browser WebSocket client
-2. Message router for server response, room event, error, and structured update messages
-3. Plain JavaScript state object for current room, feed, status, and connection state
-4. Basic text feed and command input
-5. Basic room/status display
-6. **Test:** Browser smoke/end-to-end test can connect, send a command, and render the response.
-
-### Phase 3 — World & Time
-1. `clock/world_clock.py` — clock loop as background asyncio task
-2. `clock/weather.py` — weather/season state machine
-3. `commands/inventory.py` — `look`, `take`, `drop`, `examine`, `inventory`
-4. `services/inventory.py` — `InventoryService`
-5. World YAML loader + validator
-6. **Test:** Clock advances. Weather changes. Player can pick up items.
-
-### Phase 3.5 — World UI
-1. Inventory panel backed by inventory command responses and structured updates
-2. Minimap SVG with fog-of-war
-3. Basic layout refinement around the feed, room/status display, inventory, and minimap
-4. **Test:** Browser can show room changes, inventory updates, and visited-room map state.
-
-### Phase 4 — NPCs & Quests
-1. `npc/dialogue.py` — dialogue tree walker
-2. `npc/scheduler.py` — NPC movement via `HOUR_CHANGED`
-3. `services/dialogue.py` — `DialogueService`
-4. `commands/social.py` — `talk`, `say`
-5. `services/quest.py` — `QuestService`
-6. **Test:** Player can talk to an NPC, make choices, trigger quest flags.
-
-### Phase 4.5 — Dialogue UI
-1. Dialogue overlay with numbered choices
-2. Command input disabled or mode-switched while dialogue is active
-3. **Test:** Browser can render dialogue choices and send a dialogue selection.
-
-### Phase 5 — Persistence & Safety
-1. `services/save.py` — `SaveSlotService`, auto-save triggers
-2. `commands/meta.py` — `save`, `load`
-3. Disconnect handling — grace period, reconnect, system-controlled state
-4. **Test:** Save mid-quest, disconnect, reconnect, load save — state is preserved.
-
-### Phase 6 — Admin Tools
-1. `admin/auth.py` — JWT, roles
-2. `admin/api.py` — admin REST endpoints
-3. `admin/websocket.py` — admin push WebSocket
-4. `world/versioning.py` — changesets, conflict scanner, promotion
-5. **Test:** Admin can view live players, edit a room, promote a changeset.
-
-### Phase 7 — Frontend Polish
-1. Three-column layout with Tailwind CDN
-2. Full-screen map modal with pan/zoom
-3. Responsive behavior for mobile tab layout and desktop grid layout
-4. Visual polish for the Terminal Gothic theme
-5. **Test:** Full browser end-to-end coverage: connect, explore, talk to NPC, fight.
-
-### Phase 8 — Combat
-1. `models/combat.py` — `CombatSession`, `CombatSlot`, `PlayerStats`
-2. `services/combat.py` — `CombatService`, tick resolution, damage calc
-3. `npc/combat_ai.py` — NPC decision logic
-4. `commands/combat.py` — `attack`, `flee`
-5. **Test:** Player can fight an NPC; HP changes; NPC can die and drop loot.
-
-### Phase 8.5 — Combat UI
-1. Combat message styling in the text feed
-2. Combat status display for HP, active target, and turn/tick state
-3. **Test:** Browser reflects combat start, combat updates, and combat end messages.
-
-### Phase 9 — Player Interaction
-1. `services/trading.py` — trade offer lifecycle
-2. `commands/social.py` — `trade`, `pvp challenge`, `pvp accept`
-3. PvP consent system
-4. **Test:** Two players can trade items; PvP requires mutual consent.
-
----
-
-*End of implementation guide. All systems described here have been designed across multiple architecture sessions. Where a system notes open questions (magic model, PvP griefing), those are intentionally unresolved and should be designed before implementing that specific feature.*

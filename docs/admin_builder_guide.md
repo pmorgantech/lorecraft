@@ -526,7 +526,7 @@ Regional price multipliers and per-item bias (`RegionPricing` —
 `src/lorecraft/features/economy/models.py`, keyed on `Room.zone`) are authored in
 `world_content/world.yaml`'s `economy.regions:` list and YAML-seeded at import — see
 [world_building.md § Regional pricing](world_building.md#regional-pricing) for the full
-authoring format and [trade_economy.md § 5](trade_economy.md#5-regional-pricing-the-transittrade-pairing)
+authoring format and [trade_economy.md § 5](archive/trade_economy.md#5-regional-pricing-the-transittrade-pairing)
 for how `region_mult`/`bias` feed the buy/sell price formula. Since Sprint 71.2 that table has
 always been read **live** from the DB on every transaction (`features/economy/service.py`); what
 Sprint 76 adds is the missing admin layer to retune it without a reseed, mirroring the
@@ -1005,7 +1005,7 @@ working example.
 |-----|--------|
 | [world_building.md](world_building.md) | Room/exit/item YAML schema |
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | NPC, dialogue tree, and quest YAML schema |
-| [trade_economy.md](trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
+| [trade_economy.md](archive/trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | Changeset lifecycle, builder mode, optimistic locking |
 | [tooling_infrastructure.md](tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
 | [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, request tracing, crash reports, and SQL query-span logs |

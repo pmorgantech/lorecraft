@@ -1,22 +1,22 @@
 # Trade & Economy — Design
 
 > **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
-> Roadmap **[Sprint 28](roadmap.md#sprint-28--trading--economy)** (see [`roadmap.md`](roadmap.md)).
+> Roadmap **[Sprint 28](../roadmap.md#sprint-28--trading--economy)** (see [`roadmap.md`](../roadmap.md)).
 > Currency, vendor shops, regional pricing, player-to-player trade, and banks.
 >
-> **Tier 1 dependencies (build first — [`engine_core.md`](engine_core.md)):** the **ledger +
+> **Tier 1 dependencies (build first — [`engine_core.md`](../engine_core.md)):** the **ledger +
 > atomic exchange** (`CoinBalance`, `LedgerService.execute_exchange`, engine_core §3.7,
-> [Sprint 20](roadmap.md#sprint-20--ledger--atomic-transfer)) — there is **no `Player.coins`
+> [Sprint 20](../roadmap.md#sprint-20--ledger--atomic-transfer)) — there is **no `Player.coins`
 > column**; the **item location model** (§3.2 — this feature registers the `shop` and `escrow`
 > holder types); the **skill-check helper** (§3.6) for barter/appraise. Every money or item
 > movement in this doc is one `execute_exchange` call; this feature never mutates balances or
 > stacks directly.
 >
-> **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): **Trading** is
+> **Pillars this serves** (see [`wishlist.md`](../wishlist.md) → *Design pillars*): **Trading** is
 > pillar #2, and the signature pairing is *transit network = trade network* — regional price
 > differences only create gameplay because moving goods between towns costs time, fare, and
 > risk ([`transit_systems.md`](transit_systems.md)). Banks and carried-vs-banked money also
-> underpin the death penalty ([`death_resurrection.md`](death_resurrection.md)).
+> underpin the death penalty ([`death_resurrection.md`](../death_resurrection.md)).
 
 ---
 
@@ -30,8 +30,8 @@
 - **`NPC`** — has `loot_table`; add optional vendor/shop config so an NPC can buy/sell.
 - **`Room.area_id`** — regional pricing keys off area (or per-shop overrides).
 - **`WorldClock`** — supply/demand restock runs on `TIME_ADVANCED` via `SchedulerService`.
-- **`PlayerStats.skills`** — `bartering` skill flexes prices ([Sprint 24](roadmap.md#sprint-24--traits--skills) traits/skills).
-- **Reputation/standing** ([Sprint 24](roadmap.md#sprint-24--traits--skills)) — flexes prices and unlocks stock.
+- **`PlayerStats.skills`** — `bartering` skill flexes prices ([Sprint 24](../roadmap.md#sprint-24--traits--skills) traits/skills).
+- **Reputation/standing** ([Sprint 24](../roadmap.md#sprint-24--traits--skills)) — flexes prices and unlocks stock.
 - **Transaction/event lifecycle** — every purchase/sale/trade is one transaction, audited.
 
 ---
@@ -54,7 +54,7 @@ class BankAccount(SQLModel, table=True):     # identity/ownership only — balan
 
 This feature registers the `bank_account` and `shop` holder types (and `escrow`, §8) with the
 Tier 1 holder registry. A corpse's dropped coins are `CoinBalance("container", corpse_instance_id)`
-([`death_resurrection.md`](death_resurrection.md)) — same mechanism, zero special-casing.
+([`death_resurrection.md`](../death_resurrection.md)) — same mechanism, zero special-casing.
 
 Single currency ("coins") for now; multi-currency is a non-goal (§13). Coins are a ledger
 scalar, not inventory items, so they don't consume carry weight.
@@ -73,8 +73,8 @@ sell_price = round(buy_price × sell_ratio)      # sell_ratio ~0.4–0.6; shops 
 - `quality_mult` — common→legendary from [`inventory_equipment.md`](inventory_equipment.md).
 - `region_mult` — §5 regional pricing.
 - `demand_mult` — §6 supply/demand.
-- `barter_discount` — from the `bartering` skill ([Sprint 24](roadmap.md#sprint-24--traits--skills)); capped (e.g. ≤ 25%).
-- `rep_discount` — standing with the vendor/faction ([Sprint 24](roadmap.md#sprint-24--traits--skills)); capped.
+- `barter_discount` — from the `bartering` skill ([Sprint 24](../roadmap.md#sprint-24--traits--skills)); capped (e.g. ≤ 25%).
+- `rep_discount` — standing with the vendor/faction ([Sprint 24](../roadmap.md#sprint-24--traits--skills)); capped.
 
 Deriving at runtime (not storing prices) matches the derived-stat rule used across the engine.
 
@@ -158,10 +158,10 @@ Lightweight, clock-driven, emergent:
 
 ## 7. Bartering & reputation
 
-- `bartering` skill (use-based, [Sprint 24](roadmap.md#sprint-24--traits--skills)) improves buy/sell terms within a cap; improves through
+- `bartering` skill (use-based, [Sprint 24](../roadmap.md#sprint-24--traits--skills)) improves buy/sell terms within a cap; improves through
   use, fitting the exploration-progression ethos.
 - Standing with a vendor/faction unlocks restricted stock and better prices; hostility raises
-  prices or refuses service. Reputation is the social spine ([Sprint 24](roadmap.md#sprint-24--traits--skills)) reused here.
+  prices or refuses service. Reputation is the social spine ([Sprint 24](../roadmap.md#sprint-24--traits--skills)) reused here.
 
 ---
 
@@ -175,7 +175,7 @@ on `execute_exchange` (engine_core §3.7 — the escrow shape is **decided** the
 - `accept` composes **one** `execute_exchange` with both directions as legs. Validation of
   every leg at accept-time *is* the escrow revalidation — if either side no longer holds the
   goods, the whole exchange raises `ConflictError` and nothing moves. Command-lifecycle
-  rollback ([Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-)) covers crashes.
+  rollback ([Sprint 14](../roadmap.md#sprint-14--unify-command-lifecycle-)) covers crashes.
 - Policy gates run **before** the exchange as fail-closed `RuleEngine` rules (engine_core §2):
   `tradeable`, not `bound`, both players present in the same room, offer not expired.
 - A strong simulation-harness target (two real WS clients, concurrent `accept` — exactly one
@@ -192,7 +192,7 @@ Banks are economy infrastructure **and** the death/robbery safety valve.
 - Commands: `deposit <amount>`, `withdraw <amount>`, `balance`.
 - `deposit` is one `execute_exchange` leg, `("player", id)` → `("bank_account", account_id)`;
   `withdraw` reverses. Banked money is **immune to death loss and robbery**
-  ([`death_resurrection.md`](death_resurrection.md)) simply because the death/robbery code
+  ([`death_resurrection.md`](../death_resurrection.md)) simply because the death/robbery code
   only ever touches the `("player", id)` holder.
 - **One logical account, many branches** — deposit in Saltmarsh, withdraw in the capital. This
   makes banks a *travel and trade convenience* (carry less cash on dangerous routes), not just a
@@ -218,11 +218,11 @@ Additive `economy:` / shop sections; worlds without them are unaffected:
 ```yaml
 economy:
   currency: coins
-  regions:                      # area price multipliers + per-good bias
-    - area_id: coast
+  regions:                      # per-zone price multipliers + per-good bias
+    - zone: coast
       region_mult: 1.0
       bias: { salt: 0.6, furs: 1.4 }
-    - area_id: highlands
+    - zone: highlands
       region_mult: 1.1
       bias: { salt: 1.5, furs: 0.7 }
   banks:
@@ -247,7 +247,9 @@ npcs:
 ```
 
 Validators (`lorecraft.tools.validators`): shop stock item ids exist; `value` present on any
-`tradeable` shop item; bank `npc_id` exists; region `area_id` exists; bias keys resolve to items.
+`tradeable` shop item; bank `npc_id` exists; region `zone` exists; bias keys resolve to items.
+`region_mult`/`bias` are also live-tunable per zone from the admin console's **Economy** tab
+without a reseed — see [admin_builder_guide.md § Region pricing](../admin_builder_guide.md#region-pricing-sprint-76).
 
 ---
 
@@ -270,7 +272,7 @@ Validators (`lorecraft.tools.validators`): shop stock item ids exist; `value` pr
 ## 13. Non-goals / open questions
 
 - Multi-currency, exchange rates — single "coins" only.
-- Auction house, player-run storefronts, dynamic global market — see [`wishlist.md`](wishlist.md)
+- Auction house, player-run storefronts, dynamic global market — see [`wishlist.md`](../wishlist.md)
   (🚫, scale-gated).
 - Bank interest/fees, safe-deposit item storage — deferred until the base loop proves out.
 - **Open:** does selling loot to shops crash prices enough to need a per-region cap, or is
@@ -280,7 +282,7 @@ Validators (`lorecraft.tools.validators`): shop stock item ids exist; `value` pr
 
 ---
 
-*See [`roadmap.md`](roadmap.md) [Sprint 28](roadmap.md#sprint-28--trading--economy), [`transit_systems.md`](transit_systems.md) (fares +
-the trade-network pairing), [`death_resurrection.md`](death_resurrection.md) (banks vs. carried
+*See [`roadmap.md`](../roadmap.md) [Sprint 28](../roadmap.md#sprint-28--trading--economy), [`transit_systems.md`](transit_systems.md) (fares +
+the trade-network pairing), [`death_resurrection.md`](../death_resurrection.md) (banks vs. carried
 money), and [`inventory_equipment.md`](inventory_equipment.md) (item value/quality). Built on
-[`feature-registration.md`](feature-registration.md).*
+[`feature-registration.md`](../feature-registration.md).*

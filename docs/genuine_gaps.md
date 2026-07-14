@@ -1,6 +1,6 @@
 # Lorecraft — Genuine Gaps: Ready-to-Build Content Features
 
-Generated 2026-07-08. This is a curated subset of [`wishlist3.md`](wishlist3.md) — the features
+Generated 2026-07-08. This is a curated subset of [`wishlist.md`](wishlist.md) — the features
 that are **not blocked by a product decision** (unlike combat/PvP, leveling/XP, guilds, or
 remort, which need a call from the product owner first) and **not explicit non-goals**. Every
 item below can be designed and built today on primitives that already exist in the engine.
@@ -638,7 +638,7 @@ the existing admin-only REST API.
 
 ---
 
-_Curated 2026-07-08 from `wishlist3.md`'s decision table, cross-referenced against
+_Curated 2026-07-08 from `wishlist.md`'s decision table, cross-referenced against
 `engine_core.md`'s Tier 1 primitive specifications. Excludes combat/PvP, leveling/XP, guilds/
 clans, remort, and other items that need a product decision before design work starts — see
-`wishlist3.md` and `architecture_comparison.md` for those._
+`wishlist.md` and `architecture_comparison.md` for those._

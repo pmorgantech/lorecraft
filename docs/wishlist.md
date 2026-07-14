@@ -73,7 +73,7 @@ Magica's ferries/balloons/rail-with-tickets/travel-animation. **Fully shipped** 
 [`roadmap_completed.md`](roadmap_completed.md#sprint-29--transit--travel-systems)): data-driven
 transit lines (ferry/rail/balloon/caravan) in world YAML, a scheduler-driven vehicle state
 machine (`board`/`disembark`/`schedule`), ticket-item gating, minimap position animation via WS
-push, and weather grounding/delays. Design doc: [`transit_systems.md`](transit_systems.md).
+push, and weather grounding/delays. Design doc: [`transit_systems.md`](archive/transit_systems.md).
 Remaining gap, if any: more world-content routes — the mechanism itself is done.
 
 ---
@@ -413,7 +413,7 @@ lose some carried coins/loot; banked and equipped/bound items are safe).
 
 ### Trading & currency 💚 (on the roadmap)
 
-[Sprint 28](roadmap.md#sprint-28--trading--economy). Designed in [`trade_economy.md`](trade_economy.md): currency (carried `coins` +
+[Sprint 28](roadmap.md#sprint-28--trading--economy). Designed in [`trade_economy.md`](archive/trade_economy.md): currency (carried `coins` +
 `BankAccount`) → NPC shops → regional pricing → banks → player-to-player trade.
 _Deferred:_ auctions, dynamic global market — until there's real trading volume.
 

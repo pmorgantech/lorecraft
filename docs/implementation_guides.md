@@ -1,42 +1,47 @@
 # Implementation Guides Index
 
 This document is a master index of feature design and implementation guides. Guides are organized by status:
-- **In Design:** Sprints planned but not yet implemented
+- **Set aside:** Design preserved but parked in [`wishlist.md`](wishlist.md) (combat, death/resurrection)
 - **Implemented:** Completed sprints with documented implementation patterns (reference/archive)
 - **Foundational:** Architectural docs and patterns for all implementation
 
 Each guide provides detailed workflows, code examples, testing patterns, and design rationale.
 
-> **Note on organization:** Feature guides are being reorganized into a `docs/features/` structure. Completed guides can be moved to `docs/features/implemented_*` to keep active development docs separate. This index will be updated as the reorganization proceeds.
+> **Organization:** All guides live flat in `docs/`. Status is tracked by the tables below,
+> not by directory. (An earlier plan to split guides into `docs/features/in_design/` and
+> `docs/features/implemented/` was not carried out and has been dropped.)
 
 ---
 
-## In-Design Guides (Active Development)
+## Set-Aside Guides (Design Preserved, Not Scheduled)
 
-| Guide | Sprint | Subsystem | Purpose | Status |
-|-------|--------|-----------|---------|--------|
-| [combat_system.md](combat_system.md) | 31–33 | Combat | Tick-based combat, damage, NPC AI, kill credit, loot | Design phase; implementation TBD |
-| [death_resurrection.md](death_resurrection.md) | 32 | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn | Design phase; implementation TBD |
-| [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | 10, 30 | NPCs, Quests, Dialogue | NPC scheduling, dialogue trees, quest branching | Sprint 10 implemented; Sprint 30 in design |
+These design specs are **set aside to [`wishlist.md`](wishlist.md)** — kept as ready-to-restore
+references, not on the active queue.
+
+| Guide | Subsystem | Purpose | Status |
+|-------|-----------|---------|--------|
+| [combat_system.md](combat_system.md) | Combat | Tick-based combat, damage, NPC AI, kill credit, loot | Set aside → wishlist (*Combat, reframed*). Progression model superseded by Disciplines/Abilities. |
+| [death_resurrection.md](death_resurrection.md) | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn | Set aside → wishlist (combat-adjacent) |
 
 ---
 
 ## Implemented Guides (Reference/Archive)
 
-These features are fully implemented. The guides below document the design and implementation patterns used. They can be moved to [`docs/features/implemented_*`](#feature-docs-organization) when no longer actively developed.
+These features are fully implemented. The guides below document the design and implementation patterns used.
 
 | Guide | Sprint | Subsystem | Purpose | Completion |
 |-------|--------|-----------|---------|-------------|
+| [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | 10, 30 | NPCs, Quests, Dialogue | NPC scheduling, dialogue trees, quest branching (now realized via the Phase A scripting engine) | ✅ Complete |
 | [player_authentication.md](player_authentication.md) | 4 | Player Authentication | JWT flow, WebSocket tickets, account creation, OAuth extensibility | ✅ Complete |
 | [disconnect_handling.md](disconnect_handling.md) | 13 | Disconnect Handling | Grace periods, reconnection, system-controlled state | ✅ Complete |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | 11 | World Versioning | Changeset lifecycle, Builder Mode, lazy migration | ✅ Complete |
 | [command_parser.md](command_parser.md) | 2–3 | Command Parsing | Text parsing, command dispatch, grammar rules | ✅ Complete |
 | [parser_and_commands.md](parser_and_commands.md) | 2–3, 9–10 | Parser & Commands | Command registration, conditions, patterns | ✅ Complete |
-| [inventory_equipment.md](inventory_equipment.md) | 22–23 | Inventory & Equipment | Item stacks, slots, encumbrance, modifiers | ✅ Complete |
+| [inventory_equipment.md](archive/inventory_equipment.md) | 22–23 | Inventory & Equipment | Item stacks, slots, encumbrance, modifiers | ✅ Complete |
 | [tooling_infrastructure.md](tooling_infrastructure.md) | 10.5 | Admin Tooling | World CLI, content validators, analytics queries | ✅ Complete |
-| [trade_economy.md](trade_economy.md) | 28 | Trading & Economy | Shops, currency, player-to-player trading, escrow | ✅ Complete |
-| [transit_systems.md](transit_systems.md) | 29 | Transit & Travel | Routes, waypoints, schedules, position interpolation | ✅ Complete |
-| [discipline_ability_system.md](discipline_ability_system.md) | 77–78 | Disciplines & Abilities | Replaced `features/skills/` + `features/progression/skill_tree.py` with a unified Discipline → Ability model (Tier 1 mechanism in 77, Tier 2 policy/content in 78); data-driven, non-combat seed disciplines, combat-ready seam | ✅ Complete (pending Integrator merge) |
+| [trade_economy.md](archive/trade_economy.md) | 28 | Trading & Economy | Shops, currency, player-to-player trading, escrow | ✅ Complete |
+| [transit_systems.md](archive/transit_systems.md) | 29 | Transit & Travel | Routes, waypoints, schedules, position interpolation | ✅ Complete |
+| [discipline_ability_system.md](discipline_ability_system.md) | 77–78 | Disciplines & Abilities | Replaced `features/skills/` + `features/progression/skill_tree.py` with a unified Discipline → Ability model (Tier 1 mechanism in 77, Tier 2 policy/content in 78); data-driven, non-combat seed disciplines, combat-ready seam | ✅ Complete |
 
 ---
 
@@ -68,53 +73,16 @@ These documents are for players and world builders, not implementers.
 
 ---
 
-## Feature Docs Organization
+## Guide Status
 
-### Structure
+All guides live flat in `docs/`; status is tracked by this index, not by directory. The three
+buckets are:
 
-Feature design documents are gradually being reorganized into a `docs/features/` directory structure:
-
-```
-docs/features/
-├── in_design/
-│   ├── combat_system.md              # Sprint 31–33 (in design)
-│   ├── death_resurrection.md         # Sprint 32 (in design)
-│   └── dialogue_npcs_quests.md       # Sprint 30 (in design)
-│
-└── implemented/
-    ├── player_authentication.md      # Sprint 4 (complete)
-    ├── disconnect_handling.md        # Sprint 13 (complete)
-    ├── world_versioning.md           # Sprint 11 (complete)
-    ├── command_parser.md             # Sprints 2–3 (complete)
-    ├── parser_and_commands.md        # Sprints 2–3, 9–10 (complete)
-    ├── inventory_equipment.md        # Sprints 22–23 (complete)
-    ├── tooling_infrastructure.md     # Sprint 10.5 (complete)
-    ├── trade_economy.md              # Sprint 28 (complete)
-    └── transit_systems.md            # Sprint 29 (complete)
-```
-
-### Purpose of Each Section
-
-**`docs/features/in_design/`** — Active sprint work. Guides in this section:
-- Define the design and architecture for upcoming implementation
-- Include code examples, schemas, and workflows
-- Are living documents updated during implementation
-- Move to `implemented/` once the sprint completes
-
-**`docs/features/implemented/`** — Reference and archive. Guides in this section:
-- Document completed implementation patterns
-- Serve as reference for how similar features should be built
-- Can be archived or moved to a read-only section when no longer actively developed
-- Remain linked from [`roadmap.md`](roadmap.md) for context
-
-### Current Status
-
-> **Transition in progress (2026-07-04):** Implementation guides are currently in the root `docs/` directory. A gradual migration to `docs/features/` will:
-> 1. Keep active development docs (`in_design/`) separate from archived guides
-> 2. Clarify which docs are "live" (actively being implemented) vs. "reference" (complete)
-> 3. Make the doc structure mirror the codebase's Tier 1/2 split
->
-> This index will be updated as docs are moved. For now, the guides are listed by status (above) and remain in their original locations.
+- **Set aside** — design preserved in the guide, but the feature is parked in
+  [`wishlist.md`](wishlist.md) (combat, death/resurrection).
+- **Implemented** — the feature has shipped; the guide documents how it was built and stays
+  linked from [`roadmap.md`](roadmap.md) for reference.
+- **Foundational** — architecture/pattern docs that apply to all implementation (below).
 
 ---
 
@@ -137,13 +105,13 @@ Each implementation guide typically includes:
 
 1. **Check [`roadmap.md`](roadmap.md)** — Find which sprint you're working on and its dependencies
 2. **Review [`engine_core.md`](engine_core.md)** — Understand Tier 1 primitives your feature depends on
-3. **Read the feature guide** — Jump to the guide for the sprint you're implementing (either in this index or under `docs/features/in_design/`)
+3. **Read the feature guide** — Jump to the guide for the sprint you're implementing (linked from this index)
 4. **Follow code examples** — Each guide includes actual Python/SQLModel patterns; adapt them to your implementation
 5. **Reference the tests** — Each guide includes pytest patterns; use them as templates for your test suite
 
 ### For Code Review
 
-When reviewing a PR for a completed feature, reference the corresponding guide (in [`docs/features/implemented/`](#feature-docs-organization)) to verify the implementation matches the design. For in-progress features, use guides in `docs/features/in_design/`.
+When reviewing a PR for a completed feature, reference the corresponding guide (linked from the *Implemented Guides* table above) to verify the implementation matches the design.
 
 ### For Onboarding
 
@@ -200,8 +168,8 @@ Think of it this way:
 When adding a new major subsystem:
 
 1. **Design phase:** Update [`roadmap.md`](roadmap.md) to sequence the work and [`engine_core.md`](engine_core.md) or [`feature-registration.md`](feature-registration.md) if it affects Tier 1
-2. **Implementation:** Create a focused implementation guide following the pattern above (store in `docs/features/in_design/` once the directory structure is finalized)
-3. **After completion:** Move the guide to `docs/features/implemented/` and update this index
+2. **Implementation:** Create a focused implementation guide in `docs/` following the pattern above
+3. **After completion:** Move the guide's row into the *Implemented Guides* table in this index
 4. **Update cross-references:** Ensure [`roadmap.md`](roadmap.md) and this index both point to the guide
 
 ---
@@ -216,7 +184,7 @@ When adding a new major subsystem:
 **Building a feature?** Refer to:
 - [`engine_core.md`](engine_core.md) — Tier 1 specs you must follow
 - [`feature-registration.md`](feature-registration.md) — How to register your feature
-- Related feature guide — From the "In Design" or "Implemented" sections above
+- Related feature guide — From the "Implemented Guides" section above
 
 **Customizing the engine?** Read:
 - [`architecture_tiers.md`](architecture_tiers.md) — Tier 1/2 split
@@ -225,5 +193,5 @@ When adding a new major subsystem:
 
 ---
 
-*Last updated: 2026-07-04*
+*Last updated: 2026-07-14*
 *This index is kept up-to-date with the roadmap and sprint completion.*

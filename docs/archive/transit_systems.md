@@ -1,22 +1,22 @@
 # Transit & Travel Systems — Design
 
 > **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
-> Roadmap **[Sprint 29](roadmap.md#sprint-29--transit--travel-systems)** (see [`roadmap.md`](roadmap.md)).
+> Roadmap **[Sprint 29](../roadmap.md#sprint-29--transit--travel-systems)** (see [`roadmap.md`](../roadmap.md)).
 > The signature Materia-Magica-inspired feature: ferries, balloons, rail, and caravans that
 > move on the world clock, take tickets, and animate on the minimap.
 >
-> **Tier 1 dependencies (build first — [`engine_core.md`](engine_core.md)):** the **route
+> **Tier 1 dependencies (build first — [`engine_core.md`](../engine_core.md)):** the **route
 > runner** (`RouteSpec`/`MobileRouteState`/`MobileRouteService` + `RouteHooks`, engine_core
-> §3.8, [Sprint 21](roadmap.md#sprint-21--scheduled-moving-entity-moving-room)) owns the
+> §3.8, [Sprint 21](../roadmap.md#sprint-21--scheduled-moving-entity-moving-room)) owns the
 > vehicle state machine, scheduler wiring, and position interpolation. This feature supplies
 > **line semantics only**: routes built from its YAML, doors/boarding, tickets, weather
 > grounding, and the `transit_update` message. Where the earlier draft specified a
 > `TransitVehicleState` table and a hand-rolled state machine, both are superseded (§4–§5).
 >
-> **Pillars this serves** (see [`wishlist.md`](wishlist.md) → *Design pillars*): **Exploration**
+> **Pillars this serves** (see [`wishlist.md`](../wishlist.md) → *Design pillars*): **Exploration**
 > (the network *is* how you reach new areas) and **Trading** — the signature pairing is
-> *transit network = trade network*: regional price differences ([`roadmap.md`](roadmap.md)
-> [Sprint 28](roadmap.md#sprint-28--trading--economy)) only matter if getting goods between towns takes time, money, and planning.
+> *transit network = trade network*: regional price differences ([`roadmap.md`](../roadmap.md)
+> [Sprint 28](../roadmap.md#sprint-28--trading--economy)) only matter if getting goods between towns takes time, money, and planning.
 
 ---
 
@@ -38,9 +38,9 @@ Everything composes engine infrastructure that exists by the end of the Tier 1 b
   `transit_update` push reuse these.
 - **WS message pattern** — `time_update` / `state_change` / `room_event` (`main.py`,
   `web/static/js/app.js` switch). We add one new type: **`transit_update`** (§9).
-- **`Item`** — tickets are items (gating boarding); fares tie to the [Sprint 28](roadmap.md#sprint-28--trading--economy) currency model.
-- **Pluggable conditions / side-effects** registries ([Sprint 10](roadmap.md#sprint-10--extensibility-seams-)) and the
-  [feature-registration pattern](feature-registration.md) — transit ships as a self-contained
+- **`Item`** — tickets are items (gating boarding); fares tie to the [Sprint 28](../roadmap.md#sprint-28--trading--economy) currency model.
+- **Pluggable conditions / side-effects** registries ([Sprint 10](../roadmap.md#sprint-10--extensibility-seams-)) and the
+  [feature-registration pattern](../feature-registration.md) — transit ships as a self-contained
   feature module.
 
 ---
@@ -211,7 +211,7 @@ Both are the same machine; only `service_type` + per-stop `boarding` differ. A s
 
 - `ticket_item_id` names an `Item` the player must hold to `board`. `ticket_consumed` decides
   single-use ticket vs. reusable pass.
-- Tickets are sold by vendor NPCs ([Sprint 28](roadmap.md#sprint-28--trading--economy) shops); fare pricing rides on the [Sprint 28](roadmap.md#sprint-28--trading--economy)
+- Tickets are sold by vendor NPCs ([Sprint 28](../roadmap.md#sprint-28--trading--economy) shops); fare pricing rides on the [Sprint 28](../roadmap.md#sprint-28--trading--economy)
   currency model. Until then a line can be `ticket_item_id: null` (free) or gated on a
   quest-granted pass item.
 - Passes as trade/quest rewards: a "Rail Pass" that unlocks fast hops between visited stations
@@ -364,10 +364,10 @@ express line has ≥2 boarding stops; `blocking_weather` values are known weathe
 - **Open:** does missing an express connection strand a player, or is there always a slow local
   fallback? (Lean: always a slow fallback so no one is hard-stuck.)
 - **Open:** fare = flat per-line or per-segment distance? (Lean: flat per boarding until the
-  [Sprint 28](roadmap.md#sprint-28--trading--economy) economy says otherwise.)
+  [Sprint 28](../roadmap.md#sprint-28--trading--economy) economy says otherwise.)
 
 ---
 
-*See [`roadmap.md`](roadmap.md) [Sprint 29](roadmap.md#sprint-29--transit--travel-systems), [`wishlist.md`](wishlist.md) → Featured idea, and
+*See [`roadmap.md`](../roadmap.md) [Sprint 29](../roadmap.md#sprint-29--transit--travel-systems), [`wishlist.md`](../wishlist.md) → Featured idea, and
 [`inventory_equipment.md`](inventory_equipment.md) (tickets are items). Built on
-[`feature-registration.md`](feature-registration.md).*
+[`feature-registration.md`](../feature-registration.md).*

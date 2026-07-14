@@ -29,10 +29,10 @@ Much of the respawn scaffolding already exists:
 - **hp meter** (engine_core §3.3) — the death module's entrypoint is a `METER_DEPLETED`
   handler filtered to `key == "hp"`, `entity_type == "player"`. Respawn hp is
   `MeterService.set_current(hp_meter, maximum × respawn_hp_fraction)`.
-- **Ledger holders** ([`trade_economy.md`](trade_economy.md), engine_core §3.7) — carried
+- **Ledger holders** ([`trade_economy.md`](archive/trade_economy.md), engine_core §3.7) — carried
   money is `CoinBalance("player", id)`; banked money is a different holder the death code
   never touches. That's the whole carried-vs-banked mechanic: *dodgeable by planning*.
-- **Container instances** ([`inventory_equipment.md`](inventory_equipment.md) §7) — a **corpse
+- **Container instances** ([`inventory_equipment.md`](archive/inventory_equipment.md) §7) — a **corpse
   is a container** holding dropped stacks; reuses the container model, no new mechanism.
 - **`SchedulerService`** — corpse decay timer (`job_type="corpse_decay"`).
 - **Rollback lifecycle** ([Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-)) — death is applied as one auditable transaction.
@@ -70,7 +70,7 @@ Tunable, forgiving defaults; all values world-configurable:
   flat amount — scales with what you're risking.
 - **Banked money is never lost** — structurally: the penalty exchange only names the
   `("player", id)` holder; `("bank_account", …)` is untouchable by construction
-  ([`trade_economy.md`](trade_economy.md) §9). Carry cash on a safe road; bank it before a
+  ([`trade_economy.md`](archive/trade_economy.md) §9). Carry cash on a safe road; bank it before a
   dungeon.
 - Lost coins are **dropped into the corpse** (`CoinBalance("container", corpse_instance_id)`,
   retrievable §4), not deleted — so a fast recovery loses little, a failed one loses it all.
@@ -80,7 +80,7 @@ Tunable, forgiving defaults; all values world-configurable:
   - **Equipped items are kept** — mechanically: only `slot is None` (unequipped) stacks are
     candidates. Avoids the death-spiral of losing your only weapon/light.
   - **`bound` items are kept** (never lost — protects quest integrity, per
-    [`inventory_equipment.md`](inventory_equipment.md); the `Item.bound` field is Sprint 16).
+    [`inventory_equipment.md`](archive/inventory_equipment.md); the `Item.bound` field is Sprint 16).
   - A fraction of the remaining candidates drops (default: all, or a percentage — world-tunable
     via `loot_policy`/`loot_drop_fraction`; the fraction *selection* uses the seeded `rng`).
 
@@ -202,6 +202,6 @@ All on the existing audit trail; the audit-regression harness can diff a scripte
 ---
 
 *See [`roadmap.md`](roadmap.md) [Sprints 31](roadmap.md#sprint-31--combat-core-services-supporting-system) (combat death/respawn) & 34 (PvP),
-[`combat_system.md`](combat_system.md), [`trade_economy.md`](trade_economy.md) (banks vs.
-carried money), [`inventory_equipment.md`](inventory_equipment.md) (corpse = container), and
+[`combat_system.md`](combat_system.md), [`trade_economy.md`](archive/trade_economy.md) (banks vs.
+carried money), [`inventory_equipment.md`](archive/inventory_equipment.md) (corpse = container), and
 [`wishlist.md`](wishlist.md) (robbers).*

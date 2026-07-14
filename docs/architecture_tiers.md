@@ -1,6 +1,6 @@
 # Tier 1/Tier 2 Architecture: Current State & Extensibility
 
-> **Status (updated 2026-07-05, Sprint 31.4): the tier split is fully implemented and this document reflects the shipped layout.** Tier 1 lives in `src/lorecraft/engine/` and Tier 2 in `src/lorecraft/features/` (24 feature packages); web hosts are in `src/lorecraft/webui/{player,admin}/`. The engine imports nothing from `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`), features load via manifests / `discover_features()`, and `ServiceContainer` builds conditionally from the enabled set (`tests/integration/test_feature_toggling.py`). See [`tier_split_refactor.md`](tier_split_refactor.md) for the migration history and `CHANGELOG.md` 0.15.0–0.32.0 for what shipped. The layout is summarized in §0 below.
+> **Status (updated 2026-07-05, Sprint 31.4): the tier split is fully implemented and this document reflects the shipped layout.** Tier 1 lives in `src/lorecraft/engine/` and Tier 2 in `src/lorecraft/features/` (33 feature packages); web hosts are in `src/lorecraft/webui/{player,admin}/`. The engine imports nothing from `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`), features load via manifests / `discover_features()`, and `ServiceContainer` builds conditionally from the enabled set (`tests/integration/test_feature_toggling.py`). See [`tier_split_refactor.md`](tier_split_refactor.md) for the migration history and `CHANGELOG.md` 0.15.0–0.32.0 for what shipped. The layout is summarized in §0 below.
 >
 > **Purpose:** This document describes how the lorecraft engine is layered into three tiers and how to extend or disable Tier 2 features.
 >
@@ -228,4 +228,4 @@ See [`tier_modules.md`](tier_modules.md) for a detailed file-by-file breakdown.
 
 ---
 
-**Summary:** The tier model is fully separated in the codebase — Tier 1 in `engine/`, Tier 2 in `features/` (24 manifest-declared packages), web in `webui/`. Features register via `FeatureManifest` + `discover_features()`, and enabling/disabling is a config decision (`enabled_features` / `LORECRAFT_FEATURES`) with no code edits. The engine→features→web import direction is enforced by tests, and feature toggling is covered end to end.
+**Summary:** The tier model is fully separated in the codebase — Tier 1 in `engine/`, Tier 2 in `features/` (33 manifest-declared packages), web in `webui/`. Features register via `FeatureManifest` + `discover_features()`, and enabling/disabling is a config decision (`enabled_features` / `LORECRAFT_FEATURES`) with no code edits. The engine→features→web import direction is enforced by tests, and feature toggling is covered end to end.
