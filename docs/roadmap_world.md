@@ -2,9 +2,9 @@
 
 **Goal:** Build a rich, multi-zone test world to exercise the engine's features across all three tiers (Tier 1 primitives, Tier 2 features, Tier 3 content) with particular attention to areas that are high-risk or low-mileage in the current Ashmoore sample.
 
-**Current date:** 2026-07-09
-**Current engine version:** v0.55.3 (multi-level maps, full UI system, NPC/movement framework)
-**Status:** Planning phase — all tasks below are feasible with current engine features unless marked **[BLOCKED]**.
+**Current date:** 2026-07-14
+**Current engine version:** v0.99.0 (multi-level maps, full UI system, NPC movement framework, zone climate, spawns, room loot, ambient room events)
+**Status:** Active world-build plan. Sprint 80 closed the former zone-climate/spawn/loot/ambient/NPC-route blockers; remaining unsupported items are marked **[BLOCKED]**.
 
 ---
 
@@ -18,7 +18,12 @@
 | **NPCs** | `features/npc/` | Place NPCs in rooms; dialogue trees with pluggable conditions (`actor_reputation_at_least`, `npc_remembers`, flags) and side effects (`give_item`, `start_quest`, `adjust_reputation`, `remember`) |
 | **NPC scheduled teleport** | `NPC.schedule` + `NpcScheduler` (`features/npc/scheduler.py`) | Data-driven `[{game_hour, target_room_id}, ...]`; jumps the NPC's room on `HOUR_CHANGED`. **Instant teleport, not pathed movement** — no interim rooms/narration. |
 | **NPC context-attached verbs** | `NPC.context_commands` (Sprint 55) | Data-driven custom verbs (e.g. `bow`) available only while the NPC is present, each with `{aliases, help, say, side_effects, requires}` |
-| **Weather system** | `features/weather/` | Global weather state; transit lines can block on weather |
+| **Weather system** | `features/weather/` | Global weather state, traveling fronts, and per-zone climate rolls; transit lines can block on global weather |
+| **Zone climate** | `features/weather/climate.py` + `weather_fronts.yaml` `climates:` | Daily per-zone climate rolls bias Whisperwood rainy/misty and Cogsworth clear/overcast while preserving the global clock weather |
+| **Random spawns** | `features/spawns` + `world_content/spawns.yaml` | Data-driven area controllers top zones up to `max_count` clones of a template NPC on world ticks |
+| **Treasure/loot** | `Room.loot_table` + `RoomLootService` | Rooms can declare weighted random treasure entries; rolls are one-shot per player-room and spawn through `ItemLocationService` |
+| **Ambient messages** | `Room.ambient_events` + `RoomAmbientService` | Rooms can declare timed flavor lines with tick intervals and chance, emitted only for occupied rooms |
+| **NPC fixed-route patrol** | `NPC.ai.mode: route` + `NpcRouteLoader` | NPC-specific `RouteHooks` run over `MobileRouteService`, updating `NPC.current_room_id` and broadcasting depart/arrive |
 | **Item types** | weapon, armor, utility, coin | Color-coded in UI (rarity system available too) |
 | **Shops/stores** | `features/shop/` | Create shops with inventory, NPC shopkeepers, prices |
 | **Quests** | `features/quest/` | Quest givers, objectives, rewards, dialogue conditions |
@@ -26,29 +31,24 @@
 | **Item effects/buffs** | Traits/effects system | Wearable items can grant traits; potions can apply temporary effects |
 | **Inventory persistence** | Tier 1 item/inventory model | Items follow players across sessions; weight/volume tracked |
 | **Lighting** | `light_level` per room | Dark rooms, illuminating items (torches, lanterns) |
-| **Areas/zones** | `area_id` (organizes rooms thematically) | Group rooms by zone for lore/admin purposes |
+| **Areas/zones** | `Room.zone` + `Room.room_type` | Group rooms by geographic zone for lore/admin/weather/economy and by room kind for content taxonomy |
 | **Safe rest** | `safe_rest: true` flag | Rooms where players can safely sleep |
+| **Indoor/outdoor** | `Room.indoor: bool` | Weather narration and storm fronts skip sheltered interiors; all four shipped zones are tagged |
 
 ### ⚠️ Partially Supported (needs design/content work)
 
 | Feature | Support | Notes |
 |---------|---------|-------|
-| **Indoor/outdoor** | ✅ `Room.indoor: bool` — real Tier 1 field (shipped Sprint 69, v0.72.0) | Live in `engine/models/world.py` and world YAML; weather narration (ambient + storms) is suppressed where `indoor: true`. Documented in `.agents/skills/worldbuilding/SKILL.md`. All 4 zones tagged (30+ rooms); see Blocked Items §1 for the closed gap. |
-| **Random spawns** | Scheduler-based | Can schedule NPC spawns; respawn rates not yet modeled in world YAML. (Likely needs a spawn template table.) |
-| **Climate/biome** | Weather exists but not tied to zones | A forest should have rain/fog; a desert dry heat. No zone-climate mapping yet. (Minor content work, depends on indoor flag.) |
-| **Treasure/loot** | Items can be placed in rooms | No randomized loot tables yet. (Tier 2 feature, probably Sprint 16+ backlog.) |
-| **Ambient messages** | Not yet | Rooms could narrate ambient events (wind, birds, dripping water). (Tier 2 feature; would need room-effect scheduler.) |
-| **NPC fixed-route patrol** | `MobileRouteService` primitive exists, unwired for NPCs | The Tier 1 route-runner (`engine/services/mobile_route.py` — waypoints, ping-pong/loop, dwell/travel ticks, restart-safe state) is genuinely content-agnostic, but today only the **transit** feature instantiates it (ferries/trains). No NPC-specific `RouteHooks` exist to move `NPC.current_room_id` + broadcast arrival/departure on `on_arrive`/`on_depart`. Real but modest glue work — the hard scheduling logic is already built. |
 | **Reputation as an NPC behavior gate** | Reputation itself is real; nothing *acts* on it autonomously | `features/reputation` gives per-(player, npc-or-faction) standing with `actor_reputation_at_least` (the one canonical predicate, registered on both the command and dialogue condition registries) and `adjust_reputation` (side effect) — so standing can already gate what a player can *say/do* to an NPC. What's missing is any NPC decision loop that *reads* standing on its own initiative (e.g. to refuse service, flee, or turn hostile without the player first triggering dialogue). |
 
 ### ❌ Not Yet Supported (requires engine work)
 
 | Feature | Blocker | Notes |
 |---------|---------|-------|
-| **[BLOCKED] NPC autonomous behavior (patrol-an-area, aggro, flee, follow)** | No NPC-agency loop | Everything NPC-side today is either scheduled-teleport or player-triggered (dialogue/context verbs). There is no per-tick "NPC decides what to do" loop. Zone-wide roam ("wander anywhere in `area_id: sewers`") isn't built at all — would need new logic to sample a valid room by `area_id` (ideally adjacency-aware) each scheduler tick. `NPC.behavior: str = "defensive"` **exists on the model and round-trips through world YAML/admin API but is never read by any game logic** (confirmed by grep) — dead schema, presumably laid down for a combat-stance system that was never built. |
-| **[BLOCKED] Combat / attack system (any trigger source)** | Not built — schema stub only | `models/combat.py`'s `CombatSession` is a bare table (`id, room_id, started_at, status, combatants: JSON`) with **no service, repo, command, event, or side-effect handler anywhere in the codebase**. `features/npc/side_effects.py`'s docstring name-drops `combat.start_combat` only as an *illustrative example* of the registration pattern — never implemented. NPCs cannot act against a player under any condition (reputation, marks, or otherwise) because there is neither an NPC-agency loop nor a combat resolution path for an "attack" to resolve into. Matches `docs/wishlist.md`'s deliberate stance: combat is set aside as "a supporting system, not the centerpiece." |
+| **NPC autonomous behavior beyond movement** | Partial | `features/npc_ai` now supports `wander`, fixed-list `patrol`, and `route` modes. Aggro/flee/combat behavior remains set aside with combat/PvP. |
+| **[BLOCKED] Combat / attack system (any trigger source)** | Not built — schema stub only | `models/combat.py`'s `CombatSession` is a bare table (`id, room_id, started_at, status, combatants: JSON`) with **no service, repo, command, event, or side-effect handler anywhere in the codebase**. `features/npc/side_effects.py`'s docstring name-drops `combat.start_combat` only as an *illustrative example* of the registration pattern — never implemented. NPC movement agency exists, but NPCs cannot act against a player under any condition (reputation, marks, or otherwise) because there is no combat resolution path for an "attack" to resolve into. Matches `docs/wishlist.md`'s deliberate stance: combat is set aside as "a supporting system, not the centerpiece." |
 | **[BLOCKED] Alignment system** | Doesn't exist | Zero references anywhere in the codebase. `features/marks` are discovery/exploration badges (visited rooms, met NPCs, items found), not a morality/alignment axis — don't conflate the two when scripting "good/evil" NPC reactions. |
-| **[BLOCKED] Ambient/flavor text rotation** | Needs event loop | Rooms with descriptions that change over time (sunrise, shadows, NPC banter). Needs a timed-event framework beyond schedulers. (Design-time decision: too much scope for foundation?) |
+| **[BLOCKED] Dynamic room description rotation** | Needs design | Timed ambient feed lines are supported; rewriting base room descriptions by time/weather remains future scope. |
 | **[BLOCKED] Weather particle effects** | UI-only, not engine** | Can describe weather in text; visual rain/snow is future stretch. |
 | **[BLOCKED] Day/night cycle tied to NPC behavior** | Needs NPC schedule model | NPCs could sleep at night, work during day. The hour-based teleport schedule is a start but isn't behavior-branching (it only relocates). Roadmap future, not critical for testing. |
 
@@ -298,14 +298,14 @@ Focus: Build the world structure, test room/NPC/item basics across all zones.
 **Phase 1 world totals:** 99 rooms, 78 items, 10 NPCs, 3 quests across 4 zones
 (town, wilderness, cave — Ashmoore — plus cogsworth, whisperwood, port_veridian).
 
-**Zone linking (done, v0.79.0):** the four zones now form one traversable graph via three
-single-room connectors, each in its own `area_id`:
+**Zone linking (done, v0.79.0; field terminology updated by later schema work):** the four zones
+now form one traversable graph via three single-room outdoor road connectors:
 
-- `old_trade_road` (`area_id: trade_road`) — an old cobbled trade road linking Ashmoore's
+- `old_trade_road` (`zone: cogsworth`) — an old cobbled trade road linking Ashmoore's
   `deep_forest` (wilderness) to Cogsworth's `market_row_west`.
-- `forest_road` (`area_id: forest_road`) — a quiet road linking Cogsworth's `smithy_district`
+- `forest_road` (`zone: whisperwood`) — a quiet road linking Cogsworth's `smithy_district`
   to Whisperwood's `west_trail`.
-- `river_bend` (`area_id: coast_road`) — a riverside footbridge where the forest stream runs
+- `river_bend` (`zone: port_veridian`) — a riverside footbridge where the forest stream runs
   out to the coast, linking Whisperwood's `babbling_stream` to Port Veridian's `tide_pools`.
 
 All connectors are open (no locks), outdoor, `terrain: road`, and reachable from
@@ -425,17 +425,14 @@ Build NPC variety; add dialogue, quests, and flavor.
 
 **For each:** 2–3 unique lines, no quest, just color. Verify they appear/disappear as expected.
 
-#### P3.4 — NPC Movement (3+ NPCs) — **scope corrected, see Blocked Items**
-True room-list/loop **patrol** requires new glue on top of `MobileRouteService` (unwired for
-NPCs today — see Blocked Items). Zone-wide roam requires new logic entirely (not built). For
-v1 of this world, scope down to what's actually wired: ✅ (2026-07-11, v0.89.0)
+#### P3.4 — NPC Movement (3+ NPCs)
+Room-list/loop **patrol** now has NPC-specific glue on top of `MobileRouteService` (v0.99.0).
+The older scheduled relocation examples remain valid for day/night-style teleports, while
+Scout Wren now uses a visible route-backed patrol. Zone-wide autonomous roam is also available
+through `NPC.ai.mode: wander`.
 - [x] Dock Worker — `dock_worker_bram` relocates `docks_main` (hr 8) → `warehouse_district` (hr 18)
 - [x] Night Guard — `night_watch_holt` relocates `grand_plaza` (hr 8) → `smithy_district` (hr 20) after dark
-- [x] Forest Scout — `forest_scout_wren` cycles `whispering_clearing` (hr 6) → `old_oak_grove` (hr 12) → `wildflower_glade` (hr 18); unambiguous ids only (avoids the duplicate `meadow_clearing`, see Blocked Items §7)
-
-**Stretch (blocked on engine work):** true patrol (visibly walking a room loop, broadcast to
-players present) needs NPC-specific `RouteHooks` built against `MobileRouteService` first — see
-Blocked Items. Don't build content that assumes this exists.
+- [x] Forest Scout — `forest_scout_wren` loops `whispering_clearing` → `old_oak_grove` → `wildflower_glade` via `ai.mode: route`, broadcasting route departure/arrival through NPC-specific `RouteHooks`.
 
 **Test:** Check NPC location at different game-hours; confirm the room-relocation actually fires on `HOUR_CHANGED`.
 
@@ -518,9 +515,9 @@ blocks those verbs unless the actor carries a lit source (`command_conditions.py
   matching the "can't safely sleep in hostile areas" intent. No `safe_rest` flags added or removed.
 
 #### P4.5 — Weather Integration (if time)
-- [x] Coastal zones: occasionally foggy/stormy — **done via a traveling storm front, not zone climate.** Added `coastal_squall` to `world_content/weather_fronts.yaml` (`path: [port_veridian, coast_road, whisperwood]`, `room_effect: storm_lashed`, autumn/winter): it rolls a per-hour chance, sweeps the coast → river connector → forest, lashes outdoor rooms in each zone, and auto-skips `indoor: true` interiors. This is content on the existing front mechanism — there is still no per-zone climate model (see Blocked Items §3).
-- [ ] Forest: rainy/misty common — **not changed; nothing to do at content level.** Weather is a single *global* `WorldClock.weather` value; there is no per-zone climate hook to make Whisperwood reliably rainier than Cogsworth. The `coastal_squall` front above gives the forest *occasional* coastal storms, but "misty/rainy common" would require new Tier 2 zone-climate code (Blocked Items §3), which is out of scope.
-- [ ] City: clear/overcast (not weather-sensitive underground) — **not changed; same reason.** No zone-specific content is possible for this without a climate model; Cogsworth already benefits from ambient global weather being suppressed in its `indoor: true` sewers/interiors (Room.indoor, P4.6). Left unchecked deliberately — nothing zone-specific actually changed here.
+- [x] Coastal zones: occasionally foggy/stormy — **done via a traveling storm front.** Added `coastal_squall` to `world_content/weather_fronts.yaml` (`path: [port_veridian, port_veridian, whisperwood]`, `room_effect: storm_lashed`, autumn/winter): it rolls a per-hour chance, sweeps the coast → river connector → forest, lashes outdoor rooms in each zone, and auto-skips `indoor: true` interiors. This remains the transient storm-front layer alongside the Sprint 80 per-zone climate model.
+- [x] Forest: rainy/misty common — **done (v0.99.0).** `world_content/weather_fronts.yaml` now includes a `climates.whisperwood` seasonal table weighted toward fog/rain; `ZoneClimateService` rolls it daily and narrates only to occupied outdoor Whisperwood rooms.
+- [x] City: clear/overcast (not weather-sensitive underground) — **done (v0.99.0).** `climates.cogsworth` is weighted toward clear/overcast states, and existing `Room.indoor` filtering keeps underground/interior rooms from receiving sky-weather narration.
 - [x] Test transit: blocked by weather on specific routes (e.g., ship departure in storm) — **done.** Added the first `transit:` section in `world_content/world.yaml`: the **Harbor Ferry** (`harbor_ferry`) runs `docks_main → breakwater` from an open-deck vehicle room (`harbor_ferry_deck`, `indoor: false`), `weather_sensitive: true`, `blocking_weather: [thunderstorm, heavy_rain, blizzard]`. Grounding is enforced by `TransitService.may_depart` against the global `WorldClock.weather`. Ticket item `harbor_ferry_token` (3 placed at the docks).
 
 #### P4.6 — Indoor/Outdoor Tagging — ✅ DONE (real field, not a workaround)
@@ -540,30 +537,28 @@ blocks those verbs unless the actor carries a lit source (`command_conditions.py
 **Coverage pass (v0.79.1):** (a) Closed the one tagging gap found — 5 Cogsworth underground sewer rooms (`sewer_junction_main`, `sewer_tunnel_north/east/west/south`) that were missing `indoor: true` despite matching their sibling `steam_foundry_antechamber` and Ashmoore's `cave_tunnel`/`cave_chamber`. (b) Swept all rooms across Cogsworth, Whisperwood, and Port Veridian and confirmed full, correct indoor/outdoor coverage (30+ rooms tagged appropriately; open plazas/courtyards/trails/docks/yards left outdoor). A few treetop-settlement rooms (`hunter_lodge`, `healer_nest`, `elder_tree_hub`) are intentionally left outdoor — they are a uniformly open-air canopy village with wind/weather cues in their descriptions.
 
 ### 2. **Spawn / Respawn Rates**
-**Status:** ⚠️ Partial support
-**Current:** NPCs can be placed in rooms; movement can be scheduled.
-**Missing:** Data-driven respawn templates (e.g., "Patrol Guard appears in random sewer rooms every 10 minutes").
-**Engine work needed:** Spawn template table + scheduler integration (Tier 2 feature, backlog)
-**Workaround:** Hard-code specific NPC instances in rooms; use scheduler for patrolling only.
-**Plan:** Phase 1–3 uses static NPCs; consider spawn templates in Phase 4 if desired.
+**Status:** ✅ Supported (v0.99.0)
+**Current:** `features/spawns` loads `world_content/spawns.yaml` and tops a zone back up to
+`max_count` clones of a template NPC every `every_ticks` world ticks. Shipped content includes
+Whisperwood wisps and Cogsworth sewer vagrants.
+**Remaining future scope:** Persisted spawn-controller state and richer template-only NPC authoring
+could be added later if needed; the data-driven random spawn/respawn loop itself is live.
 
 ### 3. **Climate/Zone Weather Binding**
-**Status:** ⚠️ Partial support — two *content-level* hooks now exercised for the new zones (v0.80.0); true zone climate still unbuilt.
-**Current:** Global weather exists (single `WorldClock.weather`). Two data-driven hooks give *content-level* zone flavor without a real climate model:
-- **Traveling storm fronts** (`world_content/weather_fronts.yaml`): a front declares an ordered `path:` of `area_id`s and rolls a per-hour chance; on a hit it applies `room_effect: storm_lashed` and narrates zone-by-zone, skipping `indoor: true` rooms. Fronts now cover the new zones — `coastal_squall` runs `port_veridian → coast_road → whisperwood` (in addition to the town/wilderness `spring_squall`).
-- **Weather-blockable transit** (`transit:` in `world_content/world.yaml`): `TransitLine.weather_sensitive` + `blocking_weather` grounds a line when global weather matches. First live use: the **Harbor Ferry** grounds on `thunderstorm`/`heavy_rain`/`blizzard`.
-
-**What this pass covered (v0.80.0):** a real per-zone storm-front *path* through the coastal/forest zones + one weather-blockable transit line. Both are *content on existing engine mechanisms* — no new engine code.
-**Still genuinely missing (out of scope):** true zone-level climate — e.g. "Whisperwood is *always* rainier than Cogsworth", "the desert runs hot/dry". Global weather remains a single value; a front is a transient traveling event, **not** a standing per-zone bias.
-**Engine work needed:** Zone climate data + conditional/biased weather transitions (a new **Tier 2** feature — do NOT build under a content task).
-**Workaround:** Use traveling fronts for transient zone storms and `weather_sensitive` transit for grounding; accept global baseline weather otherwise.
+**Status:** ✅ Supported (v0.99.0)
+**Current:** Global `WorldClock.weather` still exists, but `features/weather/climate.py` now adds
+Tier 2 per-zone climate rolls from `world_content/weather_fronts.yaml`'s `climates:` block. This
+gives standing zone bias: Whisperwood is commonly foggy/rainy; Cogsworth is commonly clear or
+overcast. Narration is scoped to occupied outdoor rooms in the matching zone.
+**Still supported alongside climate:** traveling storm fronts remain transient, zone-path storms;
+weather-blockable transit still keys off the global clock weather.
 
 ### 4. **Ambient / Timed Room Events**
-**Status:** ❌ Not supported
-**What it is:** Rooms with flavor text that changes over time ("morning light slants through windows" → "afternoon sun high" → "sunset shadows lengthen").
-**Engine work needed:** New Tier 2 feature: timed-effect scheduler + narration injection.
-**Current workaround:** Static descriptions; player exploration discovers detail.
-**Plan:** Out of scope for v0.1; candidate for future "world flavor" sprint.
+**Status:** ✅ Supported for timed room-feed flavor (v0.99.0)
+**Current:** Rooms can declare `ambient_events:` entries with `text`, `every_ticks`, and `chance`.
+`RoomAmbientService` emits them on world ticks only to occupied rooms.
+**Remaining future scope:** dynamic rewriting of the room's base description by time/weather is still
+not built; use feed flavor lines for ambient motion and recurring sensory details.
 
 ### 5. **NPC Reputation / Faction Standing**
 **Status:** ⚠️ Engine has reputation, but not NPC-specific.
@@ -709,4 +704,4 @@ both `whisperwood_meadow_clearing` and `whisperwood_cave_entrance` are now safe 
 
 ---
 
-*World branch created 2026-07-09. Roadmap document is the source of truth for world-building priorities and status.*
+*World branch created 2026-07-09. Last reconciled with engine support on 2026-07-14. This roadmap document is the source of truth for world-building priorities and status.*

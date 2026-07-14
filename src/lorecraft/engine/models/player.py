@@ -58,8 +58,8 @@ class PlayerStats(SQLModel, table=True):
     # 0–max_rank competence that grows by use via the Tier 1 resolve_proficiency
     # mechanism. Which disciplines exist is Tier 2 policy (features/disciplines).
     # Added by the additive-column reflection scanner (db._ensure_additive_columns);
-    # the legacy `skills` column is left as a warned, un-dropped dead column
-    # (the scanner is strictly additive and cannot DROP — Sprint 75 precedent).
+    # a dedicated sqlite migration then drops the legacy `skills` column because
+    # the generic scanner is intentionally strictly additive.
     discipline_ranks: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     # Innate traits (Sprint 19 adds the column; Tier 2 populates it — empty by default).
     traits: list[str] = Field(default_factory=list, sa_column=Column(JSON))

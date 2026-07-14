@@ -526,6 +526,7 @@ async def _test_get_clock() -> None:
     assert status == 200
     assert "current_hour" in data
     assert "weather" in data
+    assert "zone_weather" in data
     assert "paused" in data
 
 
@@ -572,6 +573,56 @@ async def _test_set_weather() -> None:
         assert status == 200
         _, clock = await _http(app, "GET", "/admin/clock", token=token)
     assert clock["weather"] == "blizzard"
+
+
+def test_set_zone_weather_updates_climate_state() -> None:
+    anyio.run(_test_set_zone_weather)
+
+
+async def _test_set_zone_weather() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        _, before = await _http(app, "GET", "/admin/clock", token=token)
+        assert "whisperwood" in before["zone_weather"]
+
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/clock/zone-weather",
+            body={"zone": "whisperwood", "weather": "fog"},
+            token=token,
+        )
+        assert status == 200
+        assert data == {"zone": "whisperwood", "weather": "fog"}
+        _, clock = await _http(app, "GET", "/admin/clock", token=token)
+
+    assert clock["zone_weather"]["whisperwood"] == "fog"
+
+
+def test_set_zone_weather_rejects_unknown_zone() -> None:
+    anyio.run(_test_set_zone_weather_unknown_zone)
+
+
+async def _test_set_zone_weather_unknown_zone() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/clock/zone-weather",
+            body={"zone": "moon", "weather": "fog"},
+            token=token,
+        )
+
+    assert status == 404
 
 
 def test_set_weather_emits_weather_changed_for_narration() -> None:

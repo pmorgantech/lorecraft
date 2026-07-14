@@ -83,7 +83,7 @@ def register_all_commands(
             register_quest_commands(registry)
     # Discipline verbs (train/learn/abilities) — always on; they read the ability
     # registry, which is simply empty when no ability content is loaded.
-    with registry.category("progression"):
+    with registry.category("disciplines"):
         register_discipline_commands(registry)
     if services.character_info is not None:
         with registry.category("character"):

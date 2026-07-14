@@ -250,6 +250,10 @@ def create_game_tables(engine: Engine) -> None:
     # Generic additive-column auto-migration (Sprint 75.1) — brings a legacy DB
     # missing any additive model column up to schema without hand-written shims.
     _ensure_additive_columns(engine)
+    # Deliberate Sprint 78.3 cleanup: the generic scanner adds
+    # playerstats.discipline_ranks, but a dedicated migration must drop the
+    # orphaned pre-78 playerstats.skills column so startup warnings self-clear.
+    _migrate_playerstats_skills(engine)
     # Deliberate Sprint 71.2 room data migration (Sprint 75.3). Runs *after* the
     # additive pass, which will already have added room.zone / room.room_type as
     # empty nullable columns to fold the legacy area_id into.
@@ -410,6 +414,30 @@ def _add_column(
     with engine.begin() as connection:
         connection.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {clause}"))
     logger.info("additive-migration: added column %s.%s", table_name, column.name)
+
+
+def _migrate_playerstats_skills(engine: Engine) -> None:
+    """Drop the legacy ``playerstats.skills`` column after Sprint 78.3.
+
+    Sprint 78 renamed the flat skills storage to ``discipline_ranks`` with a
+    different keyspace, so there is no safe data fold to perform here. The
+    additive scanner has already added ``discipline_ranks`` with its default
+    ``{}``; this one-shot migration only removes the orphaned pre-78 column so
+    the scanner's DB-only-column warning does not fire forever.
+    """
+    if engine.dialect.name != "sqlite":
+        return
+
+    inspector = inspect(engine)
+    if "playerstats" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("playerstats")}
+    if "skills" not in columns or "discipline_ranks" not in columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE playerstats DROP COLUMN skills"))
+    logger.info("playerstats-migration: dropped legacy skills column")
 
 
 def _migrate_room_area_id(engine: Engine) -> None:

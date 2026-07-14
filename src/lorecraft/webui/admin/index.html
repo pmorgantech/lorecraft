@@ -408,6 +408,7 @@
           </div>
           <div class="panel" style="min-width:200px;">
             <h2>Weather</h2>
+            <label style="display:block;color:var(--text-dim);font-size:0.75rem;margin-bottom:0.25rem;">Global</label>
             <select id="weather-select">
               <option value="clear">Clear</option>
               <option value="light_rain">Light Rain</option>
@@ -420,6 +421,7 @@
               <option value="blizzard">Blizzard</option>
             </select>
             <button onclick="setWeather()" style="margin-top:0.5rem;width:100%;">Apply</button>
+            <div id="zone-weather-panel" style="margin-top:0.9rem;"></div>
           </div>
         </div>
       </div>
@@ -1339,6 +1341,18 @@ async function promoteChangeset(id) {
 // Clock
 // ────────────────────────────────────────
 
+const WEATHER_OPTIONS = [
+  ["clear", "Clear"],
+  ["light_rain", "Light Rain"],
+  ["overcast", "Overcast"],
+  ["hot", "Hot"],
+  ["thunderstorm", "Thunderstorm"],
+  ["heavy_rain", "Heavy Rain"],
+  ["fog", "Fog"],
+  ["snow", "Snow"],
+  ["blizzard", "Blizzard"],
+];
+
 async function loadClock() {
   const c = await api("GET", "/admin/clock");
   if (c.detail) { document.getElementById("clock-display").textContent = c.detail; return; }
@@ -1350,6 +1364,8 @@ async function loadClock() {
     `${c.paused ? "⏸ Paused" : "▶ Running"}  ×${c.time_ratio}`;
   const ri = document.getElementById("ratio-input");
   if (!ri.value) ri.value = String(c.time_ratio);
+  document.getElementById("weather-select").value = c.weather || "clear";
+  renderZoneWeather(c.zone_weather || {});
 }
 
 async function clockAction(action) {
@@ -1366,6 +1382,40 @@ async function setTimeRatio() {
 
 async function setWeather() {
   await api("POST", "/admin/clock/weather", {weather: document.getElementById("weather-select").value});
+  loadClock();
+}
+
+function renderZoneWeather(zoneWeather) {
+  const panel = document.getElementById("zone-weather-panel");
+  const zones = Object.keys(zoneWeather).sort();
+  if (!zones.length) {
+    panel.innerHTML = "";
+    return;
+  }
+  panel.innerHTML = `
+    <div style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.35rem;">Zone climates</div>
+    <div style="display:flex;flex-direction:column;gap:0.5rem;">
+      ${zones.map(zone => {
+        const current = zoneWeather[zone] || "clear";
+        const options = WEATHER_OPTIONS.map(([value, label]) =>
+          `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`
+        ).join("");
+        return `
+          <div>
+            <label style="display:block;color:var(--text-dim);font-size:0.75rem;margin-bottom:0.25rem;">${zone.replace(/_/g, " ")}</label>
+            <div style="display:flex;gap:0.4rem;">
+              <select id="zone-weather-${zone}">${options}</select>
+              <button onclick="setZoneWeather('${zone}')">Set</button>
+            </div>
+          </div>`;
+      }).join("")}
+    </div>`;
+}
+
+async function setZoneWeather(zone) {
+  const select = document.getElementById(`zone-weather-${zone}`);
+  if (!select) return;
+  await api("POST", "/admin/clock/zone-weather", {zone, weather: select.value});
   loadClock();
 }
 

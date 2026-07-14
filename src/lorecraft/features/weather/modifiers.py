@@ -3,11 +3,12 @@
 Harsh weather makes dangerous, skill-gated wilderness terrain harder to cross —
 a **read-through** modifier over global weather (`WorldClock`) + the player's
 room terrain, contributed to the one §3.5 modifier resolver (the same way room
-auras and terrain-skill gating already work). Weather is *global clock state*, so
-a modifier source reads it; there is no materialized per-room effect (that is the
-Sprint 39 timed-room-effect primitive's job — localized, TTL effects). Because
-movement's terrain gate already resolves `skill.<terrain.required_skill>`, a
-blizzard can push a marginal traveller below a mountain pass's required skill.
+auras and terrain-discipline gating already work). Weather is *global clock
+state*, so a modifier source reads it; there is no materialized per-room effect
+(that is the Sprint 39 timed-room-effect primitive's job — localized, TTL
+effects). Because movement's terrain gate already resolves
+`skill.<terrain.required_discipline>`, a blizzard can push a marginal traveller
+below a mountain pass's required discipline proficiency.
 """
 
 from __future__ import annotations
@@ -28,8 +29,9 @@ from lorecraft.features.weather.handlers import COLD_WEATHERS
 # warmth feature's COLD_WEATHERS (snow/blizzard/fog) plus the violent-summer set.
 HARSH_WEATHERS = COLD_WEATHERS | frozenset({"thunderstorm", "heavy_rain"})
 
-# Flat penalty subtracted from the terrain's required skill during harsh weather;
-# tunable. Sized to matter at the margins against required_skill_min (10–30).
+# Flat penalty subtracted from the terrain's required discipline proficiency
+# during harsh weather; tunable. Sized to matter at the margins against
+# required_discipline_min (10–30).
 HARSH_WEATHER_SKILL_PENALTY = 10.0
 
 

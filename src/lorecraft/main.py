@@ -42,7 +42,11 @@ from lorecraft.content.issues import ensure_issues_bootstrapped
 from lorecraft.content.news import ensure_news_bootstrapped
 from lorecraft.content.help import ensure_help_bootstrapped
 from lorecraft.features.npc.scheduler import NpcScheduler
+from lorecraft.features.exploration.ambient import RoomAmbientService
+from lorecraft.features.exploration.loot import RoomLootService
 from lorecraft.features.spawns.service import SpawnControllerService
+from lorecraft.features.npc_ai.routes import NpcRouteLoader
+from lorecraft.features.weather.climate import ZoneClimateService
 from lorecraft.features.weather.fronts import (
     WeatherFrontService,
     register_storm_effects,
@@ -211,17 +215,37 @@ def create_app(
                 resolved_game_engine, manager, app_rng, meter_service, effect_service
             )
             npc_behavior_service.register(bus)
+            NpcRouteLoader(
+                resolved_game_engine,
+                mobile_route_service,
+                manager,
+                bus,
+                app_rng,
+                meter_service,
+                effect_service,
+            ).load_routes()
         weather_front_service = None
+        zone_climate_service = None
         if "weather" in enabled_set:
             register_storm_effects()
+            weather_config = load_yaml_config(
+                resolved_settings.weather_fronts_yaml_path
+            )
             weather_front_service = WeatherFrontService(
                 resolved_game_engine,
                 manager,
                 app_rng,
                 effect_service,
-                load_yaml_config(resolved_settings.weather_fronts_yaml_path),
+                weather_config,
             )
             weather_front_service.register(bus)
+            zone_climate_service = ZoneClimateService(
+                resolved_game_engine,
+                manager,
+                app_rng,
+                weather_config,
+            )
+            zone_climate_service.register(bus)
         spawn_controller_service = None
         if "spawns" in enabled_set:
             spawn_controller_service = SpawnControllerService(
@@ -255,6 +279,8 @@ def create_app(
             _load_ability_definitions(resolved_settings.abilities_yaml_path)
         if services.exploration is not None:
             _load_forage_definitions(resolved_settings.forage_yaml_path)
+            RoomLootService().register(bus)
+            RoomAmbientService(resolved_game_engine, manager, app_rng).register(bus)
         if "context_commands" in enabled_set:
             _load_context_commands(resolved_game_engine)
 
@@ -382,6 +408,7 @@ def create_app(
             meters=meter_service,
             effects=effect_service,
             mobile_routes=mobile_route_service,
+            zone_climate=zone_climate_service,
             web_host=web_host,
         )
         register_all_commands(state.registry, state.services, transit=transit_service)

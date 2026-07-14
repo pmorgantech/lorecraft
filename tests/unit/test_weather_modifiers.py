@@ -1,7 +1,7 @@
 """Sprint 44 — weather-driven terrain difficulty (WeatherTerrainModifierSource).
 
-Harsh weather subtracts a penalty from the required skill of a skill-gated
-terrain, read through the same §3.5 resolver movement's terrain gate uses.
+Harsh weather subtracts a penalty from the required discipline proficiency of a
+gated terrain, read through the same §3.5 resolver movement's terrain gate uses.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def test_clear_weather_leaves_terrain_skill_unchanged() -> None:
 
 
 def test_sheltered_terrain_is_unaffected_by_harsh_weather() -> None:
-    # "normal" terrain has no required_skill, so no weather penalty applies.
+    # "normal" terrain has no required_discipline, so no weather penalty applies.
     engine = _world(terrain="normal", weather="blizzard")
     with Session(engine) as session:  # type: ignore[arg-type]
         assert resolve_for(session, "player", "p1", "skill.survival", 25.0) == 25.0

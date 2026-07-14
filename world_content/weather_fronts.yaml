@@ -2,6 +2,31 @@
 # each dormant storm's `chance` every in-game hour (seeded RNG). On a hit the front applies the
 # `room_effect` across the first zone in `path`, narrates, travels zone->zone every `travel_ticks`
 # hours, and expires after its rolled `duration_ticks`. See docs/scripting_api.md for effects.
+#
+# `climates` adds daily zone-local weather rolls on top of the global clock weather. The
+# weighted seasonal lists below make Whisperwood commonly rainy/misty and Cogsworth mostly
+# clear/overcast without hard-coding either zone into Python.
+climates:
+  whisperwood:
+    spring: [fog, light_rain, light_rain, overcast, fog, clear]
+    summer: [fog, light_rain, overcast, clear, clear]
+    autumn: [fog, heavy_rain, light_rain, overcast, fog]
+    winter: [fog, snow, overcast, light_rain, clear]
+    narration:
+      fog: "Mist gathers between the trunks until the forest seems to breathe in silver."
+      light_rain: "A soft rain starts pattering through the Whisperwood canopy."
+      heavy_rain: "Rain drums hard on the leaves, turning every trail slick and dark."
+      overcast: "The canopy dims as a low grey sky presses over the wood."
+
+  cogsworth:
+    spring: [clear, overcast, clear, overcast, light_rain]
+    summer: [clear, clear, overcast, hot]
+    autumn: [overcast, clear, overcast, fog]
+    winter: [overcast, clear, snow]
+    narration:
+      clear: "The city haze lifts, leaving Cogsworth's brasswork bright under a clear sky."
+      overcast: "A lid of cloud settles over Cogsworth, flattening the shine of every gear and spire."
+
 storms:
   spring_squall:
     chance: 0.12            # ~per-hour odds while dormant and in season

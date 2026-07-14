@@ -24,6 +24,7 @@ from lorecraft.engine.services.scheduler import SchedulerService
 from lorecraft.types import JsonObject
 
 if TYPE_CHECKING:
+    from lorecraft.features.weather.climate import ZoneClimateService
     from lorecraft.webui.player.host import WebHost
 
 
@@ -45,6 +46,7 @@ class AppState:
     meters: MeterService
     effects: EffectService
     mobile_routes: MobileRouteService
+    zone_climate: ZoneClimateService | None = None
     pending_disambig: dict[str, JsonObject] = field(default_factory=dict)
     # Single-use WebSocket connect tickets: ticket -> (player_id, expires_at
     # epoch seconds). In-memory only, matching pending_disambig — fine for

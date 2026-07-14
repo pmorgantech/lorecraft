@@ -1,0 +1,14 @@
+# Data-driven area spawn controllers. Each entry tops a zone up to `max_count`
+# clones of a template NPC every `every_ticks` world ticks.
+spawns:
+  whisperwood_wisps:
+    area: whisperwood
+    template: fey_wisp
+    max_count: 3
+    every_ticks: 6
+
+  sewer_vagrants:
+    area: cogsworth
+    template: vagrant_pike
+    max_count: 2
+    every_ticks: 12

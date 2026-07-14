@@ -78,6 +78,8 @@ def test_help_commands_groups_by_category() -> None:
     assert "Movement:" in out
     assert "Items & Inventory:" in out
     assert "System:" in out
+    assert "Disciplines:" in out
+    assert "train [ability]" in out
     # Movement verbs are alphabetized within their group (go before look-ish).
     move_section = out.split("Movement:")[1].split("\n\n")[0]
     verbs = [

@@ -520,6 +520,13 @@ rooms:
     zone: cogsworth
     room_type: town
     light_level: 1
+    ambient_events:
+      - every_ticks: 5
+        chance: 0.75
+        text: "The clock tower marks the hour with a ripple of brass chimes."
+      - every_ticks: 8
+        chance: 0.4
+        text: "Steam vents sigh open around the plaza, briefly fogging the paving stones."
     exits:
       - direction: south
         target_room_id: clockworks_chamber
@@ -1074,6 +1081,13 @@ rooms:
     room_type: wilderness
     light_level: 1
     safe_rest: true
+    ambient_events:
+      - every_ticks: 4
+        chance: 0.65
+        text: "Mist curls low across the moss, beading silver on the standing stone."
+      - every_ticks: 7
+        chance: 0.35
+        text: "Leaves whisper overhead though no wind reaches the clearing."
     exits:
       - direction: north
         target_room_id: north_trail
@@ -2233,6 +2247,21 @@ rooms:
     room_type: wilderness
     light_level: 1
     indoor: true
+    loot_table:
+      chance: 1.0
+      message: "A dry shelf inside the oak gives up something deliberately hidden."
+      entries:
+        - item_id: faewrought_token
+          weight: 2
+          quantity: 1
+        - item_id: streamworn_agate
+          weight: 3
+          quantity: 1
+        - item_id: copper_coin
+          weight: 5
+          quantity:
+            min: 1
+            max: 4
     exits:
       - direction: east
         target_room_id: old_oak_grove
@@ -7266,13 +7295,13 @@ npcs:
     current_room_id: whispering_clearing
     dialogue_tree_id: forest_scout_wren_dialogue
     behavior: passive
-    schedule:
-      - game_hour: 6
-        target_room_id: whispering_clearing
-      - game_hour: 12
-        target_room_id: old_oak_grove
-      - game_hour: 18
-        target_room_id: wildflower_glade
+    ai:
+      mode: route
+      route: [whispering_clearing, old_oak_grove, wildflower_glade]
+      dwell_ticks: 4
+      travel_ticks: 3
+      reverses: false
+      loop: true
 
 economy:
   regions:

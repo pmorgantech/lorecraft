@@ -433,6 +433,16 @@ your station — miss it and you'll need to wait for the next stop, or catch it 
 down the line. Some lines need a ticket to board; check `schedule` to see the route and
 whether the vehicle is currently there.
 
+## Living World
+
+Some zones have their own climate patterns in addition to the world's general weather:
+Whisperwood is often misty or rainy, while Cogsworth more often sits under clear or
+overcast skies. Rooms may also produce occasional ambient details as time passes, and
+some hidden places can turn up randomized treasure the first time you discover them.
+
+NPCs can move on their own. Some wander, some patrol a simple loop, and some follow a
+fixed route with visible departures and arrivals.
+
 ## Talking to NPCs & Quests
 
 ```

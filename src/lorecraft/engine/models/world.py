@@ -37,6 +37,10 @@ class Room(SQLModel, table=True):
     indoor: bool = (
         False  # interiors (vaults, cellars): weather narration is suppressed here
     )
+    loot_table: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    ambient_events: list[JsonObject] = Field(
+        default_factory=list, sa_column=Column(JSON)
+    )
     # Declarative on/when/do trigger hooks (scripting engine A2): each is a raw
     # {on, when?, do} dict, parsed+validated by scripting.triggers.parse_trigger at load
     # and bound to the live event bus by scripting_wiring.build_trigger_service.

@@ -44,6 +44,8 @@ class RoomData(BaseModel):
     terrain: str = "normal"
     safe_rest: bool = False
     indoor: bool = False
+    loot_table: dict[str, object] = Field(default_factory=dict)
+    ambient_events: list[dict[str, object]] = Field(default_factory=list)
     exits: list[ExitData] = Field(default_factory=list)
     # Declarative on/when/do trigger hooks (scripting engine A2). Raw dicts here; validated
     # against the vocabulary catalog by `parse_trigger` at world load (fail-closed).
@@ -416,6 +418,23 @@ def validate_world_document(data: object) -> WorldDocument:
             errors.append(
                 f"room {room.id} references missing fallback room {room.fallback_room_id}"
             )
+        entries = room.loot_table.get("entries")
+        if entries is not None:
+            if not isinstance(entries, list):
+                errors.append(f"room {room.id} loot_table entries must be a list")
+            else:
+                for index, entry in enumerate(entries):
+                    if not isinstance(entry, dict):
+                        errors.append(
+                            f"room {room.id} loot_table entry {index} must be a mapping"
+                        )
+                        continue
+                    item_id = entry.get("item_id")
+                    if not isinstance(item_id, str) or item_id not in item_ids:
+                        errors.append(
+                            f"room {room.id} loot_table entry {index} references "
+                            f"missing item {item_id!r}"
+                        )
         for exit_ in room.exits:
             if exit_.target_room_id not in room_ids:
                 errors.append(

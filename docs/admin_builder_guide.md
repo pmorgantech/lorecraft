@@ -238,6 +238,68 @@ workflow:
    `docs/roadmap.md`'s Playtesting section) or run the E2E harness (`make test-e2e`,
    see the Sprint 11 entry in `docs/roadmap.md`).
 
+### Room loot, ambience, climate, spawns, and NPC routes
+
+Rooms can declare one-shot randomized treasure and timed feed flavor directly in
+`world_content/world.yaml`:
+
+```yaml
+rooms:
+  - id: hollow_oak_cache
+    loot_table:
+      chance: 1.0
+      message: A hidden shelf gives up a small cache.
+      entries:
+        - {item_id: copper_coin, weight: 5, quantity: {min: 1, max: 4}}
+        - {item_id: faewrought_token, weight: 1, quantity: 1}
+    ambient_events:
+      - text: Mist curls low across the moss.
+        every_ticks: 4
+        chance: 0.65
+```
+
+Zone climate lives beside traveling storm fronts in `world_content/weather_fronts.yaml`.
+Each seasonal list is weighted by repetition; narration is scoped to occupied outdoor
+rooms in that zone:
+
+```yaml
+climates:
+  whisperwood:
+    spring: [fog, light_rain, light_rain, overcast, clear]
+    narration:
+      fog: Mist gathers between the trunks.
+```
+
+Admins can override the live state from the Clock panel: the global weather selector still
+sets `WorldClock.weather`, and the Zone climates section sets each configured zone's local
+weather without a restart or reseed.
+
+Random NPC population controllers live in `world_content/spawns.yaml`:
+
+```yaml
+spawns:
+  whisperwood_wisps:
+    area: whisperwood
+    template: fey_wisp
+    max_count: 3
+    every_ticks: 6
+```
+
+For visible fixed patrols, use NPC `ai.mode: route`; for simpler autonomous movement,
+`ai.mode: wander` and `ai.mode: patrol` remain available:
+
+```yaml
+npcs:
+  - id: forest_scout_wren
+    ai:
+      mode: route
+      route: [whispering_clearing, old_oak_grove, wildflower_glade]
+      dwell_ticks: 4
+      travel_ticks: 3
+      reverses: false
+      loop: true
+```
+
 ### Authoring marks (`world_content/marks.yaml`)
 
 Marks (Sprint 53) are discovery badges defined in their own content file, loaded into an

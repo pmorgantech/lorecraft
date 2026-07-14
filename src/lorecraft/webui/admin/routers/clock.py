@@ -37,6 +37,7 @@ async def get_clock(request: Request, _: Observer) -> dict[str, Any]:
         "current_day": clock.current_day,
         "current_season": clock.current_season,
         "weather": clock.weather,
+        "zone_weather": _zone_weather_payload(state),
     }
 
 
@@ -93,6 +94,11 @@ class _WeatherBody(BaseModel):
     weather: str
 
 
+class _ZoneWeatherBody(BaseModel):
+    zone: str
+    weather: str
+
+
 _VALID_WEATHER = {
     "clear",
     "light_rain",
@@ -143,3 +149,33 @@ async def set_weather(
             None,
         )
     return {"weather": body.weather}
+
+
+@router.post("/clock/zone-weather")
+async def set_zone_weather(
+    body: _ZoneWeatherBody, request: Request, _: Superadmin
+) -> dict[str, str]:
+    if body.weather not in _VALID_WEATHER:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown weather. Valid: {sorted(_VALID_WEATHER)}",
+        )
+    state = _state(request)
+    climate = getattr(state, "zone_climate", None)
+    if climate is None:
+        raise HTTPException(status_code=503, detail="Zone climate is not enabled")
+    try:
+        climate.set_zone_weather(body.zone, body.weather)
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown climate zone {body.zone!r}",
+        ) from exc
+    return {"zone": body.zone, "weather": body.weather}
+
+
+def _zone_weather_payload(state: Any) -> dict[str, str | None]:
+    climate = getattr(state, "zone_climate", None)
+    if climate is None:
+        return {}
+    return climate.zone_weather_state()

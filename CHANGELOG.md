@@ -4,6 +4,44 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.99.0] - 2026-07-14
+
+### Added
+
+- **Sprint 80 — Zone climate, loot, ambience, spawns, and NPC routes.** Added
+  Tier 2 zone climate rolls for Whisperwood and Cogsworth, data-driven room
+  loot tables, timed room ambient events, and NPC `ai.mode: route` hooks over
+  the generic mobile route runner.
+- Added admin Clock controls for multiple weather states: the global weather
+  override remains, and each configured zone climate can now be set live from
+  the web admin UI/API.
+- Added shipped world content for `world_content/spawns.yaml`, Whisperwood and
+  Cogsworth climate tables, ambient room flavor, a randomized Hollow Oak cache,
+  and Scout Wren's route-backed patrol.
+
+### Docs
+
+- Updated the main and world roadmaps, user guide, and admin builder guide for
+  the new climate, loot, ambient-event, spawn, and NPC route authoring surfaces.
+
+## [0.98.2] - 2026-07-14
+
+### Fixed
+
+- **Sprint 79 — Discipline migration/help cleanup.** Added a dedicated SQLite
+  migration that drops the stale pre-78 `playerstats.skills` column after the
+  additive scanner adds `discipline_ranks`, so DB-only-column startup warnings
+  self-clear instead of repeating forever.
+- Updated stale weather terrain comments from `required_skill` terminology to
+  `required_discipline` / `required_discipline_min`.
+- Moved discipline player verbs (`train`/`learn`/`abilities`/`disciplines`) into
+  the `Disciplines` help category instead of the older `progression` grouping.
+
+### Docs
+
+- Added Sprint 79 to the roadmap and recorded ability cost/cooldown/proficiency
+  live-tuning as demand-driven future scope, not speculative implementation work.
+
 ## [0.98.1] - 2026-07-13
 
 ### Fixed
