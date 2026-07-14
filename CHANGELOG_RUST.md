@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-07-13 — Phase 4: vertical gameplay slice — look + movement Rust-executed
+
 ### Added
 - Phase 4 sub-slice 4c implementation (movement migration, the first mutating verb, live cutover):
   new `lorecraft-feature-move` Rust crate with `MoveEntity` derive/validate/parse, leave/arrival
