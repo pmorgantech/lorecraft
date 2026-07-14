@@ -38,17 +38,23 @@ all of which found the existing 104-room world already correct. See `roadmap_wor
 [`../CHANGELOG.md`](../CHANGELOG.md) for full detail.)*
 
 **Rust migration (parallel track — see [`rust_migration_plan.md`](rust_migration_plan.md) for detail):**
-Phase 0 (evidence gate), Phase 1 (language-neutral contracts), Phase 2 (shadow runner), and Phase 3
-(transport + connection ownership) are complete; Phase 4 is IN PROGRESS. **Phase 4 sub-slices 4a
-(execution-routing protocol + headless `look` parity) and 4b (live `look` cutover) are complete:**
-real WS clients' `look` commands are now Rust-executed by default (`LORECRAFT_RUST_VERBS=look`),
-with byte-identical audit/broadcast/parity. **Option (c) transport split confirmed (deferred):**
-`POST /command` `look` stays Python-executed (HTMX rendering, WS receive-only). **Phase 4c
-(movement) remains** — the phase-level exit criterion (real `go` via Rust with byte-identical
-audit/effect/state hashes) is not yet met. See `docs/rust_migration_plan.md`'s Phase 4 sections
-for 4b exit checks, the COMMAND_EXECUTED parity fix, the two hardening fixes, Option-c rationale,
-and the browser-command-transport future-phase open item (FRONTEND SPECIALIST project, scheduled
-AFTER 4c and BEFORE Phase 5+ broad verb migration).
+Phase 0 (evidence gate), Phase 1 (language-neutral contracts), Phase 2 (shadow runner), Phase 3
+(transport + connection ownership), and **Phase 4 (first vertical gameplay slice) are COMPLETE.**
+**Phase 4 — COMPLETE (2026-07-13):** All three sub-slices landed: 4a (execution-routing protocol +
+Python persistence handlers + Rust routing seam + headless `look` parity harness, no live cutover),
+4b (live WS `look` cutover + hardening fixes + COMMAND_EXECUTED parity), 4c (movement migration +
+state-parity oracle goldens + live cutover + registry-move fix + direction routing). **Phase 4 exit
+criterion: MET** — Rust owns EXECUTION (parse → validate → effect-derivation → outcome) for migrated
+verbs (`look` + movement) on the WebSocket path, reproducing the Python engine's effects, outcome,
+audit trail, **and POST-COMMAND STATE mutation** byte-for-byte via replay-hash goldens (`look_only.audit.json`
++ `move_only.*` family). Python owns persistence (Option A: Python applies effects + commits DB).
+Rollback is a config toggle. **Accepted scoping decisions:** Option (a) Python DB ownership this phase
+(Rust moves to DB in Phase 5); Option (c) transport split (WS path live, `POST /command` stays Python).
+**Next-increment choices:** (i) Browser→WebSocket command-send increment (FRONTEND SPECIALIST,
+unblocks browser players on Rust execution, lighter scope), or (ii) Phase 5 (Rust DB ownership + RNG +
+WorldActor ordered dispatch, heavier scope but unblocks broad verb migration). See `docs/rust_migration_plan.md`'s
+Phase 4 section 4c and "Future-phase open items" for full detail, three advisories, carry-forward deferrals,
+and decision framework.
 
 **[Sprint 73 — Generalized rewards + XP/leveling core](#sprint-73--generalized-rewards--xpleveling-core)
 is implementation-complete** — all of 73.1–73.10 shipped as commits on branch
@@ -89,12 +95,14 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 *(Separate track, own branch/versioning per [`../CHANGELOG_RUST.md`](../CHANGELOG_RUST.md):
 the `rust-port` branch's Phase 3 transport/connection-ownership migration is COMPLETE as of 2026-07-13
 (all three sub-slices 3a/3b/3c landed; both client types through Rust gateway; disconnect/reconnect
-+ slow-client tests match). **Phase 4 (first vertical gameplay slice) is IN PROGRESS as of 2026-07-13:**
-sub-slice 4a (execution-routing protocol + headless `look` parity, no live cutover) is COMPLETE with
-4a's exit check MET — a headless `look` driven through Rust→Python reproduces byte-identical `command_result`
-+ `look_only.audit.json`. Two MUST-FIX-BEFORE-4b dormant defects identified (handler-exception hang,
-frozen-session guard). Sub-slices 4b (live `look` cutover) and 4c (movement) remain. See
-[`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 4 kickoff status section (4a) for detail.)*
++ slow-client tests match). **Phase 4 (first vertical gameplay slice) is COMPLETE as of 2026-07-13:**
+all three sub-slices (4a execution-routing + headless parity, 4b live `look` cutover, 4c movement
+migration + state-parity) landed with exit checks MET. Rust owns execution for migrated verbs (`look`
++ movement) on the WS path, reproducing Python's effects/audit/state byte-for-byte; Python owns
+persistence. Rollback is a config toggle. Next: browser-transport increment (FRONTEND project,
+lighter, unblocks browser players) or Phase 5 (Rust DB + RNG + WorldActor, heavier, unblocks
+broad verb migration). See [`rust_migration_plan.md`](rust_migration_plan.md)'s Phase 4 sections
+and "Future-phase open items" for full detail and decision framework.)*
 
 ---
 

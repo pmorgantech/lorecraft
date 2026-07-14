@@ -12,6 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Phase 4 sub-slice 4c implementation (movement migration, the first mutating verb, live cutover):
+  new `lorecraft-feature-move` Rust crate with `MoveEntity` derive/validate/parse, leave/arrival
+  narration, and skill-gated defer protocol. State-snapshot hashing (`hash_state`) in both languages
+  (Phase-0-deferred piece: `current_room_id` + `visited_rooms` oracle-matched). New additive fields
+  `CommandOutcome.room_narration`/`arrival_narration` (Option A narration conveyance). New
+  `GatewayOutbound::DeferToPython` frame for skill-gated moves. Python `build_move_request` handler
+  (reuses live movement service reads), `MoveEntity` effect-applier (byte-identical state mutation:
+  current_room_id, visited_rooms, connection-map relocation, narration placement). `flush_events()`
+  now completes BEFORE commit, ensuring quest/NPC/follow/trigger reactions fire identically.
+  Skill-gated moves defer to Python so RNG never enters Rust (OPEN ITEM #3). Movement `move_only`
+  golden family (`move_only.json`/`.audit.json`/`.effects.json`/`.state_hash.json`, oracle-captured)
+  proves 5-dimension state-parity. Registry-move fix: new `OutcomeApplied.moves` field; Rust applies
+  each move to `ConnectionRegistry` BEFORE relaying deliveries (GAP #1 resolved). Movement enabled
+  in `DEFAULT_RUST_VERBS` (`look,north,south,east,west`; rollback = `LORECRAFT_RUST_VERBS=""`).
+  Direction routing extended in `route::decide` for `go <direction>` (decision b, precisely gated).
 - Phase 4 sub-slice 4b implementation (live `look` cutover, hardening fixes, COMMAND_EXECUTED
   parity fix): `LORECRAFT_RUST_VERBS=look` default enable (real WS clients' `look` Rust-executed
   by default; rollback = explicit empty). New `GatewayOutbound::ExecutionRejected{command_id,
@@ -61,6 +76,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ExecutionRejected` reply (fixes the two MUST-FIX-BEFORE-4b dormant defects from 4a).
 - Pending-slot map now swept on disconnect + capped, preventing leak from long-lived connections.
 
+### Phase 4 sub-slice 4c status (2026-07-13)
+**4c's exit check is MET (movement + 5-dimension parity):** a non-skill-gated directional move
+issued by a real WS client is LIVE-executed by Rust, reproduces the Python engine's `command_result`,
+`audit` trail, `effects` list, and POST-COMMAND `state_hash` byte-for-byte via `move_only.*`
+goldens. Mover is correctly relocated in Rust's `ConnectionRegistry`, reaches subsequent new-room
+broadcasts. Skill-gated moves defer to Python (RNG stays Python). Rollback (allow-list empty
+→ Python unchanged) intact. **Phase 4 is NOW COMPLETE** (all sub-slices 4a/4b/4c landed). See
+`docs/rust_migration_plan.md`'s Phase 4 section 4c status for full detail, the three code-review
+advisories (TOCTOU/WorldActor, audit-timing, unreachable panic), carry-forward deferrals, accepted
+phase-scoping decisions (Option a: Python DB persistence, Option c: transport split), and next-
+increment choices (browser-transport increment vs Phase 5). Phase 4 exit criterion: Rust owns
+EXECUTION for migrated verbs on WS path (byte-identical effects/audit/state); Python owns persistence.
+
 ### Phase 4 sub-slice 4b status (2026-07-13)
 **4b's exit check is MET (WS path):** a real WS client's `look` is LIVE-executed by Rust
 default-on (`LORECRAFT_RUST_VERBS=look`), byte-identical `command_result` + audit golden +
@@ -70,8 +98,6 @@ WS `look` = Rust-executed; `POST /command` `look` stays Python (HTMX rendering, 
 read-only parity). See `docs/rust_migration_plan.md`'s Phase 4 section 4b and "Future-phase open
 items" (browser-command-transport) for full rationale, three options, and scheduling recommendation
 (dedicated increment AFTER 4c, BEFORE Phase 5+ broad verb migration; FRONTEND SPECIALIST project).
-Sub-slice 4c (movement) remains — Phase 4 is IN PROGRESS, not complete. Three 4c follow-ups noted
-(apply_outcome flush_events, parse-metadata re-parse drift, audit duration fields).
 
 ### Phase 4 sub-slice 4a status
 **4a's exit check is MET:** a headless `look` driven through Rust-execute→Python-persist

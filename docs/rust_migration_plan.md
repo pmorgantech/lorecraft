@@ -2224,12 +2224,126 @@ all 22 through-Rust exit checks green with look default-on (no regression).
 
 **CONFIRMED DECISION — Option (c) transport split (record as explicit DEFERRED item):** WS `look` = Rust-executed (done); `POST /command` `look` stays Python-executed this phase. REASON: the browser sends commands via HTMX `POST /command` form (rendering HTML), and its WebSocket is RECEIVE-ONLY, so the Rust WS execution path reaches only raw-WS clients (virtual_player/parity harness), not real browser players; Phase 3 decision 8 keeps `POST /command` on Python to avoid Rust rendering HTMX; `look` is read-only so its output is byte-identical across both engines (no user-visible divergence). Migrating the POST-path `look` is DEFERRED (see "Future-phase open items" section below). Do NOT implement it in Phase 4.
 
-**Still pending / explicitly NOT done:** sub-slice 4c (movement: `lorecraft-feature-move` crate, Python `build_move_request`, movement golden fixtures, and the `go`/directional routing — all unstarted). **Phase 4 is NOT complete — 4c (movement) remains;** the phase-level exit criterion requires real `look` and `go` to execute via Rust with byte-identical audit/effect/state hashes.
+### Kickoff status — sub-slice 4c (2026-07-13)
 
-**4c follow-ups — carry forward, close when movement migrates:**
-- The `apply_outcome` `flush_events()` is a no-op for look but movement's queued `PLAYER_MOVED` will need it (a `# TODO(4c)` is in the code).
-- The `_parse_command_metadata` re-parse drift risk (flagged as 4a follow-up (a)).
-- Audit `duration_ms`/`perf` omission on the Rust-execute path (flagged as 4a follow-up (c)).
+**Sub-slice 4c is complete and exit-check verified. Phase 4 is NOW COMPLETE.** Four commits landed on
+branch `rust-port-phase4` after the 4b groundwork, implementing movement migration (the first mutating
+verb) and enabling the live cutover:
+
+- `9ed78c6` — foundation: new `lorecraft-feature-move` Rust crate with `MoveEntity` derive/validate/parse,
+  leave/arrival narration emission, and skill-gated defer protocol. State-snapshot hashing (`hash_state`)
+  implemented in both Python and Rust (the Phase-0-deferred piece — `current_room_id` + `visited_rooms`
+  fields, cross-language oracle-matched for byte-identical replayable state). New additive fields
+  `CommandOutcome.room_narration` + `arrival_narration` (narration conveyance, Option A design). New
+  `GatewayOutbound::DeferToPython` frame for skill-gated moves that re-forward to Python. New `MigratedVerb::Move`
+  enum variant (NOT default-enabled yet).
+- `c0ea36d` — Python persistence: new `build_move_request` handler (reuses the live movement service's reads for
+  snapshot context), new `MoveEntity` effect-applier (byte-identical state mutation: current_room_id,
+  visited_rooms, connection-map player relocation, narration placement). Closed the `flush_events()` TODO:
+  movement's queued `PLAYER_MOVED` event now flushes BEFORE commit, ensuring quest/NPC/follow/trigger
+  reactions fire identically to the Python path. Skill-gated moves return `DeferToPython` frame → Rust
+  re-forwards → Python runs the entire move including the RNG skill gate (RNG never enters Rust; OPEN ITEM #3).
+- `baff729` — the movement `move_only` golden family (`move_only.json`/`.audit.json`/`.effects.json`/
+  `.state_hash.json`, oracle-captured). The through-Rust movement STATE-parity harness (the core 4c exit check)
+  proves 5 dimensions byte-identical: `command_result`, `audit` events, `effects` list, the POST-COMMAND
+  `state_hash`, and broadcasts (room leave/arrive for mover and other occupants). The mover's-own-new-room
+  reachability was identified as a real gap and correctly deferred to the cutover via `xfail(strict)`.
+- `f56409d` — the LIVE CUTOVER: fixed the registry-move gap (new additive `OutcomeApplied.moves` field; Rust
+  applies each move to its `ConnectionRegistry` BEFORE relaying deliveries, in-order — GAP #1 resolved).
+  Flipped the mover-reachability xfail to a real passing assertion. Enabled movement in `DEFAULT_RUST_VERBS`
+  (`look,north,south,east,west`; rollback = `LORECRAFT_RUST_VERBS=""`). Extended `route::decide` to route
+  `go <direction>` to Rust (decision b, precisely gated on the new direction syntax).
+
+**4c's exit check is MET — all 5 dimensions match:** a non-skill-gated directional move (`go north` / cardinal direction)
+issued by a real WS client is LIVE-executed by Rust, reproduces the Python engine's `command_result` (message + state),
+`audit` trail (replay-hash oracle), `effects` list, and POST-COMMAND `state_hash` byte-for-byte (via `move_only.*.json`
+goldens). The mover is correctly relocated in Rust's `ConnectionRegistry`, reaches subsequent new-room broadcasts,
+and other occupants see leave/arrive events in order. Skill-gated moves defer to Python (RNG stays Python, OPEN ITEM #3).
+Rollback is a config toggle (`LORECRAFT_RUST_VERBS=""`).
+
+**Code Review:** clean (no blocking findings; independently recomputed cross-language `hash_state` oracles to confirm
+goldens are honest). Flagged three non-blocking advisories (see below).
+
+**Test & QA lanes:**
+- Python: `make lint` clean; `make typecheck` 0 errors; `make test-cov` 1551 passed / 1 skipped / 91.15% coverage (gate 80%).
+- Rust (from `rust/`): `cargo build --all` clean; `cargo test --all` 157 tests passed (incl. new `lorecraft-feature-move`
+  10 tests + replay `hash_state` oracle tests); `cargo clippy -D warnings` clean; `cargo fmt --all -- --check` clean.
+- E2E/simulation: all 5-dimension move parity tests PASS (including the un-xfail'd mover-new-room assertion); standard
+  `make test-e2e` 50 + `make test-simulation` 27; all through-Rust exit checks green with movement DEFAULT-ON
+  (multiplayer moves, browser e2e issuing live `go` moves, `look`, slow-client, admin auth — no regression).
+
+**Code-review advisories (non-blocking; record as Phase 5+ follow-ups):**
+
+1. **Concurrent-command TOCTOU / WorldActor ordering.** Apply-time re-validation (when Python checks if a move is
+   still allowed) is narrower than snapshot-time (when Rust built the snapshot). Between `BuildSnapshot` (read)
+   and `ApplyOutcome` (write), a concurrent player's lock/flag mutation could theoretically allow a now-blocked
+   move to commit. The single-threaded Python path has no such window. This is explicitly deferred to the Rust
+   `WorldActor` ordered-dispatch front-end (documented in `execute.rs` as a TODO) and becomes load-bearing as
+   more mutating/cross-actor verbs migrate (Phase 5+). Track and resolve as part of Phase 5 actor ordering design.
+
+2. **Audit-payload timing-field divergence on Rust-execute path.** The Rust path's audit events include non-deterministic
+   timing fields (wall-clock duration). This divergence is non-blocking because `normalize_events` (the Phase 2–4
+   equivalence oracle) explicitly strips timing before hash comparison. The correct long-term fix (audit duration
+   fields derived from Rust's `execute_wall_ms`) is deferred to Phase 5 when Rust owns the transaction boundary.
+
+3. **Unreachable `panic!` in `move_outcome`.** A style issue (not a logic defect); code path is guarded such that the
+   panic cannot fire. Clean up as a future pass.
+
+**CARRY-FORWARD DEFERRALS (explicit, not exit-blocking for 4c):**
+
+- `_parse_command_metadata` re-parse (4a follow-up (a)): the adapter re-parses the envelope's `raw` command line to
+  extract verb/noun for the snapshot context, duplicating Rust's parse. Byte-identical for `look` and `move`; a drift
+  risk for future verbs. **Deferral rationale:** movement is now proven; carry the parsed verb/noun on `CommandOutcome`
+  or reuse cached parse in Phase 5.
+- RNG cross-language parity (OPEN ITEM #3): Rust movement routes skill-gated moves back to Python so Python's RNG owns
+  the gate (deterministic replayable per-player RNG seed). Rust reads never perform RNG draws. **Deferral rationale:**
+  Phase 5 will design a versioned RNG-stream contract so Rust can own draws independently.
+- Browser-command-transport increment (confirmed decision, see "Future-phase open items" below): `POST /command` movement
+  stays Python; WS movement is Rust. **Deferral rationale:** Phase 4c cutover covers the WS path (the mechanism proof);
+  browser transport unification (option (i)) is a FRONTEND SPECIALIST project scheduled AFTER 4c and BEFORE Phase 5+ broad
+  verb migration.
+
+**PHASE 4 — COMPLETE**
+
+All three sub-slices have landed:
+- **4a** — execution-routing protocol + Python persistence handlers + Rust routing seam + headless `look` parity harness (no live cutover).
+- **4b** — live WS `look` cutover, hardening fixes, COMMAND_EXECUTED parity, confirmed Option-c transport split decision.
+- **4c** — movement Rust execution (the first mutating verb), state-parity oracle goldens, live cutover, registry-move fix, direction routing.
+
+**Phase 4 exit criterion is MET:** Rust owns EXECUTION (parse → validate → effect-derivation → outcome) for the migrated verbs
+(`look` + movement) on the WebSocket path, reproducing the Python engine's effects, outcome, audit trail, **and POST-COMMAND
+STATE mutation** byte-for-byte via the replay-hash goldens (`look_only.audit.json` + `move_only.*` family). Python owns
+persistence (Option A design: Python receives effects, applies them, commits game/audit DB, publishes events). Rollback
+is a routing/allow-list toggle.
+
+**Accepted phase-scoping decisions:**
+
+1. **Option (a): Python owns DB persistence.** Rust executes the command pipeline; Python applies effects and commits.
+   The outbox/durable-commit boundary lives in Python this phase. Phase 5 will move DB ownership to Rust (full outbox
+   semantics). Rationale: reuse existing proven machinery, keep each phase reviewable.
+
+2. **Option (c): transport split.** WebSocket commands (WS) are Rust-executed (movement + look live). HTTP `POST /command`
+   (browser) stays Python-executed this phase. Rationale: browser sends via HTMX form (render HTML), WS is receive-only;
+   read-only verbs byte-identical both paths; mutating-verb parity splits are resolved by the browser-transport increment
+   (option (i), scheduled AFTER 4c, BEFORE Phase 5+).
+
+**Recommended next increments (user to choose):**
+
+1. **Browser→WebSocket command-send increment (FRONTEND SPECIALIST).** Move the browser from HTMX `POST /command` form to
+   WebSocket command sends (JSON or text), with response as in-band JSON frames. Makes browser transport identical to
+   raw-WS clients, so Rust becomes the single ingress-level authority for ALL clients. Prerequisite for broad Phase 5+
+   verb migration (mutating verbs on a single code path). See "Future-phase open items" below for full three-option
+   analysis. **Recommended:** schedule option (i) (browser→WS) as a DEDICATED increment AFTER Phase 4c and BEFORE Phase 5+.
+
+2. **Phase 5 — Rust database ownership + RNG-stream authority + WorldActor ordered dispatch.** Moves DB persistence from
+   Python to Rust (full durable-outbox semantics, atomic state+audit+delivery commit). Resolves OPEN ITEM #3 (RNG streams
+   versioned, Rust can own draws independently). Adds the `WorldActor` ordered-dispatch front-end (resolves the TOCTOU
+   advisory). Prerequisite for deterministic multi-player execution, actor-shard parallelism, and broad feature migration.
+
+**User decision:** confirm the priority — browser-transport increment or Phase 5 next? The browser increment is lighter
+(Frontend work only, no simulation changes) and unblocks browser players seeing new Rust-executed commands. Phase 5 is
+heavier (database design + RNG + actor ordering) but unblocks the broad verb-migration acceleration. Both are valuable;
+schedule one as the immediate next step based on bandwidth and feature-development priority.
 
 ### Future-phase open items
 
