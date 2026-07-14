@@ -55,10 +55,8 @@ cover/
 *.mo
 *.pot
 
-# Django stuff:
-*.log
-
 # Runtime logs
+*.log
 logs/*
 !logs/.gitkeep
 

@@ -5,8 +5,13 @@ RUFF ?= $(PYTHON) -m ruff
 BASEDPYRIGHT ?= $(PYTHON) -m basedpyright
 PYTEST_WORKERS ?= auto
 PYTEST_PARALLEL_ARGS ?= -n $(PYTEST_WORKERS) --dist=loadfile
+LOAD_TEST_PLAYERS ?= 50
+LOAD_TEST_SCENARIO ?= tests/simulation/scenarios/load_world_hunt.json
+LOAD_TEST_OPEN_HUNT ?= harvest_trinkets
+LOAD_TEST_LATENCY_CEILING_MS ?= 3000
+LOAD_TEST_HISTORY ?= docs/performance/load_test_history.jsonl
 
-.PHONY: test test-cov test-e2e test-simulation lint typecheck scripting-docs bootstrap bootstrap-worktree ai-graph
+.PHONY: test test-cov test-e2e test-simulation load-test-history lint typecheck scripting-docs bootstrap bootstrap-worktree ai-graph
 
 # Bootstrap worktree: isolated venv, database, docs (run once per worktree).
 # Agents: create via EnterWorktree, then run make bootstrap from the worktree.
@@ -60,6 +65,18 @@ test-e2e:
 # real network servers per test.
 test-simulation:
 	$(PYTEST) tests/simulation -m simulation -v
+
+# Periodic performance baseline: broad 50-player lockstep scenario, recorded
+# with version/changelog/git metadata into an append-only JSONL history.
+load-test-history:
+	LORECRAFT_LOG_LEVEL=WARNING \
+	LORECRAFT_DB_QUERY_LOG_ENABLED=false \
+	LORECRAFT_LOAD_TEST_PLAYERS=$(LOAD_TEST_PLAYERS) \
+	LORECRAFT_LOAD_TEST_SCENARIO=$(LOAD_TEST_SCENARIO) \
+	LORECRAFT_LOAD_TEST_OPEN_HUNT=$(LOAD_TEST_OPEN_HUNT) \
+	LORECRAFT_LOAD_TEST_LATENCY_CEILING_MS=$(LOAD_TEST_LATENCY_CEILING_MS) \
+	LORECRAFT_LOAD_TEST_HISTORY=$(LOAD_TEST_HISTORY) \
+	$(PYTEST) tests/simulation/test_load.py -m simulation
 
 install-hooks:
 	git config core.hooksPath .githooks

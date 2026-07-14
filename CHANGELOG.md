@@ -4,6 +4,30 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.104.1] - 2026-07-14
+
+### Added
+
+- Added a broad 50-player world/hunt simulation load scenario and an opt-in
+  append-only performance history log under `docs/performance/`, recording
+  p50/p95/p99/max timings with package version, changelog heading, git branch,
+  commit, dirty flag, runtime, scenario, and run notes.
+- Added a tracked database and engine performance ledger summarizing the current
+  50-player baseline, query-span logging overhead, and live-server latency
+  snapshot while keeping raw `.log` files ignored.
+- Added `make load-test-history` as the stable periodic command for appending
+  the broad load-test baseline, with SQL query-span logging disabled by default
+  so the history tracks command-processing latency rather than JSONL write
+  volume.
+
+### Changed
+
+- Extended the simulation load harness with `LORECRAFT_LOAD_TEST_OPEN_HUNT`,
+  `LORECRAFT_LOAD_TEST_LATENCY_CEILING_MS`, and
+  `LORECRAFT_LOAD_TEST_HISTORY` knobs, and taught the simulation fixture to
+  honor DB query-log environment settings when building direct `Settings`
+  objects.
+
 ## [0.104.0] - 2026-07-14
 
 ### Added

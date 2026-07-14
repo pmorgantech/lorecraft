@@ -14,6 +14,8 @@ content, per AGENTS.md) with a disposable per-test sqlite DB, same as
 
 from __future__ import annotations
 
+import os
+import socket
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -27,6 +29,7 @@ import uvicorn
 from sqlmodel import Session, col, create_engine, select
 
 from lorecraft.config import Settings
+from lorecraft.features.hunts.service import HuntService
 from lorecraft.main import create_app
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player
@@ -45,7 +48,7 @@ class _LiveServer:
         config = uvicorn.Config(
             app,
             host="127.0.0.1",
-            port=0,
+            port=_free_tcp_port(),
             log_level="warning",
             ws="websockets-sansio",
         )
@@ -70,6 +73,19 @@ class _LiveServer:
         self._thread.join(timeout=5)
 
 
+def _free_tcp_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass
 class SimulationServer:
     """A live server plus direct DB access for setup/assertions.
@@ -83,6 +99,7 @@ class SimulationServer:
     base_url: str
     game_db_path: Path
     audit_db_path: Path
+    app: Any
 
     @property
     def ws_url(self) -> str:
@@ -135,6 +152,16 @@ class SimulationServer:
                 ids.extend([stack.item_id] * stack.quantity)
             return ids
 
+    def open_hunt(self, hunt_id: str) -> None:
+        """Open a hunt through the live app's shared HuntService instance."""
+        state = self.app.state.lorecraft
+        hunt_service = state.services.hunts
+        if not isinstance(hunt_service, HuntService):
+            raise RuntimeError("hunts feature is not enabled for this simulation")
+        with Session(state.game_engine) as session:
+            hunt_service.open(hunt_id, session, state.rng)
+            session.commit()
+
 
 @pytest.fixture
 def simulation_server_factory(
@@ -167,6 +194,12 @@ def simulation_server_factory(
             # not the login UI, so it needs the legacy fallback explicitly
             # (off by default since Sprint 4; see docs/roadmap.md 4.6).
             allow_query_player_id=True,
+            log_level=os.getenv("LORECRAFT_LOG_LEVEL", "INFO"),
+            db_query_log_enabled=_env_bool("LORECRAFT_DB_QUERY_LOG_ENABLED", True),
+            db_query_log_path=os.getenv(
+                "LORECRAFT_DB_QUERY_LOG_PATH", "logs/sql_queries.log"
+            ),
+            db_query_slow_ms=float(os.getenv("LORECRAFT_DB_QUERY_SLOW_MS", "50.0")),
         )
         app = create_app(settings=settings)
         live_server = _LiveServer(app)
@@ -176,6 +209,7 @@ def simulation_server_factory(
             base_url=live_server.base_url,
             game_db_path=game_db_path,
             audit_db_path=audit_db_path,
+            app=app,
         )
 
     try:
