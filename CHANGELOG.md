@@ -4,6 +4,29 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.102.0] - 2026-07-14
+
+### Added
+
+- **Sprint 82 — Ashmoore fixed-location shop village.** Added a denser Ashmoore
+  market cluster with Vale's General Store and Hearthloaf Bakery, plus
+  stationary shopkeepers for the apothecary, forge armory, general store, and
+  bakery. Expanded the Wandering Crow into a proper food/drink counter.
+- Added Ashmoore-local armory stock and finite/restocking shop inventories for
+  potions, provisions, drinks, utility goods, and basic weapons/armor.
+
+### Docs
+
+- Updated the roadmap and worldbuilding skill guidance for fixed-location shops
+  represented by stationary NPC shopkeepers.
+- Added Codex-specific worktree bootstrap guidance and roadmap entries for
+  scavenger-hunt quests plus a database optimization/query-observability pass.
+
+### Tooling
+
+- Added a tracked `logs/` directory placeholder while keeping generated log
+  files ignored.
+
 ## [0.101.0] - 2026-07-14
 
 ### Added

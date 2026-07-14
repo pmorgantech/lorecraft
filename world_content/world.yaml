@@ -199,6 +199,8 @@ rooms:
         target_room_id: village_square
       - direction: north
         target_room_id: alchemist_shop
+      - direction: east
+        target_room_id: ashmoore_general_store
 
   - id: alchemist_shop
     name: "Mira's Curious Remedies"
@@ -220,6 +222,46 @@ rooms:
         target_room_id: market_stalls
       - direction: west
         target_room_id: blacksmith_forge
+
+  - id: ashmoore_general_store
+    name: Vale's General Store
+    indoor: true
+    description: >-
+      Shelves of oiled pine make narrow aisles from door to counter, each one
+      crowded with useful things: candles in paper twists, patched satchels,
+      coils of chain, bundles of torchwood, and travel food wrapped in cloth.
+      A ledger lies open beside a brass scale, its columns neat enough to make
+      every nail and apple seem accounted for. The market noise leaks in from
+      the west, softened by the smell of soap, leather, and dry grain.
+    map_x: 6
+    map_y: 8
+    zone: ashmoore
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: market_stalls
+      - direction: south
+        target_room_id: ashmoore_bakery
+
+  - id: ashmoore_bakery
+    name: Hearthloaf Bakery
+    indoor: true
+    description: >-
+      The bakery is barely larger than its brick oven, but it works like a warm
+      heart at the edge of the market. Loaves cool on slatted racks, apple
+      baskets crowd the flour bins, and a kettle of cider breathes clove-scented
+      steam over the counter. Flour dust softens every footprint on the floor.
+      The general store lies north through a bead curtain that clicks whenever
+      the oven draft stirs.
+    map_x: 6
+    map_y: 7
+    zone: ashmoore
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: north
+        target_room_id: ashmoore_general_store
 
   - id: south_gate
     name: South Gate
@@ -2834,6 +2876,8 @@ items:
       about its heft and its curve — a small, useful perfection.
     takeable: true
     tradeable: true
+    value: 6
+    category: trade_good
 
   - id: sharpening_stone
     name: Sharpening Stone
@@ -2843,6 +2887,61 @@ items:
       on a blade, given patience and a steady hand.
     takeable: true
     tradeable: true
+    value: 8
+    category: utility
+
+  - id: ashmoore_hunting_knife
+    name: Ashmoore Hunting Knife
+    description: >-
+      A broad, plain knife with a dark horn handle and a blade kept bright by
+      honest use. It is made for cutting cord, dressing game, and every other
+      small necessity that follows a person beyond the town gate.
+    takeable: true
+    tradeable: true
+    weight: 0.7
+    value: 14
+    category: weapon
+    quality: common
+
+  - id: ashmoore_militia_spear
+    name: Ashmoore Militia Spear
+    description: >-
+      An ash-wood spear with a leaf-shaped iron head and a leather wrap where
+      nervous hands have polished the haft smooth. The village keeps weapons
+      like this for wolf trouble, bandit rumors, and nights when the forest
+      sounds too close.
+    takeable: true
+    tradeable: true
+    weight: 3.0
+    value: 28
+    category: weapon
+    quality: common
+
+  - id: ashmoore_padded_jack
+    name: Quilted Padded Jack
+    description: >-
+      Layers of linen and wool quilted into a sturdy sleeveless coat. It will
+      not turn a knight's lance, but it blunts a bad fall, a glancing blade, or
+      the teeth of something desperate in the dark.
+    takeable: true
+    tradeable: true
+    weight: 4.0
+    value: 24
+    category: armor
+    quality: common
+
+  - id: ashmoore_kettle_helm
+    name: Blackened Kettle Helm
+    description: >-
+      A simple iron helm with a broad brim, blackened from years of forge smoke.
+      Dents around the crown have been hammered mostly true, leaving a map of
+      old worries under the fresh oil.
+    takeable: true
+    tradeable: true
+    weight: 2.5
+    value: 22
+    category: armor
+    quality: common
 
   # --- Market & Alchemist ---
   - id: dried_herbs
@@ -6369,6 +6468,157 @@ dialogue_trees:
           end_dialogue: true
         choices: []
 
+  # --- Ashmoore shopkeepers ---
+  - id: ashmoore_apothecary_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Pella Wren measures a pinch of blue powder on a brass scale without
+          looking up. "Remedy, restorative, or something to keep your hands
+          steady? Name the trouble and I'll tell you what it costs."
+        side_effects: {}
+        choices:
+          - label: What do you keep behind the counter?
+            next_node: stock
+          - label: Any advice for the road?
+            next_node: advice
+          - label: Not today.
+            side_effects:
+              end_dialogue: true
+      stock:
+        text: >-
+          "Field draughts for small hurts, tonics for worse ones, stamina cordial
+          for long roads, and a few stranger bottles for those who insist on
+          learning lessons chemically."
+        side_effects: {}
+        choices:
+          - label: I'll look over the bottles.
+            side_effects:
+              end_dialogue: true
+      advice:
+        text: >-
+          "Do not drink anything because it glows prettily. Do not ignore a cut
+          that feels cold. And do not ask the forest for mercy when a candle
+          would have done."
+        side_effects: {}
+        choices:
+          - label: Practical enough. Thank you.
+            side_effects:
+              end_dialogue: true
+
+  - id: ashmoore_smith_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Harl Venn wipes soot from his palms with a rag that gave up long ago.
+          "Tools on the left, sharp things on the right, and armor wherever it
+          fits without falling on a child. What are you after?"
+        side_effects: {}
+        choices:
+          - label: What do you recommend for leaving town?
+            next_node: road_gear
+          - label: Do you buy old steel?
+            next_node: buys
+          - label: Just keeping warm by the forge.
+            side_effects:
+              end_dialogue: true
+      road_gear:
+        text: >-
+          "Knife first. Spear if you can carry one without poking a friend.
+          Padded jack if you've got the coin. Pride weighs less than armor and
+          protects worse."
+        side_effects: {}
+        choices:
+          - label: I'll see what is on the rack.
+            side_effects:
+              end_dialogue: true
+      buys:
+        text: >-
+          "Weapons, armor, useful metal, and tools with life left in them. I
+          don't pay for rust unless it is still attached to a story."
+        side_effects: {}
+        choices:
+          - label: Fair.
+            side_effects:
+              end_dialogue: true
+
+  - id: cora_vale_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Cora Vale taps a pencil against her ledger, already counting the mud on
+          your boots as evidence of future purchases. "If it keeps a person fed,
+          dry, lit, or less lost, it probably has a shelf here."
+        side_effects: {}
+        choices:
+          - label: What sells fastest?
+            next_node: staples
+          - label: Do you buy odds and ends?
+            next_node: buys
+          - label: I'll browse.
+            side_effects:
+              end_dialogue: true
+      staples:
+        text: >-
+          "Torches before sundown, candles after rain, pouches after market day,
+          and backpacks whenever someone decides they are the sort of fool who
+          needs both hands free."
+        side_effects: {}
+        choices:
+          - label: Sounds like my kind of fool.
+            side_effects:
+              end_dialogue: true
+      buys:
+        text: >-
+          "Clean trade goods, serviceable tools, trail food if it has not already
+          become an experiment. Bring me curios and I'll price them honestly;
+          bring me junk and I'll price them more honestly."
+        side_effects: {}
+        choices:
+          - label: I'll keep that in mind.
+            side_effects:
+              end_dialogue: true
+
+  - id: lysa_hearthloaf_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Lysa Hearthloaf slides a tray from the oven and closes the iron door
+          with one practiced hip. "Bread now, cider hot, apples honest, cheese
+          sharp enough to answer back. Eat before the road teaches you manners."
+        side_effects: {}
+        choices:
+          - label: What is fresh?
+            next_node: fresh
+          - label: What travels best?
+            next_node: travel_food
+          - label: Maybe later.
+            side_effects:
+              end_dialogue: true
+      fresh:
+        text: >-
+          "Loaves this hour, cider since dawn, stew if Mira hasn't bought the
+          last pot for the inn. The apples are from north slope trees and better
+          than they look."
+        side_effects: {}
+        choices:
+          - label: I'll take a look.
+            side_effects:
+              end_dialogue: true
+      travel_food:
+        text: >-
+          "Cheese, sausage, apples, water. A stew bowl tastes better, but it
+          makes a poor companion in a pack."
+        side_effects: {}
+        choices:
+          - label: Sensible.
+            side_effects:
+              end_dialogue: true
+
   # --- Cogsworth NPCs ---
   - id: clockmaster_dialogue
     root_node: greeting
@@ -7775,18 +8025,224 @@ npcs:
           set_flags: [tipped_mira]
     shop:
       name: The Wandering Crow's Counter
-      buys_categories: [trade_good]
+      buys_categories: [food, drink, trade_good]
       sell_ratio: 0.5
       starting_coins: 300
       stock:
         - item_id: carved_mug
           quantity: 8
+          restock_to: 8
+          restock_every_ticks: 168
         - item_id: tallow_candle
           quantity: 15
+          restock_to: 15
+          restock_every_ticks: 168
         - item_id: dried_herbs
+          quantity: -1
+        - item_id: tankard_of_ale
+          quantity: -1
+        - item_id: bottle_of_wine
+          quantity: 8
+          restock_to: 8
+          restock_every_ticks: 168
+        - item_id: hot_cider
+          quantity: -1
+        - item_id: venison_stew_bowl
+          quantity: 10
+          restock_to: 10
+          restock_every_ticks: 24
+        - item_id: crusty_loaf
+          quantity: -1
+        - item_id: wheel_of_cheese
           quantity: -1
     bank:
       name: The Wandering Crow's Strongbox
+
+  - id: ashmoore_apothecary
+    name: Pella Wren
+    description: >-
+      A narrow-shouldered apothecary with ink on her fingers and a copper smell
+      clinging to her apron. She labels every bottle twice and trusts neither
+      label until she has sniffed the cork.
+    home_room_id: alchemist_shop
+    current_room_id: alchemist_shop
+    dialogue_tree_id: ashmoore_apothecary_dialogue
+    behavior: defensive
+    shop:
+      name: Pella Wren's Remedies
+      buys_categories: [drink, trade_good]
+      sell_ratio: 0.45
+      region_mult: 1.05
+      starting_coins: 350
+      stock:
+        - item_id: minor_healing_draught
+          quantity: 6
+          restock_to: 6
+          restock_every_ticks: 168
+        - item_id: healing_tonic
+          quantity: 3
+          restock_to: 3
+          restock_every_ticks: 168
+        - item_id: major_healing_elixir
+          quantity: 1
+        - item_id: stamina_restorative
+          quantity: 4
+          restock_to: 4
+          restock_every_ticks: 168
+        - item_id: clarity_philter
+          quantity: 2
+          restock_to: 2
+          restock_every_ticks: 336
+        - item_id: antidote_phial
+          quantity: 3
+          restock_to: 3
+          restock_every_ticks: 168
+        - item_id: dried_herbs
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Pella Wren steadies a rack of bottles with one ink-stained hand."
+
+  - id: ashmoore_smith
+    name: Harl Venn
+    description: >-
+      Ashmoore's smith is compact, scarred, and permanently dusted with coal
+      grit. His beard is singed short on one side, and his eyes keep returning
+      to the door whenever the forest wind changes.
+    home_room_id: blacksmith_forge
+    current_room_id: blacksmith_forge
+    dialogue_tree_id: ashmoore_smith_dialogue
+    behavior: defensive
+    shop:
+      name: Forge and Hammer Armory
+      buys_categories: [weapon, armor, utility, trade_good]
+      sell_ratio: 0.6
+      region_mult: 1.0
+      starting_coins: 450
+      stock:
+        - item_id: ashmoore_hunting_knife
+          quantity: 5
+          restock_to: 5
+          restock_every_ticks: 168
+        - item_id: ashmoore_militia_spear
+          quantity: 3
+          restock_to: 3
+          restock_every_ticks: 336
+        - item_id: ashmoore_padded_jack
+          quantity: 3
+          restock_to: 3
+          restock_every_ticks: 336
+        - item_id: ashmoore_kettle_helm
+          quantity: 2
+          restock_to: 2
+          restock_every_ticks: 336
+        - item_id: sharpening_stone
+          quantity: -1
+        - item_id: horseshoe
+          quantity: -1
+        - item_id: pitch_torch
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Harl Venn shifts a spear rack aside to clear the forge threshold."
+
+  - id: cora_vale
+    name: Cora Vale
+    description: >-
+      A practical shopkeeper with twine cuts across both thumbs and a pencil
+      tucked through her braid. She can weigh nails, apples, and excuses with
+      the same exacting look.
+    home_room_id: ashmoore_general_store
+    current_room_id: ashmoore_general_store
+    dialogue_tree_id: cora_vale_dialogue
+    behavior: defensive
+    shop:
+      name: Vale's General Store
+      buys_categories: [trade_good, food, utility]
+      sell_ratio: 0.5
+      region_mult: 0.98
+      starting_coins: 400
+      stock:
+        - item_id: pitch_torch
+          quantity: -1
+        - item_id: tallow_candle
+          quantity: -1
+        - item_id: beeswax_candle
+          quantity: 12
+          restock_to: 12
+          restock_every_ticks: 168
+        - item_id: leather_backpack
+          quantity: 3
+          restock_to: 3
+          restock_every_ticks: 336
+        - item_id: canvas_satchel
+          quantity: 5
+          restock_to: 5
+          restock_every_ticks: 168
+        - item_id: belt_pouch
+          quantity: 8
+          restock_to: 8
+          restock_every_ticks: 168
+        - item_id: flask_of_spring_water
+          quantity: -1
+        - item_id: steel_shovel
+          quantity: 2
+          restock_to: 2
+          restock_every_ticks: 336
+        - item_id: pry_bar
+          quantity: 2
+          restock_to: 2
+          restock_every_ticks: 336
+        - item_id: iron_chain_length
+          quantity: 4
+          restock_to: 4
+          restock_every_ticks: 336
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Cora Vale makes a small mark in her ledger as the door latch clicks."
+
+  - id: lysa_hearthloaf
+    name: Lysa Hearthloaf
+    description: >-
+      A round-faced baker with flour in the creases of her sleeves and forearms
+      strong from kneading. She talks to loaves as if they are stubborn but
+      promising children.
+    home_room_id: ashmoore_bakery
+    current_room_id: ashmoore_bakery
+    dialogue_tree_id: lysa_hearthloaf_dialogue
+    behavior: defensive
+    shop:
+      name: Hearthloaf Bakery
+      buys_categories: [food, drink, trade_good]
+      sell_ratio: 0.5
+      region_mult: 0.95
+      starting_coins: 250
+      stock:
+        - item_id: crusty_loaf
+          quantity: -1
+        - item_id: wheel_of_cheese
+          quantity: -1
+        - item_id: basket_of_apples
+          quantity: -1
+        - item_id: smoked_sausage
+          quantity: 12
+          restock_to: 12
+          restock_every_ticks: 168
+        - item_id: venison_stew_bowl
+          quantity: 8
+          restock_to: 8
+          restock_every_ticks: 24
+        - item_id: hot_cider
+          quantity: -1
+        - item_id: flask_of_spring_water
+          quantity: -1
+    triggers:
+      - on: encounter
+        do:
+          - narrate_room: "Lysa Hearthloaf turns a tray of rolls and nods without losing count."
 
   # -------------------------------------------------------------------------
   # AREA: cogsworth — Steampunk City (Phase 1 Foundation)

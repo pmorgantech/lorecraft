@@ -398,12 +398,13 @@ sell mug        — sell a carried item to the shop here
 appraise gem    — estimate what an item is worth in coins
 ```
 
-Some NPCs run a shop — `list` in their room to see what's for sale. Shops only buy
-certain kinds of goods, won't take anything soulbound, and have real (finite) cash — sell
-too much in one place and they'll run dry. The `bartering` skill and your standing with
-the vendor both shave a little off the price over time. Prices also vary by place —
-the same goods can cost more or less depending on where you are, so it pays to know the
-routes.
+Some NPCs run a shop — `list` in their room to see what's for sale. In Ashmoore,
+try the inn, forge, apothecary, general store, and bakery around the village market.
+Shops only buy certain kinds of goods, won't take anything soulbound, and have real
+(finite) cash — sell too much in one place and they'll run dry. The `bartering`
+skill and your standing with the vendor both shave a little off the price over time.
+Prices also vary by place — the same goods can cost more or less depending on where
+you are, so it pays to know the routes.
 
 ## Banking
 

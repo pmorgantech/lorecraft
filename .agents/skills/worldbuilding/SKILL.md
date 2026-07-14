@@ -49,7 +49,7 @@ A room is a list entry. Fields:
 |---|---|
 | `id` | Stable string key (e.g. `wandering_crow_inn`). Referenced by exits, NPCs, triggers. |
 | `name`, `description` | Display text. |
-| `area_id` | **Zone** the room belongs to (`town`, `wilderness`, `cave`). Used by `narrate_zone`, weather fronts, spawns, and zone-qualified addressing. |
+| `zone` | Zone the room belongs to (`ashmoore`, `whisperwood`, `cogsworth`, etc.). Used by pricing, weather/climate, spawns, and zone-qualified addressing. |
 | `map_x`, `map_y`, `map_z` | Minimap coords; `map_z` is floor/level. |
 | `light_level` | 0 = dark (needs a light source to look/act). |
 | `terrain` | Travel-gating terrain (`normal`, `forest`, `water`, …). |
@@ -84,7 +84,7 @@ triggers:
 
 `when:` conditions are evaluated against the **actor** (the triggering player). `do:` effects
 run in order; targets like `narrate_room` broadcast to the room, `narrate_zone` to the whole
-`area_id`, `apply_effect` to `actor|room|stored_item`.
+zone, and `apply_effect` to `actor|room|stored_item`.
 
 ## NPCs (`world_content/world.yaml` → `npcs:`)
 
@@ -117,6 +117,71 @@ npcs:
   `end_dialogue`, `adjust_reputation`).
 - **`ai`** drives autonomous movement; an NPC that moves fires *its* `encounter` triggers for
   players it walks into.
+
+## World-building quality bars
+
+Use `docs/worldbuilding_guide.md` as the deeper reference when planning zones, shops,
+quests, or dense room clusters. The durable rules for Lorecraft content:
+
+- Keep areas modular and geographically coherent. Exits should be reciprocal unless the
+  one-way route is deliberate and signposted.
+- Prefer dense, useful rooms over corridors. Every new room should usually offer at least
+  one concrete feature: an NPC, shop stock, readable/usable item, clue, trigger, ambience,
+  rest point, or navigational choice.
+- Descriptions should be objective, static, and multi-sensory. Avoid "you feel/you stand,"
+  assumed actions, relative directions like left/right, parser instructions, or dynamic facts
+  that should live on NPCs, triggers, ambient events, or items.
+- Implement important people and objects separately. If prose makes a shopkeeper, guard,
+  sign, key item, or special shelf sound interactive, add the NPC/item/dialogue/trigger when
+  feasible instead of leaving it as unreachable flavor.
+- Keep rewards and shop stock thematic and proportionate. Avoid flooding the economy with
+  excessive coins, unlimited high-power gear, or off-theme items just to fill shelves.
+
+## Shops and service NPCs
+
+Lorecraft shops are currently NPC-attached economy data (`features/economy`), not standalone
+room records. For a normal fixed shop, place a stationary shopkeeper in the shop room:
+`home_room_id == current_room_id`, no roaming `ai`, and a `shop:` block. A roving merchant is
+the same shape with a schedule/route, but use that intentionally.
+
+```yaml
+npcs:
+  - id: ashmoore_general_keeper
+    name: Cora Vale
+    description: A practical shopkeeper with twine cuts across both thumbs.
+    home_room_id: ashmoore_general_store
+    current_room_id: ashmoore_general_store
+    dialogue_tree_id: cora_vale_dialogue
+    behavior: defensive
+    shop:
+      name: Vale's General Store
+      buys_categories: [trade_good, food, utility]
+      sell_ratio: 0.5
+      region_mult: 1.0
+      starting_coins: 400
+      stock:
+        - item_id: pitch_torch
+          quantity: -1
+        - item_id: leather_backpack
+          quantity: 3
+          restock_to: 3
+          restock_every_ticks: 168
+```
+
+Shop authoring checklist:
+
+- Put the shop in an `indoor: true` room unless it is explicitly an outdoor stall.
+- Give the shopkeeper short, role-specific dialogue; avoid generic "welcome to my shop."
+- Prefer existing items first. Add new items only when the role needs missing stock or
+  local flavor.
+- Use finite `starting_coins` and `quantity` for meaningful stock; `quantity: -1` only for
+  mundane staples that should not run out.
+- Use `restock_to`/`restock_every_ticks` for finite staples. Leave rare items finite with no
+  restock unless repeat availability is intended.
+- Set `buys_categories` narrowly enough that each shop has an identity.
+- There is no first-class shop-hours field yet. If hours are needed without engine work,
+  approximate them by moving the shopkeeper away on an NPC `schedule`; otherwise keep
+  service NPCs stationary.
 
 ## Weather fronts (`world_content/weather_fronts.yaml`)
 

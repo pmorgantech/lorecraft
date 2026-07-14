@@ -58,6 +58,10 @@ cover/
 # Django stuff:
 *.log
 
+# Runtime logs
+logs/*
+!logs/.gitkeep
+
 # Flask stuff:
 instance/
 .webassets-cache

@@ -28,6 +28,11 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
 For parallel agent work:
 
 - **Worktree isolation:** Each agent gets its own `.venv`, `var/app.sqlite`, and docs copy via `make bootstrap` (first-time setup).
+- **Codex worktrees:** Codex-created worktrees are not guaranteed to have the background
+  `.claude` session bootstrap. Before running tests in a freshly created Codex worktree,
+  run `make bootstrap` from that worktree and allow network access if dependency install
+  needs it. Confirm `.venv/bin/python -c "import lorecraft; print(lorecraft.__file__)"`
+  resolves under the worktree before trusting test output.
 - **Testing:** After `make bootstrap`, activate the worktree's own `.venv` and plain `make test` runs against the worktree's code — no `PYTHONPATH` needed. (The `PYTHONPATH="$PWD/src"` recipe below remains the fallback for un-bootstrapped worktrees.)
 - **Commits:** Use conventional-commits (`feat:`, `fix:`, `docs:`) — they will feed the automated release workflow.
 - **Version coordination (planned):** A GitHub Action will handle version bumps + CHANGELOG updates on merge to `main`; once it lands, agents stop touching version files. **Until then the manual rule below still applies.**
@@ -156,9 +161,12 @@ python -m pytest -n auto --dist=loadfile --cov=src/lorecraft --cov-report=term-m
 
 Every session running inside a `.claude/worktrees/<name>` checkout gets its own isolated `.venv`
 **automatically**: `session-start.sh` fires `bash scripts/bootstrap-worktree.sh` in the background
-the instant the session starts (idempotent — safe to fire repeatedly; see the script). That venv's
-editable install resolves `import lorecraft` to **that worktree's** `src/lorecraft`, not the
-primary tree's.
+the instant the session starts (idempotent — safe to fire repeatedly; see the script). Codex
+worktrees do **not** necessarily get that automatic background setup, so run `make bootstrap`
+manually in a new Codex worktree before tests; if dependency installation fails with DNS/network
+errors, rerun the same bootstrap with network access rather than falling back to a different
+venv. That venv's editable install resolves `import lorecraft` to **that worktree's**
+`src/lorecraft`, not the primary tree's.
 
 **Use it directly — this is the default, not a fallback:**
 

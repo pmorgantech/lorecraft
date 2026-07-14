@@ -3,7 +3,7 @@
 **Goal:** Build a rich, multi-zone test world to exercise the engine's features across all three tiers (Tier 1 primitives, Tier 2 features, Tier 3 content) with particular attention to areas that are high-risk or low-mileage in the current Ashmoore sample.
 
 **Current date:** 2026-07-14
-**Current engine version:** v0.99.0 (multi-level maps, full UI system, NPC movement framework, zone climate, spawns, room loot, ambient room events)
+**Current engine version:** v0.102.0 (multi-level maps, full UI system, NPC movement framework, zone climate, spawns, room loot, ambient room events)
 **Status:** Active world-build plan. Sprint 80 closed the former zone-climate/spawn/loot/ambient/NPC-route blockers; remaining unsupported items are marked **[BLOCKED]**.
 
 ---
@@ -25,7 +25,7 @@
 | **Ambient messages** | `Room.ambient_events` + `RoomAmbientService` | Rooms can declare timed flavor lines with tick intervals and chance, emitted only for occupied rooms |
 | **NPC fixed-route patrol** | `NPC.ai.mode: route` + `NpcRouteLoader` | NPC-specific `RouteHooks` run over `MobileRouteService`, updating `NPC.current_room_id` and broadcasting depart/arrive |
 | **Item types** | weapon, armor, utility, coin | Color-coded in UI (rarity system available too) |
-| **Shops/stores** | `features/shop/` | Create shops with inventory, NPC shopkeepers, prices |
+| **Shops/stores** | `features/economy/` | Create shops with inventory, NPC shopkeepers, prices |
 | **Quests** | `features/quest/` | Quest givers, objectives, rewards, dialogue conditions |
 | **Locked doors** | `locked: true` + `key_item_id` | Exits can require keys to traverse |
 | **Item effects/buffs** | Traits/effects system | Wearable items can grant traits; potions can apply temporary effects |
@@ -698,7 +698,7 @@ both `whisperwood_meadow_clearing` and `whisperwood_cave_entrance` are now safe 
 - **NPC model:** `src/lorecraft/features/npc/` (NPC creation, dialogue, quest integration)
 - **Weather system:** `src/lorecraft/features/weather/` (global weather, transit blocking)
 - **Movement/patrol:** `src/lorecraft/services/mobile_route.py`, `src/lorecraft/features/movement/`
-- **Shop system:** `src/lorecraft/features/shop/` (vendor management, inventory, pricing)
+- **Shop system:** `src/lorecraft/features/economy/` (vendor management, inventory, pricing)
 - **Quest system:** `src/lorecraft/features/quest/` (quest definition, objectives, rewards)
 - **Lighting:** `light_level` in rooms; items with light properties (e.g., `emits_light: true`)
 

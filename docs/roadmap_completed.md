@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-14, through v0.100.0).** The active, forward-looking
+> **Historical record (last extended 2026-07-14, through v0.102.0).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,7 +9,7 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, and **70–81**. Layout note: recent completions are
+> cycles, context-attached commands), **56–69**, and **70–82**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
@@ -19,10 +19,25 @@
 
 ---
 
-## Sprints 70–81 — QoL, admin/world cleanup, progression, disciplines, and zone climate (v0.78.0–v0.100.0, archived 2026-07-14)
+## Sprints 70–82 — QoL, admin/world cleanup, progression, disciplines, zone climate, and Ashmoore shops (v0.78.0–v0.102.0, archived 2026-07-14)
 
 > Moved here from the active roadmap on 2026-07-14 once Sprint 80 closed. Full task
 > detail preserved below; per-version notes in [`../CHANGELOG.md`](../CHANGELOG.md).
+
+## Sprint 82 — Ashmoore fixed-location shop village
+
+**Goal:** make Ashmoore's village services feel like a real town market while staying inside the
+existing economy model: fixed-location shops are represented by stationary NPC shopkeepers with
+`shop:` blocks. Roving shops remain possible by moving an NPC, but this sprint intentionally avoids
+new first-class shop-hours or room-owned-shop engine work.
+
+| # | Task | Status |
+|---|------|--------|
+| 82.1 | Add a compact, coherent Ashmoore shop cluster connected to the existing market. | [x] v0.102.0 — Added `ashmoore_general_store` and `ashmoore_bakery` off `market_stalls`, both indoor town rooms with reciprocal exits and feature-dense descriptions. |
+| 82.2 | Add dedicated fixed-location services for potions, food/drink, armory basics, and general goods. | [x] v0.102.0 — Added stationary shopkeepers Pella Wren, Harl Venn, Cora Vale, and Lysa Hearthloaf; expanded Mira's Wandering Crow counter into a real food/drink/bar shop. |
+| 82.3 | Use existing economy surfaces for pricing, finite cash, finite stock, and restocking. | [x] v0.102.0 — Shops use focused `buys_categories`, `sell_ratio`, `region_mult`, `starting_coins`, finite quantities, unlimited staples, and `restock_to`/`restock_every_ticks` where appropriate. |
+| 82.4 | Prefer existing stock and add only missing Ashmoore-local goods. | [x] v0.102.0 — Reused existing potions, food, drink, light sources, containers, and tools; added four local armory items (`ashmoore_hunting_knife`, `ashmoore_militia_spear`, `ashmoore_padded_jack`, `ashmoore_kettle_helm`). |
+| 82.5 | Validate world content and focused economy/world tests. | [x] v0.102.0 — `world_cli validate --file world_content/world.yaml` clean; `tests/tools/test_world_content_reachability.py` and `tests/unit/test_economy.py` passed (`26 passed`). |
 
 ## Sprint 70 — Social emotes & quality-of-life commands
 
