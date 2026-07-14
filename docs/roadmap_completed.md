@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-14, through v0.102.0).** The active, forward-looking
+> **Historical record (last extended 2026-07-14, through v0.103.0).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,7 +9,7 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, and **70–82**. Layout note: recent completions are
+> cycles, context-attached commands), **56–69**, and **70–83**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
@@ -19,10 +19,23 @@
 
 ---
 
-## Sprints 70–82 — QoL, admin/world cleanup, progression, disciplines, zone climate, and Ashmoore shops (v0.78.0–v0.102.0, archived 2026-07-14)
+## Sprints 70–83 — QoL, admin/world cleanup, progression, disciplines, zone climate, Ashmoore shops, and hunts (v0.78.0–v0.103.0, archived 2026-07-14)
 
 > Moved here from the active roadmap on 2026-07-14 once Sprint 80 closed. Full task
 > detail preserved below; per-version notes in [`../CHANGELOG.md`](../CHANGELOG.md).
+
+## Sprint 83 — Scavenger-hunt quest content
+
+**Goal:** promote scavenger hunts from a minimal three-item demo event into a repeatable
+content pattern for 3-7 themed items scattered through a zone, with optional speed-scaled
+coin rewards.
+
+| # | Task | Status |
+|---|------|--------|
+| 83.1 | Add a generic spread-placement option for authored hunts. | [x] v0.103.0 — `spread_items: true` now chooses spawn rooms without replacement while unused rooms remain, preserving seeded deterministic placement. |
+| 83.2 | Add elapsed-time reward scaling without new Tier 1 policy. | [x] v0.103.0 — Hunt reward tiers are data-driven (`reward.tiers[].max_elapsed_seconds` + `coins`) and measured from the player's first clue item using the existing world-clock epoch and ledger coin primitive. |
+| 83.3 | Ship a seven-item Ashmoore hunt. | [x] v0.103.0 — Expanded the Harvest Trinket Hunt to seven clue item definitions, spread across seven Ashmoore rooms, with coin rewards of 2000/250/100 for under 1/2/5 minutes. |
+| 83.4 | Update docs and focused tests. | [x] v0.103.0 — Updated player/builder/scavenger-hunt docs and added unit coverage for spread placement, timed reward tiers, and shipped-content lint. |
 
 ## Sprint 82 — Ashmoore fixed-location shop village
 

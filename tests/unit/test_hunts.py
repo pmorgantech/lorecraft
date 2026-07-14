@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
@@ -12,7 +13,7 @@ from lorecraft.engine.game.events import EventBus
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player, PlayerStats
-from lorecraft.engine.models.world import Item, Room
+from lorecraft.engine.models.world import Item, Room, WorldClock
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -26,6 +27,7 @@ from lorecraft.features.hunts.models import (
     HuntDef,
     HuntRegistry,
     HuntReward,
+    HuntRewardTier,
     HuntsDocument,
     lint_hunts,
     validate_hunts_document,
@@ -63,6 +65,8 @@ def _seed(session: Session) -> Player:
 def _ctx(session: Session, player: Player) -> GameContext:
     room = session.get(Room, player.current_room_id)
     assert room is not None
+    bind = session.get_bind()
+    assert isinstance(bind, Engine)
     return GameContext(
         player=player,
         room=room,
@@ -75,8 +79,8 @@ def _ctx(session: Session, player: Player) -> GameContext:
         ledger=LedgerService(),
         rng=GameRng(seed=1),
         session=session,
-        meters=MeterService(session.get_bind(), GameRng()),
-        effects=EffectService(session.get_bind(), GameRng()),
+        meters=MeterService(bind, GameRng()),
+        effects=EffectService(bind, GameRng()),
         npc_repo=NpcRepo(session),
         manager=ConnectionManager(),
         bus=EventBus(),
@@ -111,6 +115,37 @@ def test_open_spawns_clue_items_and_marks_open() -> None:
         assert {"gem", "coin"} <= room_items
 
 
+def test_spread_items_places_each_clue_in_a_different_room_when_possible() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    with Session(engine) as session:
+        _seed(session)
+        session.add(Room(id="road", name="Road", description="d", map_x=1, map_y=0))
+        session.commit()
+        registry = HuntRegistry()
+        registry.register(
+            HuntDef(
+                id="spread",
+                name="Spread Hunt",
+                clue_items=["gem", "coin"],
+                spawn_rooms=[ROOM, "road"],
+                spread_items=True,
+            )
+        )
+        service = HuntService(registry=registry, ledger=LedgerService())
+
+        service.open("spread", session, GameRng(seed=1))
+        session.commit()
+
+        clue_rooms = {
+            stack.owner_id
+            for room_id in [ROOM, "road"]
+            for stack in StackRepo(session).stacks_for_owner("room", room_id)
+            if stack.item_id in {"gem", "coin"}
+        }
+        assert clue_rooms == {ROOM, "road"}
+
+
 def test_finding_all_items_grants_reward_and_lore() -> None:
     engine = create_engine("sqlite://")
     create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
@@ -133,6 +168,56 @@ def test_finding_all_items_grants_reward_and_lore() -> None:
         assert player.flags.get("hunt:h1:done") is True
         assert player.flags.get("lore:test_hunt") is True
         assert LedgerService().balance_of(session, "player", "p1") == 30
+
+
+@pytest.mark.parametrize(
+    ("elapsed_seconds", "expected_coins"),
+    [(30.0, 2000), (90.0, 250), (240.0, 100), (300.0, 5)],
+)
+def test_timed_reward_tiers_use_elapsed_hunt_time(
+    elapsed_seconds: float, expected_coins: int
+) -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    with Session(engine) as session:
+        player = _seed(session)
+        registry = HuntRegistry()
+        registry.register(
+            HuntDef(
+                id="timed",
+                name="Timed Hunt",
+                clue_items=["gem", "coin"],
+                spawn_rooms=[ROOM],
+                reward=HuntReward(
+                    coins=5,
+                    tiers=[
+                        HuntRewardTier(max_elapsed_seconds=60.0, coins=2000),
+                        HuntRewardTier(max_elapsed_seconds=120.0, coins=250),
+                        HuntRewardTier(max_elapsed_seconds=300.0, coins=100),
+                    ],
+                ),
+            )
+        )
+        service = HuntService(registry=registry, ledger=LedgerService())
+        bus = EventBus()
+        service.register(bus)
+        service.open("timed", session, GameRng(seed=1))
+        session.commit()
+
+        ctx = _ctx(session, player)
+        ctx.bus = bus
+        ctx.clock = WorldClock(game_epoch=10.0, real_epoch=0.0)
+        inv = InventoryService()
+
+        inv.take_item("gem", ctx)
+        ctx.flush_events()
+        assert player.flags.get("hunt:timed:started_epoch") == 10.0
+
+        ctx.clock.game_epoch = 10.0 + elapsed_seconds
+        inv.take_item("coin", ctx)
+        ctx.flush_events()
+
+        assert LedgerService().balance_of(session, "player", "p1") == expected_coins
 
 
 def test_already_completed_hunt_does_not_re_reward() -> None:

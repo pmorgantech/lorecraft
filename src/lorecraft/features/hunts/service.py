@@ -36,6 +36,23 @@ def _done_flag(hunt_id: str) -> str:
     return f"hunt:{hunt_id}:done"
 
 
+def _started_epoch_flag(hunt_id: str) -> str:
+    return f"hunt:{hunt_id}:started_epoch"
+
+
+def _current_epoch(ctx: GameContext) -> float | None:
+    return ctx.clock.game_epoch if ctx.clock is not None else None
+
+
+def _elapsed_seconds(ctx: GameContext, started_epoch: object) -> float | None:
+    current_epoch = _current_epoch(ctx)
+    if current_epoch is None:
+        return None
+    if isinstance(started_epoch, bool) or not isinstance(started_epoch, (int, float)):
+        return None
+    return max(0.0, current_epoch - float(started_epoch))
+
+
 class HuntService:
     def __init__(
         self,
@@ -68,8 +85,13 @@ class HuntService:
         rng picks from `spawn_rooms`. Never commits (the caller owns the txn)."""
         hunt = self._require(hunt_id)
         location = ItemLocationService(session)
+        spread_rooms = list(hunt.spawn_rooms) if hunt.spread_items else []
         for item_id in hunt.clue_items:
-            room_id = rng.choice(hunt.spawn_rooms)
+            if spread_rooms:
+                room_id = rng.choice(spread_rooms)
+                spread_rooms.remove(room_id)
+            else:
+                room_id = rng.choice(hunt.spawn_rooms)
             location.spawn(item_id, Location("room", room_id))
         self._open.add(hunt_id)
         self._announce(
@@ -129,6 +151,11 @@ class HuntService:
         if ctx.player.flags.get(_done_flag(hunt.id)):
             return
         flags = dict(ctx.player.flags)
+        started_key = _started_epoch_flag(hunt.id)
+        if started_key not in flags:
+            current_epoch = _current_epoch(ctx)
+            if current_epoch is not None:
+                flags[started_key] = current_epoch
         flags[_found_flag(hunt.id, item_id)] = True
 
         remaining = [
@@ -150,12 +177,15 @@ class HuntService:
         if hunt.reward.lore:
             flags[f"lore:{hunt.reward.lore}"] = True
         ctx.player.flags = flags
-        if hunt.reward.coins > 0:
-            self._ledger.credit(ctx.session, "player", ctx.player.id, hunt.reward.coins)
+        coins = hunt.reward.coins_for_elapsed(
+            _elapsed_seconds(ctx, flags.get(started_key))
+        )
+        if coins > 0:
+            self._ledger.credit(ctx.session, "player", ctx.player.id, coins)
         ctx.say(
             (
-                f"You've completed {hunt.name}! Reward: {hunt.reward.coins} coins."
-                if hunt.reward.coins > 0
+                f"You've completed {hunt.name}! Reward: {coins} coins."
+                if coins > 0
                 else f"You've completed {hunt.name}!"
             ),
             MessageType.QUEST,

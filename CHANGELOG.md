@@ -4,6 +4,23 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.103.0] - 2026-07-14
+
+### Added
+
+- **Sprint 83 — Scavenger-hunt quest content.** Added `spread_items` placement
+  for hunts so authored clue items can be distributed across distinct rooms,
+  plus data-driven timed coin reward tiers measured from the player's first
+  found clue item.
+- Expanded Ashmoore's Harvest Trinket Hunt to seven festival trinkets spread
+  across seven Ashmoore rooms, with speed rewards of 2000/250/100 coins for
+  completion under 1/2/5 minutes.
+
+### Docs
+
+- Updated the scavenger-hunt design, player guide, builder guide, and roadmap
+  archive for the new hunt content pattern and reward-tier schema.
+
 ## [0.102.0] - 2026-07-14
 
 ### Added

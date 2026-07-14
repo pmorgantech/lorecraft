@@ -247,6 +247,7 @@ marks           — list the marks you have earned by discovery
 Every so often a **scavenger hunt** runs: a themed set of items is scattered across a handful
 of rooms, and finding all of them earns a reward. `hunts` shows what's active and how many
 you've found; just `take` the hunt items you come across — the last one completes the hunt.
+Some hunts pay speed bonuses, timed from the first hunt item you find.
 
 **Marks** are badges earned by discovery — visiting places, meeting people, finding items,
 learning lore. They award themselves the moment you complete one's criteria ("You have earned

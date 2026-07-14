@@ -2,7 +2,7 @@
 
 **A concise list of *remaining* work.** Every **completed** sprint — 1–34 (foundation, the Tier 1
 engine-core primitives, the Tier 2 pillar feature band, the tier-split follow-ons), the performance
-& scaling band (35–37), and everything since (39–82) — lives in
+& scaling band (35–37), and everything since (39–83) — lives in
 [`roadmap_completed.md`](roadmap_completed.md) with full task-level detail. Per-version detail is in
 [`../CHANGELOG.md`](../CHANGELOG.md); the idea backlog, set-aside combat/PvP specs, and the deferred
 multiplayer test pass + concurrency/batching gates are in [`wishlist.md`](wishlist.md).
@@ -11,10 +11,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-14, v0.102.0 on develop; Sprints 1–82 all shipped)
+## Where things stand (2026-07-14, v0.103.0 on develop; Sprints 1–83 all shipped)
 
-**Everything through Sprint 82 is shipped on `develop`** (currently v0.102.0). `roadmap.md` now tracks
-remaining work only; the full task-level history for completed Sprints 1–82 lives in
+**Everything through Sprint 83 is shipped on `develop`** (currently v0.103.0). `roadmap.md` now tracks
+remaining work only; the full task-level history for completed Sprints 1–83 lives in
 [`roadmap_completed.md`](roadmap_completed.md), with release-level detail in
 [`../CHANGELOG.md`](../CHANGELOG.md).
 
@@ -24,7 +24,9 @@ old skills/skill-tree split, the Sprint 79 cleanup pass for its review follow-up
 NPC route hooks, and admin multi-weather controls. Sprint 81 adds the Ashmoore graveyard, the
 Brass Vaults steampunk zone, new mobile hazards, and local quest content using those world-system
 surfaces. Sprint 82 adds fixed-location Ashmoore shops for potions, food/drink, general goods,
-and armory basics using stationary NPC shopkeepers and the existing economy model.
+and armory basics using stationary NPC shopkeepers and the existing economy model. Sprint 83
+expands Ashmoore's scavenger-hunt content pattern with spread placement for 3-7 item hunts and
+speed-scaled coin reward tiers.
 
 Sprint 73's cleanup backlog and the 2026-07-13 UI-cohesion items are closed and preserved in
 [`roadmap_completed.md`](roadmap_completed.md).
@@ -52,7 +54,6 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
 | E2E coverage gap for the new discipline/ability command surface | Added 2026-07-13 (Sprint 78 Test & QA pass). `train`/`abilities`/`disciplines`/`forage`/`pick`/`sense` are unit-tested but not directly exercised by browser-driven e2e tests. Not a current defect — flagged as worth a follow-up e2e pass. |
 | Ability tuning live-admin controls | Added 2026-07-14 (Sprint 79 triage). Per-ability `cost`, `cooldown_seconds`, resource costs, and proficiency-growth values (`improve_chance`/`max_rank`) remain static YAML by design. Build a DB-backed, admin-live-tunable config only if admins ask to retune these without restart/reseed; do not build it speculatively. |
-| Scavenger-hunt quest content | Add a repeatable content pattern for scattering 3–7 themed items around a zone and asking the player to locate them. The simple version is directly supported today as a multi-stage quest: each stage can check item possession or room visits, and `QuestTimerService` can impose an overall deadline. What is not first-class yet is elapsed-time scoring or reward scaling by completion speed; implement that only if the first content pass needs it, likely as Tier 1 reward metadata/timing hooks plus Tier 2 quest policy. |
 | Database optimization and query observability pass | Audit schema design, normalization boundaries, and indexes against real gameplay/admin query paths. Add query timing/frequency/slow-query instrumentation if it is not already sufficient: SQLAlchemy cursor hooks can log structured query spans to non-DB logs under `logs/` initially, with `*.log` ignored. Include an analysis tool that summarizes slowest queries, most frequent statements, and missing-index candidates from the log before changing schema. |
 
 
@@ -60,12 +61,12 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used (complete):** 1–82, except for deliberately skipped/deferred numbers below. Full task
+- **Used (complete):** 1–83, except for deliberately skipped/deferred numbers below. Full task
   detail lives in [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
   (concurrency/threading gate), 61/63/64 (combat/PvP work), and 65 (multiplayer trade/transit
   test pass).
-- **Next genuinely free sprint number:** 83. Do not recycle a number that appears here, in
+- **Next genuinely free sprint number:** 84. Do not recycle a number that appears here, in
   [`roadmap_completed.md`](roadmap_completed.md), or in [`wishlist.md`](wishlist.md).
 
 ---

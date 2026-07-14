@@ -3272,6 +3272,38 @@ items:
     takeable: true
     tradeable: false
 
+  - id: trinket_button
+    name: Carved Rowan Button
+    description: >-
+      A rowan-wood button carved with a tiny sheaf of wheat. The festival
+      committee used it to mark prize sashes before it slipped from its cord.
+    takeable: true
+    tradeable: false
+
+  - id: trinket_wheel
+    name: Painted Wooden Wheel
+    description: >-
+      A coin-sized toy wheel painted harvest red, with a pinhole through the
+      hub for stringing onto a garland. The paint is chipped at the rim.
+    takeable: true
+    tradeable: false
+
+  - id: trinket_spool
+    name: Little Thread Spool
+    description: >-
+      A thumb-small spool wound with orange thread. A scrap of paper tucked
+      through the core names it as one of the Harvest Festival tokens.
+    takeable: true
+    tradeable: false
+
+  - id: trinket_leaf
+    name: Pressed Rowan Leaf
+    description: >-
+      A rowan leaf pressed flat between waxed papers and brushed with a trace
+      of gold dust. Its stem is tied with festival twine.
+    takeable: true
+    tradeable: false
+
   # --- Cogsworth: Weapons (Phase 1) ---
   - id: iron_sword_cog
     name: Steel-Forged Sword

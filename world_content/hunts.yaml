@@ -6,12 +6,35 @@ hunts:
   - id: harvest_trinkets
     name: The Harvest Trinket Hunt
     description: >-
-      Three festival trinkets have gone missing about Ashmoore — a gilded
-      acorn, a tiny brass bell, and a faded ribbon. Find all three to claim a
-      reward from the festival coffers.
-    clue_items: [trinket_acorn, trinket_bell, trinket_ribbon]
-    spawn_rooms: [village_square, market_stalls, wandering_crow_inn]
+      Seven festival trinkets have gone missing about Ashmoore — a gilded
+      acorn, a tiny brass bell, a faded ribbon, a carved button, a painted
+      wooden wheel, a little thread spool, and a pressed rowan leaf. Find all
+      seven quickly to claim a reward from the festival coffers.
+    clue_items:
+      - trinket_acorn
+      - trinket_bell
+      - trinket_ribbon
+      - trinket_button
+      - trinket_wheel
+      - trinket_spool
+      - trinket_leaf
+    spawn_rooms:
+      - village_square
+      - market_stalls
+      - wandering_crow_inn
+      - blacksmith_forge
+      - alchemist_shop
+      - forest_path
+      - ruined_chapel
+    spread_items: true
     reward:
-      coins: 50
+      coins: 0
       lore: harvest_trinkets
+      tiers:
+        - max_elapsed_seconds: 60
+          coins: 2000
+        - max_elapsed_seconds: 120
+          coins: 250
+        - max_elapsed_seconds: 300
+          coins: 100
     duration_ticks: 240

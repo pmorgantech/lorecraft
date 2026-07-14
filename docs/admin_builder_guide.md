@@ -300,6 +300,47 @@ npcs:
       loop: true
 ```
 
+### Authoring scavenger hunts (`world_content/hunts.yaml`)
+
+Scavenger hunts are timed world events defined in their own content file, loaded into an
+in-memory registry at startup (`LORECRAFT_HUNTS_YAML_PATH` overrides the path). A hunt
+spawns clue item definitions into authored rooms only while the hunt is open; players
+complete it by taking every clue item.
+
+```yaml
+version: 1
+hunts:
+  - id: harvest_trinkets
+    name: The Harvest Trinket Hunt
+    description: Seven festival trinkets have gone missing about Ashmoore.
+    clue_items:
+      - trinket_acorn
+      - trinket_bell
+    spawn_rooms:
+      - village_square
+      - market_stalls
+    spread_items: true          # choose without replacement while rooms remain
+    reward:
+      coins: 0                  # fallback if no speed tier matches
+      lore: harvest_trinkets    # sets lore:harvest_trinkets
+      tiers:
+        - max_elapsed_seconds: 60
+          coins: 2000
+        - max_elapsed_seconds: 120
+          coins: 250
+        - max_elapsed_seconds: 300
+          coins: 100
+    duration_ticks: 240
+```
+
+Each `clue_items` id must be an item definition in `world_content/world.yaml`, but
+those items do not need `room_items` entries. `spawn_rooms` must reference real rooms.
+`spread_items: true` is the usual choice for authored 3-7 item hunts; if there are
+fewer rooms than clues, later clues fall back to normal seeded random placement.
+Timed reward tiers use game-clock seconds from the first clue item a player finds;
+the first `elapsed < max_elapsed_seconds` tier wins, otherwise `reward.coins` is
+paid.
+
 ### Authoring marks (`world_content/marks.yaml`)
 
 Marks (Sprint 53) are discovery badges defined in their own content file, loaded into an

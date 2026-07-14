@@ -19,12 +19,32 @@ HUNTS_SCHEMA_VERSION = 1
 class HuntReward(BaseModel):
     coins: int = 0
     lore: str | None = None  # sets flag lore:<lore>, journal-visible
+    tiers: list["HuntRewardTier"] = Field(default_factory=list)
 
     @field_validator("coins")
     @classmethod
     def _coins_non_negative(cls, value: int) -> int:
         if value < 0:
             raise ValueError("reward.coins must be >= 0")
+        return value
+
+    def coins_for_elapsed(self, elapsed_seconds: float | None) -> int:
+        if elapsed_seconds is not None:
+            for tier in sorted(self.tiers, key=lambda t: t.max_elapsed_seconds):
+                if elapsed_seconds < tier.max_elapsed_seconds:
+                    return tier.coins
+        return self.coins
+
+
+class HuntRewardTier(BaseModel):
+    max_elapsed_seconds: float = Field(gt=0)
+    coins: int = 0
+
+    @field_validator("coins")
+    @classmethod
+    def _coins_non_negative(cls, value: int) -> int:
+        if value < 0:
+            raise ValueError("reward tier coins must be >= 0")
         return value
 
 
@@ -36,6 +56,7 @@ class HuntDef(BaseModel):
     spawn_rooms: list[str] = Field(min_length=1)
     reward: HuntReward = Field(default_factory=HuntReward)
     duration_ticks: int = 240
+    spread_items: bool = False
 
     @field_validator("duration_ticks")
     @classmethod
