@@ -19,11 +19,13 @@ from sqlmodel import Session, SQLModel
 
 from lorecraft.db import (
     _ensure_additive_columns,
+    _ensure_scheduledjob_status_due_index,
     _migrate_regionpricing_area_id,
     _migrate_room_area_id,
     create_game_tables,
 )
 from lorecraft.engine.models.player import SaveSlot
+from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.models.world import NPC, Item, Room
 
 
@@ -428,6 +430,7 @@ def test_migrations_are_noop_on_non_sqlite_dialect() -> None:
     assert _ensure_additive_columns(engine) is None
     assert _migrate_room_area_id(engine) is None
     assert _migrate_regionpricing_area_id(engine) is None
+    assert _ensure_scheduledjob_status_due_index(engine) is None
 
     # Early-return before touching the DB at all.
     engine.begin.assert_not_called()
@@ -480,3 +483,92 @@ def test_discipline_ranks_added_and_legacy_skills_left_as_dead_column(
             text("SELECT discipline_ranks FROM playerstats WHERE player_id = 'p1'")
         ).scalar()
     assert value == "{}"
+
+
+# --- 8. ScheduledJob composite (status, due_at_epoch) index -------------------
+
+
+def _index_names(engine: Engine, table: str) -> set[str]:
+    return {idx["name"] for idx in inspect(engine).get_indexes(table)}
+
+
+def test_scheduledjob_composite_index_added_to_legacy_table(tmp_path: Path) -> None:
+    """A table created before the composite index existed (single-column
+    ``due_at_epoch``/``job_type`` indexes only) gets the composite index added.
+    """
+    engine = _file_engine(tmp_path)
+    # Simulate the pre-fix schema: no composite index, single-column ones only.
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE scheduledjob ("
+                "id VARCHAR NOT NULL PRIMARY KEY, "
+                "job_type VARCHAR NOT NULL, "
+                "due_at_epoch FLOAT NOT NULL, "
+                "status VARCHAR NOT NULL, "
+                "payload JSON NOT NULL, "
+                "created_at FLOAT NOT NULL)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE INDEX ix_scheduledjob_due_at_epoch ON scheduledjob (due_at_epoch)"
+            )
+        )
+    assert "ix_scheduledjob_status_due_at_epoch" not in _index_names(
+        engine, "scheduledjob"
+    )
+
+    _ensure_scheduledjob_status_due_index(engine)
+
+    assert "ix_scheduledjob_status_due_at_epoch" in _index_names(engine, "scheduledjob")
+
+
+def test_scheduledjob_composite_index_is_idempotent(tmp_path: Path) -> None:
+    engine = _file_engine(tmp_path)
+    ScheduledJob.__table__.create(engine)  # type: ignore[attr-defined]
+
+    _ensure_scheduledjob_status_due_index(engine)
+    _ensure_scheduledjob_status_due_index(engine)  # must not raise (IF NOT EXISTS)
+
+    assert "ix_scheduledjob_status_due_at_epoch" in _index_names(engine, "scheduledjob")
+
+
+def test_scheduledjob_composite_index_missing_table_is_noop(tmp_path: Path) -> None:
+    """No `scheduledjob` table at all (brand-new DB pre-`create_all`) is a no-op,
+    not an error — `_create_model_tables` will create the table (with the index
+    already declared in the model) before this migration ever runs in practice.
+    """
+    engine = _file_engine(tmp_path)
+    _ensure_scheduledjob_status_due_index(engine)  # must not raise
+
+
+def test_scheduledjob_query_plan_uses_composite_index(tmp_path: Path) -> None:
+    """The actual `SchedulerRepo.due()` predicate seeks via the composite index
+    instead of scanning the single-column `due_at_epoch` index — proving the fix
+    addresses the diagnosed query plan, not just adding an unused index.
+    """
+    engine = _file_engine(tmp_path)
+    ScheduledJob.__table__.create(engine)  # type: ignore[attr-defined]
+
+    with engine.connect() as conn:
+        plan = conn.execute(
+            text(
+                "EXPLAIN QUERY PLAN SELECT * FROM scheduledjob "
+                "WHERE status = 'pending' AND due_at_epoch <= 123.0"
+            )
+        ).all()
+    plan_text = " ".join(str(row) for row in plan)
+    assert "ix_scheduledjob_status_due_at_epoch" in plan_text
+
+
+def test_full_migration_path_creates_scheduledjob_composite_index(
+    tmp_path: Path,
+) -> None:
+    """`create_game_tables` on a brand-new DB ends up with the composite index
+    via the model's `__table_args__` (not the migration function, which only
+    matters for pre-existing legacy tables) — proving the two paths agree.
+    """
+    engine = _file_engine(tmp_path)
+    create_game_tables(engine)
+    assert "ix_scheduledjob_status_due_at_epoch" in _index_names(engine, "scheduledjob")

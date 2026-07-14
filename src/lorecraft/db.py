@@ -257,6 +257,9 @@ def create_game_tables(engine: Engine) -> None:
     # RegionPricing area_id(PK) → zone(PK) table-rebuild (Sprint 75.4). A PK
     # rename can't go through ALTER, so it needs a full rebuild of its own.
     _migrate_regionpricing_area_id(engine)
+    # Composite (status, due_at_epoch) index for SchedulerRepo.due() — the
+    # additive-column scanner above never adds indexes, only columns.
+    _ensure_scheduledjob_status_due_index(engine)
 
 
 def create_audit_tables(engine: Engine) -> None:
@@ -564,4 +567,39 @@ def _migrate_regionpricing_area_id(engine: Engine) -> None:
         )
     logger.info(
         "regionpricing-migration: rebuilt with zone PK (%d zone rows)", len(folded)
+    )
+
+
+def _ensure_scheduledjob_status_due_index(engine: Engine) -> None:
+    """Add the composite ``(status, due_at_epoch)`` index to a legacy DB.
+
+    ``_ensure_additive_columns`` only reconciles columns, never indexes, so a DB
+    created before this composite index was added to the model never gets it —
+    ``table.create(engine, checkfirst=True)`` is a no-op once the table exists.
+
+    Load-bearing for `SchedulerRepo.due()`'s per-tick query (diagnosed live: a
+    dev DB with 141k dispatched rows and 6 pending ones took ~25ms on this query
+    alone without the composite index, because SQLite's only option was a scan
+    of the single-column ``due_at_epoch`` index — which matches nearly every
+    historical row, since ``due_at_epoch`` never exceeds the ever-advancing
+    current epoch — filtering for ``status`` one row at a time). ``CREATE INDEX
+    IF NOT EXISTS`` makes this idempotent without needing a live-index inspector
+    round-trip.
+    """
+    if engine.dialect.name != "sqlite":
+        return
+
+    inspector = inspect(engine)
+    if "scheduledjob" not in inspector.get_table_names():
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_scheduledjob_status_due_at_epoch "
+                "ON scheduledjob (status, due_at_epoch)"
+            )
+        )
+    logger.info(
+        "scheduledjob-migration: ensured composite (status, due_at_epoch) index"
     )
