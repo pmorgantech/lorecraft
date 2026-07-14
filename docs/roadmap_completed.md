@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-14, through v0.103.0).** The active, forward-looking
+> **Historical record (last extended 2026-07-14, through v0.104.0).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,7 +9,7 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, and **70–83**. Layout note: recent completions are
+> cycles, context-attached commands), **56–69**, and **70–84**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
@@ -19,10 +19,22 @@
 
 ---
 
-## Sprints 70–83 — QoL, admin/world cleanup, progression, disciplines, zone climate, Ashmoore shops, and hunts (v0.78.0–v0.103.0, archived 2026-07-14)
+## Sprints 70–84 — QoL, admin/world cleanup, progression, disciplines, zone climate, Ashmoore shops, hunts, and database observability (v0.78.0–v0.104.0, archived 2026-07-14)
 
 > Moved here from the active roadmap on 2026-07-14 once Sprint 80 closed. Full task
 > detail preserved below; per-version notes in [`../CHANGELOG.md`](../CHANGELOG.md).
+
+## Sprint 84 — Database query observability tooling
+
+**Goal:** make future database optimization evidence-driven by recording query timing/frequency to
+non-DB logs and adding an offline analyzer before adding schema/index changes.
+
+| # | Task | Status |
+|---|------|--------|
+| 84.1 | Add SQLAlchemy cursor timing hooks for game and audit engines. | [x] v0.104.0 — `db.configure_query_logging()` writes one compact JSONL record per cursor statement to `logs/sql_queries.log` by default, with duration, statement fingerprint, rowcount, and parameter counts but not parameter values. |
+| 84.2 | Keep query logging tunable and outside the measured DB workload. | [x] v0.104.0 — Added `LORECRAFT_DB_QUERY_LOG_ENABLED`, `LORECRAFT_DB_QUERY_LOG_PATH`, and `LORECRAFT_DB_QUERY_SLOW_MS`; `start.sh` enables the dev runtime log at `logs/sql_queries.log`; generated `*.log` files remain ignored. |
+| 84.3 | Add an analysis tool for slowest, most frequent, and missing-index candidates. | [x] v0.104.0 — `python scripts/analyze_query_log.py --log logs/sql_queries.log --database game.db` summarizes slow statements, frequent fingerprints, and `WHERE` / `JOIN` / `ORDER BY` index candidates, marking primary-key/index-covered SQLite columns when a DB path is supplied. |
+| 84.4 | Document operator workflow and focused tests. | [x] v0.104.0 — Updated observability/admin docs and added focused tests for JSONL query logging, analyzer grouping, and SQLite index detection. |
 
 ## Sprint 83 — Scavenger-hunt quest content
 

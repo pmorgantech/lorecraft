@@ -19,9 +19,12 @@ rebuilt, both fold-maps become dead code.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import time
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -213,13 +216,122 @@ def configure_sqlite_engine(engine: Engine, settings: Settings) -> Engine:
     return engine
 
 
+def configure_query_logging(
+    engine: Engine, settings: Settings, *, engine_role: str
+) -> Engine:
+    """Attach JSONL SQL timing hooks to an engine.
+
+    The listener logs one non-DB line per executed cursor statement, with query
+    parameters deliberately reduced to counts only. This is composition-layer
+    observability: it measures DB access patterns without changing game policy
+    or adding audit-table write volume.
+    """
+    if not settings.db_query_log_enabled:
+        return engine
+    if getattr(engine, "_lorecraft_query_logging_configured", False):
+        return engine
+
+    log_path = Path(settings.db_query_log_path)
+    slow_ms = settings.db_query_slow_ms
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def _start_query_timer(
+        conn: Any,
+        _cursor: Any,
+        statement: str,
+        _parameters: Any,
+        _context: Any,
+        _executemany: bool,
+    ) -> None:
+        stack = conn.info.setdefault("lorecraft_query_start_stack", [])
+        stack.append((time.perf_counter(), statement))
+
+    @event.listens_for(engine, "after_cursor_execute")
+    def _log_query_timing(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        _context: Any,
+        executemany: bool,
+    ) -> None:
+        stack = conn.info.setdefault("lorecraft_query_start_stack", [])
+        started_at, original_statement = (
+            stack.pop() if stack else (time.perf_counter(), statement)
+        )
+        duration_ms = (time.perf_counter() - started_at) * 1000.0
+        normalized = _normalize_sql_for_log(original_statement)
+        payload = {
+            "ts": datetime.now(UTC)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z"),
+            "engine_role": engine_role,
+            "dialect": engine.dialect.name,
+            "duration_ms": round(duration_ms, 3),
+            "slow": duration_ms >= slow_ms,
+            "slow_threshold_ms": slow_ms,
+            "statement_type": _statement_type(normalized),
+            "statement_hash": _statement_hash(normalized),
+            "statement": normalized,
+            "rowcount": cursor.rowcount if cursor.rowcount >= 0 else None,
+            "executemany": executemany,
+            "parameter_count": _parameter_count(parameters, executemany),
+        }
+        _append_query_log(log_path, payload)
+
+    setattr(engine, "_lorecraft_query_logging_configured", True)
+    return engine
+
+
+def _normalize_sql_for_log(statement: str) -> str:
+    return " ".join(statement.split())
+
+
+def _statement_type(statement: str) -> str:
+    first, _separator, _rest = statement.partition(" ")
+    return first.upper()
+
+
+def _statement_hash(statement: str) -> str:
+    return hashlib.sha256(statement.encode("utf-8")).hexdigest()[:16]
+
+
+def _parameter_count(parameters: Any, executemany: bool) -> int:
+    if parameters is None:
+        return 0
+    if (
+        executemany
+        and isinstance(parameters, Sequence)
+        and not isinstance(parameters, (str, bytes, bytearray))
+    ):
+        return sum(_parameter_count(item, False) for item in parameters)
+    if isinstance(parameters, Mapping):
+        return len(parameters)
+    if isinstance(parameters, Sequence) and not isinstance(
+        parameters, (str, bytes, bytearray)
+    ):
+        return len(parameters)
+    return 1
+
+
+def _append_query_log(log_path: Path, payload: Mapping[str, object]) -> None:
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, sort_keys=True, separators=(",", ":")))
+            handle.write("\n")
+    except OSError:
+        logger.warning("query-log: failed to append %s", log_path, exc_info=True)
+
+
 def create_game_engine(
     settings: Settings | None = None, *, echo: bool = False
 ) -> Engine:
     settings = settings or load_settings()
     url = database_url(settings.database_path)
     engine = create_engine(url, echo=echo, **_pool_kwargs(url, settings))
-    return configure_sqlite_engine(engine, settings)
+    configure_sqlite_engine(engine, settings)
+    return configure_query_logging(engine, settings, engine_role="game")
 
 
 def create_audit_engine(
@@ -228,7 +340,8 @@ def create_audit_engine(
     settings = settings or load_settings()
     url = database_url(settings.audit_database_path)
     engine = create_engine(url, echo=echo, **_pool_kwargs(url, settings))
-    return configure_sqlite_engine(engine, settings)
+    configure_sqlite_engine(engine, settings)
+    return configure_query_logging(engine, settings, engine_role="audit")
 
 
 def create_tables(

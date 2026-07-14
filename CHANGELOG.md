@@ -4,6 +4,26 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.104.0] - 2026-07-14
+
+### Added
+
+- **Sprint 84 — Database query observability tooling.** Added SQLAlchemy
+  cursor timing hooks for game and audit engines, writing compact JSONL query
+  spans to `logs/sql_queries.log` by default with statement fingerprints,
+  timing, rowcount, and parameter counts.
+- Added `scripts/analyze_query_log.py` to summarize slowest statements, most
+  frequent statement fingerprints, and index candidates inferred from observed
+  `WHERE` / `JOIN` / `ORDER BY` usage before schema/index changes are made.
+- Updated `start.sh` to enable query-span logging for the dev runtime and write
+  to the repo-local ignored `logs/sql_queries.log` by default.
+
+### Docs
+
+- Documented query-span logging, analyzer usage, and the new
+  `LORECRAFT_DB_QUERY_*` settings in the observability and admin builder
+  guides.
+
 ## [0.103.0] - 2026-07-14
 
 ### Added

@@ -85,6 +85,9 @@ defined in `src/lorecraft/config.py`.
 | `LORECRAFT_DB_POOL_RECYCLE` | `1800` (30 min) | Recycle pooled connections older than this many seconds (avoids stale server-side connections); `-1` disables. Networked backends only. |
 | `LORECRAFT_DB_SQLITE_WAL` | `true` | Enable SQLite **WAL** journal mode — makes every commit cheap (append + periodic checkpoint) instead of a full fsync per commit (~20–29× faster scheduler ticks, ~4–6× faster commands under load). SQLite only. Turn off only for network filesystems, which don't support WAL. |
 | `LORECRAFT_DB_SQLITE_SYNCHRONOUS` | `NORMAL` | SQLite `synchronous` pragma (`OFF`/`NORMAL`/`FULL`/`EXTRA`). `NORMAL` under WAL is safe against app crashes and can lose only the last transaction(s) on OS crash / power loss. Set `FULL` for full durability (still faster than the old default). SQLite only. |
+| `LORECRAFT_DB_QUERY_LOG_ENABLED` | `true` | Write SQLAlchemy cursor timing spans to a non-DB JSONL log for query tuning. |
+| `LORECRAFT_DB_QUERY_LOG_PATH` | `logs/sql_queries.log` | Query-span log path. Generated `*.log` files are ignored by git. |
+| `LORECRAFT_DB_QUERY_SLOW_MS` | `50.0` | Slow-query threshold stamped on query-span records. |
 | `LORECRAFT_WORLD_TIME_RATIO` | `60.0` | In-game seconds per real second |
 | `LORECRAFT_WEBSOCKET_PATH` | `/ws` | Player WebSocket endpoint |
 | `LORECRAFT_DISCONNECT_GRACE_SECONDS` | `60.0` | Grace period before a dropped connection is treated as a real disconnect |
@@ -990,6 +993,11 @@ working example.
   the `transaction_id` from a crash row or a structured log line and check
   `GET /admin/trace/<transaction_id>` for the per-operation timing breakdown. Full detail in
   [`observability.md`](observability.md) (Request tracing / Crash reports sections).
+- **Database work feels slow** — inspect the query-span log before adding indexes:
+  `python scripts/analyze_query_log.py --log logs/sql_queries.log --database game.db`.
+  The report shows slowest statements, most frequent fingerprints, and index candidates from
+  observed `WHERE` / `JOIN` / `ORDER BY` clauses. Full detail is in
+  [`observability.md`](observability.md#sql-query-span-logging).
 
 ## Related Docs
 
@@ -1000,7 +1008,7 @@ working example.
 | [trade_economy.md](trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | Changeset lifecycle, builder mode, optimistic locking |
 | [tooling_infrastructure.md](tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
-| [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, and (Sprint 57) request tracing + crash reports |
+| [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, request tracing, crash reports, and SQL query-span logs |
 | [player_authentication.md](player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
 | [disconnect_handling.md](disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
 | [architecture.md](architecture.md) | Full system architecture reference |

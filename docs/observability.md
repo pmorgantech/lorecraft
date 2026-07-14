@@ -4,10 +4,9 @@
 happened" during an incident. Player-facing UI (Analytics tab) is covered here too, but the
 console/log-level detail is the main subject.
 
-Five things exist today: **structured logging** with correlation IDs, **command latency
+Six things exist today: **structured logging** with correlation IDs, **command latency
 instrumentation**, the **Analytics tab/endpoints** that surface it, **per-command request
-tracing**, and **crash reports** — the last two shipped in
-[Sprint 57](roadmap.md#sprint-57--request-tracing--crash-reports).
+tracing**, **crash reports**, and **SQL query-span logging** for database tuning.
 
 ---
 
@@ -68,6 +67,43 @@ Analytics endpoints.
 **Using it:** if a WARNING-level `perf_operation` line shows up, the `name=` field tells you which
 named operation was slow and `duration_ms=` by how much. Cross-reference the `txn=`/`corr=` on the
 same line against the surrounding log lines to see what else that command was doing.
+
+## SQL query-span logging
+
+Every game and audit SQLAlchemy engine created through `db.create_game_engine()` /
+`db.create_audit_engine()` attaches cursor-level timing hooks. Each executed statement appends one
+JSON object to `logs/sql_queries.log` by default. The log is outside both SQLite databases so
+observability does not add more DB writes to the workload being measured.
+
+Each record includes:
+
+| Field | What |
+|-------|------|
+| `engine_role` | `game` or `audit` |
+| `duration_ms` / `slow` / `slow_threshold_ms` | Cursor execution timing and whether it crossed the configured threshold |
+| `statement_type` / `statement_hash` / `statement` | Normalized SQL fingerprint and statement text |
+| `rowcount` / `executemany` / `parameter_count` | Result/write shape without logging parameter values |
+
+Parameter values are deliberately not logged; the statement SQL may still contain table/column
+names, so treat the file as operational telemetry, not player-facing data.
+
+**Configuration:**
+
+- `LORECRAFT_DB_QUERY_LOG_ENABLED` — default `true`; set `false` to disable the hook.
+- `LORECRAFT_DB_QUERY_LOG_PATH` — default `logs/sql_queries.log`.
+- `LORECRAFT_DB_QUERY_SLOW_MS` — default `50.0`.
+
+**Analyzer:**
+
+```bash
+python scripts/analyze_query_log.py --log logs/sql_queries.log --database game.db
+```
+
+The report lists the slowest individual statements, most frequent statement fingerprints, and
+candidate table/column indexes inferred from `WHERE` / `JOIN` / `ORDER BY` usage. Passing
+`--database` lets the tool mark candidates that are already covered by a primary key or SQLite
+index. Use this report as evidence before adding or changing schema; do not add indexes purely
+from intuition when the query log can show the real workload.
 
 ## Analytics tab & endpoints
 

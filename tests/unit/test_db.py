@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from lorecraft.db import (
     create_audit_tables,
     create_game_engine,
     create_game_tables,
+    configure_query_logging,
     create_tables,
 )
 
@@ -131,3 +133,42 @@ def test_load_settings_reads_sqlite_env(monkeypatch: pytest.MonkeyPatch) -> None
     settings = load_settings()
     assert settings.db_sqlite_wal is False
     assert settings.db_sqlite_synchronous == "FULL"
+
+
+def test_query_logging_writes_jsonl_without_parameter_values(tmp_path: Path) -> None:
+    log_path = tmp_path / "queries.log"
+    engine = create_game_engine(
+        Settings(
+            database_path=":memory:",
+            db_query_log_path=str(log_path),
+            db_query_slow_ms=0.0,
+        )
+    )
+
+    with engine.connect() as connection:
+        connection.execute(text("SELECT :secret AS value"), {"secret": "hidden"})
+
+    records = [json.loads(line) for line in log_path.read_text().splitlines()]
+    select_record = next(
+        record for record in records if record["statement_type"] == "SELECT"
+    )
+    assert select_record["engine_role"] == "game"
+    assert select_record["statement"] == "SELECT ? AS value"
+    assert select_record["parameter_count"] == 1
+    assert "hidden" not in log_path.read_text()
+    assert select_record["slow"] is True
+
+
+def test_configure_query_logging_can_be_disabled(tmp_path: Path) -> None:
+    log_path = tmp_path / "queries.log"
+    engine = create_engine("sqlite://")
+    configure_query_logging(
+        engine,
+        Settings(db_query_log_enabled=False, db_query_log_path=str(log_path)),
+        engine_role="game",
+    )
+
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+
+    assert not log_path.exists()

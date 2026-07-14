@@ -11,10 +11,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-14, v0.103.0 on develop; Sprints 1–83 all shipped)
+## Where things stand (2026-07-14, v0.104.0 on develop; Sprints 1–84 all shipped)
 
-**Everything through Sprint 83 is shipped on `develop`** (currently v0.103.0). `roadmap.md` now tracks
-remaining work only; the full task-level history for completed Sprints 1–83 lives in
+**Everything through Sprint 84 is shipped on `develop`** (currently v0.104.0). `roadmap.md` now tracks
+remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), with release-level detail in
 [`../CHANGELOG.md`](../CHANGELOG.md).
 
@@ -26,7 +26,8 @@ Brass Vaults steampunk zone, new mobile hazards, and local quest content using t
 surfaces. Sprint 82 adds fixed-location Ashmoore shops for potions, food/drink, general goods,
 and armory basics using stationary NPC shopkeepers and the existing economy model. Sprint 83
 expands Ashmoore's scavenger-hunt content pattern with spread placement for 3-7 item hunts and
-speed-scaled coin reward tiers.
+speed-scaled coin reward tiers. Sprint 84 adds database query-span logging and an analyzer for
+slow/frequent statements plus index candidates, so future schema/index work is evidence-driven.
 
 Sprint 73's cleanup backlog and the 2026-07-13 UI-cohesion items are closed and preserved in
 [`roadmap_completed.md`](roadmap_completed.md).
@@ -54,19 +55,18 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | Combat & PvP | Set aside 2026-07-05 to [`wishlist.md`](wishlist.md) → *Combat, reframed* (ready-to-restore specs) |
 | E2E coverage gap for the new discipline/ability command surface | Added 2026-07-13 (Sprint 78 Test & QA pass). `train`/`abilities`/`disciplines`/`forage`/`pick`/`sense` are unit-tested but not directly exercised by browser-driven e2e tests. Not a current defect — flagged as worth a follow-up e2e pass. |
 | Ability tuning live-admin controls | Added 2026-07-14 (Sprint 79 triage). Per-ability `cost`, `cooldown_seconds`, resource costs, and proficiency-growth values (`improve_chance`/`max_rank`) remain static YAML by design. Build a DB-backed, admin-live-tunable config only if admins ask to retune these without restart/reseed; do not build it speculatively. |
-| Database optimization and query observability pass | Audit schema design, normalization boundaries, and indexes against real gameplay/admin query paths. Add query timing/frequency/slow-query instrumentation if it is not already sufficient: SQLAlchemy cursor hooks can log structured query spans to non-DB logs under `logs/` initially, with `*.log` ignored. Include an analysis tool that summarizes slowest queries, most frequent statements, and missing-index candidates from the log before changing schema. |
 
 
 ---
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used (complete):** 1–83, except for deliberately skipped/deferred numbers below. Full task
+- **Used (complete):** 1–84, except for deliberately skipped/deferred numbers below. Full task
   detail lives in [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
   (concurrency/threading gate), 61/63/64 (combat/PvP work), and 65 (multiplayer trade/transit
   test pass).
-- **Next genuinely free sprint number:** 84. Do not recycle a number that appears here, in
+- **Next genuinely free sprint number:** 85. Do not recycle a number that appears here, in
   [`roadmap_completed.md`](roadmap_completed.md), or in [`wishlist.md`](wishlist.md).
 
 ---
