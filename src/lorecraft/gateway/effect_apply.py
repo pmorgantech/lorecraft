@@ -56,7 +56,7 @@ from lorecraft.errors import ValidationError
 from lorecraft.gateway.connection_manager import DirectiveConnectionManager
 from lorecraft.protocol.effects import Effect, MoveEntity
 from lorecraft.protocol.envelope import CommandEnvelope, CommandOutcome
-from lorecraft.protocol.gateway import DeliveryDirective
+from lorecraft.protocol.gateway import DeliveryDirective, MovePlayer
 from lorecraft.protocol.messages import Feed, PanelUpdate
 from lorecraft.state import AppState
 from lorecraft.types import JsonObject, JsonValue
@@ -86,10 +86,12 @@ def _apply_move_entity(ctx: GameContext, effect: Effect) -> None:
     :func:`apply_outcome` — it needs the typed direction, which the effect does not
     carry — and flushed before commit, mirroring the live path.
 
-    ``ctx.manager.move_player`` here updates the (per-outcome, advisory) mirror;
-    forwarding the resulting `MovePlayer` frame to Rust's authoritative registry is
-    a live-cutover concern (movement is not default-on this phase), out of scope
-    here and not needed for the returned ``deliveries`` (they target rooms by id).
+    ``ctx.manager.move_player`` here updates the (per-outcome, advisory) mirror **and**
+    records the move into the manager's ``.moves`` buffer; :func:`apply_outcome` drains
+    that buffer and returns it so the adapter forwards the move on ``OutcomeApplied``,
+    letting Rust reconcile its authoritative registry (the 4c live cutover — a later
+    broadcast to the mover's new room would otherwise miss them). The returned
+    ``deliveries`` target rooms by id and do not themselves depend on the forwarding.
     """
     if not isinstance(effect, MoveEntity):  # dispatch guarantees the tag; be explicit
         raise ValidationError(f"expected a MoveEntity effect, got {effect.TAG!r}")
@@ -172,14 +174,21 @@ async def apply_outcome(
     state: AppState,
     envelope: CommandEnvelope,
     outcome: CommandOutcome,
-) -> tuple[JsonObject, list[DeliveryDirective]]:
-    """Persist ``outcome`` and return the actor reply plus fan-out directives.
+) -> tuple[JsonObject, list[DeliveryDirective], list[MovePlayer]]:
+    """Persist ``outcome`` and return the actor reply, fan-out directives, and moves.
 
     Reproduces the persistence tail of ``handle_ws_command`` for the migrated verbs
     (``look``; ``move`` from Phase 4c): applies effects + messages + narration,
     flushes queued events, commits game then audit, and drains the post-command
     broadcast as ``DeliveryDirective``s. The returned ``direct_reply`` is
     byte-identical to the live ``command_result`` frame for the same command.
+
+    The third element is the list of registry room-moves the applied effects caused
+    (``_apply_move_entity``'s ``ctx.manager.move_player``): the adapter forwards these
+    on ``OutcomeApplied`` so Rust's authoritative connection map learns a
+    Rust-executed move happened — without them a later broadcast to the mover's new
+    room would miss them (the Rust-execute analogue of the ``CommandReply`` path's
+    ``MovePlayer`` frames). Empty for a zero-move verb (e.g. ``look``).
 
     Raises :class:`~lorecraft.errors.ValidationError` if the actor or room has
     vanished since Rust built the snapshot (there is nothing to persist against).
@@ -312,6 +321,11 @@ async def apply_outcome(
         # state_change.
         await broadcast_command_effects(manager, ctx, pre_room_id=pre_room_id)
         deliveries = manager.drain()
+        # Any room move the applied effects caused (movement's `_apply_move_entity`
+        # recorded it into this per-outcome manager). Forwarded on `OutcomeApplied`
+        # so Rust reconciles its authoritative registry — otherwise a later broadcast
+        # to the mover's new room misses them (gap-1 for the Rust-execute path).
+        moves = manager.drain_moves()
 
         # Assemble the legacy command_result exactly as handle_ws_command does.
         # `Message` is a `str` subclass, so the explicit `JsonValue` element type
@@ -338,4 +352,4 @@ async def apply_outcome(
             "chat_messages": chat_messages,
             "updates": updates,
         }
-        return direct_reply, deliveries
+        return direct_reply, deliveries, moves

@@ -248,6 +248,19 @@ pub enum GatewayOutbound {
         /// Post-commit fan-out directives Rust publishes via the [`Self::Deliver`]
         /// path. Empty for a zero-broadcast verb.
         deliveries: Vec<DeliveryDirective>,
+        /// Registry room-moves a **Rust-executed** command applied to authoritative
+        /// state (Phase 4c live cutover): a migrated move persists the player's new
+        /// room in Python's DB, but Rust's authoritative connection map must also
+        /// learn it or a later broadcast to the mover's new room would miss them
+        /// (the same class as the [`Self::MovePlayer`] frame the Python-executed
+        /// command path emits). Rust applies each via `ConnectionRegistry::move_player`
+        /// **before** relaying `deliveries`, so the mover is placed in `to_room`
+        /// before this frame's — or any subsequent frame's — broadcasts resolve.
+        ///
+        /// Additive and defaulted to empty: skipped on serialization when empty, so a
+        /// zero-move verb (e.g. `look`) keeps a byte-identical wire shape.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        moves: Vec<PlayerMove>,
     },
     /// Phase 4 short-circuit (Python->Rust): **end the execution round-trip early**
     /// and tell Rust to reply to the issuing client with `direct_reply` instead of
@@ -376,6 +389,30 @@ pub struct DeliveryDirective {
     /// Python stamps it in a later task (this task only plumbs + honors it).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub coalesce_key: Option<String>,
+}
+
+/// A single registry room-move carried inline on a [`GatewayOutbound::OutcomeApplied`].
+///
+/// Structurally identical to the standalone [`GatewayOutbound::MovePlayer`] frame's
+/// fields, but as a **plain struct** (no `{"type": ...}` tag) so it can be batched
+/// into the `moves` list of an `OutcomeApplied`. It exists so a **Rust-executed**
+/// move (Phase 4c live cutover) reconciles the shared connection registry the same
+/// way a Python-executed move does via `MovePlayer`: without it, Rust's authoritative
+/// `player -> room` map never learns the move happened and a later room-targeted
+/// broadcast aimed at the mover's **new** room would miss them.
+///
+/// Rust applies each of these — **before** relaying that same frame's `deliveries` —
+/// by calling `ConnectionRegistry::move_player`. Its Python mirror is the
+/// `moves` entry list `apply_outcome` drains from its per-outcome manager.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlayerMove {
+    /// The player who changed rooms.
+    pub player_id: PlayerId,
+    /// The room the player left, if known (mirrors Python's truthiness: an
+    /// empty/absent origin is treated as "unset" by the registry).
+    pub from_room: Option<String>,
+    /// The room the player moved into (plain id; no `RoomId` newtype).
+    pub to_room: String,
 }
 
 /// The recipient set for a [`DeliveryDirective`]. Internally tagged
@@ -646,6 +683,11 @@ mod tests {
                     command_id: CommandId("cmd-1".into()),
                     direct_reply: json!({"command": "look", "messages": []}),
                     deliveries: vec![sample_directive()],
+                    moves: vec![PlayerMove {
+                        player_id: PlayerId("player-1".into()),
+                        from_room: Some("tavern".into()),
+                        to_room: "square".into(),
+                    }],
                 },
                 "OutcomeApplied",
             ),
@@ -887,6 +929,7 @@ mod tests {
             command_id: CommandId("cmd-42".into()),
             direct_reply: json!({"command": "look", "ok": true}),
             deliveries: vec![sample_directive()],
+            moves: vec![],
         };
         let value = serde_json::to_value(&frame).unwrap();
         assert_eq!(value["type"], json!("OutcomeApplied"));
@@ -903,12 +946,80 @@ mod tests {
             command_id: CommandId("cmd-42".into()),
             direct_reply: json!({"ok": true}),
             deliveries: vec![],
+            moves: vec![],
         };
         assert_eq!(
             serde_json::to_value(&empty).unwrap()["deliveries"],
             json!([])
         );
         assert_round_trip(&empty);
+    }
+
+    #[test]
+    fn outcome_applied_moves_are_absent_when_empty_and_carry_a_move_when_present() {
+        // A zero-move verb (e.g. `look`) must NOT serialize a `moves` key, so its
+        // wire shape is byte-identical to before the field was added (additive).
+        let no_move = GatewayOutbound::OutcomeApplied {
+            command_id: CommandId("cmd-1".into()),
+            direct_reply: json!({"ok": true}),
+            deliveries: vec![],
+            moves: vec![],
+        };
+        let value = serde_json::to_value(&no_move).unwrap();
+        assert!(
+            value.get("moves").is_none(),
+            "an empty moves list must be skipped, not serialized as []"
+        );
+        // A legacy frame produced *without* the field still deserializes (default []).
+        let legacy = json!({
+            "type": "OutcomeApplied",
+            "command_id": "cmd-1",
+            "direct_reply": {"ok": true},
+            "deliveries": [],
+        });
+        let back: GatewayOutbound = serde_json::from_value(legacy).unwrap();
+        assert_eq!(back, no_move);
+
+        // A Rust-executed move carries its registry reconciliation inline; the plain
+        // `PlayerMove` struct has no `{"type": ...}` tag (unlike the `MovePlayer`
+        // frame) and round-trips verbatim.
+        let with_move = GatewayOutbound::OutcomeApplied {
+            command_id: CommandId("cmd-2".into()),
+            direct_reply: json!({"command": "move", "noun": "north"}),
+            deliveries: vec![sample_directive()],
+            moves: vec![PlayerMove {
+                player_id: PlayerId("mover".into()),
+                from_room: Some("village_square".into()),
+                to_room: "blacksmith_forge".into(),
+            }],
+        };
+        let value = serde_json::to_value(&with_move).unwrap();
+        assert_eq!(value["moves"][0]["player_id"], json!("mover"));
+        assert_eq!(value["moves"][0]["from_room"], json!("village_square"));
+        assert_eq!(value["moves"][0]["to_room"], json!("blacksmith_forge"));
+        assert!(
+            value["moves"][0].get("type").is_none(),
+            "an inline PlayerMove is a plain struct, not a tagged frame"
+        );
+        assert_round_trip(&with_move);
+
+        // An unknown origin serializes `from_room` as null (mirrors Python's
+        // `Optional[str]`), and still round-trips.
+        let no_origin = GatewayOutbound::OutcomeApplied {
+            command_id: CommandId("cmd-3".into()),
+            direct_reply: json!({"ok": true}),
+            deliveries: vec![],
+            moves: vec![PlayerMove {
+                player_id: PlayerId("mover".into()),
+                from_room: None,
+                to_room: "square".into(),
+            }],
+        };
+        assert_eq!(
+            serde_json::to_value(&no_origin).unwrap()["moves"][0]["from_room"],
+            json!(null)
+        );
+        assert_round_trip(&no_origin);
     }
 
     #[test]

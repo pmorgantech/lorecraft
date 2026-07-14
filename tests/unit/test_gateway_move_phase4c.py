@@ -260,11 +260,19 @@ def test_move_outcome_matches_python_direct_move(tmp_path: Path) -> None:
 
         # Rust path: apply the outcome Rust would have derived.
         outcome = _move_outcome("cm", direction, start, target)
-        rust_reply, rust_deliveries = asyncio.run(
+        rust_reply, rust_deliveries, rust_moves = asyncio.run(
             apply_outcome(
                 rust_state, _envelope("sr", "cm", f"move {direction}"), outcome
             )
         )
+
+        # 4c cutover: a Rust-executed move now returns the registry reconciliation
+        # so the adapter can forward it on `OutcomeApplied` (gap-1 for the
+        # Rust-execute path). One move, from the origin room to the target.
+        assert len(rust_moves) == 1
+        assert rust_moves[0].player_id == PLAYER_ID
+        assert rust_moves[0].from_room == start
+        assert rust_moves[0].to_room == target
 
         # State mutation: both worlds moved the player identically.
         assert _player_room_and_visited(rust_state) == _player_room_and_visited(

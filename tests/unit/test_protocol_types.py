@@ -773,3 +773,53 @@ def test_outcome_applied_defaults_empty_deliveries() -> None:
     dumped = frame.to_json()
     assert dumped["deliveries"] == []
     assert gateway_outbound_from_json(dumped) == frame
+
+
+def test_outcome_applied_moves_are_absent_when_empty_and_carry_a_move_when_present() -> (
+    None
+):
+    # A zero-move verb (e.g. `look`) must NOT serialize a `moves` key, so its wire
+    # shape is byte-identical to before the additive field (mirrors the Rust
+    # `skip_serializing_if`).
+    no_move = OutcomeApplied(command_id="cmd-1", direct_reply={"ok": True})
+    assert no_move.moves == []
+    dumped = no_move.to_json()
+    assert "moves" not in dumped
+    # A legacy frame without the key still deserializes to the empty default.
+    assert gateway_outbound_from_json(dumped) == no_move
+
+    # A Rust-executed move carries its registry reconciliation inline, as a PLAIN
+    # (untagged) object mirroring the Rust `PlayerMove` struct.
+    with_move = OutcomeApplied(
+        command_id="cmd-2",
+        direct_reply={"command": "move", "noun": "north"},
+        deliveries=[_sample_directive()],
+        moves=[
+            MovePlayer(
+                player_id="mover",
+                from_room="village_square",
+                to_room="blacksmith_forge",
+            )
+        ],
+    )
+    dumped = with_move.to_json()
+    assert dumped["moves"] == [
+        {
+            "player_id": "mover",
+            "from_room": "village_square",
+            "to_room": "blacksmith_forge",
+        }
+    ]
+    # No `type` tag on the inline move (unlike a standalone `MovePlayer` frame).
+    assert "type" not in dumped["moves"][0]
+    assert gateway_outbound_from_json(dumped) == with_move
+
+    # An unknown origin serializes `from_room` as null and still round-trips.
+    no_origin = OutcomeApplied(
+        command_id="cmd-3",
+        direct_reply={"ok": True},
+        moves=[MovePlayer(player_id="mover", from_room=None, to_room="square")],
+    )
+    dumped = no_origin.to_json()
+    assert dumped["moves"][0]["from_room"] is None
+    assert gateway_outbound_from_json(dumped) == no_origin

@@ -656,7 +656,19 @@ async fn demultiplex(
             command_id,
             direct_reply,
             deliveries,
+            moves,
         } => {
+            // Reconcile any Rust-executed room move in the shared authoritative map
+            // FIRST — before this frame's own deliveries, and (because the read loop
+            // processes frames in order) before any subsequent broadcast — so the
+            // mover is placed in their new room ahead of every fan-out that resolves
+            // against it. This is the `OutcomeApplied` analogue of the standalone
+            // `MovePlayer` frame the Python-executed command path emits (gap-1 for
+            // the Rust-execute path). `look` and other zero-move verbs carry none.
+            for mv in &moves {
+                ctx.registry
+                    .move_player(&mv.player_id, mv.from_room.as_deref(), &mv.to_room);
+            }
             // Commit-before-publish (decision 5): Python committed both DBs before
             // emitting this frame, so the post-commit fan-out is published now —
             // independently of the driver's reply, exactly like `CommandReply`.
@@ -671,6 +683,7 @@ async fn demultiplex(
                         command_id,
                         direct_reply,
                         deliveries,
+                        moves,
                     });
                 }
                 None => tracing::warn!(
@@ -816,6 +829,21 @@ mod tests {
             receive_sequence: 7,
             deadline_ms: 5_000,
             raw: raw.into(),
+        }
+    }
+
+    /// A minimal executed [`CommandOutcome`] for driving the `apply_outcome` leg in
+    /// tests — the persistence side is the mock peer's, so the contents are inert.
+    fn sample_outcome() -> CommandOutcome {
+        CommandOutcome {
+            command_id: CommandId("cmd-move".into()),
+            status: lorecraft_protocol::envelope::OutcomeStatus::Executed,
+            commit_sequence: None,
+            messages: vec![],
+            applied_effects: vec![],
+            diagnostics: vec![],
+            room_narration: vec![],
+            arrival_narration: vec![],
         }
     }
 
@@ -972,6 +1000,90 @@ mod tests {
 
         // The mover, now relocated by the MovePlayer frame, receives the new-room
         // broadcast on its outbound channel.
+        let delivered = tokio::time::timeout(std::time::Duration::from_secs(2), mover_rx.recv())
+            .await
+            .expect("mover receives without stalling")
+            .expect("a payload was delivered to the moved player");
+        assert_eq!(
+            delivered.payload,
+            json!({"type": "feed_append", "text": "a bell tolls in the new room."})
+        );
+
+        // The registry now reflects the move on both sides of the map.
+        assert_eq!(
+            registry.players_in_room("new-room"),
+            vec![PlayerId("mover".into())]
+        );
+        assert!(registry.players_in_room("old-room").is_empty());
+
+        drop(client);
+        peer.await.expect("mock peer joins cleanly");
+    }
+
+    /// THE 4c LIVE-CUTOVER REGISTRY PROOF: an `OutcomeApplied` carrying an inline
+    /// `PlayerMove` relocates the mover in the shared registry **before** its own
+    /// deliveries resolve, so a room-targeted delivery on that same frame aimed at
+    /// the mover's **new** room reaches them. This is the Rust-execute analogue of
+    /// the standalone-`MovePlayer` gap-1 proof above: a Rust-executed move persists
+    /// Python's DB but must also reconcile Rust's authoritative connection map, or a
+    /// broadcast to the new room would miss the mover indefinitely.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn outcome_applied_moves_relocate_mover_before_its_deliveries_resolve() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket_path = dir.path().join("gateway.sock");
+        let listener = UnixListener::bind(&socket_path).expect("bind mock peer");
+
+        // The mover is registered in the OLD room, as they would be at connect.
+        let registry = Arc::new(ConnectionRegistry::new());
+        let (mover_tx, mut mover_rx) = outbound_channel(DEFAULT_OUTBOUND_QUEUE_DEPTH);
+        registry.register(PlayerId("mover".into()), mover_tx, Some("old-room".into()));
+
+        let peer = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.expect("accept");
+            let (mut read, mut write) = stream.into_split();
+            let command_id = match read_inbound(&mut read).await {
+                GatewayInbound::ApplyOutcome { command_id, .. } => command_id,
+                other => panic!("expected ApplyOutcome, got {other:?}"),
+            };
+            // The frame reconciles the move inline AND fans a broadcast to the new
+            // room: the move must be applied first for the delivery to reach the mover.
+            let reply = GatewayOutbound::OutcomeApplied {
+                command_id,
+                direct_reply: json!({"command": "move", "noun": "north"}),
+                deliveries: vec![DeliveryDirective {
+                    target: DeliveryTarget::Room {
+                        id: "new-room".into(),
+                    },
+                    exclude: None,
+                    payload: json!({"type": "feed_append", "text": "a bell tolls in the new room."}),
+                    coalesce_key: None,
+                }],
+                moves: vec![lorecraft_protocol::gateway::PlayerMove {
+                    player_id: PlayerId("mover".into()),
+                    from_room: Some("old-room".into()),
+                    to_room: "new-room".into(),
+                }],
+            };
+            write
+                .write_all(&encode_frame(&reply))
+                .await
+                .expect("write reply");
+            write.flush().await.expect("flush");
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        });
+
+        let client = ForwardClient::connect(&socket_path, ctx(Arc::clone(&registry)))
+            .await
+            .expect("connect");
+
+        let direct_reply = client
+            .apply_outcome(CommandId("cmd-move".into()), sample_outcome())
+            .await
+            .expect("apply_outcome");
+        assert_eq!(direct_reply, json!({"command": "move", "noun": "north"}));
+
+        // The delivery reached the mover only because the inline move relocated them
+        // into `new-room` before the delivery was resolved.
         let delivered = tokio::time::timeout(std::time::Duration::from_secs(2), mover_rx.recv())
             .await
             .expect("mover receives without stalling")

@@ -503,20 +503,38 @@ class OutcomeApplied(GatewayOutbound):
     legacy ``command_result`` for the actor (relayed verbatim, like
     ``CommandReply.direct_reply``); ``deliveries`` are the post-commit fan-out
     directives Rust publishes via the ``Deliver`` path (empty for a zero-broadcast
-    verb)."""
+    verb).
+
+    ``moves`` are the registry room-moves a **Rust-executed** command applied to
+    authoritative state (Phase 4c live cutover). A migrated move persists the player's
+    new ``current_room_id`` in Python's DB, but Rust owns the authoritative connection
+    map, so unless it is told about the move a later broadcast to the mover's **new**
+    room would miss them (the ``OutcomeApplied`` analogue of the standalone
+    ``MovePlayer`` frame the ``CommandReply`` path emits — gap-1 for the Rust-execute
+    path). Rust applies each ``ConnectionRegistry.move_player`` **before** relaying
+    ``deliveries``. Each is serialized as a **plain** ``{player_id, from_room,
+    to_room}`` object (no ``type`` tag) to mirror the Rust ``PlayerMove`` struct.
+
+    Additive: ``moves`` defaults empty and is **omitted** from ``to_json`` when empty
+    (mirroring the Rust ``skip_serializing_if = "Vec::is_empty"``), so a zero-move verb
+    (e.g. ``look``) keeps a byte-identical wire shape."""
 
     TAG: ClassVar[str] = "OutcomeApplied"
     command_id: CommandId
     direct_reply: JsonValue
     deliveries: list[DeliveryDirective] = field(default_factory=list)
+    moves: list[MovePlayer] = field(default_factory=list)
 
     def to_json(self) -> JsonObject:
-        return {
+        out: JsonObject = {
             "type": self.TAG,
             "command_id": self.command_id,
             "direct_reply": self.direct_reply,
             "deliveries": [d.to_json() for d in self.deliveries],
         }
+        if self.moves:
+            out["moves"] = [_player_move_to_plain(m) for m in self.moves]
+        return out
 
 
 @dataclass(frozen=True, slots=True)
@@ -625,6 +643,28 @@ class MovePlayer(GatewayOutbound):
         }
 
 
+def _player_move_to_plain(move: MovePlayer) -> JsonObject:
+    """Serialize a room move as the **untagged** ``{player_id, from_room, to_room}``
+    object the Rust ``PlayerMove`` struct expects when batched inline on an
+    ``OutcomeApplied``. Unlike :meth:`MovePlayer.to_json` (a standalone tagged
+    ``GatewayOutbound`` frame), the inline form carries no ``type`` tag."""
+    return {
+        "player_id": move.player_id,
+        "from_room": move.from_room,
+        "to_room": move.to_room,
+    }
+
+
+def _player_move_from_plain(data: JsonObject) -> MovePlayer:
+    """Reconstruct a room move from the untagged inline ``OutcomeApplied.moves``
+    shape (the inverse of :func:`_player_move_to_plain`)."""
+    return MovePlayer(
+        player_id=require_str(data, "player_id"),
+        from_room=optional_str(data, "from_room"),
+        to_room=require_str(data, "to_room"),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class DisconnectAck(GatewayOutbound):
     """Terminal ack that a ``Disconnected`` teardown finished (no fields).
@@ -673,12 +713,18 @@ def gateway_outbound_from_json(data: JsonObject) -> GatewayOutbound:
             request=ScriptRequest.from_json(require_dict(data, "request")),
         )
     if tag == OutcomeApplied.TAG:
+        # Additive: `moves` is absent (or null) on a legacy/zero-move frame.
+        raw_moves = data.get("moves")
+        move_items = raw_moves if isinstance(raw_moves, list) else []
         return OutcomeApplied(
             command_id=require_str(data, "command_id"),
             direct_reply=data.get("direct_reply"),
             deliveries=[
                 DeliveryDirective.from_json(require_object(item))
                 for item in require_list(data, "deliveries")
+            ],
+            moves=[
+                _player_move_from_plain(require_object(item)) for item in move_items
             ],
         )
     if tag == ExecutionRejected.TAG:

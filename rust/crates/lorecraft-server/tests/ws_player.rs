@@ -220,6 +220,7 @@ async fn serve_connection(
                         payload: json!({"type": "state_change", "room_id": "tavern"}),
                         coalesce_key: None,
                     }],
+                    moves: vec![],
                 }]
             }
         };

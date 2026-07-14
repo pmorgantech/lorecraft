@@ -732,6 +732,12 @@ class GatewayAdapter:
         which would drop the reply and wedge the Rust driver awaiting
         `OutcomeApplied`. The pending entry is popped before persistence, so a
         failure here does not leak it.
+
+        Any registry room-move the outcome caused (a Rust-executed ``move``) rides on
+        ``OutcomeApplied.moves`` so Rust reconciles its authoritative connection map
+        before publishing this frame's deliveries — the Rust-execute analogue of the
+        ``MovePlayer`` frames ``_on_command`` drains ahead of a ``CommandReply``
+        (gap-1). Empty for a zero-move verb (e.g. ``look``).
         """
         try:
             envelope = self._pending.pop(msg.command_id, None)
@@ -739,7 +745,7 @@ class GatewayAdapter:
                 raise ValidationError(
                     f"ApplyOutcome for unknown command_id: {msg.command_id!r}"
                 )
-            direct_reply, deliveries = await apply_outcome(
+            direct_reply, deliveries, moves = await apply_outcome(
                 self._state, envelope, msg.outcome
             )
         except Exception:
@@ -752,6 +758,7 @@ class GatewayAdapter:
             command_id=msg.command_id,
             direct_reply=direct_reply,
             deliveries=deliveries,
+            moves=moves,
         )
 
     def _frozen_reply(self, envelope: CommandEnvelope) -> JsonObject | None:

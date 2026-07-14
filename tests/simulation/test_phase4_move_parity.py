@@ -7,10 +7,13 @@ The `look` harness (`test_phase4_look_parity.py`) proved byte-identity for a
 the real Rust-execute -> Python-persist path must reproduce the Python engine's
 STATE MUTATION, not just its reply text.
 
-**Movement is NOT in the default allow-list this phase** (headless-only, no
-live cutover -- see `rust/crates/lorecraft-server/src/route.rs`'s module docs
-and `MigratedVerb::Move`'s doc comment). Every test below opts a single
-direction in explicitly via `extra_env={"LORECRAFT_RUST_VERBS": "north"}`.
+**These tests opt a single direction in explicitly** via
+`extra_env={"LORECRAFT_RUST_VERBS": "north"}`, so a run is deterministic and
+isolated regardless of the binary's default allow-list. (As of the 4c live
+cutover the default `DEFAULT_RUST_VERBS` now includes the four cardinal moves
+-- see `rust/crates/lorecraft-server/src/bin/gateway.rs` -- but pinning the env
+here keeps each test's routing explicit and independent of that default; the
+rollback test below pins the *empty* list to force the Python path.)
 
 **The routable wire command is the BARE direction word (`"north"`), not
 `"go north"`.** `route.rs::decide` only dispatches a *single-token* line to
@@ -72,12 +75,12 @@ movement golden to avoid it).
 5. **Broadcasts.** The leave narration reaches the origin room; the arrival
    narration + `state_change` reach the destination room (excluding the
    actor). A THIRD check -- whether the mover, now truly relocated, receives a
-   *later* broadcast targeted at their new room -- surfaces a real,
-   code-confirmed gap in the current headless wiring: see
-   `test_mover_registry_is_not_updated_after_rust_executed_move`'s docstring.
-   This is a genuine 4c finding (routed back for the live-cutover task), not a
-   test defect -- it is asserted directly (not hidden) via
-   `xfail(strict=True)`.
+   *later* broadcast targeted at their new room -- exercised a real gap in the
+   headless wiring (Rust's registry never learned a Rust-executed move). The 4c
+   live cutover closes it by carrying the move on `OutcomeApplied.moves` and
+   applying it to Rust's `ConnectionRegistry` before the frame's deliveries; the
+   formerly-`xfail` `test_mover_reaches_new_room_broadcast_after_rust_executed_move`
+   is now a normal passing assertion (see its docstring).
 
 ## Rollback + skill-gated defer
 
@@ -419,39 +422,28 @@ async def _test_broadcasts(server: SimulationServer) -> None:
         await dest_witness.close()
 
 
-# --- 5 (known gap): mover's own reachability in the NEW room ----------------
+# --- 5 (gap fixed in the 4c live cutover): mover's reachability in the NEW room --
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "KNOWN GAP (route back to the live-cutover task, not fixed here): "
-        "gateway/effect_apply.py's apply_outcome() builds its own throwaway "
-        "DirectiveConnectionManager() for a Rust-executed move; "
-        "_apply_move_entity's ctx.manager.move_player(...) call records into "
-        "THAT manager's .moves buffer, which is never drained/forwarded as a "
-        "MovePlayer frame (contrast adapter.py::_on_command, which does "
-        "self._manager.drain_moves() before every CommandReply). Confirmed at "
-        "the Rust side too: lorecraft-server/src/forward.rs's read_loop only "
-        "reconciles ConnectionRegistry on a GatewayOutbound::MovePlayer frame; "
-        "OutcomeApplied only relays `deliveries` verbatim. So Rust's own "
-        "connection registry never learns a Rust-executed move happened -- the "
-        "mover keeps looking like they're still in the ORIGIN room from Rust's "
-        "perspective indefinitely. This is exactly the gap "
-        "_apply_move_entity's own docstring flags as deliberately out of scope "
-        "this phase ('forwarding the resulting MovePlayer frame to Rust's "
-        "authoritative registry is a live-cutover concern ... out of scope "
-        "here'). strict=True so a future fix flips this XPASS into a hard "
-        "failure, forcing this test (and its docstring) to be revisited rather "
-        "than silently staying green."
-    ),
-)
-def test_mover_registry_is_not_updated_after_rust_executed_move(
+def test_mover_reaches_new_room_broadcast_after_rust_executed_move(
     simulation_server_factory: Callable[..., SimulationServer],
 ) -> None:
     """After a Rust-executed move, a LATER room-targeted broadcast aimed at the
-    mover's real (destination) room should reach them -- they are physically
-    there (proven by dimension 4's state hash). It currently does not."""
+    mover's real (destination) room reaches them -- they are physically there
+    (proven by dimension 4's state hash).
+
+    This was the deferred gap the headless 4c harness flagged (previously
+    ``xfail(strict=True)``): ``gateway/effect_apply.py``'s ``apply_outcome`` builds a
+    per-outcome ``DirectiveConnectionManager`` and ``_apply_move_entity``'s
+    ``ctx.manager.move_player(...)`` records the move into its ``.moves`` buffer, but
+    that buffer was never forwarded to Rust for a Rust-executed move -- so Rust's
+    authoritative ``ConnectionRegistry`` never learned the move and kept the mover in
+    the ORIGIN room. The 4c live cutover closes it: ``apply_outcome`` drains those
+    moves, the adapter carries them on ``OutcomeApplied.moves``, and
+    ``forward.rs`` applies each to the registry (``move_player``) BEFORE relaying that
+    frame's deliveries -- the ``OutcomeApplied`` analogue of the ``CommandReply``
+    path's ``MovePlayer`` frames. So a subsequent broadcast to the new room now
+    reaches the relocated mover."""
     server = simulation_server_factory(
         rng_seed=_RNG_SEED,
         through_rust=True,

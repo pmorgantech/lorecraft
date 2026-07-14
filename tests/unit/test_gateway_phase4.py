@@ -155,7 +155,7 @@ def test_apply_outcome_direct_reply_matches_handle_ws_command(state: AppState) -
         handle_ws_command(state, DirectiveConnectionManager(), PLAYER_ID, "s1", "look")
     )
     outcome = _look_outcome(state, "c1")
-    direct_reply, _deliveries = asyncio.run(
+    direct_reply, _deliveries, _moves = asyncio.run(
         apply_outcome(state, _envelope("s1", "c1"), outcome)
     )
     assert direct_reply["type"] == "command_result"
@@ -165,7 +165,7 @@ def test_apply_outcome_direct_reply_matches_handle_ws_command(state: AppState) -
 def test_apply_outcome_returns_single_state_change_delivery(state: AppState) -> None:
     _warm_up_look(state)
     outcome = _look_outcome(state, "c2")
-    _direct_reply, deliveries = asyncio.run(
+    _direct_reply, deliveries, _moves = asyncio.run(
         apply_outcome(state, _envelope("s2", "c2"), outcome)
     )
     (directive,) = deliveries

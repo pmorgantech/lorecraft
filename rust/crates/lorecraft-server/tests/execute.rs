@@ -163,6 +163,7 @@ async fn look_driver_runs_option_a_round_trip_and_fans_out_deliveries() {
                                 payload: payload.clone(),
                                 coalesce_key: None,
                             }],
+                            moves: vec![],
                         },
                     )
                     .await;
@@ -365,6 +366,7 @@ async fn mute_peer_times_out_then_link_stays_usable_for_next_command() {
                             command_id,
                             direct_reply: reply.clone(),
                             deliveries: vec![],
+                            moves: vec![],
                         },
                     )
                     .await;
