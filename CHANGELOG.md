@@ -4,6 +4,63 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.98.0] - 2026-07-13
+
+### Added
+
+- **Sprint 78 — Discipline/Ability system: Tier 2 policy & content.** Completes the two-sprint
+  pair (Sprint 77 shipped the Tier 1 mechanism) replacing Lorecraft's flat `SkillRegistry`
+  catalog and the Sprint 74 skill-tree with one coherent, data-driven Discipline → Ability →
+  Proficiency model:
+  - **`DisciplineDef`/`DisciplineRegistry`** and **`AbilityRegistry`**, loaded from new
+    `world_content/disciplines.yaml` and `world_content/abilities.yaml` (split so disciplines,
+    which change rarely, aren't churned alongside abilities, which change often), mirroring the
+    existing `SkillTreeRegistry` marks-def load pattern.
+  - **`PlayerStats.skills` → `discipline_ranks` schema migration**, via the Sprint 75 generic
+    reflection-based additive-column scanner (no hand-written shim). Database Specialist
+    reviewed; the legacy `skills` column is intentionally left un-dropped for now (tracked as a
+    follow-up in the Backlog — the scanner has no DROP support).
+  - **Non-combat 5-discipline seed set** — Survival, Subterfuge, Commerce, Rhetoric, Fortitude —
+    absorbing all 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`,
+    `sharp_eyes`, `haggler`, `silver_tongue`) and all 6 flat skills, with zero new combat content.
+  - **Design correction found during migration:** the original plan called for remapping
+    `sharp_eyes`'s `skill.perception` modifier key to a new `discipline_ranks.subterfuge`
+    namespace (task 78.5). A fuller audit found `skill.<name>` is referenced in six places across
+    the codebase (`traits/standard.py`, `consumables/buffs.py`, `items/effects.py`,
+    `marks.yaml`, `webui/player/frontend.py`), not just `sharp_eyes` — so `skill.<name>` is kept
+    **permanently** as the check/modifier-key namespace (orthogonal to the deleted
+    `features/skills/` package), with each check's base value now re-sourced from
+    `discipline_ranks.<discipline>`. Task 78.5 dropped as moot; no remap needed anywhere.
+  - **Code migration**: `features/skills/` deleted outright (no back-compat alias, matching the
+    `area_id` disposition precedent); `features/progression/skill_tree.py` folded into
+    `features/disciplines/abilities.py`.
+  - **Command rework**: `train`/`learn`/`abilities`/`skills` unified into the new
+    discipline/ability model, each consolidated into a single `ctx.say()` call (continuing the
+    v0.96.2 info-command cohesion fix).
+  - **Verb retrofit**: `forage` (and related exploration/movement verbs) now gate through the
+    Sprint 77 data-driven `check_usage` mechanism instead of hardcoded Python conditions, proving
+    the new mechanism actually replaces the old gating rather than just duplicating it.
+  - **Full test coverage**: registry loading, acquisition/usage flows through real content,
+    command output, and schema migration round-trip. Gate-clean — Database Specialist, Code
+    Reviewer, and both Test & QA lanes (unit: 1510 passed; e2e) all reported clean.
+  - **Four small non-blocking follow-ups** surfaced in review and moved to the roadmap Backlog
+    rather than blocking merge: the un-dropped legacy `skills` column, two stale
+    `required_skill`/`required_skill_min` comments in `features/weather/modifiers.py`, a cosmetic
+    help-category label mismatch for `train`/`learn`/`abilities`, and an e2e coverage gap for the
+    new command surface.
+  - **Live-tunability OPEN ITEM** (not built, flagged for a future sprint if demand appears):
+    per-ability `cost`/`cooldown_seconds`/resource costs and proficiency-growth tuning
+    (`improve_chance`/`max_rank`) ship as static YAML this sprint, matching `skill_tree.yaml`'s
+    precedent — candidates for a live-tunable DB-singleton admin control later, not built ahead
+    of actual demand.
+
+### Docs
+
+- **User guide & admin builder guide**: disciplines/abilities/proficiency explained to players;
+  authoring new abilities/disciplines documented for builders.
+- **Roadmap**: Sprint 78 marked complete; both halves of the Discipline/Ability system
+  (Sprints 77–78) now shipped.
+
 ## [0.97.0] - 2026-07-13
 
 ### Added

@@ -11,18 +11,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-13, v0.96.0 on main; Sprints 1–76 all shipped; 77 and 78 implemented pending merge)
+## Where things stand (2026-07-13, v0.98.0 on main; Sprints 1–78 all shipped)
 
-**Everything through Sprint 76 is merged to main** (currently at v0.96.0, which ships Sprints 73,
-74, 75, and 76 in sequence — see `../CHANGELOG.md`). All numbered sprints 1 through 76 are now
-shipped. **Sprint 77 (the Discipline/Ability system's Tier 1 mechanism — see that section below
-and [`discipline_ability_system.md`](discipline_ability_system.md)) is implemented, tested, and
-code-reviewed on branch `sprint-77-abilities-tier1`, all tasks `[x]`, pending Integrator
-merge/version-bump.** **Sprint 78 (the Tier 2 policy/content layer built on top of it — the
-`features/disciplines/` registries, `world_content/disciplines.yaml`/`abilities.yaml` content,
-the `PlayerStats` schema migration, and the `train`/`abilities`/`disciplines` command rework) is
-now also implemented, tested, and gate-clean on branch `sprint-78-abilities-tier2`, all tasks
-`[x]` (78.5 dropped/superseded per its row), pending Integrator merge/version-bump.**
+**Everything through Sprint 78 is merged to main** (currently at v0.98.0). All numbered sprints
+1 through 78 are now shipped. The Discipline/Ability system — see
+[`discipline_ability_system.md`](discipline_ability_system.md) and the Sprint 77/78 sections
+below — replaced the flat `SkillRegistry` catalog and the Sprint 74 skill-tree with one
+coherent, data-driven Discipline → Ability → Proficiency model across its two halves: **Sprint
+77** (the Tier 1 mechanism — `engine/game/abilities.py`) shipped as v0.97.0, and **Sprint 78**
+(the Tier 2 policy/content layer — `features/disciplines/` registries,
+`world_content/disciplines.yaml`/`abilities.yaml` content, the `PlayerStats` schema migration,
+and the `train`/`abilities`/`disciplines` command rework) shipped as v0.98.0.
 Foundation, the Tier 1 engine-core primitives, the full Tier 2 pillar band (exploration ·
 trading · questing · puzzles · inventory/equipment · traits/skills · character condition ·
 transit), the tier-split refactor, the performance/WAL band, the observability pair (56–57), the
@@ -1011,7 +1010,7 @@ identities, ability content, or policy values hardcoded anywhere in this sprint.
 
 ## Sprint 78 — Discipline/Ability system: Tier 2 policy & content (Phases B.2–F)
 
-**Used (all complete, pending Integrator merge/version-bump).** Implemented on branch
+**Used (all complete, merged to main as v0.98.0).** Implemented on branch
 `sprint-78-abilities-tier2` — 8 implementation commits (`c4e4c34` 78.1 `DisciplineDef`/
 `DisciplineRegistry`, `d6fb469` 78.2 `AbilityRecord`/`AbilityRegistry`, `bc3174e` 78.3
 `PlayerStats.skills`→`discipline_ranks` migration, `7df0e59` 78.4 `disciplines.yaml`/
@@ -1128,21 +1127,20 @@ beyond what Sprint 77 already shipped.
   + composition-layer work, no `engine/` changes; Database Specialist gate skipped). Branch
   `sprint-76-economy-live-tuning`, all tasks `[x]` — see the Sprint 76 section above for the full
   commit list.
-- **Used (77 and 78 all complete, pending Integrator merge/version-bump):**
+- **Used (77 and 78 all complete, merged to main):**
   Discipline/Ability system (user-driven design brief, reworked to fit Lorecraft's
   combat-shelved status and Tier 1/2 architecture), split into **Sprint 77** (Tier 1 mechanism —
   `engine/game/abilities.py`, Phases A–B.1) and **Sprint 78** (Tier 2 policy/content —
   `features/disciplines/`, schema + content migration, command rework, Phases B.2–F), mirroring
   the Sprint 73/74 mechanism-then-policy precedent. Design finalized and Research/Planning-reviewed
-  2026-07-13 (see [`discipline_ability_system.md`](discipline_ability_system.md)). **Sprint 77 is
-  implemented** — 77.1–77.8 all `[x]` on branch `sprint-77-abilities-tier1` (7 implementation
-  commits plus the earlier design-finalization commit; no schema/DB changes), awaiting Integrator
-  merge/version-bump. **Sprint 78 is also implemented** — 78.1–78.4 and 78.6–78.11 all `[x]` on
-  branch `sprint-78-abilities-tier2` (8 implementation commits plus the earlier design-correction
-  commit; 78.5 dropped/superseded), Database Specialist/Code Reviewer/Test & QA gates all clean,
-  awaiting Integrator merge/version-bump — see the Sprint 77/78 sections above for full task
-  tables. **Next genuinely free sprint number: 79.** Don't recycle a number that appears here or
-  in [`roadmap_completed.md`](roadmap_completed.md).
+  2026-07-13 (see [`discipline_ability_system.md`](discipline_ability_system.md)). **Sprint 77**
+  — 77.1–77.8 all `[x]` on branch `sprint-77-abilities-tier1` (7 implementation commits plus the
+  earlier design-finalization commit; no schema/DB changes), merged to main as **v0.97.0**.
+  **Sprint 78** — 78.1–78.4 and 78.6–78.11 all `[x]` on branch `sprint-78-abilities-tier2` (8
+  implementation commits plus the earlier design-correction commit; 78.5 dropped/superseded),
+  Database Specialist/Code Reviewer/Test & QA gates all clean, merged to main as **v0.98.0** —
+  see the Sprint 77/78 sections above for full task tables. **Next genuinely free sprint number:
+  79.** Don't recycle a number that appears here or in [`roadmap_completed.md`](roadmap_completed.md).
 
 ---
 
