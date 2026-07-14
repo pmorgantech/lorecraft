@@ -58,10 +58,12 @@ class ConnectionManager:
         room_id: str,
         message: JsonObject,
         exclude: str | None = None,
+        exclude_players: set[str] | None = None,
     ) -> None:
+        excluded = exclude_players or set()
         with time_operation("broadcast_send"):
             for player_id in self.players_in_room(room_id):
-                if player_id == exclude:
+                if player_id == exclude or player_id in excluded:
                     continue
                 await self.send_to_player(player_id, message)
 

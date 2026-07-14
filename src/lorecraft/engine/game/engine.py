@@ -15,6 +15,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.parser import ParsedCommand, parse_command, registry_verb
+from lorecraft.engine.game.player_activity import command_activity_block
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.services.audit import AuditService
@@ -123,6 +124,12 @@ class CommandEngine:
         if command is None:
             ctx.say("I don't understand that command.", MessageType.WARNING)
             self._record_blocked(ctx, parsed, "unknown_command", "Unknown command.")
+            return None
+
+        activity_block = command_activity_block(ctx.player, ctx.clock, command.verb)
+        if activity_block is not None:
+            ctx.say(activity_block.reason, MessageType.WARNING)
+            self._record_blocked(ctx, parsed, "activity_blocked", activity_block.reason)
             return None
 
         with time_operation("condition_evaluate") as condition_timing:

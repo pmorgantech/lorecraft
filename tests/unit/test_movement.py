@@ -18,7 +18,14 @@ from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.features.fatigue.service import FatigueService
+from lorecraft.features.fatigue.source import (
+    FATIGUE_METER_KEY,
+    register as register_fatigue,
+)
 from lorecraft.features.movement.service import MovementService
+
+register_fatigue()
 
 
 def test_movement_service_moves_player_and_queues_event() -> None:
@@ -212,6 +219,43 @@ def test_pick_records_skill_use_for_a_player_without_a_stats_row() -> None:
         session.commit()
 
         assert session.get(PlayerStats, player.id) is not None
+
+
+def test_movement_blocks_when_movement_points_are_insufficient() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    manager = ConnectionManager()
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, manager, EventBus())
+        meter = ctx.meters.get(session, "player", player.id, FATIGUE_METER_KEY)
+        ctx.meters.set_current(session, meter, 0.0)
+
+        MovementService(FatigueService()).move("east", ctx)
+
+    assert "movement points" in ctx.messages[0]
+    assert ctx.player.current_room_id == "tavern"
+
+
+def test_movement_cost_depends_on_target_terrain_and_weather() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        square = session.get(Room, "square")
+        assert square is not None
+        square.terrain = "forest"
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        cost = FatigueService().movement_cost(ctx, square)
+
+    assert cost == 3.0
 
 
 def _seed_rooms(session: Session) -> None:

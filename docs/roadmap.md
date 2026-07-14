@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-14, v0.100.0 on develop; Sprints 1–81 all shipped)
+## Where things stand (2026-07-14, v0.101.0 on develop; Sprints 1–81 all shipped)
 
-**Everything through Sprint 81 is shipped on `develop`** (currently v0.100.0). `roadmap.md` now tracks
+**Everything through Sprint 81 is shipped on `develop`** (currently v0.101.0). `roadmap.md` now tracks
 remaining work only; the full task-level history for completed Sprints 1–81 lives in
 [`roadmap_completed.md`](roadmap_completed.md), with release-level detail in
 [`../CHANGELOG.md`](../CHANGELOG.md).

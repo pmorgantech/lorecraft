@@ -97,10 +97,17 @@ class ServiceContainer:
                 by tests and by a default server boot.
         """
         kwargs: dict[str, object | None] = {}
+        fatigue_active = enabled is None or "fatigue" in enabled
+        fatigue = FatigueService() if fatigue_active else None
         for container_field, (
             feature_key,
             service_cls,
         ) in _FEATURE_GATED_SERVICES.items():
             active = enabled is None or feature_key in enabled
-            kwargs[container_field] = service_cls() if active else None
+            if container_field == "fatigue":
+                kwargs[container_field] = fatigue
+            elif container_field == "movement":
+                kwargs[container_field] = MovementService(fatigue) if active else None
+            else:
+                kwargs[container_field] = service_cls() if active else None
         return cls(**kwargs)  # type: ignore[arg-type]

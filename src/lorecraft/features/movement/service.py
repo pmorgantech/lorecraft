@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from lorecraft.features.terrain import definitions as terrain_module
 from lorecraft.engine.game.checks import skill_check
 from lorecraft.engine.game.context import GameContext
@@ -13,6 +15,9 @@ from lorecraft.engine.game.modifiers import get_registry as get_modifier_registr
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.parser import DIRECTION_ALIASES
 from lorecraft.features.disciplines.service import ProficiencyService
+
+if TYPE_CHECKING:
+    from lorecraft.features.fatigue.service import FatigueService
 
 _proficiency = ProficiencyService()
 
@@ -30,6 +35,9 @@ def _carries(ctx: GameContext, item_id: str) -> bool:
 
 
 class MovementService:
+    def __init__(self, fatigue: "FatigueService | None" = None) -> None:
+        self.fatigue = fatigue
+
     def unlock(self, direction: str | None, ctx: GameContext) -> None:
         self._set_locked(direction, ctx, locked=False, verb="unlock")
 
@@ -131,6 +139,11 @@ class MovementService:
         target_room = ctx.room_repo.active(exit_.target_room_id)
         if target_room is None:
             ctx.say("You can't go that way.", MessageType.WARNING)
+            return
+
+        if self.fatigue is not None and not self.fatigue.consume_for_travel(
+            ctx, target_room
+        ):
             return
 
         terrain_def = terrain_module.get_registry().get(target_room.terrain)

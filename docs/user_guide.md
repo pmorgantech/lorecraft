@@ -275,21 +275,24 @@ and tide and come back.
 ## Stamina: Rest, Sleep, and Camp
 
 ```
-rest            — catch your breath and recover a little stamina
+rest            — enter rest mode and recover movement points over time
+stand           — leave rest mode
 camp            — make camp and recover a good deal of stamina
-sleep           — sleep deeply and recover all your stamina
+sleep <hours>   — sleep deeply and recover movement points faster
 ```
 
-Traveling drains your stamina — more so if you're carrying a lot of weight. Running low
+Traveling spends movement points from your stamina meter. The cost depends on the
+terrain you're entering, the weather if you're exposed, and how much weight you're
+carrying. If you don't have enough movement points, you can't move. Running low also
 saps your skill checks (perception, lockpicking, and the rest), so it pays to top up
-before attempting something that matters. `rest` is quick and available almost anywhere;
-`camp` restores more but takes longer; `sleep` restores you fully and advances the clock.
+before attempting something that matters.
 
-Sleeping in an inn or a marked camp is always reliable. Anywhere else it's a gamble — a
-survival check, harder in cold weather unless you're dressed for it (a warm cloak or
-similar helps). If it goes badly your rest is interrupted: shorter, and only a partial
-recovery. A good night's sleep sometimes comes with a dream — occasionally a hint tied to
-something you've already discovered.
+`rest` toggles a rest mode: you recover slowly over time, but you must `stand` before
+you can move or use things. `sleep <hours>` recovers faster and clears rest mode, but
+you are unavailable until enough world time passes and room events won't appear in
+your feed while you're asleep. Sleeping in an inn or a marked camp is reliable;
+anywhere else still risks an interrupted, exposed sleep, especially in cold weather
+without warm gear.
 
 ## Character: Traits, Disciplines, and Reputation
 

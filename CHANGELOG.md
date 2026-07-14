@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.101.0] - 2026-07-14
+
+### Added
+
+- Added movement-point travel costs based on terrain, weather, and encumbrance; travel now fails before movement when the player lacks enough points.
+- Added persistent rest/stand and timed sleep states, with over-time movement-point recovery and command blocking while resting or asleep.
+
 ## [0.100.1] - 2026-07-14
 
 ### Docs

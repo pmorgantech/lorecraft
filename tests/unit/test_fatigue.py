@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine
 
 from lorecraft.commands import register_all_commands
@@ -13,7 +14,11 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
-from lorecraft.engine.game.events import EventBus
+from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.features.disciplines.abilities import (
+    get_discipline_registry,
+    load_disciplines_yaml,
+)
 from lorecraft.features.fatigue.source import FATIGUE_METER_KEY, FatigueModifierSource
 from lorecraft.engine.game.holders import Location
 from lorecraft.features.items.effects import compile_item_modifiers
@@ -22,6 +27,7 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.features.warmth.rules import resolve_warmth
+from lorecraft.engine.clock.world_clock import ClockEventContext
 from lorecraft.engine.models.world import Exit, Item, Room, WorldClock
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.repos.item_repo import ItemRepo
@@ -42,6 +48,9 @@ from lorecraft.features.fatigue.source import register as _register_fatigue
 # They now register via the fatigue/equipment feature register()s.
 _register_fatigue()
 _register_equipment_source()
+get_discipline_registry().load_document(
+    load_disciplines_yaml("world_content/disciplines.yaml")
+)
 
 START_ROOM_ID = "start"
 DEST_ROOM_ID = "dest"
@@ -144,6 +153,12 @@ def built() -> Iterator[tuple[CommandEngine, GameContext, Session]]:
     session.close()
 
 
+def _session_engine(session: Session) -> Engine:
+    bind = session.get_bind()
+    assert isinstance(bind, Engine)
+    return bind
+
+
 def _fatigue(ctx: GameContext):
     return ctx.meters.get(ctx.session, "player", ctx.player.id, FATIGUE_METER_KEY)
 
@@ -176,7 +191,7 @@ class TestFatigueDrainOnTravel:
 
 
 class TestRestSleepCamp:
-    def test_rest_restores_a_little(
+    def test_rest_enters_rest_mode_without_instant_restore(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         cmd_engine, ctx, _session = built
@@ -185,8 +200,9 @@ class TestRestSleepCamp:
 
         cmd_engine.handle_command("rest", ctx)
 
-        assert _fatigue(ctx).current == meter.maximum - 10.0
-        assert any("less tired" in m for m in ctx.messages)
+        assert _fatigue(ctx).current == meter.maximum - 30.0
+        assert ctx.player.flags["condition:resting"] is True
+        assert any("steady rest" in m for m in ctx.messages)
 
     def test_camp_restores_more_than_rest(
         self, built: tuple[CommandEngine, GameContext, Session]
@@ -199,7 +215,7 @@ class TestRestSleepCamp:
 
         assert _fatigue(ctx).current == meter.maximum - 5.0
 
-    def test_sleep_in_safe_room_restores_to_full_and_advances_clock(
+    def test_sleep_in_safe_room_sets_sleep_state(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         cmd_engine, ctx, _session = built
@@ -208,19 +224,85 @@ class TestRestSleepCamp:
         assert ctx.clock is not None
         assert ctx.room.safe_rest is True
 
-        cmd_engine.handle_command("sleep", ctx)
+        cmd_engine.handle_command("sleep 8", ctx)
 
-        assert _fatigue(ctx).current == meter.maximum
-        assert ctx.clock.current_hour == 16  # 08:00 + 8h
+        assert _fatigue(ctx).current == meter.maximum - 80.0
+        assert ctx.player.flags["condition:sleeping_until"] == (
+            ctx.clock.game_epoch + 8 * 3600.0
+        )
 
-    def test_already_well_rested(
+    def test_rest_can_start_when_well_rested(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
         cmd_engine, ctx, _session = built
 
         cmd_engine.handle_command("rest", ctx)
 
-        assert ctx.messages == ["You are already well-rested."]
+        assert ctx.player.flags["condition:resting"] is True
+        assert ctx.messages == [
+            "You settle into a steady rest. Stand when you're ready to move again."
+        ]
+
+    def test_rest_blocks_movement_until_standing(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+
+        cmd_engine.handle_command("rest", ctx)
+        cmd_engine.handle_command("go east", ctx)
+        cmd_engine.handle_command("stand", ctx)
+        cmd_engine.handle_command("go east", ctx)
+
+        assert any("steady rest" in m for m in ctx.messages)
+        assert any("Stand up first" in m for m in ctx.messages)
+        assert ctx.player.current_room_id == DEST_ROOM_ID
+
+    def test_sleep_requires_hours_and_blocks_commands(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+        assert ctx.clock is not None
+
+        cmd_engine.handle_command("sleep", ctx)
+        cmd_engine.handle_command("sleep 2", ctx)
+        cmd_engine.handle_command("look", ctx)
+
+        assert any("Sleep for how many hours" in m for m in ctx.messages)
+        assert any("asleep" in m for m in ctx.messages)
+
+    def test_sleep_recovers_faster_than_rest_on_time_advance(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, session = built
+        meter = _fatigue(ctx)
+        ctx.meters.adjust(ctx.session, meter, -80.0)
+        cmd_engine.handle_command("rest", ctx)
+        session.commit()
+        ctx.bus.emit(
+            Event(
+                GameEvent.TIME_ADVANCED,
+                {"previous_epoch": 0.0, "current_epoch": 3600.0},
+            ),
+            ClockEventContext(game_engine=_session_engine(session), bus=ctx.bus),
+        )
+        rest_current = _fatigue(ctx).current
+
+        ctx.meters.set_current(session, _fatigue(ctx), meter.maximum - 80.0)
+        ctx.player.flags = {}
+        session.add(ctx.player)
+        session.commit()
+        cmd_engine.handle_command("sleep 2", ctx)
+        session.commit()
+        ctx.bus.emit(
+            Event(
+                GameEvent.TIME_ADVANCED,
+                {"previous_epoch": 0.0, "current_epoch": 3600.0},
+            ),
+            ClockEventContext(game_engine=_session_engine(session), bus=ctx.bus),
+        )
+
+        session.expire_all()
+        assert _fatigue(ctx).current > rest_current
 
 
 class TestSleepSafetyAndDream:
@@ -234,18 +316,11 @@ class TestSleepSafetyAndDream:
         meter = _fatigue(ctx)
         ctx.meters.adjust(ctx.session, meter, -80.0)
 
-        cmd_engine.handle_command("sleep", ctx)
+        cmd_engine.handle_command("sleep 8", ctx)
 
-        assert any(
-            "full night's rest" in m or "fitful and interrupted" in m
-            for m in ctx.messages
-        )
-        if any("fitful" in m for m in ctx.messages):
-            assert _fatigue(ctx).current == meter.maximum - 80.0 + 20.0
-            assert ctx.clock is not None and ctx.clock.current_hour == 11  # +3h
-        else:
-            assert _fatigue(ctx).current == meter.maximum
-            assert ctx.clock is not None and ctx.clock.current_hour == 16  # +8h
+        assert any("sleep" in m or "fitful" in m for m in ctx.messages)
+        assert _fatigue(ctx).current == meter.maximum - 80.0
+        assert "condition:sleeping_until" in ctx.player.flags
 
     def test_dream_after_safe_sleep_references_lore_flag(
         self, built: tuple[CommandEngine, GameContext, Session]
@@ -253,7 +328,7 @@ class TestSleepSafetyAndDream:
         cmd_engine, ctx, _session = built
         ctx.player.flags = {**ctx.player.flags, "lore:ancient_ruins": True}
 
-        cmd_engine.handle_command("sleep", ctx)
+        cmd_engine.handle_command("sleep 8", ctx)
 
         assert any("ancient ruins" in m for m in ctx.messages)
 
@@ -262,7 +337,7 @@ class TestSleepSafetyAndDream:
     ) -> None:
         cmd_engine, ctx, _session = built
 
-        cmd_engine.handle_command("sleep", ctx)
+        cmd_engine.handle_command("sleep 8", ctx)
 
         assert any("You dream of" in m for m in ctx.messages)
 

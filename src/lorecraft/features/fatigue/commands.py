@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandCondition, CommandRegistry
 from lorecraft.features.fatigue.service import FatigueService
 
@@ -15,11 +16,20 @@ def register_condition_commands(
     @registry.register(
         "rest",
         conditions=[CommandCondition.NOT_IN_COMBAT],
-        help="rest — catch your breath and recover a little stamina",
+        help="rest — enter rest mode and recover movement points over time",
     )
     def rest_command(noun: str | None, ctx: GameContext) -> None:
         del noun
         fatigue_service.rest(ctx)
+
+    @registry.register(
+        "stand",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="stand — leave rest mode",
+    )
+    def stand_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        fatigue_service.stand(ctx)
 
     @registry.register(
         "camp",
@@ -33,8 +43,14 @@ def register_condition_commands(
     @registry.register(
         "sleep",
         conditions=[CommandCondition.NOT_IN_COMBAT],
-        help="sleep — sleep deeply and recover all your stamina",
+        help="sleep <hours> — sleep deeply and recover movement points faster",
     )
     def sleep_command(noun: str | None, ctx: GameContext) -> None:
-        del noun
-        fatigue_service.sleep(ctx)
+        hours: float | None = None
+        if noun is not None:
+            try:
+                hours = float(noun)
+            except ValueError:
+                ctx.say("Sleep for how many hours? Try `sleep 8`.", MessageType.WARNING)
+                return
+        fatigue_service.sleep(ctx, hours)

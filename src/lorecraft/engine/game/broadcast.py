@@ -19,6 +19,7 @@ from lorecraft.engine.game.channels import get_registry as get_channel_registry
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.game.player_activity import sleeping_player_ids
 from lorecraft.engine.models.player import Player
 from lorecraft.types import JsonObject, JsonValue
 
@@ -76,6 +77,8 @@ async def broadcast_command_effects(
     room_changed = after_room_id != pre_room_id
     narration_room = pre_room_id if room_changed and pre_room_id else after_room_id
 
+    sleeping_ids = _sleeping_recipients(ctx, narration_room, after_room_id)
+
     for room_msg in ctx.room_messages:
         if not narration_room:
             continue
@@ -88,6 +91,7 @@ async def broadcast_command_effects(
                     "message_type": MessageType.ROOM_EVENT.value,
                 },
                 exclude=actor_id,
+                exclude_players=sleeping_ids,
             )
         except Exception as exc:
             log.debug("room_feed_broadcast_failed: %s", exc)
@@ -137,6 +141,7 @@ async def broadcast_command_effects(
                     "message_type": MessageType.ROOM_EVENT.value,
                 },
                 exclude=actor_id,
+                exclude_players=sleeping_ids,
             )
         except Exception as exc:
             log.debug("arrival_feed_broadcast_failed: %s", exc)
@@ -177,3 +182,18 @@ async def broadcast_command_effects(
         except Exception as exc:
             log.debug("pending_delivery_failed: %s", exc)
     ctx.pending_deliveries.clear()
+
+
+def _sleeping_recipients(ctx: GameContext, *room_ids: str | None) -> set[str]:
+    player_ids: set[str] = set()
+    for room_id in room_ids:
+        if room_id:
+            player_ids.update(ctx.manager.players_in_room(room_id))
+    if not player_ids:
+        return set()
+    players = [
+        player
+        for player_id in player_ids
+        if (player := ctx.session.get(Player, player_id)) is not None
+    ]
+    return sleeping_player_ids(players, ctx.clock)
