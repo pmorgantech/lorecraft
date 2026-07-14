@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.100.1] - 2026-07-14
+
+### Docs
+
+- Added a MUD world-building and quest-design guide for area, NPC, item, and
+  quest authors.
+
 ## [0.100.0] - 2026-07-14
 
 ### Added
