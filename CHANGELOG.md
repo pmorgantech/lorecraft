@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.117.0] - 2026-07-15
+
+### Added
+
+- Completed Sprint 86 with party assistance participation: `assist <player>`
+  joins an ally's active encounter, creates supportive and hostile relationship
+  edges, records a `party_assist` combat contract, and marks assistance as
+  reward/audit-visible participation without implementing full PvP duels.
+
 ## [0.116.0] - 2026-07-15
 
 ### Added

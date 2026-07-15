@@ -190,6 +190,50 @@ class CombatService:
         ctx.say(f"You move to guard {target_name}.")
         self._push_combat_update(ctx, encounter.id)
 
+    def assist(self, noun: str | None, ctx: GameContext) -> None:
+        target_player = self._resolve_assist_target(noun, ctx)
+        if target_player is None:
+            ctx.say("Assist whom?", MessageType.WARNING)
+            return
+        if target_player.id == ctx.player.id:
+            ctx.say("You are already covering yourself.", MessageType.WARNING)
+            return
+        repo = CombatRepo(ctx.session)
+        encounter = repo.active_encounter_for_actor("player", target_player.id)
+        if encounter is None:
+            ctx.say(f"{target_player.username} is not in combat.", MessageType.WARNING)
+            return
+        sponsor = repo.participant_for_actor(encounter.id, "player", target_player.id)
+        if sponsor is None or sponsor.status != STATUS_ACTIVE:
+            ctx.say(
+                f"{target_player.username} is not active in combat.",
+                MessageType.WARNING,
+            )
+            return
+        now = self._now(ctx)
+        actor = repo.participant_for_actor(encounter.id, "player", ctx.player.id)
+        if actor is None:
+            actor = CombatParticipant(
+                id=str(uuid4()),
+                encounter_id=encounter.id,
+                actor_type="player",
+                actor_id=ctx.player.id,
+                side_id=sponsor.side_id,
+                joined_at=now,
+                primary_ready_at=now,
+                reaction_ready_at=now,
+            )
+        actor.status = STATUS_ACTIVE
+        actor.side_id = sponsor.side_id
+        self._mark_assistance(actor, sponsor, now)
+        repo.add(actor)
+        self._ensure_assist_edges(repo, encounter.id, actor, sponsor)
+        ctx.player.active_combat_session_id = encounter.id
+        ctx.player_repo.add(ctx.player)
+        ctx.say(f"You join {target_player.username}'s side.")
+        ctx.tell_room(f"{ctx.player.username} joins {target_player.username}'s side.")
+        self._push_combat_update(ctx, encounter.id)
+
     def flee(self, noun: str | None, ctx: GameContext) -> None:
         del noun
         encounter, actor = self._active_player_participation(ctx)
@@ -496,6 +540,68 @@ class CombatService:
             if self._participant_name(session, participant).lower() == needle:
                 return participant
         return None
+
+    def _resolve_assist_target(
+        self, noun: str | None, ctx: GameContext
+    ) -> Player | None:
+        if noun is None or not noun.strip():
+            return None
+        needle = noun.strip().lower()
+        for player in ctx.player_repo.in_room(ctx.room.id):
+            if player.id == ctx.player.id:
+                continue
+            if player.id.lower() == needle or player.username.lower() == needle:
+                return player
+        return None
+
+    def _ensure_assist_edges(
+        self,
+        repo: CombatRepo,
+        encounter_id: str,
+        actor: CombatParticipant,
+        sponsor: CombatParticipant,
+    ) -> None:
+        support = repo.relationship_between(encounter_id, actor.id, sponsor.id)
+        if support is None:
+            support = CombatRelationship(
+                id=str(uuid4()),
+                encounter_id=encounter_id,
+                source_participant_id=actor.id,
+                target_participant_id=sponsor.id,
+            )
+        support.hostility = "supportive"
+        support.engagement = ENGAGEMENT_UNENGAGED
+        repo.add(support)
+
+        hostile_targets = [
+            relationship.target_participant_id
+            for relationship in repo.relationships_for_encounter(encounter_id)
+            if relationship.source_participant_id == sponsor.id
+            and relationship.hostility == "hostile"
+        ]
+        for target_id in hostile_targets:
+            self._ensure_hostile_edges(repo, encounter_id, actor.id, target_id)
+
+    def _mark_assistance(
+        self,
+        actor: CombatParticipant,
+        sponsor: CombatParticipant,
+        current_epoch: float,
+    ) -> None:
+        contribution = dict(actor.contribution)
+        contribution["participation"] = "assistance"
+        contribution["counts_as_participation"] = True
+        contribution["assisted_participant_id"] = sponsor.id
+        contribution["assisted_actor_type"] = sponsor.actor_type
+        contribution["assisted_actor_id"] = sponsor.actor_id
+        contribution["joined_as_assist_at"] = current_epoch
+        contribution["combat_contract"] = {
+            "kind": "party_assist",
+            "scope": "encounter",
+            "counts_as_participation": True,
+            "sponsor_participant_id": sponsor.id,
+        }
+        actor.contribution = contribution
 
     def _guard_interceptor(
         self, repo: CombatRepo, encounter_id: str, target: CombatParticipant

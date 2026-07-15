@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.116.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
+## Where things stand (2026-07-15, v0.117.0 on combat; Sprints 1–86 implemented; Sprint 87 next)
 
-**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.116.0).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.117.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -122,7 +122,8 @@ participant positions from active relationship edges. Scheduled resolutions pers
 `CombatResolutionRecord` payloads, emit audit-ready structured events with resolution record
 ids and traces, and write `AuditEvent` rows when the scheduler is wired with an audit engine.
 Browser-state updates now include inactive participants so downed/defeated/escaped outcomes
-remain visible in structured combat state. Sprint 86 is the next open combat band.
+remain visible in structured combat state. Sprint 86 added tactical depth without introducing a
+formation system.
 
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 
@@ -140,7 +141,7 @@ attack semantics, basic status effects, threat/NPC roles, party assistance, duel
 - [x] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
 - [x] 86.6 Simple ranged/vantage semantics + explicit range traces
 - [x] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
-- [ ] 86.8 Party assistance + duel contracts — assistance counts as participation
+- [x] 86.8 Party assistance + duel contracts — assistance counts as participation
 
 Sprint 86 progress note (v0.110.0): players can use `stance <balanced|aggressive|defensive|mobile>`
 while in combat. The stance is persisted on the combat participant, appears in structured combat
@@ -182,6 +183,12 @@ damage. Threat entries decay on update/read, expose `aware`/`watching`/`focused`
 combat state, and include `threat_changes` in resolution payloads. NPC combat roles come from
 `NPC.ai.combat_role` when authored, falling back to the existing `NPC.behavior`; NPC counter-intents
 can prefer the highest active threat without introducing a larger AI planner.
+
+Sprint 86 completion note (v0.117.0): `assist <player>` lets a player join another local player's
+active encounter on the same side, creates supportive and hostile relationship edges, and records
+`party_assist` contract metadata in participant contribution so assistance counts as participation
+for later reward/audit policy. Duel contracts remain structured metadata only here; full opt-in PvP
+duel consent and stakes are deferred to later combat/PvP work.
 
 ### Sprint 87 — Combat Phase 3: Content Power
 

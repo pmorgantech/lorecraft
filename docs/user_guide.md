@@ -552,6 +552,7 @@ attack <target>    — start or continue an encounter with a nearby NPC
 shoot <target>     — start or continue a ranged attack against a nearby NPC
 defend             — brace with your next primary action
 guard [ally]       — defend yourself or intercept attacks against an ally
+assist <player>    — join a nearby player's active encounter on their side
 flee               — look for an opening to leave the encounter
 stance <stance>    — switch to balanced, aggressive, defensive, or mobile
 reaction <policy>  — choose defensive, conserve, or never for auto-reactions
@@ -567,7 +568,8 @@ Reaction policy controls whether the character automatically spends a bounded de
 when attacked. If a character becomes unable to act before a committed wind-up resolves, that
 action is interrupted instead of taking effect. Some strong hits can apply short-lived combat
 status effects that expire on game time. NPC attention is tracked as broad cues, so enemies may
-keep pressure on the participant who has drawn the most notice.
+keep pressure on the participant who has drawn the most notice. Assisting another player joins
+their active encounter and marks you as a participant for later rewards and audit history.
 
 ## Getting Help In-Game
 
@@ -618,6 +620,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `attack <target>` | `fight` | Commit to a scheduled attack against a nearby NPC |
 | `shoot <target>` | `fire` | Commit to a scheduled ranged attack against a nearby NPC |
 | `defend` | `guard` | Spend your next combat action bracing against attacks |
+| `assist <player>` | | Join a nearby player's active encounter on their side |
 | `flee` | | Commit to an escape attempt from the current encounter |
 | `unwield <item>` | | Unequip a wielded item |
 | `equipment` | `eq` | List what you're wearing and wielding |

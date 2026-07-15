@@ -557,6 +557,65 @@ def test_ranged_attack_does_not_redirect_to_guarding_ally() -> None:
         assert ally_hp.current < ally_hp.maximum
 
 
+def test_assist_joins_ally_encounter_and_counts_as_participation() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        session.add(
+            Player(
+                id="ally",
+                username="ally",
+                current_room_id="arena",
+                respawn_room_id="arena",
+            )
+        )
+        session.add(PlayerStats(player_id="ally", strength=10, agility=10, max_hp=100))
+        session.flush()
+
+        service.attack("goblin", ctx)
+        ally_ctx = _context_for_existing_player(session, "ally")
+        service.assist("petem", ally_ctx)
+        session.commit()
+
+    with Session(engine) as session:
+        encounter = session.exec(select(CombatEncounter)).one()
+        player = session.exec(
+            select(CombatParticipant)
+            .where(CombatParticipant.actor_type == "player")
+            .where(CombatParticipant.actor_id == "player-1")
+        ).one()
+        ally = session.exec(
+            select(CombatParticipant)
+            .where(CombatParticipant.actor_type == "player")
+            .where(CombatParticipant.actor_id == "ally")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        ally_player = session.get(Player, "ally")
+        support = session.exec(
+            select(CombatRelationship)
+            .where(CombatRelationship.source_participant_id == ally.id)
+            .where(CombatRelationship.target_participant_id == player.id)
+        ).one()
+        hostile = session.exec(
+            select(CombatRelationship)
+            .where(CombatRelationship.source_participant_id == ally.id)
+            .where(CombatRelationship.target_participant_id == goblin.id)
+        ).one()
+
+        assert ally_player is not None
+        assert ally_player.active_combat_session_id == encounter.id
+        assert ally.side_id == player.side_id
+        assert ally.contribution["participation"] == "assistance"
+        assert ally.contribution["counts_as_participation"] is True
+        assert ally.contribution["combat_contract"]["kind"] == "party_assist"
+        assert support.hostility == "supportive"
+        assert hostile.hostility == "hostile"
+
+
 def test_reaction_policy_updates_state_and_auto_reaction_is_bounded() -> None:
     engine = _engine()
     service = CombatService()
@@ -1115,6 +1174,45 @@ def _context(
             actor_id="player-1", correlation_id="session-1"
         ),
         session_id="session-1",
+    )
+
+
+def _context_for_existing_player(
+    session: Session,
+    player_id: str,
+    *,
+    bus: EventBus | None = None,
+    rng: GameRng | None = None,
+) -> GameContext:
+    player = session.get(Player, player_id)
+    assert player is not None
+    room = session.get(Room, player.current_room_id)
+    assert room is not None
+    rng = rng or GameRng(seed=1)
+    engine = session.get_bind()
+    assert isinstance(engine, Engine)
+    return GameContext(
+        player=player,
+        room=room,
+        clock=WorldClock(game_epoch=0.0, real_epoch=0.0),
+        player_repo=PlayerRepo(session),
+        room_repo=RoomRepo(session),
+        item_repo=ItemRepo(session),
+        stack_repo=StackRepo(session),
+        item_location=ItemLocationService(session),
+        ledger=LedgerService(),
+        rng=rng,
+        session=session,
+        meters=MeterService(engine, rng),
+        effects=EffectService(engine, rng),
+        npc_repo=NpcRepo(session),
+        manager=ConnectionManager(),
+        bus=bus or EventBus(),
+        audit=AuditRepo(session),
+        transaction=TransactionContext.create(
+            actor_id=player.id, correlation_id=f"session-{player.id}"
+        ),
+        session_id=f"session-{player.id}",
     )
 
 

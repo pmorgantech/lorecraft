@@ -45,6 +45,13 @@ def register_combat_commands(
         service.guard(noun, ctx)
 
     @registry.register(
+        "assist",
+        help="assist <player> — join an ally's active encounter as a participant",
+    )
+    def assist_command(noun: str | None, ctx: GameContext) -> None:
+        service.assist(noun, ctx)
+
+    @registry.register(
         "flee",
         conditions=["in_combat"],
         help="flee — commit to an escape attempt from the current encounter",

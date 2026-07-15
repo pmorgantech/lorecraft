@@ -936,6 +936,12 @@ payloads include `threat_changes`, and `combat_update` includes each participant
 summary. NPC combat role text comes from `NPC.ai.combat_role` if present, otherwise the existing
 `NPC.behavior`; the role is a cue for builders and UI, not a separate planner.
 
+Party assistance is explicit participation. `assist <player>` joins the named player's active
+encounter on the same side, writes a supportive relationship to the sponsored participant, mirrors
+hostile edges against the opposing side, and stores a `party_assist` `combat_contract` in the
+assister's contribution payload. This is the current "duel contract" boundary: structured metadata
+for participation/reward/audit policy, not opt-in PvP consent or duel stakes.
+
 Bounded reactions are participant policy, not nested actions. `reaction <defensive|conserve|never>`
 sets the stored reaction policy; an incoming basic attack may consume one auto-brace window and
 then advances `reaction_ready_at`. The trace records whether the reaction fired, so later audit UI
