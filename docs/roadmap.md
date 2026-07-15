@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.115.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
+## Where things stand (2026-07-15, v0.116.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
 
-**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.115.0).
+**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.116.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -139,7 +139,7 @@ attack semantics, basic status effects, threat/NPC roles, party assistance, duel
 - [x] 86.4 Wind-up interruption — resolution-time interrupt outcome
 - [x] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
 - [x] 86.6 Simple ranged/vantage semantics + explicit range traces
-- [ ] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
+- [x] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
 - [ ] 86.8 Party assistance + duel contracts — assistance counts as participation
 
 Sprint 86 progress note (v0.110.0): players can use `stance <balanced|aggressive|defensive|mobile>`
@@ -176,6 +176,12 @@ now supports a `shoot`/`fire` ranged intent that records `action_range: "ranged"
 payloads, resolution records, damage traces, and audit-ready random traces. Ranged attacks do not
 use guarding interception, which gives authored content room for bows, snipers, and tower guards
 without adding player formation state, advance/retreat verbs, or persistent distance bands.
+
+Threat note (v0.116.0): combat now stores qualitative attention on participants when they take
+damage. Threat entries decay on update/read, expose `aware`/`watching`/`focused` cues in structured
+combat state, and include `threat_changes` in resolution payloads. NPC combat roles come from
+`NPC.ai.combat_role` when authored, falling back to the existing `NPC.behavior`; NPC counter-intents
+can prefer the highest active threat without introducing a larger AI planner.
 
 ### Sprint 87 — Combat Phase 3: Content Power
 

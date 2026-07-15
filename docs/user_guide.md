@@ -566,7 +566,8 @@ incoming melee attacks, while ranged shots record their range without using guar
 Reaction policy controls whether the character automatically spends a bounded defensive reaction
 when attacked. If a character becomes unable to act before a committed wind-up resolves, that
 action is interrupted instead of taking effect. Some strong hits can apply short-lived combat
-status effects that expire on game time.
+status effects that expire on game time. NPC attention is tracked as broad cues, so enemies may
+keep pressure on the participant who has drawn the most notice.
 
 ## Getting Help In-Game
 

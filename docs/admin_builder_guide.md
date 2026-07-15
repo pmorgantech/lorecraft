@@ -930,6 +930,12 @@ traces, and random traces. Ranged attacks do not use guarding interception. Ther
 near/far band or party formation state in this slice; authored tower guards, bows, and sniper-like
 content can build on the range trace without forcing all player combat into a formation model.
 
+Threat is qualitative. When a participant takes damage, its combat `threat.attention` map records
+the source participant, a decaying score, and an `aware`/`watching`/`focused` cue. Resolution
+payloads include `threat_changes`, and `combat_update` includes each participant's current threat
+summary. NPC combat role text comes from `NPC.ai.combat_role` if present, otherwise the existing
+`NPC.behavior`; the role is a cue for builders and UI, not a separate planner.
+
 Bounded reactions are participant policy, not nested actions. `reaction <defensive|conserve|never>`
 sets the stored reaction policy; an incoming basic attack may consume one auto-brace window and
 then advances `reaction_ready_at`. The trace records whether the reaction fired, so later audit UI

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import replace
+from typing import cast
 from uuid import uuid4
 
 from sqlalchemy.engine import Engine
@@ -53,6 +54,11 @@ from lorecraft.features.combat.policy import (
     REACTION_NEVER,
     STATUS_ACTIVE,
     STATUS_ESCAPED,
+    THREAT_DAMAGE_WEIGHT,
+    THREAT_DECAY_PER_TICK,
+    THREAT_FOCUSED_THRESHOLD,
+    THREAT_MAX,
+    THREAT_WATCHING_THRESHOLD,
     VALID_REACTION_POLICIES,
     VALID_STANCES,
     defeat_decision_for,
@@ -840,6 +846,7 @@ class CombatService:
             state_changes=[],
             position_changes=[],
             effect_changes=[],
+            threat_changes=[],
         )
         record = self._record_resolution(
             repo,
@@ -855,6 +862,7 @@ class CombatService:
             state_changes=[],
             position_changes=[],
             effect_changes=[],
+            threat_changes=[],
         )
         record.payload = action.outcome
         repo.add(record)
@@ -881,6 +889,7 @@ class CombatService:
         action.random_trace = resolution.random_trace or {}
         state_changes: list[JsonValue] = []
         position_changes: list[JsonValue] = []
+        threat_changes: list[JsonValue] = []
         if actor.queued_action_id == action.id:
             actor.queued_action_id = None
         if resolution.stamina_delta:
@@ -918,6 +927,15 @@ class CombatService:
             hp = meter_service.get(session, target.actor_type, target.actor_id, "hp")
             change = meter_service.adjust(session, hp, -resolution.damage)
             self._add_contribution(actor, resolution.damage)
+            threat_changes.append(
+                self._add_threat(
+                    session,
+                    target,
+                    actor,
+                    amount=resolution.damage,
+                    current_epoch=current_epoch,
+                )
+            )
             if change.depleted:
                 decision = defeat_decision_for(target.actor_type)
                 state_changes.append(
@@ -952,6 +970,7 @@ class CombatService:
             state_changes=state_changes,
             position_changes=position_changes,
             effect_changes=effect_changes,
+            threat_changes=threat_changes,
         )
         action.outcome = payload
         record = self._record_resolution(
@@ -968,6 +987,7 @@ class CombatService:
             state_changes=state_changes,
             position_changes=position_changes,
             effect_changes=effect_changes,
+            threat_changes=threat_changes,
         )
         record.payload = action.outcome
         repo.add(record)
@@ -997,6 +1017,7 @@ class CombatService:
             return
         if repo.pending_primary_action(target.id) is not None:
             return
+        response_target = self._preferred_target_for_npc(repo, target, fallback=actor)
         self._submit_action(
             repo=repo,
             session=session,
@@ -1004,8 +1025,34 @@ class CombatService:
             actor=target,
             action_key=ACTION_BASIC_ATTACK,
             now=current_epoch,
-            target=actor,
+            target=response_target,
         )
+
+    def _preferred_target_for_npc(
+        self,
+        repo: CombatRepo,
+        npc_participant: CombatParticipant,
+        *,
+        fallback: CombatParticipant,
+    ) -> CombatParticipant:
+        attention = npc_participant.threat.get("attention")
+        if not isinstance(attention, dict):
+            return fallback
+        best: tuple[float, CombatParticipant] | None = None
+        for participant_id, raw_entry in attention.items():
+            if not isinstance(participant_id, str) or not isinstance(raw_entry, dict):
+                continue
+            candidate = repo.participant(participant_id)
+            if (
+                candidate is None
+                or candidate.status != STATUS_ACTIVE
+                or candidate.side_id == npc_participant.side_id
+            ):
+                continue
+            score = _float_mapping(raw_entry, "score")
+            if best is None or score > best[0]:
+                best = (score, candidate)
+        return best[1] if best is not None and best[0] > 0 else fallback
 
     def _maybe_end_encounter(
         self,
@@ -1251,6 +1298,106 @@ class CombatService:
         contribution["damage"] = _float_mapping(contribution, "damage") + damage
         actor.contribution = contribution
 
+    def _add_threat(
+        self,
+        session: Session,
+        target: CombatParticipant,
+        source: CombatParticipant,
+        *,
+        amount: float,
+        current_epoch: float,
+    ) -> JsonObject:
+        threat = dict(target.threat)
+        attention_map = self._attention_map(threat.get("attention"))
+        decayed_attention = self._decayed_attention(attention_map, current_epoch)
+        previous = decayed_attention.get(source.id, {})
+        previous_score = _float_mapping(previous, "score")
+        score = min(THREAT_MAX, previous_score + amount * THREAT_DAMAGE_WEIGHT)
+        entry: JsonObject = {
+            "participant_id": source.id,
+            "actor_type": source.actor_type,
+            "actor_id": source.actor_id,
+            "score": round(score, 2),
+            "cue": self._threat_cue(score),
+            "last_updated_at": current_epoch,
+        }
+        decayed_attention[source.id] = entry
+        threat["attention"] = cast(JsonValue, decayed_attention)
+        threat["combat_role"] = self._combat_role(session, target)
+        target.threat = threat
+        return {
+            "participant_id": target.id,
+            "actor_type": target.actor_type,
+            "actor_id": target.actor_id,
+            "combat_role": threat["combat_role"],
+            "source_participant_id": source.id,
+            "source_actor_type": source.actor_type,
+            "source_actor_id": source.actor_id,
+            "score": entry["score"],
+            "cue": entry["cue"],
+            "at": current_epoch,
+        }
+
+    def _decayed_attention(
+        self, attention: dict[str, JsonObject], current_epoch: float
+    ) -> dict[str, JsonObject]:
+        decayed: dict[str, JsonObject] = {}
+        for participant_id, entry in attention.items():
+            score = _float_mapping(entry, "score")
+            last_updated = _float_mapping(entry, "last_updated_at", current_epoch)
+            elapsed = max(0.0, current_epoch - last_updated)
+            next_score = max(0.0, score - elapsed * THREAT_DECAY_PER_TICK)
+            if next_score <= 0:
+                continue
+            decayed[participant_id] = {
+                **entry,
+                "score": round(next_score, 2),
+                "cue": self._threat_cue(next_score),
+                "last_updated_at": current_epoch,
+            }
+        return decayed
+
+    def _attention_map(self, raw_attention: object) -> dict[str, JsonObject]:
+        if not isinstance(raw_attention, dict):
+            return {}
+        attention: dict[str, JsonObject] = {}
+        for participant_id, entry in raw_attention.items():
+            if isinstance(participant_id, str) and isinstance(entry, dict):
+                attention[participant_id] = cast(JsonObject, dict(entry))
+        return attention
+
+    def _threat_cue(self, score: float) -> str:
+        if score >= THREAT_FOCUSED_THRESHOLD:
+            return "focused"
+        if score >= THREAT_WATCHING_THRESHOLD:
+            return "watching"
+        return "aware"
+
+    def _combat_role(self, session: Session, participant: CombatParticipant) -> str:
+        if participant.actor_type != "npc":
+            return "player"
+        npc = session.get(NPC, participant.actor_id)
+        if npc is None:
+            return "defensive"
+        configured = npc.ai.get("combat_role")
+        if isinstance(configured, str) and configured.strip():
+            return configured.strip().lower()
+        return npc.behavior.strip().lower() if npc.behavior.strip() else "defensive"
+
+    def _threat_summary(
+        self,
+        session: Session,
+        participant: CombatParticipant,
+        *,
+        current_epoch: float,
+    ) -> JsonObject:
+        attention_map = self._attention_map(participant.threat.get("attention"))
+        decayed = self._decayed_attention(attention_map, current_epoch)
+        return {
+            "combat_role": self._combat_role(session, participant),
+            "attention": list(decayed.values()),
+        }
+
     def _record_audit_resolution(
         self,
         audit_repo: AuditRepo | None,
@@ -1380,6 +1527,14 @@ class CombatService:
                     "status": participant.status,
                     "position": participant.position,
                     "stance": participant.stance,
+                    "combat_role": self._combat_role(session, participant),
+                    "threat": self._threat_summary(
+                        session,
+                        participant,
+                        current_epoch=encounter.last_hostile_action_at
+                        if encounter is not None
+                        else 0.0,
+                    ),
                     "reaction_policy": participant.reaction_policy,
                     "reaction_ready_at": participant.reaction_ready_at,
                     "primary_ready_at": participant.primary_ready_at,
@@ -1432,6 +1587,7 @@ class CombatService:
         state_changes: list[JsonValue],
         position_changes: list[JsonValue],
         effect_changes: list[JsonValue],
+        threat_changes: list[JsonValue],
     ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
@@ -1444,6 +1600,7 @@ class CombatService:
             "state_changes": state_changes,
             "position_changes": position_changes,
             "effect_changes": effect_changes,
+            "threat_changes": threat_changes,
         }
         if record_id is not None:
             payload["resolution_record_id"] = record_id

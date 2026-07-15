@@ -191,6 +191,114 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         assert audit_event.payload_json["resolution"]["damage_trace"]
 
 
+def test_damage_updates_threat_attention_and_combat_state_cues() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        stats = session.get(PlayerStats, "player-1")
+        assert stats is not None
+        stats.strength = 120
+        session.add(stats)
+        goblin_model = session.get(NPC, "goblin")
+        assert goblin_model is not None
+        goblin_model.max_hp = 500
+        session.add(goblin_model)
+        service.attack("goblin", ctx)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        combat_update = service._combat_update(
+            CombatRepo(session), session, ctx.player.active_combat_session_id or ""
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == action_id
+            )
+        ).one()
+        attention = goblin.threat["attention"]
+        goblin_state = next(
+            participant
+            for participant in combat_update["participants"]
+            if participant["actor_type"] == "npc"
+        )
+
+        assert list(attention.values())[0]["actor_id"] == "player-1"
+        assert list(attention.values())[0]["cue"] == "focused"
+        assert record.payload["threat_changes"][0]["actor_id"] == "goblin"
+        assert record.payload["threat_changes"][0]["source_actor_id"] == "player-1"
+        assert record.payload["threat_changes"][0]["cue"] == "focused"
+        assert goblin_state["combat_role"] == "defensive"
+        assert goblin_state["threat"]["attention"][0]["actor_id"] == "player-1"
+
+
+def test_npc_counter_intent_prefers_highest_threat_target() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        encounter = session.exec(select(CombatEncounter)).one()
+        player = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        ally = _add_ally_participant(session, encounter, player.side_id)
+        goblin.threat = {
+            "attention": {
+                ally.id: {
+                    "participant_id": ally.id,
+                    "actor_type": "player",
+                    "actor_id": "ally",
+                    "score": 80.0,
+                    "cue": "focused",
+                    "last_updated_at": 0.0,
+                }
+            }
+        }
+        session.add(goblin)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+
+        service.resolve_action(
+            session,
+            action.id,
+            rng=GameRng(seed=1),
+            current_epoch=1.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        npc_action = session.exec(
+            select(CombatAction)
+            .where(CombatAction.actor_type == "npc")
+            .where(CombatAction.state == "pending")
+        ).one()
+
+        assert npc_action.target_id == "ally"
+
+
 def test_flee_resolution_ends_player_participation() -> None:
     engine = _engine()
     service = CombatService()

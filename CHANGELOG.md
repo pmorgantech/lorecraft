@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.116.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.7 qualitative combat threat and NPC role cues, including
+  decaying attention entries, structured `threat_changes`, combat-state threat
+  summaries, and NPC counter-intents that can prefer the highest active threat.
+
 ## [0.115.0] - 2026-07-15
 
 ### Added
