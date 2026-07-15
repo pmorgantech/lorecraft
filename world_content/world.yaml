@@ -3749,6 +3749,12 @@ items:
     value: 75
     category: weapon
     quality: fine
+    effects:
+      - type: weapon_profile
+        base_damage: 9.2
+        accuracy_bonus: 1.5
+        penetration: 0.8
+        tags: [melee, slashing]
 
   - id: iron_battleaxe_cog
     name: Foundry Battleaxe
@@ -3815,6 +3821,12 @@ items:
     value: 95
     category: weapon
     quality: fine
+    effects:
+      - type: weapon_profile
+        base_damage: 8.5
+        accuracy_bonus: 1.0
+        penetration: 1.2
+        tags: [ranged, piercing]
 
   - id: gearwork_saber
     name: Gearwork Saber
@@ -4030,6 +4042,11 @@ items:
     value: 80
     category: armor
     quality: fine
+    effects:
+      - type: armor_profile
+        block: 4.2
+        resistance_factor: 0.10
+        tags: [mail, torso]
 
   - id: iron_plate_cuirass
     name: Iron Plate Cuirass
@@ -4045,6 +4062,11 @@ items:
     value: 120
     category: armor
     quality: superior
+    effects:
+      - type: armor_profile
+        block: 6.0
+        resistance_factor: 0.14
+        tags: [plate, torso]
 
   - id: studded_leather_jerkin
     name: Studded Leather Jerkin

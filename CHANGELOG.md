@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.119.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.2 equipment combat profile descriptors:
+  `weapon_profile` and `armor_profile` item effects now feed equipped weapon
+  and armor damage profiles, including traceable descriptor sources and tags,
+  while legacy category/slot/weight/quality heuristics remain as fallback.
+- Added combat action content validation and admin-visible fallback warnings:
+  startup logs when `combat_actions.yaml` is missing, and `world_cli validate`
+  warns on missing combat action content or fails malformed/unknown resolver
+  definitions.
+
 ## [0.118.0] - 2026-07-15
 
 ### Added

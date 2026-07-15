@@ -26,6 +26,7 @@ class WeaponProfile:
     accuracy_bonus: float
     penetration: float
     sources: tuple[str, ...]
+    tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,7 @@ class ArmorProfile:
     block: float
     resistance_factor: float
     sources: tuple[str, ...]
+    tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -54,7 +56,9 @@ def weapon_profile_for(
     weapons = [
         item
         for item in _equipped_items(session, actor_id)
-        if item.category == "weapon" or item.slot in {"main_hand", "off_hand"}
+        if _has_effect_descriptor(item, "weapon_profile")
+        or item.category == "weapon"
+        or item.slot in {"main_hand", "off_hand"}
     ]
     if not weapons:
         return WeaponProfile(
@@ -67,20 +71,33 @@ def weapon_profile_for(
     accuracy = 0.0
     penetration = 0.0
     sources: list[str] = []
+    tags: set[str] = set()
     for item in weapons:
-        scalar = _quality_scalar(item)
-        base += (4.0 + min(item.weight, 8.0) * 1.2) * scalar
-        accuracy += (
-            1.5 if item.quality in {"fine", "superior", "rare", "legendary"} else 0.0
-        )
-        penetration += min(item.weight * 0.25, 2.0)
-        sources.append(f"item:{item.id}")
+        descriptors = _effect_descriptors(item, "weapon_profile")
+        if descriptors:
+            for effect in descriptors:
+                base += _numeric(effect, "base_damage")
+                accuracy += _numeric(effect, "accuracy_bonus")
+                penetration += _numeric(effect, "penetration")
+                tags.update(_tags(effect))
+                sources.append(f"item:{item.id}:weapon_profile")
+        else:
+            scalar = _quality_scalar(item)
+            base += (4.0 + min(item.weight, 8.0) * 1.2) * scalar
+            accuracy += (
+                1.5
+                if item.quality in {"fine", "superior", "rare", "legendary"}
+                else 0.0
+            )
+            penetration += min(item.weight * 0.25, 2.0)
+            sources.append(f"item:{item.id}")
     # Off-hand weapons help, but do not double full damage.
     return WeaponProfile(
         base_damage=round(max(4.0, base * (0.75 if len(weapons) > 1 else 1.0)), 2),
         accuracy_bonus=round(accuracy, 2),
         penetration=round(penetration, 2),
         sources=tuple(sources),
+        tags=tuple(sorted(tags)),
     )
 
 
@@ -90,20 +107,31 @@ def armor_profile_for(session: Session, actor_type: str, actor_id: str) -> Armor
     armor = [
         item
         for item in _equipped_items(session, actor_id)
-        if item.category == "armor" and item.wearable
+        if _has_effect_descriptor(item, "armor_profile")
+        or (item.category == "armor" and item.wearable)
     ]
     block = 0.0
     resistance = 0.0
     sources: list[str] = []
+    tags: set[str] = set()
     for item in armor:
-        scalar = _quality_scalar(item)
-        block += min(item.weight * 0.45 * scalar, 6.0)
-        resistance += min(0.02 + item.weight * 0.006 * scalar, 0.08)
-        sources.append(f"item:{item.id}")
+        descriptors = _effect_descriptors(item, "armor_profile")
+        if descriptors:
+            for effect in descriptors:
+                block += _numeric(effect, "block")
+                resistance += _numeric(effect, "resistance_factor")
+                tags.update(_tags(effect))
+                sources.append(f"item:{item.id}:armor_profile")
+        else:
+            scalar = _quality_scalar(item)
+            block += min(item.weight * 0.45 * scalar, 6.0)
+            resistance += min(0.02 + item.weight * 0.006 * scalar, 0.08)
+            sources.append(f"item:{item.id}")
     return ArmorProfile(
         block=round(min(block, 12.0), 2),
         resistance_factor=round(min(resistance, 0.35), 3),
         sources=tuple(sources),
+        tags=tuple(sorted(tags)),
     )
 
 
@@ -132,6 +160,7 @@ def apply_damage_stack(
             "armor_resistance_factor": armor.resistance_factor,
             "final_damage": amount,
             "armor_sources": list(armor.sources),
+            "armor_tags": list(armor.tags),
         },
     )
 
@@ -153,3 +182,27 @@ def _equipped_items(session: Session, player_id: str) -> list[Item]:
 
 def _quality_scalar(item: Item) -> float:
     return QUALITY_SCALARS.get(item.quality, 1.0)
+
+
+def _effect_descriptors(item: Item, effect_type: str) -> list[JsonObject]:
+    return [effect for effect in item.effects if effect.get("type") == effect_type]
+
+
+def _has_effect_descriptor(item: Item, effect_type: str) -> bool:
+    return any(effect.get("type") == effect_type for effect in item.effects)
+
+
+def _numeric(effect: JsonObject, key: str, default: float = 0.0) -> float:
+    value = effect.get(key, default)
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int | float):
+        return float(value)
+    return default
+
+
+def _tags(effect: JsonObject) -> set[str]:
+    raw_tags = effect.get("tags", [])
+    if not isinstance(raw_tags, list):
+        return set()
+    return {tag for tag in raw_tags if isinstance(tag, str) and tag}

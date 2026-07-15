@@ -38,6 +38,18 @@ room_items:
     quantity: 1
 """
 
+_SAMPLE_COMBAT_ACTIONS = """
+version: 1
+actions:
+  - id: basic_attack
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing:
+      windup: 0.25
+      recovery: 2.0
+"""
+
 
 def _run(args: list[str]) -> tuple[int, str]:
     buf = io.StringIO()
@@ -111,10 +123,66 @@ def test_export_json_format(tmp_path) -> None:
 def test_validate_valid_file(tmp_path) -> None:
     world_file = tmp_path / "world.yaml"
     world_file.write_text(_SAMPLE_WORLD, encoding="utf-8")
+    combat_actions_file = tmp_path / "combat_actions.yaml"
+    combat_actions_file.write_text(_SAMPLE_COMBAT_ACTIONS, encoding="utf-8")
 
-    code, out = _run(["validate", "--file", str(world_file)])
+    code, out = _run(
+        [
+            "validate",
+            "--file",
+            str(world_file),
+            "--combat-actions-file",
+            str(combat_actions_file),
+        ]
+    )
     assert code == 0
     assert "Schema valid" in out
+    assert "No lint warnings" in out
+
+
+def test_validate_warns_when_combat_actions_missing(tmp_path) -> None:
+    world_file = tmp_path / "world.yaml"
+    world_file.write_text(_SAMPLE_WORLD, encoding="utf-8")
+
+    code, out = _run(["validate", "--file", str(world_file)])
+
+    assert code == 0
+    assert "combat action definitions" in out
+    assert "not found" in out
+
+
+def test_validate_rejects_malformed_combat_actions(tmp_path) -> None:
+    world_file = tmp_path / "world.yaml"
+    world_file.write_text(_SAMPLE_WORLD, encoding="utf-8")
+    combat_actions_file = tmp_path / "combat_actions.yaml"
+    combat_actions_file.write_text(
+        """
+version: 1
+actions:
+  - id: basic_attack
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: missing
+    timing:
+      windup: 0.25
+      recovery: 2.0
+""",
+        encoding="utf-8",
+    )
+
+    code, out = _run(
+        [
+            "validate",
+            "--file",
+            str(world_file),
+            "--combat-actions-file",
+            str(combat_actions_file),
+        ]
+    )
+
+    assert code == 1
+    assert "combat action definitions" in out
+    assert "unknown resolver" in out
 
 
 def test_validate_rejects_broken_reference(tmp_path) -> None:

@@ -904,15 +904,19 @@ action id, primary-channel timing, broad action range (`self`, `engaged`, or `ra
 stamina delta, tags, and registered calculator/resolver ids. The shipped registered resolvers are
 `opposed_attack`, `defend`, and `flee`; YAML references identifiers only and never embeds combat
 scripts. If the file is missing or malformed, startup falls back to the built-in core actions so
-`attack`, `shoot`, `defend`, and `flee` remain available.
+`attack`, `shoot`, `defend`, and `flee` remain available, and logs a warning. `world_cli validate`
+also checks the combat action file: missing content is a warning, malformed content or unknown
+calculator/resolver ids are errors.
 
-The current damage layer reads existing equipment descriptors rather than a new combat-only YAML
-schema. Equipped weapons use `category: weapon`, `slot`, `weight`, and `quality` to derive base
-damage, accuracy, and penetration. Equipped wearable armor uses `category: armor`, `weight`, and
-`quality` to derive bounded flat block and resistance. Each resolved action persists a compact
-resolution record with random and damage traces, state changes, position changes, and the record
-id used by structured combat events. When scheduled combat is running with an audit engine, the
-same resolution writes an `AuditEvent` row that points back to the feature-owned resolution
+The current damage layer reads existing equipment effect descriptors rather than a new combat-only
+item table. Equipped items may define `weapon_profile` descriptors (`base_damage`,
+`accuracy_bonus`, `penetration`, `tags`) or `armor_profile` descriptors (`block`,
+`resistance_factor`, `tags`). Items without those descriptors still fall back to the legacy
+`category`/`slot`/`weight`/`quality` heuristic, so older content remains usable while builders can
+tune important gear explicitly. Each resolved action persists a compact resolution record with
+random and damage traces, state changes, position changes, weapon/armor descriptor sources, and the
+record id used by structured combat events. When scheduled combat is running with an audit engine,
+the same resolution writes an `AuditEvent` row that points back to the feature-owned resolution
 record.
 
 Scheduled combat resolutions also broadcast to browsers as two messages: combat prose in the
@@ -964,9 +968,9 @@ is applied by strong hits with game-time expiry and source metadata in payload, 
 combat defense modifier while active, appears in structured `active_effects`, and expires through
 the existing `EffectService` sweep.
 
-Balance details are intentionally still shallow in this slice: explicit weapon/armor combat
-traits, PvP consent, richer browser resync, and live-tunable combat ruleset configuration remain
-later Sprint 87 work tracked in `docs/roadmap.md`.
+Balance details are intentionally still shallow in this slice: PvP consent, richer browser resync,
+and live-tunable combat ruleset configuration remain later Sprint 87 work tracked in
+`docs/roadmap.md`.
 
 **Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
 `{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array

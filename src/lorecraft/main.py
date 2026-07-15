@@ -902,6 +902,10 @@ def _load_combat_action_definitions(combat_actions_yaml_path: str) -> None:
     registry.clear()
     if not Path(combat_actions_yaml_path).exists():
         register_builtin_combat_actions(registry)
+        log.warning(
+            "combat actions file %s not found; using built-in core combat actions",
+            combat_actions_yaml_path,
+        )
         return
     try:
         registry.load_document(load_combat_actions_yaml(combat_actions_yaml_path))

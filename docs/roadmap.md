@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.118.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
+## Where things stand (2026-07-15, v0.119.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.118.0).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.119.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -201,7 +201,7 @@ combat teaching material.
 **Tier:** Tier 2 (all features/combat/).
 
 - [x] 87.1 Data-driven action definitions (YAML) + registered calculators/resolvers
-- [ ] 87.2 Equipment traits + weapon/armor as effect descriptors
+- [x] 87.2 Equipment traits + weapon/armor as effect descriptors
 - [ ] 87.3 Extended effect hooks (on_damage_received/on_movement/on_action_admission)
 - [ ] 87.4 Boss scripted phases overriding utility AI — registered Python resolver by id
 - [ ] 87.5 Crime + faction consequences via rule obligations
@@ -215,6 +215,12 @@ combat action ids, primary-channel timing, broad action range (`self`/`engaged`/
 stamina delta where applicable, tags, and registered calculator/resolver ids. The combat service
 loads those definitions at startup with built-in fallback for missing/malformed content. This
 intentionally avoids formation state, persistent near/far bands, and inline combat scripts.
+
+Sprint 87.2 completion note (v0.119.0): equipped item `effects` now support explicit
+`weapon_profile` and `armor_profile` descriptors, while old category/slot/weight/quality heuristics
+remain fallback behavior for existing content. Damage traces include descriptor sources and tags.
+Startup now logs when combat action YAML is missing and `world_cli validate` warns on missing
+combat actions or fails malformed/unknown resolver content.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 

@@ -1058,6 +1058,87 @@ def test_damage_profiles_use_equipped_weapon_and_armor_descriptors() -> None:
         assert mitigated.trace["armor_sources"] == ["item:chainmail"]
 
 
+def test_combat_damage_profiles_prefer_item_effect_descriptors() -> None:
+    engine = _engine()
+    with Session(engine) as session:
+        _context(session)
+        session.add(
+            Item(
+                id="dueling_pistol",
+                name="Dueling Pistol",
+                description="Loud.",
+                slot="main_hand",
+                weight=1.0,
+                category="tool",
+                effects=[
+                    {
+                        "type": "weapon_profile",
+                        "base_damage": 11.0,
+                        "accuracy_bonus": 2.0,
+                        "penetration": 3.0,
+                        "tags": ["ranged", "piercing"],
+                    }
+                ],
+            )
+        )
+        session.add(
+            Item(
+                id="duelist_coat",
+                name="Duelist Coat",
+                description="Reinforced.",
+                slot="torso",
+                wearable=True,
+                weight=1.0,
+                category="clothing",
+                effects=[
+                    {
+                        "type": "armor_profile",
+                        "block": 2.5,
+                        "resistance_factor": 0.12,
+                        "tags": ["padded"],
+                    }
+                ],
+            )
+        )
+        session.add(
+            ItemStack(
+                item_id="dueling_pistol",
+                owner_type="player",
+                owner_id="player-1",
+                slot="main_hand",
+            )
+        )
+        session.add(
+            ItemStack(
+                item_id="duelist_coat",
+                owner_type="player",
+                owner_id="player-1",
+                slot="torso",
+            )
+        )
+        session.flush()
+
+        weapon = weapon_profile_for(session, "player", "player-1")
+        armor = armor_profile_for(session, "player", "player-1")
+        damage = apply_damage_stack(
+            base_damage=weapon.base_damage,
+            outcome_multiplier=1.0,
+            armor=armor,
+            penetration=weapon.penetration,
+        )
+
+        assert weapon.base_damage == 11.0
+        assert weapon.accuracy_bonus == 2.0
+        assert weapon.penetration == 3.0
+        assert weapon.sources == ("item:dueling_pistol:weapon_profile",)
+        assert weapon.tags == ("piercing", "ranged")
+        assert armor.block == 2.5
+        assert armor.resistance_factor == 0.12
+        assert armor.sources == ("item:duelist_coat:armor_profile",)
+        assert armor.tags == ("padded",)
+        assert damage.trace["armor_tags"] == ["padded"]
+
+
 def test_combat_broadcast_sends_prose_and_structured_update() -> None:
     class RecordingManager:
         def __init__(self) -> None:

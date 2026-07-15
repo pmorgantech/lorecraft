@@ -14,7 +14,14 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, field
+from pathlib import Path
 
+from lorecraft.features.combat.definitions import (
+    CombatActionRegistry,
+    CombatComponentRegistry,
+    load_combat_actions_yaml,
+    register_standard_combat_components,
+)
 from lorecraft.features.terrain.definitions import get_registry as get_terrain_registry
 from lorecraft.world.validator import WorldDocument
 
@@ -176,6 +183,8 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
         "carry_bonus",
         "grant_trait",
         "warmth_bonus",
+        "weapon_profile",
+        "armor_profile",
         # One-shot-on-consume descriptors (eat/drink), see features/consumables.
         "heal",
         "apply_effect",
@@ -243,6 +252,31 @@ def check_item_definition_fields(document: WorldDocument) -> LintResult:
                     result.errors.append(
                         f"item {item.id!r} effect {i} (warmth_bonus) missing numeric 'amount' field"
                     )
+            elif effect_type == "weapon_profile":
+                if not isinstance(effect.get("base_damage"), (int, float)):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (weapon_profile) missing numeric "
+                        "'base_damage' field"
+                    )
+                for field in ("accuracy_bonus", "penetration"):
+                    if field in effect and not isinstance(
+                        effect.get(field), (int, float)
+                    ):
+                        result.errors.append(
+                            f"item {item.id!r} effect {i} (weapon_profile) has "
+                            f"non-numeric {field!r} field"
+                        )
+            elif effect_type == "armor_profile":
+                if not isinstance(effect.get("block"), (int, float)):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (armor_profile) missing numeric "
+                        "'block' field"
+                    )
+                if not isinstance(effect.get("resistance_factor"), (int, float)):
+                    result.errors.append(
+                        f"item {item.id!r} effect {i} (armor_profile) missing numeric "
+                        "'resistance_factor' field"
+                    )
             elif effect_type == "heal":
                 if not isinstance(effect.get("meter"), str):
                     result.errors.append(
@@ -295,6 +329,33 @@ def check_shop_pricing(document: WorldDocument) -> LintResult:
                 result.errors.append(
                     f"npc {npc.id!r} shop stocks item {item.id!r} which is not tradeable"
                 )
+    return result
+
+
+def check_combat_action_definitions(path: str | Path) -> LintResult:
+    """Validate data-authored combat actions referenced by runtime startup.
+
+    Missing action content is a warning because the server has built-in core
+    fallback actions. Malformed content is an error because startup would discard
+    the author's file and run fallback behavior instead.
+    """
+    result = LintResult()
+    source = Path(path)
+    if not source.exists():
+        result.warnings.append(
+            f"combat action definitions {str(source)!r} not found; startup will "
+            "fall back to built-in attack/shoot/defend/flee actions"
+        )
+        return result
+    try:
+        components = CombatComponentRegistry()
+        register_standard_combat_components(components)
+        registry = CombatActionRegistry(components)
+        registry.load_document(load_combat_actions_yaml(source))
+    except Exception as exc:
+        result.errors.append(
+            f"combat action definitions {str(source)!r} are invalid: {exc}"
+        )
     return result
 
 

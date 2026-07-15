@@ -32,7 +32,7 @@ from lorecraft.features.npc.models import DialogueTree
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.features.quests.models import Quest
 from lorecraft.engine.models.world import Exit, Item, NPC, Room
-from lorecraft.tools.validators import run_all_checks
+from lorecraft.tools.validators import check_combat_action_definitions, run_all_checks
 from lorecraft.world.loader import export_world_document, load_world_yaml
 from lorecraft.world.yaml_io import load_world_yaml_text
 from lorecraft.world.validator import (
@@ -113,6 +113,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
     print("✓ All room/item/NPC references resolved")
 
     lint = run_all_checks(document, start_room_id=args.start_room)
+    combat_actions_file = (
+        Path(args.combat_actions_file)
+        if args.combat_actions_file
+        else (source_path.parent / "combat_actions.yaml")
+    )
+    lint.merge(check_combat_action_definitions(combat_actions_file))
     for warning in lint.warnings:
         print(f"⚠ {warning}")
     for error in lint.errors:
@@ -350,6 +356,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_validate.add_argument(
         "--strict", action="store_true", help="Exit non-zero on lint warnings too"
+    )
+    p_validate.add_argument(
+        "--combat-actions-file",
+        help=(
+            "Combat action YAML to validate with the world file "
+            "(default: combat_actions.yaml next to --file)"
+        ),
     )
     p_validate.set_defaults(func=cmd_validate)
 

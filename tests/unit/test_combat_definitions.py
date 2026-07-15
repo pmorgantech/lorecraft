@@ -14,10 +14,13 @@ from lorecraft.features.combat.definitions import (
     CombatActionRegistry,
     CombatActionTiming,
     CombatComponentRegistry,
+    get_action_registry,
     load_combat_actions_yaml,
+    register_builtin_combat_actions,
     register_standard_combat_components,
     validate_combat_actions_document,
 )
+from lorecraft.main import _load_combat_action_definitions
 
 
 def test_shipped_combat_actions_yaml_loads_into_registry() -> None:
@@ -59,6 +62,21 @@ def test_combat_action_registry_rejects_unknown_resolver() -> None:
 
     with pytest.raises(ValueError, match="unknown resolver"):
         registry.register(action)
+
+
+def test_startup_loader_warns_when_combat_actions_file_missing(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    missing_path = tmp_path / "missing-combat-actions.yaml"
+
+    with caplog.at_level("WARNING", logger="lorecraft.main"):
+        _load_combat_action_definitions(str(missing_path))
+
+    assert any(
+        "using built-in core combat actions" in rec.message for rec in caplog.records
+    )
+    assert get_action_registry().get("basic_attack") is not None
+    register_builtin_combat_actions()
 
 
 def _standard_components() -> CombatComponentRegistry:

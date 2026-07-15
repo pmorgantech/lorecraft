@@ -387,6 +387,8 @@ runtime — equipment bonuses are resolved live, never stored on the player:
 | `carry_bonus` | `amount` | Extends carry capacity (e.g. a worn backpack) |
 | `grant_trait` | `trait` | Grants a named trait while equipped |
 | `warmth_bonus` | `amount` | Adds resolved warmth while equipped — offsets cold-weather sleep risk (see Safe Rest above) |
+| `weapon_profile` | `base_damage`, `accuracy_bonus?`, `penetration?`, `tags?` | Defines the equipped item's combat weapon profile. If omitted, combat falls back to category/slot/weight/quality heuristics. |
+| `armor_profile` | `block`, `resistance_factor`, `tags?` | Defines the equipped item's combat armor profile. If omitted, combat falls back to category/weight/quality heuristics. |
 | `heal` | `meter`, `amount`, `message?` | **One-shot on consume** (`eat`/`drink`): instantly adjusts a meter (`hp`, `fatigue`, …) by `amount`. Only fires on a `food`/`drink` item. |
 | `apply_effect` | `effect_key`, `duration_ticks?`, `payload?`, `message?` | **One-shot on consume**: applies a timed active effect (buff) to the drinker. Buff keys registered by the `consumables` feature: `fortified` (+strength), `keen_minded` (+perception); `payload.amount` sets magnitude (default 2). |
 
@@ -412,6 +414,19 @@ continuously while worn. They only take effect on an item with `category: food` 
   category: drink
   effects:
     - { type: apply_effect, effect_key: fortified, duration_ticks: 60, payload: { amount: 2 } }
+
+- id: cogsworth_longsword
+  slot: main_hand
+  category: weapon
+  effects:
+    - { type: weapon_profile, base_damage: 9.2, accuracy_bonus: 1.5, penetration: 0.8, tags: [melee, slashing] }
+
+- id: riveted_hauberk
+  slot: torso
+  wearable: true
+  category: armor
+  effects:
+    - { type: armor_profile, block: 4.2, resistance_factor: 0.10, tags: [mail, torso] }
 ```
 
 ### Shops

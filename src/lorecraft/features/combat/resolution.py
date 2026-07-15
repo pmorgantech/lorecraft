@@ -164,6 +164,7 @@ def resolve_basic_attack(
             **damage.trace,
             "action_range": action_range,
             "weapon_sources": list(weapon.sources),
+            "weapon_tags": list(weapon.tags),
             "weapon_base_damage": weapon.base_damage,
             "weapon_accuracy_bonus": weapon.accuracy_bonus,
             "actor_stance": actor.stance,

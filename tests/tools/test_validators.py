@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lorecraft.tools.validators import (
+    check_combat_action_definitions,
     check_dead_item_references,
     check_dialogue_node_references,
     check_duplicate_item_names_per_room,
@@ -210,6 +211,59 @@ def test_run_all_checks_ignores_quests_without_dependency_field() -> None:
     assert result.ok
 
 
+def test_check_combat_action_definitions_warns_when_missing(tmp_path) -> None:
+    result = check_combat_action_definitions(tmp_path / "missing.yaml")
+
+    assert result.ok
+    assert any("not found" in warning for warning in result.warnings)
+
+
+def test_check_combat_action_definitions_rejects_unknown_resolver(tmp_path) -> None:
+    path = tmp_path / "combat_actions.yaml"
+    path.write_text(
+        """
+version: 1
+actions:
+  - id: custom
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: missing
+    timing:
+      windup: 0.1
+      recovery: 1.0
+""",
+        encoding="utf-8",
+    )
+
+    result = check_combat_action_definitions(path)
+
+    assert not result.ok
+    assert any("unknown resolver" in error for error in result.errors)
+
+
+def test_check_combat_action_definitions_accepts_valid_file(tmp_path) -> None:
+    path = tmp_path / "combat_actions.yaml"
+    path.write_text(
+        """
+version: 1
+actions:
+  - id: basic_attack
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing:
+      windup: 0.25
+      recovery: 2.0
+""",
+        encoding="utf-8",
+    )
+
+    result = check_combat_action_definitions(path)
+
+    assert result.ok
+    assert result.warnings == []
+
+
 def test_check_item_definition_fields_flags_unknown_slot() -> None:
     document = WorldDocument(
         items=[
@@ -332,6 +386,49 @@ def test_check_item_definition_fields_flags_bad_stat_in_effect() -> None:
     assert any("luck" in e for e in result.errors)
 
 
+def test_check_item_definition_fields_flags_bad_weapon_profile_effect() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="pistol",
+                name="Pistol",
+                description="A pistol.",
+                effects=[
+                    {
+                        "type": "weapon_profile",
+                        "base_damage": "loud",
+                        "accuracy_bonus": "sharp",
+                    }
+                ],
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("base_damage" in error for error in result.errors)
+    assert any("accuracy_bonus" in error for error in result.errors)
+
+
+def test_check_item_definition_fields_flags_bad_armor_profile_effect() -> None:
+    document = WorldDocument(
+        items=[
+            ItemData(
+                id="coat",
+                name="Coat",
+                description="A coat.",
+                effects=[{"type": "armor_profile", "block": 2.0}],
+            )
+        ]
+    )
+
+    result = check_item_definition_fields(document)
+
+    assert not result.ok
+    assert any("resistance_factor" in error for error in result.errors)
+
+
 def test_check_item_definition_fields_passes_for_valid_equipment() -> None:
     document = WorldDocument(
         items=[
@@ -348,6 +445,7 @@ def test_check_item_definition_fields_passes_for_valid_equipment() -> None:
                 effects=[
                     {"type": "stat_bonus", "stat": "vitality", "amount": 1},
                     {"type": "skill_bonus", "skill": "defense", "amount": 5},
+                    {"type": "armor_profile", "block": 1.0, "resistance_factor": 0.03},
                 ],
             )
         ]
