@@ -1,11 +1,11 @@
-# Combat System — Design
+# Combat System — Design (SUPERSEDED)
 
-> **Status:** Implementation-ready design (2026-07-03 deep revision; replaces the pre-Tier-1
-> implementation guide). Roadmap
-> [Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system); PvP reuse in
-> [Sprint 34](roadmap.md#sprint-34--pvp-consent). Combat is a **supporting** system
-> (Exploration > Trading > Questing > Puzzles) — it serves stories; stealth/persuasion/
-> bribery/flee are first-class alternatives ([Sprint 32](roadmap.md#sprint-32--combat-commands--ui-avoidance-first)).
+> **Status:** SUPERSEDED (2026-07-14 by [`combat_design.md`](combat_design.md), which adopts
+> **Scheduled Intent Combat** instead of tick-based). This document described a **tick-based**
+> model (global `combat_tick` on world-clock rhythm). The new design replaces the core timing
+> model, encounter state structure, and NPC AI approach. Kept for historical reference only.
+>
+> For current combat design, see [`combat_design.md`](combat_design.md). Roadmap Sprints 85–88.
 >
 > **Tier 1 dependencies ([`engine_core.md`](engine_core.md)):** hp **meter** (§3.3) — there
 > are no `current_hp` columns by the time combat lands; **timed effects** (§3.4) for

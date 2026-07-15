@@ -4,61 +4,25 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
-## [0.104.3] - 2026-07-14
-
-### Documentation
-
-- `AGENTS.md`: corrected the Tier 2 feature-package count from 24 to 33 (matches the
-  0.104.2 doc audit).
-
-## [0.104.2] - 2026-07-14
-
-### Documentation
-
-- Audited `architecture.md` for correctness: corrected the frontend stack (Jinja2 +
-  Alpine.js + HTMX + Tailwind, not "Vanilla JS"), updated the Tier 2 feature count from
-  24 to 33 and refreshed the illustrative package list (`skills` → `disciplines`/others),
-  re-pointed the combat deferral note from the retired "Sprints 61–65" to
-  `wishlist.md` (*Combat, reframed*), added a status banner to the Combat subsection noting
-  its progression model is superseded by Disciplines/Abilities, and removed a duplicated
-  "Build Order Recommendation" section plus a duplicated closing note (TOC renumbered to 29).
-- Rewrote the stale parts of `implementation_guides.md`: dropped the never-executed
-  `docs/features/` reorganization narrative, moved combat/death guides to a "Set aside"
-  bucket, marked the Discipline/Ability guide shipped, and fixed dangling `docs/features/*`
-  cross-references.
-- Fixed pre-tier-split module paths in `command_parser.md` / `parser_and_commands.md`
-  (`lorecraft.game.*` → `lorecraft.engine.game.*`), and the stale `24` feature count in
-  `architecture_tiers.md` / `tier_modules.md` (now 33, with the feature table refreshed).
-- Deduplicated `docs/`: completed the half-finished archival by moving eight shipped-feature
-  design docs (`inventory_equipment`, `trade_economy`, `transit_systems`, `scavenger_hunt`,
-  `session_replay`, `chat_feed_split`, `code_review_20260707`, `gamecontext_audit_20260710`)
-  out of `docs/` root into `docs/archive/` and re-pointing all inbound links. Fixed a
-  pre-existing broken `wishlist3.md` link in `genuine_gaps.md`. Verified zero broken
-  intra-doc `.md` links across the tree.
-
-## [0.104.1] - 2026-07-14
+## [0.105.0] - 2026-07-14
 
 ### Added
 
-- Added a broad 50-player world/hunt simulation load scenario and an opt-in
-  append-only performance history log under `docs/performance/`, recording
-  p50/p95/p99/max timings with package version, changelog heading, git branch,
-  commit, dirty flag, runtime, scenario, and run notes.
-- Added a tracked database and engine performance ledger summarizing the current
-  50-player baseline, query-span logging overhead, and live-server latency
-  snapshot while keeping raw `.log` files ignored.
-- Added `make load-test-history` as the stable periodic command for appending
-  the broad load-test baseline, with SQL query-span logging disabled by default
-  so the history tracks command-processing latency rather than JSONL write
-  volume.
+- **Sprint 85–88 Combat roadmap (design phase):** Scheduled Intent Combat design adopted.
+  Combat moves from wishlist to active development roadmap.
+- Created `docs/combat_design.md` — comprehensive Scheduled Intent Combat architecture
+  (intent-first, per-action wind-up/recovery, encounter aggregate with multiple sides,
+  double validation, rules engine separation, data-driven YAML actions, utility-selector NPC
+  AI, reactions/stances/policies, non-lethal outcomes). Replaces the tick-based
+  `combat_system.md` where they conflict; tick design marked superseded for reference.
 
-### Changed
+### Docs
 
-- Extended the simulation load harness with `LORECRAFT_LOAD_TEST_OPEN_HUNT`,
-  `LORECRAFT_LOAD_TEST_LATENCY_CEILING_MS`, and
-  `LORECRAFT_LOAD_TEST_HISTORY` knobs, and taught the simulation fixture to
-  honor DB query-log environment settings when building direct `Settings`
-  objects.
+- Added `docs/combat_design.md` with full Scheduled Intent design and guiding principles.
+- Marked `docs/combat_system.md` superseded; tick-based model archived for reference.
+- Added `docs/roadmap.md` sections for Sprints 85–88 (Combat phases 1–4), with task
+  checklists and dependencies. Activated combat from wishlist; updated sprint numbering
+  (next free: 89).
 
 ## [0.104.0] - 2026-07-14
 
