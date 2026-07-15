@@ -36,3 +36,11 @@ def register_combat_commands(
     )
     def flee_command(noun: str | None, ctx: GameContext) -> None:
         service.flee(noun, ctx)
+
+    @registry.register(
+        "stance",
+        conditions=["in_combat"],
+        help="stance <balanced|aggressive|defensive|mobile> — change combat stance",
+    )
+    def stance_command(noun: str | None, ctx: GameContext) -> None:
+        service.stance(noun, ctx)

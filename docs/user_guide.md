@@ -551,12 +551,14 @@ a short wind-up and recovery window. The first implemented PvE commands are:
 attack <target>    — start or continue an encounter with a nearby NPC
 defend             — brace with your next primary action
 flee               — look for an opening to leave the encounter
+stance <stance>    — switch to balanced, aggressive, defensive, or mobile
 ```
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
 older pending one. Combat uses health and stamina meters. At 0 HP, player characters are
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
-active combat and any queued combat action for them is cancelled.
+active combat and any queued combat action for them is cancelled. Stances persist for the
+encounter and trade offense, defense, damage, and escape stamina cost.
 
 ## Getting Help In-Game
 

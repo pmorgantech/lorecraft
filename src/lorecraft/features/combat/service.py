@@ -35,7 +35,10 @@ from lorecraft.features.combat.policy import (
     ENGAGEMENT_UNENGAGED,
     STATUS_ACTIVE,
     STATUS_ESCAPED,
+    VALID_STANCES,
     defeat_decision_for,
+    normalize_stance,
+    stance_policy_for,
 )
 from lorecraft.features.combat.resolution import (
     CombatResolution,
@@ -120,6 +123,23 @@ class CombatService:
             now=self._now(ctx),
         )
         ctx.say("You look for an opening to flee.")
+        self._push_combat_update(ctx, encounter.id)
+
+    def stance(self, noun: str | None, ctx: GameContext) -> None:
+        encounter, actor = self._active_player_participation(ctx)
+        if encounter is None or actor is None:
+            ctx.say("You aren't in combat.", MessageType.WARNING)
+            return
+        stance = normalize_stance(noun)
+        if stance is None:
+            ctx.say(
+                "Choose a stance: " + ", ".join(VALID_STANCES) + ".",
+                MessageType.WARNING,
+            )
+            return
+        actor.stance = stance
+        CombatRepo(ctx.session).add(actor)
+        ctx.say(f"You shift to a {stance} stance.")
         self._push_combat_update(ctx, encounter.id)
 
     def register(self, bus: EventBus) -> None:
@@ -377,18 +397,24 @@ class CombatService:
                 outcome="defended",
                 stamina_delta=-2.0,
                 explanation=f"{snapshot.name} braces defensively.",
+                random_trace={"actor_stance": snapshot.stance},
             )
         if action.action_key == "flee":
             snapshot = self._snapshot(session, actor)
+            stance = stance_policy_for(actor.stance)
             return CombatResolution(
                 action_id=action.id,
                 action_key="flee",
                 actor=snapshot,
                 target=None,
                 outcome="escaped",
-                stamina_delta=-8.0,
+                stamina_delta=stance.flee_stamina_delta,
                 target_status="escaped",
                 explanation=f"{snapshot.name} breaks away from the fight.",
+                random_trace={
+                    "actor_stance": snapshot.stance,
+                    "stance_flee_stamina_delta": stance.flee_stamina_delta,
+                },
             )
         target = (
             repo.participant(action.target_participant_id)
@@ -687,6 +713,7 @@ class CombatService:
     def _snapshot(
         self, session: Session, participant: CombatParticipant
     ) -> CombatantSnapshot:
+        stance = stance_policy_for(participant.stance)
         if participant.actor_type == "player":
             player = session.get(Player, participant.actor_id)
             stats = session.get(PlayerStats, participant.actor_id)
@@ -694,6 +721,10 @@ class CombatService:
                 participant.actor_id,
                 player.username if player is not None else participant.actor_id,
                 stats,
+                stance=participant.stance,
+                attack_bonus=stance.attack_bonus,
+                defense_bonus=stance.defense_bonus,
+                damage_multiplier=stance.damage_multiplier,
             )
         npc = session.get(NPC, participant.actor_id)
         if npc is None:
@@ -703,8 +734,18 @@ class CombatService:
                 name=participant.actor_id,
                 strength=10,
                 agility=8,
+                stance=participant.stance,
+                attack_bonus=stance.attack_bonus,
+                defense_bonus=stance.defense_bonus,
+                damage_multiplier=stance.damage_multiplier,
             )
-        return npc_snapshot(npc)
+        return npc_snapshot(
+            npc,
+            stance=participant.stance,
+            attack_bonus=stance.attack_bonus,
+            defense_bonus=stance.defense_bonus,
+            damage_multiplier=stance.damage_multiplier,
+        )
 
     def _has_recent_defend(
         self, repo: CombatRepo, participant_id: str, since: float
@@ -877,6 +918,7 @@ class CombatService:
             "damage": resolution.damage,
             "stamina_delta": resolution.stamina_delta,
             "explanation": resolution.explanation,
+            "actor_stance": resolution.actor.stance,
             "state_changes": state_changes,
             "position_changes": position_changes,
         }
@@ -889,6 +931,7 @@ class CombatService:
         if resolution.target is not None:
             payload["target_id"] = resolution.target.actor_id
             payload["target_type"] = resolution.target.actor_type
+            payload["target_stance"] = resolution.target.stance
         return payload
 
     def _now(self, ctx: GameContext) -> float:

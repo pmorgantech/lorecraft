@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.109.0 on combat; Sprints 1–85 implemented)
+## Where things stand (2026-07-15, v0.110.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
 
-**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.109.0).
+**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.110.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -133,7 +133,7 @@ basic status effects, threat/NPC roles, party assistance, duel rules.
 
 **Tier:** Tier 2 (all features/combat/).
 
-- [ ] 86.1 Stances (balanced/aggressive/defensive/mobile) + persistent policies
+- [x] 86.1 Stances (balanced/aggressive/defensive/mobile) + persistent policies
 - [ ] 86.2 Guarding + protect-ally + intercept edges
 - [ ] 86.3 Bounded reactions (single window, no recursion) + reaction policy
 - [ ] 86.4 Wind-up interruption — resolution-time interrupt outcome
@@ -141,6 +141,12 @@ basic status effects, threat/NPC roles, party assistance, duel rules.
 - [ ] 86.6 Near/distant positioning + advance/retreat/disengage
 - [ ] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
 - [ ] 86.8 Party assistance + duel contracts — assistance counts as participation
+
+Sprint 86 progress note (v0.110.0): players can use `stance <balanced|aggressive|defensive|mobile>`
+while in combat. The stance is persisted on the combat participant, appears in structured combat
+state, feeds immutable resolver snapshots, and contributes modest Tier 2 policy trade-offs for
+attack bonus, defense bonus, damage multiplier, and flee stamina cost. Resolution records and
+structured event payloads include actor/target stance traces for audit and future explanation UI.
 
 ### Sprint 87 — Combat Phase 3: Content Power
 

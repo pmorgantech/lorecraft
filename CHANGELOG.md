@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.110.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.1 combat stances with `stance <balanced|aggressive|defensive|mobile>`,
+  persisted participant stance state, stance-driven attack/defense/damage/flee trade-offs,
+  and stance traces in combat resolution payloads.
+
 ## [0.109.0] - 2026-07-15
 
 ### Added

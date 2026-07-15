@@ -914,6 +914,11 @@ current browser stores that ordered state for future panel/resync work. The stru
 downed, defeated, and escaped participants visible with explicit `engaged`/`unengaged` positions;
 builders do not need to author anything special for this first pass.
 
+The first tactical-depth layer adds persistent encounter stances: `balanced`, `aggressive`,
+`defensive`, and `mobile`. Stance policy is centralized in `features/combat/policy.py`, feeds
+immutable resolver snapshots, and appears in resolution random/damage traces so later explanation
+or audit UI can show which tactical trade-off affected a result.
+
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
 ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.

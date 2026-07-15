@@ -186,6 +186,101 @@ def test_flee_resolution_ends_player_participation() -> None:
         assert participant.position == "unengaged"
 
 
+def test_stance_command_persists_participant_policy_and_updates_state() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        service.stance("aggressive", ctx)
+        session.commit()
+
+    with Session(engine) as session:
+        participant = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+
+        assert participant.stance == "aggressive"
+        player_state = next(
+            participant
+            for participant in ctx.updates["combat"]["participants"]
+            if participant["actor_type"] == "player"
+        )
+        assert player_state["stance"] == "aggressive"
+
+
+def test_aggressive_stance_feeds_attack_resolution_trace() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        service.stance("aggressive", ctx)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+
+        service.resolve_action(
+            session,
+            action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        record = session.exec(select(CombatResolutionRecord)).one()
+
+        assert action.outcome["actor_stance"] == "aggressive"
+        assert action.random_trace["actor_stance"] == "aggressive"
+        assert action.random_trace["actor_stance_attack_bonus"] == 3.0
+        assert record.damage_trace["actor_stance"] == "aggressive"
+        assert record.damage_trace["actor_stance_damage_multiplier"] == 1.1
+
+
+def test_mobile_stance_reduces_flee_stamina_cost() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        service.stance("mobile", ctx)
+        service.flee(None, ctx)
+        flee_action = session.exec(
+            select(CombatAction).where(CombatAction.action_key == "flee")
+        ).one()
+
+        service.resolve_action(
+            session,
+            flee_action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        flee_action = session.exec(
+            select(CombatAction).where(CombatAction.action_key == "flee")
+        ).one()
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == flee_action.id
+            )
+        ).one()
+
+        assert flee_action.outcome["actor_stance"] == "mobile"
+        assert flee_action.outcome["stamina_delta"] == -4.0
+        assert record.random_trace["stance_flee_stamina_delta"] == -4.0
+
+
 def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:
     engine = _engine()
     service = CombatService()
