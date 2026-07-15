@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.125.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.8 live-tunable combat ruleset config:
+  `CombatRulesetConfig` stores per-ruleset damage and stamina-cost multipliers,
+  scheduled combat resolutions read the row fresh per action, and the admin API
+  exposes `GET /admin/combat/rulesets` plus `POST /admin/combat/rulesets/{id}`.
+
 ## [0.124.0] - 2026-07-15
 
 ### Added

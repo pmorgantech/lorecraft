@@ -9,6 +9,7 @@ from lorecraft.webui.admin.routers.accounts import router as accounts_router
 from lorecraft.webui.admin.routers.analytics import router as analytics_router
 from lorecraft.webui.admin.routers.audit import router as audit_router
 from lorecraft.webui.admin.routers.clock import router as clock_router
+from lorecraft.webui.admin.routers.combat import router as combat_router
 from lorecraft.webui.admin.routers.economy import router as economy_router
 from lorecraft.webui.admin.routers.help import router as help_router
 from lorecraft.webui.admin.routers.issues import router as issues_router
@@ -27,6 +28,7 @@ admin_router.include_router(players_router)
 admin_router.include_router(audit_router)
 admin_router.include_router(world_router)
 admin_router.include_router(clock_router)
+admin_router.include_router(combat_router)
 admin_router.include_router(economy_router)
 admin_router.include_router(progression_router)
 admin_router.include_router(accounts_router)

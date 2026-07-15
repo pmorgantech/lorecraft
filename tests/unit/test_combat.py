@@ -40,6 +40,7 @@ from lorecraft.features.combat.models import (
     CombatParticipant,
     CombatRelationship,
     CombatResolutionRecord,
+    CombatRulesetConfig,
 )
 from lorecraft.features.combat.broadcast import broadcast_combat_resolution
 from lorecraft.features.combat.boss_phases import (
@@ -243,6 +244,43 @@ def test_combat_resolution_persists_action_ruleset_and_resolver_version() -> Non
             assert action.outcome["resolver_version"] == "opposed-test-v7"
     finally:
         register_builtin_combat_actions(registry)
+
+
+def test_combat_resolution_uses_live_ruleset_config() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        session.add(
+            CombatRulesetConfig(
+                id="core",
+                damage_multiplier=2.0,
+                stamina_cost_multiplier=2.0,
+            )
+        )
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        record = session.exec(select(CombatResolutionRecord)).one()
+        stamina = ctx_meters(engine).get(session, "player", "player-1", "stamina")
+
+        assert record.payload["stamina_delta"] == -12.0
+        assert record.random_trace["ruleset_damage_multiplier"] == 2.0
+        assert record.random_trace["ruleset_stamina_cost_multiplier"] == 2.0
+        assert record.damage_trace["actor_stance_damage_multiplier"] == 2.0
+        assert stamina.current == 88.0
 
 
 def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:

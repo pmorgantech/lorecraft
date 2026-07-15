@@ -915,6 +915,126 @@ async def _test_observer_cannot_edit_progression() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Combat ruleset config (live admin tuning, Sprint 87)
+# ---------------------------------------------------------------------------
+
+
+def test_get_combat_rulesets_returns_known_action_rulesets() -> None:
+    anyio.run(_test_get_combat_rulesets)
+
+
+async def _test_get_combat_rulesets() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/combat/rulesets", token=token)
+
+    assert status == 200
+    assert data == [
+        {
+            "id": "core",
+            "damage_multiplier": 1.0,
+            "stamina_cost_multiplier": 1.0,
+        }
+    ]
+
+
+def test_post_combat_ruleset_updates_live_config() -> None:
+    anyio.run(_test_post_combat_ruleset)
+
+
+async def _test_post_combat_ruleset() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/combat/rulesets/core",
+            body={"damage_multiplier": 1.25, "stamina_cost_multiplier": 0.8},
+            token=token,
+        )
+        assert status == 200
+        assert data["damage_multiplier"] == 1.25
+        assert data["stamina_cost_multiplier"] == 0.8
+
+        _, after = await _http(app, "GET", "/admin/combat/rulesets", token=token)
+
+    assert after[0]["id"] == "core"
+    assert after[0]["damage_multiplier"] == 1.25
+    assert after[0]["stamina_cost_multiplier"] == 0.8
+
+
+def test_post_combat_ruleset_rejects_nonpositive_multiplier() -> None:
+    anyio.run(_test_post_combat_ruleset_rejects_multiplier)
+
+
+async def _test_post_combat_ruleset_rejects_multiplier() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/combat/rulesets/core",
+            body={"damage_multiplier": 0},
+            token=token,
+        )
+    assert status == 422
+
+
+def test_post_combat_ruleset_rejects_unknown_ruleset() -> None:
+    anyio.run(_test_post_combat_ruleset_rejects_unknown)
+
+
+async def _test_post_combat_ruleset_rejects_unknown() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/combat/rulesets/missing",
+            body={"damage_multiplier": 1.1},
+            token=token,
+        )
+    assert status == 404
+
+
+def test_observer_cannot_edit_combat_ruleset() -> None:
+    anyio.run(_test_observer_cannot_edit_combat_ruleset)
+
+
+async def _test_observer_cannot_edit_combat_ruleset() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token("observer")
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/combat/rulesets/core",
+            body={"damage_multiplier": 1.1},
+            token=token,
+        )
+    assert status == 403
+
+
+# ---------------------------------------------------------------------------
 # Economy region pricing (live admin tuning, Sprint 76)
 # ---------------------------------------------------------------------------
 

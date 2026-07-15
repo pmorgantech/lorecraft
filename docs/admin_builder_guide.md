@@ -1015,9 +1015,16 @@ damage min/max/average, hit rate, one-shot defeat rate, and the action's `rulese
 shipping content. It does not boot a server, create combat actors in the database, or simulate a
 party encounter.
 
-Balance details are intentionally still shallow in this slice: PvP consent, richer browser resync,
-and live-tunable combat ruleset configuration remain later Sprint 87 work tracked in
-`docs/roadmap.md`.
+Live ruleset tuning is DB-backed. The combat admin API exposes
+`GET /admin/combat/rulesets` and `POST /admin/combat/rulesets/{ruleset_id}` with two positive
+multipliers: `damage_multiplier` and `stamina_cost_multiplier`. Scheduled combat reads the row
+fresh for each resolving action, so a superadmin update affects the next resolution without restart
+or reseed. The applied multipliers are recorded in random/damage traces. Keep these dials coarse:
+use action YAML and equipment descriptors for authored content, and use the live row for emergency
+or playtest balance changes.
+
+Balance details are intentionally still shallow in this slice: PvP consent and richer browser
+resync remain later combat work tracked in `docs/roadmap.md`.
 
 **Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
 `{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array

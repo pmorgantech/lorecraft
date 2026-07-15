@@ -91,6 +91,7 @@ from lorecraft.features.combat.resolution import (
     player_snapshot,
     resolve_basic_attack,
 )
+from lorecraft.features.combat.rulesets import combat_ruleset_config_for
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
 
@@ -783,6 +784,11 @@ class CombatService:
         rng,
     ) -> CombatResolution:
         action_def = self._action_def_for(action.action_key)
+        ruleset_config = combat_ruleset_config_for(session, action_def.ruleset_id)
+        ruleset_trace: JsonObject = {
+            "ruleset_damage_multiplier": ruleset_config.damage_multiplier,
+            "ruleset_stamina_cost_multiplier": ruleset_config.stamina_cost_multiplier,
+        }
         if action_def.resolver == RESOLVER_DEFEND:
             snapshot = self._snapshot(session, actor)
             return self._with_action_admission_trace(
@@ -795,9 +801,12 @@ class CombatService:
                     ruleset_id=action_def.ruleset_id,
                     resolver_version=action_def.resolver_version,
                     action_range=action_def.action_range,
-                    stamina_delta=action_def.stamina_delta or 0.0,
+                    stamina_delta=self._scaled_stamina_delta(
+                        action_def.stamina_delta or 0.0,
+                        ruleset_config.stamina_cost_multiplier,
+                    ),
                     explanation=f"{snapshot.name} braces defensively.",
-                    random_trace={"actor_stance": snapshot.stance},
+                    random_trace={"actor_stance": snapshot.stance, **ruleset_trace},
                 ),
                 action,
             )
@@ -814,12 +823,16 @@ class CombatService:
                     ruleset_id=action_def.ruleset_id,
                     resolver_version=action_def.resolver_version,
                     action_range=action_def.action_range,
-                    stamina_delta=stance.flee_stamina_delta,
+                    stamina_delta=self._scaled_stamina_delta(
+                        stance.flee_stamina_delta,
+                        ruleset_config.stamina_cost_multiplier,
+                    ),
                     target_status="escaped",
                     explanation=f"{snapshot.name} breaks away from the fight.",
                     random_trace={
                         "actor_stance": snapshot.stance,
                         "stance_flee_stamina_delta": stance.flee_stamina_delta,
+                        **ruleset_trace,
                     },
                 ),
                 action,
@@ -842,6 +855,7 @@ class CombatService:
                     resolver_version=action_def.resolver_version,
                     action_range=action_def.action_range,
                     explanation="The target is no longer available.",
+                    random_trace=ruleset_trace,
                 ),
                 action,
             )
@@ -859,7 +873,10 @@ class CombatService:
                     resolver_version=action_def.resolver_version,
                     action_range=action_def.action_range,
                     explanation=f"Unsupported combat resolver: {action_def.resolver}.",
-                    random_trace={"unsupported_resolver": action_def.resolver},
+                    random_trace={
+                        "unsupported_resolver": action_def.resolver,
+                        **ruleset_trace,
+                    },
                 ),
                 action,
             )
@@ -878,17 +895,27 @@ class CombatService:
         defended = explicit_defend or interceptor is not None or auto_reaction_used
         original_target_snapshot = self._snapshot(session, original_target)
         target_snapshot = self._snapshot(session, target)
+        actor_snapshot = self._snapshot(session, actor)
+        actor_snapshot = replace(
+            actor_snapshot,
+            damage_multiplier=(
+                actor_snapshot.damage_multiplier * ruleset_config.damage_multiplier
+            ),
+        )
         resolution = resolve_basic_attack(
             action_id=action.id,
             action_key=action.action_key,
             action_range=action_range,
-            actor=self._snapshot(session, actor),
+            actor=actor_snapshot,
             target=target_snapshot,
             weapon=weapon_profile_for(session, actor.actor_type, actor.actor_id),
             armor=armor_profile_for(session, target.actor_type, target.actor_id),
             rng=rng,
             defended=defended,
-            stamina_delta=action_def.stamina_delta or 0.0,
+            stamina_delta=self._scaled_stamina_delta(
+                action_def.stamina_delta or 0.0,
+                ruleset_config.stamina_cost_multiplier,
+            ),
         )
         resolution = replace(
             resolution,
@@ -898,6 +925,7 @@ class CombatService:
                 **(resolution.random_trace or {}),
                 "ruleset_id": action_def.ruleset_id,
                 "resolver_version": action_def.resolver_version,
+                **ruleset_trace,
             },
         )
         if auto_reaction:
@@ -1581,6 +1609,11 @@ class CombatService:
         if action_def is None:
             raise ValueError(f"unknown combat action: {action_key!r}")
         return action_def
+
+    def _scaled_stamina_delta(self, delta: float, cost_multiplier: float) -> float:
+        if delta >= 0:
+            return delta
+        return round(delta * cost_multiplier, 3)
 
     def _is_attack_action(self, action_key: str) -> bool:
         action_def = get_action_registry().get(action_key)

@@ -90,3 +90,11 @@ class CombatResolutionRecord(SQLModel, table=True):
     random_trace: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     damage_trace: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     payload: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+
+
+class CombatRulesetConfig(SQLModel, table=True):
+    """DB-backed live balance dials for one combat ruleset."""
+
+    id: str = Field(primary_key=True)
+    damage_multiplier: float = 1.0
+    stamina_cost_multiplier: float = 1.0
