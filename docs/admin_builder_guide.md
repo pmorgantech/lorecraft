@@ -974,6 +974,12 @@ These hooks are for combat-local reactions such as recording a ward trigger or a
 they are not inline YAML scripts. Hook payloads are preserved in action `random_trace` or resolution
 `effect_changes` so admin/audit tooling can see that the hook fired.
 
+Boss-style NPCs can opt into a registered Python phase resolver by setting
+`ai.combat_phase_resolver` on the NPC definition. Resolvers live in
+`features/combat/boss_phases.py` and run only when that NPC is about to schedule a counter-intent;
+they can choose the response action, target, and phase trace payload. This is meant for authored
+boss encounters and does not replace normal NPC behavior or add a general planner.
+
 Balance details are intentionally still shallow in this slice: PvP consent, richer browser resync,
 and live-tunable combat ruleset configuration remain later Sprint 87 work tracked in
 `docs/roadmap.md`.

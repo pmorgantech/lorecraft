@@ -42,6 +42,10 @@ from lorecraft.features.combat.models import (
     CombatResolutionRecord,
 )
 from lorecraft.features.combat.broadcast import broadcast_combat_resolution
+from lorecraft.features.combat.boss_phases import (
+    BossPhaseDecision,
+    get_boss_phase_registry,
+)
 from lorecraft.features.combat.damage import (
     ArmorProfile,
     apply_damage_stack,
@@ -69,7 +73,9 @@ from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
 def combat_meters() -> Iterator[None]:
     registry = get_meter_registry()
     hook_registry = get_combat_effect_hook_registry()
+    boss_phase_registry = get_boss_phase_registry()
     hook_registry.clear()
+    boss_phase_registry.clear()
     registry.register(
         MeterDef(
             key="hp",
@@ -88,6 +94,7 @@ def combat_meters() -> Iterator[None]:
     registry._defs.pop("hp", None)  # type: ignore[attr-defined]
     registry._defs.pop("stamina", None)  # type: ignore[attr-defined]
     hook_registry.clear()
+    boss_phase_registry.clear()
 
 
 def test_attack_submits_intent_and_schedules_resolution() -> None:
@@ -345,6 +352,56 @@ def test_npc_counter_intent_prefers_highest_threat_target() -> None:
         ).one()
 
         assert npc_action.target_id == "ally"
+
+
+def test_registered_boss_phase_resolver_overrides_npc_counter_intent() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    def phase_resolver(context) -> BossPhaseDecision:
+        return BossPhaseDecision(
+            action_key="ranged_attack",
+            target_participant_id=context.fallback_target.id,
+            phase="bloodied",
+            payload={"source_action_id": context.triggering_action.id},
+        )
+
+    get_boss_phase_registry().register("test.bloodied", phase_resolver)
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        goblin_model = session.get(NPC, "goblin")
+        assert goblin_model is not None
+        goblin_model.ai = {"combat_phase_resolver": "test.bloodied"}
+        session.add(goblin_model)
+        service.attack("goblin", ctx)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=1.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        npc_action = session.exec(
+            select(CombatAction)
+            .where(CombatAction.actor_type == "npc")
+            .where(CombatAction.state == "pending")
+        ).one()
+
+        assert npc_action.action_key == "ranged_attack"
+        assert npc_action.target_id == "player-1"
+        assert npc_action.random_trace["boss_phase"]["phase"] == "bloodied"
+        assert npc_action.random_trace["boss_phase"]["payload"] == {
+            "source_action_id": action_id
+        }
 
 
 def test_flee_resolution_ends_player_participation() -> None:

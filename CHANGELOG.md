@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.121.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.4 registered boss phase resolvers: NPCs can name a
+  `combat_phase_resolver` in `NPC.ai`, and registered Python resolvers can
+  choose the NPC's counter-intent action/target and record phase trace metadata
+  without introducing a general AI planner.
+
 ## [0.120.0] - 2026-07-15
 
 ### Added

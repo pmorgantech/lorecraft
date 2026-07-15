@@ -32,6 +32,11 @@ from lorecraft.features.combat.models import (
     CombatRelationship,
     CombatResolutionRecord,
 )
+from lorecraft.features.combat.boss_phases import (
+    BossPhaseContext,
+    BossPhaseDecision,
+    get_boss_phase_registry,
+)
 from lorecraft.features.combat.damage import armor_profile_for, weapon_profile_for
 from lorecraft.features.combat.definitions import (
     RESOLVER_DEFEND,
@@ -1182,14 +1187,76 @@ class CombatService:
         if repo.pending_primary_action(target.id) is not None:
             return
         response_target = self._preferred_target_for_npc(repo, target, fallback=actor)
-        self._submit_action(
+        phase_decision = self._boss_phase_decision(
+            session,
+            repo,
+            encounter,
+            target,
+            action,
+            fallback_target=response_target,
+            current_epoch=current_epoch,
+        )
+        if phase_decision is not None:
+            phase_target = (
+                repo.participant(phase_decision.target_participant_id)
+                if phase_decision.target_participant_id is not None
+                else None
+            )
+            if (
+                phase_target is not None
+                and phase_target.status == STATUS_ACTIVE
+                and phase_target.side_id != target.side_id
+            ):
+                response_target = phase_target
+        response_action = self._submit_action(
             repo=repo,
             session=session,
             encounter=encounter,
             actor=target,
-            action_key=ACTION_BASIC_ATTACK,
+            action_key=phase_decision.action_key
+            if phase_decision is not None
+            else ACTION_BASIC_ATTACK,
             now=current_epoch,
             target=response_target,
+        )
+        if phase_decision is not None:
+            response_action.random_trace = {
+                **response_action.random_trace,
+                "boss_phase": phase_decision.trace(),
+            }
+            repo.add(response_action)
+
+    def _boss_phase_decision(
+        self,
+        session: Session,
+        repo: CombatRepo,
+        encounter: CombatEncounter,
+        participant: CombatParticipant,
+        triggering_action: CombatAction,
+        *,
+        fallback_target: CombatParticipant,
+        current_epoch: float,
+    ) -> BossPhaseDecision | None:
+        npc = session.get(NPC, participant.actor_id)
+        if npc is None:
+            return None
+        resolver_key = npc.ai.get("combat_phase_resolver")
+        if not isinstance(resolver_key, str) or not resolver_key.strip():
+            return None
+        resolver = get_boss_phase_registry().get(resolver_key.strip())
+        if resolver is None:
+            return None
+        return resolver(
+            BossPhaseContext(
+                session=session,
+                repo=repo,
+                encounter=encounter,
+                npc=npc,
+                participant=participant,
+                triggering_action=triggering_action,
+                fallback_target=fallback_target,
+                current_epoch=current_epoch,
+            )
         )
 
     def _preferred_target_for_npc(
