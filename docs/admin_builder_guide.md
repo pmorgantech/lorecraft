@@ -925,7 +925,7 @@ record.
 Scheduled combat resolutions also broadcast to browsers as two messages: combat prose in the
 normal feed and a structured `combat_update` payload with a per-encounter sequence number. The
 current browser stores that ordered state for future panel/resync work. The structured state keeps
-downed, defeated, and escaped participants visible with explicit `engaged`/`unengaged` positions;
+dead, defeated, and escaped participants visible with explicit `engaged`/`unengaged` positions;
 builders do not need to author anything special for this first pass.
 
 The first tactical-depth layer adds persistent encounter stances: `balanced`, `aggressive`,
@@ -971,6 +971,13 @@ participants with a hostile target and no pending primary action queue a basic a
 next available primary window. Player commands still replace the queued primary action, so a player
 can switch from the default attack loop to `defend`, `flee`, or a different target without waiting
 for the loop to stop.
+
+Player HP depletion is the first death/resurrection slice. A player who reaches 0 HP is marked
+`dead` for the combat participant record, clears active combat and queued actions, leaves a corpse
+container in the death room, moves 20% of carried coins plus loose unbound carried items into that
+corpse, moves to `Player.respawn_room_id`, restores HP to 25% of maximum, and receives the temporary
+`weakened` effect. Corpse decay, lost-and-found recovery, and PvP-specific corpse rules remain later
+work from `docs/death_resurrection.md`.
 
 Combat status effects reuse the engine `ActiveEffect` lifecycle. The first status, `combat.off_balance`,
 is applied by strong hits with game-time expiry and source metadata in payload, contributes a

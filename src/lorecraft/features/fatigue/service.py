@@ -42,7 +42,11 @@ _MOVE_DRAIN_BY_BAND = {
 
 REST_RECOVERY_PER_HOUR = 6.0
 SLEEP_RECOVERY_PER_HOUR = 14.0
+HP_RECOVERY_PER_HOUR = 2.0
+HP_REST_RECOVERY_PER_HOUR = 8.0
+HP_SLEEP_RECOVERY_PER_HOUR = 20.0
 CAMP_RESTORE = 55.0
+CAMP_HP_RESTORE = 20.0
 INTERRUPTED_SLEEP_HOURS = 3.0
 MAX_SLEEP_HOURS = 12.0
 
@@ -141,10 +145,13 @@ class FatigueService:
 
     def _restore(self, ctx: GameContext, amount: float, message: str) -> None:
         meter = ctx.meters.get(ctx.session, "player", ctx.player.id, FATIGUE_METER_KEY)
-        if meter.current >= meter.maximum:
+        hp = ctx.meters.get(ctx.session, "player", ctx.player.id, "hp")
+        if meter.current >= meter.maximum and hp.current >= hp.maximum:
             ctx.say("You are already well-rested.")
             return
         ctx.meters.adjust(ctx.session, meter, amount)
+        if hp.current > 0:
+            ctx.meters.adjust(ctx.session, hp, CAMP_HP_RESTORE)
         ctx.say(message)
 
     def sleep(self, ctx: GameContext, hours: float | None = None) -> None:
@@ -232,12 +239,22 @@ class FatigueService:
             players = session.exec(select(Player)).all()
             for player in players:
                 sleeping = is_sleeping(player, clock)
-                if not sleeping and not is_resting(player):
+                resting = is_resting(player)
+                if not sleeping and not resting:
                     clear_expired_sleep(player, clock)
+                    self._recover_hp(session, player.id, ctx.game_engine, delta_hours)
                     continue
                 meter = self._meter_for(session, player.id, ctx.game_engine)
                 rate = SLEEP_RECOVERY_PER_HOUR if sleeping else REST_RECOVERY_PER_HOUR
                 self._adjust_meter(session, meter, rate * delta_hours)
+                self._recover_hp(
+                    session,
+                    player.id,
+                    ctx.game_engine,
+                    delta_hours,
+                    sleeping=sleeping,
+                    resting=resting,
+                )
                 clear_expired_sleep(player, clock)
                 session.add(player)
             session.commit()
@@ -254,6 +271,40 @@ class FatigueService:
         return MeterService(game_engine, GameRng()).get(
             session, "player", player_id, FATIGUE_METER_KEY
         )
+
+    def _hp_meter_for(
+        self, session: Session, player_id: str, game_engine: object
+    ) -> Meter:
+        from sqlalchemy.engine import Engine
+
+        from lorecraft.engine.game.rng import GameRng
+        from lorecraft.engine.services.meters import MeterService
+
+        assert isinstance(game_engine, Engine)
+        return MeterService(game_engine, GameRng()).get(
+            session, "player", player_id, "hp"
+        )
+
+    def _recover_hp(
+        self,
+        session: Session,
+        player_id: str,
+        game_engine: object,
+        delta_hours: float,
+        *,
+        sleeping: bool = False,
+        resting: bool = False,
+    ) -> None:
+        hp = self._hp_meter_for(session, player_id, game_engine)
+        if hp.current <= 0 or hp.current >= hp.maximum:
+            return
+        if sleeping:
+            rate = HP_SLEEP_RECOVERY_PER_HOUR
+        elif resting:
+            rate = HP_REST_RECOVERY_PER_HOUR
+        else:
+            rate = HP_RECOVERY_PER_HOUR
+        self._adjust_meter(session, hp, rate * delta_hours)
 
     def _adjust_meter(self, session: Session, meter: Meter, amount: float) -> None:
         meter.current = max(0.0, min(meter.maximum, meter.current + amount))

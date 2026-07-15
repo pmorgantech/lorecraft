@@ -4676,6 +4676,19 @@ items:
     category: utility
     capacity: 12.0
 
+  - id: corpse
+    name: Fallen Body
+    description: >-
+      The body and scattered belongings left where a traveler fell. It is not
+      something to carry, only something to search before time and scavengers
+      finish their work.
+    takeable: false
+    tradeable: false
+    weight: 0.0
+    value: 0
+    category: remains
+    capacity: 200.0
+
   # --- P2.3 Crafting materials: Cogsworth foundry (metal & mechanism) ---
   - id: iron_ingot
     name: Iron Ingot

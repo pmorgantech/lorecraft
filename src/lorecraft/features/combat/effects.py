@@ -5,6 +5,7 @@ from __future__ import annotations
 from lorecraft.engine.game.effects import EffectDef, get_registry
 
 COMBAT_OFF_BALANCE = "combat.off_balance"
+WEAKENED = "weakened"
 
 
 def register_combat_effects() -> None:
@@ -15,6 +16,13 @@ def register_combat_effects() -> None:
         registry.register(
             EffectDef(
                 key=COMBAT_OFF_BALANCE,
+                modifiers=lambda effect: [],
+            )
+        )
+    if registry.get(WEAKENED) is None:
+        registry.register(
+            EffectDef(
+                key=WEAKENED,
                 modifiers=lambda effect: [],
             )
         )

@@ -15,6 +15,8 @@ from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.meters import MeterDef
+from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.features.disciplines.abilities import (
     get_discipline_registry,
     load_disciplines_yaml,
@@ -48,6 +50,7 @@ from lorecraft.features.fatigue.source import register as _register_fatigue
 # They now register via the fatigue/equipment feature register()s.
 _register_fatigue()
 _register_equipment_source()
+get_meter_registry().register(MeterDef(key="hp", base_maximum=lambda et, eid, s: 100.0))
 get_discipline_registry().load_document(
     load_disciplines_yaml("world_content/disciplines.yaml")
 )
@@ -161,6 +164,10 @@ def _session_engine(session: Session) -> Engine:
 
 def _fatigue(ctx: GameContext):
     return ctx.meters.get(ctx.session, "player", ctx.player.id, FATIGUE_METER_KEY)
+
+
+def _hp(ctx: GameContext):
+    return ctx.meters.get(ctx.session, "player", ctx.player.id, "hp")
 
 
 class TestFatigueDrainOnTravel:
@@ -303,6 +310,64 @@ class TestRestSleepCamp:
 
         session.expire_all()
         assert _fatigue(ctx).current > rest_current
+
+    def test_hp_recovers_over_time_faster_with_rest_and_sleep(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, session = built
+        hp = _hp(ctx)
+        ctx.meters.set_current(session, hp, 50.0)
+        session.commit()
+        assert ctx.clock is not None
+
+        ctx.bus.emit(
+            Event(
+                GameEvent.TIME_ADVANCED,
+                {
+                    "previous_epoch": ctx.clock.game_epoch,
+                    "current_epoch": ctx.clock.game_epoch + 3600.0,
+                },
+            ),
+            ClockEventContext(_session_engine(session), ctx.bus),
+        )
+        normal_hp = _hp(ctx).current
+
+        ctx.meters.set_current(session, _hp(ctx), 50.0)
+        session.commit()
+        cmd_engine.handle_command("rest", ctx)
+        session.commit()
+        ctx.bus.emit(
+            Event(
+                GameEvent.TIME_ADVANCED,
+                {
+                    "previous_epoch": ctx.clock.game_epoch,
+                    "current_epoch": ctx.clock.game_epoch + 3600.0,
+                },
+            ),
+            ClockEventContext(_session_engine(session), ctx.bus),
+        )
+        rest_hp = _hp(ctx).current
+
+        ctx.meters.set_current(session, _hp(ctx), 50.0)
+        session.commit()
+        cmd_engine.handle_command("stand", ctx)
+        cmd_engine.handle_command("sleep 2", ctx)
+        session.commit()
+        ctx.bus.emit(
+            Event(
+                GameEvent.TIME_ADVANCED,
+                {
+                    "previous_epoch": ctx.clock.game_epoch,
+                    "current_epoch": ctx.clock.game_epoch + 3600.0,
+                },
+            ),
+            ClockEventContext(_session_engine(session), ctx.bus),
+        )
+        sleep_hp = _hp(ctx).current
+
+        assert normal_hp == 52.0
+        assert rest_hp == 58.0
+        assert sleep_hp == 70.0
 
 
 class TestSleepSafetyAndDream:

@@ -10,20 +10,25 @@ from uuid import uuid4
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
+from lorecraft.errors import NotFoundError
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
-from lorecraft.engine.models.world import NPC
+from lorecraft.engine.models.world import Item, NPC
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.effects import EffectService
-from lorecraft.engine.services.ledger import LedgerService
+from lorecraft.engine.services.item_location import ItemLocationService
+from lorecraft.engine.services.ledger import ExchangeLeg, LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.services.scheduler import SchedulerEventContext
 from lorecraft.features.combat.models import (
@@ -48,6 +53,7 @@ from lorecraft.features.combat.definitions import (
 )
 from lorecraft.features.combat.effects import (
     COMBAT_OFF_BALANCE,
+    WEAKENED,
     register_combat_effects,
 )
 from lorecraft.features.combat.effect_hooks import (
@@ -99,6 +105,7 @@ from lorecraft.types import JsonObject, JsonValue
 COMBAT_RESOLVE_JOB = "combat.resolve_action"
 
 _REACTION_RECOVERY = 1.5
+RESPAWN_HP_FRACTION = 0.25
 
 
 class CombatService:
@@ -1242,6 +1249,16 @@ class CombatService:
                     if player is not None:
                         player.active_combat_session_id = None
                         session.add(player)
+                if target.actor_type == "player":
+                    consequence_changes.append(
+                        self._apply_player_death_respawn(
+                            session,
+                            meter_service,
+                            effect_service,
+                            target,
+                            current_epoch=current_epoch,
+                        )
+                    )
                 consequence_changes.extend(
                     self._apply_combat_rewards(
                         session,
@@ -1913,6 +1930,128 @@ class CombatService:
             )
         return changes
 
+    def _apply_player_death_respawn(
+        self,
+        session: Session,
+        meter_service: MeterService,
+        effect_service: EffectService,
+        participant: CombatParticipant,
+        *,
+        current_epoch: float,
+    ) -> JsonObject:
+        player = session.get(Player, participant.actor_id)
+        if player is None:
+            return {
+                "type": "player_respawn_missing_player",
+                "player_id": participant.actor_id,
+                "at": current_epoch,
+            }
+        death_room_id = player.current_room_id
+        respawn_room_id = player.respawn_room_id
+
+        ledger = LedgerService()
+        item_location = ItemLocationService(session)
+        stack_repo = StackRepo(session)
+        corpse_stack_id: int | None = None
+        corpse_instance_id: str | None = None
+        coin_loss = int(ledger.balance_of(session, "player", player.id) * 0.20)
+        dropped_stacks: list[JsonObject] = []
+        corpse_error: str | None = None
+        try:
+            corpse_stack = item_location.spawn(
+                "corpse", Location("room", death_room_id)
+            )[0]
+            corpse_stack_id = corpse_stack.id
+            corpse_instance_id = corpse_stack.instance_id
+            if corpse_instance_id is None:
+                corpse_error = "corpse_item_not_instanced"
+            else:
+                corpse_instance = session.get(ItemInstance, corpse_instance_id)
+                if corpse_instance is not None:
+                    openable = corpse_instance.state.get("openable")
+                    if isinstance(openable, dict):
+                        state = dict(corpse_instance.state)
+                        state["openable"] = {**openable, "open": True}
+                        corpse_instance.state = state
+                        session.add(corpse_instance)
+                        session.flush()
+                drop_candidates = self._death_drop_stacks(
+                    session, stack_repo, player.id
+                )
+                legs: list[ExchangeLeg] = []
+                stacks = tuple(
+                    (stack.id, stack.quantity)
+                    for stack in drop_candidates
+                    if stack.id is not None
+                )
+                if coin_loss > 0 or stacks:
+                    legs.append(
+                        ExchangeLeg(
+                            give_from=Location("player", player.id),
+                            give_to=Location("container", corpse_instance_id),
+                            coins=coin_loss,
+                            stacks=stacks,
+                        )
+                    )
+                if legs:
+                    ledger.execute_exchange(session, legs)
+                dropped_stacks = [
+                    {
+                        "stack_id": stack.id,
+                        "item_id": stack.item_id,
+                        "quantity": stack.quantity,
+                    }
+                    for stack in drop_candidates
+                ]
+        except NotFoundError as exc:
+            corpse_error = exc.code
+
+        player.current_room_id = respawn_room_id
+        player.active_combat_session_id = None
+        player.ghost_state = False
+        session.add(player)
+
+        hp = meter_service.get(session, "player", player.id, "hp")
+        restored_hp = max(1.0, hp.maximum * RESPAWN_HP_FRACTION)
+        meter_service.set_current(session, hp, restored_hp)
+        weakened = effect_service.apply(
+            session,
+            "player",
+            player.id,
+            WEAKENED,
+            duration_ticks=180.0,
+            payload={"reason": "death"},
+            clock_epoch=current_epoch,
+        )
+        return {
+            "type": "player_respawned",
+            "player_id": player.id,
+            "death_room_id": death_room_id,
+            "respawn_room_id": respawn_room_id,
+            "respawn_hp": hp.current,
+            "respawn_hp_fraction": RESPAWN_HP_FRACTION,
+            "corpse_stack_id": corpse_stack_id,
+            "corpse_instance_id": corpse_instance_id,
+            "corpse_error": corpse_error,
+            "coin_loss": coin_loss if corpse_instance_id is not None else 0,
+            "dropped_stacks": cast(JsonValue, dropped_stacks),
+            "weakened_effect_id": weakened.id,
+            "at": current_epoch,
+        }
+
+    def _death_drop_stacks(
+        self, session: Session, stack_repo: StackRepo, player_id: str
+    ) -> list[ItemStack]:
+        stacks: list[ItemStack] = []
+        for stack in stack_repo.stacks_for_owner("player", player_id):
+            if stack.slot is not None:
+                continue
+            item = session.get(Item, stack.item_id)
+            if item is not None and item.bound:
+                continue
+            stacks.append(stack)
+        return stacks
+
     def _decayed_attention(
         self, attention: dict[str, JsonObject], current_epoch: float
     ) -> dict[str, JsonObject]:
@@ -2084,6 +2223,44 @@ class CombatService:
             ),
             None,
         )
+        self._emit_death_events(bus, encounter, action.outcome)
+
+    def _emit_death_events(
+        self, bus: EventBus, encounter: CombatEncounter, payload: JsonObject
+    ) -> None:
+        consequence_changes = payload.get("consequence_changes")
+        if not isinstance(consequence_changes, list):
+            return
+        for raw_change in consequence_changes:
+            if not isinstance(raw_change, dict):
+                continue
+            if raw_change.get("type") != "player_respawned":
+                continue
+            player_id = raw_change.get("player_id")
+            if not isinstance(player_id, str):
+                continue
+            common = {
+                "player_id": player_id,
+                "encounter_id": encounter.id,
+                "death_room_id": raw_change.get("death_room_id"),
+                "respawn_room_id": raw_change.get("respawn_room_id"),
+                "corpse_stack_id": raw_change.get("corpse_stack_id"),
+                "corpse_instance_id": raw_change.get("corpse_instance_id"),
+                "coin_loss": raw_change.get("coin_loss"),
+                "dropped_stacks": raw_change.get("dropped_stacks"),
+            }
+            bus.emit(Event(GameEvent.PLAYER_DIED, common), None)
+            bus.emit(
+                Event(
+                    GameEvent.PLAYER_RESPAWNED,
+                    {
+                        **common,
+                        "respawn_hp": raw_change.get("respawn_hp"),
+                        "weakened_effect_id": raw_change.get("weakened_effect_id"),
+                    },
+                ),
+                None,
+            )
 
     def _resolution_prose(
         self, session: Session, resolution: CombatResolution, payload: JsonObject
@@ -2102,6 +2279,8 @@ class CombatService:
                 name = self._actor_name(session, str(actor_type), actor_id)
                 if to_status == "defeated":
                     lines.append(f"{name} is defeated.")
+                elif to_status == "dead":
+                    lines.append(f"{name} dies.")
                 elif to_status == "downed":
                     lines.append(f"{name} is downed.")
                 elif to_status == "escaped":
@@ -2112,6 +2291,12 @@ class CombatService:
                 if not isinstance(raw_change, dict):
                     continue
                 if raw_change.get("type") != "coins":
+                    if raw_change.get("type") == "player_respawned":
+                        respawn_room_id = raw_change.get("respawn_room_id")
+                        if isinstance(respawn_room_id, str):
+                            lines.append(
+                                f"You wake at {respawn_room_id}, battered but alive."
+                            )
                     continue
                 message = raw_change.get("message")
                 amount = raw_change.get("amount")

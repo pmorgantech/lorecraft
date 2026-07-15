@@ -101,11 +101,11 @@ Combat output appears in two forms:
 
 If you see your action committed but not resolved yet, that is normal scheduled intent. The action
 has a short wind-up, then recovery. Once a fight is active, participants keep queuing basic attacks
-automatically every few game seconds until someone is downed, defeated, or escapes. You can still
+automatically every few game seconds until someone dies, is defeated, or escapes. You can still
 replace your next queued primary action by choosing to attack a target, defend, switch stance, or
 flee.
 
-The browser may continue to show downed, defeated, or escaped participants briefly because combat
+The browser may continue to show dead, defeated, or escaped participants briefly because combat
 state keeps the outcome explicit instead of making actors vanish from the record.
 
 ## During A Fight
@@ -162,10 +162,13 @@ guard ally
 
 Guarding can redirect an incoming melee attack to you. It does not intercept ranged shots.
 
-## Winning, Fleeing, And Going Down
+## Winning, Fleeing, And Dying
 
-NPCs defeated at 0 HP leave the fight as defeated. Players who hit 0 HP become downed by default,
-leave active combat, and lose any queued combat action. This is a non-lethal default policy.
+NPCs defeated at 0 HP leave the fight as defeated. Players who hit 0 HP die, leave active combat,
+lose any queued combat action, and immediately respawn at their respawn point with a fraction of max
+HP restored. Death leaves a corpse in the room where you fell; 20% of your carried coins and loose,
+unbound carried items move into it. Equipped and bound items stay with you, and you wake with a
+temporary weakened effect.
 
 To leave before things go badly:
 

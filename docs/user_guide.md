@@ -570,9 +570,12 @@ Builders can tune the core action timing and broad ranged/melee semantics in
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
 older pending one. Combat uses health and stamina meters. The browser combat feed shows each
-opponent's approximate health band plus current HP after combat updates. At 0 HP, player characters are
-downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
-active combat and any queued combat action for them is cancelled. Stances persist for the
+opponent's approximate health band plus current HP after combat updates. At 0 HP, player characters
+die and immediately respawn at their respawn point with a fraction of max HP restored, while NPCs
+are defeated. Death leaves a corpse in the death room holding 20% of carried coins and loose,
+unbound carried items; equipped and bound items remain with the player, and a temporary weakened
+effect is applied. Dead, defeated, or escaped participants leave active combat and any queued combat
+action for them is cancelled. Stances persist for the
 encounter and trade offense, defense, damage, and escape stamina cost. Once combat starts,
 active participants keep queuing basic attacks automatically every few game seconds until the
 encounter ends, but you can still replace your next queued primary action with an explicit command.

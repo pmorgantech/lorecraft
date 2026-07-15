@@ -4,6 +4,18 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.130.0] - 2026-07-15
+
+### Added
+
+- Added HP recovery over world time: slow while active, faster while resting,
+  faster again while sleeping, plus camp healing.
+- Changed player combat HP depletion from downed to death plus immediate respawn
+  at the player's respawn point with 25% max HP restored.
+- Added the first death penalty loop: player death leaves a corpse container in
+  the death room, moves 20% of carried coins and loose unbound carried items into
+  it, applies a temporary weakened effect, and emits player death/respawn events.
+
 ## [0.129.0] - 2026-07-15
 
 ### Added

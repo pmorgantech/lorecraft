@@ -106,7 +106,7 @@ topics:
     commands. If you commit an action and it has not resolved yet, wait for the
     combat feed; the delay is part of the system.
     Once a fight is active, participants keep queuing basic attacks every few
-    game seconds until a side is downed, defeated, or escapes. Your next queued
+    game seconds until a side dies, is defeated, or escapes. Your next queued
     primary action can still be replaced with a new combat command.
 
     Useful commands:
@@ -136,6 +136,10 @@ topics:
     Lorecraft does not use player formations or near/far positioning bands.
     Ranged attacks are tracked as ranged, but you do not manage distance steps.
     Guarding can intercept melee attacks but does not intercept ranged shots.
-    Players become downed at 0 HP by default; NPCs become defeated. Some authored
-    encounters can also apply reputation consequences, such as angering a guard
-    faction, but there is no separate bounty or arrest system yet.
+    Players die at 0 HP and immediately respawn at their respawn point with a
+    fraction of max HP restored. Death leaves a corpse in the room where you
+    fell, holding 20% of carried coins and loose unbound carried items; equipped
+    and bound items stay with you, and you wake weakened. NPCs become defeated.
+    Some authored encounters can also apply reputation consequences, such as
+    angering a guard faction, but there is no separate bounty or arrest system
+    yet.

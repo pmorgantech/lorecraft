@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 STATUS_ACTIVE = "active"
 STATUS_DOWNED = "downed"
+STATUS_DEAD = "dead"
 STATUS_DEFEATED = "defeated"
 STATUS_ESCAPED = "escaped"
 
@@ -94,11 +95,11 @@ class DefeatDecision:
 
 
 def defeat_decision_for(actor_type: str) -> DefeatDecision:
-    """Return the default non-lethal PvE defeat policy for an actor type."""
+    """Return the default PvE defeat policy for an actor type."""
 
     if actor_type == "player":
         return DefeatDecision(
-            status=STATUS_DOWNED,
+            status=STATUS_DEAD,
             clears_player_combat=True,
         )
     return DefeatDecision(

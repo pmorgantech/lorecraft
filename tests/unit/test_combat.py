@@ -13,6 +13,7 @@ from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.rng import GameRng
@@ -66,13 +67,19 @@ from lorecraft.features.combat.effect_hooks import (
     CombatEffectHooks,
     get_combat_effect_hook_registry,
 )
+from lorecraft.features.combat.effects import register_combat_effects
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
+from lorecraft.features.item_components.components import (
+    register as register_components,
+)
 from lorecraft.features.reputation.models import Reputation
 
 
 @pytest.fixture(autouse=True)
 def combat_meters() -> Iterator[None]:
+    register_components()
+    register_combat_effects()
     registry = get_meter_registry()
     hook_registry = get_combat_effect_hook_registry()
     boss_phase_registry = get_boss_phase_registry()
@@ -1335,12 +1342,67 @@ def test_npc_defeat_applies_configured_coin_reward_and_final_prose() -> None:
     assert "You earn 25 coins for the clean spar." in observed[0]["prose"]
 
 
-def test_player_hp_depletion_marks_downed_and_cancels_queued_action() -> None:
+def test_player_hp_depletion_kills_respawns_and_cancels_queued_action() -> None:
     engine = _engine()
     service = CombatService()
+    bus = EventBus()
+    observed: list[dict] = []
+    death_events: list[dict] = []
+    respawn_events: list[dict] = []
+    bus.on(GameEvent.NPC_ATTACKED, lambda event, ctx: observed.append(event.payload))
+    bus.on(GameEvent.PLAYER_DIED, lambda event, ctx: death_events.append(event.payload))
+    bus.on(
+        GameEvent.PLAYER_RESPAWNED,
+        lambda event, ctx: respawn_events.append(event.payload),
+    )
 
     with Session(engine) as session:
-        ctx = _context(session)
+        ctx = _context(session, bus=bus)
+        session.add(
+            Room(
+                id="temple",
+                name="Temple",
+                description="A respawn point.",
+                map_x=1,
+                map_y=1,
+            )
+        )
+        session.add(
+            Item(
+                id="corpse",
+                name="Corpse",
+                description="Death container.",
+                takeable=False,
+                capacity=200.0,
+            )
+        )
+        session.add(Item(id="trinket", name="Trinket", description="Loose loot."))
+        session.add(
+            Item(
+                id="bound_charm",
+                name="Bound Charm",
+                description="Kept.",
+                bound=True,
+            )
+        )
+        session.add(
+            Item(
+                id="worn_vest",
+                name="Worn Vest",
+                description="Equipped.",
+                slot="torso",
+                wearable=True,
+            )
+        )
+        session.flush()
+        ctx.player.respawn_room_id = "temple"
+        session.add(ctx.player)
+        ctx.ledger.credit(session, "player", ctx.player.id, 100)
+        ctx.item_location.spawn("trinket", Location("player", ctx.player.id))
+        ctx.item_location.spawn("bound_charm", Location("player", ctx.player.id))
+        ctx.item_location.spawn(
+            "worn_vest", Location("player", ctx.player.id, slot="torso")
+        )
         stats = session.get(PlayerStats, "player-1")
         assert stats is not None
         stats.max_hp = 5
@@ -1376,6 +1438,7 @@ def test_player_hp_depletion_marks_downed_and_cancels_queued_action() -> None:
             rng=GameRng(seed=2),
             current_epoch=2.0,
             meter_service=ctx.meters,
+            bus=bus,
         )
         session.commit()
 
@@ -1390,17 +1453,59 @@ def test_player_hp_depletion_marks_downed_and_cancels_queued_action() -> None:
                 CombatResolutionRecord.action_id == npc_action_id
             )
         ).one()
+        hp = ctx_meters(engine).get(session, "player", "player-1", "hp")
+        death_change = record.payload["consequence_changes"][0]
+        corpse_instance_id = death_change["corpse_instance_id"]
+        corpse_stack_id = death_change["corpse_stack_id"]
+        weakened_effects = session.exec(
+            select(ActiveEffect).where(ActiveEffect.effect_key == "weakened")
+        ).all()
+        corpse_stack = session.get(ItemStack, corpse_stack_id)
+        corpse_contents = StackRepo(session).stacks_for_owner(
+            "container", corpse_instance_id
+        )
 
         assert player is not None and player.active_combat_session_id is None
-        assert participant.status == "downed"
+        assert player.current_room_id == "temple"
+        assert LedgerService().balance_of(session, "player", "player-1") == 80
+        assert (
+            LedgerService().balance_of(session, "container", corpse_instance_id) == 20
+        )
+        assert participant.status == "dead"
         assert participant.position == "unengaged"
         assert participant.queued_action_id is None
+        assert hp.current == 1.25
         assert queued is not None and queued.state == "cancelled"
-        assert record.payload["state_changes"][0]["to_status"] == "downed"
+        assert record.payload["state_changes"][0]["to_status"] == "dead"
+        assert death_change["type"] == "player_respawned"
+        assert death_change["coin_loss"] == 20
+        assert death_change["dropped_stacks"][0]["item_id"] == "trinket"
+        assert corpse_stack is not None and corpse_stack.owner_id == "arena"
+        assert {stack.item_id for stack in corpse_contents} == {"trinket"}
+        assert (
+            StackRepo(session).quantity_of(
+                Location("player", "player-1"), "bound_charm"
+            )
+            == 1
+        )
+        assert (
+            StackRepo(session).quantity_of(
+                Location("player", "player-1", slot="torso"), "worn_vest"
+            )
+            == 1
+        )
+        assert len(weakened_effects) == 1
         assert (
             queued_defend_id
             in record.payload["state_changes"][0]["cancelled_action_ids"]
         )
+    assert observed
+    assert "petem dies." in observed[0]["prose"]
+    assert "You wake at temple" in observed[0]["prose"]
+    assert death_events and death_events[0]["coin_loss"] == 20
+    assert death_events[0]["dropped_stacks"][0]["item_id"] == "trinket"
+    assert respawn_events and respawn_events[0]["respawn_hp"] == 1.25
+    assert respawn_events[0]["weakened_effect_id"] == weakened_effects[0].id
 
 
 def test_damage_profiles_use_equipped_weapon_and_armor_descriptors() -> None:
