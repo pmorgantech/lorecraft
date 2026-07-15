@@ -85,3 +85,36 @@ topics:
     'rest' recovers a little, 'camp' a good deal, and 'sleep' recovers all of it
     (and advances time). Sleeping is safest in a sheltered spot; cold weather is
     harder to rest through unless you're dressed warmly.
+- id: 9
+  name: combat
+  title: Combat Basics
+  category: Combat
+  keywords:
+  - combat
+  - fight
+  - attack
+  - shoot
+  - guard
+  - defend
+  - flee
+  - stance
+  - reaction
+  - assist
+  body: |
+    Combat uses scheduled intent: you choose an action, then the world resolves
+    it after a short wind-up and recovery window. You do not need to spam
+    commands.
+
+    Useful commands:
+      - 'attack <target>' starts or continues a melee attack against an NPC.
+      - 'shoot <target>' starts or continues a ranged attack.
+      - 'defend' braces against incoming attacks.
+      - 'guard [ally]' can intercept melee attacks against you or an ally.
+      - 'flee' looks for an opening to leave the encounter.
+      - 'stance <balanced|aggressive|defensive|mobile>' changes your trade-off.
+      - 'reaction <defensive|conserve|never>' controls automatic defensive reactions.
+      - 'assist <player>' joins a nearby player's active encounter on their side.
+
+    Lorecraft does not use player formations or near/far positioning bands.
+    Ranged attacks are tracked as ranged, but you do not manage distance steps.
+    Players become downed at 0 HP by default; NPCs become defeated.

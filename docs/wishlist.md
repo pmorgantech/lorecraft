@@ -268,34 +268,22 @@ it returns:
 - **Encounters serve stories** — fights exist to raise stakes in quests/exploration, not as a
   grind loop for XP. No "kill 10 rats." See the death-penalty decision (lean soft).
 
-#### Set-aside sprint specs (were roadmap Sprints 61–64, moved here 2026-07-05)
+#### Combat/PvP historical notes (updated 2026-07-15)
 
-Ready-to-restore, roadmap-grade specs — when combat/PvP graduates back onto the roadmap these
-become sprints again (renumber to whatever's next). Design docs:
-[`combat_system.md`](combat_system.md), [`death_resurrection.md`](death_resurrection.md).
+NPC-first combat has moved back onto the active roadmap and now follows
+[`combat_design.md`](combat_design.md): Scheduled Intent actions, health/stamina, stances,
+guarding, bounded reactions, status effects, simple ranged attacks, qualitative threat, and
+party assistance metadata. The older tick-based combat sketch remains archived for context only.
 
-**1. Combat core services (supporting system).** Server-side resolution, no commands/UI yet;
-first real consumer of the feature-registration pattern (roadmap 10.4), reading equipment-derived
-stats. Deliberately below trade/transit/quests — combat serves stories, it isn't the loop.
-- `services/combat.py` — sessions, ticks, damage.
-- Death & resurrection ([`death_resurrection.md`](death_resurrection.md)): resurrect at
-  `respawn_room_id`, lose a % of *carried* coins + drop unequipped loot into a corpse container
-  (banked/equipped/bound safe); corpse retrieval + decay; weakened debuff.
-- `npc/combat_ai.py` — behavior modes from YAML.
+Still deferred:
 
-**2. Combat commands + UI (avoidance-first).** Combat as one resolution among several —
-stealth/persuasion/bribery/flee are first-class alternatives; non-lethal outcomes supported.
-- `commands/combat.py` — `attack`, `flee`; non-lethal outcomes (subdue/intimidate/drive-off);
-  complete condition eval (`NPC_PRESENT`, `HAS_COMBAT_TARGET`).
-- Combat UI in HTMX feed + status panel.
+- Opt-in PvP consent, duel stakes, and player-vs-player simulation coverage.
+- Player formations, persistent near/far bands, grappling/flanking/screening, and other
+  multi-player tactical-position systems.
+- Body-part wounds and harsher death consequences beyond the current downed/defeated policy.
 
-**3. Combat testing.** Integration + browser tests for the combat loop and avoidance/non-lethal
-paths.
-
-**4. PvP consent.** Consent-based, opt-in PvP reusing the combat system; soft by default;
-challenge/accept. (The multiplayer PvP-consent *simulation tests* moved here from roadmap Sprint 65
-along with the rest of that sprint — see *Multiplayer sim-test coverage* under World-building &
-tooling.)
+Keep these deferred until NPC combat has enough playtest feedback to show which extra layers are
+actually useful.
 
 ### Seeded from MUD patch notes & client comparison (2026-07-03)
 

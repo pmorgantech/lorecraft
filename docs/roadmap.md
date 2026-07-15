@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.117.0 on combat; Sprints 1–86 implemented; Sprint 87 next)
+## Where things stand (2026-07-15, v0.117.1 on combat; Sprints 1–86 implemented; Sprint 87 next)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.117.0).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.117.1).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -128,7 +128,7 @@ formation system.
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 
 **Goal:** Stances, guarding, bounded reactions, wind-up interruption, simple ranged/vantage
-attack semantics, basic status effects, threat/NPC roles, party assistance, duel rules.
+attack semantics, basic status effects, threat/NPC roles, and party assistance metadata.
 
 **Depends on:** Sprint 85; engine timed-effects service hook coverage verification (86.5).
 
@@ -141,7 +141,7 @@ attack semantics, basic status effects, threat/NPC roles, party assistance, duel
 - [x] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
 - [x] 86.6 Simple ranged/vantage semantics + explicit range traces
 - [x] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
-- [x] 86.8 Party assistance + duel contracts — assistance counts as participation
+- [x] 86.8 Party assistance contract metadata — assistance counts as participation
 
 Sprint 86 progress note (v0.110.0): players can use `stance <balanced|aggressive|defensive|mobile>`
 while in combat. The stance is persisted on the combat participant, appears in structured combat
@@ -193,7 +193,8 @@ duel consent and stakes are deferred to later combat/PvP work.
 ### Sprint 87 — Combat Phase 3: Content Power
 
 **Goal:** Data-authored actions, equipment traits, more effect hooks, boss phases,
-crime/faction consequences, versioning, simulation harness, live-tunable config.
+crime/faction consequences, versioning, simulation harness, live-tunable config, and player-facing
+combat teaching material.
 
 **Depends on:** Sprints 85–86; features/equipment + features/traits (shipped).
 
@@ -207,23 +208,23 @@ crime/faction consequences, versioning, simulation harness, live-tunable config.
 - [ ] 87.6 Ruleset/resolver versioning + random-trace persistence
 - [ ] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
 - [ ] 87.8 Live-tunable ruleset config (WorldClock pattern) — DB-backed, admin endpoint
+- [ ] 87.9 Combat tutorial/help completion — expand docs, in-game help, and browser guidance
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 
-**Goal:** Depth layers gated behind demonstrated need. Do not build speculatively.
+**Goal:** Narrow depth layers gated behind demonstrated need. Do not build speculatively. Formation
+mechanics, near/far tactical bands, grappling, flanking, screening, and full PvP duel rules are
+explicitly out of the active roadmap.
 
 **Depends on:** Sprints 85–87 + playtesting/balance evidence.
 
 **Tier:** Tier 2 (all features/combat/). Each item independently deferrable.
 
 - [ ] 88.1 Wounds + body locations — persist after health recovery
-- [ ] 88.2 Grappling/screening/flanking edges — extends engagement-edge model
-- [ ] 88.3 Formation mechanics
-- [ ] 88.4 Terrain & cover — feeds defense_score; ties to features/terrain
-- [ ] 88.5 Combo systems
-- [ ] 88.6 Simultaneous-planning encounter mode (optional, arena/boss) — alternate combat_mode
-- [ ] 88.7 Mounted / siege combat
-- [ ] 88.8 Utility/movement action channels — add only if playtesting shows need
+- [ ] 88.2 Terrain & cover as narrow defense modifiers — only if authored encounters need it
+- [ ] 88.3 Combo systems — only if data-authored actions need follow-up hooks
+- [ ] 88.4 Simultaneous-planning encounter mode (optional, arena/boss) — alternate combat_mode
+- [ ] 88.5 Mounted / siege combat — content-specific, not general-purpose formations
 
 ---
 

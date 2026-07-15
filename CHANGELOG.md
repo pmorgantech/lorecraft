@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.117.1] - 2026-07-15
+
+### Changed
+
+- Re-scoped combat planning docs away from player formations, near/far tactical bands,
+  grappling/flanking/screening, and full PvP duel rules.
+- Added the first player-facing combat tutorial and an in-game `help combat` topic.
+
 ## [0.117.0] - 2026-07-15
 
 ### Added

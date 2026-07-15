@@ -545,7 +545,8 @@ Thanks — logged as issue-a1b2c3d4. The team will take a look.
 ## Combat
 
 Combat uses scheduled intent: your command commits an action, then the world resolves it after
-a short wind-up and recovery window. The first implemented PvE commands are:
+a short wind-up and recovery window. For a step-by-step introduction, see
+[`combat_tutorial.md`](combat_tutorial.md). The first implemented PvE commands are:
 
 ```
 attack <target>    — start or continue an encounter with a nearby NPC

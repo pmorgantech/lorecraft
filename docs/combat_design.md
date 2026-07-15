@@ -19,9 +19,8 @@ Intent** (rationale in §2). The prior doc's still-valid pieces are retained —
 framing, rules-as-fail-closed-gate, weapon/armor as effect descriptors, the
 `SCHEDULED_JOB_DUE` + `job_type` convention, seeded-`rng` determinism, participation-based
 credit. Its `CombatSession` model (tick bookkeeping in a JSON blob) is replaced by the
-encounter graph (§4). The behavior modes (`aggressive`/`defensive`/`cowardly`) are replaced by
-a utility-selector NPC AI built on the existing `features/npc_ai/` (no Behavior Tree engine
-needed — see Gaps).
+encounter graph (§4). NPC behavior stays deliberately modest: existing `NPC.behavior` and optional
+`NPC.ai.combat_role` provide qualitative cues, not a Behavior Tree engine or tactical planner.
 
 ---
 
@@ -34,16 +33,16 @@ needed — see Gaps).
 - **Intent-first** — every action (player command, NPC decision, auto-attack, trap, script,
   admin) becomes one `CombatActionIntent` through one pipeline. No privileged internal path.
 - **Optional auto-attacks** — a *policy-generated intent*, never a heartbeat that deducts HP
-  directly. Preserves Diku accessibility (combat never stalls) without making disengagement,
+  directly. Preserves Diku accessibility (combat never stalls) without making escape,
   stealth, or dialogue-mid-combat second-class.
 - **Wind-up + recovery split** — modest wind-up (immediate acknowledgment + counterplay
   window) followed by larger recovery (paces the next action). All-before = laggy + interrupts
   too strong; all-after = instant hits + no defense + first-command-wins races.
 - **No typing-speed advantage** — one queued action; a small server-side decision window
   (100–200 ms) with attribute-based tie-breakers, not packet arrival; idempotency keys; rate
-  limits. Essential for PvP fairness.
+  limits. This keeps combat readable even before any future PvP work exists.
 - **Encounter graph, not boolean flags** — `in_combat`/`target_id` collapses the moment you add
-  multiple attackers, guarding, three-way fights, or PvP consent.
+  guarding, allied assistance, downed participants, or audit-visible contribution tracking.
 - **Rules own policy, service owns mechanics** — combat submits questions to the rules engine;
   no `if room.safe … elif target.pvp …` forest in the service.
 - **Immutable resolutions, narration separated from mechanics** — the resolver returns a frozen
@@ -57,15 +56,14 @@ needed — see Gaps).
 
 Scheduled Intent Combat · optional policy-driven auto-attacks · individual per-action recovery
 timers (no global round) · wind-up + recovery split · encounter aggregate
-(Encounter/Participant/Relationship) with multiple sides · double validation (admission +
-resolution) · rules engine separated from service (with obligations) · immutable
+(Encounter/Participant/Relationship) with explicit hostile/supportive edges · double validation
+(admission + resolution) · rules engine separated from service (with obligations) · immutable
 `CombatResolution` objects, narration decoupled from mechanics · data-driven action YAML
-selecting registered calculators/resolvers · coarse positioning (distant/near/engaged) ·
-bounded single-window reactions · stances + policies · utility-selector NPC AI (not a Behavior
-Tree — see §14/Gaps) · decaying attention threat model · downed/defeat states with non-lethal
-outcomes · PvP consent at admission/join, same mechanics + policy · durable scheduler jobs with
-idempotency, readiness derived from `primary_ready_at` · ruleset/resolver versioning ·
-simulation harness built early.
+selecting registered calculators/resolvers · lightweight ranged/vantage semantics instead of
+formation or near/far band systems · bounded single-window reactions · stances + policies ·
+qualitative NPC role and threat cues · downed/defeat states with non-lethal outcomes · party
+assistance as participation metadata · durable scheduler jobs with idempotency, readiness derived
+from `primary_ready_at` · ruleset/resolver versioning · simulation harness built early.
 
 ---
 
@@ -123,21 +121,30 @@ CombatRelationship( source_id, target_id, hostility, engagement, visibility )
 Multiple `side_id`s (players / town guards / bandits / summons / a neutral that joins late) —
 never hard-coded team A vs B. **Encounter begins** when an action creates confirmed hostility.
 **Encounter ends** when no hostile relationships remain / all sides disengage / all enemies
-escaped or unreachable / inactivity timeout / a victory rule fires — **not** merely because one
-actor's current target died. Readiness is **derived** (`primary_ready_at <= now`), so recovery
-completion needs no DB write; schedule a job only when readiness must *do* something (start a
-queued action, ask NPC AI, generate an auto-attack, send a "ready" nudge).
+escaped, unreachable, or unengaged / inactivity timeout / a victory rule fires — **not** merely
+because one actor's current target died. Readiness is **derived** (`primary_ready_at <= now`), so
+recovery completion needs no DB write; schedule a job only when readiness must *do* something
+(start a queued action, ask NPC AI, generate an auto-attack, send a "ready" nudge).
 
 ---
 
-## 5. Positioning — coarse bands, not a grid
+## 5. Range And Engagement — no formations
 
-Bands: `distant / near / engaged`. Optional edges: `covering / guarding / flanking / grappled /
-screened`. Store a coarse participant position **plus explicit engagement edges** — never an
-n² pairwise distance table. Enables `advance`, `retreat`, `guard <ally>`, `intercept`,
-`disengage`, `take cover`, `circle`. Distant = ranged normal / melee needs approach / easier
-flee; Engaged = melee available / retreat may provoke a reaction / guarding + grappling
-relevant.
+The active design deliberately avoids persistent near/far bands, party formations, and
+advance/retreat/disengage verbs. They add state and UI burden without serving the current
+exploration-first combat goals.
+
+Combat stores only:
+
+- `engaged` / `unengaged` participant position derived from active relationship edges.
+- Hostile/supportive relationship edges, including `guarding` for protect-ally behavior.
+- `action_range` on resolved actions, currently `engaged`, `ranged`, or `self`.
+
+This supports the useful ranged cases: a player can `shoot <target>`, a bow or crossbow can be
+audited as ranged, and authored content can later put a guard in a tower or a sniper-like NPC on
+a vantage point. Ranged attacks do not use guard interception. If playtesting later proves a need
+for cover or explicit vantage rules, add them as narrow action-admission/resolution checks rather
+than a general formation system.
 
 ---
 
@@ -150,10 +157,10 @@ create/join encounter → calculate schedule → persist pending action → emit
 commit → emit domain events → render observations → schedule recovery-ready
 ```
 
-**Admission** (command time): conscious? target visible? command allowed here? PvP consent?
-possesses weapon? ability known? channel ready? target initially in range?
+**Admission** (command time): conscious? target visible? command allowed here? possesses weapon?
+ability known? channel ready? target initially valid for the action range?
 **Resolution** (execution time): still conscious? target still present/reachable? weapon
-disarmed? interrupted? target moved behind cover? encounter ended? rule added during wind-up?
+disarmed? interrupted? encounter ended? rule added during wind-up?
 Never assume state held. Failed resolution yields a *reasoned outcome* —
 `missed / cancelled / interrupted / retargeted / converted / partially_resolved` — not an
 exception.
@@ -163,10 +170,11 @@ exception.
 ## 7. Rules engine (policy) — questions & obligations
 
 Combat asks named questions of the existing rules engine (`engine/game/rules.py`), fail-closed:
-`combat.action.admit`, `combat.action.resolve`, `combat.target.valid`, `combat.pvp.permitted`,
+`combat.action.admit`, `combat.action.resolve`, `combat.target.valid`,
 `combat.damage.modify`, `combat.reaction.eligible`, `combat.escape.permitted`,
-`combat.encounter.join`, `combat.death.resolve`, `combat.reward.eligible`. Facts in, decision
-out:
+`combat.encounter.join`, `combat.death.resolve`, `combat.reward.eligible`. Future opt-in PvP
+can add a `combat.pvp.permitted` rule when that work is active; it is not part of the current
+NPC-first combat scope. Facts in, decision out:
 
 ```python
 @dataclass(frozen=True)
@@ -217,7 +225,7 @@ dedicated combat panel/resync endpoint remains a later UI refinement.
 
 ## 9. Resources, status effects, wounds
 
-Start with **health + stamina + focus/mana** — not six body resources. Stamina *gates choices*
+Start with **health + stamina** — not six body resources. Stamina *gates choices*
 (heavy actions cost more recovery <60%, disabled <20%, winded at 0), not an invisible penalty.
 Don't give warriors a renamed mana bar.
 
@@ -263,28 +271,22 @@ would occupy.
 
 ---
 
-## 13. NPC combat AI — utility selector (NOT a Behavior Tree)
+## 13. NPC combat behavior — qualitative, not a planner
 
-> **Codebase reality (Gaps §):** the input docs assume "deterministic YAML Behavior Trees" —
-> those do **not** exist here. Adopt the utility-selector the Mechanics doc itself prefers,
-> built on the existing `features/npc_ai/`. Do not take a BT-engine dependency.
+> **Codebase reality:** do not add a Behavior Tree engine or a full tactical planner for normal
+> NPC combat. The current implementation uses simple scheduled counter-intents plus qualitative
+> combat-role cues.
 
-```text
-score = base preference + target suitability + tactical opportunity + personality
-        + group-role modifier - resource cost - risk - repetition penalty
-```
-
-Division of labor: **Rules** = *can I?* · **AI** = *should I?* · **Service** = *do it*. NPCs
-think only at decision points (enter combat / channel ready / significant event invalidates
-plan / low-frequency tactical refresh) — never polled every tick; inactive NPCs have zero
-scheduled combat work. Bosses may override utility AI with explicit scripted phases.
+Division of labor: **Rules** = *can I?* · **Service** = *do it* · **Content** = *what kind of NPC
+is this?* NPCs should think only at decision points, never on a global combat tick. Bosses may
+later override ordinary behavior with explicit scripted phases, but that should be content-specific
+and registered by id, not a generic AI framework.
 
 ## 14. Threat / target selection — decaying attention
 
-`attention[target] += damage + healing witnessed + control + proximity + taunts + scripted
-priorities`, decaying over time; personality archetypes bias selection (coward/guardian/
-predator/soldier/beast/mage-hunter). **Never show exact threat numbers** — qualitative cues
-("The ogre turns its full attention toward you").
+`attention[target] += damage`, decaying over time. The implementation stores qualitative cues
+(`aware`, `watching`, `focused`) and an NPC combat role from `NPC.ai.combat_role` or
+`NPC.behavior`. Avoid exact player-facing numbers and avoid a threat-management minigame.
 
 ## 15. Death & defeat — contextual, not one universal respawn
 
@@ -294,15 +296,15 @@ rules; PvE defeat usually = injury/relocation/resource loss/narrative consequenc
 guards arrest, beasts leave you wounded). Permanent item loss rare and telegraphed. Reuses
 `docs/death_resurrection.md` policy + `LedgerService` for coin loss.
 
-## 16. PvP — same mechanics, extra policy
+## 16. PvP and duels — deferred
 
-Consent consulted at **admission** and **encounter join**, outside the damage math. Modes:
-`protected / consensual / factional / open / duel / criminal / admin-event`; player knows the
-mode before attacking. Duel contracts specify participants/location/victory/lethality/items/
-assistance/timeout/spectators. Indirect assistance (heal/buff/block exits/give items/summon/
-reveal stealth/attack a pet) counts as participation and adds the helper to the encounter.
-Disconnect ≠ escape: character persists for the grace period running its defensive policy;
-reconnection restores state; audit every PvP disconnect.
+Full PvP, duel consent, duel stakes, and multiplayer formation rules are not part of the active
+combat plan. Keep combat NPC-first until the basic loop has playtest evidence.
+
+The current "contract" work is intentionally small: `assist <player>` joins a nearby player's
+active encounter on the same side and stores `party_assist` contribution metadata so assistance
+counts as participation for future reward/audit policy. If opt-in PvP is revisited later, build it
+as an admission/join policy layer over the same encounter graph, not as a parallel combat mode.
 
 ---
 
@@ -332,8 +334,8 @@ action; observers see prose only. **No numeric spam** by default — an opt-in `
 last` (qualitative for players, exact for admins). WebSocket sends **structured** combat
 updates *and* prose, with **sequence numbers** so the client can detect gaps and request an
 encounter resync. Browser panels: participants, health *state* (not exact enemy HP unless
-knowledge permits), position, readiness bar, queued action, wind-up, active effects, reaction
-policy, escape control, expandable event feed.
+knowledge permits), simple engaged/unengaged state, readiness, queued action, wind-up, active
+effects, reaction policy, escape control, and a compact event feed.
 
 ## 19. Data-driven action definitions
 
@@ -362,8 +364,8 @@ registry philosophy as the scripting vocabulary (`register_spec`).
 ## 20. Resolution objects, randomness, versioning
 
 The resolver takes a `CombatSnapshot` + action + `rng` and returns a frozen `CombatResolution`
-(target_results, resource_changes, effects_added/removed, movements, encounter_changes,
-explanations, `random_trace`) — it does **not** mutate ORM objects; the service applies it
+(target results, resource changes, effects added/removed, encounter changes, explanations,
+`random_trace`) — it does **not** mutate ORM objects; the service applies it
 transactionally. Store enough random trace to explain/reproduce (algorithm version, stream id,
 draw indices, resolved inputs, selected modifiers, outcome). Version formulas
 (`combat_ruleset_version`, `resolver_version = "opposed-v2"`); a pending action keeps the
@@ -391,13 +393,12 @@ only**: e.g. a staged modifier-stack resolution with source attribution, or effe
 hooks — these must not encode combat's opinion (no "leveling grants coins" leaks).
 
 **Tier 2 (`features/combat/`), all combat opinion & data:** the encounter aggregate, action
-definitions (YAML), the resolution pipeline, damage/armor formulas, positioning, reactions,
-stances, NPC combat-AI utility scoring + threat, death/defeat policy, PvP modes, narrator/
-renderers, and the combat commands (`attack`, `queue`, `react`, `advance`, `guard`, `flee`,
-`stance`, `combat explain`). Suggested package layout mirrors the mechanics doc (§21) with
-focused modules: `models`, `encounter_service`, `action_service`, `resolution`, `damage`,
-`effects`, `positioning`, `targeting`, `reactions`, `ai`, `rewards`, `death`, `definitions`,
-`events`, `jobs`, `renderers`, `rules`.
+definitions (YAML), the resolution pipeline, damage/armor formulas, range semantics, reactions,
+stances, qualitative threat, death/defeat policy, participation metadata, narrator/renderers, and
+the combat commands (`attack`, `shoot`, `defend`, `guard`, `assist`, `flee`, `stance`, `reaction`).
+Keep package layout focused: `models`, `service`, `repo`, `resolution`, `damage`, `effects`,
+`targeting` if needed, `reactions` if it grows, `rewards`, `definitions`, `events`, `jobs`,
+`renderers`, `rules`.
 
 ## 23. Tunables (static vs. live-tunable)
 
