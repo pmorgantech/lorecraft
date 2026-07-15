@@ -11,6 +11,7 @@ from lorecraft.features.combat.models import (
     CombatEncounter,
     CombatParticipant,
     CombatRelationship,
+    CombatResolutionRecord,
 )
 
 
@@ -23,6 +24,14 @@ class CombatRepo:
 
     def action(self, action_id: str) -> CombatAction | None:
         return self.session.get(CombatAction, action_id)
+
+    def resolution_record_for_action(
+        self, action_id: str
+    ) -> CombatResolutionRecord | None:
+        statement = select(CombatResolutionRecord).where(
+            CombatResolutionRecord.action_id == action_id
+        )
+        return self.session.exec(statement).first()
 
     def participant(self, participant_id: str) -> CombatParticipant | None:
         return self.session.get(CombatParticipant, participant_id)

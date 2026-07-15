@@ -899,9 +899,15 @@ primary action channel only; during recovery a player may queue one replacement 
 Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC counter-attacks
 are created as scheduled intents through the same pipeline as player actions.
 
-Balance details are intentionally still shallow in this slice: weapon/armor descriptors,
-data-authored action YAML, PvP consent, richer browser resync, and live-tunable combat ruleset
-configuration remain later Sprint 85/87 work tracked in `docs/roadmap.md`.
+The current damage layer reads existing equipment descriptors rather than a new combat-only YAML
+schema. Equipped weapons use `category: weapon`, `slot`, `weight`, and `quality` to derive base
+damage, accuracy, and penetration. Equipped wearable armor uses `category: armor`, `weight`, and
+`quality` to derive bounded flat block and resistance. Each resolved action persists a compact
+resolution record with random and damage traces for later audit, explanation, and simulation work.
+
+Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
+explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
+ruleset configuration remain later Sprint 85/87 work tracked in `docs/roadmap.md`.
 
 **Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
 `{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array

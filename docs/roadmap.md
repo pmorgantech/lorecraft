@@ -95,7 +95,7 @@ modifier resolver, seeded rng + skill_check, ItemLocationService, audit. All shi
 - [x] 85.2 Action submission pipeline (Txn A) — validate, persist, emit started, schedule resolve
 - [x] 85.3 Action resolution pipeline (Txn B) — re-validate, calculate, apply atomically, emit events
 - [x] 85.4 Primary-channel readiness + one queued action — derived readiness, single replaceable queue
-- [~] 85.5 Basic attack/defend/flee — opposed margin, staged damage stack, hybrid armor
+- [x] 85.5 Basic attack/defend/flee — opposed margin, staged damage stack, hybrid armor
 - [~] 85.6 Health + stamina via MeterService; downed/defeat states
 - [x] 85.7 Immutable CombatResolution object — resolver/snapshot boundary
 - [~] 85.8 Structured events + audit resolution record + engaged/unengaged position
@@ -107,6 +107,12 @@ aggregate, `attack`/`defend`/`flee`, scheduled `combat.resolve_action` jobs, HP/
 application, immutable `CombatResolution`, one replaceable primary action queue, and an NPC
 counter-intent stub. Remaining Phase 1 work is to deepen the damage stack/armor model, persist
 full audit-resolution rows, and add richer browser combat feed/state resync behavior.
+
+Follow-up implementation note: the basic damage layer now derives weapon and armor profiles from
+equipped item descriptors, applies a staged damage stack (base damage → outcome multiplier →
+flat block adjusted by penetration → resistance factor), and persists a `CombatResolutionRecord`
+with random and damage traces per resolved action. Remaining 85.8 work is richer structured
+event/audit integration beyond the feature-owned resolution record.
 
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 

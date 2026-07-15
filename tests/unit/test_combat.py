@@ -16,9 +16,10 @@ from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
+from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
-from lorecraft.engine.models.world import NPC, Room, WorldClock
+from lorecraft.engine.models.world import Item, NPC, Room, WorldClock
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
@@ -34,6 +35,13 @@ from lorecraft.features.combat.models import (
     CombatAction,
     CombatEncounter,
     CombatParticipant,
+    CombatResolutionRecord,
+)
+from lorecraft.features.combat.damage import (
+    ArmorProfile,
+    apply_damage_stack,
+    armor_profile_for,
+    weapon_profile_for,
 )
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
 
@@ -106,11 +114,16 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         actions = session.exec(
             select(CombatAction).order_by(CombatAction.submitted_at)
         ).all()
+        record = session.exec(select(CombatResolutionRecord)).one()
         goblin_hp = ctx_meters(engine).get(session, "npc", "goblin", "hp")
 
         assert actions[0].state == "resolved"
         assert actions[0].outcome["action_key"] == "basic_attack"
+        assert "damage_trace" in actions[0].outcome
         assert actions[0].random_trace
+        assert record.action_id == actions[0].id
+        assert record.random_trace == actions[0].random_trace
+        assert record.damage_trace["final_damage"] == actions[0].outcome["damage"]
         assert goblin_hp.current < goblin_hp.maximum
         assert any(
             action.actor_type == "npc" and action.state == "pending"
@@ -147,6 +160,76 @@ def test_flee_resolution_ends_player_participation() -> None:
 
         assert player is not None and player.active_combat_session_id is None
         assert participant.status == "escaped"
+
+
+def test_damage_profiles_use_equipped_weapon_and_armor_descriptors() -> None:
+    engine = _engine()
+    with Session(engine) as session:
+        _context(session)
+        session.add(
+            Item(
+                id="fine_sword",
+                name="Fine Sword",
+                description="Sharp.",
+                slot="main_hand",
+                weight=4.0,
+                category="weapon",
+                quality="fine",
+            )
+        )
+        session.add(
+            Item(
+                id="chainmail",
+                name="Chainmail",
+                description="Heavy rings.",
+                slot="torso",
+                wearable=True,
+                weight=12.0,
+                category="armor",
+                quality="common",
+            )
+        )
+        session.add(
+            ItemStack(
+                item_id="fine_sword",
+                owner_type="player",
+                owner_id="player-1",
+                slot="main_hand",
+            )
+        )
+        session.add(
+            ItemStack(
+                item_id="chainmail",
+                owner_type="player",
+                owner_id="player-1",
+                slot="torso",
+            )
+        )
+        session.flush()
+
+        weapon = weapon_profile_for(session, "player", "player-1")
+        armor = armor_profile_for(session, "player", "player-1")
+        mitigated = apply_damage_stack(
+            base_damage=12.0,
+            outcome_multiplier=1.0,
+            armor=armor,
+            penetration=weapon.penetration,
+        )
+        unarmored = apply_damage_stack(
+            base_damage=12.0,
+            outcome_multiplier=1.0,
+            armor=ArmorProfile(block=0.0, resistance_factor=0.0, sources=()),
+            penetration=0.0,
+        )
+
+        assert weapon.base_damage > 4.0
+        assert weapon.accuracy_bonus > 0.0
+        assert "item:fine_sword" in weapon.sources
+        assert armor.block > 0.0
+        assert armor.resistance_factor > 0.0
+        assert "item:chainmail" in armor.sources
+        assert mitigated.amount < unarmored.amount
+        assert mitigated.trace["armor_sources"] == ["item:chainmail"]
 
 
 def _engine():

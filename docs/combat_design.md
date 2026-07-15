@@ -205,6 +205,10 @@ mitigation → post-mitigation → clamp), each modifier **naming its source** (
 Armor: **hybrid bounded reduction** — flat `block` (adjusted by penetration) then a modest
 `resistance_factor`, both capped so neither weak nor heavy hits become pathological.
 
+Implementation note: the first Sprint 85 slice derives weapon and armor profiles from equipped
+item descriptors (`category`, `slot`, `weight`, `quality`) and stores each resolved action's
+random trace plus staged damage trace in `CombatResolutionRecord`.
+
 ---
 
 ## 9. Resources, status effects, wounds

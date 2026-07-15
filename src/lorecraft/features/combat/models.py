@@ -68,3 +68,22 @@ class CombatAction(SQLModel, table=True):
     replaced_by_action_id: str | None = None
     outcome: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
     random_trace: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+
+
+class CombatResolutionRecord(SQLModel, table=True):
+    id: str = Field(primary_key=True)
+    encounter_id: str = Field(foreign_key="combatencounter.id", index=True)
+    action_id: str = Field(foreign_key="combataction.id", index=True)
+    actor_type: str
+    actor_id: str = Field(index=True)
+    target_type: str | None = None
+    target_id: str | None = Field(default=None, index=True)
+    action_key: str
+    outcome: str
+    damage: float = 0.0
+    resolved_at_game_time: float
+    ruleset_id: str = "default"
+    resolver_version: str = "opposed-v1"
+    random_trace: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    damage_trace: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
+    payload: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))

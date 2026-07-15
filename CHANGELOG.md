@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.107.0] - 2026-07-15
+
+### Added
+
+- Extended the Sprint 85 combat foundation with staged weapon/armor damage
+  calculation, equipment-derived weapon and armor profiles, and persisted
+  `CombatResolutionRecord` rows for deterministic resolution audit details.
+
 ## [0.106.0] - 2026-07-14
 
 ### Added

@@ -23,8 +23,10 @@ from lorecraft.features.combat.models import (
     CombatEncounter,
     CombatParticipant,
     CombatRelationship,
+    CombatResolutionRecord,
 )
 from lorecraft.features.combat.repo import CombatRepo
+from lorecraft.features.combat.damage import armor_profile_for, weapon_profile_for
 from lorecraft.features.combat.resolution import (
     CombatResolution,
     CombatantSnapshot,
@@ -371,8 +373,47 @@ class CombatService:
             action_id=action.id,
             actor=self._snapshot(session, actor),
             target=self._snapshot(session, target),
+            weapon=weapon_profile_for(session, actor.actor_type, actor.actor_id),
+            armor=armor_profile_for(session, target.actor_type, target.actor_id),
             rng=rng,
             defended=defended,
+        )
+
+    def _record_resolution(
+        self,
+        repo: CombatRepo,
+        encounter: CombatEncounter,
+        action: CombatAction,
+        resolution: CombatResolution,
+        *,
+        resolved_at: float,
+    ) -> None:
+        if repo.resolution_record_for_action(action.id) is not None:
+            return
+        target_type = (
+            resolution.target.actor_type if resolution.target is not None else None
+        )
+        target_id = (
+            resolution.target.actor_id if resolution.target is not None else None
+        )
+        repo.add(
+            CombatResolutionRecord(
+                id=str(uuid4()),
+                encounter_id=encounter.id,
+                action_id=action.id,
+                actor_type=resolution.actor.actor_type,
+                actor_id=resolution.actor.actor_id,
+                target_type=target_type,
+                target_id=target_id,
+                action_key=resolution.action_key,
+                outcome=resolution.outcome,
+                damage=resolution.damage,
+                resolved_at_game_time=resolved_at,
+                ruleset_id=encounter.ruleset_id,
+                random_trace=resolution.random_trace or {},
+                damage_trace=resolution.damage_trace or {},
+                payload=self._resolution_payload(resolution),
+            )
         )
 
     def _apply_resolution(
@@ -390,6 +431,13 @@ class CombatService:
         action.state = "resolved"
         action.outcome = self._resolution_payload(resolution)
         action.random_trace = resolution.random_trace or {}
+        self._record_resolution(
+            repo,
+            encounter,
+            action,
+            resolution,
+            resolved_at=current_epoch,
+        )
         if actor.queued_action_id == action.id:
             actor.queued_action_id = None
         if resolution.stamina_delta:
@@ -593,6 +641,8 @@ class CombatService:
             "stamina_delta": resolution.stamina_delta,
             "explanation": resolution.explanation,
         }
+        if resolution.damage_trace is not None:
+            payload["damage_trace"] = resolution.damage_trace
         if resolution.target is not None:
             payload["target_id"] = resolution.target.actor_id
             payload["target_type"] = resolution.target.actor_type
