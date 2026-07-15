@@ -924,6 +924,11 @@ edge from guardian to protected participant, queues a defensive primary action, 
 guardian become the effective target when intercepting an attack. Resolution traces keep both the
 original target and interceptor ids.
 
+Bounded reactions are participant policy, not nested actions. `reaction <defensive|conserve|never>`
+sets the stored reaction policy; an incoming basic attack may consume one auto-brace window and
+then advances `reaction_ready_at`. The trace records whether the reaction fired, so later audit UI
+can explain the defense bonus without replaying hidden behavior.
+
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
 ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.

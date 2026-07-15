@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.111.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
+## Where things stand (2026-07-15, v0.112.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
 
-**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.111.0).
+**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.112.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -135,7 +135,7 @@ basic status effects, threat/NPC roles, party assistance, duel rules.
 
 - [x] 86.1 Stances (balanced/aggressive/defensive/mobile) + persistent policies
 - [x] 86.2 Guarding + protect-ally + intercept edges
-- [ ] 86.3 Bounded reactions (single window, no recursion) + reaction policy
+- [x] 86.3 Bounded reactions (single window, no recursion) + reaction policy
 - [ ] 86.4 Wind-up interruption — resolution-time interrupt outcome
 - [ ] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
 - [ ] 86.6 Near/distant positioning + advance/retreat/disengage
@@ -153,6 +153,12 @@ primary action and persists a supportive `guarding` relationship edge from guard
 participant. During resolution, an active same-side guardian can intercept an attack against the
 protected participant; the effective target becomes the guardian, while random/damage traces retain
 the original target and interceptor ids.
+
+Reaction note (v0.112.0): participants now persist a `reaction_policy` (`defensive`, `conserve`,
+or `never`) plus reaction readiness bookkeeping. Basic attacks consult the effective target's
+policy once at resolution time and may apply a bounded auto-brace without scheduling a nested
+reaction action. Consumed reactions update `reaction_ready_at` and `last_reaction_action_id`; traces
+record the policy, participant, and whether the reaction fired.
 
 ### Sprint 87 — Combat Phase 3: Content Power
 

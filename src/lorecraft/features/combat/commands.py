@@ -51,3 +51,11 @@ def register_combat_commands(
     )
     def stance_command(noun: str | None, ctx: GameContext) -> None:
         service.stance(noun, ctx)
+
+    @registry.register(
+        "reaction",
+        conditions=["in_combat"],
+        help="reaction <defensive|conserve|never> — set automatic reaction policy",
+    )
+    def reaction_command(noun: str | None, ctx: GameContext) -> None:
+        service.reaction(noun, ctx)

@@ -35,10 +35,13 @@ from lorecraft.features.combat.policy import (
     ENGAGEMENT_ENGAGED,
     ENGAGEMENT_GUARDING,
     ENGAGEMENT_UNENGAGED,
+    REACTION_NEVER,
     STATUS_ACTIVE,
     STATUS_ESCAPED,
+    VALID_REACTION_POLICIES,
     VALID_STANCES,
     defeat_decision_for,
+    normalize_reaction_policy,
     normalize_stance,
     stance_policy_for,
 )
@@ -58,6 +61,8 @@ _ACTION_TIMING: dict[str, tuple[float, float]] = {
     "defend": (0.0, 1.2),
     "flee": (0.35, 2.5),
 }
+
+_REACTION_RECOVERY = 1.5
 
 
 class CombatService:
@@ -167,6 +172,23 @@ class CombatService:
         actor.stance = stance
         CombatRepo(ctx.session).add(actor)
         ctx.say(f"You shift to a {stance} stance.")
+        self._push_combat_update(ctx, encounter.id)
+
+    def reaction(self, noun: str | None, ctx: GameContext) -> None:
+        encounter, actor = self._active_player_participation(ctx)
+        if encounter is None or actor is None:
+            ctx.say("You aren't in combat.", MessageType.WARNING)
+            return
+        policy = normalize_reaction_policy(noun)
+        if policy is None:
+            ctx.say(
+                "Choose a reaction policy: " + ", ".join(VALID_REACTION_POLICIES) + ".",
+                MessageType.WARNING,
+            )
+            return
+        actor.reaction_policy = policy
+        CombatRepo(ctx.session).add(actor)
+        ctx.say(f"Your reaction policy is now {policy}.")
         self._push_combat_update(ctx, encounter.id)
 
     def register(self, bus: EventBus) -> None:
@@ -406,6 +428,68 @@ class CombatService:
             return None
         return guardian
 
+    def _auto_reaction_for_attack(
+        self, action: CombatAction, target: CombatParticipant
+    ) -> JsonObject:
+        used = (
+            action.channel == "primary"
+            and action.action_key == "basic_attack"
+            and target.reaction_policy != REACTION_NEVER
+            and target.last_reaction_action_id != action.id
+            and target.reaction_ready_at <= action.resolve_at
+        )
+        return {
+            "auto_reaction_policy": target.reaction_policy,
+            "auto_reaction_used": used,
+            "auto_reaction_kind": "brace" if used else None,
+            "auto_reaction_participant_id": target.id if used else None,
+            "auto_reaction_actor_id": target.actor_id if used else None,
+        }
+
+    def _consume_reaction_if_used(
+        self,
+        repo: CombatRepo,
+        encounter_id: str,
+        resolution: CombatResolution,
+        action: CombatAction,
+        *,
+        current_epoch: float,
+    ) -> None:
+        if not resolution.random_trace or not bool(
+            resolution.random_trace.get("auto_reaction_used", False)
+        ):
+            return
+        if resolution.target is None:
+            return
+        participant = repo.participant_for_actor(
+            encounter_id, resolution.target.actor_type, resolution.target.actor_id
+        )
+        if participant is None:
+            return
+        participant.reaction_ready_at = max(
+            participant.reaction_ready_at,
+            current_epoch + _REACTION_RECOVERY,
+        )
+        participant.last_reaction_action_id = action.id
+        repo.add(participant)
+
+    def _resolution_target_participant(
+        self,
+        repo: CombatRepo,
+        encounter_id: str,
+        action: CombatAction,
+        resolution: CombatResolution,
+    ) -> CombatParticipant | None:
+        if resolution.target is not None:
+            return repo.participant_for_actor(
+                encounter_id,
+                resolution.target.actor_type,
+                resolution.target.actor_id,
+            )
+        if action.target_participant_id is None:
+            return None
+        return repo.participant(action.target_participant_id)
+
     def _participant_name(
         self, session: Session, participant: CombatParticipant
     ) -> str:
@@ -536,9 +620,10 @@ class CombatService:
         interceptor = self._guard_interceptor(repo, action.encounter_id, target)
         if interceptor is not None:
             target = interceptor
-        defended = self._has_recent_defend(repo, target.id, action.submitted_at) or (
-            interceptor is not None
-        )
+        explicit_defend = self._has_recent_defend(repo, target.id, action.submitted_at)
+        auto_reaction = self._auto_reaction_for_attack(action, target)
+        auto_reaction_used = bool(auto_reaction["auto_reaction_used"])
+        defended = explicit_defend or interceptor is not None or auto_reaction_used
         original_target_snapshot = self._snapshot(session, original_target)
         target_snapshot = self._snapshot(session, target)
         resolution = resolve_basic_attack(
@@ -550,6 +635,11 @@ class CombatService:
             rng=rng,
             defended=defended,
         )
+        if auto_reaction:
+            resolution = replace(
+                resolution,
+                random_trace={**(resolution.random_trace or {}), **auto_reaction},
+            )
         if interceptor is None:
             return resolution
         random_trace = {
@@ -654,10 +744,15 @@ class CombatService:
                 if player is not None:
                     player.active_combat_session_id = None
                     session.add(player)
-        target = (
-            repo.participant(action.target_participant_id)
-            if action.target_participant_id is not None
-            else None
+        self._consume_reaction_if_used(
+            repo,
+            encounter.id,
+            resolution,
+            action,
+            current_epoch=current_epoch,
+        )
+        target = self._resolution_target_participant(
+            repo, encounter.id, action, resolution
         )
         if target is not None and resolution.damage > 0:
             hp = meter_service.get(session, target.actor_type, target.actor_id, "hp")
@@ -1025,6 +1120,8 @@ class CombatService:
                     "status": participant.status,
                     "position": participant.position,
                     "stance": participant.stance,
+                    "reaction_policy": participant.reaction_policy,
+                    "reaction_ready_at": participant.reaction_ready_at,
                     "primary_ready_at": participant.primary_ready_at,
                     "queued_action_id": participant.queued_action_id,
                     "hp": self._meter_state(hp),

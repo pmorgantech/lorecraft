@@ -24,6 +24,15 @@ VALID_STANCES = (
     STANCE_MOBILE,
 )
 
+REACTION_DEFENSIVE = "defensive"
+REACTION_CONSERVE = "conserve"
+REACTION_NEVER = "never"
+VALID_REACTION_POLICIES = (
+    REACTION_DEFENSIVE,
+    REACTION_CONSERVE,
+    REACTION_NEVER,
+)
+
 
 @dataclass(frozen=True)
 class StancePolicy:
@@ -95,3 +104,12 @@ def stance_policy_for(stance: str | None) -> StancePolicy:
     return STANCE_POLICIES.get(
         stance or STANCE_BALANCED, STANCE_POLICIES[STANCE_BALANCED]
     )
+
+
+def normalize_reaction_policy(value: str | None) -> str | None:
+    """Return a known reaction policy key, or None for invalid input."""
+
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    return normalized if normalized in VALID_REACTION_POLICIES else None

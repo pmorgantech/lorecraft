@@ -289,6 +289,10 @@ def test_guarding_ally_creates_intercept_edge_and_redirects_attack() -> None:
 
     with Session(engine) as session:
         ctx = _context(session)
+        stats = session.get(PlayerStats, "player-1")
+        assert stats is not None
+        stats.agility = -100
+        session.add(stats)
         service.attack("goblin", ctx)
         encounter = session.exec(select(CombatEncounter)).one()
         guardian = session.exec(
@@ -343,6 +347,112 @@ def test_guarding_ally_creates_intercept_edge_and_redirects_attack() -> None:
         assert record.random_trace["intercepted"] is True
         assert record.random_trace["original_target_id"] == "ally"
         assert record.random_trace["interceptor_id"] == "player-1"
+        guardian_hp = ctx_meters(engine).get(session, "player", "player-1", "hp")
+        ally_hp = ctx_meters(engine).get(session, "player", "ally", "hp")
+        assert guardian_hp.current < guardian_hp.maximum
+        assert ally_hp.current == ally_hp.maximum
+
+
+def test_reaction_policy_updates_state_and_auto_reaction_is_bounded() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        encounter = session.exec(select(CombatEncounter)).one()
+        player = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        npc_attack = service._submit_action(
+            repo=CombatRepo(session),
+            session=session,
+            encounter=encounter,
+            actor=goblin,
+            action_key="basic_attack",
+            now=0.0,
+            target=player,
+        )
+        npc_attack_id = npc_attack.id
+
+        service.resolve_action(
+            session,
+            npc_attack_id,
+            rng=GameRng(seed=2),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        player = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == npc_attack_id
+            )
+        ).one()
+
+        assert record.random_trace["auto_reaction_policy"] == "defensive"
+        assert record.random_trace["auto_reaction_used"] is True
+        assert record.random_trace["auto_reaction_kind"] == "brace"
+        assert player.last_reaction_action_id == npc_attack_id
+        assert player.reaction_ready_at == 11.5
+
+
+def test_reaction_never_policy_disables_auto_reaction() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        service.reaction("never", ctx)
+        encounter = session.exec(select(CombatEncounter)).one()
+        player = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        npc_attack = service._submit_action(
+            repo=CombatRepo(session),
+            session=session,
+            encounter=encounter,
+            actor=goblin,
+            action_key="basic_attack",
+            now=0.0,
+            target=player,
+        )
+        npc_attack_id = npc_attack.id
+
+        service.resolve_action(
+            session,
+            npc_attack_id,
+            rng=GameRng(seed=2),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        player = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == npc_attack_id
+            )
+        ).one()
+
+        assert player.reaction_policy == "never"
+        assert player.last_reaction_action_id is None
+        assert record.random_trace["auto_reaction_policy"] == "never"
+        assert record.random_trace["auto_reaction_used"] is False
 
 
 def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:

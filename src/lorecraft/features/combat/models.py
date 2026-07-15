@@ -32,6 +32,8 @@ class CombatParticipant(SQLModel, table=True):
     status: str = Field(default="active", index=True)
     primary_ready_at: float = 0.0
     reaction_ready_at: float = 0.0
+    reaction_policy: str = "defensive"
+    last_reaction_action_id: str | None = None
     queued_action_id: str | None = None
     position: str = "engaged"
     stance: str = "balanced"

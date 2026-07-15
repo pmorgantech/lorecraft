@@ -553,13 +553,15 @@ defend             — brace with your next primary action
 guard [ally]       — defend yourself or intercept attacks against an ally
 flee               — look for an opening to leave the encounter
 stance <stance>    — switch to balanced, aggressive, defensive, or mobile
+reaction <policy>  — choose defensive, conserve, or never for auto-reactions
 ```
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
 older pending one. Combat uses health and stamina meters. At 0 HP, player characters are
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
 active combat and any queued combat action for them is cancelled. Stances persist for the
-encounter and trade offense, defense, damage, and escape stamina cost.
+encounter and trade offense, defense, damage, and escape stamina cost. Reaction policy controls
+whether the character automatically spends a bounded defensive reaction when attacked.
 
 ## Getting Help In-Game
 

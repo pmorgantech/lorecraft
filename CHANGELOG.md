@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.112.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.3 bounded combat reactions with persistent reaction policies,
+  single-window auto-brace resolution, reaction readiness bookkeeping, and
+  reaction traces in combat resolution records.
+
 ## [0.111.0] - 2026-07-15
 
 ### Added
