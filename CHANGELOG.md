@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.108.0] - 2026-07-15
+
+### Added
+
+- Added sequence-numbered combat resolution WebSocket fanout: scheduled combat
+  resolutions now emit combat prose plus structured `combat_update` payloads,
+  and the browser stores ordered combat state for future panel/resync work.
+
 ## [0.107.0] - 2026-07-15
 
 ### Added

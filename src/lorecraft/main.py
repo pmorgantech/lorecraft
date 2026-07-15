@@ -23,6 +23,7 @@ from lorecraft.webui.admin.auth import hash_password
 from lorecraft.webui.admin.broadcaster import AdminBroadcaster
 from lorecraft.webui.admin.websocket import admin_ws_endpoint
 from lorecraft.webui.player import create_web_host, load_feature_presentations
+from lorecraft.features.combat.broadcast import register_combat_broadcasts
 from lorecraft.features.weather.handlers import register_weather_handlers
 from lorecraft.features.celestial.content import (
     register_tide_gate_handlers,
@@ -276,6 +277,7 @@ def create_app(
             services.marks.register(bus)
         if services.combat is not None:
             services.combat.register(bus)
+            register_combat_broadcasts(bus, manager)
         if "disciplines" in enabled_set:
             _load_discipline_definitions(resolved_settings.disciplines_yaml_path)
             _load_ability_definitions(resolved_settings.abilities_yaml_path)

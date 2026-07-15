@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
+import asyncio
 import pytest
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine, select
@@ -37,6 +38,7 @@ from lorecraft.features.combat.models import (
     CombatParticipant,
     CombatResolutionRecord,
 )
+from lorecraft.features.combat.broadcast import broadcast_combat_resolution
 from lorecraft.features.combat.damage import (
     ArmorProfile,
     apply_damage_stack,
@@ -102,6 +104,8 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
     service = CombatService()
     scheduler.register(bus)
     service.register(bus)
+    observed: list[dict] = []
+    bus.on(GameEvent.PLAYER_ATTACKED, lambda event, ctx: observed.append(event.payload))
 
     with Session(engine) as session:
         ctx = _context(session, bus=bus, rng=rng)
@@ -129,6 +133,13 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
             action.actor_type == "npc" and action.state == "pending"
             for action in actions
         )
+        assert observed
+        assert observed[0]["sequence"] == 1
+        assert observed[0]["room_id"] == "arena"
+        assert observed[0]["message_type"] == "combat"
+        assert observed[0]["prose"]
+        assert observed[0]["combat_update"]["sequence"] == 1
+        assert observed[0]["combat_update"]["participants"]
 
 
 def test_flee_resolution_ends_player_participation() -> None:
@@ -230,6 +241,53 @@ def test_damage_profiles_use_equipped_weapon_and_armor_descriptors() -> None:
         assert "item:chainmail" in armor.sources
         assert mitigated.amount < unarmored.amount
         assert mitigated.trace["armor_sources"] == ["item:chainmail"]
+
+
+def test_combat_broadcast_sends_prose_and_structured_update() -> None:
+    class RecordingManager:
+        def __init__(self) -> None:
+            self.messages: list[tuple[str, dict]] = []
+
+        async def broadcast_to_room(self, room_id: str, message: dict) -> None:
+            self.messages.append((room_id, message))
+
+    manager = RecordingManager()
+    event = Event(
+        GameEvent.PLAYER_ATTACKED,
+        {
+            "room_id": "arena",
+            "sequence": 3,
+            "prose": "petem attacks Goblin: hit.",
+            "combat_update": {
+                "sequence": 3,
+                "encounter_id": "encounter-1",
+                "participants": [],
+            },
+        },
+    )
+
+    asyncio.run(broadcast_combat_resolution(manager, event))  # type: ignore[arg-type]
+
+    assert manager.messages == [
+        (
+            "arena",
+            {
+                "type": "feed_append",
+                "content": "petem attacks Goblin: hit.",
+                "message_type": "combat",
+                "sequence": 3,
+            },
+        ),
+        (
+            "arena",
+            {
+                "type": "combat_update",
+                "sequence": 3,
+                "encounter_id": "encounter-1",
+                "participants": [],
+            },
+        ),
+    ]
 
 
 def _engine():

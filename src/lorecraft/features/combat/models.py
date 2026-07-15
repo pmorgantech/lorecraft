@@ -19,6 +19,7 @@ class CombatEncounter(SQLModel, table=True):
     combat_mode: str = "scheduled_intent"
     last_hostile_action_at: float
     ended_at_game_time: float | None = None
+    event_sequence: int = 0
 
 
 class CombatParticipant(SQLModel, table=True):

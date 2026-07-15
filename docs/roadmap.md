@@ -99,7 +99,7 @@ modifier resolver, seeded rng + skill_check, ItemLocationService, audit. All shi
 - [~] 85.6 Health + stamina via MeterService; downed/defeat states
 - [x] 85.7 Immutable CombatResolution object — resolver/snapshot boundary
 - [~] 85.8 Structured events + audit resolution record + engaged/unengaged position
-- [~] 85.9 Basic browser combat state over WebSocket — structured updates + prose with sequence numbers
+- [x] 85.9 Basic browser combat state over WebSocket — structured updates + prose with sequence numbers
 - [x] 85.10 NPC utility-selection stub — single primary action, same intent pipeline as players
 
 Initial implementation note (v0.106.0): `features/combat/` now owns the Scheduled Intent
@@ -113,6 +113,10 @@ equipped item descriptors, applies a staged damage stack (base damage → outcom
 flat block adjusted by penetration → resistance factor), and persists a `CombatResolutionRecord`
 with random and damage traces per resolved action. Remaining 85.8 work is richer structured
 event/audit integration beyond the feature-owned resolution record.
+
+Browser-state note: scheduled combat resolutions now emit sequence-numbered combat prose and
+structured `combat_update` WebSocket payloads to the encounter room; the browser accepts and
+stores ordered combat state for later panel/resync UI work.
 
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 

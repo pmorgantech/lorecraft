@@ -209,6 +209,10 @@ Implementation note: the first Sprint 85 slice derives weapon and armor profiles
 item descriptors (`category`, `slot`, `weight`, `quality`) and stores each resolved action's
 random trace plus staged damage trace in `CombatResolutionRecord`.
 
+Browser-state note: scheduled resolutions emit combat prose and structured `combat_update`
+payloads with per-encounter sequence numbers. The browser stores the latest ordered state; a
+dedicated combat panel/resync endpoint remains a later UI refinement.
+
 ---
 
 ## 9. Resources, status effects, wounds

@@ -258,6 +258,10 @@
         updateTransitMarker(data);
         break;
 
+      case "combat_update":
+        applyCombatUpdate(data);
+        break;
+
       default:
         console.log("[Lorecraft] Unhandled WS message type:", data.type, data);
         // Fallback: if server sends raw HTML snippet
@@ -296,6 +300,22 @@
       moonEl.textContent = String(time.moon).replace(/_/g, " ");
     const tideEl = document.getElementById("world-tide");
     if (tideEl && time.tide) tideEl.textContent = String(time.tide);
+  }
+
+  function applyCombatUpdate(data) {
+    window.lorecraftCombat = window.lorecraftCombat || {
+      encounters: {},
+      lastSequence: 0,
+    };
+    const sequence = Number(data.sequence || 0);
+    if (sequence && sequence < window.lorecraftCombat.lastSequence) return;
+    if (sequence) window.lorecraftCombat.lastSequence = sequence;
+    if (data.encounter_id) {
+      window.lorecraftCombat.encounters[data.encounter_id] = data;
+    }
+    window.dispatchEvent(
+      new CustomEvent("lorecraft:combat-update", { detail: data }),
+    );
   }
 
   function updateTransitMarker(data) {

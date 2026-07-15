@@ -155,7 +155,7 @@ class CombatService:
             meter_service=meter_service,
         )
         if bus is not None:
-            self._emit_resolution_events(bus, resolution, action)
+            self._emit_resolution_events(bus, repo, encounter, resolution, action)
         if action.actor_type == "player" and action.action_key == "basic_attack":
             self._maybe_schedule_npc_response(
                 session,
@@ -429,6 +429,7 @@ class CombatService:
         meter_service: MeterService,
     ) -> None:
         action.state = "resolved"
+        encounter.event_sequence += 1
         action.outcome = self._resolution_payload(resolution)
         action.random_trace = resolution.random_trace or {}
         self._record_resolution(
@@ -564,7 +565,12 @@ class CombatService:
         actor.contribution = contribution
 
     def _emit_resolution_events(
-        self, bus: EventBus, resolution: CombatResolution, action: CombatAction
+        self,
+        bus: EventBus,
+        repo: CombatRepo,
+        encounter: CombatEncounter,
+        resolution: CombatResolution,
+        action: CombatAction,
     ) -> None:
         event_type = (
             GameEvent.PLAYER_ATTACKED
@@ -583,15 +589,24 @@ class CombatService:
                     "target_id": action.target_id,
                     "outcome": resolution.outcome,
                     "damage": resolution.damage,
+                    "room_id": encounter.location_id,
+                    "sequence": encounter.event_sequence,
+                    "prose": resolution.explanation,
+                    "message_type": MessageType.COMBAT.value,
+                    "combat_update": self._combat_update(
+                        repo, repo.session, encounter.id
+                    ),
                 },
             ),
             None,
         )
 
-    def _push_combat_update(self, ctx: GameContext, encounter_id: str) -> None:
-        repo = CombatRepo(ctx.session)
+    def _combat_update(
+        self, repo: CombatRepo, session: Session, encounter_id: str
+    ) -> JsonObject:
+        encounter = repo.encounter(encounter_id)
         participants = []
-        meters = MeterRepo(ctx.session)
+        meters = MeterRepo(session)
         for participant in repo.active_participants(encounter_id):
             hp = meters.find(participant.actor_type, participant.actor_id, "hp")
             stamina = meters.find(
@@ -610,13 +625,17 @@ class CombatService:
                     "stamina": self._meter_state(stamina),
                 }
             )
+        return {
+            "sequence": encounter.event_sequence if encounter is not None else 0,
+            "encounter_id": encounter_id,
+            "state": encounter.state if encounter is not None else "unknown",
+            "participants": participants,
+        }
+
+    def _push_combat_update(self, ctx: GameContext, encounter_id: str) -> None:
         ctx.push_update(
             "combat",
-            {
-                "sequence": int(time.time() * 1000),
-                "encounter_id": encounter_id,
-                "participants": participants,
-            },
+            self._combat_update(CombatRepo(ctx.session), ctx.session, encounter_id),
         )
 
     def _meter_state(self, meter) -> JsonObject | None:

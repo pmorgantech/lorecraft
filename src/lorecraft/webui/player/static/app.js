@@ -529,6 +529,11 @@ function routeMessage(message) {
     return;
   }
 
+  if (message.type === "combat_update") {
+    state.combat = message;
+    return;
+  }
+
   appendMessage("system", JSON.stringify(message));
 }
 

@@ -905,6 +905,11 @@ damage, accuracy, and penetration. Equipped wearable armor uses `category: armor
 `quality` to derive bounded flat block and resistance. Each resolved action persists a compact
 resolution record with random and damage traces for later audit, explanation, and simulation work.
 
+Scheduled combat resolutions also broadcast to browsers as two messages: combat prose in the
+normal feed and a structured `combat_update` payload with a per-encounter sequence number. The
+current browser stores that ordered state for future panel/resync work; builders do not need to
+author anything special for this first pass.
+
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
 ruleset configuration remain later Sprint 85/87 work tracked in `docs/roadmap.md`.
