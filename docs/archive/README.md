@@ -7,7 +7,9 @@ This directory contains shipped design docs and implementation notes that are no
 ## Files
 
 | Doc | Reason Archived | Shipped Version |
+| Doc | Reason Archived | Shipped Version |
 |-----|-----------------|-----------------|
+| `combat_system_tickbased_superseded.md` | Tick-based combat design superseded by Scheduled Intent Combat (v0.105.0+) | Unimplemented; archived 2026-07-14 |
 | `code_review_20260707.md` | Point-in-time code audit (v0.70.0–0.74.0) — findings resolved | v0.74.0 |
 | `gamecontext_audit_20260710.md` | Point-in-time GameContext consistency pass — findings merged | v0.75.0+ |
 | `trade_economy.md` | Trading/shop system fully designed and shipped (Sprint 28–42) | v0.46.0+ |
@@ -16,7 +18,6 @@ This directory contains shipped design docs and implementation notes that are no
 | `chat_feed_split.md` | Chat/feed split UI work fully designed and shipped (Sprint 45) | v0.60.0+ |
 | `session_replay.md` | Session recording/replay system designed and shipped (Sprint 43) | v0.58.0+ |
 | `inventory_equipment.md` | Inventory and equipment systems fully designed and shipped (Sprint 16–26) | v0.30.0+ |
-
 ## How to reference archived docs
 
 - **For implementation details:** Refer to `CHANGELOG.md` (what shipped and when) and `roadmap_completed.md` (full per-sprint task breakdowns).
