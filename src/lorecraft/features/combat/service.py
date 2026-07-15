@@ -38,6 +38,13 @@ from lorecraft.features.combat.effects import (
     register_combat_effects,
 )
 from lorecraft.features.combat.policy import (
+    ACTION_BASIC_ATTACK,
+    ACTION_DEFEND,
+    ACTION_FLEE,
+    ACTION_RANGE_ENGAGED,
+    ACTION_RANGE_RANGED,
+    ACTION_RANGE_SELF,
+    ACTION_RANGED_ATTACK,
     ENGAGEMENT_ENGAGED,
     ENGAGEMENT_GUARDING,
     ENGAGEMENT_UNENGAGED,
@@ -65,9 +72,10 @@ from lorecraft.types import JsonObject, JsonValue
 COMBAT_RESOLVE_JOB = "combat.resolve_action"
 
 _ACTION_TIMING: dict[str, tuple[float, float]] = {
-    "basic_attack": (0.25, 2.0),
-    "defend": (0.0, 1.2),
-    "flee": (0.35, 2.5),
+    ACTION_BASIC_ATTACK: (0.25, 2.0),
+    ACTION_RANGED_ATTACK: (0.35, 2.2),
+    ACTION_DEFEND: (0.0, 1.2),
+    ACTION_FLEE: (0.35, 2.5),
 }
 
 _REACTION_RECOVERY = 1.5
@@ -77,9 +85,35 @@ class CombatService:
     """Owns combat policy and persistence for the Tier 2 combat feature."""
 
     def attack(self, noun: str | None, ctx: GameContext) -> None:
+        self._attack_with_action_key(
+            noun,
+            ctx,
+            action_key=ACTION_BASIC_ATTACK,
+            commit_message="You commit to an attack on {target}.",
+            room_message="{actor} moves to strike {target}.",
+        )
+
+    def shoot(self, noun: str | None, ctx: GameContext) -> None:
+        self._attack_with_action_key(
+            noun,
+            ctx,
+            action_key=ACTION_RANGED_ATTACK,
+            commit_message="You line up a shot at {target}.",
+            room_message="{actor} draws a bead on {target}.",
+        )
+
+    def _attack_with_action_key(
+        self,
+        noun: str | None,
+        ctx: GameContext,
+        *,
+        action_key: str,
+        commit_message: str,
+        room_message: str,
+    ) -> None:
         target = self._resolve_npc_target(noun, ctx)
         if target is None:
-            ctx.say("Attack whom?", MessageType.WARNING)
+            ctx.say("Target whom?", MessageType.WARNING)
             return
         encounter, actor, target_participant = self._ensure_player_vs_npc_encounter(
             ctx, target
@@ -89,14 +123,16 @@ class CombatService:
             session=ctx.session,
             encounter=encounter,
             actor=actor,
-            action_key="basic_attack",
+            action_key=action_key,
             now=self._now(ctx),
             target=target_participant,
         )
         ctx.player.active_combat_session_id = encounter.id
         ctx.player_repo.add(ctx.player)
-        ctx.say(f"You commit to an attack on {target.name}.")
-        ctx.tell_room(f"{ctx.player.username} moves to strike {target.name}.")
+        ctx.say(commit_message.format(target=target.name))
+        ctx.tell_room(
+            room_message.format(actor=ctx.player.username, target=target.name)
+        )
         ctx.queue_event(
             GameEvent.COMBAT_STARTED,
             encounter_id=encounter.id,
@@ -117,7 +153,7 @@ class CombatService:
             session=ctx.session,
             encounter=encounter,
             actor=actor,
-            action_key="defend",
+            action_key=ACTION_DEFEND,
             now=self._now(ctx),
         )
         ctx.say("You shift into a guarded posture.")
@@ -141,7 +177,7 @@ class CombatService:
             session=ctx.session,
             encounter=encounter,
             actor=actor,
-            action_key="defend",
+            action_key=ACTION_DEFEND,
             now=self._now(ctx),
         )
         target_name = self._participant_name(ctx.session, target)
@@ -159,7 +195,7 @@ class CombatService:
             session=ctx.session,
             encounter=encounter,
             actor=actor,
-            action_key="flee",
+            action_key=ACTION_FLEE,
             now=self._now(ctx),
         )
         ctx.say("You look for an opening to flee.")
@@ -270,7 +306,10 @@ class CombatService:
             meter_service=meter_service,
             effect_service=effect_service,
         )
-        if action.actor_type == "player" and action.action_key == "basic_attack":
+        if action.actor_type == "player" and action.action_key in {
+            ACTION_BASIC_ATTACK,
+            ACTION_RANGED_ATTACK,
+        }:
             self._maybe_schedule_npc_response(
                 session,
                 repo,
@@ -470,7 +509,7 @@ class CombatService:
     ) -> JsonObject:
         used = (
             action.channel == "primary"
-            and action.action_key == "basic_attack"
+            and action.action_key == ACTION_BASIC_ATTACK
             and target.reaction_policy != REACTION_NEVER
             and target.last_reaction_action_id != action.id
             and target.reaction_ready_at <= action.resolve_at
@@ -609,27 +648,29 @@ class CombatService:
         *,
         rng,
     ) -> CombatResolution:
-        if action.action_key == "defend":
+        if action.action_key == ACTION_DEFEND:
             snapshot = self._snapshot(session, actor)
             return CombatResolution(
                 action_id=action.id,
-                action_key="defend",
+                action_key=ACTION_DEFEND,
                 actor=snapshot,
                 target=None,
                 outcome="defended",
+                action_range=ACTION_RANGE_SELF,
                 stamina_delta=-2.0,
                 explanation=f"{snapshot.name} braces defensively.",
                 random_trace={"actor_stance": snapshot.stance},
             )
-        if action.action_key == "flee":
+        if action.action_key == ACTION_FLEE:
             snapshot = self._snapshot(session, actor)
             stance = stance_policy_for(actor.stance)
             return CombatResolution(
                 action_id=action.id,
-                action_key="flee",
+                action_key=ACTION_FLEE,
                 actor=snapshot,
                 target=None,
                 outcome="escaped",
+                action_range=ACTION_RANGE_SELF,
                 stamina_delta=stance.flee_stamina_delta,
                 target_status="escaped",
                 explanation=f"{snapshot.name} breaks away from the fight.",
@@ -654,7 +695,13 @@ class CombatService:
                 explanation="The target is no longer available.",
             )
         original_target = target
-        interceptor = self._guard_interceptor(repo, action.encounter_id, target)
+        action_range = self._action_range_for(action.action_key)
+        intercept_eligible = action_range == ACTION_RANGE_ENGAGED
+        interceptor = (
+            self._guard_interceptor(repo, action.encounter_id, target)
+            if intercept_eligible
+            else None
+        )
         if interceptor is not None:
             target = interceptor
         explicit_defend = self._has_recent_defend(repo, target.id, action.submitted_at)
@@ -665,6 +712,8 @@ class CombatService:
         target_snapshot = self._snapshot(session, target)
         resolution = resolve_basic_attack(
             action_id=action.id,
+            action_key=action.action_key,
+            action_range=action_range,
             actor=self._snapshot(session, actor),
             target=target_snapshot,
             weapon=weapon_profile_for(session, actor.actor_type, actor.actor_id),
@@ -675,7 +724,11 @@ class CombatService:
         if auto_reaction:
             resolution = replace(
                 resolution,
-                random_trace={**(resolution.random_trace or {}), **auto_reaction},
+                random_trace={
+                    **(resolution.random_trace or {}),
+                    **auto_reaction,
+                    "intercept_eligible": intercept_eligible,
+                },
             )
         if interceptor is None:
             return resolution
@@ -835,13 +888,13 @@ class CombatService:
                 session, actor.actor_type, actor.actor_id, "stamina"
             )
             meter_service.adjust(session, stamina, resolution.stamina_delta)
-        if resolution.action_key == "flee" and resolution.outcome == "escaped":
+        if resolution.action_key == ACTION_FLEE and resolution.outcome == "escaped":
             state_changes.append(
                 self._transition_participant(
                     repo,
                     actor,
                     STATUS_ESCAPED,
-                    reason="flee",
+                    reason=ACTION_FLEE,
                     current_epoch=current_epoch,
                 )
             )
@@ -949,7 +1002,7 @@ class CombatService:
             session=session,
             encounter=encounter,
             actor=target,
-            action_key="basic_attack",
+            action_key=ACTION_BASIC_ATTACK,
             now=current_epoch,
             target=actor,
         )
@@ -1182,9 +1235,16 @@ class CombatService:
         action = repo.pending_primary_action(participant_id)
         return bool(
             action is not None
-            and action.action_key == "defend"
+            and action.action_key == ACTION_DEFEND
             and action.submitted_at >= since - 3.0
         )
+
+    def _action_range_for(self, action_key: str) -> str:
+        if action_key == ACTION_RANGED_ATTACK:
+            return ACTION_RANGE_RANGED
+        if action_key in {ACTION_DEFEND, ACTION_FLEE}:
+            return ACTION_RANGE_SELF
+        return ACTION_RANGE_ENGAGED
 
     def _add_contribution(self, actor: CombatParticipant, damage: float) -> None:
         contribution = dict(actor.contribution)
@@ -1375,6 +1435,7 @@ class CombatService:
     ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
+            "action_range": resolution.action_range,
             "outcome": resolution.outcome,
             "damage": resolution.damage,
             "stamina_delta": resolution.stamina_delta,

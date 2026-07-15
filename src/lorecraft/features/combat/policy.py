@@ -13,6 +13,15 @@ ENGAGEMENT_ENGAGED = "engaged"
 ENGAGEMENT_UNENGAGED = "unengaged"
 ENGAGEMENT_GUARDING = "guarding"
 
+ACTION_BASIC_ATTACK = "basic_attack"
+ACTION_RANGED_ATTACK = "ranged_attack"
+ACTION_DEFEND = "defend"
+ACTION_FLEE = "flee"
+
+ACTION_RANGE_SELF = "self"
+ACTION_RANGE_ENGAGED = "engaged"
+ACTION_RANGE_RANGED = "ranged"
+
 STANCE_BALANCED = "balanced"
 STANCE_AGGRESSIVE = "aggressive"
 STANCE_DEFENSIVE = "defensive"

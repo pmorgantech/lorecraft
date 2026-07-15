@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.114.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
+## Where things stand (2026-07-15, v0.115.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
 
-**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.114.0).
+**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.115.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -126,8 +126,8 @@ remain visible in structured combat state. Sprint 86 is the next open combat ban
 
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 
-**Goal:** Stances, guarding, bounded reactions, wind-up interruption, near/distant positioning,
-basic status effects, threat/NPC roles, party assistance, duel rules.
+**Goal:** Stances, guarding, bounded reactions, wind-up interruption, simple ranged/vantage
+attack semantics, basic status effects, threat/NPC roles, party assistance, duel rules.
 
 **Depends on:** Sprint 85; engine timed-effects service hook coverage verification (86.5).
 
@@ -138,7 +138,7 @@ basic status effects, threat/NPC roles, party assistance, duel rules.
 - [x] 86.3 Bounded reactions (single window, no recursion) + reaction policy
 - [x] 86.4 Wind-up interruption — resolution-time interrupt outcome
 - [x] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
-- [ ] 86.6 Near/distant positioning + advance/retreat/disengage
+- [x] 86.6 Simple ranged/vantage semantics + explicit range traces
 - [ ] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
 - [ ] 86.8 Party assistance + duel contracts — assistance counts as participation
 
@@ -170,6 +170,12 @@ engine `ActiveEffect` lifecycle. Strong hits can apply non-stacking `combat.off_
 game-time expiry, source metadata, tags, potency, and structured `effect_changes`; resolver
 snapshots read active combat effects for defense modifiers and traces. The existing `EffectService`
 expiry sweep removes the effect on `TIME_ADVANCED`, so no Tier 1 hook changes were needed.
+
+Range note (v0.115.0): the planned near/far/formation mechanic was deliberately narrowed. Combat
+now supports a `shoot`/`fire` ranged intent that records `action_range: "ranged"` through action
+payloads, resolution records, damage traces, and audit-ready random traces. Ranged attacks do not
+use guarding interception, which gives authored content room for bows, snipers, and tower guards
+without adding player formation state, advance/retreat verbs, or persistent distance bands.
 
 ### Sprint 87 — Combat Phase 3: Content Power
 

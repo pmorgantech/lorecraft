@@ -894,10 +894,10 @@ Combat is implemented as the Tier 2 `combat` feature. Its first Scheduled Intent
 encounters, participants, hostile relationships, and pending/resolved actions in feature-owned
 tables, then resolves actions through durable `combat.resolve_action` scheduler jobs.
 
-The initial player-facing commands are `attack <npc>`, `defend`, and `flee`. They use the
-primary action channel only; during recovery a player may queue one replacement primary action.
-Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC counter-attacks
-are created as scheduled intents through the same pipeline as player actions.
+The initial player-facing commands are `attack <npc>`, `shoot <npc>`, `defend`, and `flee`.
+They use the primary action channel only; during recovery a player may queue one replacement
+primary action. Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC
+counter-attacks are created as scheduled intents through the same pipeline as player actions.
 
 The current damage layer reads existing equipment descriptors rather than a new combat-only YAML
 schema. Equipped weapons use `category: weapon`, `slot`, `weight`, and `quality` to derive base
@@ -923,6 +923,12 @@ Guarding uses the existing relationship-edge model: `guard <ally>` writes a supp
 edge from guardian to protected participant, queues a defensive primary action, and lets the
 guardian become the effective target when intercepting an attack. Resolution traces keep both the
 original target and interceptor ids.
+
+Ranged combat is intentionally lightweight. `shoot`/`fire` creates a `ranged_attack` scheduled
+intent and carries `action_range: "ranged"` through action payloads, resolution records, damage
+traces, and random traces. Ranged attacks do not use guarding interception. There is no persistent
+near/far band or party formation state in this slice; authored tower guards, bows, and sniper-like
+content can build on the range trace without forcing all player combat into a formation model.
 
 Bounded reactions are participant policy, not nested actions. `reaction <defensive|conserve|never>`
 sets the stored reaction policy; an incoming basic attack may consume one auto-brace window and

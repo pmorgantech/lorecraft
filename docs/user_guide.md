@@ -549,6 +549,7 @@ a short wind-up and recovery window. The first implemented PvE commands are:
 
 ```
 attack <target>    — start or continue an encounter with a nearby NPC
+shoot <target>     — start or continue a ranged attack against a nearby NPC
 defend             — brace with your next primary action
 guard [ally]       — defend yourself or intercept attacks against an ally
 flee               — look for an opening to leave the encounter
@@ -560,11 +561,12 @@ During recovery you can queue one replacement primary action; the newer choice r
 older pending one. Combat uses health and stamina meters. At 0 HP, player characters are
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
 active combat and any queued combat action for them is cancelled. Stances persist for the
-encounter and trade offense, defense, damage, and escape stamina cost. Reaction policy controls
-whether the character automatically spends a bounded defensive reaction when attacked. If a
-character becomes unable to act before a committed wind-up resolves, that action is interrupted
-instead of taking effect. Some strong hits can apply short-lived combat status effects that expire
-on game time.
+encounter and trade offense, defense, damage, and escape stamina cost. Guarding can redirect
+incoming melee attacks, while ranged shots record their range without using guard interception.
+Reaction policy controls whether the character automatically spends a bounded defensive reaction
+when attacked. If a character becomes unable to act before a committed wind-up resolves, that
+action is interrupted instead of taking effect. Some strong hits can apply short-lived combat
+status effects that expire on game time.
 
 ## Getting Help In-Game
 
@@ -613,6 +615,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `remove <item>` | | Unequip a worn item |
 | `wield <item>` | | Equip a wielded item (weapon, tool, light) |
 | `attack <target>` | `fight` | Commit to a scheduled attack against a nearby NPC |
+| `shoot <target>` | `fire` | Commit to a scheduled ranged attack against a nearby NPC |
 | `defend` | `guard` | Spend your next combat action bracing against attacks |
 | `flee` | | Commit to an escape attempt from the current encounter |
 | `unwield <item>` | | Unequip a wielded item |

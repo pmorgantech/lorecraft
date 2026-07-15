@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.115.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.6 simplified ranged combat semantics with `shoot`/`fire`,
+  `ranged_attack` resolution records, explicit `action_range` traces, and
+  ranged attacks that bypass guarding interception without adding formations
+  or persistent near/far bands.
+
 ## [0.114.0] - 2026-07-15
 
 ### Added

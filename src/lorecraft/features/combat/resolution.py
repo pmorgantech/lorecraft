@@ -12,6 +12,10 @@ from lorecraft.features.combat.damage import (
     WeaponProfile,
     apply_damage_stack,
 )
+from lorecraft.features.combat.policy import (
+    ACTION_BASIC_ATTACK,
+    ACTION_RANGE_ENGAGED,
+)
 from lorecraft.types import JsonObject
 
 
@@ -36,6 +40,7 @@ class CombatResolution:
     actor: CombatantSnapshot
     target: CombatantSnapshot | None
     outcome: str
+    action_range: str = ACTION_RANGE_ENGAGED
     damage: float = 0.0
     stamina_delta: float = 0.0
     target_status: str | None = None
@@ -95,6 +100,8 @@ def npc_snapshot(
 def resolve_basic_attack(
     *,
     action_id: str,
+    action_key: str = ACTION_BASIC_ATTACK,
+    action_range: str = ACTION_RANGE_ENGAGED,
     actor: CombatantSnapshot,
     target: CombatantSnapshot,
     weapon: WeaponProfile,
@@ -132,7 +139,8 @@ def resolve_basic_attack(
     )
     return CombatResolution(
         action_id=action_id,
-        action_key="basic_attack",
+        action_key=action_key,
+        action_range=action_range,
         actor=actor,
         target=target,
         outcome=outcome,
@@ -149,9 +157,11 @@ def resolve_basic_attack(
             "target_stance_defense_bonus": target.defense_bonus,
             "actor_active_effects": list(actor.active_effects),
             "target_active_effects": list(target.active_effects),
+            "action_range": action_range,
         },
         damage_trace={
             **damage.trace,
+            "action_range": action_range,
             "weapon_sources": list(weapon.sources),
             "weapon_base_damage": weapon.base_damage,
             "weapon_accuracy_bonus": weapon.accuracy_bonus,

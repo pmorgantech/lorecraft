@@ -21,6 +21,14 @@ def register_combat_commands(
         service.attack(noun, ctx)
 
     @registry.register(
+        "shoot",
+        "fire",
+        help="shoot <target> — commit to a ranged attack against a hostile NPC",
+    )
+    def shoot_command(noun: str | None, ctx: GameContext) -> None:
+        service.shoot(noun, ctx)
+
+    @registry.register(
         "defend",
         conditions=["in_combat"],
         help="defend — spend your next action bracing against attacks",

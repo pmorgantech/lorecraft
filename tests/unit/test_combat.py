@@ -100,6 +100,40 @@ def test_attack_submits_intent_and_schedules_resolution() -> None:
         assert "combat" in ctx.updates
 
 
+def test_shoot_submits_ranged_intent_and_records_range_trace() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.shoot("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+        action_id = action.id
+
+        assert action.action_key == "ranged_attack"
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        action = session.get(CombatAction, action_id)
+        record = session.exec(select(CombatResolutionRecord)).one()
+
+        assert action is not None
+        assert action.outcome["action_key"] == "ranged_attack"
+        assert action.outcome["action_range"] == "ranged"
+        assert action.random_trace["action_range"] == "ranged"
+        assert action.random_trace["intercept_eligible"] is False
+        assert record.action_key == "ranged_attack"
+        assert record.random_trace["action_range"] == "ranged"
+
+
 def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
     engine, audit_engine = _engine_pair()
     rng = GameRng(seed=7)
@@ -353,6 +387,66 @@ def test_guarding_ally_creates_intercept_edge_and_redirects_attack() -> None:
         ally_hp = ctx_meters(engine).get(session, "player", "ally", "hp")
         assert guardian_hp.current < guardian_hp.maximum
         assert ally_hp.current == ally_hp.maximum
+
+
+def test_ranged_attack_does_not_redirect_to_guarding_ally() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        stats = session.get(PlayerStats, "ally")
+        assert stats is None
+        service.attack("goblin", ctx)
+        encounter = session.exec(select(CombatEncounter)).one()
+        guardian = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        ally = _add_ally_participant(session, encounter, guardian.side_id)
+        ally_stats = session.get(PlayerStats, ally.actor_id)
+        assert ally_stats is not None
+        ally_stats.agility = -100
+        session.add(ally_stats)
+        service.guard("ally", ctx)
+
+        npc_attack = service._submit_action(
+            repo=CombatRepo(session),
+            session=session,
+            encounter=encounter,
+            actor=goblin,
+            action_key="ranged_attack",
+            now=0.0,
+            target=ally,
+        )
+        npc_attack_id = npc_attack.id
+
+        service.resolve_action(
+            session,
+            npc_attack_id,
+            rng=GameRng(seed=2),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == npc_attack_id
+            )
+        ).one()
+
+        assert record.target_id == "ally"
+        assert record.random_trace["action_range"] == "ranged"
+        assert record.random_trace["intercept_eligible"] is False
+        assert "intercepted" not in record.random_trace
+        guardian_hp = ctx_meters(engine).get(session, "player", "player-1", "hp")
+        ally_hp = ctx_meters(engine).get(session, "player", "ally", "hp")
+        assert guardian_hp.current == guardian_hp.maximum
+        assert ally_hp.current < ally_hp.maximum
 
 
 def test_reaction_policy_updates_state_and_auto_reaction_is_bounded() -> None:
