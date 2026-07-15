@@ -575,6 +575,12 @@ status effects that expire on game time. NPC attention is tracked as broad cues,
 keep pressure on the participant who has drawn the most notice. Assisting another player joins
 their active encounter and marks you as a participant for later rewards and audit history.
 
+In the browser, combat appears as prose in the feed plus structured state updates used to keep
+participants, statuses, stances, attention cues, and recent outcomes current. A committed action
+may appear before it resolves; that delay is the wind-up/recovery model working as intended.
+Downed, defeated, or escaped participants can remain visible in combat state so the outcome is
+clear instead of disappearing from the encounter record.
+
 ## Getting Help In-Game
 
 The `help` command is your in-game reference:

@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.125.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
+## Where things stand (2026-07-15, v0.126.0 on combat; Sprints 1–87 implemented; Sprint 88 deferred pending playtesting)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.125.0).
+**Everything through Sprint 87 is implemented in the combat branch line** (currently v0.126.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -208,7 +208,7 @@ combat teaching material.
 - [x] 87.6 Ruleset/resolver versioning + random-trace persistence
 - [x] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
 - [x] 87.8 Live-tunable ruleset config (WorldClock pattern) — DB-backed, admin endpoint
-- [ ] 87.9 Combat tutorial/help completion — expand docs, in-game help, and browser guidance
+- [x] 87.9 Combat tutorial/help completion — expand docs, in-game help, and browser guidance
 
 Sprint 87.1 completion note (v0.118.0): `world_content/combat_actions.yaml` now authors the core
 combat action ids, primary-channel timing, broad action range (`self`/`engaged`/`ranged`),
@@ -255,6 +255,12 @@ dials per action `ruleset_id`: `damage_multiplier` and `stamina_cost_multiplier`
 reads that row fresh for each scheduled action, records the applied multipliers in random/damage
 traces, and admin endpoints `GET /admin/combat/rulesets` plus
 `POST /admin/combat/rulesets/{ruleset_id}` allow superadmins to retune without restart or reseed.
+
+Sprint 87 completion note (v0.126.0): player-facing combat documentation now includes the expanded
+`docs/combat_tutorial.md`, the `docs/user_guide.md` combat section, and the in-game `help combat`
+topic. The docs explain scheduled intent, browser combat prose/state, queued action replacement,
+stances/reactions, guard/ranged expectations, downed vs defeated outcomes, and explicitly call out
+that player formations and near/far distance-band management are not part of the current model.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 

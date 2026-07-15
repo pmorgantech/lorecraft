@@ -103,7 +103,8 @@ topics:
   body: |
     Combat uses scheduled intent: you choose an action, then the world resolves
     it after a short wind-up and recovery window. You do not need to spam
-    commands.
+    commands. If you commit an action and it has not resolved yet, wait for the
+    combat feed; the delay is part of the system.
 
     Useful commands:
       - 'attack <target>' starts or continues a melee attack against an NPC.
@@ -115,6 +116,18 @@ topics:
       - 'reaction <defensive|conserve|never>' controls automatic defensive reactions.
       - 'assist <player>' joins a nearby player's active encounter on their side.
 
+    During recovery, one replacement primary action can be queued. A newer
+    primary action cancels the older queued one. Stances persist for the
+    encounter: balanced is the default, aggressive favors offense, defensive
+    favors survival, and mobile makes escape less costly.
+
+    Browser combat shows prose in the normal feed and structured combat state for
+    participants, statuses, stances, attention cues, and recent outcomes. Downed,
+    defeated, and escaped participants may stay visible so the result is clear.
+
     Lorecraft does not use player formations or near/far positioning bands.
     Ranged attacks are tracked as ranged, but you do not manage distance steps.
-    Players become downed at 0 HP by default; NPCs become defeated.
+    Guarding can intercept melee attacks but does not intercept ranged shots.
+    Players become downed at 0 HP by default; NPCs become defeated. Some authored
+    encounters can also apply reputation consequences, such as angering a guard
+    faction, but there is no separate bounty or arrest system yet.

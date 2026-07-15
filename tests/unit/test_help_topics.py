@@ -92,10 +92,17 @@ class TestRepo:
 
     def test_by_reference_numeric_and_name(self, session: Session) -> None:
         repo = self._load(session)
-        assert repo.by_reference("1").name == "getting-started"
-        assert repo.by_reference("combat").id == 2
+        getting_started = repo.by_reference("1")
+        combat = repo.by_reference("combat")
+        combat_upper = repo.by_reference("COMBAT")
+
+        assert getting_started is not None
+        assert combat is not None
+        assert combat_upper is not None
+        assert getting_started.name == "getting-started"
+        assert combat.id == 2
         # Case-insensitive name.
-        assert repo.by_reference("COMBAT").id == 2
+        assert combat_upper.id == 2
         assert repo.by_reference("99") is None
         assert repo.by_reference("nope") is None
 
@@ -124,6 +131,19 @@ class TestBootstrap:
         topics = HelpRepo(session).all_topics()
         assert len(topics) >= 5
         assert any(t.name == "getting-started" for t in topics)
+
+    def test_real_combat_topic_covers_browser_state_and_position_scope(
+        self, session: Session
+    ) -> None:
+        ensure_help_bootstrapped(session, "docs/help_topics.yaml")
+        session.commit()
+        topic = HelpRepo(session).by_reference("combat")
+        assert topic is not None
+        body = topic.body.lower()
+        assert "browser combat" in body
+        assert "structured combat state" in body
+        assert "does not use player formations" in body
+        assert "near/far positioning bands" in body
 
     def test_bootstrap_is_idempotent(self, session: Session) -> None:
         ensure_help_bootstrapped(session, "docs/help_topics.yaml")

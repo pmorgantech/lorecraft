@@ -9,6 +9,7 @@ player without learning internal engine details.
 - [The Short Version](#the-short-version)
 - [Before You Fight](#before-you-fight)
 - [Starting Combat](#starting-combat)
+- [Reading The Browser Combat Feed](#reading-the-browser-combat-feed)
 - [During A Fight](#during-a-fight)
 - [Helping Another Player](#helping-another-player)
 - [Winning, Fleeing, And Going Down](#winning-fleeing-and-going-down)
@@ -66,6 +67,21 @@ Ranged combat is intentionally simple. Lorecraft does not ask you to manage form
 bands, or advance/retreat positioning. A shot records that it was ranged and can support bows,
 crossbows, tower guards, or sniper-like authored encounters later.
 
+## Reading The Browser Combat Feed
+
+Combat output appears in two forms:
+
+- prose in the normal feed, such as who attacked, guarded, fled, or went down
+- structured combat state used by the browser to keep participants, statuses, stances, and
+  attention cues current
+
+If you see your action committed but not resolved yet, that is normal scheduled intent. The action
+has a short wind-up, then recovery. Wait for the result before deciding whether to keep pressure,
+defend, switch stance, or flee.
+
+The browser may continue to show downed, defeated, or escaped participants briefly because combat
+state keeps the outcome explicit instead of making actors vanish from the record.
+
 ## During A Fight
 
 After you act, you enter recovery. During recovery you may queue one replacement primary action.
@@ -95,6 +111,10 @@ reaction never
 
 `defensive` lets your character spend an available brace reaction when attacked. `never` disables
 that automatic reaction.
+
+If you type a new primary action while one is already queued, the older one is cancelled. This is
+useful when the fight changes, but it also means frantic command spam can throw away the action you
+actually wanted.
 
 ## Helping Another Player
 
@@ -132,6 +152,10 @@ to survive and get out.
 
 Some strong hits apply short-lived status effects, such as being off balance. These expire on game
 time and show up in structured combat state.
+
+Combat may also affect reputation when a world builder has authored that consequence. For example,
+attacking a guard can lower standing with that guard's faction. Those consequences come from world
+content and are not a separate bounty or arrest system yet.
 
 ## What Combat Is Not
 

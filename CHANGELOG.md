@@ -4,6 +4,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.126.0] - 2026-07-15
+
+### Added
+
+- Completed Sprint 87.9 combat tutorial/help coverage: expanded the player
+  combat tutorial, user guide combat section, and in-game `help combat` topic
+  with scheduled-intent flow, browser combat state guidance, guard/ranged scope,
+  downed/defeated outcomes, and the deliberately omitted formation/distance
+  mechanics.
+
 ## [0.125.0] - 2026-07-15
 
 ### Added
