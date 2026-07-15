@@ -339,27 +339,33 @@ effects, reaction policy, escape control, and a compact event feed.
 
 ## 19. Data-driven action definitions
 
-Authored YAML selects **registered** calculators/resolvers — never inline scripts:
+Implemented in Sprint 87.1: `world_content/combat_actions.yaml` selects **registered**
+calculators/resolvers — never inline scripts. The current schema is deliberately small:
 
 ```yaml
-id: shield_bash
-channel: primary
-targeting: { type: hostile_single }
-requirements: { equipment_tags: [shield], range: engaged }
-costs: { stamina: 12 }
-timing: { windup_ms: 350, recovery_ms: 2200 }
-contest: { attack: shield_control, defense: stability }
-calculator: opposed_attack        # registered component id, not code
-resolver: damage_and_effects      # registered component id, not code
-outcomes:
-  miss:       { message_key: combat.shield_bash.miss }
-  hit:        { damage: { type: blunt, base: 4 }, effects: [{ effect: off_balance, duration: 2s }] }
-  strong_hit: { damage: { type: blunt, base: 7 }, effects: [{ effect: staggered,  duration: 2s }] }
-tags: [melee, physical, control]
+version: 1
+actions:
+  - id: basic_attack
+    channel: primary
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing: { windup: 0.25, recovery: 2.0 }
+    stamina_delta: -6.0
+    tags: [melee, physical]
+  - id: ranged_attack
+    channel: primary
+    action_range: ranged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing: { windup: 0.35, recovery: 2.2 }
+    stamina_delta: -6.0
+    tags: [ranged, physical]
 ```
 
-Complex boss abilities may reference a Python resolver **registered by identifier**. Same
-registry philosophy as the scripting vocabulary (`register_spec`).
+`action_range` is broad action semantics (`self`, `engaged`, `ranged`), not a persistent near/far
+tactical band. Complex boss abilities may later reference a Python resolver **registered by
+identifier**. Same registry philosophy as the scripting vocabulary (`register_spec`).
 
 ## 20. Resolution objects, randomness, versioning
 

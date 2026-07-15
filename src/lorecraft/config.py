@@ -65,6 +65,7 @@ class Settings:
     disciplines_yaml_path: str = "world_content/disciplines.yaml"
     abilities_yaml_path: str = "world_content/abilities.yaml"
     forage_yaml_path: str = "world_content/forage.yaml"
+    combat_actions_yaml_path: str = "world_content/combat_actions.yaml"
     seed_player_id: str = "player-1"
     seed_player_username: str = "player-1"
     seed_player_start_room: str = "village_square"
@@ -158,6 +159,26 @@ def load_settings() -> Settings:
         ),
         celestial_yaml_path=os.getenv(
             "LORECRAFT_CELESTIAL_YAML_PATH", "world_content/celestial.yaml"
+        ),
+        weather_fronts_yaml_path=os.getenv(
+            "LORECRAFT_WEATHER_FRONTS_YAML_PATH",
+            "world_content/weather_fronts.yaml",
+        ),
+        spawns_yaml_path=os.getenv(
+            "LORECRAFT_SPAWNS_YAML_PATH", "world_content/spawns.yaml"
+        ),
+        disciplines_yaml_path=os.getenv(
+            "LORECRAFT_DISCIPLINES_YAML_PATH", "world_content/disciplines.yaml"
+        ),
+        abilities_yaml_path=os.getenv(
+            "LORECRAFT_ABILITIES_YAML_PATH", "world_content/abilities.yaml"
+        ),
+        forage_yaml_path=os.getenv(
+            "LORECRAFT_FORAGE_YAML_PATH", "world_content/forage.yaml"
+        ),
+        combat_actions_yaml_path=os.getenv(
+            "LORECRAFT_COMBAT_ACTIONS_YAML_PATH",
+            "world_content/combat_actions.yaml",
         ),
         seed_player_id=os.getenv("LORECRAFT_SEED_PLAYER_ID", "player-1"),
         seed_player_username=os.getenv("LORECRAFT_SEED_PLAYER_USERNAME", "player-1"),

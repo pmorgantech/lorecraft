@@ -899,6 +899,13 @@ They use the primary action channel only; during recovery a player may queue one
 primary action. Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC
 counter-attacks are created as scheduled intents through the same pipeline as player actions.
 
+Core combat actions are authored in `world_content/combat_actions.yaml`. Each entry defines an
+action id, primary-channel timing, broad action range (`self`, `engaged`, or `ranged`), optional
+stamina delta, tags, and registered calculator/resolver ids. The shipped registered resolvers are
+`opposed_attack`, `defend`, and `flee`; YAML references identifiers only and never embeds combat
+scripts. If the file is missing or malformed, startup falls back to the built-in core actions so
+`attack`, `shoot`, `defend`, and `flee` remain available.
+
 The current damage layer reads existing equipment descriptors rather than a new combat-only YAML
 schema. Equipped weapons use `category: weapon`, `slot`, `weight`, and `quality` to derive base
 damage, accuracy, and penetration. Equipped wearable armor uses `category: armor`, `weight`, and
@@ -957,9 +964,9 @@ is applied by strong hits with game-time expiry and source metadata in payload, 
 combat defense modifier while active, appears in structured `active_effects`, and expires through
 the existing `EffectService` sweep.
 
-Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
-explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
-ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.
+Balance details are intentionally still shallow in this slice: explicit weapon/armor combat
+traits, PvP consent, richer browser resync, and live-tunable combat ruleset configuration remain
+later Sprint 87 work tracked in `docs/roadmap.md`.
 
 **Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
 `{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array

@@ -559,6 +559,9 @@ stance <stance>    — switch to balanced, aggressive, defensive, or mobile
 reaction <policy>  — choose defensive, conserve, or never for auto-reactions
 ```
 
+Builders can tune the core action timing and broad ranged/melee semantics in
+`world_content/combat_actions.yaml`; players do not need to know those numbers while playing.
+
 During recovery you can queue one replacement primary action; the newer choice replaces the
 older pending one. Combat uses health and stamina meters. At 0 HP, player characters are
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave

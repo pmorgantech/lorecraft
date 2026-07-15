@@ -108,6 +108,7 @@ def resolve_basic_attack(
     armor: ArmorProfile,
     rng: GameRng,
     defended: bool = False,
+    stamina_delta: float = -6.0,
 ) -> CombatResolution:
     attack_roll = rng.randint(-10, 10) + rng.randint(-10, 10)
     defense_roll = rng.randint(-10, 10) + rng.randint(-10, 10)
@@ -145,7 +146,7 @@ def resolve_basic_attack(
         target=target,
         outcome=outcome,
         damage=damage.amount,
-        stamina_delta=-6.0,
+        stamina_delta=stamina_delta,
         explanation=f"{actor.name} attacks {target.name}: {outcome}.",
         random_trace={
             "attack_roll": attack_roll,

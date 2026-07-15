@@ -1,0 +1,47 @@
+version: 1
+actions:
+  - id: basic_attack
+    channel: primary
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing:
+      windup: 0.25
+      recovery: 2.0
+    stamina_delta: -6.0
+    tags:
+      - melee
+      - physical
+  - id: ranged_attack
+    channel: primary
+    action_range: ranged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing:
+      windup: 0.35
+      recovery: 2.2
+    stamina_delta: -6.0
+    tags:
+      - ranged
+      - physical
+  - id: defend
+    channel: primary
+    action_range: self
+    calculator: self
+    resolver: defend
+    timing:
+      windup: 0.0
+      recovery: 1.2
+    stamina_delta: -2.0
+    tags:
+      - defense
+  - id: flee
+    channel: primary
+    action_range: self
+    calculator: self
+    resolver: flee
+    timing:
+      windup: 0.35
+      recovery: 2.5
+    tags:
+      - escape

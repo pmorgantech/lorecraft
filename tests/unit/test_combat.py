@@ -48,6 +48,15 @@ from lorecraft.features.combat.damage import (
     armor_profile_for,
     weapon_profile_for,
 )
+from lorecraft.features.combat.definitions import (
+    CALCULATOR_OPPOSED_ATTACK,
+    RESOLVER_OPPOSED_ATTACK,
+    CombatActionDef,
+    CombatActionTiming,
+    CombatActionsDocument,
+    get_action_registry,
+    register_builtin_combat_actions,
+)
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
 
@@ -132,6 +141,38 @@ def test_shoot_submits_ranged_intent_and_records_range_trace() -> None:
         assert action.random_trace["intercept_eligible"] is False
         assert record.action_key == "ranged_attack"
         assert record.random_trace["action_range"] == "ranged"
+
+
+def test_combat_service_uses_data_authored_action_timing() -> None:
+    registry = get_action_registry()
+    registry.clear()
+    registry.load_document(
+        CombatActionsDocument(
+            actions=[
+                CombatActionDef(
+                    id="ranged_attack",
+                    action_range="ranged",
+                    calculator=CALCULATOR_OPPOSED_ATTACK,
+                    resolver=RESOLVER_OPPOSED_ATTACK,
+                    timing=CombatActionTiming(windup=1.5, recovery=4.0),
+                    stamina_delta=-3.0,
+                )
+            ]
+        )
+    )
+    try:
+        engine = _engine()
+        service = CombatService()
+
+        with Session(engine) as session:
+            ctx = _context(session)
+            service.shoot("goblin", ctx)
+            action = session.exec(select(CombatAction)).one()
+
+            assert action.resolve_at == 1.5
+            assert action.recovery_until == 5.5
+    finally:
+        register_builtin_combat_actions(registry)
 
 
 def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:

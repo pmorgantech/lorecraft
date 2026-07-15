@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.117.1 on combat; Sprints 1–86 implemented; Sprint 87 next)
+## Where things stand (2026-07-15, v0.118.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.117.1).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.118.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -200,7 +200,7 @@ combat teaching material.
 
 **Tier:** Tier 2 (all features/combat/).
 
-- [ ] 87.1 Data-driven action definitions (YAML) + registered calculators/resolvers
+- [x] 87.1 Data-driven action definitions (YAML) + registered calculators/resolvers
 - [ ] 87.2 Equipment traits + weapon/armor as effect descriptors
 - [ ] 87.3 Extended effect hooks (on_damage_received/on_movement/on_action_admission)
 - [ ] 87.4 Boss scripted phases overriding utility AI — registered Python resolver by id
@@ -209,6 +209,12 @@ combat teaching material.
 - [ ] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
 - [ ] 87.8 Live-tunable ruleset config (WorldClock pattern) — DB-backed, admin endpoint
 - [ ] 87.9 Combat tutorial/help completion — expand docs, in-game help, and browser guidance
+
+Sprint 87.1 completion note (v0.118.0): `world_content/combat_actions.yaml` now authors the core
+combat action ids, primary-channel timing, broad action range (`self`/`engaged`/`ranged`),
+stamina delta where applicable, tags, and registered calculator/resolver ids. The combat service
+loads those definitions at startup with built-in fallback for missing/malformed content. This
+intentionally avoids formation state, persistent near/far bands, and inline combat scripts.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 

@@ -278,6 +278,7 @@ def create_app(
             _load_mark_definitions(resolved_settings.marks_yaml_path)
             services.marks.register(bus)
         if services.combat is not None:
+            _load_combat_action_definitions(resolved_settings.combat_actions_yaml_path)
             services.combat.register(bus)
             register_combat_broadcasts(bus, manager)
         if "disciplines" in enabled_set:
@@ -879,6 +880,38 @@ def _load_forage_definitions(forage_yaml_path: str) -> None:
         registry.load_document(load_forage_yaml(forage_yaml_path))
     except Exception as exc:  # malformed forage content shouldn't crash boot
         log.warning("failed to load forage table from %s: %s", forage_yaml_path, exc)
+
+
+def _load_combat_action_definitions(combat_actions_yaml_path: str) -> None:
+    """Load combat action definitions into the in-memory registry at startup.
+
+    Missing or malformed content falls back to the built-in core actions so the
+    combat service can still resolve attack/defend/flee commands.
+    """
+    from pathlib import Path
+
+    from lorecraft.features.combat.definitions import (
+        get_action_registry,
+        load_combat_actions_yaml,
+        register_builtin_combat_actions,
+        register_standard_combat_components,
+    )
+
+    registry = get_action_registry()
+    register_standard_combat_components()
+    registry.clear()
+    if not Path(combat_actions_yaml_path).exists():
+        register_builtin_combat_actions(registry)
+        return
+    try:
+        registry.load_document(load_combat_actions_yaml(combat_actions_yaml_path))
+    except Exception as exc:  # malformed combat content shouldn't crash boot
+        register_builtin_combat_actions(registry)
+        log.warning(
+            "failed to load combat actions from %s: %s",
+            combat_actions_yaml_path,
+            exc,
+        )
 
 
 def _load_context_commands(game_engine: Engine) -> None:

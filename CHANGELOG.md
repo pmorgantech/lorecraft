@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.118.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.1 data-authored combat action definitions in
+  `world_content/combat_actions.yaml`, with registered calculator/resolver
+  identifiers, startup loading, built-in fallback definitions, and service
+  resolution driven by action metadata instead of a hardcoded timing table.
+
 ## [0.117.1] - 2026-07-15
 
 ### Changed

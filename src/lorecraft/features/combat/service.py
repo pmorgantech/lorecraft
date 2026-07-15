@@ -32,8 +32,14 @@ from lorecraft.features.combat.models import (
     CombatRelationship,
     CombatResolutionRecord,
 )
-from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.damage import armor_profile_for, weapon_profile_for
+from lorecraft.features.combat.definitions import (
+    RESOLVER_DEFEND,
+    RESOLVER_FLEE,
+    RESOLVER_OPPOSED_ATTACK,
+    CombatActionDef,
+    get_action_registry,
+)
 from lorecraft.features.combat.effects import (
     COMBAT_OFF_BALANCE,
     register_combat_effects,
@@ -43,8 +49,6 @@ from lorecraft.features.combat.policy import (
     ACTION_DEFEND,
     ACTION_FLEE,
     ACTION_RANGE_ENGAGED,
-    ACTION_RANGE_RANGED,
-    ACTION_RANGE_SELF,
     ACTION_RANGED_ATTACK,
     ENGAGEMENT_ENGAGED,
     ENGAGEMENT_GUARDING,
@@ -66,6 +70,7 @@ from lorecraft.features.combat.policy import (
     normalize_stance,
     stance_policy_for,
 )
+from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.resolution import (
     CombatResolution,
     CombatantSnapshot,
@@ -76,13 +81,6 @@ from lorecraft.features.combat.resolution import (
 from lorecraft.types import JsonObject, JsonValue
 
 COMBAT_RESOLVE_JOB = "combat.resolve_action"
-
-_ACTION_TIMING: dict[str, tuple[float, float]] = {
-    ACTION_BASIC_ATTACK: (0.25, 2.0),
-    ACTION_RANGED_ATTACK: (0.35, 2.2),
-    ACTION_DEFEND: (0.0, 1.2),
-    ACTION_FLEE: (0.35, 2.5),
-}
 
 _REACTION_RECOVERY = 1.5
 
@@ -356,10 +354,7 @@ class CombatService:
             meter_service=meter_service,
             effect_service=effect_service,
         )
-        if action.actor_type == "player" and action.action_key in {
-            ACTION_BASIC_ATTACK,
-            ACTION_RANGED_ATTACK,
-        }:
+        if action.actor_type == "player" and self._is_attack_action(action.action_key):
             self._maybe_schedule_npc_response(
                 session,
                 repo,
@@ -710,7 +705,9 @@ class CombatService:
         now: float,
         target: CombatParticipant | None = None,
     ) -> CombatAction:
-        windup, recovery = _ACTION_TIMING[action_key]
+        action_def = self._action_def_for(action_key)
+        windup = action_def.timing.windup
+        recovery = action_def.timing.recovery
         starts_at = max(now, actor.primary_ready_at)
         existing = repo.pending_primary_action(actor.id)
         if existing is not None:
@@ -760,29 +757,30 @@ class CombatService:
         *,
         rng,
     ) -> CombatResolution:
-        if action.action_key == ACTION_DEFEND:
+        action_def = self._action_def_for(action.action_key)
+        if action_def.resolver == RESOLVER_DEFEND:
             snapshot = self._snapshot(session, actor)
             return CombatResolution(
                 action_id=action.id,
-                action_key=ACTION_DEFEND,
+                action_key=action.action_key,
                 actor=snapshot,
                 target=None,
                 outcome="defended",
-                action_range=ACTION_RANGE_SELF,
-                stamina_delta=-2.0,
+                action_range=action_def.action_range,
+                stamina_delta=action_def.stamina_delta or 0.0,
                 explanation=f"{snapshot.name} braces defensively.",
                 random_trace={"actor_stance": snapshot.stance},
             )
-        if action.action_key == ACTION_FLEE:
+        if action_def.resolver == RESOLVER_FLEE:
             snapshot = self._snapshot(session, actor)
             stance = stance_policy_for(actor.stance)
             return CombatResolution(
                 action_id=action.id,
-                action_key=ACTION_FLEE,
+                action_key=action.action_key,
                 actor=snapshot,
                 target=None,
                 outcome="escaped",
-                action_range=ACTION_RANGE_SELF,
+                action_range=action_def.action_range,
                 stamina_delta=stance.flee_stamina_delta,
                 target_status="escaped",
                 explanation=f"{snapshot.name} breaks away from the fight.",
@@ -807,7 +805,18 @@ class CombatService:
                 explanation="The target is no longer available.",
             )
         original_target = target
-        action_range = self._action_range_for(action.action_key)
+        if action_def.resolver != RESOLVER_OPPOSED_ATTACK:
+            snapshot = self._snapshot(session, actor)
+            return CombatResolution(
+                action_id=action.id,
+                action_key=action.action_key,
+                actor=snapshot,
+                target=None,
+                outcome="cancelled",
+                explanation=f"Unsupported combat resolver: {action_def.resolver}.",
+                random_trace={"unsupported_resolver": action_def.resolver},
+            )
+        action_range = action_def.action_range
         intercept_eligible = action_range == ACTION_RANGE_ENGAGED
         interceptor = (
             self._guard_interceptor(repo, action.encounter_id, target)
@@ -832,6 +841,7 @@ class CombatService:
             armor=armor_profile_for(session, target.actor_type, target.actor_id),
             rng=rng,
             defended=defended,
+            stamina_delta=action_def.stamina_delta or 0.0,
         )
         if auto_reaction:
             resolution = replace(
@@ -1392,12 +1402,17 @@ class CombatService:
             and action.submitted_at >= since - 3.0
         )
 
-    def _action_range_for(self, action_key: str) -> str:
-        if action_key == ACTION_RANGED_ATTACK:
-            return ACTION_RANGE_RANGED
-        if action_key in {ACTION_DEFEND, ACTION_FLEE}:
-            return ACTION_RANGE_SELF
-        return ACTION_RANGE_ENGAGED
+    def _action_def_for(self, action_key: str) -> CombatActionDef:
+        action_def = get_action_registry().get(action_key)
+        if action_def is None:
+            raise ValueError(f"unknown combat action: {action_key!r}")
+        return action_def
+
+    def _is_attack_action(self, action_key: str) -> bool:
+        action_def = get_action_registry().get(action_key)
+        return bool(
+            action_def is not None and action_def.resolver == RESOLVER_OPPOSED_ATTACK
+        )
 
     def _add_contribution(self, actor: CombatParticipant, damage: float) -> None:
         contribution = dict(actor.contribution)

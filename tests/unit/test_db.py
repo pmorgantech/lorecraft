@@ -135,6 +135,12 @@ def test_load_settings_reads_sqlite_env(monkeypatch: pytest.MonkeyPatch) -> None
     assert settings.db_sqlite_synchronous == "FULL"
 
 
+def test_load_settings_reads_content_path_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LORECRAFT_COMBAT_ACTIONS_YAML_PATH", "/tmp/actions.yaml")
+    settings = load_settings()
+    assert settings.combat_actions_yaml_path == "/tmp/actions.yaml"
+
+
 def test_query_logging_writes_jsonl_without_parameter_values(tmp_path: Path) -> None:
     log_path = tmp_path / "queries.log"
     engine = create_game_engine(
