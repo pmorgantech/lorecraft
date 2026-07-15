@@ -7,19 +7,21 @@ from dataclasses import replace
 from uuid import uuid4
 
 from sqlalchemy.engine import Engine
-from sqlmodel import Session
+from sqlmodel import Session, col, select
 
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.models.world import NPC
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
+from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.services.scheduler import SchedulerEventContext
 from lorecraft.features.combat.models import (
@@ -31,10 +33,16 @@ from lorecraft.features.combat.models import (
 )
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.damage import armor_profile_for, weapon_profile_for
+from lorecraft.features.combat.effects import (
+    COMBAT_OFF_BALANCE,
+    register_combat_effects,
+)
 from lorecraft.features.combat.policy import (
     ENGAGEMENT_ENGAGED,
     ENGAGEMENT_GUARDING,
     ENGAGEMENT_UNENGAGED,
+    OFF_BALANCE_DEFENSE_PENALTY,
+    OFF_BALANCE_DURATION,
     REACTION_NEVER,
     STATUS_ACTIVE,
     STATUS_ESCAPED,
@@ -204,6 +212,7 @@ class CombatService:
         bus: EventBus | None = None,
         meter_service: MeterService | None = None,
         audit_repo: AuditRepo | None = None,
+        effect_service: EffectService | None = None,
     ) -> CombatAction | None:
         repo = CombatRepo(session)
         action = repo.action(action_id)
@@ -248,6 +257,7 @@ class CombatService:
             return action
 
         meter_service = meter_service or MeterService(_session_engine(session), rng)
+        effect_service = effect_service or EffectService(_session_engine(session), rng)
         resolution = self._calculate_resolution(session, repo, action, actor, rng=rng)
         record = self._apply_resolution(
             session,
@@ -258,6 +268,7 @@ class CombatService:
             resolution,
             current_epoch=current_epoch,
             meter_service=meter_service,
+            effect_service=effect_service,
         )
         if action.actor_type == "player" and action.action_key == "basic_attack":
             self._maybe_schedule_npc_response(
@@ -308,6 +319,7 @@ class CombatService:
                     audit_repo=AuditRepo(audit_session)
                     if audit_session is not None
                     else None,
+                    effect_service=EffectService(ctx.game_engine, ctx.rng),
                 )
                 session.commit()
                 if audit_session is not None:
@@ -774,6 +786,7 @@ class CombatService:
             record_id=None,
             state_changes=[],
             position_changes=[],
+            effect_changes=[],
         )
         record = self._record_resolution(
             repo,
@@ -788,6 +801,7 @@ class CombatService:
             record_id=record.id,
             state_changes=[],
             position_changes=[],
+            effect_changes=[],
         )
         record.payload = action.outcome
         repo.add(record)
@@ -807,6 +821,7 @@ class CombatService:
         *,
         current_epoch: float,
         meter_service: MeterService,
+        effect_service: EffectService,
     ) -> CombatResolutionRecord:
         action.state = "resolved"
         encounter.event_sequence += 1
@@ -845,6 +860,7 @@ class CombatService:
         target = self._resolution_target_participant(
             repo, encounter.id, action, resolution
         )
+        effect_changes: list[JsonValue] = []
         if target is not None and resolution.damage > 0:
             hp = meter_service.get(session, target.actor_type, target.actor_id, "hp")
             change = meter_service.adjust(session, hp, -resolution.damage)
@@ -865,6 +881,16 @@ class CombatService:
                     if player is not None:
                         player.active_combat_session_id = None
                         session.add(player)
+            elif resolution.outcome == "strong_hit":
+                effect_changes.append(
+                    self._apply_off_balance_effect(
+                        session,
+                        effect_service,
+                        target,
+                        action,
+                        current_epoch=current_epoch,
+                    )
+                )
         position_changes.extend(self._refresh_positions(repo, encounter.id))
         encounter.last_hostile_action_at = current_epoch
         payload = self._resolution_payload(
@@ -872,6 +898,7 @@ class CombatService:
             record_id=None,
             state_changes=state_changes,
             position_changes=position_changes,
+            effect_changes=effect_changes,
         )
         action.outcome = payload
         record = self._record_resolution(
@@ -887,6 +914,7 @@ class CombatService:
             record_id=record.id,
             state_changes=state_changes,
             position_changes=position_changes,
+            effect_changes=effect_changes,
         )
         record.payload = action.outcome
         repo.add(record)
@@ -1030,10 +1058,88 @@ class CombatService:
             )
         return changes
 
+    def _active_combat_effects(
+        self, session: Session, participant: CombatParticipant
+    ) -> list[ActiveEffect]:
+        statement = (
+            select(ActiveEffect)
+            .where(ActiveEffect.entity_type == participant.actor_type)
+            .where(ActiveEffect.entity_id == participant.actor_id)
+            .where(col(ActiveEffect.effect_key).like("combat.%"))
+            .order_by(col(ActiveEffect.applied_at_epoch))
+        )
+        return list(session.exec(statement).all())
+
+    def _effect_defense_bonus(self, effect: ActiveEffect) -> int:
+        if effect.effect_key != COMBAT_OFF_BALANCE:
+            return 0
+        potency = effect.payload.get("potency", OFF_BALANCE_DEFENSE_PENALTY)
+        return int(potency) if isinstance(potency, int | float | str) else 0
+
+    def _apply_off_balance_effect(
+        self,
+        session: Session,
+        effect_service: EffectService,
+        target: CombatParticipant,
+        action: CombatAction,
+        *,
+        current_epoch: float,
+    ) -> JsonObject:
+        register_combat_effects()
+        existing = next(
+            (
+                effect
+                for effect in self._active_combat_effects(session, target)
+                if effect.effect_key == COMBAT_OFF_BALANCE
+            ),
+            None,
+        )
+        if existing is not None:
+            return {
+                "effect_id": existing.id,
+                "effect_key": existing.effect_key,
+                "actor_type": target.actor_type,
+                "actor_id": target.actor_id,
+                "applied_at": existing.applied_at_epoch,
+                "expires_at": existing.expires_at_epoch,
+                "source_action_id": action.id,
+                "already_active": True,
+            }
+        effect = effect_service.apply(
+            session,
+            target.actor_type,
+            target.actor_id,
+            COMBAT_OFF_BALANCE,
+            duration_ticks=OFF_BALANCE_DURATION,
+            payload={
+                "source_actor_type": action.actor_type,
+                "source_actor_id": action.actor_id,
+                "source_action_id": action.id,
+                "tags": ["combat", "control"],
+                "potency": OFF_BALANCE_DEFENSE_PENALTY,
+                "state": "active",
+            },
+            clock_epoch=current_epoch,
+        )
+        return {
+            "effect_id": effect.id,
+            "effect_key": effect.effect_key,
+            "actor_type": target.actor_type,
+            "actor_id": target.actor_id,
+            "applied_at": effect.applied_at_epoch,
+            "expires_at": effect.expires_at_epoch,
+            "source_action_id": action.id,
+        }
+
     def _snapshot(
         self, session: Session, participant: CombatParticipant
     ) -> CombatantSnapshot:
         stance = stance_policy_for(participant.stance)
+        active_effects = self._active_combat_effects(session, participant)
+        effect_defense_bonus = sum(
+            self._effect_defense_bonus(effect) for effect in active_effects
+        )
+        active_effect_keys = tuple(effect.effect_key for effect in active_effects)
         if participant.actor_type == "player":
             player = session.get(Player, participant.actor_id)
             stats = session.get(PlayerStats, participant.actor_id)
@@ -1043,8 +1149,9 @@ class CombatService:
                 stats,
                 stance=participant.stance,
                 attack_bonus=stance.attack_bonus,
-                defense_bonus=stance.defense_bonus,
+                defense_bonus=stance.defense_bonus + effect_defense_bonus,
                 damage_multiplier=stance.damage_multiplier,
+                active_effects=active_effect_keys,
             )
         npc = session.get(NPC, participant.actor_id)
         if npc is None:
@@ -1056,15 +1163,17 @@ class CombatService:
                 agility=8,
                 stance=participant.stance,
                 attack_bonus=stance.attack_bonus,
-                defense_bonus=stance.defense_bonus,
+                defense_bonus=stance.defense_bonus + effect_defense_bonus,
                 damage_multiplier=stance.damage_multiplier,
+                active_effects=active_effect_keys,
             )
         return npc_snapshot(
             npc,
             stance=participant.stance,
             attack_bonus=stance.attack_bonus,
-            defense_bonus=stance.defense_bonus,
+            defense_bonus=stance.defense_bonus + effect_defense_bonus,
             damage_multiplier=stance.damage_multiplier,
+            active_effects=active_effect_keys,
         )
 
     def _has_recent_defend(
@@ -1215,6 +1324,15 @@ class CombatService:
                     "reaction_ready_at": participant.reaction_ready_at,
                     "primary_ready_at": participant.primary_ready_at,
                     "queued_action_id": participant.queued_action_id,
+                    "active_effects": [
+                        {
+                            "id": effect.id,
+                            "effect_key": effect.effect_key,
+                            "expires_at": effect.expires_at_epoch,
+                            "payload": effect.payload,
+                        }
+                        for effect in self._active_combat_effects(session, participant)
+                    ],
                     "hp": self._meter_state(hp),
                     "stamina": self._meter_state(stamina),
                 }
@@ -1253,6 +1371,7 @@ class CombatService:
         record_id: str | None,
         state_changes: list[JsonValue],
         position_changes: list[JsonValue],
+        effect_changes: list[JsonValue],
     ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
@@ -1263,6 +1382,7 @@ class CombatService:
             "actor_stance": resolution.actor.stance,
             "state_changes": state_changes,
             "position_changes": position_changes,
+            "effect_changes": effect_changes,
         }
         if record_id is not None:
             payload["resolution_record_id"] = record_id

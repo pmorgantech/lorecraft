@@ -934,6 +934,11 @@ resolves, the action state becomes `interrupted` and a resolution record is stil
 interrupt reason trace. Builders and admin tools can distinguish interruption from replacement or
 manual cancellation.
 
+Combat status effects reuse the engine `ActiveEffect` lifecycle. The first status, `combat.off_balance`,
+is applied by strong hits with game-time expiry and source metadata in payload, contributes a
+combat defense modifier while active, appears in structured `active_effects`, and expires through
+the existing `EffectService` sweep.
+
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
 ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.

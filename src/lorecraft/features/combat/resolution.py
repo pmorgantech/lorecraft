@@ -26,6 +26,7 @@ class CombatantSnapshot:
     attack_bonus: float = 0.0
     defense_bonus: int = 0
     damage_multiplier: float = 1.0
+    active_effects: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ def player_snapshot(
     attack_bonus: float = 0.0,
     defense_bonus: int = 0,
     damage_multiplier: float = 1.0,
+    active_effects: tuple[str, ...] = (),
 ) -> CombatantSnapshot:
     return CombatantSnapshot(
         actor_type="player",
@@ -63,6 +65,7 @@ def player_snapshot(
         attack_bonus=attack_bonus,
         defense_bonus=defense_bonus,
         damage_multiplier=damage_multiplier,
+        active_effects=active_effects,
     )
 
 
@@ -73,6 +76,7 @@ def npc_snapshot(
     attack_bonus: float = 0.0,
     defense_bonus: int = 0,
     damage_multiplier: float = 1.0,
+    active_effects: tuple[str, ...] = (),
 ) -> CombatantSnapshot:
     return CombatantSnapshot(
         actor_type="npc",
@@ -84,6 +88,7 @@ def npc_snapshot(
         attack_bonus=attack_bonus,
         defense_bonus=defense_bonus,
         damage_multiplier=damage_multiplier,
+        active_effects=active_effects,
     )
 
 
@@ -142,6 +147,8 @@ def resolve_basic_attack(
             "target_stance": target.stance,
             "actor_stance_attack_bonus": actor.attack_bonus,
             "target_stance_defense_bonus": target.defense_bonus,
+            "actor_active_effects": list(actor.active_effects),
+            "target_active_effects": list(target.active_effects),
         },
         damage_trace={
             **damage.trace,

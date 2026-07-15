@@ -7,6 +7,7 @@ from sqlmodel import Session
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.models.player import PlayerStats
+from lorecraft.features.combat.effects import register_combat_effects
 from lorecraft.features.manifest import FeatureManifest, register_feature
 from lorecraft.state import AppState
 
@@ -22,6 +23,7 @@ def _stamina_base_maximum(entity_type: str, entity_id: str, session: Session) ->
 
 def register_combat_feature(state: AppState) -> None:
     del state
+    register_combat_effects()
     get_meter_registry().register(
         MeterDef(
             key="stamina",

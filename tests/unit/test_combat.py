@@ -19,6 +19,7 @@ from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.models.world import Item, NPC, Room, WorldClock
@@ -223,10 +224,11 @@ def test_aggressive_stance_feeds_attack_resolution_trace() -> None:
         action = session.exec(
             select(CombatAction).where(CombatAction.actor_type == "player")
         ).one()
+        action_id = action.id
 
         service.resolve_action(
             session,
-            action.id,
+            action_id,
             rng=GameRng(seed=1),
             current_epoch=10.0,
             meter_service=ctx.meters,
@@ -489,6 +491,95 @@ def test_inactive_actor_interrupts_pending_windup_with_record() -> None:
         assert action.outcome["resolution_record_id"] == record.id
         assert record.outcome == "interrupted"
         assert record.random_trace["interrupt_reason"] == "actor_status:downed"
+
+
+def test_strong_hit_applies_off_balance_effect_and_expiry_hook_removes_it() -> None:
+    engine = _engine()
+    bus = EventBus()
+    effect_service = EffectService(engine, GameRng(seed=1))
+    effect_service.register(bus)
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session, bus=bus)
+        stats = session.get(PlayerStats, "player-1")
+        assert stats is not None
+        stats.strength = 120
+        session.add(stats)
+        goblin = session.get(NPC, "goblin")
+        assert goblin is not None
+        goblin.max_hp = 500
+        session.add(goblin)
+        service.attack("goblin", ctx)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+            effect_service=effect_service,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        effect = session.exec(select(ActiveEffect)).one()
+        record = session.exec(select(CombatResolutionRecord)).one()
+
+        assert effect.effect_key == "combat.off_balance"
+        assert effect.entity_type == "npc"
+        assert effect.entity_id == "goblin"
+        assert effect.applied_at_epoch == 10.0
+        assert effect.expires_at_epoch == 16.0
+        assert effect.payload["source_action_id"] == action_id
+        assert record.payload["effect_changes"][0]["effect_id"] == effect.id
+        assert record.random_trace["target_active_effects"] == []
+
+    with Session(engine) as session:
+        encounter = session.exec(select(CombatEncounter)).one()
+        player = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        action = service._submit_action(
+            repo=CombatRepo(session),
+            session=session,
+            encounter=encounter,
+            actor=player,
+            action_key="basic_attack",
+            now=12.0,
+            target=goblin,
+        )
+        second_action_id = action.id
+        service.resolve_action(
+            session,
+            second_action_id,
+            rng=GameRng(seed=1),
+            current_epoch=12.0,
+            meter_service=ctx_meters(engine),
+            effect_service=effect_service,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == second_action_id
+            )
+        ).one()
+        assert record.random_trace["target_active_effects"] == ["combat.off_balance"]
+        assert record.random_trace["target_stance_defense_bonus"] == -3
+
+    bus.emit(Event(GameEvent.TIME_ADVANCED, {"current_epoch": 17.0}), ctx=None)
+
+    with Session(engine) as session:
+        assert session.exec(select(ActiveEffect)).all() == []
 
 
 def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:

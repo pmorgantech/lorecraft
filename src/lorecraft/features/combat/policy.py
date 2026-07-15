@@ -33,6 +33,9 @@ VALID_REACTION_POLICIES = (
     REACTION_NEVER,
 )
 
+OFF_BALANCE_DURATION = 6.0
+OFF_BALANCE_DEFENSE_PENALTY = -3
+
 
 @dataclass(frozen=True)
 class StancePolicy:

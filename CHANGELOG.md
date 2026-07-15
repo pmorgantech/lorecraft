@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.114.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.5 combat status effects on the engine `ActiveEffect`
+  lifecycle, including non-stacking `combat.off_balance`, game-time expiry,
+  structured effect changes, active-effect combat state, and resolver traces.
+
 ## [0.113.0] - 2026-07-15
 
 ### Added

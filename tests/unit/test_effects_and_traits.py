@@ -19,6 +19,10 @@ from lorecraft.engine.game.traits import TraitDef
 from lorecraft.engine.game.traits import get_registry as get_trait_registry
 from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.services.effects import EffectService
+from lorecraft.features.traits.sources import register as _register_trait_sources
+
+
+_register_trait_sources()
 
 
 def _make_engine():
@@ -300,8 +304,8 @@ class TestTraitModifiers:
 def test_active_effect_trait_source_and_modifier_source_are_registered_by_default() -> (
     None
 ):
-    """Confirms game/traits.py and game/effects.py's module-load registrations
-    happened (both files must have been imported at least once)."""
+    """Confirms the feature-owned active-effect trait source and modifier sources
+    are registered for effect/trait integration."""
     from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 
     assert len(traits_module.get_registry()._sources) >= 1  # type: ignore[attr-defined]

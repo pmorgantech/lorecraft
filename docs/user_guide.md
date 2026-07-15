@@ -563,7 +563,8 @@ active combat and any queued combat action for them is cancelled. Stances persis
 encounter and trade offense, defense, damage, and escape stamina cost. Reaction policy controls
 whether the character automatically spends a bounded defensive reaction when attacked. If a
 character becomes unable to act before a committed wind-up resolves, that action is interrupted
-instead of taking effect.
+instead of taking effect. Some strong hits can apply short-lived combat status effects that expire
+on game time.
 
 ## Getting Help In-Game
 
