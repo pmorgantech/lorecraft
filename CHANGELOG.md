@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.113.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.4 wind-up interruption records so pending combat actions
+  whose actor is no longer active resolve to an explicit `interrupted` outcome
+  with audit and `CombatResolutionRecord` traces.
+
 ## [0.112.0] - 2026-07-15
 
 ### Added

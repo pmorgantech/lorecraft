@@ -561,7 +561,9 @@ older pending one. Combat uses health and stamina meters. At 0 HP, player charac
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
 active combat and any queued combat action for them is cancelled. Stances persist for the
 encounter and trade offense, defense, damage, and escape stamina cost. Reaction policy controls
-whether the character automatically spends a bounded defensive reaction when attacked.
+whether the character automatically spends a bounded defensive reaction when attacked. If a
+character becomes unable to act before a committed wind-up resolves, that action is interrupted
+instead of taking effect.
 
 ## Getting Help In-Game
 

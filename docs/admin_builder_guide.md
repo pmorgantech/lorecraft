@@ -929,6 +929,11 @@ sets the stored reaction policy; an incoming basic attack may consume one auto-b
 then advances `reaction_ready_at`. The trace records whether the reaction fired, so later audit UI
 can explain the defense bonus without replaying hidden behavior.
 
+Wind-up interruption is also explicit: if an actor is no longer active when a pending action
+resolves, the action state becomes `interrupted` and a resolution record is still written with an
+interrupt reason trace. Builders and admin tools can distinguish interruption from replacement or
+manual cancellation.
+
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
 ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.

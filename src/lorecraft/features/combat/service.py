@@ -207,7 +207,7 @@ class CombatService:
     ) -> CombatAction | None:
         repo = CombatRepo(session)
         action = repo.action(action_id)
-        if action is None or action.state == "resolved":
+        if action is None or action.state in {"resolved", "interrupted"}:
             return action
         if action.state == "cancelled":
             return action
@@ -218,8 +218,33 @@ class CombatService:
             repo.add(action)
             return action
         if actor.status != STATUS_ACTIVE:
-            action.state = "cancelled"
-            repo.add(action)
+            resolution = self._interrupted_resolution(
+                session,
+                repo,
+                action,
+                actor,
+                reason=f"actor_status:{actor.status}",
+            )
+            record = self._apply_interruption(
+                repo,
+                encounter,
+                action,
+                actor,
+                resolution,
+                current_epoch=current_epoch,
+            )
+            self._record_audit_resolution(
+                audit_repo,
+                encounter,
+                action,
+                resolution,
+                record,
+                current_epoch=current_epoch,
+            )
+            if bus is not None:
+                self._emit_resolution_events(
+                    bus, repo, encounter, resolution, action, record
+                )
             return action
 
         meter_service = meter_service or MeterService(_session_engine(session), rng)
@@ -703,6 +728,72 @@ class CombatService:
             payload=payload,
         )
         repo.add(record)
+        return record
+
+    def _interrupted_resolution(
+        self,
+        session: Session,
+        repo: CombatRepo,
+        action: CombatAction,
+        actor: CombatParticipant,
+        *,
+        reason: str,
+    ) -> CombatResolution:
+        target = (
+            repo.participant(action.target_participant_id)
+            if action.target_participant_id is not None
+            else None
+        )
+        return CombatResolution(
+            action_id=action.id,
+            action_key=action.action_key,
+            actor=self._snapshot(session, actor),
+            target=self._snapshot(session, target) if target is not None else None,
+            outcome="interrupted",
+            explanation="The action is interrupted before it resolves.",
+            random_trace={"interrupt_reason": reason},
+        )
+
+    def _apply_interruption(
+        self,
+        repo: CombatRepo,
+        encounter: CombatEncounter,
+        action: CombatAction,
+        actor: CombatParticipant,
+        resolution: CombatResolution,
+        *,
+        current_epoch: float,
+    ) -> CombatResolutionRecord:
+        action.state = "interrupted"
+        encounter.event_sequence += 1
+        action.random_trace = resolution.random_trace or {}
+        if actor.queued_action_id == action.id:
+            actor.queued_action_id = None
+        action.outcome = self._resolution_payload(
+            resolution,
+            record_id=None,
+            state_changes=[],
+            position_changes=[],
+        )
+        record = self._record_resolution(
+            repo,
+            encounter,
+            action,
+            resolution,
+            resolved_at=current_epoch,
+            payload=action.outcome,
+        )
+        action.outcome = self._resolution_payload(
+            resolution,
+            record_id=record.id,
+            state_changes=[],
+            position_changes=[],
+        )
+        record.payload = action.outcome
+        repo.add(record)
+        repo.add(actor)
+        repo.add(action)
+        repo.add(encounter)
         return record
 
     def _apply_resolution(

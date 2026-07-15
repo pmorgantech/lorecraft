@@ -455,6 +455,42 @@ def test_reaction_never_policy_disables_auto_reaction() -> None:
         assert record.random_trace["auto_reaction_used"] is False
 
 
+def test_inactive_actor_interrupts_pending_windup_with_record() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        actor = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        actor.status = "downed"
+        session.add(actor)
+
+        service.resolve_action(
+            session,
+            action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        action = session.exec(select(CombatAction)).one()
+        record = session.exec(select(CombatResolutionRecord)).one()
+
+        assert action.state == "interrupted"
+        assert action.outcome["outcome"] == "interrupted"
+        assert action.outcome["resolution_record_id"] == record.id
+        assert record.outcome == "interrupted"
+        assert record.random_trace["interrupt_reason"] == "actor_status:downed"
+
+
 def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:
     engine = _engine()
     service = CombatService()
