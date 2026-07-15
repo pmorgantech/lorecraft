@@ -123,6 +123,19 @@ class CombatRepo:
         )
         return self.session.exec(statement).all()
 
+    def guarding_relationship_for_target(
+        self, encounter_id: str, target_participant_id: str
+    ) -> CombatRelationship | None:
+        statement = (
+            select(CombatRelationship)
+            .where(CombatRelationship.encounter_id == encounter_id)
+            .where(CombatRelationship.target_participant_id == target_participant_id)
+            .where(CombatRelationship.hostility == "supportive")
+            .where(CombatRelationship.engagement == "guarding")
+            .order_by(col(CombatRelationship.source_participant_id))
+        )
+        return self.session.exec(statement).first()
+
     def pending_primary_action(self, participant_id: str) -> CombatAction | None:
         statement = (
             select(CombatAction)

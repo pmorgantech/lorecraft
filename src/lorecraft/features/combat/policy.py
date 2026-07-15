@@ -11,6 +11,7 @@ STATUS_ESCAPED = "escaped"
 
 ENGAGEMENT_ENGAGED = "engaged"
 ENGAGEMENT_UNENGAGED = "unengaged"
+ENGAGEMENT_GUARDING = "guarding"
 
 STANCE_BALANCED = "balanced"
 STANCE_AGGRESSIVE = "aggressive"

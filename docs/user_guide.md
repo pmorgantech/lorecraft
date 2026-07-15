@@ -550,6 +550,7 @@ a short wind-up and recovery window. The first implemented PvE commands are:
 ```
 attack <target>    — start or continue an encounter with a nearby NPC
 defend             — brace with your next primary action
+guard [ally]       — defend yourself or intercept attacks against an ally
 flee               — look for an opening to leave the encounter
 stance <stance>    — switch to balanced, aggressive, defensive, or mobile
 ```

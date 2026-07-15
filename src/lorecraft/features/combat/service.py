@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 from uuid import uuid4
 
 from sqlalchemy.engine import Engine
@@ -32,6 +33,7 @@ from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.damage import armor_profile_for, weapon_profile_for
 from lorecraft.features.combat.policy import (
     ENGAGEMENT_ENGAGED,
+    ENGAGEMENT_GUARDING,
     ENGAGEMENT_UNENGAGED,
     STATUS_ACTIVE,
     STATUS_ESCAPED,
@@ -106,6 +108,31 @@ class CombatService:
             now=self._now(ctx),
         )
         ctx.say("You shift into a guarded posture.")
+        self._push_combat_update(ctx, encounter.id)
+
+    def guard(self, noun: str | None, ctx: GameContext) -> None:
+        encounter, actor = self._active_player_participation(ctx)
+        if encounter is None or actor is None:
+            ctx.say("You aren't in combat.", MessageType.WARNING)
+            return
+        repo = CombatRepo(ctx.session)
+        target = self._resolve_guard_target(
+            ctx.session, repo, encounter.id, actor, noun
+        )
+        if target is None:
+            ctx.say("Guard whom?", MessageType.WARNING)
+            return
+        self._set_guarding_edge(repo, encounter.id, actor.id, target.id)
+        self._submit_action(
+            repo=repo,
+            session=ctx.session,
+            encounter=encounter,
+            actor=actor,
+            action_key="defend",
+            now=self._now(ctx),
+        )
+        target_name = self._participant_name(ctx.session, target)
+        ctx.say(f"You move to guard {target_name}.")
         self._push_combat_update(ctx, encounter.id)
 
     def flee(self, noun: str | None, ctx: GameContext) -> None:
@@ -314,6 +341,80 @@ class CombatService:
                 relationship.engagement = ENGAGEMENT_ENGAGED
             repo.add(relationship)
 
+    def _set_guarding_edge(
+        self,
+        repo: CombatRepo,
+        encounter_id: str,
+        guardian_id: str,
+        target_id: str,
+    ) -> None:
+        for relationship in repo.relationships_for_encounter(encounter_id):
+            if (
+                relationship.source_participant_id == guardian_id
+                and relationship.engagement == ENGAGEMENT_GUARDING
+            ):
+                relationship.engagement = ENGAGEMENT_UNENGAGED
+                repo.add(relationship)
+        relationship = repo.relationship_between(encounter_id, guardian_id, target_id)
+        if relationship is None:
+            relationship = CombatRelationship(
+                id=str(uuid4()),
+                encounter_id=encounter_id,
+                source_participant_id=guardian_id,
+                target_participant_id=target_id,
+                hostility="supportive",
+                engagement=ENGAGEMENT_GUARDING,
+            )
+        else:
+            relationship.hostility = "supportive"
+            relationship.engagement = ENGAGEMENT_GUARDING
+        repo.add(relationship)
+
+    def _resolve_guard_target(
+        self,
+        session: Session,
+        repo: CombatRepo,
+        encounter_id: str,
+        actor: CombatParticipant,
+        noun: str | None,
+    ) -> CombatParticipant | None:
+        if noun is None or noun.strip().lower() in {"", "me", "self"}:
+            return actor
+        needle = noun.strip().lower()
+        for participant in repo.participants(encounter_id):
+            if (
+                participant.status != STATUS_ACTIVE
+                or participant.side_id != actor.side_id
+            ):
+                continue
+            if participant.actor_id.lower() == needle:
+                return participant
+            if self._participant_name(session, participant).lower() == needle:
+                return participant
+        return None
+
+    def _guard_interceptor(
+        self, repo: CombatRepo, encounter_id: str, target: CombatParticipant
+    ) -> CombatParticipant | None:
+        relationship = repo.guarding_relationship_for_target(encounter_id, target.id)
+        if relationship is None or relationship.source_participant_id == target.id:
+            return None
+        guardian = repo.participant(relationship.source_participant_id)
+        if guardian is None:
+            return None
+        if guardian.status != STATUS_ACTIVE or guardian.side_id != target.side_id:
+            return None
+        return guardian
+
+    def _participant_name(
+        self, session: Session, participant: CombatParticipant
+    ) -> str:
+        if participant.actor_type == "player":
+            player = session.get(Player, participant.actor_id)
+            return player.username if player is not None else participant.actor_id
+        npc = session.get(NPC, participant.actor_id)
+        return npc.name if npc is not None else participant.actor_id
+
     def _active_player_participation(
         self, ctx: GameContext
     ) -> tuple[CombatEncounter | None, CombatParticipant | None]:
@@ -431,15 +532,48 @@ class CombatService:
                 outcome="cancelled",
                 explanation="The target is no longer available.",
             )
-        defended = self._has_recent_defend(repo, target.id, action.submitted_at)
-        return resolve_basic_attack(
+        original_target = target
+        interceptor = self._guard_interceptor(repo, action.encounter_id, target)
+        if interceptor is not None:
+            target = interceptor
+        defended = self._has_recent_defend(repo, target.id, action.submitted_at) or (
+            interceptor is not None
+        )
+        original_target_snapshot = self._snapshot(session, original_target)
+        target_snapshot = self._snapshot(session, target)
+        resolution = resolve_basic_attack(
             action_id=action.id,
             actor=self._snapshot(session, actor),
-            target=self._snapshot(session, target),
+            target=target_snapshot,
             weapon=weapon_profile_for(session, actor.actor_type, actor.actor_id),
             armor=armor_profile_for(session, target.actor_type, target.actor_id),
             rng=rng,
             defended=defended,
+        )
+        if interceptor is None:
+            return resolution
+        random_trace = {
+            **(resolution.random_trace or {}),
+            "intercepted": True,
+            "original_target_participant_id": original_target.id,
+            "original_target_id": original_target.actor_id,
+            "interceptor_participant_id": interceptor.id,
+            "interceptor_id": interceptor.actor_id,
+        }
+        damage_trace = {
+            **(resolution.damage_trace or {}),
+            "intercepted": True,
+            "original_target_id": original_target.actor_id,
+            "interceptor_id": interceptor.actor_id,
+        }
+        return replace(
+            resolution,
+            explanation=(
+                f"{target_snapshot.name} intercepts for "
+                f"{original_target_snapshot.name}. {resolution.explanation}"
+            ),
+            random_trace=random_trace,
+            damage_trace=damage_trace,
         )
 
     def _record_resolution(
@@ -779,6 +913,16 @@ class CombatService:
             if action.actor_type == "player"
             else GameEvent.NPC_ATTACKED
         )
+        target_id = (
+            resolution.target.actor_id
+            if resolution.target is not None
+            else action.target_id
+        )
+        target_type = (
+            resolution.target.actor_type
+            if resolution.target is not None
+            else action.target_type
+        )
         audit_repo.record(
             AuditEvent(
                 transaction_id=f"combat-action:{action.id}:resolve",
@@ -787,7 +931,7 @@ class CombatService:
                 actor_id=action.actor_id,
                 event_type=event_type.value,
                 source_type=TransactionSource.SCHEDULER.value,
-                target_id=action.target_id,
+                target_id=target_id,
                 room_id=encounter.location_id,
                 game_time=current_epoch,
                 real_time=time.time(),
@@ -801,8 +945,8 @@ class CombatService:
                     "resolution_record_id": record.id,
                     "actor_type": action.actor_type,
                     "actor_id": action.actor_id,
-                    "target_type": action.target_type,
-                    "target_id": action.target_id,
+                    "target_type": target_type,
+                    "target_id": target_id,
                     "action_key": action.action_key,
                     "outcome": resolution.outcome,
                     "damage": resolution.damage,
@@ -827,6 +971,16 @@ class CombatService:
             if action.actor_type == "player"
             else GameEvent.NPC_ATTACKED
         )
+        target_id = (
+            resolution.target.actor_id
+            if resolution.target is not None
+            else action.target_id
+        )
+        target_type = (
+            resolution.target.actor_type
+            if resolution.target is not None
+            else action.target_type
+        )
         bus.emit(
             Event(
                 event_type,
@@ -835,8 +989,8 @@ class CombatService:
                     "action_id": action.id,
                     "actor_type": action.actor_type,
                     "actor_id": action.actor_id,
-                    "target_type": action.target_type,
-                    "target_id": action.target_id,
+                    "target_type": target_type,
+                    "target_id": target_id,
                     "outcome": resolution.outcome,
                     "damage": resolution.damage,
                     "resolution_record_id": record.id,

@@ -919,6 +919,11 @@ The first tactical-depth layer adds persistent encounter stances: `balanced`, `a
 immutable resolver snapshots, and appears in resolution random/damage traces so later explanation
 or audit UI can show which tactical trade-off affected a result.
 
+Guarding uses the existing relationship-edge model: `guard <ally>` writes a supportive `guarding`
+edge from guardian to protected participant, queues a defensive primary action, and lets the
+guardian become the effective target when intercepting an attack. Resolution traces keep both the
+original target and interceptor ids.
+
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
 ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.

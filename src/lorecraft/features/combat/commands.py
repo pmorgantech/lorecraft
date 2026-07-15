@@ -22,12 +22,19 @@ def register_combat_commands(
 
     @registry.register(
         "defend",
-        "guard",
         conditions=["in_combat"],
         help="defend — spend your next action bracing against attacks",
     )
     def defend_command(noun: str | None, ctx: GameContext) -> None:
         service.defend(noun, ctx)
+
+    @registry.register(
+        "guard",
+        conditions=["in_combat"],
+        help="guard [ally] — defend yourself or intercept attacks against an ally",
+    )
+    def guard_command(noun: str | None, ctx: GameContext) -> None:
+        service.guard(noun, ctx)
 
     @registry.register(
         "flee",

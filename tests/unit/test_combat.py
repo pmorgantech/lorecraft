@@ -37,6 +37,7 @@ from lorecraft.features.combat.models import (
     CombatAction,
     CombatEncounter,
     CombatParticipant,
+    CombatRelationship,
     CombatResolutionRecord,
 )
 from lorecraft.features.combat.broadcast import broadcast_combat_resolution
@@ -46,6 +47,7 @@ from lorecraft.features.combat.damage import (
     armor_profile_for,
     weapon_profile_for,
 )
+from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
 
 
@@ -281,6 +283,68 @@ def test_mobile_stance_reduces_flee_stamina_cost() -> None:
         assert record.random_trace["stance_flee_stamina_delta"] == -4.0
 
 
+def test_guarding_ally_creates_intercept_edge_and_redirects_attack() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        encounter = session.exec(select(CombatEncounter)).one()
+        guardian = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        ally = _add_ally_participant(session, encounter, guardian.side_id)
+
+        service.guard("ally", ctx)
+        guard_edge = session.exec(
+            select(CombatRelationship)
+            .where(CombatRelationship.source_participant_id == guardian.id)
+            .where(CombatRelationship.target_participant_id == ally.id)
+        ).one()
+        guard_edge_id = guard_edge.id
+        npc_attack = service._submit_action(
+            repo=CombatRepo(session),
+            session=session,
+            encounter=encounter,
+            actor=goblin,
+            action_key="basic_attack",
+            now=0.0,
+            target=ally,
+        )
+        npc_attack_id = npc_attack.id
+
+        service.resolve_action(
+            session,
+            npc_attack_id,
+            rng=GameRng(seed=2),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        npc_attack = session.get(CombatAction, npc_attack_id)
+        guard_edge = session.get(CombatRelationship, guard_edge_id)
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == npc_attack_id
+            )
+        ).one()
+
+        assert guard_edge is not None
+        assert guard_edge.engagement == "guarding"
+        assert npc_attack is not None
+        assert npc_attack.outcome["target_id"] == "player-1"
+        assert record.target_id == "player-1"
+        assert record.random_trace["intercepted"] is True
+        assert record.random_trace["original_target_id"] == "ally"
+        assert record.random_trace["interceptor_id"] == "player-1"
+
+
 def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:
     engine = _engine()
     service = CombatService()
@@ -500,6 +564,39 @@ def test_combat_broadcast_sends_prose_and_structured_update() -> None:
             },
         ),
     ]
+
+
+def _add_ally_participant(
+    session: Session, encounter: CombatEncounter, side_id: str
+) -> CombatParticipant:
+    player = Player(
+        id="ally",
+        username="ally",
+        current_room_id="arena",
+        respawn_room_id="arena",
+    )
+    session.add(player)
+    session.add(
+        PlayerStats(
+            player_id=player.id,
+            strength=10,
+            agility=10,
+            max_hp=100,
+        )
+    )
+    participant = CombatParticipant(
+        id="ally-participant",
+        encounter_id=encounter.id,
+        actor_type="player",
+        actor_id=player.id,
+        side_id=side_id,
+        joined_at=0.0,
+        primary_ready_at=0.0,
+        reaction_ready_at=0.0,
+    )
+    session.add(participant)
+    session.flush()
+    return participant
 
 
 def _engine():

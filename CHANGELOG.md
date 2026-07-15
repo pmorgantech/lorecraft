@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.111.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 86.2 combat guarding with `guard [ally]`, supportive guarding
+  relationship edges, defensive action queueing, and attack interception traces
+  that preserve original target and interceptor ids.
+
 ## [0.110.0] - 2026-07-15
 
 ### Added

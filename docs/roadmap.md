@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.110.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
+## Where things stand (2026-07-15, v0.111.0 on combat; Sprints 1–85 implemented; Sprint 86 in progress)
 
-**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.110.0).
+**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.111.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -134,7 +134,7 @@ basic status effects, threat/NPC roles, party assistance, duel rules.
 **Tier:** Tier 2 (all features/combat/).
 
 - [x] 86.1 Stances (balanced/aggressive/defensive/mobile) + persistent policies
-- [ ] 86.2 Guarding + protect-ally + intercept edges
+- [x] 86.2 Guarding + protect-ally + intercept edges
 - [ ] 86.3 Bounded reactions (single window, no recursion) + reaction policy
 - [ ] 86.4 Wind-up interruption — resolution-time interrupt outcome
 - [ ] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
@@ -147,6 +147,12 @@ while in combat. The stance is persisted on the combat participant, appears in s
 state, feeds immutable resolver snapshots, and contributes modest Tier 2 policy trade-offs for
 attack bonus, defense bonus, damage multiplier, and flee stamina cost. Resolution records and
 structured event payloads include actor/target stance traces for audit and future explanation UI.
+
+Guarding note (v0.111.0): `guard [ally]` is now distinct from `defend`. It queues a defensive
+primary action and persists a supportive `guarding` relationship edge from guardian to protected
+participant. During resolution, an active same-side guardian can intercept an attack against the
+protected participant; the effective target becomes the guardian, while random/damage traces retain
+the original target and interceptor ids.
 
 ### Sprint 87 — Combat Phase 3: Content Power
 
