@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.124.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.7 headless combat balance reports through
+  `features/combat/simulation.py` and `python -m lorecraft.tools.combat_balance`,
+  with deterministic outcome, damage, hit-rate, and one-shot-defeat summaries
+  grouped by action ruleset and resolver version.
+
 ## [0.123.0] - 2026-07-15
 
 ### Added

@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.123.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
+## Where things stand (2026-07-15, v0.124.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.123.0).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.124.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -206,7 +206,7 @@ combat teaching material.
 - [x] 87.4 Boss scripted phases overriding utility AI — registered Python resolver by id
 - [x] 87.5 Crime + faction consequences via rule obligations
 - [x] 87.6 Ruleset/resolver versioning + random-trace persistence
-- [ ] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
+- [x] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
 - [ ] 87.8 Live-tunable ruleset config (WorldClock pattern) — DB-backed, admin endpoint
 - [ ] 87.9 Combat tutorial/help completion — expand docs, in-game help, and browser guidance
 
@@ -243,6 +243,12 @@ Sprint 87.6 completion note (v0.123.0): data-authored combat actions now carry e
 `CombatResolutionRecord`, action outcomes, random traces, and scheduler audit payloads so future
 balance reports can group historical outcomes by the exact content/resolver version that produced
 them.
+
+Sprint 87.7 completion note (v0.124.0): `features/combat/simulation.py` now provides a deterministic
+headless balance report for repeated one-action resolver runs, and
+`python -m lorecraft.tools.combat_balance` exposes it as a JSON CLI. Reports include outcome counts,
+damage min/max/average, hit rate, one-shot defeat rate, and the action's ruleset/resolver version.
+The harness is intentionally DB-free and does not add a live-server combat bot or AI planner.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 

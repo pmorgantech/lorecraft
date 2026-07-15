@@ -1003,6 +1003,18 @@ That example means player damage against the NPC reduces the player's standing w
 This is the current boundary for crime/faction fallout: content-authored obligations into the
 existing reputation system, not a separate law, bounty, or arrest engine.
 
+For balance checks, run the headless report CLI instead of hand-testing in the browser:
+
+```bash
+python -m lorecraft.tools.combat_balance --trials 1000 --seed 7 -o combat-report.json
+```
+
+The report repeats the pure combat resolver with deterministic RNG and returns outcome counts,
+damage min/max/average, hit rate, one-shot defeat rate, and the action's `ruleset_id` and
+`resolver_version`. Use it to compare candidate weapon, armor, or action timing values before
+shipping content. It does not boot a server, create combat actors in the database, or simulate a
+party encounter.
+
 Balance details are intentionally still shallow in this slice: PvP consent, richer browser resync,
 and live-tunable combat ruleset configuration remain later Sprint 87 work tracked in
 `docs/roadmap.md`.
