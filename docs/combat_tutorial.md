@@ -35,6 +35,10 @@ reaction <policy>  choose defensive, conserve, or never
 assist <player>    join a nearby player's active fight on their side
 ```
 
+In Ashmoore, the training academy west of South Gate is the safest place to try these commands.
+Talk to Armsmaster Seren Vale in the drill hall, take practice gear from the pegs, and spar with
+Tobin in the yard.
+
 ## Before You Fight
 
 Check your equipment before starting trouble:
@@ -48,6 +52,17 @@ wear <armor>
 
 Weapons and armor already matter. A wielded weapon affects damage, accuracy, and penetration.
 Wearable armor can reduce incoming damage. You can still fight unarmed, but it is weaker.
+
+At the academy, try:
+
+```text
+take club
+wield club
+take vest
+wear vest
+```
+
+You can also take and wield the training bow before trying `shoot`.
 
 ## Starting Combat
 

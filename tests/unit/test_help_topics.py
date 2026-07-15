@@ -140,6 +140,8 @@ class TestBootstrap:
         topic = HelpRepo(session).by_reference("combat")
         assert topic is not None
         body = topic.body.lower()
+        assert "training academy" in body
+        assert "armsmaster seren vale" in body
         assert "browser combat" in body
         assert "structured combat state" in body
         assert "does not use player formations" in body

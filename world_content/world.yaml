@@ -11,7 +11,7 @@
 #    forge(4,9)  market(5,8)
 #          square(4,8)---inn(3,8)
 #               |              |
-#           s_gate(4,7)    cellar(3,7)
+#  academy(2,7)----s_gate(4,7)    cellar(3,7)
 #               |
 #         forest_path(4,6)---meadow(5,6)---chapel(6,5)
 #         /                       |
@@ -66,7 +66,7 @@ rooms:
       expression — polishes the same tankard he has been polishing for the past
       ten years. A narrow stair descends to the cellar; the square lies back
       through the door to the east.
-    map_x: 3
+    map_x: 2
     map_y: 8
     zone: ashmoore
     room_type: town
@@ -87,7 +87,7 @@ rooms:
       stub gutters in an iron bracket, throwing long shadows. Rats have been
       here recently — you can tell by the gnawed corners of a sack of meal.
       The stair back up to the inn groans with every draft.
-    map_x: 3
+    map_x: 2
     map_y: 7
     zone: ashmoore
     room_type: town
@@ -284,6 +284,63 @@ rooms:
         target_room_id: forest_path
       - direction: east
         target_room_id: graveyard_gate
+      - direction: west
+        target_room_id: ashmoore_training_yard
+
+  - id: ashmoore_training_yard
+    name: Ashmoore Training Yard
+    description: >-
+      Hard-packed earth fills the yard between two old wall stubs, its surface
+      crosshatched with boot prints and staff marks. Straw bundles, padded
+      shields, and chalked circles divide the space into patient lessons: where
+      to stand, when to brace, when to leave. The south gate lies east, while a
+      low drill hall opens north and a fenced archery lane runs west.
+    map_x: 3
+    map_y: 7
+    zone: ashmoore
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: south_gate
+      - direction: north
+        target_room_id: ashmoore_drill_hall
+      - direction: west
+        target_room_id: ashmoore_archery_lane
+
+  - id: ashmoore_drill_hall
+    name: Ashmoore Drill Hall
+    indoor: true
+    description: >-
+      The hall is plain, swept, and practical. Pegs hold practice clubs, blunted
+      bows, and padded vests in tidy rows. A chalkboard lists the day's lessons:
+      attack with intent, defend before panic, change stance before the fight
+      changes you, and flee while your legs still listen. The yard waits south.
+    map_x: 3
+    map_y: 8
+    zone: ashmoore
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: south
+        target_room_id: ashmoore_training_yard
+
+  - id: ashmoore_archery_lane
+    name: Ashmoore Archery Lane
+    description: >-
+      A narrow lane of trampled grass runs along the inside of the old wall.
+      Straw backstops lean against the stones, patched so often they look
+      quilted. White range marks are painted on flat rocks, but the lesson here
+      is simple: a shot is a shot, not a whole dance of distance bands. The
+      training yard lies east.
+    map_x: 1
+    map_y: 7
+    zone: ashmoore
+    room_type: town
+    light_level: 1
+    exits:
+      - direction: east
+        target_room_id: ashmoore_training_yard
 
   # -------------------------------------------------------------------------
   # AREA: wilderness — The Forest and Its Margins
@@ -2942,6 +2999,64 @@ items:
     value: 22
     category: armor
     quality: common
+
+  - id: ashmoore_practice_club
+    name: Ashmoore Practice Club
+    description: >-
+      A sanded ash club wrapped in old sailcloth. It is balanced like a real
+      weapon but made to bruise pride before bone.
+    takeable: true
+    tradeable: false
+    slot: main_hand
+    weight: 1.8
+    value: 3
+    category: weapon
+    quality: common
+    effects:
+      - type: weapon_profile
+        base_damage: 3.0
+        accuracy_bonus: 1.0
+        penetration: 0.0
+        tags: [melee, blunt, training]
+
+  - id: ashmoore_training_bow
+    name: Blunted Training Bow
+    description: >-
+      A light bow with a red-painted grip and a rack of cork-tipped arrows tied
+      to its string. It teaches aim without pretending the forest will be so
+      forgiving.
+    takeable: true
+    tradeable: false
+    slot: main_hand
+    weight: 1.1
+    value: 4
+    category: weapon
+    quality: common
+    effects:
+      - type: weapon_profile
+        base_damage: 2.5
+        accuracy_bonus: 1.5
+        penetration: 0.0
+        tags: [ranged, blunt, training]
+
+  - id: ashmoore_padded_training_vest
+    name: Padded Training Vest
+    description: >-
+      A sleeveless vest quilted thick at the ribs and shoulders. Chalk marks
+      and old dust show exactly where beginners forget to keep their guard.
+    takeable: true
+    tradeable: false
+    slot: torso
+    wearable: true
+    weight: 3.0
+    value: 5
+    category: armor
+    quality: common
+    effects:
+      - type: armor_profile
+        block: 2.0
+        resistance_factor: 0.05
+        tags: [padded, training]
 
   # --- Market & Alchemist ---
   - id: dried_herbs
@@ -5846,6 +5961,17 @@ room_items:
     item_id: equippable_helmet
     quantity: 1
 
+  # Ashmoore Training Academy
+  - room_id: ashmoore_drill_hall
+    item_id: ashmoore_practice_club
+    quantity: 2
+  - room_id: ashmoore_drill_hall
+    item_id: ashmoore_training_bow
+    quantity: 2
+  - room_id: ashmoore_drill_hall
+    item_id: ashmoore_padded_training_vest
+    quantity: 2
+
   # Market
   - room_id: market_stalls
     item_id: dried_herbs
@@ -6521,6 +6647,94 @@ dialogue_trees:
         side_effects:
           end_dialogue: true
         choices: []
+
+  # --- Ashmoore Training Academy ---
+  - id: ashmoore_instructor_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          Armsmaster Seren Vale rests both hands on a blunted practice sword.
+          "This yard teaches timing, not heroics. Choose an action, let it
+          resolve, then choose again."
+        side_effects: {}
+        choices:
+          - label: How do I start a safe fight?
+            next_node: first_fight
+          - label: What gear should I try first?
+            next_node: gear
+          - label: How do ranged attacks and guarding work?
+            next_node: ranged_guard
+          - label: What are stances and reactions?
+            next_node: stances
+          - label: How do I leave before I am downed?
+            next_node: leaving
+          - label: That is enough for now.
+            side_effects:
+              end_dialogue: true
+      first_fight:
+        text: >-
+          "Tobin is padded and expecting bruises. Try 'attack tobin', then wait
+          for the result. If you act again during recovery, your newer primary
+          action replaces the older queued one."
+        side_effects: {}
+        choices:
+          - label: What should I watch for?
+            next_node: watch
+          - label: I will try it.
+            side_effects:
+              end_dialogue: true
+      watch:
+        text: >-
+          "The feed tells the story; the combat state keeps the record. You may
+          see people marked active, downed, defeated, or escaped. That is not
+          clutter. It is how the fight explains what just happened."
+        side_effects: {}
+        choices:
+          - label: Understood.
+            side_effects:
+              end_dialogue: true
+      gear:
+        text: >-
+          "Take a practice club or training bow from the hall. 'Wield club' or
+          'wield bow' puts it in hand. 'Wear vest' gives you a little padding.
+          The smith's real weapons are stronger, but the lesson is the same."
+        side_effects: {}
+        choices:
+          - label: I will gear up.
+            side_effects:
+              end_dialogue: true
+      ranged_guard:
+        text: >-
+          "Use 'shoot tobin' to see a ranged attack. Ranged attacks are tracked
+          as ranged, but you do not manage formations or distance bands. 'Guard
+          ally' can intercept melee; it does not catch arrows."
+        side_effects: {}
+        choices:
+          - label: Simple enough.
+            side_effects:
+              end_dialogue: true
+      stances:
+        text: >-
+          "'Stance aggressive' leans into offense. 'Stance defensive' keeps you
+          safer. 'Stance mobile' makes fleeing less costly. 'Reaction defensive'
+          lets you spend a bounded automatic brace; 'reaction never' disables it."
+        side_effects: {}
+        choices:
+          - label: I will test those.
+            side_effects:
+              end_dialogue: true
+      leaving:
+        text: >-
+          "Use 'defend' when you need a breath and 'flee' when the lesson is
+          over. If your health reaches zero, you are downed by default, not
+          erased from the world. Better to leave before the yard proves the
+          point for you."
+        side_effects: {}
+        choices:
+          - label: Good advice.
+            side_effects:
+              end_dialogue: true
 
   # --- Ashmoore shopkeepers ---
   - id: ashmoore_apothecary_dialogue
@@ -8052,6 +8266,32 @@ dialogue_trees:
               end_dialogue: true
 
 npcs:
+  - id: ashmoore_armsmaster
+    name: Armsmaster Seren Vale
+    description: >-
+      Seren Vale wears a patched academy coat and carries a blunted sword as if
+      it were a pointer, not a weapon. Her voice cuts through the yard without
+      ever becoming a shout.
+    home_room_id: ashmoore_drill_hall
+    current_room_id: ashmoore_drill_hall
+    dialogue_tree_id: ashmoore_instructor_dialogue
+    behavior: defensive
+    ai:
+      combat_role: instructor
+
+  - id: academy_sparring_partner
+    name: Tobin the Sparring Partner
+    description: >-
+      Tobin waits in a quilted coat and padded helm, rolling his shoulders with
+      the resigned patience of someone paid to be hit by beginners. He taps his
+      practice club twice against his boot when he is ready.
+    home_room_id: ashmoore_training_yard
+    current_room_id: ashmoore_training_yard
+    behavior: defensive
+    max_hp: 70
+    ai:
+      combat_role: sparring partner
+
   - id: innkeeper
     name: Mira the Innkeeper
     description: >-

@@ -559,6 +559,10 @@ stance <stance>    — switch to balanced, aggressive, defensive, or mobile
 reaction <policy>  — choose defensive, conserve, or never for auto-reactions
 ```
 
+Ashmoore now has a combat training academy west of South Gate. Talk to Armsmaster Seren Vale in
+the drill hall, take practice gear from the pegs, and spar with Tobin in the yard to try the combat
+flow without looking for a wilderness fight.
+
 Builders can tune the core action timing and broad ranged/melee semantics in
 `world_content/combat_actions.yaml`; players do not need to know those numbers while playing.
 

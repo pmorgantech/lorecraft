@@ -116,6 +116,10 @@ topics:
       - 'reaction <defensive|conserve|never>' controls automatic defensive reactions.
       - 'assist <player>' joins a nearby player's active encounter on their side.
 
+    In Ashmoore, go west from South Gate to reach the training academy. Talk to
+    Armsmaster Seren Vale in the drill hall, take practice gear from the pegs,
+    and spar with Tobin in the yard.
+
     During recovery, one replacement primary action can be queued. A newer
     primary action cancels the older queued one. Stances persist for the
     encounter: balanced is the default, aggressive favors offense, defensive

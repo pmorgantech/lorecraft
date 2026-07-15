@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.127.0] - 2026-07-15
+
+### Added
+
+- Added an Ashmoore combat training academy west of South Gate with a drill
+  hall, archery lane, practice gear, instructor dialogue, and a padded sparring
+  partner for learning scheduled-intent combat.
+
 ## [0.126.0] - 2026-07-15
 
 ### Added
