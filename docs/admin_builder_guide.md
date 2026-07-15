@@ -888,6 +888,21 @@ which `CommandEngine` sets (Sprint 51) only when the parsed command's target/obj
 role resolves to a real NPC (via `NpcRepo`) — so `talk mira`, `attack goblin`, etc. count, but
 `take sword` never pollutes the NPC count.
 
+## Combat Implementation Notes
+
+Combat is implemented as the Tier 2 `combat` feature. Its first Scheduled Intent slice stores
+encounters, participants, hostile relationships, and pending/resolved actions in feature-owned
+tables, then resolves actions through durable `combat.resolve_action` scheduler jobs.
+
+The initial player-facing commands are `attack <npc>`, `defend`, and `flee`. They use the
+primary action channel only; during recovery a player may queue one replacement primary action.
+Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC counter-attacks
+are created as scheduled intents through the same pipeline as player actions.
+
+Balance details are intentionally still shallow in this slice: weapon/armor descriptors,
+data-authored action YAML, PvP consent, richer browser resync, and live-tunable combat ruleset
+configuration remain later Sprint 85/87 work tracked in `docs/roadmap.md`.
+
 **Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
 `{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array
 (`src/lorecraft/webui/admin/index.html`), delimited by `<!-- WIDGET: ... --> ... <!-- /WIDGET -->`

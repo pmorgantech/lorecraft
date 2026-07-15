@@ -4,6 +4,24 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.106.0] - 2026-07-14
+
+### Added
+
+- **Sprint 85 — Combat Phase 1 foundation begins.** Added the Tier 2
+  `features/combat/` package with Scheduled Intent encounter, participant,
+  relationship, and action tables; a primary-channel action pipeline; scheduled
+  resolution jobs; basic `attack`, `defend`, and `flee` commands; stamina meter
+  registration; immutable resolution objects; and an NPC counter-intent stub
+  that uses the same scheduled action path as player commands.
+- Added focused unit coverage for combat intent submission, scheduled damage
+  resolution, NPC response scheduling, and flee resolution.
+
+### Docs
+
+- Documented the initial combat command surface and updated the active roadmap
+  progress for Sprint 85.
+
 ## [0.105.0] - 2026-07-14
 
 ### Added

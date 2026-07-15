@@ -1,7 +1,8 @@
 # Implementation Guides Index
 
 This document is a master index of feature design and implementation guides. Guides are organized by status:
-- **Set aside:** Design preserved but parked in [`wishlist.md`](wishlist.md) (combat, death/resurrection)
+- **Active:** Current implementation guides for work in progress
+- **Set aside:** Design preserved but parked in [`wishlist.md`](wishlist.md) (death/resurrection)
 - **Implemented:** Completed sprints with documented implementation patterns (reference/archive)
 - **Foundational:** Architectural docs and patterns for all implementation
 
@@ -13,14 +14,21 @@ Each guide provides detailed workflows, code examples, testing patterns, and des
 
 ---
 
-## Set-Aside Guides (Design Preserved, Not Scheduled)
-
-These design specs are **set aside to [`wishlist.md`](wishlist.md)** — kept as ready-to-restore
-references, not on the active queue.
+## Active Guides
 
 | Guide | Subsystem | Purpose | Status |
 |-------|-----------|---------|--------|
-| [combat_system.md](combat_system.md) | Combat | Tick-based combat, damage, NPC AI, kill credit, loot | Set aside → wishlist (*Combat, reframed*). Progression model superseded by Disciplines/Abilities. |
+| [combat_design.md](combat_design.md) | Combat | Scheduled Intent combat, encounter graph, action pipeline, PvE/PvP policy seams | Active — Sprint 85 implementation started |
+
+## Set-Aside Guides (Design Preserved, Not Scheduled)
+
+These design specs are **set aside to [`wishlist.md`](wishlist.md)** — kept as ready-to-restore
+references, not on the active queue. The old tick-based combat guide is superseded by the active
+Scheduled Intent design above.
+
+| Guide | Subsystem | Purpose | Status |
+|-------|-----------|---------|--------|
+| [archive/combat_system_tickbased_superseded.md](archive/combat_system_tickbased_superseded.md) | Combat | Superseded tick-based combat, damage, NPC AI, kill credit, loot | Archived reference only; replaced by `combat_design.md`. |
 | [death_resurrection.md](death_resurrection.md) | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn | Set aside → wishlist (combat-adjacent) |
 
 ---

@@ -542,6 +542,21 @@ expected to happen instead:
 Thanks — logged as issue-a1b2c3d4. The team will take a look.
 ```
 
+## Combat
+
+Combat uses scheduled intent: your command commits an action, then the world resolves it after
+a short wind-up and recovery window. The first implemented PvE commands are:
+
+```
+attack <target>    — start or continue an encounter with a nearby NPC
+defend             — brace with your next primary action
+flee               — look for an opening to leave the encounter
+```
+
+During recovery you can queue one replacement primary action; the newer choice replaces the
+older pending one. Combat currently uses health and stamina meters, and defeated or escaped
+participants leave the encounter.
+
 ## Getting Help In-Game
 
 The `help` command is your in-game reference:
@@ -588,6 +603,9 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `wear <item>` | | Equip a worn item (armor, clothing) |
 | `remove <item>` | | Unequip a worn item |
 | `wield <item>` | | Equip a wielded item (weapon, tool, light) |
+| `attack <target>` | `fight` | Commit to a scheduled attack against a nearby NPC |
+| `defend` | `guard` | Spend your next combat action bracing against attacks |
+| `flee` | | Commit to an escape attempt from the current encounter |
 | `unwield <item>` | | Unequip a wielded item |
 | `equipment` | `eq` | List what you're wearing and wielding |
 | `light <item>` | | Light a light source |

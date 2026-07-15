@@ -81,7 +81,7 @@ Combat is now **active** (no longer set-aside). See [`combat_design.md`](combat_
 the full design. Built as `features/combat/`, all opinion/data in Tier 2; no Tier 1 edits
 needed beyond what exists.
 
-### Sprint 85 — Combat Phase 1: Foundation (Scheduled Intent core)
+### Sprint 85 — Combat Phase 1: Foundation (Scheduled Intent core) `[~]`
 
 **Goal:** A player can attack/defend/flee a static NPC through the full intent pipeline; one
 primary channel; encounter graph; downed/defeat; structured events + audit; browser state.
@@ -91,16 +91,22 @@ modifier resolver, seeded rng + skill_check, ItemLocationService, audit. All shi
 
 **Tier:** Tier 2 (all features/combat/).
 
-- [ ] 85.1 Encounter aggregate (CombatEncounter/Participant/Relationship) — multiple sides, start/end rules
-- [ ] 85.2 Action submission pipeline (Txn A) — validate, persist, emit started, schedule resolve
-- [ ] 85.3 Action resolution pipeline (Txn B) — re-validate, calculate, apply atomically, emit events
-- [ ] 85.4 Primary-channel readiness + one queued action — derived readiness, single replaceable queue
-- [ ] 85.5 Basic attack/defend/flee — opposed margin, staged damage stack, hybrid armor
-- [ ] 85.6 Health + stamina via MeterService; downed/defeat states
-- [ ] 85.7 Immutable CombatResolution object — resolver/snapshot boundary
-- [ ] 85.8 Structured events + audit resolution record + engaged/unengaged position
-- [ ] 85.9 Basic browser combat state over WebSocket — structured updates + prose with sequence numbers
-- [ ] 85.10 NPC utility-selection stub — single primary action, same intent pipeline as players
+- [x] 85.1 Encounter aggregate (CombatEncounter/Participant/Relationship) — multiple sides, start/end rules
+- [x] 85.2 Action submission pipeline (Txn A) — validate, persist, emit started, schedule resolve
+- [x] 85.3 Action resolution pipeline (Txn B) — re-validate, calculate, apply atomically, emit events
+- [x] 85.4 Primary-channel readiness + one queued action — derived readiness, single replaceable queue
+- [~] 85.5 Basic attack/defend/flee — opposed margin, staged damage stack, hybrid armor
+- [~] 85.6 Health + stamina via MeterService; downed/defeat states
+- [x] 85.7 Immutable CombatResolution object — resolver/snapshot boundary
+- [~] 85.8 Structured events + audit resolution record + engaged/unengaged position
+- [~] 85.9 Basic browser combat state over WebSocket — structured updates + prose with sequence numbers
+- [x] 85.10 NPC utility-selection stub — single primary action, same intent pipeline as players
+
+Initial implementation note (v0.106.0): `features/combat/` now owns the Scheduled Intent
+aggregate, `attack`/`defend`/`flee`, scheduled `combat.resolve_action` jobs, HP/stamina meter
+application, immutable `CombatResolution`, one replaceable primary action queue, and an NPC
+counter-intent stub. Remaining Phase 1 work is to deepen the damage stack/armor model, persist
+full audit-resolution rows, and add richer browser combat feed/state resync behavior.
 
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 

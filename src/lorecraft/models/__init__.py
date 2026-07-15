@@ -1,5 +1,4 @@
-"""Tier 2 feature SQLModel table definitions that have not yet moved into their
-feature packages (combat, and the world-versioning changesets).
+"""Tier 2 SQLModel table definitions still owned by the composition layer.
 
 Tier 1 engine tables (world/player/items/meters/scheduler/mobile/audit/
 session/player_auth/ledger) live in ``lorecraft.engine.models``; migrated
@@ -12,12 +11,10 @@ from lorecraft.models.changeset import (
     ConflictScanResult,
     WorldMigration,
 )
-from lorecraft.models.combat import CombatSession
 
 __all__ = [
     "Changeset",
     "ChangesetItem",
-    "CombatSession",
     "ConflictScanResult",
     "WorldMigration",
 ]

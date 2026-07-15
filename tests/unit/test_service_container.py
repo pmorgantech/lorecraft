@@ -17,6 +17,7 @@ def test_default_build_has_all_services() -> None:
     assert services.bank is not None
     assert services.fatigue is not None
     assert services.movement is not None
+    assert services.combat is not None
     assert services.trade is not None
 
 
@@ -25,6 +26,7 @@ def test_disabled_feature_service_is_none() -> None:
     assert services.fatigue is not None
     assert services.economy is None
     assert services.bank is None
+    assert services.combat is None
 
 
 def test_empty_enabled_disables_all_gated_services() -> None:
@@ -41,6 +43,7 @@ def test_empty_enabled_disables_all_gated_services() -> None:
     assert services.exploration is None
     assert services.journal is None
     assert services.trade is None
+    assert services.combat is None
     # Only the Tier 1 save service remains unconditionally.
     assert services.save is not None
 
@@ -64,7 +67,7 @@ def test_register_all_commands_skips_absent_gated_services() -> None:
     registry = CommandRegistry()
     services = ServiceContainer.build(enabled=set())
     register_all_commands(registry, services)
-    for verb in ("buy", "sell", "deposit", "withdraw"):
+    for verb in ("buy", "sell", "deposit", "withdraw", "attack"):
         assert registry.get(verb) is None, f"{verb!r} should be absent when disabled"
 
 
@@ -72,7 +75,7 @@ def test_register_all_commands_registers_present_gated_services() -> None:
     registry = CommandRegistry()
     services = ServiceContainer.build()  # all on
     register_all_commands(registry, services)
-    for verb in ("buy", "sell", "deposit", "withdraw"):
+    for verb in ("buy", "sell", "deposit", "withdraw", "attack", "defend", "flee"):
         assert registry.get(verb) is not None, (
             f"{verb!r} should be present when enabled"
         )

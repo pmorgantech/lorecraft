@@ -1,6 +1,6 @@
 # Combat System — Design (Scheduled Intent Combat)
 
-> **Status:** Design proposal, 2026-07-14. Merges three source proposals (v2 framework, MUD
+> **Status:** Active implementation, 2026-07-14. Merges three source proposals (v2 framework, MUD
 > deep-dive, mechanics deep-dive) into one architecture. **Supersedes the tick-based
 > `combat_system.md`** where they conflict (see §0). Combat is a **supporting** system
 > per `wishlist.md` — one of several ways to resolve an encounter (stealth/persuasion/bribery/

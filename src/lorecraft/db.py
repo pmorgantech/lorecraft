@@ -43,7 +43,12 @@ from lorecraft.models.changeset import (
     ConflictScanResult,
     WorldMigration,
 )
-from lorecraft.models.combat import CombatSession
+from lorecraft.features.combat.models import (
+    CombatAction,
+    CombatEncounter,
+    CombatParticipant,
+    CombatRelationship,
+)
 from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.models.help import HelpTopic
@@ -92,7 +97,10 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     Quest,
     PlayerQuestProgress,
     ProgressionConfig,
-    CombatSession,
+    CombatEncounter,
+    CombatParticipant,
+    CombatRelationship,
+    CombatAction,
     Changeset,
     ChangesetItem,
     WorldMigration,

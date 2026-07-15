@@ -13,6 +13,7 @@ verbs (fatigue/economy/bank) register only when their service is present.
 
 from lorecraft.features.bank.commands import register_bank_commands
 from lorecraft.features.character.commands import register_character_commands
+from lorecraft.features.combat.commands import register_combat_commands
 from lorecraft.features.fatigue.commands import register_condition_commands
 from lorecraft.features.follow.commands import register_follow_commands
 from lorecraft.features.context_commands.commands import register_context_commands
@@ -102,6 +103,9 @@ def register_all_commands(
     if services.bank is not None:
         with registry.category("banking"):
             register_bank_commands(registry, services.bank)
+    if services.combat is not None:
+        with registry.category("combat"):
+            register_combat_commands(registry, services.combat)
     if services.trade is not None:
         with registry.category("trading"):
             register_trade_commands(registry, services.trade)

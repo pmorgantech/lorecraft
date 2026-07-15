@@ -274,6 +274,8 @@ def create_app(
         if services.marks is not None:
             _load_mark_definitions(resolved_settings.marks_yaml_path)
             services.marks.register(bus)
+        if services.combat is not None:
+            services.combat.register(bus)
         if "disciplines" in enabled_set:
             _load_discipline_definitions(resolved_settings.disciplines_yaml_path)
             _load_ability_definitions(resolved_settings.abilities_yaml_path)
