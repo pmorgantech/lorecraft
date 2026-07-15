@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.104.3] - 2026-07-14
+
+### Documentation
+
+- `AGENTS.md`: corrected the Tier 2 feature-package count from 24 to 33 (matches the
+  0.104.2 doc audit).
+
 ## [0.104.2] - 2026-07-14
 
 ### Documentation
