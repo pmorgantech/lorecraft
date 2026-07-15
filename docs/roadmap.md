@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.119.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
+## Where things stand (2026-07-15, v0.120.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.119.0).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.120.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -202,7 +202,7 @@ combat teaching material.
 
 - [x] 87.1 Data-driven action definitions (YAML) + registered calculators/resolvers
 - [x] 87.2 Equipment traits + weapon/armor as effect descriptors
-- [ ] 87.3 Extended effect hooks (on_damage_received/on_movement/on_action_admission)
+- [x] 87.3 Extended effect hooks (on_damage_received/on_movement/on_action_admission)
 - [ ] 87.4 Boss scripted phases overriding utility AI — registered Python resolver by id
 - [ ] 87.5 Crime + faction consequences via rule obligations
 - [ ] 87.6 Ruleset/resolver versioning + random-trace persistence
@@ -221,6 +221,11 @@ Sprint 87.2 completion note (v0.119.0): equipped item `effects` now support expl
 remain fallback behavior for existing content. Damage traces include descriptor sources and tags.
 Startup now logs when combat action YAML is missing and `world_cli validate` warns on missing
 combat actions or fails malformed/unknown resolver content.
+
+Sprint 87.3 completion note (v0.120.0): combat active effects can register narrow Tier 2 hooks for
+`on_action_admission`, `on_damage_received`, and `on_movement`. Hook payloads are recorded in
+action random traces and resolution `effect_changes`; hooks are Python registrations by effect key,
+not inline YAML scripts or a general behavior planner.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 

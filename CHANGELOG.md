@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.120.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.3 combat-local active-effect hooks for
+  `on_action_admission`, `on_damage_received`, and `on_movement`, with hook
+  payloads recorded in action traces and combat resolution effect changes.
+
 ## [0.119.0] - 2026-07-15
 
 ### Added

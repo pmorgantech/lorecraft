@@ -57,6 +57,10 @@ from lorecraft.features.combat.definitions import (
     get_action_registry,
     register_builtin_combat_actions,
 )
+from lorecraft.features.combat.effect_hooks import (
+    CombatEffectHooks,
+    get_combat_effect_hook_registry,
+)
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
 
@@ -64,6 +68,8 @@ from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
 @pytest.fixture(autouse=True)
 def combat_meters() -> Iterator[None]:
     registry = get_meter_registry()
+    hook_registry = get_combat_effect_hook_registry()
+    hook_registry.clear()
     registry.register(
         MeterDef(
             key="hp",
@@ -81,6 +87,7 @@ def combat_meters() -> Iterator[None]:
     yield
     registry._defs.pop("hp", None)  # type: ignore[attr-defined]
     registry._defs.pop("stamina", None)  # type: ignore[attr-defined]
+    hook_registry.clear()
 
 
 def test_attack_submits_intent_and_schedules_resolution() -> None:
@@ -882,6 +889,138 @@ def test_strong_hit_applies_off_balance_effect_and_expiry_hook_removes_it() -> N
 
     with Session(engine) as session:
         assert session.exec(select(ActiveEffect)).all() == []
+
+
+def test_combat_effect_hooks_record_admission_and_damage_payloads() -> None:
+    engine = _engine()
+    service = CombatService()
+    hook_registry = get_combat_effect_hook_registry()
+    hook_registry.register(
+        "combat.test_admission",
+        CombatEffectHooks(
+            on_action_admission=lambda effect, context: {
+                "action_key": context.action_key,
+                "target_participant_id": context.target_participant_id,
+            }
+        ),
+    )
+    hook_registry.register(
+        "combat.test_damage",
+        CombatEffectHooks(
+            on_damage_received=lambda effect, context: {
+                "damage": context.damage,
+                "action_key": context.action.action_key,
+            }
+        ),
+    )
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        session.add(
+            ActiveEffect(
+                id="effect-admission",
+                entity_type="player",
+                entity_id="player-1",
+                effect_key="combat.test_admission",
+                payload={},
+                applied_at_epoch=0.0,
+            )
+        )
+        session.add(
+            ActiveEffect(
+                id="effect-damage",
+                entity_type="npc",
+                entity_id="goblin",
+                effect_key="combat.test_damage",
+                payload={},
+                applied_at_epoch=0.0,
+            )
+        )
+        service.attack("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+        action_id = action.id
+
+        assert action.random_trace["action_admission_hooks"][0]["effect_key"] == (
+            "combat.test_admission"
+        )
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        action = session.get(CombatAction, action_id)
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == action_id
+            )
+        ).one()
+
+        assert action is not None
+        assert action.random_trace["action_admission_hooks"][0]["event"] == (
+            "on_action_admission"
+        )
+        hook_changes = [
+            change
+            for change in record.payload["effect_changes"]
+            if change.get("event") == "on_damage_received"
+        ]
+        assert hook_changes
+        assert hook_changes[0]["effect_key"] == "combat.test_damage"
+        assert hook_changes[0]["payload"]["action_key"] == "basic_attack"
+
+
+def test_combat_effect_movement_hooks_record_position_changes() -> None:
+    engine = _engine()
+    service = CombatService()
+    get_combat_effect_hook_registry().register(
+        "combat.test_movement",
+        CombatEffectHooks(
+            on_movement=lambda effect, context: {
+                "from_position": context.from_position,
+                "to_position": context.to_position,
+            }
+        ),
+    )
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.attack("goblin", ctx)
+        encounter = session.exec(select(CombatEncounter)).one()
+        goblin = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "npc")
+        ).one()
+        goblin.position = "unengaged"
+        session.add(goblin)
+        session.add(
+            ActiveEffect(
+                id="effect-movement",
+                entity_type="npc",
+                entity_id="goblin",
+                effect_key="combat.test_movement",
+                payload={},
+                applied_at_epoch=0.0,
+            )
+        )
+
+        position_changes, effect_changes = service._refresh_positions(
+            CombatRepo(session),
+            session,
+            encounter.id,
+            current_epoch=3.0,
+        )
+
+        assert position_changes[0]["actor_id"] == "goblin"
+        assert effect_changes[0]["event"] == "on_movement"
+        assert effect_changes[0]["payload"] == {
+            "from_position": "unengaged",
+            "to_position": "engaged",
+        }
 
 
 def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:

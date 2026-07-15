@@ -44,6 +44,14 @@ from lorecraft.features.combat.effects import (
     COMBAT_OFF_BALANCE,
     register_combat_effects,
 )
+from lorecraft.features.combat.effect_hooks import (
+    ActionAdmissionContext,
+    DamageReceivedContext,
+    MovementContext,
+    run_action_admission_hooks,
+    run_damage_received_hooks,
+    run_movement_hooks,
+)
 from lorecraft.features.combat.policy import (
     ACTION_BASIC_ATTACK,
     ACTION_DEFEND,
@@ -728,6 +736,17 @@ class CombatService:
             resolve_at=starts_at + windup,
             recovery_until=starts_at + windup + recovery,
         )
+        admission_hooks = self._run_action_admission_hooks(
+            session,
+            actor,
+            action_key=action_key,
+            target_participant_id=target.id if target is not None else None,
+            current_epoch=now,
+        )
+        if admission_hooks:
+            action.random_trace = {
+                "action_admission_hooks": cast(JsonValue, admission_hooks)
+            }
         repo.add(action)
         actor.primary_ready_at = action.recovery_until
         actor.queued_action_id = action.id if action.state == "queued" else None
@@ -760,34 +779,40 @@ class CombatService:
         action_def = self._action_def_for(action.action_key)
         if action_def.resolver == RESOLVER_DEFEND:
             snapshot = self._snapshot(session, actor)
-            return CombatResolution(
-                action_id=action.id,
-                action_key=action.action_key,
-                actor=snapshot,
-                target=None,
-                outcome="defended",
-                action_range=action_def.action_range,
-                stamina_delta=action_def.stamina_delta or 0.0,
-                explanation=f"{snapshot.name} braces defensively.",
-                random_trace={"actor_stance": snapshot.stance},
+            return self._with_action_admission_trace(
+                CombatResolution(
+                    action_id=action.id,
+                    action_key=action.action_key,
+                    actor=snapshot,
+                    target=None,
+                    outcome="defended",
+                    action_range=action_def.action_range,
+                    stamina_delta=action_def.stamina_delta or 0.0,
+                    explanation=f"{snapshot.name} braces defensively.",
+                    random_trace={"actor_stance": snapshot.stance},
+                ),
+                action,
             )
         if action_def.resolver == RESOLVER_FLEE:
             snapshot = self._snapshot(session, actor)
             stance = stance_policy_for(actor.stance)
-            return CombatResolution(
-                action_id=action.id,
-                action_key=action.action_key,
-                actor=snapshot,
-                target=None,
-                outcome="escaped",
-                action_range=action_def.action_range,
-                stamina_delta=stance.flee_stamina_delta,
-                target_status="escaped",
-                explanation=f"{snapshot.name} breaks away from the fight.",
-                random_trace={
-                    "actor_stance": snapshot.stance,
-                    "stance_flee_stamina_delta": stance.flee_stamina_delta,
-                },
+            return self._with_action_admission_trace(
+                CombatResolution(
+                    action_id=action.id,
+                    action_key=action.action_key,
+                    actor=snapshot,
+                    target=None,
+                    outcome="escaped",
+                    action_range=action_def.action_range,
+                    stamina_delta=stance.flee_stamina_delta,
+                    target_status="escaped",
+                    explanation=f"{snapshot.name} breaks away from the fight.",
+                    random_trace={
+                        "actor_stance": snapshot.stance,
+                        "stance_flee_stamina_delta": stance.flee_stamina_delta,
+                    },
+                ),
+                action,
             )
         target = (
             repo.participant(action.target_participant_id)
@@ -796,25 +821,31 @@ class CombatService:
         )
         if target is None or target.status != STATUS_ACTIVE:
             snapshot = self._snapshot(session, actor)
-            return CombatResolution(
-                action_id=action.id,
-                action_key=action.action_key,
-                actor=snapshot,
-                target=None,
-                outcome="cancelled",
-                explanation="The target is no longer available.",
+            return self._with_action_admission_trace(
+                CombatResolution(
+                    action_id=action.id,
+                    action_key=action.action_key,
+                    actor=snapshot,
+                    target=None,
+                    outcome="cancelled",
+                    explanation="The target is no longer available.",
+                ),
+                action,
             )
         original_target = target
         if action_def.resolver != RESOLVER_OPPOSED_ATTACK:
             snapshot = self._snapshot(session, actor)
-            return CombatResolution(
-                action_id=action.id,
-                action_key=action.action_key,
-                actor=snapshot,
-                target=None,
-                outcome="cancelled",
-                explanation=f"Unsupported combat resolver: {action_def.resolver}.",
-                random_trace={"unsupported_resolver": action_def.resolver},
+            return self._with_action_admission_trace(
+                CombatResolution(
+                    action_id=action.id,
+                    action_key=action.action_key,
+                    actor=snapshot,
+                    target=None,
+                    outcome="cancelled",
+                    explanation=f"Unsupported combat resolver: {action_def.resolver}.",
+                    random_trace={"unsupported_resolver": action_def.resolver},
+                ),
+                action,
             )
         action_range = action_def.action_range
         intercept_eligible = action_range == ACTION_RANGE_ENGAGED
@@ -852,6 +883,7 @@ class CombatService:
                     "intercept_eligible": intercept_eligible,
                 },
             )
+        resolution = self._with_action_admission_trace(resolution, action)
         if interceptor is None:
             return resolution
         random_trace = {
@@ -1042,6 +1074,15 @@ class CombatService:
         if target is not None and resolution.damage > 0:
             hp = meter_service.get(session, target.actor_type, target.actor_id, "hp")
             change = meter_service.adjust(session, hp, -resolution.damage)
+            effect_changes.extend(
+                self._run_damage_received_hooks(
+                    session,
+                    target,
+                    action,
+                    resolution,
+                    current_epoch=current_epoch,
+                )
+            )
             self._add_contribution(actor, resolution.damage)
             threat_changes.append(
                 self._add_threat(
@@ -1078,7 +1119,14 @@ class CombatService:
                         current_epoch=current_epoch,
                     )
                 )
-        position_changes.extend(self._refresh_positions(repo, encounter.id))
+        refreshed_positions, movement_effects = self._refresh_positions(
+            repo,
+            session,
+            encounter.id,
+            current_epoch=current_epoch,
+        )
+        position_changes.extend(refreshed_positions)
+        effect_changes.extend(movement_effects)
         encounter.last_hostile_action_at = current_epoch
         payload = self._resolution_payload(
             resolution,
@@ -1229,8 +1277,13 @@ class CombatService:
         }
 
     def _refresh_positions(
-        self, repo: CombatRepo, encounter_id: str
-    ) -> list[JsonValue]:
+        self,
+        repo: CombatRepo,
+        session: Session,
+        encounter_id: str,
+        *,
+        current_epoch: float,
+    ) -> tuple[list[JsonValue], list[JsonValue]]:
         participants = list(repo.participants(encounter_id))
         active_ids = {
             participant.id
@@ -1252,6 +1305,7 @@ class CombatService:
             engaged_ids.add(relationship.target_participant_id)
 
         changes: list[JsonValue] = []
+        effect_changes: list[JsonValue] = []
         for participant in participants:
             previous_position = participant.position
             next_position = (
@@ -1261,6 +1315,15 @@ class CombatService:
             )
             if previous_position == next_position:
                 continue
+            effect_changes.extend(
+                self._run_movement_hooks(
+                    session,
+                    participant,
+                    previous_position,
+                    next_position,
+                    current_epoch=current_epoch,
+                )
+            )
             participant.position = next_position
             repo.add(participant)
             changes.append(
@@ -1272,7 +1335,7 @@ class CombatService:
                     "to_position": next_position,
                 }
             )
-        return changes
+        return changes, effect_changes
 
     def _active_combat_effects(
         self, session: Session, participant: CombatParticipant
@@ -1412,6 +1475,81 @@ class CombatService:
         action_def = get_action_registry().get(action_key)
         return bool(
             action_def is not None and action_def.resolver == RESOLVER_OPPOSED_ATTACK
+        )
+
+    def _with_action_admission_trace(
+        self, resolution: CombatResolution, action: CombatAction
+    ) -> CombatResolution:
+        admission_hooks = action.random_trace.get("action_admission_hooks")
+        if not isinstance(admission_hooks, list) or not admission_hooks:
+            return resolution
+        return replace(
+            resolution,
+            random_trace={
+                **(resolution.random_trace or {}),
+                "action_admission_hooks": admission_hooks,
+            },
+        )
+
+    def _run_action_admission_hooks(
+        self,
+        session: Session,
+        participant: CombatParticipant,
+        *,
+        action_key: str,
+        target_participant_id: str | None,
+        current_epoch: float,
+    ) -> list[JsonObject]:
+        return run_action_admission_hooks(
+            self._active_combat_effects(session, participant),
+            ActionAdmissionContext(
+                session=session,
+                participant=participant,
+                action_key=action_key,
+                target_participant_id=target_participant_id,
+                current_epoch=current_epoch,
+            ),
+        )
+
+    def _run_damage_received_hooks(
+        self,
+        session: Session,
+        participant: CombatParticipant,
+        action: CombatAction,
+        resolution: CombatResolution,
+        *,
+        current_epoch: float,
+    ) -> list[JsonObject]:
+        return run_damage_received_hooks(
+            self._active_combat_effects(session, participant),
+            DamageReceivedContext(
+                session=session,
+                participant=participant,
+                action=action,
+                resolution=resolution,
+                damage=resolution.damage,
+                current_epoch=current_epoch,
+            ),
+        )
+
+    def _run_movement_hooks(
+        self,
+        session: Session,
+        participant: CombatParticipant,
+        from_position: str,
+        to_position: str,
+        *,
+        current_epoch: float,
+    ) -> list[JsonObject]:
+        return run_movement_hooks(
+            self._active_combat_effects(session, participant),
+            MovementContext(
+                session=session,
+                participant=participant,
+                from_position=from_position,
+                to_position=to_position,
+                current_epoch=current_epoch,
+            ),
         )
 
     def _add_contribution(self, actor: CombatParticipant, damage: float) -> None:

@@ -968,6 +968,12 @@ is applied by strong hits with game-time expiry and source metadata in payload, 
 combat defense modifier while active, appears in structured `active_effects`, and expires through
 the existing `EffectService` sweep.
 
+Combat effects may also register narrow Python hooks by effect key through
+`features/combat/effect_hooks.py`: `on_action_admission`, `on_damage_received`, and `on_movement`.
+These hooks are for combat-local reactions such as recording a ward trigger or a retaliatory trait;
+they are not inline YAML scripts. Hook payloads are preserved in action `random_trace` or resolution
+`effect_changes` so admin/audit tooling can see that the hook fired.
+
 Balance details are intentionally still shallow in this slice: PvP consent, richer browser resync,
 and live-tunable combat ruleset configuration remain later Sprint 87 work tracked in
 `docs/roadmap.md`.
