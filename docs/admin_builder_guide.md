@@ -966,6 +966,12 @@ resolves, the action state becomes `interrupted` and a resolution record is stil
 interrupt reason trace. Builders and admin tools can distinguish interruption from replacement or
 manual cancellation.
 
+Combat continuation is automatic once an encounter is active. After each resolved attack, active
+participants with a hostile target and no pending primary action queue a basic attack for their
+next available primary window. Player commands still replace the queued primary action, so a player
+can switch from the default attack loop to `defend`, `flee`, or a different target without waiting
+for the loop to stop.
+
 Combat status effects reuse the engine `ActiveEffect` lifecycle. The first status, `combat.off_balance`,
 is applied by strong hits with game-time expiry and source metadata in payload, contributes a
 combat defense modifier while active, appears in structured `active_effects`, and expires through
@@ -1002,6 +1008,21 @@ That example means player damage against the NPC reduces the player's standing w
 `city_watch` faction by 5 and records the applied consequence in the combat resolution payload.
 This is the current boundary for crime/faction fallout: content-authored obligations into the
 existing reputation system, not a separate law, bounty, or arrest engine.
+
+NPCs can also opt into content-authored combat rewards through `ai.combat_rewards`. The first
+supported trigger is `on_defeat`, and the first supported reward is carried coins:
+
+```yaml
+ai:
+  combat_rewards:
+    on_defeat:
+      - type: coins
+        amount: 25
+        message: "The instructor pays you 25 coins for a clean spar."
+```
+
+That reward credits the victorious player through the ledger service and records the reward in the
+combat resolution payload so the browser feed can narrate it with the final defeat message.
 
 For balance checks, run the headless report CLI instead of hand-testing in the browser:
 

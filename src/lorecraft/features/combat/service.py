@@ -23,6 +23,7 @@ from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
 from lorecraft.engine.services.effects import EffectService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.engine.services.scheduler import SchedulerEventContext
 from lorecraft.features.combat.models import (
@@ -427,15 +428,14 @@ class CombatService:
             meter_service=meter_service,
             effect_service=effect_service,
         )
-        if action.actor_type == "player" and self._is_attack_action(action.action_key):
-            self._maybe_schedule_npc_response(
-                session,
-                repo,
-                encounter,
-                action,
-                current_epoch=current_epoch,
-            )
         self._maybe_end_encounter(session, repo, encounter, current_epoch)
+        self._maybe_auto_continue_attacks(
+            session,
+            repo,
+            encounter,
+            action,
+            current_epoch=current_epoch,
+        )
         self._record_audit_resolution(
             audit_repo,
             encounter,
@@ -1242,6 +1242,15 @@ class CombatService:
                     if player is not None:
                         player.active_combat_session_id = None
                         session.add(player)
+                consequence_changes.extend(
+                    self._apply_combat_rewards(
+                        session,
+                        source=actor,
+                        target=target,
+                        trigger="on_defeat",
+                        current_epoch=current_epoch,
+                    )
+                )
             elif resolution.outcome == "strong_hit":
                 effect_changes.append(
                     self._apply_off_balance_effect(
@@ -1295,7 +1304,7 @@ class CombatService:
         repo.add(encounter)
         return record
 
-    def _maybe_schedule_npc_response(
+    def _maybe_auto_continue_attacks(
         self,
         session: Session,
         repo: CombatRepo,
@@ -1304,57 +1313,55 @@ class CombatService:
         *,
         current_epoch: float,
     ) -> None:
-        target = (
-            repo.participant(action.target_participant_id)
-            if action.target_participant_id is not None
-            else None
-        )
-        actor = repo.participant(action.actor_participant_id)
-        if target is None or actor is None or target.actor_type != "npc":
+        if encounter.state != "active" or not self._is_attack_action(action.action_key):
             return
-        if target.status != STATUS_ACTIVE or actor.status != STATUS_ACTIVE:
-            return
-        if repo.pending_primary_action(target.id) is not None:
-            return
-        response_target = self._preferred_target_for_npc(repo, target, fallback=actor)
-        phase_decision = self._boss_phase_decision(
-            session,
-            repo,
-            encounter,
-            target,
-            action,
-            fallback_target=response_target,
-            current_epoch=current_epoch,
-        )
-        if phase_decision is not None:
-            phase_target = (
-                repo.participant(phase_decision.target_participant_id)
-                if phase_decision.target_participant_id is not None
-                else None
+        for participant in repo.active_participants(encounter.id):
+            if repo.pending_primary_action(participant.id) is not None:
+                continue
+            target = repo.hostile_target_for(encounter.id, participant.id)
+            if target is None:
+                continue
+            action_key = ACTION_BASIC_ATTACK
+            trace: JsonObject | None = None
+            if participant.actor_type == "npc":
+                target = self._preferred_target_for_npc(
+                    repo, participant, fallback=target
+                )
+                phase_decision = self._boss_phase_decision(
+                    session,
+                    repo,
+                    encounter,
+                    participant,
+                    action,
+                    fallback_target=target,
+                    current_epoch=current_epoch,
+                )
+                if phase_decision is not None:
+                    phase_target = (
+                        repo.participant(phase_decision.target_participant_id)
+                        if phase_decision.target_participant_id is not None
+                        else None
+                    )
+                    if (
+                        phase_target is not None
+                        and phase_target.status == STATUS_ACTIVE
+                        and phase_target.side_id != participant.side_id
+                    ):
+                        target = phase_target
+                    action_key = phase_decision.action_key
+                    trace = {"boss_phase": phase_decision.trace()}
+            next_action = self._submit_action(
+                repo=repo,
+                session=session,
+                encounter=encounter,
+                actor=participant,
+                action_key=action_key,
+                now=current_epoch,
+                target=target,
             )
-            if (
-                phase_target is not None
-                and phase_target.status == STATUS_ACTIVE
-                and phase_target.side_id != target.side_id
-            ):
-                response_target = phase_target
-        response_action = self._submit_action(
-            repo=repo,
-            session=session,
-            encounter=encounter,
-            actor=target,
-            action_key=phase_decision.action_key
-            if phase_decision is not None
-            else ACTION_BASIC_ATTACK,
-            now=current_epoch,
-            target=response_target,
-        )
-        if phase_decision is not None:
-            response_action.random_trace = {
-                **response_action.random_trace,
-                "boss_phase": phase_decision.trace(),
-            }
-            repo.add(response_action)
+            if trace is not None:
+                next_action.random_trace = {**next_action.random_trace, **trace}
+                repo.add(next_action)
 
     def _boss_phase_decision(
         self,
@@ -1860,6 +1867,52 @@ class CombatService:
             )
         return changes
 
+    def _apply_combat_rewards(
+        self,
+        session: Session,
+        *,
+        source: CombatParticipant,
+        target: CombatParticipant,
+        trigger: str,
+        current_epoch: float,
+    ) -> list[JsonObject]:
+        if source.actor_type != "player" or target.actor_type != "npc":
+            return []
+        npc = session.get(NPC, target.actor_id)
+        if npc is None:
+            return []
+        raw_config = npc.ai.get("combat_rewards")
+        if not isinstance(raw_config, dict):
+            return []
+        raw_rewards = raw_config.get(trigger, [])
+        if not isinstance(raw_rewards, list):
+            return []
+
+        changes: list[JsonObject] = []
+        ledger = LedgerService()
+        for raw_reward in raw_rewards:
+            if not isinstance(raw_reward, dict):
+                continue
+            if raw_reward.get("type") != "coins":
+                continue
+            amount = raw_reward.get("amount")
+            if not isinstance(amount, int) or amount <= 0:
+                continue
+            ledger.credit(session, "player", source.actor_id, amount)
+            changes.append(
+                {
+                    "type": "coins",
+                    "trigger": trigger,
+                    "player_id": source.actor_id,
+                    "target_actor_type": target.actor_type,
+                    "target_actor_id": target.actor_id,
+                    "amount": amount,
+                    "message": raw_reward.get("message"),
+                    "at": current_epoch,
+                }
+            )
+        return changes
+
     def _decayed_attention(
         self, attention: dict[str, JsonObject], current_epoch: float
     ) -> dict[str, JsonObject]:
@@ -2005,6 +2058,7 @@ class CombatService:
             if resolution.target is not None
             else action.target_type
         )
+        prose = self._resolution_prose(repo.session, resolution, action.outcome)
         bus.emit(
             Event(
                 event_type,
@@ -2021,7 +2075,7 @@ class CombatService:
                     "payload": action.outcome,
                     "room_id": encounter.location_id,
                     "sequence": encounter.event_sequence,
-                    "prose": resolution.explanation,
+                    "prose": prose,
                     "message_type": MessageType.COMBAT.value,
                     "combat_update": self._combat_update(
                         repo, repo.session, encounter.id
@@ -2030,6 +2084,51 @@ class CombatService:
             ),
             None,
         )
+
+    def _resolution_prose(
+        self, session: Session, resolution: CombatResolution, payload: JsonObject
+    ) -> str:
+        lines = [resolution.explanation] if resolution.explanation else []
+        state_changes = payload.get("state_changes")
+        if isinstance(state_changes, list):
+            for raw_change in state_changes:
+                if not isinstance(raw_change, dict):
+                    continue
+                to_status = raw_change.get("to_status")
+                actor_type = raw_change.get("actor_type")
+                actor_id = raw_change.get("actor_id")
+                if not isinstance(to_status, str) or not isinstance(actor_id, str):
+                    continue
+                name = self._actor_name(session, str(actor_type), actor_id)
+                if to_status == "defeated":
+                    lines.append(f"{name} is defeated.")
+                elif to_status == "downed":
+                    lines.append(f"{name} is downed.")
+                elif to_status == "escaped":
+                    lines.append(f"{name} escapes.")
+        consequence_changes = payload.get("consequence_changes")
+        if isinstance(consequence_changes, list):
+            for raw_change in consequence_changes:
+                if not isinstance(raw_change, dict):
+                    continue
+                if raw_change.get("type") != "coins":
+                    continue
+                message = raw_change.get("message")
+                amount = raw_change.get("amount")
+                if isinstance(message, str) and message.strip():
+                    lines.append(message.strip())
+                elif isinstance(amount, int):
+                    lines.append(f"You receive {amount} coins.")
+        return " ".join(lines)
+
+    def _actor_name(self, session: Session, actor_type: str, actor_id: str) -> str:
+        if actor_type == "player":
+            player = session.get(Player, actor_id)
+            return player.username if player is not None else actor_id
+        if actor_type == "npc":
+            npc = session.get(NPC, actor_id)
+            return npc.name if npc is not None else actor_id
+        return actor_id
 
     def _combat_update(
         self, repo: CombatRepo, session: Session, encounter_id: str

@@ -336,6 +336,10 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
             action.actor_type == "npc" and action.state == "pending"
             for action in actions
         )
+        assert any(
+            action.actor_type == "player" and action.state == "pending"
+            for action in actions[1:]
+        )
         assert observed
         assert observed[0]["sequence"] == 1
         assert observed[0]["room_id"] == "arena"
@@ -652,9 +656,8 @@ def test_aggressive_stance_feeds_attack_resolution_trace() -> None:
         session.commit()
 
     with Session(engine) as session:
-        action = session.exec(
-            select(CombatAction).where(CombatAction.actor_type == "player")
-        ).one()
+        action = session.get(CombatAction, action_id)
+        assert action is not None
         record = session.exec(select(CombatResolutionRecord)).one()
 
         assert action.outcome["actor_stance"] == "aggressive"
@@ -1283,6 +1286,53 @@ def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:
         assert by_type["player"].position == "unengaged"
         assert record.payload["state_changes"][0]["to_status"] == "defeated"
         assert record.payload["position_changes"]
+
+
+def test_npc_defeat_applies_configured_coin_reward_and_final_prose() -> None:
+    engine = _engine()
+    service = CombatService()
+    bus = EventBus()
+    observed: list[dict] = []
+    bus.on(GameEvent.PLAYER_ATTACKED, lambda event, ctx: observed.append(event.payload))
+
+    with Session(engine) as session:
+        ctx = _context(session, bus=bus)
+        goblin = session.get(NPC, "goblin")
+        assert goblin is not None
+        goblin.max_hp = 1
+        goblin.ai = {
+            "combat_rewards": {
+                "on_defeat": [
+                    {
+                        "type": "coins",
+                        "amount": 25,
+                        "message": "You earn 25 coins for the clean spar.",
+                    }
+                ]
+            }
+        }
+        session.add(goblin)
+        service.attack("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+
+        service.resolve_action(
+            session,
+            action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+            bus=bus,
+        )
+        session.commit()
+
+        assert LedgerService().balance_of(session, "player", "player-1") == 25
+        record = session.exec(select(CombatResolutionRecord)).one()
+        assert record.payload["consequence_changes"][0]["type"] == "coins"
+        assert record.payload["consequence_changes"][0]["amount"] == 25
+
+    assert observed
+    assert "Goblin is defeated." in observed[0]["prose"]
+    assert "You earn 25 coins for the clean spar." in observed[0]["prose"]
 
 
 def test_player_hp_depletion_marks_downed_and_cancels_queued_action() -> None:

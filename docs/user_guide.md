@@ -573,7 +573,10 @@ older pending one. Combat uses health and stamina meters. The browser combat fee
 opponent's approximate health band plus current HP after combat updates. At 0 HP, player characters are
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
 active combat and any queued combat action for them is cancelled. Stances persist for the
-encounter and trade offense, defense, damage, and escape stamina cost. Guarding can redirect
+encounter and trade offense, defense, damage, and escape stamina cost. Once combat starts,
+active participants keep queuing basic attacks automatically every few game seconds until the
+encounter ends, but you can still replace your next queued primary action with an explicit command.
+Guarding can redirect
 incoming melee attacks, while ranged shots record their range without using guard interception.
 Reaction policy controls whether the character automatically spends a bounded defensive reaction
 when attacked. If a character becomes unable to act before a committed wind-up resolves, that

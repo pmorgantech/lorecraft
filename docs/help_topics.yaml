@@ -105,6 +105,9 @@ topics:
     it after a short wind-up and recovery window. You do not need to spam
     commands. If you commit an action and it has not resolved yet, wait for the
     combat feed; the delay is part of the system.
+    Once a fight is active, participants keep queuing basic attacks every few
+    game seconds until a side is downed, defeated, or escapes. Your next queued
+    primary action can still be replaced with a new combat command.
 
     Useful commands:
       - 'attack <target>' starts or continues a melee attack against an NPC.

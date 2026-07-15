@@ -8291,6 +8291,11 @@ npcs:
     max_hp: 70
     ai:
       combat_role: sparring partner
+      combat_rewards:
+        on_defeat:
+          - type: coins
+            amount: 25
+            message: "Seren Vale tosses you 25 coins for besting Tobin cleanly."
 
   - id: innkeeper
     name: Mira the Innkeeper

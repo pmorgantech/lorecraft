@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.129.0] - 2026-07-15
+
+### Added
+
+- Added automatic combat continuation so active opponents keep queuing basic
+  attacks after each resolved hit until a side is downed, defeated, or escapes.
+- Added combat defeat narration and content-authored on-defeat coin rewards,
+  including a 25-coin Tobin sparring reward at the Ashmoore training academy.
+
 ## [0.128.1] - 2026-07-15
 
 ### Fixed

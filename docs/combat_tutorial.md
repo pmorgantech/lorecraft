@@ -100,8 +100,10 @@ Combat output appears in two forms:
 - a compact opponent health line after combat updates, showing condition and current HP
 
 If you see your action committed but not resolved yet, that is normal scheduled intent. The action
-has a short wind-up, then recovery. Wait for the result before deciding whether to keep pressure,
-defend, switch stance, or flee.
+has a short wind-up, then recovery. Once a fight is active, participants keep queuing basic attacks
+automatically every few game seconds until someone is downed, defeated, or escapes. You can still
+replace your next queued primary action by choosing to attack a target, defend, switch stance, or
+flee.
 
 The browser may continue to show downed, defeated, or escaped participants briefly because combat
 state keeps the outcome explicit instead of making actors vanish from the record.
