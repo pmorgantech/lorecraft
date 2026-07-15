@@ -169,7 +169,9 @@ def create_app(
         _load_celestial_content(resolved_settings.celestial_yaml_path)
         register_tide_gate_handlers(bus, resolved_game_engine)
         NpcScheduler(resolved_game_engine).register(bus)
-        scheduler = SchedulerService(resolved_game_engine, app_rng)
+        scheduler = SchedulerService(
+            resolved_game_engine, app_rng, resolved_audit_engine
+        )
         scheduler.register(bus)
         get_meter_registry().register(MeterDef(key="hp", base_maximum=_hp_base_maximum))
         meter_service = MeterService(resolved_game_engine, app_rng)

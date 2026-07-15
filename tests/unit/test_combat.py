@@ -18,6 +18,7 @@ from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.models.world import Item, NPC, Room, WorldClock
@@ -97,10 +98,10 @@ def test_attack_submits_intent_and_schedules_resolution() -> None:
 
 
 def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
-    engine = _engine()
+    engine, audit_engine = _engine_pair()
     rng = GameRng(seed=7)
     bus = EventBus()
-    scheduler = SchedulerService(engine, rng)
+    scheduler = SchedulerService(engine, rng, audit_engine)
     service = CombatService()
     scheduler.register(bus)
     service.register(bus)
@@ -119,6 +120,7 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
             select(CombatAction).order_by(CombatAction.submitted_at)
         ).all()
         record = session.exec(select(CombatResolutionRecord)).one()
+        record_id = record.id
         goblin_hp = ctx_meters(engine).get(session, "npc", "goblin", "hp")
 
         assert actions[0].state == "resolved"
@@ -126,8 +128,10 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         assert "damage_trace" in actions[0].outcome
         assert actions[0].random_trace
         assert record.action_id == actions[0].id
+        assert actions[0].outcome["resolution_record_id"] == record_id
         assert record.random_trace == actions[0].random_trace
         assert record.damage_trace["final_damage"] == actions[0].outcome["damage"]
+        assert record.payload["random_trace"] == record.random_trace
         assert goblin_hp.current < goblin_hp.maximum
         assert any(
             action.actor_type == "npc" and action.state == "pending"
@@ -140,6 +144,14 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         assert observed[0]["prose"]
         assert observed[0]["combat_update"]["sequence"] == 1
         assert observed[0]["combat_update"]["participants"]
+        assert observed[0]["resolution_record_id"] == record_id
+
+    with Session(audit_engine) as audit_session:
+        audit_event = audit_session.exec(select(AuditEvent)).one()
+        assert audit_event.event_type == GameEvent.PLAYER_ATTACKED.value
+        assert audit_event.source_type == "SCHEDULER"
+        assert audit_event.payload_json["resolution_record_id"] == record_id
+        assert audit_event.payload_json["resolution"]["damage_trace"]
 
 
 def test_flee_resolution_ends_player_participation() -> None:
@@ -171,6 +183,111 @@ def test_flee_resolution_ends_player_participation() -> None:
 
         assert player is not None and player.active_combat_session_id is None
         assert participant.status == "escaped"
+        assert participant.position == "unengaged"
+
+
+def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        goblin = session.get(NPC, "goblin")
+        assert goblin is not None
+        goblin.max_hp = 1
+        session.add(goblin)
+        service.attack("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+
+        service.resolve_action(
+            session,
+            action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        encounter = session.exec(select(CombatEncounter)).one()
+        participants = session.exec(select(CombatParticipant)).all()
+        by_type = {participant.actor_type: participant for participant in participants}
+        record = session.exec(select(CombatResolutionRecord)).one()
+
+        assert encounter.state == "ended"
+        assert by_type["npc"].status == "defeated"
+        assert by_type["npc"].position == "unengaged"
+        assert by_type["player"].position == "unengaged"
+        assert record.payload["state_changes"][0]["to_status"] == "defeated"
+        assert record.payload["position_changes"]
+
+
+def test_player_hp_depletion_marks_downed_and_cancels_queued_action() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        stats = session.get(PlayerStats, "player-1")
+        assert stats is not None
+        stats.max_hp = 5
+        stats.agility = -100
+        session.add(stats)
+
+        service.attack("goblin", ctx)
+        player_action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        service.resolve_action(
+            session,
+            player_action.id,
+            rng=GameRng(seed=1),
+            current_epoch=1.0,
+            meter_service=ctx.meters,
+        )
+        service.defend(None, ctx)
+        queued_defend = session.exec(
+            select(CombatAction).where(CombatAction.action_key == "defend")
+        ).one()
+        queued_defend_id = queued_defend.id
+        npc_action = session.exec(
+            select(CombatAction)
+            .where(CombatAction.actor_type == "npc")
+            .where(CombatAction.state == "pending")
+        ).one()
+        npc_action_id = npc_action.id
+
+        service.resolve_action(
+            session,
+            npc_action_id,
+            rng=GameRng(seed=2),
+            current_epoch=2.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        player = session.get(Player, "player-1")
+        participant = session.exec(
+            select(CombatParticipant).where(CombatParticipant.actor_type == "player")
+        ).one()
+        queued = session.get(CombatAction, queued_defend_id)
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == npc_action_id
+            )
+        ).one()
+
+        assert player is not None and player.active_combat_session_id is None
+        assert participant.status == "downed"
+        assert participant.position == "unengaged"
+        assert participant.queued_action_id is None
+        assert queued is not None and queued.state == "cancelled"
+        assert record.payload["state_changes"][0]["to_status"] == "downed"
+        assert (
+            queued_defend_id
+            in record.payload["state_changes"][0]["cancelled_action_ids"]
+        )
 
 
 def test_damage_profiles_use_equipped_weapon_and_armor_descriptors() -> None:
@@ -291,9 +408,15 @@ def test_combat_broadcast_sends_prose_and_structured_update() -> None:
 
 
 def _engine():
-    engine = create_engine("sqlite://")
-    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    engine, _ = _engine_pair()
     return engine
+
+
+def _engine_pair():
+    engine = create_engine("sqlite://")
+    audit_engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=audit_engine)
+    return engine, audit_engine
 
 
 def _context(

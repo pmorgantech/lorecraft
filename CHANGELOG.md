@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.109.0] - 2026-07-15
+
+### Added
+
+- Completed the Sprint 85 combat foundation pass with explicit player
+  downed-vs-NPC-defeated policy, queued-action cleanup on downed/defeated/
+  escaped participants, engaged/unengaged relationship-derived positions, and
+  scheduler-backed combat audit rows linked to `CombatResolutionRecord` traces.
+
 ## [0.108.0] - 2026-07-15
 
 ### Added

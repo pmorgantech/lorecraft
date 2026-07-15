@@ -903,16 +903,20 @@ The current damage layer reads existing equipment descriptors rather than a new 
 schema. Equipped weapons use `category: weapon`, `slot`, `weight`, and `quality` to derive base
 damage, accuracy, and penetration. Equipped wearable armor uses `category: armor`, `weight`, and
 `quality` to derive bounded flat block and resistance. Each resolved action persists a compact
-resolution record with random and damage traces for later audit, explanation, and simulation work.
+resolution record with random and damage traces, state changes, position changes, and the record
+id used by structured combat events. When scheduled combat is running with an audit engine, the
+same resolution writes an `AuditEvent` row that points back to the feature-owned resolution
+record.
 
 Scheduled combat resolutions also broadcast to browsers as two messages: combat prose in the
 normal feed and a structured `combat_update` payload with a per-encounter sequence number. The
-current browser stores that ordered state for future panel/resync work; builders do not need to
-author anything special for this first pass.
+current browser stores that ordered state for future panel/resync work. The structured state keeps
+downed, defeated, and escaped participants visible with explicit `engaged`/`unengaged` positions;
+builders do not need to author anything special for this first pass.
 
 Balance details are intentionally still shallow in this slice: dedicated combat action YAML,
 explicit weapon/armor combat traits, PvP consent, richer browser resync, and live-tunable combat
-ruleset configuration remain later Sprint 85/87 work tracked in `docs/roadmap.md`.
+ruleset configuration remain later Sprint 86/87 work tracked in `docs/roadmap.md`.
 
 **Removing a Sprint 51 widget.** Each of the four new widgets is a self-contained
 `{id, render(data)}` entry in the admin console's `ANALYTICS_WIDGETS` array

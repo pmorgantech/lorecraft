@@ -554,8 +554,9 @@ flee               — look for an opening to leave the encounter
 ```
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
-older pending one. Combat currently uses health and stamina meters, and defeated or escaped
-participants leave the encounter.
+older pending one. Combat uses health and stamina meters. At 0 HP, player characters are
+downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
+active combat and any queued combat action for them is cancelled.
 
 ## Getting Help In-Game
 

@@ -27,12 +27,16 @@ class SchedulerEventContext:
     game_engine: Engine
     bus: EventBus
     rng: GameRng
+    audit_engine: Engine | None = None
 
 
 class SchedulerService:
-    def __init__(self, game_engine: Engine, rng: GameRng) -> None:
+    def __init__(
+        self, game_engine: Engine, rng: GameRng, audit_engine: Engine | None = None
+    ) -> None:
         self._game_engine = game_engine
         self._rng = rng
+        self._audit_engine = audit_engine
         self._bus: EventBus | None = None
 
     def register(self, bus: EventBus) -> None:
@@ -86,7 +90,10 @@ class SchedulerService:
                 return
 
             event_ctx = SchedulerEventContext(
-                game_engine=self._game_engine, bus=self._bus, rng=self._rng
+                game_engine=self._game_engine,
+                bus=self._bus,
+                rng=self._rng,
+                audit_engine=self._audit_engine,
             )
             for job_id, job_type, payload in due_snapshot:
                 self._bus.emit(

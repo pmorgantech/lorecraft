@@ -11,9 +11,12 @@ from sqlmodel import Session
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.game.transaction import TransactionSource
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
 from lorecraft.engine.models.world import NPC
+from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
 from lorecraft.engine.services.meters import MeterService
@@ -27,6 +30,13 @@ from lorecraft.features.combat.models import (
 )
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.damage import armor_profile_for, weapon_profile_for
+from lorecraft.features.combat.policy import (
+    ENGAGEMENT_ENGAGED,
+    ENGAGEMENT_UNENGAGED,
+    STATUS_ACTIVE,
+    STATUS_ESCAPED,
+    defeat_decision_for,
+)
 from lorecraft.features.combat.resolution import (
     CombatResolution,
     CombatantSnapshot,
@@ -34,7 +44,7 @@ from lorecraft.features.combat.resolution import (
     player_snapshot,
     resolve_basic_attack,
 )
-from lorecraft.types import JsonObject
+from lorecraft.types import JsonObject, JsonValue
 
 COMBAT_RESOLVE_JOB = "combat.resolve_action"
 
@@ -124,6 +134,7 @@ class CombatService:
         current_epoch: float,
         bus: EventBus | None = None,
         meter_service: MeterService | None = None,
+        audit_repo: AuditRepo | None = None,
     ) -> CombatAction | None:
         repo = CombatRepo(session)
         action = repo.action(action_id)
@@ -137,14 +148,14 @@ class CombatService:
             action.state = "cancelled"
             repo.add(action)
             return action
-        if actor.status != "active":
+        if actor.status != STATUS_ACTIVE:
             action.state = "cancelled"
             repo.add(action)
             return action
 
         meter_service = meter_service or MeterService(_session_engine(session), rng)
         resolution = self._calculate_resolution(session, repo, action, actor, rng=rng)
-        self._apply_resolution(
+        record = self._apply_resolution(
             session,
             repo,
             encounter,
@@ -154,8 +165,6 @@ class CombatService:
             current_epoch=current_epoch,
             meter_service=meter_service,
         )
-        if bus is not None:
-            self._emit_resolution_events(bus, repo, encounter, resolution, action)
         if action.actor_type == "player" and action.action_key == "basic_attack":
             self._maybe_schedule_npc_response(
                 session,
@@ -165,6 +174,18 @@ class CombatService:
                 current_epoch=current_epoch,
             )
         self._maybe_end_encounter(session, repo, encounter, current_epoch)
+        self._record_audit_resolution(
+            audit_repo,
+            encounter,
+            action,
+            resolution,
+            record,
+            current_epoch=current_epoch,
+        )
+        if bus is not None:
+            self._emit_resolution_events(
+                bus, repo, encounter, resolution, action, record
+            )
         return action
 
     def _on_scheduled_job_due(self, event: Event, ctx: object) -> None:
@@ -179,15 +200,27 @@ class CombatService:
         if not isinstance(action_id, str):
             return
         current_epoch = _float_payload(event.payload, "current_epoch")
-        with Session(ctx.game_engine) as session:
-            self.resolve_action(
-                session,
-                action_id,
-                rng=ctx.rng,
-                current_epoch=current_epoch,
-                bus=ctx.bus,
-            )
-            session.commit()
+        audit_session = (
+            Session(ctx.audit_engine) if ctx.audit_engine is not None else None
+        )
+        try:
+            with Session(ctx.game_engine) as session:
+                self.resolve_action(
+                    session,
+                    action_id,
+                    rng=ctx.rng,
+                    current_epoch=current_epoch,
+                    bus=ctx.bus,
+                    audit_repo=AuditRepo(audit_session)
+                    if audit_session is not None
+                    else None,
+                )
+                session.commit()
+                if audit_session is not None:
+                    audit_session.commit()
+        finally:
+            if audit_session is not None:
+                audit_session.close()
 
     def _resolve_npc_target(self, noun: str | None, ctx: GameContext) -> NPC | None:
         if noun:
@@ -248,14 +281,18 @@ class CombatService:
         self, repo: CombatRepo, encounter_id: str, source_id: str, target_id: str
     ) -> None:
         for left, right in ((source_id, target_id), (target_id, source_id)):
-            repo.add(
-                CombatRelationship(
+            relationship = repo.relationship_between(encounter_id, left, right)
+            if relationship is None:
+                relationship = CombatRelationship(
                     id=str(uuid4()),
                     encounter_id=encounter_id,
                     source_participant_id=left,
                     target_participant_id=right,
+                    engagement=ENGAGEMENT_ENGAGED,
                 )
-            )
+            else:
+                relationship.engagement = ENGAGEMENT_ENGAGED
+            repo.add(relationship)
 
     def _active_player_participation(
         self, ctx: GameContext
@@ -358,7 +395,7 @@ class CombatService:
             if action.target_participant_id is not None
             else None
         )
-        if target is None or target.status != "active":
+        if target is None or target.status != STATUS_ACTIVE:
             snapshot = self._snapshot(session, actor)
             return CombatResolution(
                 action_id=action.id,
@@ -387,34 +424,36 @@ class CombatService:
         resolution: CombatResolution,
         *,
         resolved_at: float,
-    ) -> None:
-        if repo.resolution_record_for_action(action.id) is not None:
-            return
+        payload: JsonObject,
+    ) -> CombatResolutionRecord:
+        existing = repo.resolution_record_for_action(action.id)
+        if existing is not None:
+            return existing
         target_type = (
             resolution.target.actor_type if resolution.target is not None else None
         )
         target_id = (
             resolution.target.actor_id if resolution.target is not None else None
         )
-        repo.add(
-            CombatResolutionRecord(
-                id=str(uuid4()),
-                encounter_id=encounter.id,
-                action_id=action.id,
-                actor_type=resolution.actor.actor_type,
-                actor_id=resolution.actor.actor_id,
-                target_type=target_type,
-                target_id=target_id,
-                action_key=resolution.action_key,
-                outcome=resolution.outcome,
-                damage=resolution.damage,
-                resolved_at_game_time=resolved_at,
-                ruleset_id=encounter.ruleset_id,
-                random_trace=resolution.random_trace or {},
-                damage_trace=resolution.damage_trace or {},
-                payload=self._resolution_payload(resolution),
-            )
+        record = CombatResolutionRecord(
+            id=str(uuid4()),
+            encounter_id=encounter.id,
+            action_id=action.id,
+            actor_type=resolution.actor.actor_type,
+            actor_id=resolution.actor.actor_id,
+            target_type=target_type,
+            target_id=target_id,
+            action_key=resolution.action_key,
+            outcome=resolution.outcome,
+            damage=resolution.damage,
+            resolved_at_game_time=resolved_at,
+            ruleset_id=encounter.ruleset_id,
+            random_trace=resolution.random_trace or {},
+            damage_trace=resolution.damage_trace or {},
+            payload=payload,
         )
+        repo.add(record)
+        return record
 
     def _apply_resolution(
         self,
@@ -427,18 +466,12 @@ class CombatService:
         *,
         current_epoch: float,
         meter_service: MeterService,
-    ) -> None:
+    ) -> CombatResolutionRecord:
         action.state = "resolved"
         encounter.event_sequence += 1
-        action.outcome = self._resolution_payload(resolution)
         action.random_trace = resolution.random_trace or {}
-        self._record_resolution(
-            repo,
-            encounter,
-            action,
-            resolution,
-            resolved_at=current_epoch,
-        )
+        state_changes: list[JsonValue] = []
+        position_changes: list[JsonValue] = []
         if actor.queued_action_id == action.id:
             actor.queued_action_id = None
         if resolution.stamina_delta:
@@ -447,7 +480,15 @@ class CombatService:
             )
             meter_service.adjust(session, stamina, resolution.stamina_delta)
         if resolution.action_key == "flee" and resolution.outcome == "escaped":
-            actor.status = "escaped"
+            state_changes.append(
+                self._transition_participant(
+                    repo,
+                    actor,
+                    STATUS_ESCAPED,
+                    reason="flee",
+                    current_epoch=current_epoch,
+                )
+            )
             if actor.actor_type == "player":
                 player = session.get(Player, actor.actor_id)
                 if player is not None:
@@ -463,17 +504,50 @@ class CombatService:
             change = meter_service.adjust(session, hp, -resolution.damage)
             self._add_contribution(actor, resolution.damage)
             if change.depleted:
-                target.status = "defeated" if target.actor_type == "npc" else "downed"
-                if target.actor_type == "player":
+                decision = defeat_decision_for(target.actor_type)
+                state_changes.append(
+                    self._transition_participant(
+                        repo,
+                        target,
+                        decision.status,
+                        reason="hp_depleted",
+                        current_epoch=current_epoch,
+                    )
+                )
+                if decision.clears_player_combat:
                     player = session.get(Player, target.actor_id)
                     if player is not None:
                         player.active_combat_session_id = None
                         session.add(player)
-                repo.add(target)
+        position_changes.extend(self._refresh_positions(repo, encounter.id))
         encounter.last_hostile_action_at = current_epoch
+        payload = self._resolution_payload(
+            resolution,
+            record_id=None,
+            state_changes=state_changes,
+            position_changes=position_changes,
+        )
+        action.outcome = payload
+        record = self._record_resolution(
+            repo,
+            encounter,
+            action,
+            resolution,
+            resolved_at=current_epoch,
+            payload=payload,
+        )
+        action.outcome = self._resolution_payload(
+            resolution,
+            record_id=record.id,
+            state_changes=state_changes,
+            position_changes=position_changes,
+        )
+        record.payload = action.outcome
+        repo.add(record)
         repo.add(actor)
         repo.add(action)
         repo.add(encounter)
+        return record
 
     def _maybe_schedule_npc_response(
         self,
@@ -492,7 +566,7 @@ class CombatService:
         actor = repo.participant(action.actor_participant_id)
         if target is None or actor is None or target.actor_type != "npc":
             return
-        if target.status != "active" or actor.status != "active":
+        if target.status != STATUS_ACTIVE or actor.status != STATUS_ACTIVE:
             return
         if repo.pending_primary_action(target.id) is not None:
             return
@@ -526,6 +600,89 @@ class CombatService:
                 if player is not None:
                     player.active_combat_session_id = None
                     session.add(player)
+
+    def _transition_participant(
+        self,
+        repo: CombatRepo,
+        participant: CombatParticipant,
+        status: str,
+        *,
+        reason: str,
+        current_epoch: float,
+    ) -> JsonObject:
+        previous_status = participant.status
+        participant.status = status
+        participant.queued_action_id = None
+        cancelled_actions = []
+        for pending in repo.pending_primary_actions(participant.id):
+            pending.state = "cancelled"
+            repo.add(pending)
+            cancelled_actions.append(pending.id)
+        for relationship in repo.relationships_for_encounter(participant.encounter_id):
+            if participant.id in {
+                relationship.source_participant_id,
+                relationship.target_participant_id,
+            }:
+                relationship.engagement = ENGAGEMENT_UNENGAGED
+                repo.add(relationship)
+        participant.position = ENGAGEMENT_UNENGAGED
+        repo.add(participant)
+        return {
+            "participant_id": participant.id,
+            "actor_type": participant.actor_type,
+            "actor_id": participant.actor_id,
+            "from_status": previous_status,
+            "to_status": status,
+            "reason": reason,
+            "at": current_epoch,
+            "cancelled_action_ids": cancelled_actions,
+        }
+
+    def _refresh_positions(
+        self, repo: CombatRepo, encounter_id: str
+    ) -> list[JsonValue]:
+        participants = list(repo.participants(encounter_id))
+        active_ids = {
+            participant.id
+            for participant in participants
+            if participant.status == STATUS_ACTIVE
+        }
+        engaged_ids: set[str] = set()
+        for relationship in repo.relationships_for_encounter(encounter_id):
+            if relationship.engagement != ENGAGEMENT_ENGAGED:
+                continue
+            if (
+                relationship.source_participant_id not in active_ids
+                or relationship.target_participant_id not in active_ids
+            ):
+                relationship.engagement = ENGAGEMENT_UNENGAGED
+                repo.add(relationship)
+                continue
+            engaged_ids.add(relationship.source_participant_id)
+            engaged_ids.add(relationship.target_participant_id)
+
+        changes: list[JsonValue] = []
+        for participant in participants:
+            previous_position = participant.position
+            next_position = (
+                ENGAGEMENT_ENGAGED
+                if participant.id in engaged_ids
+                else ENGAGEMENT_UNENGAGED
+            )
+            if previous_position == next_position:
+                continue
+            participant.position = next_position
+            repo.add(participant)
+            changes.append(
+                {
+                    "participant_id": participant.id,
+                    "actor_type": participant.actor_type,
+                    "actor_id": participant.actor_id,
+                    "from_position": previous_position,
+                    "to_position": next_position,
+                }
+            )
+        return changes
 
     def _snapshot(
         self, session: Session, participant: CombatParticipant
@@ -564,6 +721,57 @@ class CombatService:
         contribution["damage"] = _float_mapping(contribution, "damage") + damage
         actor.contribution = contribution
 
+    def _record_audit_resolution(
+        self,
+        audit_repo: AuditRepo | None,
+        encounter: CombatEncounter,
+        action: CombatAction,
+        resolution: CombatResolution,
+        record: CombatResolutionRecord,
+        *,
+        current_epoch: float,
+    ) -> None:
+        if audit_repo is None:
+            return
+        event_type = (
+            GameEvent.PLAYER_ATTACKED
+            if action.actor_type == "player"
+            else GameEvent.NPC_ATTACKED
+        )
+        audit_repo.record(
+            AuditEvent(
+                transaction_id=f"combat-action:{action.id}:resolve",
+                correlation_id=encounter.id,
+                parent_transaction_ids=[],
+                actor_id=action.actor_id,
+                event_type=event_type.value,
+                source_type=TransactionSource.SCHEDULER.value,
+                target_id=action.target_id,
+                room_id=encounter.location_id,
+                game_time=current_epoch,
+                real_time=time.time(),
+                severity="INFO",
+                summary=(
+                    f"Combat action resolved: {action.action_key} {resolution.outcome}"
+                ),
+                payload_json={
+                    "encounter_id": encounter.id,
+                    "action_id": action.id,
+                    "resolution_record_id": record.id,
+                    "actor_type": action.actor_type,
+                    "actor_id": action.actor_id,
+                    "target_type": action.target_type,
+                    "target_id": action.target_id,
+                    "action_key": action.action_key,
+                    "outcome": resolution.outcome,
+                    "damage": resolution.damage,
+                    "ruleset_id": encounter.ruleset_id,
+                    "resolver_version": record.resolver_version,
+                    "resolution": action.outcome,
+                },
+            )
+        )
+
     def _emit_resolution_events(
         self,
         bus: EventBus,
@@ -571,6 +779,7 @@ class CombatService:
         encounter: CombatEncounter,
         resolution: CombatResolution,
         action: CombatAction,
+        record: CombatResolutionRecord,
     ) -> None:
         event_type = (
             GameEvent.PLAYER_ATTACKED
@@ -589,6 +798,8 @@ class CombatService:
                     "target_id": action.target_id,
                     "outcome": resolution.outcome,
                     "damage": resolution.damage,
+                    "resolution_record_id": record.id,
+                    "payload": action.outcome,
                     "room_id": encounter.location_id,
                     "sequence": encounter.event_sequence,
                     "prose": resolution.explanation,
@@ -607,7 +818,7 @@ class CombatService:
         encounter = repo.encounter(encounter_id)
         participants = []
         meters = MeterRepo(session)
-        for participant in repo.active_participants(encounter_id):
+        for participant in repo.participants(encounter_id):
             hp = meters.find(participant.actor_type, participant.actor_id, "hp")
             stamina = meters.find(
                 participant.actor_type, participant.actor_id, "stamina"
@@ -652,16 +863,29 @@ class CombatService:
             label = "strong"
         return {"state": label, "current": meter.current, "maximum": meter.maximum}
 
-    def _resolution_payload(self, resolution: CombatResolution) -> JsonObject:
+    def _resolution_payload(
+        self,
+        resolution: CombatResolution,
+        *,
+        record_id: str | None,
+        state_changes: list[JsonValue],
+        position_changes: list[JsonValue],
+    ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
             "outcome": resolution.outcome,
             "damage": resolution.damage,
             "stamina_delta": resolution.stamina_delta,
             "explanation": resolution.explanation,
+            "state_changes": state_changes,
+            "position_changes": position_changes,
         }
+        if record_id is not None:
+            payload["resolution_record_id"] = record_id
         if resolution.damage_trace is not None:
             payload["damage_trace"] = resolution.damage_trace
+        if resolution.random_trace is not None:
+            payload["random_trace"] = resolution.random_trace
         if resolution.target is not None:
             payload["target_id"] = resolution.target.actor_id
             payload["target_type"] = resolution.target.actor_type

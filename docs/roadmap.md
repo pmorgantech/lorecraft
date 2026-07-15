@@ -11,11 +11,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-14, v0.104.0 on develop; Sprints 1–84 all shipped)
+## Where things stand (2026-07-15, v0.109.0 on combat; Sprints 1–85 implemented)
 
-**Everything through Sprint 84 is shipped on `develop`** (currently v0.104.0). `roadmap.md` now tracks
-remaining work only; the full task-level history for completed Sprints 1–84 lives in
-[`roadmap_completed.md`](roadmap_completed.md), with release-level detail in
+**Everything through Sprint 85 is implemented in the combat branch line** (currently v0.109.0).
+`roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
+[`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
+release-level detail is in
 [`../CHANGELOG.md`](../CHANGELOG.md).
 
 The latest completed band is archived as Sprints 77–80: the Discipline/Ability replacement for the
@@ -38,7 +39,7 @@ wall was fsync serialization on a single SQLite writer, which WAL (37.4) already
 wouldn't help. Revisit the latter only if a *post-WAL* realistic-load test shows a hard
 single-process wall.
 
-**Activated (2026-07-14):** Combat & PvP (Sprints 85–88, see below) — the Scheduled Intent design
+**Activated (2026-07-14):** Combat & PvP (Sprints 86–88, see below) — the Scheduled Intent design
 from [`combat_design.md`](combat_design.md). Combat is a **supporting** system (Exploration >
 Trading > Questing > Puzzles) — it serves stories; stealth/persuasion/bribery/flee are first-class
 alternatives. It ships as `features/combat/` with no Tier 1 edits needed.
@@ -65,11 +66,11 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used (complete):** 1–84, except for deliberately skipped/deferred numbers below. Full task
+- **Used (complete):** 1–85, except for deliberately skipped/deferred numbers below. Full task
   detail lives in [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
   (concurrency/threading gate), and 65 (multiplayer trade/transit test pass).
-- **Newly active (2026-07-14):** 85–88 (combat phases 1–4, Scheduled Intent).
+- **Newly active (2026-07-14):** 86–88 (combat phases 2–4, Scheduled Intent).
 - **Next genuinely free sprint number:** 89. Do not recycle a number that appears here, in
   [`roadmap_completed.md`](roadmap_completed.md), or in [`wishlist.md`](wishlist.md).
 
@@ -81,7 +82,7 @@ Combat is now **active** (no longer set-aside). See [`combat_design.md`](combat_
 the full design. Built as `features/combat/`, all opinion/data in Tier 2; no Tier 1 edits
 needed beyond what exists.
 
-### Sprint 85 — Combat Phase 1: Foundation (Scheduled Intent core) `[~]`
+### Sprint 85 — Combat Phase 1: Foundation (Scheduled Intent core) `[x]`
 
 **Goal:** A player can attack/defend/flee a static NPC through the full intent pipeline; one
 primary channel; encounter graph; downed/defeat; structured events + audit; browser state.
@@ -96,9 +97,9 @@ modifier resolver, seeded rng + skill_check, ItemLocationService, audit. All shi
 - [x] 85.3 Action resolution pipeline (Txn B) — re-validate, calculate, apply atomically, emit events
 - [x] 85.4 Primary-channel readiness + one queued action — derived readiness, single replaceable queue
 - [x] 85.5 Basic attack/defend/flee — opposed margin, staged damage stack, hybrid armor
-- [~] 85.6 Health + stamina via MeterService; downed/defeat states
+- [x] 85.6 Health + stamina via MeterService; downed/defeat states
 - [x] 85.7 Immutable CombatResolution object — resolver/snapshot boundary
-- [~] 85.8 Structured events + audit resolution record + engaged/unengaged position
+- [x] 85.8 Structured events + audit resolution record + engaged/unengaged position
 - [x] 85.9 Basic browser combat state over WebSocket — structured updates + prose with sequence numbers
 - [x] 85.10 NPC utility-selection stub — single primary action, same intent pipeline as players
 
@@ -114,9 +115,14 @@ flat block adjusted by penetration → resistance factor), and persists a `Comba
 with random and damage traces per resolved action. Remaining 85.8 work is richer structured
 event/audit integration beyond the feature-owned resolution record.
 
-Browser-state note: scheduled combat resolutions now emit sequence-numbered combat prose and
-structured `combat_update` WebSocket payloads to the encounter room; the browser accepts and
-stores ordered combat state for later panel/resync UI work.
+Sprint 85 completion note (v0.109.0): combat defeat policy now distinguishes default player
+`downed` from NPC `defeated`, clears player active-combat pointers, cancels a downed/escaped/
+defeated participant's queued primary action, and derives explicit `engaged`/`unengaged`
+participant positions from active relationship edges. Scheduled resolutions persist richer
+`CombatResolutionRecord` payloads, emit audit-ready structured events with resolution record
+ids and traces, and write `AuditEvent` rows when the scheduler is wired with an audit engine.
+Browser-state updates now include inactive participants so downed/defeated/escaped outcomes
+remain visible in structured combat state. Sprint 86 is the next open combat band.
 
 ### Sprint 86 — Combat Phase 2: Tactical Depth
 

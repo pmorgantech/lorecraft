@@ -36,6 +36,14 @@ class CombatRepo:
     def participant(self, participant_id: str) -> CombatParticipant | None:
         return self.session.get(CombatParticipant, participant_id)
 
+    def participants(self, encounter_id: str) -> Sequence[CombatParticipant]:
+        statement = (
+            select(CombatParticipant)
+            .where(CombatParticipant.encounter_id == encounter_id)
+            .order_by(col(CombatParticipant.joined_at), col(CombatParticipant.id))
+        )
+        return self.session.exec(statement).all()
+
     def active_encounter_for_actor(
         self, actor_type: str, actor_id: str
     ) -> CombatEncounter | None:
@@ -91,6 +99,30 @@ class CombatRepo:
         )
         return self.session.exec(statement).first()
 
+    def relationship_between(
+        self, encounter_id: str, source_participant_id: str, target_participant_id: str
+    ) -> CombatRelationship | None:
+        statement = (
+            select(CombatRelationship)
+            .where(CombatRelationship.encounter_id == encounter_id)
+            .where(CombatRelationship.source_participant_id == source_participant_id)
+            .where(CombatRelationship.target_participant_id == target_participant_id)
+        )
+        return self.session.exec(statement).first()
+
+    def relationships_for_encounter(
+        self, encounter_id: str
+    ) -> Sequence[CombatRelationship]:
+        statement = (
+            select(CombatRelationship)
+            .where(CombatRelationship.encounter_id == encounter_id)
+            .order_by(
+                col(CombatRelationship.source_participant_id),
+                col(CombatRelationship.target_participant_id),
+            )
+        )
+        return self.session.exec(statement).all()
+
     def pending_primary_action(self, participant_id: str) -> CombatAction | None:
         statement = (
             select(CombatAction)
@@ -100,6 +132,16 @@ class CombatRepo:
             .order_by(col(CombatAction.submitted_at).desc())
         )
         return self.session.exec(statement).first()
+
+    def pending_primary_actions(self, participant_id: str) -> Sequence[CombatAction]:
+        statement = (
+            select(CombatAction)
+            .where(CombatAction.actor_participant_id == participant_id)
+            .where(CombatAction.channel == "primary")
+            .where(CombatAction.state.in_(["pending", "queued"]))  # type: ignore[attr-defined]
+            .order_by(col(CombatAction.submitted_at), col(CombatAction.id))
+        )
+        return self.session.exec(statement).all()
 
     def add(self, row: object) -> None:
         self.session.add(row)
