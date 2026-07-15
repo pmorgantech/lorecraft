@@ -67,19 +67,23 @@ class CombatActionTiming(BaseModel):
 class CombatActionDef(BaseModel):
     id: str
     channel: str = ACTION_CHANNEL_PRIMARY
+    ruleset_id: str = "default"
     action_range: str
     calculator: str = CALCULATOR_OPPOSED_ATTACK
     resolver: str = RESOLVER_OPPOSED_ATTACK
+    resolver_version: str = "opposed-v1"
     timing: CombatActionTiming
     stamina_delta: float | None = None
     tags: list[str] = Field(default_factory=list)
 
-    @field_validator("id", "channel", "calculator", "resolver")
+    @field_validator(
+        "id", "channel", "ruleset_id", "calculator", "resolver", "resolver_version"
+    )
     @classmethod
     def _non_empty(cls, value: str) -> str:
         if not value.strip():
             raise ValueError(
-                "combat action id/channel/calculator/resolver must be non-empty"
+                "combat action id/channel/ruleset/calculator/resolver/version must be non-empty"
             )
         return value
 
@@ -235,36 +239,44 @@ def default_combat_actions_document() -> CombatActionsDocument:
         actions=[
             CombatActionDef(
                 id=ACTION_BASIC_ATTACK,
+                ruleset_id="core",
                 action_range=ACTION_RANGE_ENGAGED,
                 calculator=CALCULATOR_OPPOSED_ATTACK,
                 resolver=RESOLVER_OPPOSED_ATTACK,
+                resolver_version="opposed-v1",
                 timing=CombatActionTiming(windup=0.25, recovery=2.0),
                 stamina_delta=-6.0,
                 tags=["melee", "physical"],
             ),
             CombatActionDef(
                 id=ACTION_RANGED_ATTACK,
+                ruleset_id="core",
                 action_range=ACTION_RANGE_RANGED,
                 calculator=CALCULATOR_OPPOSED_ATTACK,
                 resolver=RESOLVER_OPPOSED_ATTACK,
+                resolver_version="opposed-v1",
                 timing=CombatActionTiming(windup=0.35, recovery=2.2),
                 stamina_delta=-6.0,
                 tags=["ranged", "physical"],
             ),
             CombatActionDef(
                 id=ACTION_DEFEND,
+                ruleset_id="core",
                 action_range=ACTION_RANGE_SELF,
                 calculator=CALCULATOR_SELF,
                 resolver=RESOLVER_DEFEND,
+                resolver_version="defend-v1",
                 timing=CombatActionTiming(windup=0.0, recovery=1.2),
                 stamina_delta=-2.0,
                 tags=["defense"],
             ),
             CombatActionDef(
                 id=ACTION_FLEE,
+                ruleset_id="core",
                 action_range=ACTION_RANGE_SELF,
                 calculator=CALCULATOR_SELF,
                 resolver=RESOLVER_FLEE,
+                resolver_version="flee-v1",
                 timing=CombatActionTiming(windup=0.35, recovery=2.5),
                 tags=["escape"],
             ),

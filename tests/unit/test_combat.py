@@ -190,6 +190,61 @@ def test_combat_service_uses_data_authored_action_timing() -> None:
         register_builtin_combat_actions(registry)
 
 
+def test_combat_resolution_persists_action_ruleset_and_resolver_version() -> None:
+    registry = get_action_registry()
+    registry.clear()
+    registry.load_document(
+        CombatActionsDocument(
+            actions=[
+                CombatActionDef(
+                    id="basic_attack",
+                    ruleset_id="test-ruleset",
+                    action_range="engaged",
+                    calculator=CALCULATOR_OPPOSED_ATTACK,
+                    resolver=RESOLVER_OPPOSED_ATTACK,
+                    resolver_version="opposed-test-v7",
+                    timing=CombatActionTiming(windup=0.25, recovery=2.0),
+                    stamina_delta=-6.0,
+                )
+            ]
+        )
+    )
+    try:
+        engine = _engine()
+        service = CombatService()
+
+        with Session(engine) as session:
+            ctx = _context(session)
+            service.attack("goblin", ctx)
+            action = session.exec(select(CombatAction)).one()
+            action_id = action.id
+
+            service.resolve_action(
+                session,
+                action_id,
+                rng=GameRng(seed=1),
+                current_epoch=10.0,
+                meter_service=ctx.meters,
+            )
+            session.commit()
+
+        with Session(engine) as session:
+            action = session.get(CombatAction, action_id)
+            record = session.exec(select(CombatResolutionRecord)).one()
+
+            assert action is not None
+            assert record.ruleset_id == "test-ruleset"
+            assert record.resolver_version == "opposed-test-v7"
+            assert record.random_trace["ruleset_id"] == "test-ruleset"
+            assert record.random_trace["resolver_version"] == "opposed-test-v7"
+            assert record.payload["ruleset_id"] == "test-ruleset"
+            assert record.payload["resolver_version"] == "opposed-test-v7"
+            assert action.outcome["ruleset_id"] == "test-ruleset"
+            assert action.outcome["resolver_version"] == "opposed-test-v7"
+    finally:
+        register_builtin_combat_actions(registry)
+
+
 def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
     engine, audit_engine = _engine_pair()
     rng = GameRng(seed=7)

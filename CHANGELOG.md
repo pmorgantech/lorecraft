@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.123.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.6 combat ruleset/resolver version metadata: action
+  definitions now carry explicit `ruleset_id` and `resolver_version`, and
+  resolution records, action outcomes, random traces, and audit payloads persist
+  those values.
+
 ## [0.122.0] - 2026-07-15
 
 ### Added

@@ -40,6 +40,8 @@ class CombatResolution:
     actor: CombatantSnapshot
     target: CombatantSnapshot | None
     outcome: str
+    ruleset_id: str = "default"
+    resolver_version: str = "opposed-v1"
     action_range: str = ACTION_RANGE_ENGAGED
     damage: float = 0.0
     stamina_delta: float = 0.0

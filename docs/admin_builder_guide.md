@@ -901,12 +901,13 @@ counter-attacks are created as scheduled intents through the same pipeline as pl
 
 Core combat actions are authored in `world_content/combat_actions.yaml`. Each entry defines an
 action id, primary-channel timing, broad action range (`self`, `engaged`, or `ranged`), optional
-stamina delta, tags, and registered calculator/resolver ids. The shipped registered resolvers are
-`opposed_attack`, `defend`, and `flee`; YAML references identifiers only and never embeds combat
-scripts. If the file is missing or malformed, startup falls back to the built-in core actions so
-`attack`, `shoot`, `defend`, and `flee` remain available, and logs a warning. `world_cli validate`
-also checks the combat action file: missing content is a warning, malformed content or unknown
-calculator/resolver ids are errors.
+stamina delta, tags, a `ruleset_id`, and registered calculator/resolver ids. The shipped registered
+resolvers are `opposed_attack`, `defend`, and `flee`; YAML references identifiers only and never
+embeds combat scripts. `resolver_version` should change whenever a resolver's behavior or balance
+contract changes in a way that matters to reports. If the file is missing or malformed, startup
+falls back to the built-in core actions so `attack`, `shoot`, `defend`, and `flee` remain
+available, and logs a warning. `world_cli validate` also checks the combat action file: missing
+content is a warning, malformed content or unknown calculator/resolver ids are errors.
 
 The current damage layer reads existing equipment effect descriptors rather than a new combat-only
 item table. Equipped items may define `weapon_profile` descriptors (`base_damage`,
@@ -915,7 +916,9 @@ item table. Equipped items may define `weapon_profile` descriptors (`base_damage
 `category`/`slot`/`weight`/`quality` heuristic, so older content remains usable while builders can
 tune important gear explicitly. Each resolved action persists a compact resolution record with
 random and damage traces, state changes, position changes, weapon/armor descriptor sources, and the
-record id used by structured combat events. When scheduled combat is running with an audit engine,
+record id used by structured combat events. Resolution records, action outcomes, random traces, and
+audit payloads also include the action's `ruleset_id` and `resolver_version`, allowing admin reports
+to compare outcomes across balance revisions. When scheduled combat is running with an audit engine,
 the same resolution writes an `AuditEvent` row that points back to the feature-owned resolution
 record.
 

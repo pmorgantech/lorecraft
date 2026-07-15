@@ -792,6 +792,8 @@ class CombatService:
                     actor=snapshot,
                     target=None,
                     outcome="defended",
+                    ruleset_id=action_def.ruleset_id,
+                    resolver_version=action_def.resolver_version,
                     action_range=action_def.action_range,
                     stamina_delta=action_def.stamina_delta or 0.0,
                     explanation=f"{snapshot.name} braces defensively.",
@@ -809,6 +811,8 @@ class CombatService:
                     actor=snapshot,
                     target=None,
                     outcome="escaped",
+                    ruleset_id=action_def.ruleset_id,
+                    resolver_version=action_def.resolver_version,
                     action_range=action_def.action_range,
                     stamina_delta=stance.flee_stamina_delta,
                     target_status="escaped",
@@ -834,6 +838,9 @@ class CombatService:
                     actor=snapshot,
                     target=None,
                     outcome="cancelled",
+                    ruleset_id=action_def.ruleset_id,
+                    resolver_version=action_def.resolver_version,
+                    action_range=action_def.action_range,
                     explanation="The target is no longer available.",
                 ),
                 action,
@@ -848,6 +855,9 @@ class CombatService:
                     actor=snapshot,
                     target=None,
                     outcome="cancelled",
+                    ruleset_id=action_def.ruleset_id,
+                    resolver_version=action_def.resolver_version,
+                    action_range=action_def.action_range,
                     explanation=f"Unsupported combat resolver: {action_def.resolver}.",
                     random_trace={"unsupported_resolver": action_def.resolver},
                 ),
@@ -879,6 +889,16 @@ class CombatService:
             rng=rng,
             defended=defended,
             stamina_delta=action_def.stamina_delta or 0.0,
+        )
+        resolution = replace(
+            resolution,
+            ruleset_id=action_def.ruleset_id,
+            resolver_version=action_def.resolver_version,
+            random_trace={
+                **(resolution.random_trace or {}),
+                "ruleset_id": action_def.ruleset_id,
+                "resolver_version": action_def.resolver_version,
+            },
         )
         if auto_reaction:
             resolution = replace(
@@ -947,7 +967,8 @@ class CombatService:
             outcome=resolution.outcome,
             damage=resolution.damage,
             resolved_at_game_time=resolved_at,
-            ruleset_id=encounter.ruleset_id,
+            ruleset_id=resolution.ruleset_id,
+            resolver_version=resolution.resolver_version,
             random_trace=resolution.random_trace or {},
             damage_trace=resolution.damage_trace or {},
             payload=payload,
@@ -969,14 +990,22 @@ class CombatService:
             if action.target_participant_id is not None
             else None
         )
+        action_def = self._action_def_for(action.action_key)
         return CombatResolution(
             action_id=action.id,
             action_key=action.action_key,
             actor=self._snapshot(session, actor),
             target=self._snapshot(session, target) if target is not None else None,
             outcome="interrupted",
+            ruleset_id=action_def.ruleset_id,
+            resolver_version=action_def.resolver_version,
+            action_range=action_def.action_range,
             explanation="The action is interrupted before it resolves.",
-            random_trace={"interrupt_reason": reason},
+            random_trace={
+                "interrupt_reason": reason,
+                "ruleset_id": action_def.ruleset_id,
+                "resolver_version": action_def.resolver_version,
+            },
         )
 
     def _apply_interruption(
@@ -1854,7 +1883,7 @@ class CombatService:
                     "action_key": action.action_key,
                     "outcome": resolution.outcome,
                     "damage": resolution.damage,
-                    "ruleset_id": encounter.ruleset_id,
+                    "ruleset_id": record.ruleset_id,
                     "resolver_version": record.resolver_version,
                     "resolution": action.outcome,
                 },
@@ -1994,6 +2023,8 @@ class CombatService:
     ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
+            "ruleset_id": resolution.ruleset_id,
+            "resolver_version": resolution.resolver_version,
             "action_range": resolution.action_range,
             "outcome": resolution.outcome,
             "damage": resolution.damage,
