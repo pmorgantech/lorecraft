@@ -91,6 +91,7 @@ from lorecraft.features.combat.resolution import (
     player_snapshot,
     resolve_basic_attack,
 )
+from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
 
 COMBAT_RESOLVE_JOB = "combat.resolve_action"
@@ -1000,6 +1001,7 @@ class CombatService:
             position_changes=[],
             effect_changes=[],
             threat_changes=[],
+            consequence_changes=[],
         )
         record = self._record_resolution(
             repo,
@@ -1016,6 +1018,7 @@ class CombatService:
             position_changes=[],
             effect_changes=[],
             threat_changes=[],
+            consequence_changes=[],
         )
         record.payload = action.outcome
         repo.add(record)
@@ -1043,6 +1046,7 @@ class CombatService:
         state_changes: list[JsonValue] = []
         position_changes: list[JsonValue] = []
         threat_changes: list[JsonValue] = []
+        consequence_changes: list[JsonValue] = []
         if actor.queued_action_id == action.id:
             actor.queued_action_id = None
         if resolution.stamina_delta:
@@ -1098,6 +1102,15 @@ class CombatService:
                     current_epoch=current_epoch,
                 )
             )
+            consequence_changes.extend(
+                self._apply_combat_consequences(
+                    session,
+                    source=actor,
+                    target=target,
+                    trigger="on_damage_received",
+                    current_epoch=current_epoch,
+                )
+            )
             if change.depleted:
                 decision = defeat_decision_for(target.actor_type)
                 state_changes.append(
@@ -1140,6 +1153,7 @@ class CombatService:
             position_changes=position_changes,
             effect_changes=effect_changes,
             threat_changes=threat_changes,
+            consequence_changes=consequence_changes,
         )
         action.outcome = payload
         record = self._record_resolution(
@@ -1157,6 +1171,7 @@ class CombatService:
             position_changes=position_changes,
             effect_changes=effect_changes,
             threat_changes=threat_changes,
+            consequence_changes=consequence_changes,
         )
         record.payload = action.outcome
         repo.add(record)
@@ -1664,6 +1679,67 @@ class CombatService:
             "at": current_epoch,
         }
 
+    def _apply_combat_consequences(
+        self,
+        session: Session,
+        *,
+        source: CombatParticipant,
+        target: CombatParticipant,
+        trigger: str,
+        current_epoch: float,
+    ) -> list[JsonObject]:
+        if source.actor_type != "player" or target.actor_type != "npc":
+            return []
+        npc = session.get(NPC, target.actor_id)
+        if npc is None:
+            return []
+        raw_config = npc.ai.get("combat_consequences")
+        if not isinstance(raw_config, dict):
+            return []
+        raw_obligations = raw_config.get(trigger, [])
+        if not isinstance(raw_obligations, list):
+            return []
+
+        changes: list[JsonObject] = []
+        reputation = ReputationService()
+        for raw_obligation in raw_obligations:
+            if not isinstance(raw_obligation, dict):
+                continue
+            if raw_obligation.get("type") != "adjust_reputation":
+                continue
+            target_type = raw_obligation.get("target_type")
+            target_id = raw_obligation.get("target_id")
+            delta = raw_obligation.get("delta")
+            if (
+                not isinstance(target_type, str)
+                or not isinstance(target_id, str)
+                or not isinstance(delta, int)
+            ):
+                continue
+            standing = reputation.adjust(
+                session,
+                source.actor_id,
+                target_type,
+                target_id,
+                delta,
+            )
+            changes.append(
+                {
+                    "type": "adjust_reputation",
+                    "trigger": trigger,
+                    "player_id": source.actor_id,
+                    "target_actor_type": target.actor_type,
+                    "target_actor_id": target.actor_id,
+                    "target_type": target_type,
+                    "target_id": target_id,
+                    "delta": delta,
+                    "standing": standing,
+                    "reason": raw_obligation.get("reason"),
+                    "at": current_epoch,
+                }
+            )
+        return changes
+
     def _decayed_attention(
         self, attention: dict[str, JsonObject], current_epoch: float
     ) -> dict[str, JsonObject]:
@@ -1914,6 +1990,7 @@ class CombatService:
         position_changes: list[JsonValue],
         effect_changes: list[JsonValue],
         threat_changes: list[JsonValue],
+        consequence_changes: list[JsonValue],
     ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
@@ -1927,6 +2004,7 @@ class CombatService:
             "position_changes": position_changes,
             "effect_changes": effect_changes,
             "threat_changes": threat_changes,
+            "consequence_changes": consequence_changes,
         }
         if record_id is not None:
             payload["resolution_record_id"] = record_id

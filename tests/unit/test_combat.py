@@ -67,6 +67,7 @@ from lorecraft.features.combat.effect_hooks import (
 )
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
+from lorecraft.features.reputation.models import Reputation
 
 
 @pytest.fixture(autouse=True)
@@ -301,6 +302,67 @@ def test_damage_updates_threat_attention_and_combat_state_cues() -> None:
         assert record.payload["threat_changes"][0]["cue"] == "focused"
         assert goblin_state["combat_role"] == "defensive"
         assert goblin_state["threat"]["attention"][0]["actor_id"] == "player-1"
+
+
+def test_combat_damage_applies_configured_reputation_consequence() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        goblin_model = session.get(NPC, "goblin")
+        assert goblin_model is not None
+        goblin_model.ai = {
+            "combat_consequences": {
+                "on_damage_received": [
+                    {
+                        "type": "adjust_reputation",
+                        "target_type": "faction",
+                        "target_id": "city_watch",
+                        "delta": -5,
+                        "reason": "assault",
+                    }
+                ]
+            }
+        }
+        session.add(goblin_model)
+        service.attack("goblin", ctx)
+        action = session.exec(
+            select(CombatAction).where(CombatAction.actor_type == "player")
+        ).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        reputation = session.exec(select(Reputation)).one()
+        record = session.exec(
+            select(CombatResolutionRecord).where(
+                CombatResolutionRecord.action_id == action_id
+            )
+        ).one()
+        consequence = record.payload["consequence_changes"][0]
+
+        assert reputation.player_id == "player-1"
+        assert reputation.target_type == "faction"
+        assert reputation.target_id == "city_watch"
+        assert reputation.standing == -5
+        assert consequence["type"] == "adjust_reputation"
+        assert consequence["trigger"] == "on_damage_received"
+        assert consequence["player_id"] == "player-1"
+        assert consequence["target_actor_id"] == "goblin"
+        assert consequence["target_type"] == "faction"
+        assert consequence["target_id"] == "city_watch"
+        assert consequence["delta"] == -5
+        assert consequence["standing"] == -5
+        assert consequence["reason"] == "assault"
 
 
 def test_npc_counter_intent_prefers_highest_threat_target() -> None:

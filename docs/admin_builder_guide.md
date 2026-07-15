@@ -980,6 +980,26 @@ Boss-style NPCs can opt into a registered Python phase resolver by setting
 they can choose the response action, target, and phase trace payload. This is meant for authored
 boss encounters and does not replace normal NPC behavior or add a general planner.
 
+NPCs can also opt into combat consequence obligations through `ai.combat_consequences`. The first
+supported trigger is `on_damage_received`, and the first supported obligation is
+`adjust_reputation`:
+
+```yaml
+ai:
+  combat_consequences:
+    on_damage_received:
+      - type: adjust_reputation
+        target_type: faction
+        target_id: city_watch
+        delta: -5
+        reason: assault
+```
+
+That example means player damage against the NPC reduces the player's standing with the
+`city_watch` faction by 5 and records the applied consequence in the combat resolution payload.
+This is the current boundary for crime/faction fallout: content-authored obligations into the
+existing reputation system, not a separate law, bounty, or arrest engine.
+
 Balance details are intentionally still shallow in this slice: PvP consent, richer browser resync,
 and live-tunable combat ruleset configuration remain later Sprint 87 work tracked in
 `docs/roadmap.md`.

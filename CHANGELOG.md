@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.122.0] - 2026-07-15
+
+### Added
+
+- Added Sprint 87.5 combat consequence obligations: NPCs can author
+  `ai.combat_consequences.on_damage_received` reputation adjustments, and
+  player damage against that NPC applies and records the configured consequence
+  in the combat resolution payload.
+
 ## [0.121.0] - 2026-07-15
 
 ### Added

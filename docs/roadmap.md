@@ -11,9 +11,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.121.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
+## Where things stand (2026-07-15, v0.122.0 on combat; Sprints 1–86 implemented; Sprint 87 in progress)
 
-**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.121.0).
+**Everything through Sprint 86 is implemented in the combat branch line** (currently v0.122.0).
 `roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
 [`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
 release-level detail is in
@@ -204,7 +204,7 @@ combat teaching material.
 - [x] 87.2 Equipment traits + weapon/armor as effect descriptors
 - [x] 87.3 Extended effect hooks (on_damage_received/on_movement/on_action_admission)
 - [x] 87.4 Boss scripted phases overriding utility AI — registered Python resolver by id
-- [ ] 87.5 Crime + faction consequences via rule obligations
+- [x] 87.5 Crime + faction consequences via rule obligations
 - [ ] 87.6 Ruleset/resolver versioning + random-trace persistence
 - [ ] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
 - [ ] 87.8 Live-tunable ruleset config (WorldClock pattern) — DB-backed, admin endpoint
@@ -231,6 +231,12 @@ Sprint 87.4 completion note (v0.121.0): NPCs may opt into a registered boss phas
 `NPC.ai.combat_phase_resolver`. The resolver can choose a counter-intent action, target, phase id,
 and trace payload at the existing NPC response decision point. This is a narrow override hook for
 authored boss encounters, not a new general-purpose behavior tree.
+
+Sprint 87.5 completion note (v0.122.0): NPCs may author narrow combat consequence obligations under
+`NPC.ai.combat_consequences`. The first supported obligation applies reputation deltas when a player
+damages that NPC, such as reducing standing with a guard faction, and records the applied obligation
+in `CombatResolutionRecord.payload.consequence_changes`. This is not a full crime/law subsystem; it
+is a content-authored bridge from combat outcomes into existing reputation/faction mechanics.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 
