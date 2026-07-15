@@ -121,6 +121,64 @@ class CombatService:
             room_message="{actor} draws a bead on {target}.",
         )
 
+    def consider(self, noun: str | None, ctx: GameContext) -> None:
+        target = self._resolve_npc_target(noun, ctx)
+        if target is None:
+            ctx.say("Consider whom?", MessageType.WARNING)
+            return
+
+        repo = CombatRepo(ctx.session)
+        encounter = repo.active_encounter_for_actor("player", ctx.player.id)
+        now = self._now(ctx)
+        actor_participant = (
+            repo.participant_for_actor(encounter.id, "player", ctx.player.id)
+            if encounter is not None
+            else None
+        ) or CombatParticipant(
+            id="consider-player",
+            encounter_id="consider",
+            actor_type="player",
+            actor_id=ctx.player.id,
+            side_id=f"player:{ctx.player.id}",
+            joined_at=now,
+        )
+        target_participant = (
+            repo.participant_for_actor(encounter.id, "npc", target.id)
+            if encounter is not None
+            else None
+        ) or CombatParticipant(
+            id="consider-target",
+            encounter_id="consider",
+            actor_type="npc",
+            actor_id=target.id,
+            side_id=f"npc:{target.id}",
+            joined_at=now,
+        )
+
+        actor = self._snapshot(ctx.session, actor_participant)
+        opponent = self._snapshot(ctx.session, target_participant)
+        hp = ctx.meters.get(ctx.session, "npc", target.id, "hp")
+        weapon = weapon_profile_for(ctx.session, actor.actor_type, actor.actor_id)
+        armor = armor_profile_for(ctx.session, opponent.actor_type, opponent.actor_id)
+        attack_score = actor.strength + weapon.accuracy_bonus + actor.attack_bonus
+        defense_score = opponent.agility + armor.block + opponent.defense_bonus
+        margin = attack_score - defense_score
+        if margin >= 15:
+            odds = "You should have a clear advantage."
+        elif margin >= 5:
+            odds = "You seem favored."
+        elif margin >= -4:
+            odds = "This looks like an even fight."
+        elif margin >= -14:
+            odds = "This looks risky."
+        else:
+            odds = "You are badly outmatched."
+        health = self._meter_state(hp)
+        health_text = (
+            str(health["state"]) if health is not None else "unknown condition"
+        )
+        ctx.say(f"{target.name} looks {health_text}. {odds}", MessageType.HINT)
+
     def _attack_with_action_key(
         self,
         noun: str | None,
@@ -1988,6 +2046,7 @@ class CombatService:
                 {
                     "actor_type": participant.actor_type,
                     "actor_id": participant.actor_id,
+                    "name": self._participant_name(session, participant),
                     "status": participant.status,
                     "position": participant.position,
                     "stance": participant.stance,

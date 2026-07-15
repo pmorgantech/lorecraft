@@ -159,6 +159,19 @@ def test_shoot_submits_ranged_intent_and_records_range_trace() -> None:
         assert record.random_trace["action_range"] == "ranged"
 
 
+def test_consider_appraises_nearby_npc() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        service.consider("goblin", ctx)
+
+        assert ctx.messages
+        assert "Goblin looks strong." in str(ctx.messages[0])
+        assert "clear advantage" in str(ctx.messages[0])
+
+
 def test_combat_service_uses_data_authored_action_timing() -> None:
     registry = get_action_registry()
     registry.clear()
@@ -393,6 +406,7 @@ def test_damage_updates_threat_attention_and_combat_state_cues() -> None:
         assert record.payload["threat_changes"][0]["actor_id"] == "goblin"
         assert record.payload["threat_changes"][0]["source_actor_id"] == "player-1"
         assert record.payload["threat_changes"][0]["cue"] == "focused"
+        assert goblin_state["name"] == "Goblin"
         assert goblin_state["combat_role"] == "defensive"
         assert goblin_state["threat"]["attention"][0]["actor_id"] == "player-1"
 

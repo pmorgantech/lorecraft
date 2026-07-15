@@ -4,6 +4,21 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.128.1] - 2026-07-15
+
+### Fixed
+
+- Updated Makefile Python tooling defaults so `make lint` and `make typecheck`
+  run through the local `.venv/bin/python`.
+
+## [0.128.0] - 2026-07-15
+
+### Added
+
+- Added combat opponent appraisal via `consider <target>`, visible opponent
+  health status in browser combat updates, live vitals refresh from asynchronous
+  combat updates, and 100 carried starting coins for newly created characters.
+
 ## [0.127.0] - 2026-07-15
 
 ### Added

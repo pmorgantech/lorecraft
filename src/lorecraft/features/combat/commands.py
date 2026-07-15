@@ -29,6 +29,14 @@ def register_combat_commands(
         service.shoot(noun, ctx)
 
     @registry.register(
+        "consider",
+        "con",
+        help="consider <target> — appraise a nearby opponent before a fight",
+    )
+    def consider_command(noun: str | None, ctx: GameContext) -> None:
+        service.consider(noun, ctx)
+
+    @registry.register(
         "defend",
         conditions=["in_combat"],
         help="defend — spend your next action bracing against attacks",

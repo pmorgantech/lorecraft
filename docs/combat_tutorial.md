@@ -27,6 +27,7 @@ Useful first commands:
 ```text
 attack <target>    start or continue a melee attack
 shoot <target>     start or continue a ranged attack
+consider <target>  appraise a nearby opponent
 defend             brace for incoming attacks
 guard [ally]       protect yourself or an ally from melee attacks
 flee               try to leave the encounter
@@ -78,6 +79,13 @@ Use `shoot <target>` for ranged attacks:
 shoot goblin
 ```
 
+Use `consider <target>` before a fight to estimate the opponent's condition and your likely
+odds:
+
+```text
+consider goblin
+```
+
 Ranged combat is intentionally simple. Lorecraft does not ask you to manage formations, distance
 bands, or advance/retreat positioning. A shot records that it was ranged and can support bows,
 crossbows, tower guards, or sniper-like authored encounters later.
@@ -89,6 +97,7 @@ Combat output appears in two forms:
 - prose in the normal feed, such as who attacked, guarded, fled, or went down
 - structured combat state used by the browser to keep participants, statuses, stances, and
   attention cues current
+- a compact opponent health line after combat updates, showing condition and current HP
 
 If you see your action committed but not resolved yet, that is normal scheduled intent. The action
 has a short wind-up, then recovery. Wait for the result before deciding whether to keep pressure,

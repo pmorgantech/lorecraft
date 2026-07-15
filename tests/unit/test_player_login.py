@@ -10,6 +10,7 @@ from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import Room
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
     InvalidUsernameError,
@@ -52,6 +53,7 @@ def test_first_login_creates_account() -> None:
         assert result.created is True
         assert result.player.username == "newplayer"
         assert result.player.current_room_id == _START_ROOM
+        assert LedgerService().balance_of(session, "player", result.player.id) == 100
 
 
 def test_new_character_has_readable_default_stats_row() -> None:

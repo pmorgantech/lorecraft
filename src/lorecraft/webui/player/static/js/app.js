@@ -313,9 +313,69 @@
     if (data.encounter_id) {
       window.lorecraftCombat.encounters[data.encounter_id] = data;
     }
+    renderCombatHealth(data);
+    refreshVitalsFromCombat(data);
     window.dispatchEvent(
       new CustomEvent("lorecraft:combat-update", { detail: data }),
     );
+  }
+
+  function renderCombatHealth(data) {
+    if (!Array.isArray(data.participants)) return;
+    const lines = data.participants
+      .filter((p) => p.actor_type === "npc" && p.hp)
+      .map((p) => {
+        const name = p.name || p.actor_id || "opponent";
+        const hp = p.hp;
+        const current = Math.max(0, Math.round(Number(hp.current || 0)));
+        const maximum = Math.max(0, Math.round(Number(hp.maximum || 0)));
+        const state = hp.state || "unknown";
+        return `${name}: ${state} (${current}/${maximum} HP)`;
+      });
+    if (lines.length) {
+      appendToFeed(escapeText(`Combat status: ${lines.join(" · ")}`));
+    }
+  }
+
+  function refreshVitalsFromCombat(data) {
+    if (!Array.isArray(data.participants)) return;
+    const playerId =
+      document.body.dataset.playerId || window.LORECRAFT_PLAYER_ID;
+    const player = data.participants.find(
+      (p) =>
+        p.actor_type === "player" && (!playerId || p.actor_id === playerId),
+    );
+    if (!player) return;
+    const vitals = document.getElementById("vitals");
+    if (!vitals) return;
+    const hp = player.hp;
+    const stamina = player.stamina;
+    const coins = vitals.querySelector(".text-amber-400")?.textContent || "";
+    const parts = [];
+    if (hp?.maximum) {
+      parts.push(
+        `<span class="text-red-400">HP ${Math.round(hp.current)}/${Math.round(hp.maximum)}</span>`,
+      );
+    }
+    if (stamina?.maximum) {
+      parts.push(
+        `<span class="text-accent">STA ${Math.round(stamina.current)}/${Math.round(stamina.maximum)}</span>`,
+      );
+    }
+    if (coins) {
+      parts.push(`<span class="text-amber-400">${coins}</span>`);
+    }
+    if (parts.length) {
+      vitals.innerHTML = parts.join(
+        '&nbsp;<span class="text-text-muted">&middot;</span>&nbsp;',
+      );
+    }
+  }
+
+  function escapeText(value) {
+    const div = document.createElement("div");
+    div.textContent = value;
+    return div.innerHTML;
   }
 
   function updateTransitMarker(data) {

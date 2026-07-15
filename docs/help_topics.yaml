@@ -109,6 +109,7 @@ topics:
     Useful commands:
       - 'attack <target>' starts or continues a melee attack against an NPC.
       - 'shoot <target>' starts or continues a ranged attack.
+      - 'consider <target>' appraises a nearby opponent before a fight.
       - 'defend' braces against incoming attacks.
       - 'guard [ally]' can intercept melee attacks against you or an ally.
       - 'flee' looks for an opening to leave the encounter.

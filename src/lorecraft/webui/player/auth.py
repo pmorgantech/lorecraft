@@ -36,6 +36,7 @@ from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.player_auth import PlayerAuth
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.state import AppState
 from lorecraft.webui.player.password_policy import PasswordPolicy, validate_password
 from lorecraft.webui.player.player_auth import PLAYER_SESSION_COOKIE, decode_player_id
@@ -51,6 +52,7 @@ USERNAME_RE = re.compile(r"^[A-Za-z0-9_-]{3,30}$")
 
 _PROVIDER_LOCAL = "local"
 _ROLE = "player"
+STARTING_COINS = 100
 
 
 class InvalidUsernameError(ValueError):
@@ -186,6 +188,7 @@ def login_or_register(
     )
     player_repo.add(player)
     db.flush()
+    LedgerService().credit(db, "player", player.id, STARTING_COINS)
     auth = PlayerAuth(
         player_id=player.id,
         provider=_PROVIDER_LOCAL,

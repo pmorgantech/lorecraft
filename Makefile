@@ -1,5 +1,5 @@
 
-PYTHON ?= python
+PYTHON ?= .venv/bin/python
 PYTEST ?= $(PYTHON) -m pytest
 RUFF ?= $(PYTHON) -m ruff
 BASEDPYRIGHT ?= $(PYTHON) -m basedpyright

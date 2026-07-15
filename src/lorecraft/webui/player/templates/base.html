@@ -145,6 +145,7 @@
     {% block head %}{% endblock %}
 </head>
 <body class="bg-zinc-950 text-zinc-200 font-mono {% if prefs %}{{ prefs.body_classes }}{% endif %}"
+      {% if current_player is defined and current_player %}data-player-id="{{ current_player.id }}"{% endif %}
       {% if prefs %}data-feed-verbosity="{{ prefs.feed_verbosity }}" data-timestamp-format="{{ prefs.timestamp_format }}"{% endif %}>
     <!-- Skip link for keyboard / screen-reader users -->
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:bg-emerald-600 focus:text-white focus:px-3 focus:py-1 focus:rounded">Skip to main content</a>

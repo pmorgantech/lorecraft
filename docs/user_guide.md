@@ -405,7 +405,8 @@ Shops only buy certain kinds of goods, won't take anything soulbound, and have r
 (finite) cash — sell too much in one place and they'll run dry. The `bartering`
 skill and your standing with the vendor both shave a little off the price over time.
 Prices also vary by place — the same goods can cost more or less depending on where
-you are, so it pays to know the routes.
+you are, so it pays to know the routes. Newly created characters start with 100
+carried coins.
 
 ## Banking
 
@@ -551,6 +552,7 @@ a short wind-up and recovery window. For a step-by-step introduction, see
 ```
 attack <target>    — start or continue an encounter with a nearby NPC
 shoot <target>     — start or continue a ranged attack against a nearby NPC
+consider <target>  — appraise a nearby opponent before starting or continuing combat
 defend             — brace with your next primary action
 guard [ally]       — defend yourself or intercept attacks against an ally
 assist <player>    — join a nearby player's active encounter on their side
@@ -567,7 +569,8 @@ Builders can tune the core action timing and broad ranged/melee semantics in
 `world_content/combat_actions.yaml`; players do not need to know those numbers while playing.
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
-older pending one. Combat uses health and stamina meters. At 0 HP, player characters are
+older pending one. Combat uses health and stamina meters. The browser combat feed shows each
+opponent's approximate health band plus current HP after combat updates. At 0 HP, player characters are
 downed by default while NPCs are defeated; downed, defeated, or escaped participants leave
 active combat and any queued combat action for them is cancelled. Stances persist for the
 encounter and trade offense, defense, damage, and escape stamina cost. Guarding can redirect
@@ -633,6 +636,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `wield <item>` | | Equip a wielded item (weapon, tool, light) |
 | `attack <target>` | `fight` | Commit to a scheduled attack against a nearby NPC |
 | `shoot <target>` | `fire` | Commit to a scheduled ranged attack against a nearby NPC |
+| `consider <target>` | `con` | Appraise a nearby opponent before a fight |
 | `defend` | `guard` | Spend your next combat action bracing against attacks |
 | `assist <player>` | | Join a nearby player's active encounter on their side |
 | `flee` | | Commit to an escape attempt from the current encounter |
