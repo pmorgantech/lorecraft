@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-16, through v0.135.1).** The active, forward-looking
+> **Historical record (last extended 2026-07-16, through v0.142.1).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -10,13 +10,32 @@
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
 > cycles, context-attached commands), **56–69**, **70–84**, **85–87 combat**, and the
-> **2026-07-16 admin UI/tooling tranche**. Layout note: recent completions are
+> **2026-07-16 admin UI/tooling/body-view tranche**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
 > **Not here:** 37.1 (scheduler-commit batching) + 38 (concurrency gate) were deferred to
 > [`wishlist.md`](wishlist.md), not completed; Combat/PvP (former 61–64) likewise set aside there.
 > Do not plan against this file; append newly-completed sprints here as they close.
+
+---
+
+## Sprint 91 — Body Equipment & Condition View
+
+**Goal:** give players and admins a body-centric view that shows all wear/wield slots, what is
+equipped or empty, and current body-part condition from persistent combat wounds.
+
+**Tier split:** Tier 1 remains unchanged. Tier 2 equipment defines body/slot presentation policy;
+Tier 2 combat contributes wound condition rows; web/admin hosts render the composed view.
+
+| # | Task | Status |
+|---|------|--------|
+| 91.1 | Body schema/view model — canonical body parts and equipment slot grouping. | [x] v0.137.0 — Added `features/equipment/body.py` with body-part definitions, full equipment-slot coverage, empty body views, and validation coverage. |
+| 91.2 | Equipment body view — populate every slot with equipped/worn/wielded item state. | [x] v0.138.0 — `body_equipment_view()` renders every canonical slot as empty or populated with equipped item metadata. |
+| 91.3 | Condition body view — group `CombatWound` rows by body part/severity/status. | [x] v0.139.0 — Active combat wounds now attach to the matching body part for condition inspection. |
+| 91.4 | Player UI + command — add browser body panel plus `body` / `condition` command. | [x] v0.140.0 — Added player `body`/`condition` commands, the Standard layout Body tab, a shared body partial, and OOB body-panel refreshes. |
+| 91.5 | Admin/player observe integration — show body/equipment/condition in admin Observe. | [x] v0.141.0 — Admin player state and observe snapshots include grouped body, equipment, and wound data; the admin editor and Observe panel render it. |
+| 91.6 | Tests/docs — focused coverage and player/admin documentation. | [x] v0.142.0 — Added focused body/equipment/admin API coverage and documented player/admin body inspection. |
 
 ---
 

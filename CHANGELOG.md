@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.142.1] - 2026-07-16
+
+### Changed
+
+- Archived completed Sprint 91 body equipment and condition view work into
+  `roadmap_completed.md` and returned the active roadmap to remaining work.
+
 ## [0.142.0] - 2026-07-16
 
 ### Changed
