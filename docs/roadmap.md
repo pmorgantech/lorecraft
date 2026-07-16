@@ -110,7 +110,8 @@ new work.
 - **Deferred pending playtesting evidence:** 88 (Combat Phase 4 advanced-depth bucket).
 - **Completed and archived (2026-07-16):** 89 (Admin NPC/AI read-only runtime endpoint).
 - **Newly active (2026-07-16):** 90 (Admin observation routing for live session viewer).
-- **Next genuinely free sprint number:** 91. Do not recycle a number that appears here, in
+- **Newly active (2026-07-16):** 91 (Body equipment and condition view).
+- **Next genuinely free sprint number:** 92. Do not recycle a number that appears here, in
   [`roadmap_completed.md`](roadmap_completed.md), or in [`wishlist.md`](wishlist.md).
 
 ---
@@ -139,6 +140,23 @@ explicitly out of the active roadmap.
 - [ ] 88.3 Combo systems — only if data-authored actions need follow-up hooks
 - [ ] 88.4 Simultaneous-planning encounter mode (optional, arena/boss) — alternate combat_mode
 - [ ] 88.5 Mounted / siege combat — content-specific, not general-purpose formations
+
+---
+
+## Sprint 91 — Body Equipment & Condition View
+
+**Goal:** give players and admins a body-centric view that shows all wear/wield slots, what is
+equipped or empty, and current body-part condition from persistent combat wounds.
+
+**Tier split:** Tier 1 remains unchanged. Tier 2 equipment defines body/slot presentation policy;
+Tier 2 combat contributes wound condition rows; web/admin hosts render the composed view.
+
+- [x] 91.1 Body schema/view model — canonical body parts and equipment slot grouping.
+- [ ] 91.2 Equipment body view — populate every slot with equipped/worn/wielded item state.
+- [ ] 91.3 Condition body view — group `CombatWound` rows by body part/severity/status.
+- [ ] 91.4 Player UI + command — add browser body panel plus `body` / `condition` command.
+- [ ] 91.5 Admin/player observe integration — show body/equipment/condition in admin Observe.
+- [ ] 91.6 Tests/docs — focused coverage and player/admin documentation.
 
 ---
 

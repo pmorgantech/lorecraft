@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.137.0] - 2026-07-16
+
+### Added
+
+- Began Sprint 91 Body Equipment & Condition View with a canonical Tier 2
+  body/slot view model covering all current wear and wield equipment slots.
+
 ## [0.136.0] - 2026-07-16
 
 ### Added
