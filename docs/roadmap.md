@@ -85,19 +85,12 @@ new work.
 
 | Priority | Item | Usefulness / payoff | Effort | Notes |
 |----------|------|---------------------|--------|-------|
-| P0 | ~~Structured admin-action audit notes~~ | High trust and safety payoff; required before powerful moderation/snoop actions | M | Implemented on `admin-ui` branch for player edit/teleport/freeze/unfreeze/flags: mandatory `reason`, structured `admin_action` audit rows, before/after snapshots where applicable. Restart already accepted a reason; future snoop/force must follow this pattern. |
-| P0 | ~~Player monitoring dashboard v2 basics~~ | Highest day-to-day usefulness for running tests/playtests | M | Implemented on `admin-ui` branch: search/filter, online/session/activity badges, richer `/admin/players` payload, edit + read-only observe actions. Command-rate sparkline remains a later enhancement once command-rate data is exposed cheaply. |
-| P1 | ~~Live audit/event feed upgrade basics~~ | High debugging payoff; supports every later admin tool | M | Implemented on `admin-ui` branch: extra filters for severity/source plus `/admin/audit/facets` and filtered JSON/CSV export. Trace/crash deep links remain a follow-up. |
-| P1 | ~~System health dashboard basics~~ | High ops payoff, moderate implementation cost | M | Implemented on `admin-ui` branch: WebSocket connections, active player sessions, pending scheduler jobs, audit error count, crash count, scheduler timeline, and EventBus emitted-event/handler metrics. |
-| P1 | ~~Live session viewer (read-only snoop core) foundation~~ | High support/debug payoff, high safety sensitivity | L | Implemented on `admin-ui` branch as read-only Observe: player snapshot + inventory + recent player audit events. Exact player-output stream and replay mode remain out of scope until observation routing exists. |
-| P1 | Observation routing for live session viewer | Converts Observe from a useful snapshot into true live support/debug tooling | L | Next after the read-only NPC runtime endpoint. Scope: sanitized player output stream, command-history/event stream, and no execute-as-player mode. |
-| P2 | ~~Builder content studio shell~~ | High builder payoff, but larger scope | L | Implemented on `admin-ui` branch as a scoped destination linking Rooms and Changesets with disabled validation/diff controls. Real YAML editor, validation API, and preview/diff remain future work. |
-| P2 | NPC/AI read-only runtime endpoint | Unique Lorecraft payoff with low safety risk; turns the NPC/AI shell into a useful dashboard | M | Active Sprint 89 candidate on `admin-ui`: start with NPC room/behavior/AI/schedule/hp/escort/context-command/trigger summary. Later: behavior-tree blackboard and tick history when runtime introspection exists. |
+| P1 | Observation routing for live session viewer | Converts Observe from a useful snapshot into true live support/debug tooling | L | Active Sprint 90 on `admin-ui`. Scope: sanitized player output stream, command-history/event stream, and no execute-as-player mode. |
+| P1 | Audit trace/crash drill-down links | Speeds incident debugging from one audit row to related trace/crash context | M | Build on `/admin/audit`, `/admin/observability/traces/{id}`, and crash report endpoints. |
 | P2 | Builder Studio validation and diff preview | High builder payoff after the shell exists | L | Add YAML validation and read-only diff preview before any visual editor. Live publish/hot-reload stays behind explicit review. |
-| P2 | ~~Scheduler/WorldClock timeline basics~~ | Useful for debugging timed systems and live events | M | Implemented on `admin-ui` branch as pending scheduler timeline under System. Weather-front timeline and richer WorldClock forecast remain follow-ups. |
 | P2 | Weather-front and WorldClock forecast timeline | Makes live tuning safer by showing expected world impact | M | Extend the existing scheduler timeline rather than creating a separate dashboard. |
-| P3 | ~~Admin command console shell~~ | Useful but risky; lower priority than purpose-built controls | M | Implemented on `admin-ui` branch as disabled destination. Execution endpoint/autocomplete/confirm gates remain future work. |
-| P3 | ~~Alerts/notifications shell~~ | Nice ops payoff after metrics are real | M | Implemented on `admin-ui` branch as disabled destination. Rule storage/evaluator and external integrations remain future work. |
+| P3 | Admin command console execution | Useful but risky; lower priority than purpose-built controls | M | Requires allowlist, RBAC, confirmation gates, and mandatory audit reason before enabling. |
+| P3 | Alerts/notifications evaluator | Nice ops payoff after metrics are real | M | Rule storage/evaluator first; external webhooks remain wishlist until local alerts prove useful. |
 
 **Keep in [`wishlist.md`](wishlist.md) until demand or design evidence appears:**
 
@@ -116,8 +109,9 @@ new work.
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
   (concurrency/threading gate), and 65 (multiplayer trade/transit test pass).
 - **Newly active (2026-07-14):** 86–88 (combat phases 2–4, Scheduled Intent).
-- **Newly active (2026-07-16):** 89 (Admin NPC/AI read-only runtime endpoint).
-- **Next genuinely free sprint number:** 90. Do not recycle a number that appears here, in
+- **Completed and archived (2026-07-16):** 89 (Admin NPC/AI read-only runtime endpoint).
+- **Newly active (2026-07-16):** 90 (Admin observation routing for live session viewer).
+- **Next genuinely free sprint number:** 91. Do not recycle a number that appears here, in
   [`roadmap_completed.md`](roadmap_completed.md), or in [`wishlist.md`](wishlist.md).
 
 ---

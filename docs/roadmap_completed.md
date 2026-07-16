@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-14, through v0.104.0).** The active, forward-looking
+> **Historical record (last extended 2026-07-16, through v0.134.0).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,13 +9,31 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, and **70–84**. Layout note: recent completions are
+> cycles, context-attached commands), **56–69**, **70–84**, and the **2026-07-16 admin
+> UI/tooling tranche**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
 > **Not here:** 37.1 (scheduler-commit batching) + 38 (concurrency gate) were deferred to
 > [`wishlist.md`](wishlist.md), not completed; Combat/PvP (former 61–64) likewise set aside there.
 > Do not plan against this file; append newly-completed sprints here as they close.
+
+---
+
+## Admin UI/tooling tranche — monitoring, observability, audit export, and NPC/AI runtime dashboard
+
+**Goal:** promote the admin UI from a flat console into a category-based operations surface with
+safe player editing, richer monitoring, and the first read-only world/runtime inspection panels.
+
+| # | Task | Status |
+|---|------|--------|
+| Admin UI shell | Category title bar plus contextual sub-tabs for Overview, Tuning, World, Content, Moderation, and System. | [x] v0.131.0 — `webui/admin/index.html` now groups existing admin workflows into categories with nested sub-tabs. |
+| Player monitoring/edit basics | Search/filter players, inspect session/activity state, and edit player records safely. | [x] v0.131.0 — Dashboard search/status filters, player edit panel, read-only Observe snapshot, mandatory admin reasons, and structured `admin_action` audit rows for edits/teleport/freeze/flags. |
+| Live tuning/admin operations shell | Surface Clock, Weather, Combat, Progression, Economy, restart, backups, crashes, observability, analytics, audit, console, and alerts destinations. | [x] v0.131.0 — Existing endpoints are wired where available; high-risk/future controls remain disabled shells. |
+| Audit and system health basics | Improve audit search and expose system health/scheduler state. | [x] v0.131.0 — Severity/source filters, audit facets, WebSocket/session/scheduler/audit/crash counters, and scheduler timeline. |
+| EventBus metrics | Make event flow visible to System Health. | [x] v0.132.0 — EventBus tracks emitted counts and handler count/error/latency summaries; System Health displays emitted-event totals. |
+| Audit export | Export filtered audit data for incident/debugging workflows. | [x] v0.133.0 — `/admin/audit/export` supports JSON/CSV using the same filters as the Audit tab; the UI downloads CSV with admin auth. |
+| Sprint 89 — NPC/AI read-only runtime dashboard | Turn the NPC/AI shell into a useful read-only runtime inspection panel before adding controls. | [x] v0.134.0 — `/admin/world/npcs` now returns room, behavior, HP, AI config, schedule, hooks, context commands, escort, and loot metadata; the NPC/AI tab renders the dashboard. |
 
 ---
 

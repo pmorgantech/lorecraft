@@ -66,3 +66,32 @@ def test_broadcast_survives_one_dead_socket() -> None:
     assert [m["type"] for m in alive.sent] == ["feed_append"]
     assert manager.is_connected("dead") is False
     assert manager.is_connected("alive") is True
+
+
+def test_send_to_player_mirrors_messages_to_output_observers() -> None:
+    manager = ConnectionManager()
+    observed: list[JsonObject] = []
+
+    unsubscribe = manager.observe_player_output("player-1", observed.append)
+
+    asyncio.run(manager.send_to_player("player-1", {"type": "feed_append"}))
+    unsubscribe()
+    asyncio.run(manager.send_to_player("player-1", {"type": "ignored"}))
+
+    assert [m["type"] for m in observed] == ["feed_append"]
+
+
+def test_broken_output_observer_does_not_block_send() -> None:
+    manager = ConnectionManager()
+    observed: list[JsonObject] = []
+
+    def broken(_message: JsonObject) -> None:
+        raise RuntimeError("observer gone")
+
+    manager.observe_player_output("player-1", broken)
+    manager.observe_player_output("player-1", observed.append)
+
+    asyncio.run(manager.send_to_player("player-1", {"type": "feed_append"}))
+    asyncio.run(manager.send_to_player("player-1", {"type": "state_change"}))
+
+    assert [m["type"] for m in observed] == ["feed_append", "state_change"]

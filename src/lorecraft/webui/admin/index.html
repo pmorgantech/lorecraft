@@ -273,6 +273,10 @@
         <div id="player-observe-panel" class="panel" style="display:none;">
           <h2>Session Viewer <span id="po-id" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
           <div id="po-summary" style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.75rem;"></div>
+          <div style="margin-bottom:0.75rem;">
+            <h3 style="margin-top:0;">Live Output Stream</h3>
+            <div id="po-live-stream" style="max-height:160px;overflow:auto;border:1px solid var(--border);padding:0.5rem;background:rgba(0,0,0,0.15);font-family:monospace;font-size:0.8rem;"></div>
+          </div>
           <div style="overflow-x:auto;">
             <table>
               <thead><tr><th>Time</th><th>Type</th><th>Room</th><th>Summary</th></tr></thead>
@@ -892,6 +896,7 @@ const state = {
   role:        decodeJwtRole(sessionStorage.getItem("lc_admin_token") || ""),
   editingRoom: null,
   editingPlayer: null,
+  observingPlayer: null,
   allPlayers: [],
   ws: null,
   activeCategory: "overview",
@@ -964,6 +969,7 @@ function logout() {
   sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
   state.role = "";
+  state.observingPlayer = null;
   if (state.ws) { state.ws.close(); state.ws = null; }
   showLoginScreen();
 }
@@ -981,6 +987,7 @@ function sessionExpired() {
   sessionStorage.removeItem("lc_admin_user");
   state.accessToken = "";
   state.role = "";
+  state.observingPlayer = null;
   if (state.ws) { state.ws.close(); state.ws = null; }
   showLoginScreen();
   document.getElementById("l-error").textContent =
@@ -1250,6 +1257,8 @@ async function observePlayer(playerId) {
     `${p.username || ""} · ${p.current_room_id || ""} · ${p.online ? "online" : "offline"} · inventory ${(p.inventory || []).length}`;
   const tbody = document.getElementById("po-events-tbody");
   tbody.innerHTML = "";
+  const live = document.getElementById("po-live-stream");
+  live.innerHTML = `<div style="color:var(--text-dim);">Subscribed to live read-only output for ${esc(playerId)}.</div>`;
   for (const e of (data.recent_events || [])) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -1260,6 +1269,29 @@ async function observePlayer(playerId) {
     tbody.appendChild(tr);
   }
   document.getElementById("player-observe-panel").style.display = "block";
+  subscribeObservedPlayer(playerId);
+}
+
+function subscribeObservedPlayer(playerId) {
+  if (state.observingPlayer && state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({type: "unobserve_player", player_id: state.observingPlayer}));
+  }
+  state.observingPlayer = playerId;
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    state.ws.send(JSON.stringify({type: "observe_player", player_id: playerId}));
+  }
+}
+
+function appendObservedOutput(msg) {
+  if (!msg || msg.player_id !== state.observingPlayer) return;
+  const live = document.getElementById("po-live-stream");
+  if (!live) return;
+  const message = msg.message || {};
+  const text = message.message || message.text || message.summary || message.type || JSON.stringify(message);
+  const line = document.createElement("div");
+  line.innerHTML = `<span style="color:var(--text-dim);">${new Date().toLocaleTimeString()}</span> ${esc(text)}`;
+  live.appendChild(line);
+  live.scrollTop = live.scrollHeight;
 }
 
 // ────────────────────────────────────────
@@ -2675,6 +2707,9 @@ function connectAdminWs() {
 
   ws.onopen = () => {
     document.getElementById("ws-indicator").style.color = "var(--phosphor)";
+    if (state.observingPlayer) {
+      ws.send(JSON.stringify({type: "observe_player", player_id: state.observingPlayer}));
+    }
   };
   ws.onclose = (ev) => {
     document.getElementById("ws-indicator").style.color = "var(--muted)";
@@ -2697,6 +2732,9 @@ function connectAdminWs() {
       // the admin turned "Live" off.
       if (msg.type === "audit_appended") {
         scheduleAuditRefresh();
+      }
+      if (msg.type === "player_observed_output") {
+        appendObservedOutput(msg);
       }
       // Content mutated by another admin (or out-of-band) — reload that tab if open.
       if (msg.type === "content_changed" && typeof msg.resource === "string") {

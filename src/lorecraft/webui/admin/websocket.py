@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 
 import jwt
 from fastapi import WebSocket, WebSocketDisconnect
@@ -33,18 +34,22 @@ async def admin_ws_endpoint(websocket: WebSocket, app_state: AppState) -> None:
 
     q: asyncio.Queue[JsonObject] = asyncio.Queue(maxsize=200)
     app_state.admin_broadcaster.add(q)
+    observed_players: dict[str, Callable[[], None]] = {}
 
     sender = asyncio.create_task(_send_loop(websocket, q))
     try:
         while True:
             try:
-                await websocket.receive_json()  # subscribe commands — no-op for now
+                msg = await websocket.receive_json()
+                _handle_subscribe_message(msg, app_state, q, observed_players)
             except WebSocketDisconnect:
                 break
             except Exception as e:
                 log.debug("admin_ws_receive_error: %s", str(e))
                 break
     finally:
+        for unsubscribe in observed_players.values():
+            unsubscribe()
         sender.cancel()
         app_state.admin_broadcaster.remove(q)
         try:
@@ -61,3 +66,40 @@ async def _send_loop(ws: WebSocket, q: asyncio.Queue[JsonObject]) -> None:
         except Exception as e:
             log.debug("admin_ws_send_error: %s", str(e))
             break
+
+
+def _handle_subscribe_message(
+    msg: object,
+    app_state: AppState,
+    q: asyncio.Queue[JsonObject],
+    observed_players: dict[str, Callable[[], None]],
+) -> None:
+    if not isinstance(msg, dict):
+        return
+    msg_type = msg.get("type")
+    player_id = str(msg.get("player_id", "")).strip()
+    if not player_id:
+        return
+    if msg_type == "observe_player":
+        if player_id in observed_players:
+            return
+
+        def mirror(message: JsonObject) -> None:
+            try:
+                q.put_nowait(
+                    {
+                        "type": "player_observed_output",
+                        "player_id": player_id,
+                        "message": message,
+                    }
+                )
+            except asyncio.QueueFull:
+                pass
+
+        observed_players[player_id] = app_state.manager.observe_player_output(
+            player_id, mirror
+        )
+    elif msg_type == "unobserve_player":
+        unsubscribe = observed_players.pop(player_id, None)
+        if unsubscribe is not None:
+            unsubscribe()

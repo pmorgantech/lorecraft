@@ -4,6 +4,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.135.0] - 2026-07-16
+
+### Added
+
+- Archived the completed admin UI/tooling tranche into `roadmap_completed.md`
+  and made Sprint 90 the active admin observation-routing task.
+- Added read-only admin observation routing: the admin Observe panel can
+  subscribe to a player's live outbound message stream over `/admin/ws` without
+  enabling execute-as-player controls.
+
 ## [0.134.0] - 2026-07-16
 
 ### Added

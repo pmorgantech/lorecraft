@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 
 from lorecraft.observability import time_operation
 from lorecraft.types import JsonObject, JsonWebSocket
@@ -16,6 +17,7 @@ class ConnectionManager:
         self._connections: dict[str, JsonWebSocket] = {}
         self._player_rooms: dict[str, str] = {}
         self._room_players: dict[str, set[str]] = defaultdict(set)
+        self._observers: dict[str, set[Callable[[JsonObject], None]]] = defaultdict(set)
 
     async def connect(
         self, player_id: str, ws: JsonWebSocket, room_id: str | None = None
@@ -35,6 +37,7 @@ class ConnectionManager:
             self._room_players[room_id].discard(player_id)
 
     async def send_to_player(self, player_id: str, message: JsonObject) -> None:
+        self._notify_observers(player_id, message)
         ws = self._connections.get(player_id)
         if ws is None:
             return
@@ -52,6 +55,33 @@ class ConnectionManager:
                 "dropping connection for %s: send failed", player_id, exc_info=True
             )
             await self.disconnect(player_id)
+
+    def observe_player_output(
+        self, player_id: str, callback: Callable[[JsonObject], None]
+    ) -> Callable[[], None]:
+        """Mirror outbound player messages to a read-only observer callback."""
+        self._observers[player_id].add(callback)
+
+        def unsubscribe() -> None:
+            callbacks = self._observers.get(player_id)
+            if callbacks is None:
+                return
+            callbacks.discard(callback)
+            if not callbacks:
+                self._observers.pop(player_id, None)
+
+        return unsubscribe
+
+    def _notify_observers(self, player_id: str, message: JsonObject) -> None:
+        callbacks = list(self._observers.get(player_id, set()))
+        for callback in callbacks:
+            try:
+                callback(message)
+            except Exception:
+                log.info("dropping output observer for %s", player_id, exc_info=True)
+                self._observers[player_id].discard(callback)
+        if not self._observers.get(player_id):
+            self._observers.pop(player_id, None)
 
     async def broadcast_to_room(
         self,
