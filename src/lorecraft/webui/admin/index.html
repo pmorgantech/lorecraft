@@ -495,10 +495,25 @@
         <h2>NPC &amp; AI</h2>
         <div class="panel">
           <p style="color:var(--text-dim);font-size:0.85rem;">
-            Read-only NPC route, behavior, memory, and next-tick inspection belongs here. Pause,
-            manual tick, and force-action controls stay disabled until the read-only model exists.
+            Read-only NPC route, behavior, AI config, schedule, and trigger inspection. Pause,
+            manual tick, and force-action controls stay disabled until runtime safety gates exist.
           </p>
-          <button disabled title="Needs NPC runtime inspection endpoint.">Load NPC Runtime</button>
+          <button onclick="loadNpcAi()">Refresh NPC Runtime</button>
+          <div id="npc-ai-summary" style="margin-top:0.75rem;color:var(--text-dim);"></div>
+          <table style="margin-top:0.75rem;">
+            <thead>
+              <tr>
+                <th>NPC</th>
+                <th>Room</th>
+                <th>Behavior</th>
+                <th>HP</th>
+                <th>AI</th>
+                <th>Schedule</th>
+                <th>Hooks</th>
+              </tr>
+            </thead>
+            <tbody id="npc-ai-tbody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -1039,7 +1054,7 @@ const TAB_LOADERS = {
   issues: loadIssues,
   news: loadNews, help: loadHelp, accounts: loadAccounts, system: loadSystem,
   observability: () => {}, backups: () => {}, "builder-studio": () => {},
-  "npc-ai": () => {}, "admin-console": () => {}, alerts: () => {},
+  "npc-ai": loadNpcAi, "admin-console": () => {}, alerts: () => {},
 };
 
 function renderCategoryTabs(category) {
@@ -1660,6 +1675,51 @@ function renderRooms() {
       tbody.appendChild(tr);
     }
   }
+}
+
+async function loadNpcAi() {
+  const rows = await api("GET", "/admin/world/npcs");
+  const tbody = document.getElementById("npc-ai-tbody");
+  const summary = document.getElementById("npc-ai-summary");
+  if (!tbody || !summary) return;
+  tbody.innerHTML = "";
+  if (!Array.isArray(rows)) {
+    summary.textContent = "NPC runtime data unavailable.";
+    return;
+  }
+  const activeAi = rows.filter(npc => npc.ai && Object.keys(npc.ai).length).length;
+  const scheduled = rows.filter(npc => Number(npc.schedule_count || 0) > 0).length;
+  const escorted = rows.filter(npc => npc.following_player_id).length;
+  summary.textContent = `${rows.length} NPCs · ${activeAi} autonomous · ${scheduled} scheduled · ${escorted} escorting`;
+  for (const npc of rows) {
+    const aiMode = npc.ai && npc.ai.mode
+      ? npc.ai.mode
+      : (npc.ai && Object.keys(npc.ai).length ? "configured" : "passive");
+    const hp = `${npc.current_hp ?? "?"}/${npc.max_hp ?? "?"}`;
+    const hooks = [
+      `${npc.trigger_count || 0} triggers`,
+      `${npc.context_command_count || 0} commands`,
+      npc.following_player_id ? "escort" : "",
+    ].filter(Boolean).join(" · ");
+    const room = npc.current_room_name
+      ? `${npc.current_room_name} (${npc.current_room_id})`
+      : npc.current_room_id;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${esc(npc.name)}</strong><br><span style="color:var(--text-dim);font-size:0.75rem;">${esc(npc.id)}</span></td>
+      <td>${esc(room)}</td>
+      <td>${badge(npc.behavior || "unknown", "gray")}<br><span style="color:var(--text-dim);font-size:0.75rem;">dialogue ${esc(npc.dialogue_tree_id || "—")}</span></td>
+      <td>${esc(hp)}</td>
+      <td>${badge(aiMode, aiMode === "passive" ? "gray" : "green")}<br><span style="color:var(--text-dim);font-size:0.75rem;">${esc(formatNpcAi(npc.ai))}</span></td>
+      <td>${esc(npc.schedule_count || 0)}<br><span style="color:var(--text-dim);font-size:0.75rem;">respawn ${esc(npc.respawn_seconds ?? "none")}s</span></td>
+      <td>${esc(hooks || "none")}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function formatNpcAi(ai) {
+  if (!ai || !Object.keys(ai).length) return "no autonomous config";
+  return Object.entries(ai).slice(0, 3).map(([key, value]) => `${key}: ${String(value)}`).join(", ");
 }
 
 function editRoom(roomJson) {

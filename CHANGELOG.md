@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.134.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 89 roadmap entries for the Admin NPC/AI read-only runtime
+  dashboard and follow-on admin/tooling backlog.
+- Added a read-only NPC/AI admin dashboard backed by enriched `/admin/world/npcs`
+  runtime metadata for room, behavior, AI config, schedule, hooks, escort, and HP.
+
 ## [0.133.0] - 2026-07-16
 
 ### Added

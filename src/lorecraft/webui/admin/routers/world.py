@@ -238,17 +238,34 @@ async def list_npcs(request: Request, _: Observer) -> list[dict[str, Any]]:
     with Session(state.game_engine) as session:
         npcs = session.exec(select(NPC)).all()
         meter_repo = MeterRepo(session)
-        return [
-            {
-                "id": n.id,
-                "name": n.name,
-                "current_room_id": n.current_room_id,
-                "behavior": n.behavior,
-                "current_hp": _npc_current_hp(meter_repo, n),
-                "max_hp": n.max_hp,
-            }
-            for n in npcs
-        ]
+        rooms = {room.id: room for room in session.exec(select(Room)).all()}
+        rows: list[dict[str, Any]] = []
+        for npc in npcs:
+            room = rooms.get(npc.current_room_id)
+            rows.append(
+                {
+                    "id": npc.id,
+                    "name": npc.name,
+                    "description": npc.description,
+                    "current_room_id": npc.current_room_id,
+                    "current_room_name": room.name if room else None,
+                    "home_room_id": npc.home_room_id,
+                    "dialogue_tree_id": npc.dialogue_tree_id,
+                    "behavior": npc.behavior,
+                    "current_hp": _npc_current_hp(meter_repo, npc),
+                    "max_hp": npc.max_hp,
+                    "respawn_seconds": npc.respawn_seconds,
+                    "schedule_count": len(npc.schedule),
+                    "schedule": npc.schedule,
+                    "ai": npc.ai,
+                    "following_player_id": npc.following_player_id,
+                    "context_command_count": len(npc.context_commands),
+                    "context_commands": sorted(npc.context_commands.keys()),
+                    "trigger_count": len(npc.triggers),
+                    "loot_table": npc.loot_table,
+                }
+            )
+        return rows
 
 
 def _npc_current_hp(meter_repo: MeterRepo, npc: NPC) -> int:

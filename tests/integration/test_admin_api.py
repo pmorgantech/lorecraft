@@ -20,7 +20,7 @@ from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player
-from lorecraft.engine.models.world import Room
+from lorecraft.engine.models.world import NPC, Room
 
 _SECRET = "test-jwt-secret-for-admin-tests!"
 _SETTINGS = Settings(
@@ -999,11 +999,45 @@ async def _test_list_npcs() -> None:
     )
     token = _access_token()
     _seed_admin(game_engine)
+    with Session(game_engine) as session:
+        session.add(
+            Room(
+                id="village_square",
+                name="Village Square",
+                description="A test square.",
+                map_x=0,
+                map_y=0,
+            )
+        )
+        session.add(
+            NPC(
+                id="cogsworth",
+                name="Cogsworth",
+                description="A test automaton.",
+                current_room_id="village_square",
+                home_room_id="village_square",
+                dialogue_tree_id="cogsworth_intro",
+                behavior="friendly",
+                max_hp=42,
+                ai={"mode": "wander", "move_every": 3},
+                schedule=[{"hour": 8, "action": "open_shop"}],
+                context_commands={"wind": {"say": "Cogsworth winds the key."}},
+                triggers=[
+                    {"on": "player_entered", "do": [{"set_flags": ["met_cogsworth"]}]}
+                ],
+            )
+        )
+        session.commit()
 
     async with _lifespan(app):
         status, data = await _http(app, "GET", "/admin/world/npcs", token=token)
     assert status == 200
-    assert isinstance(data, list)
+    assert data[0]["id"] == "cogsworth"
+    assert data[0]["current_room_name"] == "Village Square"
+    assert data[0]["ai"] == {"mode": "wander", "move_every": 3}
+    assert data[0]["schedule_count"] == 1
+    assert data[0]["trigger_count"] == 1
+    assert data[0]["context_commands"] == ["wind"]
 
 
 # ---------------------------------------------------------------------------
