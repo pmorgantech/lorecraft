@@ -535,6 +535,47 @@ visible vs. what tabs away.
 
 ## World-building & tooling
 
+### Admin monitoring and operations ideas 🤔 (triaged 2026-07-16)
+
+The actionable, ordered queue for Admin UI and tooling now lives in
+[`roadmap.md`](roadmap.md#admin-ui--tooling-triage-2026-07-16). This wishlist keeps the larger or
+less-proven ideas that are worth preserving but should not become sprint work until the smaller
+admin backlog proves the need.
+
+Already covered or actively in-flight elsewhere:
+
+- ~~Category-based admin navigation with contextual sub-tabs~~ — `admin-ui` branch.
+- ~~Live tuning for Clock, Weather, Combat, Progression, and Economy~~ — shipped or `admin-ui`
+  branch depending on the tab.
+- ~~Crash reports, trace lookup, analytics, audit, and graceful restart controls~~ — shipped or
+  `admin-ui` branch.
+- ~~Player record editing from the player list~~ — `admin-ui` branch.
+- ~~Issues, News, Help, Accounts, World room editing, and Changesets~~ — existing admin tooling.
+
+Wishlist-only items, ordered by how soon they might become useful:
+
+- **Interactive snoop / force-command mode** — let an admin execute commands as a player with a
+  mandatory audit reason. Do not build until the read-only Live Session Viewer in the roadmap has
+  shipped and its safety model is proven.
+- **Audit replay sandbox** — select an audit window or incident and replay it in an isolated
+  instance. High debugging value, but requires stronger structured audit coverage and sandbox
+  lifecycle tooling first.
+- **Full visual Behavior Tree editor** — node editor that serializes to YAML, side-by-side with raw
+  YAML. Valuable only after basic schema validation, diff preview, and read-only NPC/AI inspection
+  exist.
+- **Behavior Tree step debugger** — pause on conditions/actions, inspect blackboard per tick, and
+  force branches in a test instance. Keep behind the visual/editor work; it is a specialist tool.
+- **Admin break-glass workflows** — elevated snoop/force/edit mode that notifies other admins and
+  records heavier audit. Useful for production operations, not needed for solo/dev playtesting.
+- **Builder collaboration suite** — area locks, comments, review queues, and ownership. Worth it
+  only once more than one active builder is editing the same content at the same time.
+- **Behavior variant A/B testing** — compare NPC tree variants or balance configs across test
+  cohorts. Requires analytics maturity and enough player volume to matter.
+- **External notifications and integrations** — Discord/email/webhooks for alerts. Start with
+  in-dashboard toasts first; external integrations wait on async event/webhook demand.
+- **Public/community stats API** — read-only non-admin world stats and dashboards. Keep separate
+  from admin APIs and privacy-sensitive player monitoring.
+
 ### In-game builder commands (OLC-style) 🤔
 
 SMAUG's `redit`/`medit`/`oedit` let builders edit rooms/mobs/objects live in-game. Lorecraft

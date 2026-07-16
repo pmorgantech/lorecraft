@@ -16,6 +16,7 @@ from sqlmodel import Session, create_engine
 from lorecraft.webui.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
 from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player
@@ -235,6 +236,124 @@ async def _test_player_state() -> None:
     assert "flags" in data
     assert "inventory" in data
     assert "visited_rooms" in data
+    assert "respawn_room_id" in data
+
+
+def test_update_player_edits_record_fields() -> None:
+    anyio.run(_test_update_player)
+
+
+async def _test_update_player() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "PATCH",
+            "/admin/players/player-1",
+            body={
+                "username": "edited-player",
+                "respawn_room_id": "market_stalls",
+                "pvp_consent": True,
+                "ghost_state": True,
+                "flags": {"admin_note": "reviewed"},
+                "reason": "support request",
+            },
+            token=token,
+        )
+    assert status == 200
+    assert data["username"] == "edited-player"
+    assert data["respawn_room_id"] == "market_stalls"
+    assert data["pvp_consent"] is True
+    assert data["ghost_state"] is True
+    assert data["flags"] == {"admin_note": "reviewed"}
+    with Session(game_engine) as session:
+        player = session.get(Player, "player-1")
+    assert player is not None
+    assert player.username == "edited-player"
+    assert player.respawn_room_id == "market_stalls"
+
+
+def test_update_player_requires_reason() -> None:
+    anyio.run(_test_update_player_requires_reason)
+
+
+async def _test_update_player_requires_reason() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "PATCH",
+            "/admin/players/player-1",
+            body={"username": "edited-player"},
+            token=token,
+        )
+    assert status == 422
+    assert data["detail"] == "Admin reason is required"
+
+
+def test_observe_player_returns_snapshot_and_recent_events() -> None:
+    anyio.run(_test_observe_player)
+
+
+async def _test_observe_player() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    with Session(audit_engine) as session:
+        session.add(
+            AuditEvent(
+                transaction_id="txn-observe",
+                correlation_id="corr-observe",
+                actor_id="player-1",
+                event_type="command_executed",
+                source_type="player",
+                room_id="village_square",
+                game_time=0.0,
+                real_time=time.time(),
+                severity="INFO",
+                summary="Command executed: look",
+                payload_json={"command": "look"},
+            )
+        )
+        session.commit()
+    async with _lifespan(app):
+        status, data = await _http(
+            app, "GET", "/admin/players/player-1/observe", token=token
+        )
+    assert status == 200
+    assert data["player"]["username"] == "player-1"
+    assert data["recent_events"][0]["summary"] == "Command executed: look"
+
+
+def test_observer_cannot_update_player_record() -> None:
+    anyio.run(_test_observer_cannot_update_player)
+
+
+async def _test_observer_cannot_update_player() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="observer")
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "PATCH",
+            "/admin/players/player-1",
+            body={"username": "edited-player", "reason": "support request"},
+            token=token,
+        )
+    assert status == 403
 
 
 def test_teleport_changes_player_room() -> None:
@@ -252,7 +371,7 @@ async def _test_teleport() -> None:
             app,
             "POST",
             "/admin/players/player-1/teleport",
-            body={"room_id": "market_stalls"},
+            body={"room_id": "market_stalls", "reason": "support relocation"},
             token=token,
         )
     assert status == 200
@@ -288,7 +407,7 @@ async def _test_teleport_emits_player_moved() -> None:
             app,
             "POST",
             "/admin/players/player-1/teleport",
-            body={"room_id": "market_stalls"},
+            body={"room_id": "market_stalls", "reason": "test relocation"},
             token=token,
         )
         assert status == 200
@@ -314,7 +433,7 @@ async def _test_set_flags() -> None:
             app,
             "POST",
             "/admin/players/player-1/flags",
-            body={"flags": {"cave_open": True}},
+            body={"flags": {"cave_open": True}, "reason": "test flag edit"},
             token=token,
         )
     assert status == 200
@@ -344,6 +463,62 @@ async def _test_audit_log() -> None:
         status, data = await _http(app, "GET", "/admin/audit", token=token)
     assert status == 200
     assert isinstance(data, list)
+
+
+def test_audit_facets_return_counts() -> None:
+    anyio.run(_test_audit_facets)
+
+
+async def _test_audit_facets() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    with Session(audit_engine) as session:
+        session.add(
+            AuditEvent(
+                transaction_id="txn-facet",
+                correlation_id="corr-facet",
+                actor_id="player-1",
+                event_type="command_executed",
+                source_type="player",
+                room_id="village_square",
+                game_time=0.0,
+                real_time=time.time(),
+                severity="INFO",
+                summary="Command executed: look",
+            )
+        )
+        session.commit()
+    async with _lifespan(app):
+        status, data = await _http(app, "GET", "/admin/audit/facets", token=token)
+    assert status == 200
+    assert {"value": "command_executed", "count": 1} in data["event_types"]
+
+
+def test_system_health_and_scheduler_endpoints() -> None:
+    anyio.run(_test_system_health_and_scheduler)
+
+
+async def _test_system_health_and_scheduler() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        health_status, health = await _http(
+            app, "GET", "/admin/system/health", token=token
+        )
+        sched_status, jobs = await _http(
+            app, "GET", "/admin/system/scheduler", token=token
+        )
+    assert health_status == 200
+    assert "websocket_connections" in health
+    assert "pending_scheduler_jobs" in health
+    assert sched_status == 200
+    assert isinstance(jobs, list)
 
 
 # ---------------------------------------------------------------------------
@@ -693,7 +868,11 @@ async def _test_freeze_player() -> None:
 
     async with _lifespan(app):
         status, data = await _http(
-            app, "POST", "/admin/players/player-1/freeze", token=token
+            app,
+            "POST",
+            "/admin/players/player-1/freeze",
+            body={"reason": "moderation freeze"},
+            token=token,
         )
     assert status == 200
 
@@ -726,7 +905,11 @@ async def _test_unfreeze_player() -> None:
 
     async with _lifespan(app):
         status, data = await _http(
-            app, "POST", "/admin/players/player-1/unfreeze", token=token
+            app,
+            "POST",
+            "/admin/players/player-1/unfreeze",
+            body={"reason": "moderation unfreeze"},
+            token=token,
         )
     assert status == 200
 

@@ -21,6 +21,7 @@ pytestmark = pytest.mark.e2e
 
 
 def _open_progression_tab(page: Any) -> None:
+    page.click('.category-tab[data-category="tuning"]')
     page.click('.tab[data-tab="progression"]')
     page.wait_for_selector("#pg-save-btn", state="visible")
 
@@ -59,6 +60,7 @@ def test_editing_and_saving_persists_and_reflects_on_reload(
     # A follow-up load (simulating a fresh admin session, not a page reload
     # of stale form state) must reflect the change -- proving it's live in
     # the DB, not just held in the form -- no restart/reseed required.
+    page.click('.category-tab[data-category="overview"]')
     page.click('.tab[data-tab="dashboard"]')
     _open_progression_tab(page)
     page.wait_for_function("() => document.getElementById('pg-base').value === '150'")

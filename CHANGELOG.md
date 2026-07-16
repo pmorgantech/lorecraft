@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.131.0] - 2026-07-16
+
+### Added
+
+- Added a category-based admin web shell with contextual sub-tabs for overview,
+  tuning, world, content, moderation, and system workflows.
+- Added admin player record editing with mandatory reason capture, structured
+  `admin_action` audit rows, richer player monitoring, and a read-only Observe
+  panel for player snapshots and recent player audit events.
+- Added admin audit facets, system health counters, pending scheduler timeline,
+  combat/weather/economy tuning destinations, and scoped shells for builder
+  studio, NPC/AI inspection, admin console, and alerts.
+
 ## [0.130.0] - 2026-07-15
 
 ### Added

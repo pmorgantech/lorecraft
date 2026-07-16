@@ -61,6 +61,48 @@ Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 | E2E coverage gap for the new discipline/ability command surface | Added 2026-07-13 (Sprint 78 Test & QA pass). `train`/`abilities`/`disciplines`/`forage`/`pick`/`sense` are unit-tested but not directly exercised by browser-driven e2e tests. Not a current defect — flagged as worth a follow-up e2e pass. |
 | Ability tuning live-admin controls | Added 2026-07-14 (Sprint 79 triage). Per-ability `cost`, `cooldown_seconds`, resource costs, and proficiency-growth values (`improve_chance`/`max_rank`) remain static YAML by design. Build a DB-backed, admin-live-tunable config only if admins ask to retune these without restart/reseed; do not build it speculatively. |
 
+### Admin UI & tooling triage (2026-07-16)
+
+This section folds the Admin & Monitoring brainstorm into the active queue. Order is based on
+usefulness to current development, player/debugging payoff, and implementation effort. Completed
+or already-in-flight surfaces are struck through so they stay visible as context without becoming
+new work.
+
+**Already covered / do not re-scope:**
+
+- ~~Category-based admin shell with contextual sub-tabs~~ — present on the `admin-ui` branch:
+  Overview, Tuning, World, Content, Moderation, System.
+- ~~Live tuning tabs for Clock, Weather, Combat, Progression, and Economy~~ — existing or
+  `admin-ui` branch surfaces backed by DB/admin endpoints where those live dials exist.
+- ~~System controls for graceful restart, crash reports, trace lookup, analytics, audit~~ —
+  restart/crashes/analytics/audit already exist; trace lookup is present on the `admin-ui` branch.
+- ~~Player record editing from the player list~~ — present on the `admin-ui` branch for username,
+  respawn room, PvP consent, ghost state, and flags JSON.
+- ~~Issues, News, Help, Accounts, World room editing, and Changesets~~ — already implemented admin
+  tooling; keep improving ergonomics only when specific friction appears.
+
+**Backlog candidates, ordered:**
+
+| Priority | Item | Usefulness / payoff | Effort | Notes |
+|----------|------|---------------------|--------|-------|
+| P0 | ~~Structured admin-action audit notes~~ | High trust and safety payoff; required before powerful moderation/snoop actions | M | Implemented on `admin-ui` branch for player edit/teleport/freeze/unfreeze/flags: mandatory `reason`, structured `admin_action` audit rows, before/after snapshots where applicable. Restart already accepted a reason; future snoop/force must follow this pattern. |
+| P0 | ~~Player monitoring dashboard v2 basics~~ | Highest day-to-day usefulness for running tests/playtests | M | Implemented on `admin-ui` branch: search/filter, online/session/activity badges, richer `/admin/players` payload, edit + read-only observe actions. Command-rate sparkline remains a later enhancement once command-rate data is exposed cheaply. |
+| P1 | ~~Live audit/event feed upgrade basics~~ | High debugging payoff; supports every later admin tool | M | Implemented on `admin-ui` branch: extra filters for severity/source plus `/admin/audit/facets`. Export and trace/crash deep links remain follow-ups. |
+| P1 | ~~System health dashboard basics~~ | High ops payoff, moderate implementation cost | M | Implemented on `admin-ui` branch: WebSocket connections, active player sessions, pending scheduler jobs, audit error count, crash count, and scheduler timeline. EventBus throughput/handler latency is explicitly shown as not instrumented yet. |
+| P1 | ~~Live session viewer (read-only snoop core) foundation~~ | High support/debug payoff, high safety sensitivity | L | Implemented on `admin-ui` branch as read-only Observe: player snapshot + inventory + recent player audit events. Exact player-output stream and replay mode remain out of scope until observation routing exists. |
+| P2 | ~~Builder content studio shell~~ | High builder payoff, but larger scope | L | Implemented on `admin-ui` branch as a scoped destination linking Rooms and Changesets with disabled validation/diff controls. Real YAML editor, validation API, and preview/diff remain future work. |
+| P2 | ~~NPC/AI dashboard shell~~ | Unique Lorecraft payoff, but depends on more runtime introspection | L | Implemented on `admin-ui` branch as a destination with disabled runtime inspection. Read-only NPC runtime endpoint is still needed before controls. |
+| P2 | ~~Scheduler/WorldClock timeline basics~~ | Useful for debugging timed systems and live events | M | Implemented on `admin-ui` branch as pending scheduler timeline under System. Weather-front timeline and richer WorldClock forecast remain follow-ups. |
+| P3 | ~~Admin command console shell~~ | Useful but risky; lower priority than purpose-built controls | M | Implemented on `admin-ui` branch as disabled destination. Execution endpoint/autocomplete/confirm gates remain future work. |
+| P3 | ~~Alerts/notifications shell~~ | Nice ops payoff after metrics are real | M | Implemented on `admin-ui` branch as disabled destination. Rule storage/evaluator and external integrations remain future work. |
+
+**Keep in [`wishlist.md`](wishlist.md) until demand or design evidence appears:**
+
+- Interactive snoop / force-command mode, break-glass workflows, and replay-as-player.
+- Full visual Behavior Tree editor and Behavior Tree step debugger.
+- Sandbox/replay instances for historical audit windows.
+- Area locking, collaborative review queues, comments, and A/B testing for behavior variants.
+- Public/community stats APIs and external monitoring integrations.
 
 ---
 

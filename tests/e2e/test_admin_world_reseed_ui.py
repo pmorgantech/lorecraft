@@ -19,6 +19,7 @@ pytestmark = pytest.mark.e2e
 
 
 def _open_world_tab(page: Any) -> None:
+    page.click('.category-tab[data-category="world"]')
     page.click('.tab[data-tab="world"]')
     page.wait_for_selector("#w-reseed-btn", state="visible")
 

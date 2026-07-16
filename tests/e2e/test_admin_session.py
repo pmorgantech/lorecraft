@@ -19,6 +19,9 @@ pytestmark = pytest.mark.e2e
 
 def test_stale_token_http_401_forces_logout(page: Any, admin_server: str) -> None:
     admin_login(page, admin_server)
+    page.click('.category-tab[data-category="system"]')
+    page.wait_for_selector("#tab-system", state="visible")
+    page.wait_for_selector("#sys-health-tbody tr")
 
     # Corrupt the in-memory + stored token so the next authed request 401s.
     page.evaluate(

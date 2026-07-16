@@ -59,6 +59,7 @@ def _displayed_ids(page: Any) -> list[str]:
 
 def _open_issues_tab(page: Any, base_url: str) -> None:
     admin_login(page, base_url)
+    page.click('.category-tab[data-category="moderation"]')
     page.click('.tab[data-tab="issues"]')
 
 

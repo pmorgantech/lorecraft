@@ -5,9 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from sqlmodel import Session, col, select
+from sqlmodel import Session, col, func, select
 
-from lorecraft.engine.models.audit import CrashReport
+from lorecraft.engine.models.audit import AuditEvent, CrashReport
+from lorecraft.engine.models.scheduler import ScheduledJob
+from lorecraft.engine.models.session import PlayerSession
 from lorecraft.observability import get_trace
 from lorecraft.webui.admin.auth import Observer
 
@@ -16,6 +18,69 @@ router = APIRouter(tags=["admin"])
 
 def _state(request: Request) -> Any:
     return request.app.state.lorecraft
+
+
+@router.get("/system/health")
+async def system_health(request: Request, _: Observer) -> dict[str, Any]:
+    """Read-only admin health summary grounded in existing runtime/audit data."""
+    state = _state(request)
+    online_connections = len(state.manager._connections)
+    with Session(state.game_engine) as game_session:
+        pending_jobs = game_session.exec(
+            select(func.count())
+            .select_from(ScheduledJob)
+            .where(ScheduledJob.status == "pending")
+        ).one()
+        active_sessions = game_session.exec(
+            select(func.count())
+            .select_from(PlayerSession)
+            .where(PlayerSession.status == "active")
+        ).one()
+    with Session(state.audit_engine) as audit_session:
+        recent_errors = audit_session.exec(
+            select(func.count())
+            .select_from(AuditEvent)
+            .where(AuditEvent.severity.in_(["ERROR", "CRITICAL"]))
+        ).one()
+        crash_count = audit_session.exec(
+            select(func.count()).select_from(CrashReport)
+        ).one()
+    return {
+        "websocket_connections": online_connections,
+        "active_player_sessions": active_sessions,
+        "pending_scheduler_jobs": pending_jobs,
+        "audit_errors_total": recent_errors,
+        "crash_reports_total": crash_count,
+        "eventbus_metrics": {
+            "status": "not_instrumented",
+            "note": "Handler throughput/latency requires EventBus metrics instrumentation.",
+        },
+    }
+
+
+@router.get("/system/scheduler")
+async def scheduler_timeline(
+    request: Request, _: Observer, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Pending scheduler jobs, soonest first."""
+    state = _state(request)
+    with Session(state.game_engine) as session:
+        jobs = session.exec(
+            select(ScheduledJob)
+            .where(ScheduledJob.status == "pending")
+            .order_by(col(ScheduledJob.due_at_epoch))
+            .limit(min(limit, 200))
+        ).all()
+    return [
+        {
+            "id": job.id,
+            "job_type": job.job_type,
+            "due_at_epoch": job.due_at_epoch,
+            "created_at": job.created_at,
+            "payload": job.payload,
+        }
+        for job in jobs
+    ]
 
 
 @router.get("/trace/{transaction_id}")

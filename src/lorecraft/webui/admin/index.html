@@ -80,10 +80,21 @@
       align-items: center;
       gap: 0.75rem;
     }
-    #admin-topbar .brand { font-family: 'IM Fell English', serif; color: var(--phosphor); font-size: 1.1rem; }
+    #admin-topbar .brand { font-family: 'IM Fell English', serif; color: var(--phosphor); font-size: 1.1rem; white-space: nowrap; }
     #admin-user-label { margin-left: auto; color: var(--text-dim); font-size: 0.8rem; }
     #error-bar { flex: 0 0 auto; display: none; background: #3a0000; color: var(--danger); padding: 0.4rem 1rem; font-size: 0.85rem; }
     #admin-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 1rem; gap: 0.75rem; }
+    #category-bar {
+      display: flex; gap: 0.15rem; align-items: center; min-width: 0;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .category-tab {
+      cursor: pointer; padding: 0.35rem 0.65rem; border: 1px solid transparent;
+      border-radius: 3px; color: var(--text-dim); user-select: none; font-size: 0.82rem;
+      flex-shrink: 0; white-space: nowrap;
+    }
+    .category-tab:hover { color: var(--text-body); border-color: var(--muted); }
+    .category-tab.active { color: var(--phosphor); border-color: var(--phosphor); background: var(--bg-raised); }
 
     /* ---------- Tabs ---------- */
     /* overflow-x: auto (Sprint 72 fix) - the tab list grows with every sprint and
@@ -103,6 +114,7 @@
     }
     .tab:hover { color: var(--text-body); }
     .tab.active { border-bottom-color: var(--phosphor); color: var(--phosphor); }
+    .tab[hidden] { display: none; }
     #tab-panels { flex: 1; overflow: auto; }
     .tab-panel { display: none; height: 100%; }
     .tab-panel.active { display: flex; flex-direction: column; gap: 0.75rem; }
@@ -111,6 +123,9 @@
     #tab-dashboard .panel { overflow: auto; }
     .online-dot { color: var(--phosphor); }
     .offline-dot { color: var(--muted); }
+    #player-editor-panel { display: none; }
+    #player-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+    #player-editor-panel label { display: block; color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.25rem; }
 
     /* ---------- World editor ---------- */
     #world-layout { display: flex; gap: 1rem; min-height: 0; flex: 1; }
@@ -160,6 +175,14 @@
   <div id="admin-topbar">
     <span class="brand">Lorecraft Admin</span>
     <span id="ws-indicator" title="Live push" style="color:var(--muted);font-size:0.75rem;">● ws</span>
+    <nav id="category-bar" aria-label="Admin categories">
+      <div class="category-tab active" data-category="overview" onclick="showCategory('overview')">Overview</div>
+      <div class="category-tab" data-category="tuning" onclick="showCategory('tuning')">Tuning</div>
+      <div class="category-tab" data-category="world" onclick="showCategory('world')">World</div>
+      <div class="category-tab" data-category="content" onclick="showCategory('content')">Content</div>
+      <div class="category-tab" data-category="moderation" onclick="showCategory('moderation')">Moderation</div>
+      <div class="category-tab" data-category="system" onclick="showCategory('system')">System</div>
+    </nav>
     <span id="admin-user-label"></span>
     <button onclick="logout()" style="font-size:0.75rem;">Logout</button>
   </div>
@@ -167,20 +190,28 @@
 
   <div id="admin-body">
     <div id="tab-bar">
-      <div class="tab active" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</div>
-      <div class="tab" data-tab="analytics"  onclick="showTab('analytics')">Analytics</div>
-      <div class="tab" data-tab="audit"      onclick="showTab('audit')">Audit</div>
-      <div class="tab" data-tab="crashes"    onclick="showTab('crashes')">Crashes</div>
-      <div class="tab" data-tab="world"      onclick="showTab('world')">World</div>
-      <div class="tab" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
-      <div class="tab" data-tab="clock"      onclick="showTab('clock')">Clock</div>
-      <div class="tab" data-tab="progression" onclick="showTab('progression')">Progression</div>
-      <div class="tab" data-tab="economy"    onclick="showTab('economy')">Economy</div>
-      <div class="tab" data-tab="issues"     onclick="showTab('issues')">Issues</div>
-      <div class="tab" data-tab="news"       onclick="showTab('news')">News</div>
-      <div class="tab" data-tab="help"       onclick="showTab('help')">Help</div>
-      <div class="tab" data-tab="accounts"   onclick="showTab('accounts')">Accounts</div>
-      <div class="tab" data-tab="system"     onclick="showTab('system')">System</div>
+      <div class="tab active" data-category="overview" data-tab="dashboard" onclick="showTab('dashboard')">Dashboard</div>
+      <div class="tab" data-category="tuning" data-tab="clock" onclick="showTab('clock')">Clock</div>
+      <div class="tab" data-category="tuning" data-tab="weather" onclick="showTab('weather')">Weather</div>
+      <div class="tab" data-category="tuning" data-tab="combat" onclick="showTab('combat')">Combat</div>
+      <div class="tab" data-category="tuning" data-tab="progression" onclick="showTab('progression')">Progression</div>
+      <div class="tab" data-category="tuning" data-tab="economy" onclick="showTab('economy')">Economy</div>
+      <div class="tab" data-category="world" data-tab="world" onclick="showTab('world')">Rooms</div>
+      <div class="tab" data-category="world" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
+      <div class="tab" data-category="world" data-tab="builder-studio" onclick="showTab('builder-studio')">Builder Studio</div>
+      <div class="tab" data-category="world" data-tab="npc-ai" onclick="showTab('npc-ai')">NPC/AI</div>
+      <div class="tab" data-category="content" data-tab="news" onclick="showTab('news')">News</div>
+      <div class="tab" data-category="content" data-tab="help" onclick="showTab('help')">Help</div>
+      <div class="tab" data-category="moderation" data-tab="issues" onclick="showTab('issues')">Issues</div>
+      <div class="tab" data-category="moderation" data-tab="accounts" onclick="showTab('accounts')">Accounts</div>
+      <div class="tab" data-category="system" data-tab="system" onclick="showTab('system')">Controls</div>
+      <div class="tab" data-category="system" data-tab="backups" onclick="showTab('backups')">Backups</div>
+      <div class="tab" data-category="system" data-tab="crashes" onclick="showTab('crashes')">Crash Dumps</div>
+      <div class="tab" data-category="system" data-tab="observability" onclick="showTab('observability')">Observability</div>
+      <div class="tab" data-category="system" data-tab="analytics" onclick="showTab('analytics')">Analytics</div>
+      <div class="tab" data-category="system" data-tab="audit" onclick="showTab('audit')">Audit</div>
+      <div class="tab" data-category="system" data-tab="admin-console" onclick="showTab('admin-console')">Console</div>
+      <div class="tab" data-category="system" data-tab="alerts" onclick="showTab('alerts')">Alerts</div>
     </div>
 
     <div id="tab-panels">
@@ -189,13 +220,65 @@
       <div id="tab-dashboard" class="tab-panel active">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <h2>Live Players</h2>
-          <button onclick="loadDashboard()">↻ Refresh</button>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <input id="player-search" placeholder="filter players" style="width:160px;" oninput="renderPlayers()" />
+            <select id="player-status-filter" style="width:130px;" onchange="renderPlayers()">
+              <option value="">any status</option>
+              <option value="online">online</option>
+              <option value="offline">offline</option>
+              <option value="combat">combat</option>
+              <option value="ghost">ghost</option>
+            </select>
+            <button onclick="loadDashboard()">↻ Refresh</button>
+          </div>
         </div>
         <div class="panel">
           <table>
-            <thead><tr><th>Username</th><th>Room</th><th>Online</th><th>Inv</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Username</th><th>Room</th><th>Status</th><th>Activity</th><th>Inv</th><th>Actions</th></tr></thead>
             <tbody id="players-tbody"></tbody>
           </table>
+        </div>
+        <div id="player-editor-panel" class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+            <h2>Edit Player <span id="pe-id" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
+            <button onclick="closePlayerEditor()">Close</button>
+          </div>
+          <div id="player-editor-grid">
+            <div class="field"><label>USERNAME</label><input id="pe-username" /></div>
+            <div class="field"><label>CURRENT ROOM</label><input id="pe-current-room" disabled /></div>
+            <div class="field"><label>RESPAWN ROOM</label><input id="pe-respawn-room" /></div>
+            <label style="display:flex;align-items:center;gap:0.4rem;margin-top:1.1rem;">
+              <input id="pe-pvp" type="checkbox" style="width:auto;" /> PvP consent
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;margin-top:1.1rem;">
+              <input id="pe-ghost" type="checkbox" style="width:auto;" /> Ghost state
+            </label>
+          </div>
+          <div class="field" style="margin-top:0.75rem;">
+            <label>FLAGS JSON</label>
+            <textarea id="pe-flags" rows="5" style="width:100%;font-family:monospace;font-size:0.85rem;"></textarea>
+          </div>
+          <div class="field" style="margin-top:0.75rem;">
+            <label>ADMIN REASON</label>
+            <input id="pe-reason" placeholder="required audit reason" />
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;">
+            <button id="pe-save-btn" onclick="savePlayerRecord()">Save</button>
+            <button onclick="observePlayer(state.editingPlayer)">Observe</button>
+            <button onclick="teleportDialog(state.editingPlayer)">Teleport</button>
+            <button onclick="freezePlayer(state.editingPlayer)">Freeze</button>
+            <div id="pe-status" role="status" aria-live="polite" style="font-size:0.8rem;min-height:1.2em;"></div>
+          </div>
+        </div>
+        <div id="player-observe-panel" class="panel" style="display:none;">
+          <h2>Session Viewer <span id="po-id" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
+          <div id="po-summary" style="color:var(--text-dim);font-size:0.85rem;margin-bottom:0.75rem;"></div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>Time</th><th>Type</th><th>Room</th><th>Summary</th></tr></thead>
+              <tbody id="po-events-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -271,6 +354,8 @@
           <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">ACTOR</label><input id="f-actor" placeholder="player id / system" /></div>
           <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">ROOM</label><input id="f-room" placeholder="room id" /></div>
           <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">TYPE</label><input id="f-type" placeholder="command_executed" /></div>
+          <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">SEVERITY</label><select id="f-severity"><option value="">any</option></select></div>
+          <div style="flex:1;min-width:110px;"><label style="color:var(--text-dim);font-size:0.75rem;">SOURCE</label><select id="f-source"><option value="">any</option></select></div>
           <div><label style="color:var(--text-dim);font-size:0.75rem;">LIMIT</label><input id="f-limit" value="100" style="width:70px;" /></div>
           <button onclick="loadAudit()">Search</button>
           <button onclick="loadAudit()" title="Refresh">↻ Refresh</button>
@@ -385,6 +470,37 @@
         </div>
       </div>
 
+      <!-- Builder Studio -->
+      <div id="tab-builder-studio" class="tab-panel">
+        <h2>Builder Studio</h2>
+        <div class="panel">
+          <h2>Content Draft Foundations</h2>
+          <p style="color:var(--text-dim);font-size:0.85rem;">
+            YAML validation, rendered room preview, and diff-before-publish should build on
+            the existing World editor, validators, exporter, and Changesets. Visual editing is
+            deliberately deferred until these basics are useful.
+          </p>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button onclick="showTab('world')">Open Rooms</button>
+            <button onclick="showTab('changesets')">Open Changesets</button>
+            <button disabled title="Needs a validation/preview API endpoint.">Validate Draft</button>
+            <button disabled title="Needs a diff preview API endpoint.">Preview Diff</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- NPC/AI -->
+      <div id="tab-npc-ai" class="tab-panel">
+        <h2>NPC &amp; AI</h2>
+        <div class="panel">
+          <p style="color:var(--text-dim);font-size:0.85rem;">
+            Read-only NPC route, behavior, memory, and next-tick inspection belongs here. Pause,
+            manual tick, and force-action controls stay disabled until the read-only model exists.
+          </p>
+          <button disabled title="Needs NPC runtime inspection endpoint.">Load NPC Runtime</button>
+        </div>
+      </div>
+
       <!-- Clock -->
       <div id="tab-clock" class="tab-panel">
         <div id="clock-layout">
@@ -406,7 +522,13 @@
               <button onclick="setTimeRatio()">Set</button>
             </div>
           </div>
-          <div class="panel" style="min-width:200px;">
+        </div>
+      </div>
+
+      <!-- Weather -->
+      <div id="tab-weather" class="tab-panel">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;">
+          <div class="panel" style="min-width:260px;">
             <h2>Weather</h2>
             <label style="display:block;color:var(--text-dim);font-size:0.75rem;margin-bottom:0.25rem;">Global</label>
             <select id="weather-select">
@@ -421,8 +543,25 @@
               <option value="blizzard">Blizzard</option>
             </select>
             <button onclick="setWeather()" style="margin-top:0.5rem;width:100%;">Apply</button>
-            <div id="zone-weather-panel" style="margin-top:0.9rem;"></div>
           </div>
+          <div class="panel" style="min-width:280px;flex:1;">
+            <h2>Zone Weather</h2>
+            <div id="zone-weather-panel"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Combat -->
+      <div id="tab-combat" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h2>Combat Rulesets</h2>
+          <button onclick="loadCombatRulesets()">↻ Refresh</button>
+        </div>
+        <div class="panel" style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Ruleset</th><th>Damage ×</th><th>Stamina Cost ×</th><th></th></tr></thead>
+            <tbody id="combat-tbody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -651,6 +790,77 @@
             <button onclick="loadSystem()">↻</button>
           </div>
         </div>
+        <div class="panel" style="overflow-x:auto;">
+          <h2>Health</h2>
+          <table>
+            <tbody id="sys-health-tbody"></tbody>
+          </table>
+        </div>
+        <div class="panel" style="overflow-x:auto;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+            <h2>Scheduler Timeline</h2>
+            <button onclick="loadSchedulerTimeline()">↻</button>
+          </div>
+          <table>
+            <thead><tr><th>Due</th><th>Type</th><th>Payload</th></tr></thead>
+            <tbody id="sys-scheduler-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Backups -->
+      <div id="tab-backups" class="tab-panel">
+        <h2>Backups</h2>
+        <div class="panel" style="max-width:520px;">
+          <h2>Backup Controls</h2>
+          <p style="color:var(--text-dim);font-size:0.85rem;">
+            Backup scheduling and restore controls belong here once the server exposes
+            admin backup endpoints.
+          </p>
+          <button disabled title="No admin backup endpoint is available yet.">Create Backup</button>
+        </div>
+      </div>
+
+      <!-- Observability -->
+      <div id="tab-observability" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+          <h2>Observability</h2>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <input id="obs-trace-id" placeholder="transaction id" style="width:220px;" />
+            <button onclick="loadTrace()">Load Trace</button>
+          </div>
+        </div>
+        <div class="panel" style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Span</th><th>Duration ms</th><th>Started</th></tr></thead>
+            <tbody id="obs-trace-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Admin Console -->
+      <div id="tab-admin-console" class="tab-panel">
+        <h2>Admin Console</h2>
+        <div class="panel">
+          <p style="color:var(--text-dim);font-size:0.85rem;">
+            Elevated command execution should go through a dedicated audited endpoint with
+            autocomplete and confirmation gates. It is intentionally disabled until that endpoint
+            exists.
+          </p>
+          <input disabled placeholder="admin command endpoint not implemented" />
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div id="tab-alerts" class="tab-panel">
+        <h2>Alerts</h2>
+        <div class="panel">
+          <p style="color:var(--text-dim);font-size:0.85rem;">
+            Start with in-dashboard alert rules backed by audit and system-health data. External
+            Discord/email/webhook delivery waits for async integration demand.
+          </p>
+          <button disabled title="Needs alert rule storage and evaluator.">Create Alert Rule</button>
+        </div>
       </div>
 
     </div><!-- /tab-panels -->
@@ -665,7 +875,10 @@ const state = {
   username:    sessionStorage.getItem("lc_admin_user")  || "",
   role:        decodeJwtRole(sessionStorage.getItem("lc_admin_token") || ""),
   editingRoom: null,
+  editingPlayer: null,
+  allPlayers: [],
   ws: null,
+  activeCategory: "overview",
 };
 
 // Admin JWTs are not encrypted, just signed — the role claim is readable
@@ -762,6 +975,7 @@ function showAdmin() {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("admin-screen").style.display  = "flex";
   document.getElementById("admin-user-label").textContent = state.username;
+  renderCategoryTabs(state.activeCategory);
   updateWorldDangerZoneUI();
   loadDashboard();
   connectAdminWs();
@@ -802,18 +1016,58 @@ function showError(msg) {
 // Tab routing
 // ────────────────────────────────────────
 
+const NAV_CATEGORIES = {
+  overview: ["dashboard"],
+  tuning: ["clock", "weather", "combat", "progression", "economy"],
+  world: ["world", "changesets", "builder-studio", "npc-ai"],
+  content: ["news", "help"],
+  moderation: ["issues", "accounts"],
+  system: ["system", "backups", "crashes", "observability", "analytics", "audit", "admin-console", "alerts"],
+};
+
+const TAB_TO_CATEGORY = Object.fromEntries(
+  Object.entries(NAV_CATEGORIES).flatMap(([category, tabs]) => tabs.map(tab => [tab, category]))
+);
+
 const TAB_LOADERS = {
   dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
   crashes: loadCrashes, world: loadRooms,
-  changesets: loadChangesets, clock: loadClock, progression: loadProgressionConfig,
+  changesets: loadChangesets, clock: loadClock, weather: loadClock,
+  combat: loadCombatRulesets, progression: loadProgressionConfig,
   economy: loadEconomyRegions,
   issues: loadIssues,
-  news: loadNews, help: loadHelp, accounts: loadAccounts, system: loadSystem
+  news: loadNews, help: loadHelp, accounts: loadAccounts, system: loadSystem,
+  observability: () => {}, backups: () => {}, "builder-studio": () => {},
+  "npc-ai": () => {}, "admin-console": () => {}, alerts: () => {},
 };
 
-function showTab(name) {
+function renderCategoryTabs(category) {
+  state.activeCategory = category;
+  document.querySelectorAll(".category-tab").forEach(t => t.classList.toggle("active", t.dataset.category === category));
+  document.querySelectorAll(".tab").forEach(t => {
+    const visible = t.dataset.category === category;
+    t.hidden = !visible;
+  });
+}
+
+function showCategory(category) {
+  const tabs = NAV_CATEGORIES[category] || NAV_CATEGORIES.overview;
+  renderCategoryTabs(category);
+  showTab(tabs[0], {preserveCategory: true});
+}
+
+function showTab(name, options = {}) {
+  const category = TAB_TO_CATEGORY[name] || "overview";
+  if (!options.preserveCategory || state.activeCategory !== category) {
+    renderCategoryTabs(category);
+  }
+  const tabBar = document.getElementById("tab-bar");
   document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
+  const activeTab = document.querySelector(`.tab[data-tab="${name}"]`);
+  if (activeTab && tabBar) {
+    activeTab.scrollIntoView({block: "nearest", inline: "nearest"});
+  }
   if (TAB_LOADERS[name]) TAB_LOADERS[name]();
 }
 
@@ -833,18 +1087,35 @@ setInterval(() => refreshIfActive("clock"), 5000);
 
 async function loadDashboard() {
   const players = await api("GET", "/admin/players");
+  state.allPlayers = Array.isArray(players) ? players : [];
+  renderPlayers();
+}
+
+function renderPlayers() {
   const tbody = document.getElementById("players-tbody");
   tbody.innerHTML = "";
-  if (!Array.isArray(players)) return;
-  for (const p of players) {
+  const search = (document.getElementById("player-search")?.value || "").trim().toLowerCase();
+  const filter = document.getElementById("player-status-filter")?.value || "";
+  for (const p of state.allPlayers) {
+    const haystack = `${p.username || ""} ${p.current_room_id || ""} ${p.id || ""}`.toLowerCase();
+    if (search && !haystack.includes(search)) continue;
+    if (filter === "online" && !p.online) continue;
+    if (filter === "offline" && p.online) continue;
+    if (filter === "combat" && p.activity_state !== "combat") continue;
+    if (filter === "ghost" && !p.ghost_state) continue;
     const tr = document.createElement("tr");
+    const status = p.online ? "online" : p.session_status || "offline";
+    const statusColor = p.online ? "green" : status === "frozen" ? "amber" : "gray";
     tr.innerHTML = `
       <td>${p.online ? '<span class="online-dot">●</span>' : '<span class="offline-dot">●</span>'}
           <b>${esc(p.username)}</b></td>
       <td style="color:var(--amber)">${esc(p.current_room_id)}</td>
-      <td>${p.online ? badge("online","green") : badge("offline","gray")}</td>
+      <td>${badge(status, statusColor)}</td>
+      <td>${badge(p.activity_state || "idle", p.activity_state === "combat" ? "red" : p.activity_state === "ghost" ? "amber" : "gray")}</td>
       <td>${p.inventory_count}</td>
       <td style="white-space:nowrap;gap:4px;display:flex;">
+        <button onclick="openPlayerEditor('${esc(p.id)}')">Edit</button>
+        <button onclick="observePlayer('${esc(p.id)}')">Observe</button>
         <button onclick="teleportDialog('${esc(p.id)}')">Teleport</button>
         <button onclick="freezePlayer('${esc(p.id)}')" style="margin-left:4px;">Freeze</button>
       </td>`;
@@ -852,18 +1123,127 @@ async function loadDashboard() {
   }
 }
 
+function updatePlayerEditUI() {
+  const canEdit = ["moderator", "world-builder", "superadmin"].includes(state.role);
+  for (const id of ["pe-username", "pe-respawn-room", "pe-pvp", "pe-ghost", "pe-flags", "pe-reason", "pe-save-btn"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.disabled = !canEdit;
+    el.title = canEdit ? "" : "Requires moderator role";
+  }
+}
+
+async function openPlayerEditor(playerId) {
+  const p = await api("GET", `/admin/players/${encodeURIComponent(playerId)}/state`);
+  if (p.detail) { showError(p.detail); return; }
+  state.editingPlayer = playerId;
+  document.getElementById("pe-id").textContent = p.id;
+  document.getElementById("pe-username").value = p.username || "";
+  document.getElementById("pe-current-room").value = p.current_room_id || "";
+  document.getElementById("pe-respawn-room").value = p.respawn_room_id || "";
+  document.getElementById("pe-pvp").checked = Boolean(p.pvp_consent);
+  document.getElementById("pe-ghost").checked = Boolean(p.ghost_state);
+  document.getElementById("pe-flags").value = JSON.stringify(p.flags || {}, null, 2);
+  document.getElementById("pe-reason").value = "";
+  document.getElementById("pe-status").textContent = "";
+  document.getElementById("player-editor-panel").style.display = "block";
+  updatePlayerEditUI();
+}
+
+function closePlayerEditor() {
+  state.editingPlayer = null;
+  document.getElementById("player-editor-panel").style.display = "none";
+}
+
+async function savePlayerRecord() {
+  if (!state.editingPlayer) return;
+  const statusEl = document.getElementById("pe-status");
+  let flags;
+  try {
+    flags = JSON.parse(document.getElementById("pe-flags").value.trim() || "{}");
+  } catch (_) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Invalid flags JSON";
+    return;
+  }
+  if (flags === null || typeof flags !== "object" || Array.isArray(flags)) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Flags must be a JSON object";
+    return;
+  }
+  const body = {
+    username: document.getElementById("pe-username").value.trim(),
+    respawn_room_id: document.getElementById("pe-respawn-room").value.trim(),
+    pvp_consent: document.getElementById("pe-pvp").checked,
+    ghost_state: document.getElementById("pe-ghost").checked,
+    flags,
+    reason: document.getElementById("pe-reason").value.trim(),
+  };
+  if (!body.username || !body.respawn_room_id || !body.reason) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Username, respawn room, and admin reason are required";
+    return;
+  }
+  const btn = document.getElementById("pe-save-btn");
+  btn.disabled = true;
+  statusEl.style.color = "var(--text-dim)";
+  statusEl.textContent = "Saving…";
+  try {
+    const playerId = state.editingPlayer;
+    const result = await api("PATCH", `/admin/players/${encodeURIComponent(playerId)}`, body);
+    if (result && result.detail) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = Array.isArray(result.detail) ? JSON.stringify(result.detail) : result.detail;
+      return;
+    }
+    await loadDashboard();
+    await openPlayerEditor(playerId);
+    const refreshedStatusEl = document.getElementById("pe-status");
+    refreshedStatusEl.style.color = "var(--phosphor)";
+    refreshedStatusEl.textContent = "Saved.";
+  } finally {
+    updatePlayerEditUI();
+  }
+}
+
 async function teleportDialog(playerId) {
   const roomId = prompt("Teleport to room ID:");
   if (!roomId) return;
-  const r = await api("POST", `/admin/players/${playerId}/teleport`, {room_id: roomId});
+  const reason = prompt("Admin reason for teleport:");
+  if (!reason) return;
+  const r = await api("POST", `/admin/players/${playerId}/teleport`, {room_id: roomId, reason});
   if (r.status === "teleported") loadDashboard();
   else showError(r.detail || JSON.stringify(r));
 }
 
 async function freezePlayer(playerId) {
-  const r = await api("POST", `/admin/players/${playerId}/freeze`);
+  const reason = prompt("Admin reason for freeze:");
+  if (!reason) return;
+  const r = await api("POST", `/admin/players/${playerId}/freeze`, {reason});
   if (r.detail) showError(r.detail);
   else loadDashboard();
+}
+
+async function observePlayer(playerId) {
+  if (!playerId) return;
+  const data = await api("GET", `/admin/players/${encodeURIComponent(playerId)}/observe`);
+  if (data.detail) { showError(data.detail); return; }
+  const p = data.player || {};
+  document.getElementById("po-id").textContent = p.id || playerId;
+  document.getElementById("po-summary").textContent =
+    `${p.username || ""} · ${p.current_room_id || ""} · ${p.online ? "online" : "offline"} · inventory ${(p.inventory || []).length}`;
+  const tbody = document.getElementById("po-events-tbody");
+  tbody.innerHTML = "";
+  for (const e of (data.recent_events || [])) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="color:var(--text-dim);white-space:nowrap">${new Date(e.real_time * 1000).toLocaleTimeString()}</td>
+      <td>${badge(e.event_type || "", "gray")}</td>
+      <td>${esc(e.room_id || "")}</td>
+      <td>${esc(e.summary || "")}</td>`;
+    tbody.appendChild(tr);
+  }
+  document.getElementById("player-observe-panel").style.display = "block";
 }
 
 // ────────────────────────────────────────
@@ -1065,14 +1445,19 @@ function scheduleAuditRefresh() {
 }
 
 async function loadAudit() {
+  await ensureAuditFacets();
   const params = new URLSearchParams();
   const actor = document.getElementById("f-actor").value.trim();
   const room  = document.getElementById("f-room").value.trim();
   const etype = document.getElementById("f-type").value.trim();
+  const severity = document.getElementById("f-severity").value;
+  const source = document.getElementById("f-source").value;
   const limit = document.getElementById("f-limit").value.trim();
   if (actor) params.set("actor", actor);
   if (room)  params.set("room",  room);
   if (etype) params.set("event_type", etype);
+  if (severity) params.set("severity", severity);
+  if (source) params.set("source_type", source);
   if (limit) params.set("limit", limit);
   const qs = params.size ? "?" + params : "";
   const events = await api("GET", `/admin/audit${qs}`);
@@ -1092,6 +1477,26 @@ async function loadAudit() {
       <td>${esc(e.summary)}</td>`;
     tbody.appendChild(tr);
   }
+}
+
+let _auditFacetsReady = false;
+async function ensureAuditFacets() {
+  if (_auditFacetsReady) return;
+  const facets = await api("GET", "/admin/audit/facets");
+  if (!facets || facets.detail) return;
+  const fill = (id, rows) => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = `<option value="">any</option>` + (rows || [])
+      .filter(row => row.value)
+      .map(row => `<option value="${esc(row.value)}">${esc(row.value)} (${row.count})</option>`)
+      .join("");
+    select.value = current;
+  };
+  fill("f-severity", facets.severities);
+  fill("f-source", facets.sources);
+  _auditFacetsReady = true;
 }
 
 // ────────────────────────────────────────
@@ -1420,6 +1825,67 @@ async function setZoneWeather(zone) {
 }
 
 // ────────────────────────────────────────
+// Combat
+// ────────────────────────────────────────
+
+function updateCombatEditUI() {
+  const isSuperadmin = state.role === "superadmin";
+  document.querySelectorAll("[data-combat-input], [data-combat-save]").forEach(el => {
+    el.disabled = !isSuperadmin;
+    el.title = isSuperadmin ? "" : "Requires superadmin role";
+  });
+}
+
+async function loadCombatRulesets() {
+  const rows = await api("GET", "/admin/combat/rulesets");
+  const tbody = document.getElementById("combat-tbody");
+  tbody.innerHTML = "";
+  if (!Array.isArray(rows)) return;
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="font-family:monospace;color:var(--amber)">${esc(r.id)}</td>
+      <td><input data-combat-input data-field="damage_multiplier" type="number" min="0.01" step="0.05" value="${r.damage_multiplier}" style="width:100px;" /></td>
+      <td><input data-combat-input data-field="stamina_cost_multiplier" type="number" min="0.01" step="0.05" value="${r.stamina_cost_multiplier}" style="width:100px;" /></td>
+      <td style="min-width:140px;">
+        <button data-combat-save>Save</button>
+        <div data-combat-status role="status" aria-live="polite" style="font-size:0.75rem;min-height:1.2em;margin-top:0.25rem;"></div>
+      </td>`;
+    tr.querySelector("[data-combat-save]").addEventListener("click", () => saveCombatRuleset(r.id, tr));
+    tbody.appendChild(tr);
+  }
+  updateCombatEditUI();
+}
+
+async function saveCombatRuleset(rulesetId, row) {
+  if (state.role !== "superadmin") return;
+  const statusEl = row.querySelector("[data-combat-status]");
+  const damage = parseFloat(row.querySelector('[data-field="damage_multiplier"]').value);
+  const stamina = parseFloat(row.querySelector('[data-field="stamina_cost_multiplier"]').value);
+  if (!Number.isFinite(damage) || damage <= 0 || !Number.isFinite(stamina) || stamina <= 0) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Multipliers must be > 0";
+    return;
+  }
+  const btn = row.querySelector("[data-combat-save]");
+  btn.disabled = true;
+  statusEl.style.color = "var(--text-dim)";
+  statusEl.textContent = "Saving…";
+  const result = await api("POST", `/admin/combat/rulesets/${encodeURIComponent(rulesetId)}`, {
+    damage_multiplier: damage,
+    stamina_cost_multiplier: stamina,
+  });
+  if (result && result.detail) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = String(result.detail);
+  } else {
+    statusEl.style.color = "var(--phosphor)";
+    statusEl.textContent = "Saved";
+  }
+  updateCombatEditUI();
+}
+
+// ────────────────────────────────────────
 // Progression (Sprint 73.4) — live-tune the XP curve + per-level reward
 // payout, mirroring the Clock time-ratio pattern above: GET fills the
 // inputs, Save POSTs and reloads to confirm the change stuck. POST is
@@ -1624,6 +2090,8 @@ async function loadSystem() {
     meta.textContent = "No supervisor is listening — restart requests will be rejected.";
     btn.disabled = true;
   }
+  await loadSystemHealth();
+  await loadSchedulerTimeline();
 }
 
 async function requestRestart() {
@@ -1635,6 +2103,65 @@ async function requestRestart() {
     showError(resp.detail);
   }
   loadSystem();
+}
+
+async function loadSystemHealth() {
+  const h = await api("GET", "/admin/system/health");
+  const tbody = document.getElementById("sys-health-tbody");
+  tbody.innerHTML = "";
+  if (!h || h.detail) return;
+  const rows = [
+    ["WebSocket connections", h.websocket_connections],
+    ["Active player sessions", h.active_player_sessions],
+    ["Pending scheduler jobs", h.pending_scheduler_jobs],
+    ["Audit errors total", h.audit_errors_total],
+    ["Crash reports total", h.crash_reports_total],
+    ["EventBus metrics", h.eventbus_metrics?.status || "unknown"],
+  ];
+  for (const [label, value] of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td style="color:var(--text-dim);">${esc(label)}</td><td>${esc(String(value ?? "—"))}</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+async function loadSchedulerTimeline() {
+  const jobs = await api("GET", "/admin/system/scheduler");
+  const tbody = document.getElementById("sys-scheduler-tbody");
+  tbody.innerHTML = "";
+  if (!Array.isArray(jobs)) return;
+  for (const job of jobs) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${job.due_at_epoch}</td>
+      <td>${badge(job.job_type, "gray")}</td>
+      <td><pre style="margin:0;max-width:520px;">${esc(JSON.stringify(job.payload || {}))}</pre></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// ────────────────────────────────────────
+// Observability
+// ────────────────────────────────────────
+
+async function loadTrace() {
+  const id = document.getElementById("obs-trace-id").value.trim();
+  if (!id) { showError("Enter a transaction id"); return; }
+  const spans = await api("GET", `/admin/trace/${encodeURIComponent(id)}`);
+  const tbody = document.getElementById("obs-trace-tbody");
+  tbody.innerHTML = "";
+  if (!Array.isArray(spans)) {
+    if (spans && spans.detail) showError(spans.detail);
+    return;
+  }
+  for (const span of spans) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${esc(span.name)}</td>
+      <td>${span.duration_ms}</td>
+      <td style="color:var(--text-dim)">${esc(span.started_at)}</td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 // ────────────────────────────────────────

@@ -23,6 +23,7 @@ pytestmark = pytest.mark.e2e
 
 
 def _open_economy_tab(page: Any) -> None:
+    page.click('.category-tab[data-category="tuning"]')
     page.click('.tab[data-tab="economy"]')
     page.wait_for_selector("#economy-tbody", state="visible")
     # Wait for at least one seeded row to render before asserting on it.
@@ -69,6 +70,7 @@ def test_editing_region_mult_persists_and_reflects_on_reload(
         # A follow-up load (simulating a fresh admin session, not a page reload of
         # stale form state) must reflect the change -- proving it's live in the
         # DB, not just held in the form -- no restart/reseed required.
+        page.click('.category-tab[data-category="overview"]')
         page.click('.tab[data-tab="dashboard"]')
         _open_economy_tab(page)
         page.wait_for_function(
