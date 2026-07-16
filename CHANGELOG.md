@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.139.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 91.3 condition grouping so body views can attach
+  `CombatWound` condition records to the appropriate body part.
+
 ## [0.138.0] - 2026-07-16
 
 ### Added

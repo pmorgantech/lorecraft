@@ -7,9 +7,9 @@ onto them belong to the equipment/combat feature layer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Sequence
-from typing import Literal
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.world import Item
@@ -56,6 +56,18 @@ def body_part_for_slot(slot: str) -> BodyPartKey | None:
     return None
 
 
+def body_part_for_wound_location(location: str) -> BodyPartKey | None:
+    if location == "head":
+        return "head"
+    if location == "torso":
+        return "torso"
+    if location in {"left_arm", "right_arm"}:
+        return "arms_hands"
+    if location in {"left_leg", "right_leg"}:
+        return "legs_feet"
+    return None
+
+
 def empty_body_view() -> list[JsonObject]:
     return [
         {
@@ -99,6 +111,32 @@ def body_equipment_view(equipped: Sequence[tuple[ItemStack, Item]]) -> list[Json
             "slot": stack.slot,
         }
     return view
+
+
+def add_wounds_to_body_view(view: list[JsonObject], wounds: Sequence[Any]) -> None:
+    parts_by_key = {part["key"]: part for part in view}
+    for wound in wounds:
+        location = str(getattr(wound, "body_location", ""))
+        part_key = body_part_for_wound_location(location)
+        if part_key is None:
+            continue
+        part = parts_by_key.get(part_key)
+        if part is None:
+            continue
+        wounds_list = part.get("wounds")
+        if not isinstance(wounds_list, list):
+            continue
+        wounds_list.append(
+            {
+                "id": getattr(wound, "id", None),
+                "body_location": location,
+                "severity": getattr(wound, "severity", ""),
+                "damage": getattr(wound, "damage", 0.0),
+                "status": getattr(wound, "status", ""),
+                "created_at_game_time": getattr(wound, "created_at_game_time", None),
+                "healed_at_game_time": getattr(wound, "healed_at_game_time", None),
+            }
+        )
 
 
 def validate_body_slots() -> None:
