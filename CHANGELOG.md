@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.132.0] - 2026-07-16
+
+### Added
+
+- Added in-memory EventBus metrics for emitted event counts, handler counts,
+  handler errors, average/max/last handler latency, and System Health display.
+
 ## [0.131.0] - 2026-07-16
 
 ### Added

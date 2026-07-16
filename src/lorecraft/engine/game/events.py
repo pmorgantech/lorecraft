@@ -116,6 +116,8 @@ class EventBus:
 
     def __init__(self) -> None:
         self._handlers: dict[GameEvent, list[_RegisteredHandler]] = defaultdict(list)
+        self._event_counts: dict[GameEvent, int] = defaultdict(int)
+        self._handler_metrics: dict[tuple[GameEvent, str], dict[str, float | int]] = {}
 
     def on(
         self, event_type: GameEvent, handler: EventHandler, *, priority: int = 0
@@ -126,10 +128,12 @@ class EventBus:
 
     def emit(self, event: Event, ctx: object) -> list[HandlerResult]:
         handlers = self._handlers.get(event.type, [])
+        self._event_counts[event.type] += 1
         results: list[HandlerResult] = []
         for registered in handlers:
             handler_name = _handler_name(registered.handler)
             start = time.perf_counter()
+            error: Exception | None = None
             try:
                 value = registered.handler(event, ctx)
                 duration_ms = (time.perf_counter() - start) * 1000
@@ -137,6 +141,7 @@ class EventBus:
                     HandlerResult(handler_name, value=value, duration_ms=duration_ms)
                 )
             except Exception as exc:
+                error = exc
                 duration_ms = (time.perf_counter() - start) * 1000
                 results.append(
                     HandlerResult(handler_name, error=exc, duration_ms=duration_ms)
@@ -152,6 +157,7 @@ class EventBus:
             # time_operation() writes to, so a command's trace includes the
             # event handlers it triggered, not just parse/condition/commit.
             record_span(f"event:{event.type.value}:{handler_name}", duration_ms)
+            self._record_handler_metric(event.type, handler_name, duration_ms, error)
         return results
 
     def is_work_event(self, event_type: GameEvent) -> bool:
@@ -159,6 +165,54 @@ class EventBus:
 
     def handler_count(self, event_type: GameEvent) -> int:
         return len(self._handlers.get(event_type, ()))
+
+    def metrics_snapshot(self) -> dict[str, object]:
+        """Return in-memory EventBus counters for admin observability."""
+        handler_rows = []
+        for (event_type, handler_name), metrics in self._handler_metrics.items():
+            count = int(metrics["count"])
+            total_ms = float(metrics["total_ms"])
+            handler_rows.append(
+                {
+                    "event_type": event_type.value,
+                    "handler": handler_name,
+                    "count": count,
+                    "errors": int(metrics["errors"]),
+                    "avg_ms": round(total_ms / count, 3) if count else 0.0,
+                    "max_ms": round(float(metrics["max_ms"]), 3),
+                    "last_ms": round(float(metrics["last_ms"]), 3),
+                }
+            )
+        handler_rows.sort(key=lambda row: (row["event_type"], row["handler"]))
+        return {
+            "status": "instrumented",
+            "events_emitted": sum(self._event_counts.values()),
+            "event_counts": {
+                event_type.value: count
+                for event_type, count in sorted(
+                    self._event_counts.items(), key=lambda item: item[0].value
+                )
+            },
+            "handlers": handler_rows,
+        }
+
+    def _record_handler_metric(
+        self,
+        event_type: GameEvent,
+        handler_name: str,
+        duration_ms: float,
+        error: Exception | None,
+    ) -> None:
+        key = (event_type, handler_name)
+        row = self._handler_metrics.setdefault(
+            key,
+            {"count": 0, "errors": 0, "total_ms": 0.0, "max_ms": 0.0, "last_ms": 0.0},
+        )
+        row["count"] = int(row["count"]) + 1
+        row["errors"] = int(row["errors"]) + (1 if error is not None else 0)
+        row["total_ms"] = float(row["total_ms"]) + duration_ms
+        row["max_ms"] = max(float(row["max_ms"]), duration_ms)
+        row["last_ms"] = duration_ms
 
 
 def _handler_name(handler: EventHandler) -> str:

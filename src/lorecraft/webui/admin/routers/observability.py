@@ -51,10 +51,7 @@ async def system_health(request: Request, _: Observer) -> dict[str, Any]:
         "pending_scheduler_jobs": pending_jobs,
         "audit_errors_total": recent_errors,
         "crash_reports_total": crash_count,
-        "eventbus_metrics": {
-            "status": "not_instrumented",
-            "note": "Handler throughput/latency requires EventBus metrics instrumentation.",
-        },
+        "eventbus_metrics": state.bus.metrics_snapshot(),
     }
 
 

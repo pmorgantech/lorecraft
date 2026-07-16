@@ -95,6 +95,33 @@ def test_exception_isolation_in_handlers() -> None:
     assert isinstance(results[1].error, ValueError)
 
 
+def test_event_bus_metrics_snapshot_tracks_counts_and_errors() -> None:
+    bus = EventBus()
+
+    def ok_handler(event: Event, ctx: object) -> None:
+        return None
+
+    def failing_handler(event: Event, ctx: object) -> None:
+        raise ValueError("intentional error")
+
+    bus.on(GameEvent.PLAYER_MOVED, ok_handler)
+    bus.on(GameEvent.PLAYER_MOVED, failing_handler)
+
+    bus.emit(Event(GameEvent.PLAYER_MOVED, {}), None)
+    snapshot = bus.metrics_snapshot()
+
+    assert snapshot["status"] == "instrumented"
+    assert snapshot["events_emitted"] == 1
+    assert snapshot["event_counts"] == {"player_moved": 1}
+    handler_rows = snapshot["handlers"]
+    assert isinstance(handler_rows, list)
+    handlers = {row["handler"]: row for row in handler_rows}
+    assert handlers["ok_handler"]["count"] == 1
+    assert handlers["ok_handler"]["errors"] == 0
+    assert handlers["failing_handler"]["count"] == 1
+    assert handlers["failing_handler"]["errors"] == 1
+
+
 def test_multiple_event_types() -> None:
     """Verify different event types trigger their respective handlers."""
     bus = EventBus()

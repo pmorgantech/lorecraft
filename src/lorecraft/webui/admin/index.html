@@ -2116,7 +2116,7 @@ async function loadSystemHealth() {
     ["Pending scheduler jobs", h.pending_scheduler_jobs],
     ["Audit errors total", h.audit_errors_total],
     ["Crash reports total", h.crash_reports_total],
-    ["EventBus metrics", h.eventbus_metrics?.status || "unknown"],
+    ["EventBus emitted events", h.eventbus_metrics?.events_emitted ?? "unknown"],
   ];
   for (const [label, value] of rows) {
     const tr = document.createElement("tr");
