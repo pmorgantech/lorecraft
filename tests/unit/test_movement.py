@@ -10,7 +10,7 @@ from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player, PlayerStats
-from lorecraft.engine.models.world import Exit, Item, Room
+from lorecraft.engine.models.world import Exit, Item, NPC, Room
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
@@ -313,6 +313,120 @@ def test_where_reports_unreachable_room() -> None:
         MovementService().where("island", ctx)
 
     assert ctx.messages == ["I can't find a known path to Island from here."]
+
+
+def test_exits_lists_visible_exits_only() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(Exit(room_id="tavern", direction="north", target_room_id="square"))
+        session.add(
+            Exit(
+                room_id="tavern",
+                direction="south",
+                target_room_id="square",
+                hidden=True,
+            )
+        )
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().exits(ctx)
+        mark_exit_discovered(ctx, "tavern", "south")
+        MovementService().exits(ctx)
+
+    assert ctx.messages == [
+        "Visible exits: east, north.",
+        "Visible exits: east, north, south.",
+    ]
+
+
+def test_scan_reports_adjacent_room_activity() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    manager = ConnectionManager()
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            NPC(
+                id="watchman",
+                name="Watchman",
+                description="Alert.",
+                current_room_id="square",
+                home_room_id="square",
+                dialogue_tree_id="watchman",
+            )
+        )
+        session.add(
+            Player(
+                id="scout",
+                username="Scout",
+                current_room_id="square",
+                respawn_room_id="square",
+            )
+        )
+        manager._connections["scout"] = object()  # type: ignore[assignment]
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, manager, EventBus())
+
+        MovementService().scan(ctx)
+
+    assert ctx.messages == [
+        "Nearby:",
+        "  east: Square — Scout, Watchman.",
+    ]
+
+
+def test_recall_returns_player_to_respawn_room_and_queues_move_event() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    manager = ConnectionManager()
+    observed = []
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Room(
+                id="home",
+                name="Home",
+                description="Safe.",
+                map_x=-1,
+                map_y=0,
+            )
+        )
+        player = _seed_player(session)
+        player.respawn_room_id = "home"
+        session.commit()
+        bus = EventBus()
+        bus.on(
+            GameEvent.PLAYER_MOVED, lambda event, ctx: observed.append(event.payload)
+        )
+        ctx = _build_context(session, player, manager, bus)
+        manager.move_player("player-1", None, "tavern")
+
+        MovementService().recall(ctx)
+        session.commit()
+        ctx.flush_events()
+        current_room_id = ctx.player.current_room_id
+
+    assert ctx.messages == ["You recall to Home."]
+    assert ctx.room_messages == ["petem recalls away."]
+    assert ctx.arrival_messages == ["petem appears in a shimmer of recall magic."]
+    assert current_room_id == "home"
+    assert manager.players_in_room("home") == ["player-1"]
+    assert observed == [
+        {
+            "player_id": "player-1",
+            "from_room_id": "tavern",
+            "to_room_id": "home",
+            "direction": "recall",
+        }
+    ]
 
 
 def test_pick_records_skill_use_for_a_player_without_a_stats_row() -> None:

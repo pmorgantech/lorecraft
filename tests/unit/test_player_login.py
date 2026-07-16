@@ -23,6 +23,7 @@ from lorecraft.webui.player.auth import (
 
 _SECRET = "test-secret-32-chars-long-enough!"
 _START_ROOM = "village_square"
+_RESPAWN_ROOM = "ashmoore_recall_sanctum"
 
 
 def _engine():
@@ -36,6 +37,16 @@ def _engine():
                 description="A square.",
                 map_x=0,
                 map_y=0,
+            )
+        )
+        session.add(
+            Room(
+                id=_RESPAWN_ROOM,
+                name="Recall Sanctum",
+                description="A safe room.",
+                map_x=0,
+                map_y=0,
+                map_z=-1,
             )
         )
         session.commit()
@@ -53,7 +64,26 @@ def test_first_login_creates_account() -> None:
         assert result.created is True
         assert result.player.username == "newplayer"
         assert result.player.current_room_id == _START_ROOM
+        assert result.player.respawn_room_id == _START_ROOM
         assert LedgerService().balance_of(session, "player", result.player.id) == 100
+
+
+def test_first_login_can_use_separate_respawn_room() -> None:
+    engine = _engine()
+    with Session(engine) as session:
+        room_repo = RoomRepo(session)
+        result = login_or_register(
+            session,
+            room_repo,
+            "newplayer",
+            "Hunter2pw",
+            start_room=_START_ROOM,
+            respawn_room=_RESPAWN_ROOM,
+        )
+        session.commit()
+
+        assert result.player.current_room_id == _START_ROOM
+        assert result.player.respawn_room_id == _RESPAWN_ROOM
 
 
 def test_new_character_has_readable_default_stats_row() -> None:
@@ -148,6 +178,24 @@ def test_unconfigured_start_room_raises() -> None:
         try:
             login_or_register(
                 session, room_repo, "newplayer", "Hunter2pw", start_room="nowhere"
+            )
+            assert False, "expected StartRoomNotConfiguredError"
+        except StartRoomNotConfiguredError:
+            pass
+
+
+def test_unconfigured_respawn_room_raises() -> None:
+    engine = _engine()
+    with Session(engine) as session:
+        room_repo = RoomRepo(session)
+        try:
+            login_or_register(
+                session,
+                room_repo,
+                "newplayer",
+                "Hunter2pw",
+                start_room=_START_ROOM,
+                respawn_room="nowhere",
             )
             assert False, "expected StartRoomNotConfiguredError"
         except StartRoomNotConfiguredError:

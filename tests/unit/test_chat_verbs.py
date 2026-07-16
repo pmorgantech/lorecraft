@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 
 import pytest
@@ -14,7 +15,7 @@ from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
-from tests.unit.test_chat_broadcast import _ctx, _player
+from tests.unit.test_chat_broadcast import _ctx, _player, _RecordingSocket
 
 
 @pytest.fixture
@@ -54,6 +55,7 @@ class TestTell:
         assert [m.text for m in ctx.chat_echoes] == [
             'You tell Listener: "meet me at the inn"'
         ]
+        assert listener.flags["_last_tell_from"] == speaker.id
         assert len(ctx.chat_outbox) == 1
         out = ctx.chat_outbox[0]
         assert out.text == 'Speaker tells you: "meet me at the inn"'
@@ -96,6 +98,34 @@ class TestTell:
         assert ctx.chat_outbox == []
 
 
+class TestReply:
+    def test_reply_uses_last_tell_sender(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        speaker, listener = _seed(session)
+        speaker.flags = {"_last_tell_from": listener.id}
+        session.commit()
+        manager = ConnectionManager()
+        manager._connections[listener.id] = object()  # type: ignore[assignment]
+        ctx = _ctx(session, speaker, manager)
+
+        registry.get("reply").handler("on my way", ctx)
+
+        assert [m.text for m in ctx.chat_echoes] == ['You tell Listener: "on my way"']
+        assert ctx.chat_outbox[0].target_player_id == listener.id
+        assert listener.flags["_last_tell_from"] == speaker.id
+
+    def test_reply_without_sender_warns(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        speaker, _listener = _seed(session)
+        ctx = _ctx(session, speaker, ConnectionManager())
+
+        registry.get("reply").handler("hello?", ctx)
+
+        assert ctx.messages == ["No one has told you anything to reply to."]
+
+
 class TestWho:
     def test_who_lists_online_players_globally(
         self, session: Session, registry: CommandRegistry
@@ -125,6 +155,64 @@ class TestWho:
         registry.get("who").handler(None, ctx)
 
         assert ctx.messages == ["No players are online."]
+
+
+class TestShout:
+    def test_shout_reaches_connected_players_in_same_zone(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        session.add(
+            Room(
+                id="tavern",
+                name="Tavern",
+                description="d",
+                map_x=0,
+                map_y=0,
+                zone="town",
+            )
+        )
+        session.add(
+            Room(
+                id="market",
+                name="Market",
+                description="d",
+                map_x=1,
+                map_y=0,
+                zone="town",
+            )
+        )
+        session.add(
+            Room(
+                id="forest",
+                name="Forest",
+                description="d",
+                map_x=9,
+                map_y=9,
+                zone="wilds",
+            )
+        )
+        speaker = _player(session, "speaker", "tavern")
+        near = _player(session, "near", "market")
+        far = _player(session, "far", "forest")
+        session.commit()
+        manager = ConnectionManager()
+        near_socket = _RecordingSocket()
+        far_socket = _RecordingSocket()
+        manager._connections[near.id] = near_socket  # type: ignore[assignment]
+        manager._connections[far.id] = far_socket  # type: ignore[assignment]
+        ctx = _ctx(session, speaker, manager)
+
+        registry.get("shout").handler("anyone there?", ctx)
+        asyncio.run(_drain_deliveries(ctx))
+
+        assert [m.text for m in ctx.chat_echoes] == ['You shout: "anyone there?"']
+        assert near_socket.chats() == [("shout", 'Speaker shouts: "anyone there?"')]
+        assert far_socket.chats() == []
+
+
+async def _drain_deliveries(ctx) -> None:
+    for delivery in ctx.pending_deliveries:
+        await delivery()
 
 
 class TestTopicVerbs:

@@ -157,6 +157,9 @@ where south gate
 Path to South Gate: s, s, e, s
 ```
 
+Use `exits` for just the visible exits, `scan`/`peer` to check adjacent rooms,
+and `recall`/`home` to return to your respawn room when you are not in combat.
+
 If an exit is locked, `unlock <direction>` works if you're carrying the right key, and
 `lock <direction>` locks it back up.
 
@@ -305,6 +308,10 @@ you are unavailable until enough world time passes and room events won't appear 
 your feed while you're asleep. Sleeping in an inn or a marked camp is reliable;
 anywhere else still risks an interrupted, exposed sleep, especially in cold weather
 without warm gear.
+
+Ashmoore's recall sanctum is a safe room below the village square. Death and
+recall return you there; drink from its fountain to restore your vitals, or
+linger there for accelerated recovery.
 
 ## Character: Traits, Disciplines, and Reputation
 
@@ -495,9 +502,13 @@ and that stage's objective; finished quests are marked completed (or failed).
 ```
 say hello           — speak aloud; everyone in the room sees it
 tell <player> <msg> — private message to an online player (alias: whisper)
+reply <msg>         — answer the last player who sent you a tell
+shout <msg>         — speak loudly to your current area (alias: yell)
 newbie <msg>        — speak on the world-wide Newbie channel
 who                 — list players online across the whole game
 wave                — wave to the room; `wave at <someone>` to wave at a target
+smile/laugh/nod     — simple social gestures, optionally `at <someone>`
+emote <action>      — pose a custom action to the room (alias: pose)
 point at <target>   — point at a person, creature, or thing (e.g. `point at sign`)
 ```
 
@@ -648,6 +659,9 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 |---------|---------|----------------|
 | `go <direction>` | `north`/`south`/`east`/`west` (bare) | Move to an adjacent room |
 | `where <room>` | | Show the shortest known path to a room |
+| `exits` | | List visible exits from the current room |
+| `scan` | `peer` | Look into adjacent visible rooms for nearby activity |
+| `recall` | `home` | Return to your respawn room |
 | `unlock <direction>` | | Unlock an exit if you carry its key |
 | `lock <direction>` | | Lock an exit if you carry its key |
 | `pick <direction>` | | Pick a locked exit without its key (requires the Pick Locks ability) |
@@ -655,7 +669,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `unfollow` | | Stop following |
 | `look` | | Describe your surroundings |
 | `examine <item>` | `inspect`, `x` | Read an item's description |
-| `take <item>` | | Pick up an item (`2 <item>`, `all <item>` also work) |
+| `take <item>` | `get` | Pick up an item (`2 <item>`, `all <item>` also work) |
 | `drop <item>` | | Put down a carried item |
 | `inventory` | | List what you're carrying |
 | `use <item> [on/with <other>]` | | Use an item, optionally combined with another |
@@ -667,11 +681,11 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `wear <item>` | | Equip a worn item (armor, clothing) |
 | `remove <item>` | | Unequip a worn item |
 | `wield <item>` | | Equip a wielded item (weapon, tool, light) |
-| `attack <target>` | `fight` | Commit to a scheduled attack against a nearby NPC |
+| `attack <target>` | `fight`, `kill` | Commit to a scheduled attack against a nearby NPC |
 | `shoot <target>` | `fire` | Commit to a scheduled ranged attack against a nearby NPC |
 | `consider <target>` | `con` | Appraise a nearby opponent before a fight |
 | `defend` | `guard` | Spend your next combat action bracing against attacks |
-| `assist <player>` | | Join a nearby player's active encounter on their side |
+| `assist <player>` | | Follow an ally, or join their combat if they are fighting |
 | `flee` | | Commit to an escape attempt from the current encounter |
 | `unwield <item>` | | Unequip a wielded item |
 | `equipment` | `eq` | List what you're wearing and wielding |
@@ -711,8 +725,14 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `bye` | `farewell`, `goodbye` | End the current conversation |
 | `say <message>` | | Speak aloud to the room |
 | `tell <player> <message>` | `whisper` | Private message to an online player |
+| `reply <message>` | | Reply to the last player who sent you a tell |
+| `shout <message>` | `yell` | Speak loudly to players in your current area |
 | `newbie <message>` | | Speak on the world-wide Newbie channel |
 | `who` | | List players online across the whole game |
+| `emote <action>` | `pose` | Pose a custom action to the room |
+| `smile [at <someone>]` | | Smile, optionally at a target |
+| `laugh [at <someone>]` | | Laugh, optionally at a target |
+| `nod [at <someone>]` | | Nod, optionally at a target |
 | `news` | `/news` | Show current announcements |
 | `report <description>` | `/report <description>` | Report a bug or issue to the developers |
 | `save [slot]` | | Save your progress |

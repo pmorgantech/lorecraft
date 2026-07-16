@@ -49,6 +49,7 @@ CAMP_RESTORE = 55.0
 CAMP_HP_RESTORE = 20.0
 INTERRUPTED_SLEEP_HOURS = 3.0
 MAX_SLEEP_HOURS = 12.0
+VITAL_RECOVERY_MULTIPLIER_FLAG = "vital_recovery_multiplier"
 
 _TERRAIN_MOVE_COST = {
     "normal": 2.0,
@@ -240,6 +241,26 @@ class FatigueService:
             for player in players:
                 sleeping = is_sleeping(player, clock)
                 resting = is_resting(player)
+                recovery_multiplier = self._room_vital_recovery_multiplier(
+                    session, player
+                )
+                if recovery_multiplier > 1.0:
+                    meter = self._meter_for(session, player.id, ctx.game_engine)
+                    self._adjust_meter(
+                        session,
+                        meter,
+                        SLEEP_RECOVERY_PER_HOUR * recovery_multiplier * delta_hours,
+                    )
+                    self._recover_hp(
+                        session,
+                        player.id,
+                        ctx.game_engine,
+                        delta_hours,
+                        recovery_multiplier=recovery_multiplier,
+                    )
+                    clear_expired_sleep(player, clock)
+                    session.add(player)
+                    continue
                 if not sleeping and not resting:
                     clear_expired_sleep(player, clock)
                     self._recover_hp(session, player.id, ctx.game_engine, delta_hours)
@@ -258,6 +279,17 @@ class FatigueService:
                 clear_expired_sleep(player, clock)
                 session.add(player)
             session.commit()
+
+    def _room_vital_recovery_multiplier(
+        self, session: Session, player: Player
+    ) -> float:
+        room = session.get(Room, player.current_room_id)
+        if room is None:
+            return 1.0
+        value = room.flags.get(VITAL_RECOVERY_MULTIPLIER_FLAG)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return 1.0
+        return max(1.0, float(value))
 
     def _meter_for(
         self, session: Session, player_id: str, game_engine: object
@@ -294,11 +326,14 @@ class FatigueService:
         *,
         sleeping: bool = False,
         resting: bool = False,
+        recovery_multiplier: float = 1.0,
     ) -> None:
         hp = self._hp_meter_for(session, player_id, game_engine)
         if hp.current <= 0 or hp.current >= hp.maximum:
             return
-        if sleeping:
+        if recovery_multiplier > 1.0:
+            rate = HP_SLEEP_RECOVERY_PER_HOUR * recovery_multiplier
+        elif sleeping:
             rate = HP_SLEEP_RECOVERY_PER_HOUR
         elif resting:
             rate = HP_REST_RECOVERY_PER_HOUR

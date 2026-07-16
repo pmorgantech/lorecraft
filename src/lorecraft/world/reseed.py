@@ -128,17 +128,20 @@ def reseed_world_from_yaml(
 
 
 def _relocate_stranded_players(session: Session, settings: Settings) -> int:
-    """Move any player pointing at a now-missing room to the seed start room."""
+    """Move any player pointing at a now-missing room to configured safe rooms."""
     start_room = settings.seed_player_start_room
     if not start_room or session.get(Room, start_room) is None:
         return 0
+    respawn_room = settings.seed_player_respawn_room
+    if not respawn_room or session.get(Room, respawn_room) is None:
+        respawn_room = start_room
     valid_ids = {room.id for room in session.exec(select(Room)).all()}
     relocated = 0
     for player in session.exec(select(Player)).all():
         if player.current_room_id not in valid_ids:
             player.current_room_id = start_room
             if player.respawn_room_id not in valid_ids:
-                player.respawn_room_id = start_room
+                player.respawn_room_id = respawn_room
             player.visited_rooms = [start_room]
             relocated += 1
     return relocated

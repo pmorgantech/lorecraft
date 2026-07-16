@@ -91,6 +91,43 @@ class TestEmotes:
         assert ctx.messages == ["Point at what?"]
         assert ctx.room_messages == []
 
+    def test_emote_poses_free_text_action(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        _seed_room(session)
+        player = _player(session, "wanda", "square")
+        session.commit()
+        ctx = _ctx(session, player, ConnectionManager())
+
+        _run(registry, "emote", "leans on the old sign", ctx)
+
+        assert ctx.messages == ["You emote: Wanda leans on the old sign."]
+        assert ctx.room_messages == ["Wanda leans on the old sign."]
+
+    def test_smile_laugh_and_nod(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        _seed_room(session)
+        player = _player(session, "wanda", "square")
+        _player(session, "bob", "square")
+        session.commit()
+        ctx = _ctx(session, player, ConnectionManager())
+
+        _run(registry, "smile", "at Bob", ctx)
+        _run(registry, "laugh", None, ctx)
+        _run(registry, "nod", "at Bob", ctx)
+
+        assert ctx.messages == [
+            "You smile at Bob.",
+            "You laugh.",
+            "You nod at Bob.",
+        ]
+        assert ctx.room_messages == [
+            "Wanda smiles at Bob.",
+            "Wanda laughs.",
+            "Wanda nods at Bob.",
+        ]
+
 
 class TestQuestsCommand:
     def _seed_quest(self, session: Session, status: str, stage_id: str) -> None:

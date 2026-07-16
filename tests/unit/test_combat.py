@@ -9,13 +9,16 @@ import pytest
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, create_engine, select
 
+from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
+from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.rules import RuleEngine, RuleResult
 from lorecraft.engine.game.transaction import TransactionContext
@@ -78,6 +81,7 @@ from lorecraft.features.item_components.components import (
     register as register_components,
 )
 from lorecraft.features.reputation.models import Reputation
+from lorecraft.services.container import ServiceContainer
 
 
 @pytest.fixture(autouse=True)
@@ -1195,6 +1199,41 @@ def test_assist_joins_ally_encounter_and_counts_as_participation() -> None:
         assert ally.contribution["combat_contract"]["kind"] == "party_assist"
         assert support.hostility == "supportive"
         assert hostile.hostility == "hostile"
+
+
+def test_assist_command_routes_to_combat_when_target_is_fighting() -> None:
+    engine = _engine()
+    service = CombatService()
+    registry = CommandRegistry()
+    register_all_commands(registry, ServiceContainer(combat=service))
+    cmd_engine = CommandEngine(registry, RuleEngine())
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        session.add(
+            Player(
+                id="ally",
+                username="ally",
+                current_room_id="arena",
+                respawn_room_id="arena",
+            )
+        )
+        session.add(PlayerStats(player_id="ally", strength=10, agility=10, max_hp=100))
+        session.flush()
+
+        service.attack("goblin", ctx)
+        ally_ctx = _context_for_existing_player(session, "ally")
+        ally_ctx.audit = None
+        cmd_engine.handle_command("assist petem", ally_ctx)
+        session.commit()
+
+    with Session(engine) as session:
+        ally = session.exec(
+            select(CombatParticipant)
+            .where(CombatParticipant.actor_type == "player")
+            .where(CombatParticipant.actor_id == "ally")
+        ).one()
+        assert ally.contribution["participation"] == "assistance"
 
 
 def test_reaction_policy_updates_state_and_auto_reaction_is_bounded() -> None:

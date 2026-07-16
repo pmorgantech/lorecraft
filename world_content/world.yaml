@@ -56,6 +56,27 @@ rooms:
       - direction: south
         target_room_id: south_gate
 
+  - id: ashmoore_recall_sanctum
+    name: Ashmoore Recall Sanctum
+    indoor: true
+    description: >-
+      Cool stone steps end in a round chamber below the village square, quiet
+      enough that every drip from the fountain rings like a bell. Pale runes
+      circle the basin and gather their light around weary travelers. The only
+      open stair climbs back up toward the square.
+    map_x: 4
+    map_y: 8
+    map_z: -1
+    zone: ashmoore
+    room_type: town
+    light_level: 1
+    safe_rest: true
+    flags:
+      vital_recovery_multiplier: 3.0
+    exits:
+      - direction: up
+        target_room_id: village_square
+
   - id: wandering_crow_inn
     name: The Wandering Crow Inn
     indoor: true
@@ -5035,6 +5056,26 @@ items:
     value: 18
     category: drink
 
+  - id: ashmoore_recall_fountain
+    name: Recall Fountain
+    description: >-
+      Clear water rises from a carved stone basin without a visible spring,
+      carrying a faint blue shimmer where it spills over rune-worn lips.
+    takeable: false
+    tradeable: false
+    weight: 0.0
+    value: 0
+    category: drink
+    effects:
+      - type: heal
+        meter: hp
+        amount: 1000
+        message: The fountain's chill water closes your wounds.
+      - type: heal
+        meter: fatigue
+        amount: 1000
+        message: Strength returns to your limbs.
+
   - id: nightshade_poison
     name: Phial of Nightshade Extract
     description: >-
@@ -6004,6 +6045,11 @@ room_items:
   # Village Square
   - room_id: village_square
     item_id: copper_coin
+    quantity: 1
+
+  # Ashmoore Recall Sanctum
+  - room_id: ashmoore_recall_sanctum
+    item_id: ashmoore_recall_fountain
     quantity: 1
 
   # Forest Path

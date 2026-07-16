@@ -58,6 +58,7 @@ def ensure_world_bootstrapped(game_engine: Engine, settings: Settings) -> None:
             player_id="player-2",
             username="player-2",
         )
+        align_default_respawn_rooms(session, settings)
         session.commit()
 
 
@@ -82,12 +83,42 @@ def ensure_seed_player(
             start_room,
         )
         return
+    respawn_room = settings.seed_player_respawn_room
+    if session.get(Room, respawn_room) is None:
+        log.warning(
+            "Seed player %s respawn room %r not in database; using start room",
+            resolved_id,
+            respawn_room,
+        )
+        respawn_room = start_room
     session.add(
         Player(
             id=resolved_id,
             username=username or settings.seed_player_username,
             current_room_id=start_room,
-            respawn_room_id=start_room,
+            respawn_room_id=respawn_room,
             visited_rooms=[start_room],
         )
     )
+
+
+def align_default_respawn_rooms(session: Session, settings: Settings) -> int:
+    """Move legacy default respawns from the start room to the configured
+    respawn room, preserving any player with a custom respawn target."""
+    start_room = settings.seed_player_start_room
+    respawn_room = settings.seed_player_respawn_room
+    if (
+        not start_room
+        or not respawn_room
+        or respawn_room == start_room
+        or session.get(Room, respawn_room) is None
+    ):
+        return 0
+    updated = 0
+    for player in session.exec(
+        select(Player).where(Player.respawn_room_id == start_room)
+    ).all():
+        player.respawn_room_id = respawn_room
+        session.add(player)
+        updated += 1
+    return updated

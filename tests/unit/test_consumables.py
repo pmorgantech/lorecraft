@@ -118,10 +118,30 @@ def _drink(item_id: str, name: str, effects=None) -> Item:
     )
 
 
+def _drink_fixture(item_id: str, name: str, effects=None) -> Item:
+    return Item(
+        id=item_id,
+        name=name,
+        description="x",
+        takeable=False,
+        tradeable=False,
+        category="drink",
+        effects=effects or [],
+    )
+
+
 def _carried_quantity(session: Session, item_id: str) -> int:
     return sum(
         stack.quantity
         for stack in StackRepo(session).stacks_for_owner("player", "p1")
+        if stack.item_id == item_id
+    )
+
+
+def _room_quantity(session: Session, item_id: str) -> int:
+    return sum(
+        stack.quantity
+        for stack in StackRepo(session).stacks_for_owner("room", "tavern")
         if stack.item_id == item_id
     )
 
@@ -277,6 +297,36 @@ class TestDestruction:
             ConsumableService().eat("loaf", ctx)
 
         assert "You don't have that." in ctx.messages
+
+    def test_drinking_room_fixture_applies_effects_without_destroying_it(
+        self, meter_defs: None
+    ) -> None:
+        engine = _engine()
+        with Session(engine) as session:
+            player = _seed(
+                session,
+                _drink_fixture(
+                    "fountain",
+                    "Recall Fountain",
+                    [
+                        {"type": "heal", "meter": "hp", "amount": 1000},
+                        {"type": "heal", "meter": "fatigue", "amount": 1000},
+                    ],
+                ),
+            )
+            ItemLocationService(session).spawn("fountain", Location("room", "tavern"))
+            session.commit()
+            ctx = _build_context(session, player)
+
+            ConsumableService().drink("fountain", ctx)
+            session.commit()
+
+            hp = MeterRepo(session).find("player", "p1", "hp")
+            fatigue = MeterRepo(session).find("player", "p1", "fatigue")
+            assert hp is not None and hp.current == hp.maximum
+            assert fatigue is not None and fatigue.current == fatigue.maximum
+            assert _room_quantity(session, "fountain") == 1
+        assert "You drink the Recall Fountain." in ctx.messages
 
 
 class TestCommands:

@@ -115,6 +115,7 @@ def login_or_register(
     password: str,
     *,
     start_room: str,
+    respawn_room: str | None = None,
     allow_create: bool = True,
     password_policy: PasswordPolicy | None = None,
 ) -> LoginResult:
@@ -178,12 +179,15 @@ def login_or_register(
 
     if room_repo.get(start_room) is None:
         raise StartRoomNotConfiguredError("Starting room is not configured.")
+    resolved_respawn_room = respawn_room or start_room
+    if room_repo.get(resolved_respawn_room) is None:
+        raise StartRoomNotConfiguredError("Respawn room is not configured.")
 
     player = Player(
         id=str(uuid.uuid4()),
         username=username,
         current_room_id=start_room,
-        respawn_room_id=start_room,
+        respawn_room_id=resolved_respawn_room,
         visited_rooms=[start_room],
     )
     player_repo.add(player)
@@ -310,6 +314,7 @@ async def login(body: LoginBody, request: Request) -> dict[str, object]:
         raise HTTPException(status_code=500, detail="Server not ready")
     game_engine, _ = get_engines(request)
     start_room = app_state.settings.seed_player_start_room
+    respawn_room = app_state.settings.seed_player_respawn_room
 
     with DBSession(game_engine) as db:
         room_repo = RoomRepo(db)
@@ -320,6 +325,7 @@ async def login(body: LoginBody, request: Request) -> dict[str, object]:
                 body.username,
                 body.password,
                 start_room=start_room,
+                respawn_room=respawn_room,
                 password_policy=PasswordPolicy.from_settings(app_state.settings),
             )
         except (InvalidUsernameError, InvalidPasswordError) as e:

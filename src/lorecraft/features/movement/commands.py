@@ -37,6 +37,35 @@ def register_movement_commands(
         service.where(noun, ctx)
 
     @registry.register(
+        "exits",
+        conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
+        help="exits — list visible exits from the current room",
+    )
+    def exits_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        service.exits(ctx)
+
+    @registry.register(
+        "scan",
+        "peer",
+        conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
+        help="scan — look into adjacent visible rooms for nearby activity",
+    )
+    def scan_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        service.scan(ctx)
+
+    @registry.register(
+        "recall",
+        "home",
+        conditions=[CommandCondition.NOT_IN_COMBAT],
+        help="recall — return to your respawn room",
+    )
+    def recall_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        service.recall(ctx)
+
+    @registry.register(
         "unlock",
         conditions=[CommandCondition.NOT_IN_COMBAT],
         help="unlock <direction> — unlock an exit if you carry its key",

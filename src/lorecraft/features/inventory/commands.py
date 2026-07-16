@@ -25,8 +25,9 @@ def register_inventory_commands(
 
     @registry.register(
         "take",
+        "get",
         conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
-        help="take <item> [from <container>] — pick up an item (also: 2 <item>, all <item>)",
+        help="take <item> [from <container>] — pick up an item (also: get, 2 <item>, all <item>)",
     )
     def take_command(noun: str | None, ctx: GameContext) -> None:
         service.take_from_item(noun, ctx)

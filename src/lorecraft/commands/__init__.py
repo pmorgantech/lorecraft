@@ -32,6 +32,8 @@ from lorecraft.commands.report import register_report_commands
 from lorecraft.commands.social import register_social_commands
 from lorecraft.features.trading.commands import register_trade_commands
 from lorecraft.features.transit.commands import register_transit_commands
+from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.services.container import ServiceContainer
 from lorecraft.features.transit.service import TransitService
@@ -106,6 +108,9 @@ def register_all_commands(
     if services.combat is not None:
         with registry.category("combat"):
             register_combat_commands(registry, services.combat)
+    if services.combat is not None or services.follow is not None:
+        with registry.category("movement"):
+            _register_assist_command(registry, services)
     if services.trade is not None:
         with registry.category("trading"):
             register_trade_commands(registry, services.trade)
@@ -122,3 +127,37 @@ def register_all_commands(
     # every built-in verb already registered. The context registry is empty
     # unless the feature loaded world content, so this is a no-op otherwise.
     register_context_commands(registry)
+
+
+def _register_assist_command(
+    registry: CommandRegistry, services: ServiceContainer
+) -> None:
+    @registry.register(
+        "assist",
+        help="assist <player> — follow an ally, or join their combat if they are fighting",
+    )
+    def assist_command(noun: str | None, ctx: GameContext) -> None:
+        if noun is None:
+            ctx.say("Assist whom?", MessageType.WARNING)
+            return
+        if services.combat is not None and _should_combat_assist(noun, ctx):
+            services.combat.assist(noun, ctx)
+            return
+        if services.follow is not None:
+            services.follow.follow(noun, ctx)
+            return
+        if services.combat is not None:
+            services.combat.assist(noun, ctx)
+            return
+        ctx.say("There is no one here to assist.", MessageType.WARNING)
+
+
+def _should_combat_assist(noun: str, ctx: GameContext) -> bool:
+    if ctx.player.active_combat_session_id:
+        return True
+    target = ctx.player_repo.by_username(noun)
+    return (
+        target is not None
+        and target.current_room_id == ctx.room.id
+        and bool(target.active_combat_session_id)
+    )

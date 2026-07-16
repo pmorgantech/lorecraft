@@ -12,6 +12,7 @@ from typing import Any
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
+from lorecraft.config import DEFAULT_PLAYER_RESPAWN_ROOM, DEFAULT_PLAYER_START_ROOM
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.world import Room
@@ -222,14 +223,19 @@ def create_dev_player(db: DBSession, room_repo: RoomRepo, player_id: str) -> Any
     """Create a dev/test player at village_square when explicitly requested."""
     from lorecraft.engine.models.player import Player
 
-    start_room = "village_square"
+    start_room = DEFAULT_PLAYER_START_ROOM
     if room_repo.get(start_room) is None:
         return None
+    respawn_room = (
+        DEFAULT_PLAYER_RESPAWN_ROOM
+        if room_repo.get(DEFAULT_PLAYER_RESPAWN_ROOM) is not None
+        else start_room
+    )
     player = Player(
         id=player_id,
         username=player_id,
         current_room_id=start_room,
-        respawn_room_id=start_room,
+        respawn_room_id=respawn_room,
         visited_rooms=[start_room],
     )
     db.add(player)

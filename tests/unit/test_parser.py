@@ -59,3 +59,13 @@ def test_choice_number_parses_as_single_index() -> None:
     assert parsed.verb == "choice"
     assert parsed.noun == "1"
     assert parsed.roles["choice_index"] == 1
+
+
+def test_free_text_social_verbs_preserve_prepositions() -> None:
+    parsed = parse("emote leans on the old sign")
+    assert parsed.verb == "emote"
+    assert parsed.noun == "leans on the old sign"
+
+    parsed = parse("reply meet me at the inn")
+    assert parsed.verb == "reply"
+    assert parsed.noun == "meet me at the inn"

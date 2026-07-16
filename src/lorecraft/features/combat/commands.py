@@ -15,6 +15,7 @@ def register_combat_commands(
     @registry.register(
         "attack",
         "fight",
+        "kill",
         help="attack <target> — commit to a scheduled attack against a hostile NPC",
     )
     def attack_command(noun: str | None, ctx: GameContext) -> None:
@@ -51,13 +52,6 @@ def register_combat_commands(
     )
     def guard_command(noun: str | None, ctx: GameContext) -> None:
         service.guard(noun, ctx)
-
-    @registry.register(
-        "assist",
-        help="assist <player> — join an ally's active encounter as a participant",
-    )
-    def assist_command(noun: str | None, ctx: GameContext) -> None:
-        service.assist(noun, ctx)
 
     @registry.register(
         "flee",

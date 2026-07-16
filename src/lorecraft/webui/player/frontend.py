@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session as DBSession
 
+from lorecraft.config import DEFAULT_PLAYER_RESPAWN_ROOM, DEFAULT_PLAYER_START_ROOM
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.services.crash_reports import record_crash
@@ -193,18 +194,23 @@ async def get_current_player(request: Request) -> Player:
                 return existing
             from lorecraft.engine.models.world import Room
 
+            respawn_room = (
+                DEFAULT_PLAYER_RESPAWN_ROOM
+                if room_repo.get(DEFAULT_PLAYER_RESPAWN_ROOM) is not None
+                else DEFAULT_PLAYER_START_ROOM
+            )
             dev = Player(
                 id="player-1",
                 username="player-1",
-                current_room_id="village_square",
-                respawn_room_id="village_square",
-                visited_rooms=["village_square"],
+                current_room_id=DEFAULT_PLAYER_START_ROOM,
+                respawn_room_id=respawn_room,
+                visited_rooms=[DEFAULT_PLAYER_START_ROOM],
             )
             db.add(dev)
-            if room_repo.get("village_square") is None:
+            if room_repo.get(DEFAULT_PLAYER_START_ROOM) is None:
                 db.add(
                     Room(
-                        id="village_square",
+                        id=DEFAULT_PLAYER_START_ROOM,
                         name="Village Square",
                         description="A small square.",
                         map_x=0,
@@ -298,6 +304,9 @@ async def enter_world(
     start_room = (
         app_state.settings.seed_player_start_room if app_state else "village_square"
     )
+    respawn_room = (
+        app_state.settings.seed_player_respawn_room if app_state else start_room
+    )
     game_engine, _ = get_engines(request)
 
     with DBSession(game_engine) as db:
@@ -309,6 +318,7 @@ async def enter_world(
                 username,
                 password,
                 start_room=start_room,
+                respawn_room=respawn_room,
                 allow_create=False,
             )
         except PlayerAlreadyLoggedInError as e:
@@ -372,6 +382,9 @@ async def create_character(
     start_room = (
         app_state.settings.seed_player_start_room if app_state else "village_square"
     )
+    respawn_room = (
+        app_state.settings.seed_player_respawn_room if app_state else start_room
+    )
 
     def _create_error(message: str) -> HTMLResponse:
         return templates.TemplateResponse(
@@ -406,6 +419,7 @@ async def create_character(
                 username,
                 password,
                 start_room=start_room,
+                respawn_room=respawn_room,
                 password_policy=policy,
             )
         except PlayerAlreadyLoggedInError as e:

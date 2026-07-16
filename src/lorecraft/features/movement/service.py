@@ -49,6 +49,18 @@ def _carries(ctx: GameContext, item_id: str) -> bool:
     return ctx.stack_repo.quantity_of(Location("player", ctx.player.id), item_id) > 0
 
 
+def visible_exits_from(ctx: GameContext, room_id: str) -> list[Exit]:
+    return [
+        exit_
+        for exit_ in ctx.room_repo.exits(room_id)
+        if not exit_.hidden or is_exit_discovered(ctx, room_id, exit_.direction)
+    ]
+
+
+def visible_exits(ctx: GameContext) -> list[Exit]:
+    return visible_exits_from(ctx, ctx.room.id)
+
+
 class MovementService:
     def __init__(self, fatigue: "FatigueService | None" = None) -> None:
         self.fatigue = fatigue
@@ -83,6 +95,65 @@ class MovementService:
         short_path = ", ".join(DIRECTION_SHORT_NAMES.get(step, step) for step in path)
         ctx.say(f"Path to {destination.name}: {short_path}")
 
+    def exits(self, ctx: GameContext) -> None:
+        exits = sorted(exit_.direction for exit_ in visible_exits(ctx))
+        if exits:
+            ctx.say(f"Visible exits: {', '.join(exits)}.")
+            return
+        ctx.say("There are no obvious exits.")
+
+    def scan(self, ctx: GameContext) -> None:
+        exits = sorted(visible_exits(ctx), key=lambda exit_: exit_.direction)
+        if not exits:
+            ctx.say("You scan nearby, but there are no obvious exits.")
+            return
+
+        ctx.say("Nearby:")
+        for exit_ in exits:
+            target_room = ctx.room_repo.active(exit_.target_room_id)
+            if target_room is None:
+                continue
+            activity = self._activity_summary(ctx, target_room.id)
+            suffix = f" — {activity}" if activity else ""
+            ctx.say(f"  {exit_.direction}: {target_room.name}{suffix}.")
+
+    def recall(self, ctx: GameContext) -> None:
+        target_room = ctx.room_repo.active(ctx.player.respawn_room_id)
+        if target_room is None:
+            ctx.say("Your recall point is unavailable.", MessageType.WARNING)
+            return
+        if target_room.id == ctx.room.id:
+            ctx.say(f"You are already at {target_room.name}.")
+            return
+
+        previous_room_id = ctx.room.id
+        ctx.player.current_room_id = target_room.id
+        if target_room.id not in ctx.player.visited_rooms:
+            ctx.player.visited_rooms = [*ctx.player.visited_rooms, target_room.id]
+        ctx.manager.move_player(ctx.player.id, previous_room_id, target_room.id)
+        ctx.room = target_room
+
+        ctx.say(f"You recall to {target_room.name}.")
+        ctx.tell_room(f"{ctx.player.username} recalls away.")
+        ctx.tell_arrival(f"{ctx.player.username} appears in a shimmer of recall magic.")
+        ctx.push_update("room_id", target_room.id)
+        ctx.queue_event(
+            GameEvent.PLAYER_MOVED,
+            player_id=ctx.player.id,
+            from_room_id=previous_room_id,
+            to_room_id=target_room.id,
+            direction="recall",
+        )
+
+    def _activity_summary(self, ctx: GameContext, room_id: str) -> str:
+        names: list[str] = []
+        connected_ids = set(ctx.manager.connected_player_ids())
+        for player in ctx.player_repo.in_room(room_id):
+            if player.id != ctx.player.id and player.id in connected_ids:
+                names.append(player.username)
+        names.extend(npc.name for npc in ctx.npc_repo.in_room(room_id))
+        return ", ".join(sorted(names))
+
     def path_to_room(
         self, ctx: GameContext, destination_room_id: str
     ) -> list[str] | None:
@@ -93,9 +164,7 @@ class MovementService:
         queue: deque[tuple[str, list[str]]] = deque([(ctx.room.id, [])])
         while queue:
             room_id, path = queue.popleft()
-            exits = sorted(
-                ctx.room_repo.exits(room_id), key=lambda exit_: exit_.direction
-            )
+            exits = sorted(visible_exits_from(ctx, room_id), key=lambda e: e.direction)
             for exit_ in exits:
                 if exit_.target_room_id in visited:
                     continue

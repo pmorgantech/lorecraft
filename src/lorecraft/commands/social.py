@@ -14,6 +14,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry, CommandScope
 from lorecraft.features.npc.dialogue import DialogueService, _NPC_KEY
+from lorecraft.types import JsonObject
 
 # Topic channels are *content*, registered here in the composition layer (the
 # engine owns only the ChannelRegistry mechanism — Sprint 52 decision; a
@@ -27,6 +28,15 @@ NEWBIE_CHANNEL = Channel(
     muteable=True,
     default_subscribed=True,
 )
+SHOUT_CHANNEL = Channel(id="shout", scope=ChatScope.P2ROOM, tag="Shout", color="red")
+_LAST_TELL_FROM_FLAG = "_last_tell_from"
+
+
+def _sentence(text: str) -> str:
+    text = text.strip()
+    if not text:
+        return text
+    return text if text[-1] in ".!?" else f"{text}."
 
 
 def _resolve_emote_target(noun: str | None, ctx: GameContext) -> str | None:
@@ -61,12 +71,62 @@ def _online_player_names(ctx: GameContext) -> list[str]:
     return sorted(player.username for player in players)
 
 
+def _remember_tell_sender(
+    ctx: GameContext, *, recipient_id: str, sender_id: str
+) -> None:
+    recipient = ctx.player_repo.get(recipient_id)
+    if recipient is None:
+        return
+    recipient.flags = {**recipient.flags, _LAST_TELL_FROM_FLAG: sender_id}
+
+
+def _send_tell(ctx: GameContext, target_name: str, message: str) -> None:
+    target = ctx.player_repo.by_username(target_name)
+    if target is None:
+        ctx.say(f"There's no one called '{target_name}'.", MessageType.WARNING)
+        return
+    if target.id == ctx.player.id:
+        ctx.say("You mutter to yourself.", MessageType.WARNING)
+        return
+    if not ctx.manager.is_connected(target.id):
+        ctx.say(f"{target.username} isn't online right now.", MessageType.WARNING)
+        return
+    _remember_tell_sender(ctx, recipient_id=target.id, sender_id=ctx.player.id)
+    ctx.chat_echo(TELL_CHANNEL, f'You tell {target.username}: "{message}"')
+    ctx.chat_out(
+        TELL_CHANNEL,
+        f'{ctx.player.username} tells you: "{message}"',
+        target_player_id=target.id,
+    )
+
+
+def _zone_shout_recipient_ids(ctx: GameContext) -> list[str]:
+    actor_zone = ctx.room.zone
+    recipient_ids: list[str] = []
+    for player_id in ctx.manager.connected_player_ids():
+        if player_id == ctx.player.id:
+            continue
+        player = ctx.player_repo.get(player_id)
+        if player is None:
+            continue
+        room = ctx.room_repo.get(player.current_room_id)
+        if room is None:
+            continue
+        if actor_zone is None:
+            if room.id == ctx.room.id:
+                recipient_ids.append(player_id)
+        elif room.zone == actor_zone:
+            recipient_ids.append(player_id)
+    return recipient_ids
+
+
 def register_social_commands(
     registry: CommandRegistry, dialogue_service: DialogueService | None = None
 ) -> None:
     service = dialogue_service or DialogueService()
     channel_registry = get_channel_registry()
     channel_registry.register(NEWBIE_CHANNEL)
+    channel_registry.register(SHOUT_CHANNEL)
 
     @registry.register(
         "talk",
@@ -134,23 +194,26 @@ def register_social_commands(
         if len(parts) < 2:
             ctx.say("Tell them what?", MessageType.WARNING)
             return
-        target_name, message = parts
-        target = ctx.player_repo.by_username(target_name)
+        _send_tell(ctx, parts[0], parts[1])
+
+    @registry.register(
+        "reply",
+        scope=CommandScope.SOCIAL,
+        help="reply <message> — reply to the last player who sent you a tell",
+    )
+    def reply_command(noun: str | None, ctx: GameContext) -> None:
+        if noun is None:
+            ctx.say("Reply with what?", MessageType.WARNING)
+            return
+        target_id = ctx.player.flags.get(_LAST_TELL_FROM_FLAG)
+        if not isinstance(target_id, str):
+            ctx.say("No one has told you anything to reply to.", MessageType.WARNING)
+            return
+        target = ctx.player_repo.get(target_id)
         if target is None:
-            ctx.say(f"There's no one called '{target_name}'.", MessageType.WARNING)
+            ctx.say("No one has told you anything to reply to.", MessageType.WARNING)
             return
-        if target.id == ctx.player.id:
-            ctx.say("You mutter to yourself.", MessageType.WARNING)
-            return
-        if not ctx.manager.is_connected(target.id):
-            ctx.say(f"{target.username} isn't online right now.", MessageType.WARNING)
-            return
-        ctx.chat_echo(TELL_CHANNEL, f'You tell {target.username}: "{message}"')
-        ctx.chat_out(
-            TELL_CHANNEL,
-            f'{ctx.player.username} tells you: "{message}"',
-            target_player_id=target.id,
-        )
+        _send_tell(ctx, target.username, noun)
 
     @registry.register(
         "who",
@@ -165,6 +228,79 @@ def register_social_commands(
             return
         label = "player" if len(names) == 1 else "players"
         ctx.say(f"Online {label}: {', '.join(names)}")
+
+    @registry.register(
+        "shout",
+        "yell",
+        scope=CommandScope.SOCIAL,
+        help="shout <message> — speak loudly to players in your current area",
+    )
+    def shout_command(noun: str | None, ctx: GameContext) -> None:
+        if noun is None:
+            ctx.say("Shout what?", MessageType.WARNING)
+            return
+        ctx.chat_echo(SHOUT_CHANNEL.id, f'You shout: "{noun}"')
+        payload: JsonObject = {
+            "type": "feed_append",
+            "content": f'{ctx.player.username} shouts: "{noun}"',
+            "message_type": MessageType.CHAT.value,
+            "channel": SHOUT_CHANNEL.id,
+        }
+        for player_id in _zone_shout_recipient_ids(ctx):
+            ctx.defer_delivery(
+                lambda player_id=player_id, payload=payload: ctx.manager.send_to_player(
+                    player_id, payload
+                )
+            )
+
+    @registry.register(
+        "emote",
+        "pose",
+        scope=CommandScope.SOCIAL,
+        help="emote <action> — pose an action to the room",
+    )
+    def emote_command(noun: str | None, ctx: GameContext) -> None:
+        if noun is None:
+            ctx.say("Emote what?", MessageType.WARNING)
+            return
+        line = _sentence(f"{ctx.player.username} {noun}")
+        ctx.say(f"You emote: {line}")
+        ctx.tell_room(line)
+
+    def _simple_social(
+        verb: str, noun: str | None, ctx: GameContext, *, third_person: str
+    ) -> None:
+        target = _resolve_emote_target(noun, ctx)
+        if target is None:
+            ctx.say(f"You {verb}.")
+            ctx.tell_room(f"{ctx.player.username} {third_person}.")
+            return
+        ctx.say(f"You {verb} at {target}.")
+        ctx.tell_room(f"{ctx.player.username} {third_person} at {target}.")
+
+    @registry.register(
+        "smile",
+        scope=CommandScope.SOCIAL,
+        help="smile [at <someone>] — smile, optionally at a target",
+    )
+    def smile_command(noun: str | None, ctx: GameContext) -> None:
+        _simple_social("smile", noun, ctx, third_person="smiles")
+
+    @registry.register(
+        "laugh",
+        scope=CommandScope.SOCIAL,
+        help="laugh [at <someone>] — laugh, optionally at a target",
+    )
+    def laugh_command(noun: str | None, ctx: GameContext) -> None:
+        _simple_social("laugh", noun, ctx, third_person="laughs")
+
+    @registry.register(
+        "nod",
+        scope=CommandScope.SOCIAL,
+        help="nod [at <someone>] — nod, optionally at a target",
+    )
+    def nod_command(noun: str | None, ctx: GameContext) -> None:
+        _simple_social("nod", noun, ctx, third_person="nods")
 
     # Verb-per-channel (Sprint 52.4 decision): every registered P2ALL topic
     # channel speaks through a verb named after it — `newbie hello`. The

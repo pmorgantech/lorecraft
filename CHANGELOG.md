@@ -4,6 +4,22 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.148.0] - 2026-07-16
+
+### Added
+
+- Added common MUD verbs and aliases: `get`, `kill`, `emote`/`pose`,
+  `smile`, `laugh`, `nod`, `shout`/`yell`, `reply`, `exits`, `scan`/`peer`,
+  `recall`/`home`, and broader non-combat `assist` behavior.
+- Added Ashmoore Recall Sanctum as a one-way safe respawn room with a
+  persistent healing fountain and accelerated vital recovery.
+
+### Changed
+
+- Split configured player start and respawn rooms so new and legacy default
+  players start in the village square but death and recall return to the
+  sanctum.
+
 ## [0.147.0] - 2026-07-16
 
 ### Added

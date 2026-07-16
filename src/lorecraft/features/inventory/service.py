@@ -25,7 +25,7 @@ from lorecraft.features.encumbrance.rules import (
 )
 from lorecraft.features.equipment.slots import FINGER_SLOTS, slot_label
 from lorecraft.engine.game.events import GameEvent
-from lorecraft.features.exploration.rules import is_exit_discovered
+from lorecraft.features.movement.service import visible_exits
 from lorecraft.engine.game.holders import Location
 from lorecraft.features.terrain import definitions as terrain_module
 from lorecraft.engine.models.items import ItemInstance, ItemStack
@@ -137,7 +137,7 @@ class InventoryService:
         query: str,
         matches: Sequence[_M],
         item_of: Callable[[_M], Item],
-        not_found_msg: str,
+        not_found_msg: str | None,
     ) -> _M | None:
         """Shared find→disambiguate step for a pre-resolved match list.
 
@@ -145,7 +145,8 @@ class InventoryService:
         (either a "not found" message or a numbered disambiguation prompt).
         """
         if not matches:
-            ctx.say(not_found_msg, MessageType.WARNING)
+            if not_found_msg is not None:
+                ctx.say(not_found_msg, MessageType.WARNING)
             return None
         if len(matches) > 1:
             _prompt_disambiguation(ctx, verb, query, [item_of(m) for m in matches])
@@ -153,7 +154,12 @@ class InventoryService:
         return matches[0]
 
     def find_carried_item(
-        self, query: str, ctx: GameContext, *, verb: str
+        self,
+        query: str,
+        ctx: GameContext,
+        *,
+        verb: str,
+        not_found_msg: str | None = "You don't have that.",
     ) -> tuple[ItemStack, Item] | None:
         """Resolve one *carried* (loose) item + its stack, or ``None`` after
         messaging the player. Shared find→disambiguate step reused by verbs that
@@ -166,7 +172,7 @@ class InventoryService:
             query=query,
             matches=matches,
             item_of=lambda m: m,
-            not_found_msg="You don't have that.",
+            not_found_msg=not_found_msg,
         )
         if item is None:
             return None
@@ -176,6 +182,26 @@ class InventoryService:
             ctx.say("You don't have that.", MessageType.WARNING)
             return None
         return loose[0], item
+
+    def find_room_item(
+        self,
+        query: str,
+        ctx: GameContext,
+        *,
+        verb: str,
+        not_found_msg: str | None = "You don't see that here.",
+    ) -> tuple[ItemStack, Item] | None:
+        """Resolve one loose item in the current room, or ``None`` after
+        messaging the player. Used by verbs that can act on fixtures without
+        duplicating the inventory parser's disambiguation behavior."""
+        return self._resolve_single(
+            ctx,
+            verb=verb,
+            query=query,
+            matches=ctx.item_repo.search_in_room(ctx.room.id, query),
+            item_of=lambda m: m[1],
+            not_found_msg=not_found_msg,
+        )
 
     def _do_take(
         self, ctx: GameContext, stack: ItemStack, item: Item, count: int
@@ -216,13 +242,9 @@ class InventoryService:
         if terrain_def is not None and terrain_def.description_suffix:
             ctx.say(terrain_def.description_suffix)
 
-        visible_exits = [
-            exit_.direction
-            for exit_ in ctx.room_repo.exits(ctx.room.id)
-            if not exit_.hidden or is_exit_discovered(ctx, ctx.room.id, exit_.direction)
-        ]
-        if visible_exits:
-            ctx.say(f"Exits: {', '.join(sorted(visible_exits))}.")
+        exit_names = [exit_.direction for exit_ in visible_exits(ctx)]
+        if exit_names:
+            ctx.say(f"Exits: {', '.join(sorted(exit_names))}.")
         else:
             ctx.say("There are no obvious exits.")
 

@@ -369,6 +369,31 @@ class TestRestSleepCamp:
         assert rest_hp == 58.0
         assert sleep_hp == 70.0
 
+    def test_room_vital_recovery_multiplier_beats_sleep(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        _cmd_engine, ctx, session = built
+        ctx.room.flags = {"vital_recovery_multiplier": 3.0}
+        ctx.meters.set_current(session, _hp(ctx), 10.0)
+        ctx.meters.set_current(session, _fatigue(ctx), 10.0)
+        session.add(ctx.room)
+        session.commit()
+        assert ctx.clock is not None
+
+        ctx.bus.emit(
+            Event(
+                GameEvent.TIME_ADVANCED,
+                {
+                    "previous_epoch": ctx.clock.game_epoch,
+                    "current_epoch": ctx.clock.game_epoch + 3600.0,
+                },
+            ),
+            ClockEventContext(_session_engine(session), ctx.bus),
+        )
+
+        assert _hp(ctx).current == 70.0
+        assert _fatigue(ctx).current == 52.0
+
 
 class TestSleepSafetyAndDream:
     def test_unsafe_sleep_may_succeed_or_be_interrupted(

@@ -33,12 +33,27 @@ def test_register_all_commands_adds_meta_and_movement_commands() -> None:
     assert registry.get("go") is not None
     assert registry.get("north") is registry.get("go")
     assert registry.get("where") is not None
+    assert registry.get("exits") is not None
+    assert registry.get("scan") is not None
+    assert registry.get("peer") is registry.get("scan")
+    assert registry.get("recall") is not None
+    assert registry.get("home") is registry.get("recall")
     assert registry.get("look") is not None
     assert registry.get("take") is not None
+    assert registry.get("get") is registry.get("take")
     assert registry.get("drop") is not None
     assert registry.get("examine") is not None
     assert registry.get("inventory") is not None
     assert registry.get("who") is not None
+    assert registry.get("reply") is not None
+    assert registry.get("shout") is not None
+    assert registry.get("yell") is registry.get("shout")
+    assert registry.get("emote") is not None
+    assert registry.get("pose") is registry.get("emote")
+    assert registry.get("smile") is not None
+    assert registry.get("laugh") is not None
+    assert registry.get("nod") is not None
+    assert registry.get("kill") is registry.get("attack")
 
 
 def test_meta_commands_write_context_messages_and_updates() -> None:

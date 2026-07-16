@@ -13,6 +13,9 @@ from dotenv import load_dotenv
 # Settings are read. Real env vars already set always take precedence.
 load_dotenv()
 
+DEFAULT_PLAYER_START_ROOM = "village_square"
+DEFAULT_PLAYER_RESPAWN_ROOM = "ashmoore_recall_sanctum"
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -68,7 +71,8 @@ class Settings:
     combat_actions_yaml_path: str = "world_content/combat_actions.yaml"
     seed_player_id: str = "player-1"
     seed_player_username: str = "player-1"
-    seed_player_start_room: str = "village_square"
+    seed_player_start_room: str = DEFAULT_PLAYER_START_ROOM
+    seed_player_respawn_room: str = DEFAULT_PLAYER_RESPAWN_ROOM
     # Player session JWT (persisted to .env if not set — see ensure_persisted_secret)
     player_session_secret: str = ""
     player_session_ttl_seconds: int = 60 * 60 * 24 * 7  # 7 days
@@ -183,7 +187,10 @@ def load_settings() -> Settings:
         seed_player_id=os.getenv("LORECRAFT_SEED_PLAYER_ID", "player-1"),
         seed_player_username=os.getenv("LORECRAFT_SEED_PLAYER_USERNAME", "player-1"),
         seed_player_start_room=os.getenv(
-            "LORECRAFT_SEED_PLAYER_START_ROOM", "village_square"
+            "LORECRAFT_SEED_PLAYER_START_ROOM", DEFAULT_PLAYER_START_ROOM
+        ),
+        seed_player_respawn_room=os.getenv(
+            "LORECRAFT_SEED_PLAYER_RESPAWN_ROOM", DEFAULT_PLAYER_RESPAWN_ROOM
         ),
         player_session_secret=os.getenv("LORECRAFT_PLAYER_SESSION_SECRET", ""),
         player_session_ttl_seconds=int(

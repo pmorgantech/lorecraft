@@ -5,11 +5,15 @@ from __future__ import annotations
 import anyio
 from sqlmodel import Session, create_engine
 
+from lorecraft.commands import register_all_commands
 from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
+from lorecraft.engine.game.registry import CommandRegistry
 from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.world import Exit, Room
@@ -24,6 +28,7 @@ from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
 from lorecraft.features.follow.service import FollowService
 from lorecraft.features.movement.service import MovementService
+from lorecraft.services.container import ServiceContainer
 
 ROOM_A = "square"
 ROOM_B = "market"
@@ -136,6 +141,28 @@ def test_follower_moves_with_target() -> None:
         assert follower.current_room_id == ROOM_B
         # The follower's socket got a follow feed + panel refresh queued.
         assert len(ctx.pending_deliveries) >= 2
+
+
+def test_assist_command_starts_follow_when_target_is_not_in_combat() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    with Session(engine) as session:
+        _seed(session)
+        target = _add_player(session, "p-target", "Aldric", ROOM_A)
+        follower = _add_player(session, "p-follow", "Bryn", ROOM_A)
+        manager = ConnectionManager()
+        _connect(manager, target.id, ROOM_A)
+        _connect(manager, follower.id, ROOM_A)
+        follow = FollowService(MovementService())
+        services = ServiceContainer(follow=follow)
+        registry = CommandRegistry()
+        register_all_commands(registry, services)
+        ctx = _ctx(session, follower, manager)
+
+        CommandEngine(registry, RuleEngine()).handle_command("assist Aldric", ctx)
+
+        assert follow.target_of(follower.id) == target.id
+        assert ctx.messages == ["You begin following Aldric."]
 
 
 def test_follow_chain_cascades() -> None:

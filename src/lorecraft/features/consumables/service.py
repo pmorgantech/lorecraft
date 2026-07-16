@@ -2,9 +2,11 @@
 
 A distinct concern from take/drop/use/wear (which live in `InventoryService`):
 consuming destroys one unit of a *held* food/drink item and fires its one-shot
-`heal`/`apply_effect` descriptors (see `effects.py`). Item resolution is reused
-from `InventoryService.find_carried_item` rather than reimplemented, so eat/drink
-disambiguate and error exactly like the other item verbs.
+`heal`/`apply_effect` descriptors (see `effects.py`). Drink can also target a
+non-takeable room fixture, such as a fountain, and applies the same descriptors
+without destroying the fixture. Item resolution is reused from `InventoryService`
+rather than reimplemented, so eat/drink disambiguate and error exactly like the
+other item verbs.
 """
 
 from __future__ import annotations
@@ -41,7 +43,21 @@ class ConsumableService:
             ctx.say(f"{verb.capitalize()} what?", MessageType.WARNING)
             return
 
-        resolved = self._inventory.find_carried_item(name_or_id, ctx, verb=verb)
+        carried_matches = ctx.item_repo.search_player_items(ctx.player.id, name_or_id)
+        resolved = self._inventory.find_carried_item(
+            name_or_id,
+            ctx,
+            verb=verb,
+            not_found_msg=None
+            if category == DRINK_CATEGORY
+            else "You don't have that.",
+        )
+        if resolved is None and carried_matches:
+            return
+        if resolved is None and category == DRINK_CATEGORY:
+            resolved = self._inventory.find_room_item(
+                name_or_id, ctx, verb=verb, not_found_msg="You don't have that."
+            )
         if resolved is None:
             return
         stack, item = resolved
@@ -50,11 +66,19 @@ class ConsumableService:
             ctx.say(f"You can't {verb} that.", MessageType.WARNING)
             return
 
+        if stack.owner_type == "room" and item.takeable:
+            ctx.say(f"Take the {item.name} first.", MessageType.WARNING)
+            return
+
         # Narrate the act, then fire the item's one-shot effects (each emits its
-        # own message), then destroy exactly one unit of the consumed stack.
+        # own message). Held items are destroyed; room fixtures are persistent
+        # drink sources.
         ctx.say(f"You {verb} the {item.name}.")
         ctx.tell_room(f"{ctx.player.username} {verb}s the {item.name}.")
         apply_consumable_effects(item, ctx)
+
+        if stack.owner_type == "room":
+            return
 
         assert stack.id is not None
         ctx.item_location.destroy(stack.id, 1)
