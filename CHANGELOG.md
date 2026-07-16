@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.142.0] - 2026-07-16
+
+### Changed
+
+- Completed Sprint 91.6 by documenting the player Body tab / `body` and
+  `condition` commands, plus admin body/equipment/condition inspection in the
+  Dashboard and Observe panel.
+
 ## [0.141.0] - 2026-07-16
 
 ### Added

@@ -156,7 +156,7 @@ Tier 2 combat contributes wound condition rows; web/admin hosts render the compo
 - [x] 91.3 Condition body view — group `CombatWound` rows by body part/severity/status.
 - [x] 91.4 Player UI + command — add browser body panel plus `body` / `condition` command.
 - [x] 91.5 Admin/player observe integration — show body/equipment/condition in admin Observe.
-- [ ] 91.6 Tests/docs — focused coverage and player/admin documentation.
+- [x] 91.6 Tests/docs — focused coverage and player/admin documentation.
 
 ---
 

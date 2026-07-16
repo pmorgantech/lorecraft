@@ -134,7 +134,7 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
-| **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `/admin/ws` |
+| **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; body/equipment/condition snapshots; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `/admin/ws` |
 | **Audit** | Paginated, filterable audit log; row-expand payload; correlation-ID session replay. **Live-updates** as players act (each executed command pushes over `/admin/ws`) — toggle with the **Live** checkbox, or use the **↻ Refresh** button to reload on demand. Command summaries show the full command as typed (e.g. `Command executed: go east`, not just the verb). Severity/source facets are loaded from the audit DB. | `GET /admin/audit`, `GET /admin/audit/facets`, `GET /admin/audit/session/{correlation_id}` |
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **NPC/AI** | Read-only NPC runtime dashboard: current room, behavior, HP, autonomous AI config, schedule count, triggers, context commands, and escort state. Control actions remain intentionally absent until safety/audit gates exist. | `GET /admin/world/npcs` |
@@ -153,6 +153,12 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 Player moderation actions (teleport, flag edit, freeze/unfreeze, message) live under the
 player detail view reached from the Dashboard — see
 [Moderating Players](#moderating-players).
+
+The Dashboard's player editor and Observe panel include a **Body / Equipment / Condition**
+section. It groups every canonical wear/wield slot by body part, shows equipped items or
+empty slots, and lists active persistent `CombatWound` rows on the affected body part.
+Use this for support/debugging when a player's inventory says they own an item but the
+slot state or injury state needs inspection.
 
 **Live refresh:** the console keeps an `/admin/ws` push connection open (WS indicator, top-right).
 Beyond the Dashboard's live player table, the **Issues**, **News**, and **Help** tabs auto-reload

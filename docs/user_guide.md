@@ -88,7 +88,7 @@ recolours it without changing the type):
 
 | Layout | Arrangement |
 |--------|-------------|
-| **Standard** *(default)* | Three columns: the Current Location (with an **Also Here** list) + map on the left, chronicle in the centre with its command prompt, and one full-height right pane **tabbed between Inv / Quests / Stats**. |
+| **Standard** *(default)* | Three columns: the Current Location (with an **Also Here** list) + map on the left, chronicle in the centre with its command prompt, and one full-height right pane **tabbed between Inv / Body / Quests / Stats**. |
 | **E-reader** | A warm "illuminated manuscript" book: the location on a left ledger, a wide **serif chronicle** in the centre with an *Inscribe* prompt, and a slim right rail of vertical tabs (Here / Quests / Pack / Stats). Pairs best with the Parchment scheme. |
 | **Dock** | A modern dark "app": three columns of floating, rounded **cards** — the Location (with an **Also Here** list) + Minimap on the left, the Chronicle (with a **Send** button) in the centre, and one right card with **window-shade sections Inv / Quests / Stats** (click a shade's title to open it; the others collapse to their headers). Inv lists your inventory with each item's name **coloured by type** (weapon/armor/utility/coin) plus a small type tag and its weight (click a row to examine it). Pairs with the Slate scheme. |
 | **Immersive** | A focused, cinematic view: a slim **icon rail** on the far left (glyph shortcuts for Look / Inventory / Journal / Score), a **full-bleed chronicle** filling the screen, and a **floating minimap** and **command bar** hovering over it. Chat folds into the chronicle — no side panels at all. Pairs with the amber-lit **Immersive** scheme. |
@@ -99,8 +99,8 @@ Plex Mono, E-reader sets its chronicle as serif book prose (spoken lines in *ita
 and Immersive use a clean sans. Numbers line up (tabular figures) and descriptions are held to a
 comfortable reading width in every Layout. Switching the color scheme never changes any of this.
 
-In **Standard**, the right pane holds **Inv, Quests, and Stats as tabs** in a single card; Dock
-holds the same three as **window shades**. The **Stats** pane is a full character readout — vitals
+In **Standard**, the right pane holds **Inv, Body, Quests, and Stats as tabs** in a single card; Dock
+holds Inv, Quests, and Stats as **window shades**. The **Stats** pane is a full character readout — vitals
 as meter bars plus coins, attributes and level, trait chips, earned marks, your reputation with
 each faction (Friendly / Neutral / Wary), and any active effects. Who's here lives in the **Also
 Here** section of the Location card in both. (E-reader reaches everything from its tab rail.)
@@ -197,6 +197,7 @@ remove helm               — unequip a worn item
 wield sword               — equip a wielded item (weapon, tool, light)
 unwield sword             — unequip a wielded item
 equipment                 — list what you're wearing and wielding (also: eq)
+body                      — show every wear slot plus current body condition (also: condition)
 light lantern             — light a light source
 extinguish lantern        — put out a lit light source
 turn dial                — cycle a lever or dial to its next position (also: pull, activate)
@@ -204,6 +205,9 @@ turn dial                — cycle a lever or dial to its next position (also: p
 
 Worn/wielded gear can grant passive bonuses (stat/skill boosts, extra carry capacity,
 traits) while equipped — check an item's description or `examine` it to see what it does.
+Use the **Body** tab, or type `body` / `condition`, to see every wear/wield slot grouped by
+body part. Empty slots are shown explicitly, equipped items appear in their slot, and active
+combat wounds are listed on the affected body part as a damage assessment.
 Carrying too much weight makes you **burdened** (travel costs more) or, past a hard
 threshold, **overloaded** (you can't pick up anything else until you drop or stow something).
 A room with no ambient light needs an equipped, lit light source (like a lit lantern) or
@@ -648,6 +652,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `flee` | | Commit to an escape attempt from the current encounter |
 | `unwield <item>` | | Unequip a wielded item |
 | `equipment` | `eq` | List what you're wearing and wielding |
+| `body` | `condition` | Show every wear slot and active body-part wounds |
 | `light <item>` | | Light a light source |
 | `extinguish <item>` | | Put out a lit light source |
 | `turn <item>` | `pull`, `activate` | Cycle a lever or dial to its next state |
