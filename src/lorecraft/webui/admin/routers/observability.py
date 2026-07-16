@@ -40,7 +40,7 @@ async def system_health(request: Request, _: Observer) -> dict[str, Any]:
         recent_errors = audit_session.exec(
             select(func.count())
             .select_from(AuditEvent)
-            .where(AuditEvent.severity.in_(["ERROR", "CRITICAL"]))
+            .where(col(AuditEvent.severity).in_(["ERROR", "CRITICAL"]))
         ).one()
         crash_count = audit_session.exec(
             select(func.count()).select_from(CrashReport)

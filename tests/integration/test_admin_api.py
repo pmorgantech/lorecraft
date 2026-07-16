@@ -17,11 +17,12 @@ from lorecraft.webui.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.items import ItemStack
 from lorecraft.features.combat.models import CombatWound
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player
-from lorecraft.engine.models.world import NPC, Room
+from lorecraft.engine.models.world import NPC, Item, Room
 
 _SECRET = "test-jwt-secret-for-admin-tests!"
 _SETTINGS = Settings(
@@ -228,6 +229,39 @@ async def _test_player_state() -> None:
         settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
     )
     token = _access_token()
+    with Session(game_engine) as session:
+        session.add(
+            Item(
+                id="admin_test_helm",
+                name="Admin Test Helm",
+                description="A deterministic test helm.",
+                slot="head",
+                wearable=True,
+            )
+        )
+        session.add(
+            ItemStack(
+                item_id="admin_test_helm",
+                owner_type="player",
+                owner_id="player-1",
+                quantity=1,
+                slot="head",
+            )
+        )
+        session.add(
+            CombatWound(
+                id="admin-state-wound",
+                encounter_id="encounter-state",
+                action_id="action-state",
+                target_type="player",
+                target_id="player-1",
+                body_location="head",
+                severity="minor",
+                damage=4.0,
+                created_at_game_time=1.0,
+            )
+        )
+        session.commit()
     async with _lifespan(app):
         status, data = await _http(
             app, "GET", "/admin/players/player-1/state", token=token
@@ -236,6 +270,10 @@ async def _test_player_state() -> None:
     assert data["username"] == "player-1"
     assert "flags" in data
     assert "inventory" in data
+    assert data["equipment"][0]["item_id"] == "admin_test_helm"
+    state_parts = {part["key"]: part for part in data["body"]}
+    assert state_parts["head"]["slots"][0]["item"]["item_id"] == "admin_test_helm"
+    assert state_parts["head"]["wounds"][0]["id"] == "admin-state-wound"
     assert "visited_rooms" in data
     assert "respawn_room_id" in data
 
@@ -310,6 +348,21 @@ async def _test_observe_player() -> None:
         settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
     )
     token = _access_token()
+    with Session(game_engine) as session:
+        session.add(
+            CombatWound(
+                id="admin-observe-wound",
+                encounter_id="encounter-observe",
+                action_id="action-observe",
+                target_type="player",
+                target_id="player-1",
+                body_location="left_arm",
+                severity="major",
+                damage=12.0,
+                created_at_game_time=2.0,
+            )
+        )
+        session.commit()
     with Session(audit_engine) as session:
         session.add(
             AuditEvent(
@@ -333,6 +386,8 @@ async def _test_observe_player() -> None:
         )
     assert status == 200
     assert data["player"]["username"] == "player-1"
+    observe_parts = {part["key"]: part for part in data["player"]["body"]}
+    assert observe_parts["arms_hands"]["wounds"][0]["id"] == "admin-observe-wound"
     assert data["recent_events"][0]["summary"] == "Command executed: look"
 
 

@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.141.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 91.5 admin player body visibility: player state and observe
+  snapshots now include grouped body, equipment, and active wound condition
+  data, rendered in the admin console.
+
+### Fixed
+
+- Fixed an admin observability SQLModel expression typing issue so the admin
+  routers typecheck cleanly.
+
 ## [0.140.0] - 2026-07-16
 
 ### Added

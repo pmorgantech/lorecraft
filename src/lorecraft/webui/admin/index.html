@@ -258,6 +258,10 @@
             <label>FLAGS JSON</label>
             <textarea id="pe-flags" rows="5" style="width:100%;font-family:monospace;font-size:0.85rem;"></textarea>
           </div>
+          <div style="margin-top:0.75rem;">
+            <h3 style="margin:0 0 0.4rem 0;">Body / Equipment / Condition</h3>
+            <div id="pe-body-view" style="border:1px solid var(--border);padding:0.5rem;background:rgba(0,0,0,0.12);font-size:0.8rem;"></div>
+          </div>
           <div class="field" style="margin-top:0.75rem;">
             <label>ADMIN REASON</label>
             <input id="pe-reason" placeholder="required audit reason" />
@@ -276,6 +280,10 @@
           <div style="margin-bottom:0.75rem;">
             <h3 style="margin-top:0;">Live Output Stream</h3>
             <div id="po-live-stream" style="max-height:160px;overflow:auto;border:1px solid var(--border);padding:0.5rem;background:rgba(0,0,0,0.15);font-family:monospace;font-size:0.8rem;"></div>
+          </div>
+          <div style="margin-bottom:0.75rem;">
+            <h3 style="margin-top:0;">Body / Equipment / Condition</h3>
+            <div id="po-body-view" style="border:1px solid var(--border);padding:0.5rem;background:rgba(0,0,0,0.12);font-size:0.8rem;"></div>
           </div>
           <div style="overflow-x:auto;">
             <table>
@@ -1163,6 +1171,40 @@ function updatePlayerEditUI() {
   }
 }
 
+function renderBodyView(targetId, bodyView) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  const parts = Array.isArray(bodyView) ? bodyView : [];
+  if (!parts.length) {
+    target.innerHTML = `<div style="color:var(--text-dim);">No body data.</div>`;
+    return;
+  }
+  target.innerHTML = parts.map(part => {
+    const slots = Array.isArray(part.slots) ? part.slots : [];
+    const wounds = Array.isArray(part.wounds) ? part.wounds : [];
+    const slotRows = slots.map(slot => {
+      const item = slot.item || null;
+      return `<div style="display:flex;justify-content:space-between;gap:0.5rem;border-top:1px solid rgba(255,255,255,0.05);padding:0.18rem 0;">
+        <span style="color:var(--text-dim);">${esc(slot.label || slot.slot || "")}</span>
+        <span>${item ? esc(item.name || item.item_id || "equipped") : '<span style="color:var(--text-dim);font-style:italic;">empty</span>'}</span>
+      </div>`;
+    }).join("");
+    const woundRows = wounds.map(wound => `
+      <div style="display:flex;justify-content:space-between;gap:0.5rem;color:var(--danger);padding:0.18rem 0;">
+        <span>${esc(wound.severity || "")} ${esc(wound.wound_type || "wound")}</span>
+        <span style="color:var(--text-dim);">${esc(wound.status || "")}</span>
+      </div>`).join("");
+    return `<section style="margin-bottom:0.6rem;">
+      <div style="display:flex;justify-content:space-between;gap:0.5rem;color:var(--phosphor);font-weight:bold;">
+        <span>${esc(part.label || part.key || "Body")}</span>
+        <span style="color:${wounds.length ? 'var(--danger)' : 'var(--green)'};">${wounds.length ? `${wounds.length} wound${wounds.length === 1 ? "" : "s"}` : "sound"}</span>
+      </div>
+      ${slotRows}
+      ${woundRows}
+    </section>`;
+  }).join("");
+}
+
 async function openPlayerEditor(playerId) {
   const p = await api("GET", `/admin/players/${encodeURIComponent(playerId)}/state`);
   if (p.detail) { showError(p.detail); return; }
@@ -1174,6 +1216,7 @@ async function openPlayerEditor(playerId) {
   document.getElementById("pe-pvp").checked = Boolean(p.pvp_consent);
   document.getElementById("pe-ghost").checked = Boolean(p.ghost_state);
   document.getElementById("pe-flags").value = JSON.stringify(p.flags || {}, null, 2);
+  renderBodyView("pe-body-view", p.body);
   document.getElementById("pe-reason").value = "";
   document.getElementById("pe-status").textContent = "";
   document.getElementById("player-editor-panel").style.display = "block";
@@ -1261,11 +1304,12 @@ async function observePlayer(playerId) {
   const p = data.player || {};
   document.getElementById("po-id").textContent = p.id || playerId;
   document.getElementById("po-summary").textContent =
-    `${p.username || ""} · ${p.current_room_id || ""} · ${p.online ? "online" : "offline"} · inventory ${(p.inventory || []).length}`;
+    `${p.username || ""} · ${p.current_room_id || ""} · ${p.online ? "online" : "offline"} · inventory ${(p.inventory || []).length} · equipped ${(p.equipment || []).length}`;
   const tbody = document.getElementById("po-events-tbody");
   tbody.innerHTML = "";
   const live = document.getElementById("po-live-stream");
   live.innerHTML = `<div style="color:var(--text-dim);">Subscribed to live read-only output for ${esc(playerId)}.</div>`;
+  renderBodyView("po-body-view", p.body);
   for (const e of (data.recent_events || [])) {
     const tr = document.createElement("tr");
     tr.innerHTML = `

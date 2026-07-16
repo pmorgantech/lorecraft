@@ -16,11 +16,19 @@ from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.transaction import TransactionContext, TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.session import PlayerSession
+from lorecraft.engine.models.world import Item
 from lorecraft.engine.repos.audit_repo import AuditRepo
+from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.features.combat.models import CombatWound
+from lorecraft.features.equipment.body import (
+    add_wounds_to_body_view,
+    body_equipment_view,
+)
 from lorecraft.observability import bind_transaction_context
 
 router = APIRouter(tags=["admin"])
@@ -46,6 +54,43 @@ def _player_snapshot(player: Player) -> dict[str, Any]:
         "pvp_consent": player.pvp_consent,
         "ghost_state": player.ghost_state,
         "flags": player.flags,
+    }
+
+
+def _player_equipment(session: Session, player_id: str) -> list[tuple[ItemStack, Item]]:
+    item_repo = ItemRepo(session)
+    equipped: list[tuple[ItemStack, Item]] = []
+    for stack in StackRepo(session).stacks_for_owner("player", player_id):
+        if stack.slot is None:
+            continue
+        item = item_repo.get(stack.item_id)
+        if item is not None:
+            equipped.append((stack, item))
+    return equipped
+
+
+def _player_body_snapshot(session: Session, player: Player) -> dict[str, Any]:
+    equipped = _player_equipment(session, player.id)
+    body = body_equipment_view(equipped)
+    wounds = session.exec(
+        select(CombatWound)
+        .where(CombatWound.target_type == "player")
+        .where(CombatWound.target_id == player.id)
+        .where(CombatWound.status == "active")
+    ).all()
+    add_wounds_to_body_view(body, wounds)
+    return {
+        "equipment": [
+            {
+                "slot": stack.slot,
+                "item_id": item.id,
+                "name": item.name,
+                "quantity": stack.quantity,
+                "instance_id": stack.instance_id,
+            }
+            for stack, item in equipped
+        ],
+        "body": body,
     }
 
 
@@ -150,6 +195,7 @@ async def player_state(player_id: str, request: Request, _: Observer) -> dict[st
             ).all()
         )
         stack_repo = StackRepo(session)
+        body_snapshot = _player_body_snapshot(session, player)
         return {
             "id": player.id,
             "username": player.username,
@@ -163,6 +209,7 @@ async def player_state(player_id: str, request: Request, _: Observer) -> dict[st
                 }
                 for stack in stack_repo.stacks_for_owner("player", player.id)
             ],
+            **body_snapshot,
             "visited_rooms": player.visited_rooms,
             "flags": player.flags,
             "pvp_consent": player.pvp_consent,
@@ -191,6 +238,7 @@ async def observe_player(
         if player is None:
             raise HTTPException(status_code=404, detail="Player not found")
         stack_repo = StackRepo(session)
+        body_snapshot = _player_body_snapshot(session, player)
         snapshot = {
             **_player_snapshot(player),
             "online": player.id in state.manager._connections,
@@ -203,6 +251,7 @@ async def observe_player(
                 }
                 for stack in stack_repo.stacks_for_owner("player", player.id)
             ],
+            **body_snapshot,
         }
     with Session(state.audit_engine) as audit_session:
         events = AuditRepo(audit_session).recent_for_actor(
