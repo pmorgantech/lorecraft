@@ -739,7 +739,7 @@ async def update_appearance(
 @router.post("/command", response_class=HTMLResponse)
 async def handle_command(
     request: Request,
-    command: str = Form(...),
+    command: str = Form(default=""),
     player: Player = Depends(get_current_player),
 ):
     """Execute command using CommandEngine + GameContext."""

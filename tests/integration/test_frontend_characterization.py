@@ -641,6 +641,36 @@ async def _test_standard_layout_keeps_players_column_and_tab() -> None:
     assert "ALSO HERE" in html
     assert 'id="players-online"' in html
     assert ">Panel</button>" in html
+    assert 'class="mobile-minimap-card flex-none hidden lg:block"' in html
+
+
+def test_standard_separate_chat_is_mobile_cloaked_by_default() -> None:
+    anyio.run(_test_standard_separate_chat_is_mobile_cloaked_by_default)
+
+
+async def _test_standard_separate_chat_is_mobile_cloaked_by_default() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=Settings(
+            database_path=":memory:",
+            audit_database_path=":memory:",
+            allow_query_player_id=True,
+        ),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        with Session(game_engine) as db:
+            player = db.exec(select(Player).where(Player.id == "player-1")).first()
+            assert player is not None
+            player.preferences = {"separate_chat": True}
+            db.add(player)
+            db.commit()
+        _, html = await _http_get(app, "/game", cookies={"player_id": "player-1"})
+
+    assert 'id="chat-pane"' in html
+    assert "x-cloak" in html.split('id="chat-pane"', 1)[1].split(">", 1)[0]
 
 
 def test_immersive_movement_narrates_room_as_styled_card() -> None:

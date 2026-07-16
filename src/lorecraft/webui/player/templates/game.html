@@ -58,7 +58,7 @@
             <!-- Minimap card. The card chrome (border/header) lives here, not in
                  minimap.html, which renders bare content — so this is the ONE box. -->
             {% if 'minimap' not in prefs.hidden_panels %}
-            <div class="flex-none">
+            <div class="mobile-minimap-card flex-none hidden lg:block">
                 <div class="w-full aspect-square max-h-56 bg-panel border border-border rounded-lg overflow-hidden flex flex-col">
                     <div class="flex-none px-3 py-1.5 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">
                         <span class="mm-title-graph">Minimap</span><span class="mm-title-compass">Exits</span>
@@ -150,6 +150,7 @@
                  matching the app's other mobile tab-collapse panels
                  (Room/Feed/Panel) instead of pushing content down. -->
             <div id="chat-pane"
+                 x-cloak
                  :class="mobileTab === 'chat' ? 'flex flex-1 min-h-0 border-t' : 'hidden'"
                  class="flex-col border-border lg:!flex lg:flex-none lg:h-1/3 lg:min-h-28 lg:border-t">
                 <div class="px-3 py-1.5 border-b border-border flex items-center justify-between text-[10px] uppercase tracking-[0.15em] text-text-muted">

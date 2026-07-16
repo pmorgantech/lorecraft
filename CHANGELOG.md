@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.148.1] - 2026-07-16
+
+### Fixed
+
+- Prevented blank player-web command submissions from returning FastAPI 422
+  validation errors.
+- Hid mobile minimap and separate-chat panels by default while preserving their
+  desktop behavior.
+
 ## [0.148.0] - 2026-07-16
 
 ### Added

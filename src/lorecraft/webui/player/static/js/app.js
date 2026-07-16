@@ -653,6 +653,14 @@
   // Ensure command input clears on successful submit (HTMX), while history
   // (readline arrows) continues to work from the keydown listener above.
   function setupCommandClearOnSubmit() {
+    document.body.addEventListener("htmx:beforeRequest", function (evt) {
+      const form = evt.detail.elt;
+      if (!form || form.id !== "command-form") return;
+      const input = document.getElementById("command-input");
+      if (!input || input.value.trim()) return;
+      evt.preventDefault();
+    });
+
     document.body.addEventListener("htmx:afterRequest", function (evt) {
       const form = evt.detail.elt;
       if (!form || form.id !== "command-form") return;

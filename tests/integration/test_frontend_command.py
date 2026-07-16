@@ -121,6 +121,40 @@ def test_post_command_moves_player_east() -> None:
     anyio.run(_test_post_command_moves_player_east)
 
 
+def test_post_command_empty_submit_is_noop() -> None:
+    anyio.run(_test_post_command_empty_submit_is_noop)
+
+
+async def _test_post_command_empty_submit_is_noop() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS,
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    async with _lifespan(app):
+        missing_status, missing_html = await _http_form_post(
+            app,
+            "/command",
+            form={},
+            cookies={"player_id": "player-1"},
+        )
+        blank_status, blank_html = await _http_form_post(
+            app,
+            "/command",
+            form={"command": ""},
+            cookies={"player_id": "player-1"},
+        )
+
+    assert missing_status == 200
+    assert "Error: 422" not in missing_html
+    assert 'class="msg' not in missing_html
+    assert blank_status == 200
+    assert "Error: 422" not in blank_html
+    assert 'class="msg' not in blank_html
+
+
 async def _test_post_command_moves_player_east() -> None:
     game_engine, audit_engine = _make_engines()
     app = create_app(
