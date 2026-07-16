@@ -4,6 +4,15 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.136.0] - 2026-07-16
+
+### Added
+
+- Began Sprint 88 advanced combat with persistent wounds/body locations:
+  positive combat damage now creates active `CombatWound` rows and includes
+  wound metadata in combat resolution and audit payloads. Wounds are read-only
+  records for now and do not apply stat penalties.
+
 ## [0.135.1] - 2026-07-16
 
 ### Changed

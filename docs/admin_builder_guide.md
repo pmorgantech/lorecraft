@@ -140,6 +140,7 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 | **NPC/AI** | Read-only NPC runtime dashboard: current room, behavior, HP, autonomous AI config, schedule count, triggers, context commands, and escort state. Control actions remain intentionally absent until safety/audit gates exist. | `GET /admin/world/npcs` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override. A weather override **announces the change to every player's feed** (e.g. "A light rain begins to fall."); re-setting the current weather is silent | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
+| **Combat** | Live-tune combat rulesets and inspect active persistent wounds recorded by combat damage. Ruleset editing requires superadmin; wounds are read-only. | `GET /admin/combat/rulesets`, `POST /admin/combat/rulesets/{id}`, `GET /admin/combat/wounds` |
 | **Progression** | Live-tune the XP curve (`base`/`step`) and per-level rewards (`coins_per_level`/`skill_points_per_level`) — no restart or reseed. See [Live-tuning progression from the admin console](#live-tuning-progression-from-the-admin-console) | `GET/POST /admin/progression/config` |
 | **Economy** | Live-tune each zone's price multiplier (`region_mult`) and per-item price bias — no restart or reseed. Viewing is open to any admin role; editing requires superadmin. See [Region pricing (Sprint 76)](#region-pricing-sprint-76) | `GET /admin/economy/regions`, `POST /admin/economy/regions/{zone}` |
 | **Issues** | Repo-tracked issue tracker CRUD. **Resolved/deferred are hidden by default** — a "Hide status" checkbox group toggles any status in/out of view; plus a **priority** filter and a **sort** selector (Priority / Recently updated / Recently created). Filter+sort run client-side (hide/sort choices persist per browser); a header count shows `N shown · M hidden`. `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write. Table shows opened-by + created/updated dates (🕑 toggles absolute dates ↔ relative ages); rows expand (click) to description, tags, links, assignee, timestamps. Live-refreshes on any change — admin edits **and** in-game player `report`s | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
@@ -897,6 +898,11 @@ role resolves to a real NPC (via `NpcRepo`) — so `talk mira`, `attack goblin`,
 Combat is implemented as the Tier 2 `combat` feature. Its first Scheduled Intent slice stores
 encounters, participants, hostile relationships, and pending/resolved actions in feature-owned
 tables, then resolves actions through durable `combat.resolve_action` scheduler jobs.
+
+Sprint 88.1 adds read-only persistent wounds. Positive combat damage creates a `CombatWound`
+row with target, body location, severity, damage, status, and HP transition metadata. Wounds are
+included in combat resolution/audit payloads and visible from the admin Combat tab, but they do not
+apply stat penalties yet.
 
 The initial player-facing commands are `attack <npc>`, `shoot <npc>`, `defend`, and `flee`.
 They use the primary action channel only; during recovery a player may queue one replacement

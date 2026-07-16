@@ -119,10 +119,10 @@ new work.
 
 Sprints 85–87 are complete and archived in
 [`roadmap_completed.md`](roadmap_completed.md#sprints-8587--scheduled-intent-combat-foundation-tactics-and-content-power).
-Combat remains built as `features/combat/`, with opinion/data in Tier 2. The only combat work still
-listed here is the deliberately deferred Sprint 88 advanced-depth bucket below.
+Combat remains built as `features/combat/`, with opinion/data in Tier 2. Sprint 88 is now being
+handled one narrow layer at a time; speculative control-heavy depth remains deferred.
 
-### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
+### Sprint 88 — Combat Phase 4: Advanced
 
 **Goal:** Narrow depth layers gated behind demonstrated need. Do not build speculatively. Formation
 mechanics, near/far tactical bands, grappling, flanking, screening, and full PvP duel rules are
@@ -132,7 +132,9 @@ explicitly out of the active roadmap.
 
 **Tier:** Tier 2 (all features/combat/). Each item independently deferrable.
 
-- [ ] 88.1 Wounds + body locations — persist after health recovery
+- [x] 88.1 Wounds + body locations — persist after health recovery. v0.136.0 records active
+  `CombatWound` rows for positive combat damage and includes wound metadata in resolution/audit
+  payloads; no stat penalties yet.
 - [ ] 88.2 Terrain & cover as narrow defense modifiers — only if authored encounters need it
 - [ ] 88.3 Combo systems — only if data-authored actions need follow-up hooks
 - [ ] 88.4 Simultaneous-planning encounter mode (optional, arena/boss) — alternate combat_mode

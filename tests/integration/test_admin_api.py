@@ -17,6 +17,7 @@ from lorecraft.webui.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.features.combat.models import CombatWound
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player
@@ -1208,6 +1209,60 @@ async def _test_get_combat_rulesets() -> None:
             "stamina_cost_multiplier": 1.0,
         }
     ]
+
+
+def test_get_combat_wounds_returns_active_wounds() -> None:
+    anyio.run(_test_get_combat_wounds)
+
+
+async def _test_get_combat_wounds() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    with Session(game_engine) as session:
+        session.add(
+            CombatWound(
+                id="wound-1",
+                encounter_id="encounter-1",
+                action_id="action-1",
+                target_type="npc",
+                target_id="goblin",
+                body_location="torso",
+                severity="minor",
+                damage=6.5,
+                created_at_game_time=12.0,
+                payload={"hp_before": 20.0, "hp_after": 13.5},
+            )
+        )
+        session.add(
+            CombatWound(
+                id="wound-2",
+                encounter_id="encounter-1",
+                action_id="action-2",
+                target_type="npc",
+                target_id="goblin",
+                body_location="left_arm",
+                severity="bruise",
+                damage=2.0,
+                status="healed",
+                created_at_game_time=8.0,
+            )
+        )
+        session.commit()
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "GET",
+            "/admin/combat/wounds?target_type=npc&target_id=goblin",
+            token=token,
+        )
+
+    assert status == 200
+    assert [wound["id"] for wound in data] == ["wound-1"]
+    assert data[0]["body_location"] == "torso"
+    assert data[0]["payload"]["hp_after"] == 13.5
 
 
 def test_post_combat_ruleset_updates_live_config() -> None:

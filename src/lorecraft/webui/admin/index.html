@@ -583,6 +583,13 @@
             <tbody id="combat-tbody"></tbody>
           </table>
         </div>
+        <div class="panel" style="overflow-x:auto;">
+          <h3>Active Wounds</h3>
+          <table>
+            <thead><tr><th>Target</th><th>Location</th><th>Severity</th><th>Damage</th><th>Created</th></tr></thead>
+            <tbody id="combat-wounds-tbody"></tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Progression -->
@@ -1973,6 +1980,28 @@ async function loadCombatRulesets() {
     tbody.appendChild(tr);
   }
   updateCombatEditUI();
+  loadCombatWounds();
+}
+
+async function loadCombatWounds() {
+  const rows = await api("GET", "/admin/combat/wounds?status=active&limit=50");
+  const tbody = document.getElementById("combat-wounds-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!Array.isArray(rows) || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim);">No active wounds.</td></tr>`;
+    return;
+  }
+  for (const wound of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${badge(wound.target_type || "?", "gray")} ${esc(wound.target_id || "")}</td>
+      <td>${esc(wound.body_location || "")}</td>
+      <td>${badge(wound.severity || "", wound.severity === "critical" ? "red" : wound.severity === "major" ? "amber" : "gray")}</td>
+      <td>${esc(wound.damage ?? "")}</td>
+      <td>${esc(wound.created_at_game_time ?? "")}</td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 async function saveCombatRuleset(rulesetId, row) {

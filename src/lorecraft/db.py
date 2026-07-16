@@ -50,6 +50,7 @@ from lorecraft.features.combat.models import (
     CombatRelationship,
     CombatResolutionRecord,
     CombatRulesetConfig,
+    CombatWound,
 )
 from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
@@ -104,6 +105,7 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     CombatRelationship,
     CombatAction,
     CombatResolutionRecord,
+    CombatWound,
     CombatRulesetConfig,
     Changeset,
     ChangesetItem,
