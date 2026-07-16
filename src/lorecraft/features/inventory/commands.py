@@ -143,6 +143,15 @@ def register_inventory_commands(
         service.list_equipment(ctx)
 
     @registry.register(
+        "body",
+        "condition",
+        help="body — show worn equipment and body condition by body part",
+    )
+    def body_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        service.body(ctx)
+
+    @registry.register(
         "put",
         conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
         help="put <item> in <container> — place a carried item into a container",

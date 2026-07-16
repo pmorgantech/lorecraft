@@ -89,12 +89,17 @@ def empty_body_view() -> list[JsonObject]:
 
 def body_equipment_view(equipped: Sequence[tuple[ItemStack, Item]]) -> list[JsonObject]:
     view = empty_body_view()
-    slots_by_name = {
-        slot["slot"]: slot
-        for part in view
-        for slot in part["slots"]
-        if isinstance(slot, dict)
-    }
+    slots_by_name: dict[str, JsonObject] = {}
+    for part in view:
+        slots = part.get("slots")
+        if not isinstance(slots, list):
+            continue
+        for slot in slots:
+            if not isinstance(slot, dict):
+                continue
+            slot_name = slot.get("slot")
+            if isinstance(slot_name, str):
+                slots_by_name[slot_name] = slot
     for stack, item in equipped:
         if stack.slot is None:
             continue

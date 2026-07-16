@@ -198,7 +198,7 @@
             </div>
         </div>
 
-        {# RIGHT COLUMN: one full-height card, tabbed Inv / Quests / Stats
+        {# RIGHT COLUMN: one full-height card, tabbed Inv / Body / Quests / Stats
            (the export's tabbed right pane; "Score" renamed Stats). All three
            panes stay in the DOM (x-show) so the OOB live-updates (#inventory /
            #quest-tracker) keep firing while hidden. #}
@@ -211,24 +211,31 @@
                 <button type="button" role="tab" :aria-selected="tab === 'inv'"
                         @click="tab = 'inv'"
                         :class="tab === 'inv' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
-                        class="px-4 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Inv</button>
+                        class="px-3 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Inv</button>
                 {% endif %}
+                <button type="button" role="tab" :aria-selected="tab === 'body'"
+                        @click="tab = 'body'"
+                        :class="tab === 'body' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
+                        class="px-3 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Body</button>
                 {% if 'quest_tracker' not in prefs.hidden_panels %}
                 <button type="button" role="tab" :aria-selected="tab === 'quests'"
                         @click="tab = 'quests'"
                         :class="tab === 'quests' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
-                        class="px-4 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Quests</button>
+                        class="px-3 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Quests</button>
                 {% endif %}
                 <button type="button" role="tab" :aria-selected="tab === 'stats'"
                         @click="tab = 'stats'"
                         :class="tab === 'stats' ? 'text-emerald-400 border-emerald-500' : 'text-text-muted border-transparent'"
-                        class="px-4 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Stats</button>
+                        class="px-3 py-2 text-[11px] tracking-wide border-b-2 -mb-px transition-colors">Stats</button>
             </div>
             {% if 'inventory' not in prefs.hidden_panels %}
             <div x-show="tab === 'inv'" role="tabpanel" class="flex-1 flex flex-col overflow-hidden min-h-0">
                 {% include "partials/inventory.html" %}
             </div>
             {% endif %}
+            <div x-show="tab === 'body'" x-cloak role="tabpanel" class="flex-1 flex flex-col overflow-hidden min-h-0">
+                {% include "partials/body.html" %}
+            </div>
             {% if 'quest_tracker' not in prefs.hidden_panels %}
             <div x-show="tab === 'quests'" x-cloak role="tabpanel" class="flex-1 flex flex-col overflow-hidden min-h-0">
                 {% include "partials/quest_tracker.html" %}

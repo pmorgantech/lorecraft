@@ -7,6 +7,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeVar
 
+from sqlmodel import select
+
 from lorecraft.errors import ConflictError, ValidationError
 from lorecraft.engine.game.command_patterns import (
     ROLE_DESTINATION,
@@ -34,7 +36,12 @@ from lorecraft.engine.services.item_components import (
     get_component_state,
     set_component_state,
 )
-from lorecraft.types import JsonValue
+from lorecraft.features.combat.models import CombatWound
+from lorecraft.features.equipment.body import (
+    add_wounds_to_body_view,
+    body_equipment_view,
+)
+from lorecraft.types import JsonObject, JsonValue
 
 _M = TypeVar("_M")
 
@@ -605,6 +612,58 @@ class InventoryService:
                 result.append((stack, item))
         return result
 
+    def _body_view(self, ctx: GameContext) -> list[JsonObject]:
+        view = body_equipment_view(self._equipped_stacks(ctx))
+        wounds = ctx.session.exec(
+            select(CombatWound)
+            .where(CombatWound.target_type == "player")
+            .where(CombatWound.target_id == ctx.player.id)
+            .where(CombatWound.status == "active")
+        ).all()
+        add_wounds_to_body_view(view, wounds)
+        return view
+
+    def _body_update_payload(self, ctx: GameContext) -> list[JsonValue]:
+        payload: list[JsonValue] = []
+        payload.extend(self._body_view(ctx))
+        return payload
+
+    def body(self, ctx: GameContext) -> None:
+        view = self._body_view(ctx)
+        ctx.say("Body:")
+        for part in view:
+            slots_value = part.get("slots")
+            wounds_value = part.get("wounds")
+            if not isinstance(slots_value, list) or not isinstance(wounds_value, list):
+                continue
+            label = str(part.get("label", "Unknown"))
+            slots = [
+                slot
+                for slot in slots_value
+                if isinstance(slot, dict) and slot.get("item") is not None
+            ]
+            wounds = [wound for wound in wounds_value if isinstance(wound, dict)]
+            slot_labels: list[str] = []
+            for slot in slots:
+                item = slot.get("item")
+                if isinstance(item, dict):
+                    slot_labels.append(
+                        f"{slot.get('label')}: {item.get('name', 'unknown')}"
+                    )
+            slot_summary = ", ".join(slot_labels) if slot_labels else "nothing equipped"
+            wound_summary = (
+                ", ".join(
+                    f"{wound.get('severity')} {wound.get('wound_type')}"
+                    for wound in wounds
+                )
+                if wounds
+                else "sound"
+            )
+            ctx.say(f"  {label}: {slot_summary}; {wound_summary}.")
+        payload: list[JsonValue] = []
+        payload.extend(view)
+        ctx.push_update("body", payload)
+
     def _query_matches_item(self, query: str, item: Item) -> bool:
         q = query.strip().casefold()
         if q == item.name.casefold() or q == item.id.casefold():
@@ -736,6 +795,7 @@ class InventoryService:
         if not equipped:
             ctx.say("You aren't wearing or wielding anything.", MessageType.WARNING)
             ctx.push_update("equipment", [])
+            ctx.push_update("body", self._body_update_payload(ctx))
             return
 
         ctx.say("You are equipped with:")
@@ -752,6 +812,7 @@ class InventoryService:
                 for stack, item in equipped
             ],
         )
+        ctx.push_update("body", self._body_update_payload(ctx))
 
     def put_item(self, name_or_id: str | None, ctx: GameContext) -> None:
         if name_or_id is None:

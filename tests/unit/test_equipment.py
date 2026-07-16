@@ -39,6 +39,7 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
+from lorecraft.features.combat.models import CombatWound
 from lorecraft.world.loader import import_world
 from lorecraft.world.validator import ItemData, RoomData, WorldDocument
 from lorecraft.features.traits.sources import register as _register_traits
@@ -203,6 +204,7 @@ class TestWearRemove:
         assert ctx.messages == ["You wear the iron helm."]
         stacks = ctx.stack_repo.stacks_for_owner("player", ctx.player.id)
         assert any(s.slot == "head" for s in stacks)
+        assert "body" in ctx.updates
 
     def test_wear_occupied_slot_reports_conflict(
         self, built: tuple[CommandEngine, GameContext, Session]
@@ -312,6 +314,49 @@ class TestEquipmentListing:
         cmd_engine.handle_command("equipment", ctx)
 
         assert ctx.messages == ["You aren't wearing or wielding anything."]
+
+    def test_body_command_reports_equipment_and_wounds(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, session = built
+        _carry(ctx, "iron_helm")
+        cmd_engine.handle_command("wear iron helm", ctx)
+        ctx.messages.clear()
+        ctx.updates.clear()
+        session.add(
+            CombatWound(
+                id="wound-head",
+                encounter_id="encounter-1",
+                action_id="action-1",
+                target_type="player",
+                target_id=ctx.player.id,
+                body_location="head",
+                severity="major",
+                damage=9.0,
+                created_at_game_time=12.0,
+            )
+        )
+        session.commit()
+
+        cmd_engine.handle_command("body", ctx)
+
+        assert any(
+            "Head:" in m and "iron helm" in m and "major" in m for m in ctx.messages
+        )
+        assert "body" in ctx.updates
+        parts = {part["key"]: part for part in ctx.updates["body"]}
+        assert parts["head"]["slots"][0]["item"]["item_id"] == "iron_helm"
+        assert parts["head"]["wounds"][0]["id"] == "wound-head"
+
+    def test_condition_alias_uses_body_command(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+
+        cmd_engine.handle_command("condition", ctx)
+
+        assert any(str(m) == "Body:" for m in ctx.messages)
+        assert "body" in ctx.updates
 
 
 class TestEquipmentModifiersAndTraits:

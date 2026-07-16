@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.140.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 91.4 player-facing body/condition support: text commands,
+  a browser Body tab, and live body-panel refreshes for equipment/condition
+  updates.
+
 ## [0.139.0] - 2026-07-16
 
 ### Added

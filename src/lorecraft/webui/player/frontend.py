@@ -17,13 +17,18 @@ import time
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session as DBSession
+from sqlmodel import Session as DBSession, select
 
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
+from lorecraft.features.combat.models import CombatWound
+from lorecraft.features.equipment.body import (
+    add_wounds_to_body_view,
+    body_equipment_view,
+)
 from lorecraft.features.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.observability import bind_transaction_context
 from lorecraft.engine.repos.audit_repo import AuditRepo
@@ -33,6 +38,7 @@ from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
@@ -117,6 +123,25 @@ def _carried_snapshot(item_repo: ItemRepo, player_id: str) -> list[tuple[str, in
         (stack.item_id, stack.quantity)
         for stack, _item in item_repo.stacks_carried_by(player_id)
     ]
+
+
+def body_snapshot_for(db: DBSession, player: Player, item_repo: ItemRepo) -> list[dict]:
+    equipped = []
+    for stack in StackRepo(db).stacks_for_owner("player", player.id):
+        if stack.slot is None:
+            continue
+        item = item_repo.get(stack.item_id)
+        if item is not None:
+            equipped.append((stack, item))
+    view = body_equipment_view(equipped)
+    wounds = db.exec(
+        select(CombatWound)
+        .where(CombatWound.target_type == "player")
+        .where(CombatWound.target_id == player.id)
+        .where(CombatWound.status == "active")
+    ).all()
+    add_wounds_to_body_view(view, wounds)
+    return view
 
 
 async def get_current_player(request: Request) -> Player:
@@ -444,6 +469,7 @@ async def game_screen(
             current_room = room_repo.get(player.current_room_id)
 
         inv = inventory_snapshot(player, item_repo)
+        body_view = body_snapshot_for(game_db, player, item_repo)
         room_panel = room_panel_context(
             current_room,
             room_repo,
@@ -546,6 +572,7 @@ async def game_screen(
             "current_player": player,
             "current_room": current_room,
             "inventory": inv,
+            "body_view": body_view,
             "encumbrance": encumbrance_snapshot_for(game_db, player_repo, player.id),
             "feed_messages": feed_messages,
             "players_here": players_in_room,
@@ -787,6 +814,7 @@ async def handle_command(
                 app_state.pending_disambig[player.id] = disambig
 
             quest_changed = "quest_update" in ctx.updates
+            body_changed = "body" in ctx.updates
             # Sprint 73.9: a level-up (via features/progression/feedback.py's
             # narrate_level_up) pushes "stats_update" the same way a quest
             # change pushes "quest_update" above -- re-render the Stats pane
@@ -990,6 +1018,13 @@ async def handle_command(
                     ),
                 )
                 response_html += mark_oob_swap(inv_html, "inventory")
+
+            if body_changed:
+                body_html = templates.get_template("partials/body.html").render(
+                    body_view=body_snapshot_for(game_db, after_player, item_repo),
+                    current_player=after_player,
+                )
+                response_html += mark_oob_swap(body_html, "body-panel")
 
             if result.minimap_changed:
                 map_html = templates.get_template("partials/minimap.html").render(
@@ -1223,6 +1258,23 @@ async def partial_inventory(
             "inventory": inv,
             "current_player": player,
             "encumbrance": encumbrance,
+        },
+    )
+
+
+@router.get("/partials/body", response_class=HTMLResponse)
+async def partial_body(request: Request, player: Player = Depends(get_current_player)):
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        player = PlayerRepo(db).get(player.id) or player
+        body_view = body_snapshot_for(db, player, ItemRepo(db))
+    return templates.TemplateResponse(
+        request,
+        "partials/body.html",
+        {
+            "request": request,
+            "body_view": body_view,
+            "current_player": player,
         },
     )
 
