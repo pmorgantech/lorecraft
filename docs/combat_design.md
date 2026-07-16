@@ -213,6 +213,12 @@ adds only a target defense-score bonus. Default terrain bonuses apply to `forest
 The resolution trace records the terrain, cover, and total environment bonus for audit/admin
 inspection. This is not a range-band, formation, facing, or movement-position system.
 
+Implemented Sprint 88.3 keeps combos equally narrow. A data-authored opposed-attack action may
+grant an encounter-scoped combo key after selected outcomes, and a later action may consume that
+key for temporary accuracy and damage bonuses. The key is stored on the actor's
+`CombatParticipant.contribution["combo_ready"]`, not on permanent player state. Resolution traces
+record before/after combo state and the applied bonus values.
+
 Randomness: bounded/bell-shaped (`rng.randint(-10,10)+rng.randint(-10,10)`), through seeded
 `ctx.rng` only. Damage via a **staged modifier stack** (base additions → multiplicative →
 mitigation → post-mitigation → clamp), each modifier **naming its source** (auditability).
@@ -367,6 +373,23 @@ actions:
     timing: { windup: 0.35, recovery: 2.2 }
     stamina_delta: -6.0
     tags: [ranged, physical]
+  - id: setup_slash
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing: { windup: 0.25, recovery: 2.0 }
+    combo:
+      grants: opening
+      grant_outcomes: [hit, strong_hit]
+  - id: finishing_thrust
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing: { windup: 0.35, recovery: 2.4 }
+    combo:
+      consumes: opening
+      accuracy_bonus: 5.0
+      damage_multiplier: 1.5
 ```
 
 `action_range` is broad action semantics (`self`, `engaged`, `ranged`), not a persistent near/far

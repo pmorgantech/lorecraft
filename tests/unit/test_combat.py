@@ -58,6 +58,7 @@ from lorecraft.features.combat.damage import (
 from lorecraft.features.combat.definitions import (
     CALCULATOR_OPPOSED_ATTACK,
     RESOLVER_OPPOSED_ATTACK,
+    CombatActionCombo,
     CombatActionDef,
     CombatActionTiming,
     CombatActionsDocument,
@@ -302,6 +303,132 @@ def test_combat_resolution_uses_live_ruleset_config() -> None:
         assert record.random_trace["ruleset_stamina_cost_multiplier"] == 2.0
         assert record.damage_trace["actor_stance_damage_multiplier"] == 2.0
         assert stamina.current == 88.0
+
+
+def test_combat_action_combo_grants_followup_state() -> None:
+    registry = get_action_registry()
+    registry.clear()
+    registry.load_document(
+        CombatActionsDocument(
+            actions=[
+                CombatActionDef(
+                    id="basic_attack",
+                    action_range="engaged",
+                    calculator=CALCULATOR_OPPOSED_ATTACK,
+                    resolver=RESOLVER_OPPOSED_ATTACK,
+                    timing=CombatActionTiming(windup=0.25, recovery=2.0),
+                    stamina_delta=-6.0,
+                    combo=CombatActionCombo(
+                        grants="opening",
+                        grant_outcomes=["miss", "glancing", "hit", "strong_hit"],
+                    ),
+                )
+            ]
+        )
+    )
+    try:
+        engine = _engine()
+        service = CombatService()
+
+        with Session(engine) as session:
+            ctx = _context(session)
+            service.attack("goblin", ctx)
+            action = session.exec(select(CombatAction)).one()
+            action_id = action.id
+
+            service.resolve_action(
+                session,
+                action_id,
+                rng=GameRng(seed=1),
+                current_epoch=10.0,
+                meter_service=ctx.meters,
+            )
+            session.commit()
+
+        with Session(engine) as session:
+            player = session.exec(
+                select(CombatParticipant).where(
+                    CombatParticipant.actor_type == "player"
+                )
+            ).one()
+            record = session.exec(select(CombatResolutionRecord)).one()
+
+            assert player.contribution["combo_ready"] == "opening"
+            assert record.random_trace["combo_ready_before"] is None
+            assert record.random_trace["combo_consumed"] is None
+            assert record.random_trace["combo_granted"] == "opening"
+            assert record.random_trace["combo_ready_after"] == "opening"
+    finally:
+        register_builtin_combat_actions(registry)
+
+
+def test_combat_action_combo_consumes_followup_for_attack_bonus() -> None:
+    registry = get_action_registry()
+    registry.clear()
+    registry.load_document(
+        CombatActionsDocument(
+            actions=[
+                CombatActionDef(
+                    id="basic_attack",
+                    action_range="engaged",
+                    calculator=CALCULATOR_OPPOSED_ATTACK,
+                    resolver=RESOLVER_OPPOSED_ATTACK,
+                    timing=CombatActionTiming(windup=0.25, recovery=2.0),
+                    stamina_delta=-6.0,
+                    combo=CombatActionCombo(
+                        consumes="opening",
+                        accuracy_bonus=5.0,
+                        damage_multiplier=1.5,
+                    ),
+                )
+            ]
+        )
+    )
+    try:
+        engine = _engine()
+        service = CombatService()
+
+        with Session(engine) as session:
+            ctx = _context(session)
+            service.attack("goblin", ctx)
+            action = session.exec(select(CombatAction)).one()
+            action_id = action.id
+            player = session.exec(
+                select(CombatParticipant).where(
+                    CombatParticipant.actor_type == "player"
+                )
+            ).one()
+            player.contribution = {"combo_ready": "opening"}
+            session.add(player)
+
+            service.resolve_action(
+                session,
+                action_id,
+                rng=GameRng(seed=1),
+                current_epoch=10.0,
+                meter_service=ctx.meters,
+            )
+            session.commit()
+
+        with Session(engine) as session:
+            player = session.exec(
+                select(CombatParticipant).where(
+                    CombatParticipant.actor_type == "player"
+                )
+            ).one()
+            record = session.exec(select(CombatResolutionRecord)).one()
+
+            assert "combo_ready" not in player.contribution
+            assert record.random_trace["combo_ready_before"] == "opening"
+            assert record.random_trace["combo_consumed"] == "opening"
+            assert record.random_trace["combo_granted"] is None
+            assert record.random_trace["combo_accuracy_bonus"] == 5.0
+            assert record.random_trace["combo_damage_multiplier"] == 1.5
+            assert record.random_trace["combo_ready_after"] is None
+            assert record.random_trace["actor_stance_attack_bonus"] == 5.0
+            assert record.damage_trace["actor_stance_damage_multiplier"] == 1.5
+    finally:
+        register_builtin_combat_actions(registry)
 
 
 def test_combat_resolution_applies_room_terrain_and_cover_defense() -> None:

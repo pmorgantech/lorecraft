@@ -918,6 +918,35 @@ with `flags.combat_cover: light|partial|heavy`, or use `flags.combat_cover_defen
 numeric override. This is intentionally not a positioning system: no range bands, formations, or
 cover actions are added.
 
+Sprint 88.3 adds opt-in combo hooks for data-authored opposed-attack actions. An action can
+`grants` a short encounter-scoped combo key after selected outcomes, and another action can
+`consumes` that key for temporary accuracy and damage bonuses. The active key is stored on the
+actor's combat participant contribution as `combo_ready`, so it ends with the encounter and stays
+out of permanent player state. Resolution traces include `combo_ready_before`, `combo_consumed`,
+`combo_granted`, `combo_accuracy_bonus`, `combo_damage_multiplier`, and `combo_ready_after`.
+
+```yaml
+version: 1
+actions:
+  - id: setup_slash
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing: { windup: 0.25, recovery: 2.0 }
+    combo:
+      grants: opening
+      grant_outcomes: [hit, strong_hit]
+  - id: finishing_thrust
+    action_range: engaged
+    calculator: opposed_attack
+    resolver: opposed_attack
+    timing: { windup: 0.35, recovery: 2.4 }
+    combo:
+      consumes: opening
+      accuracy_bonus: 5.0
+      damage_multiplier: 1.5
+```
+
 The initial player-facing commands are `attack <npc>`, `shoot <npc>`, `defend`, and `flee`.
 They use the primary action channel only; during recovery a player may queue one replacement
 primary action. Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC

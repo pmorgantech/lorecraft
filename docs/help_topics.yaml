@@ -138,6 +138,10 @@ topics:
     explicit room cover for stronger protection. This is automatic; players do
     not manage cover positions.
 
+    Some authored combat actions may set up a follow-up combo state or consume
+    one for a temporary accuracy or damage bonus. Combo hooks are action-defined
+    and automatic; there is no separate combo command.
+
     Lorecraft does not use player formations or near/far positioning bands.
     Ranged attacks are tracked as ranged, but you do not manage distance steps.
     Guarding can intercept melee attacks but does not intercept ranged shots.

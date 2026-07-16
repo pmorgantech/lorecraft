@@ -64,6 +64,43 @@ class CombatActionTiming(BaseModel):
         return value
 
 
+class CombatActionCombo(BaseModel):
+    consumes: str | None = None
+    grants: str | None = None
+    grant_outcomes: list[str] = Field(default_factory=lambda: ["hit", "strong_hit"])
+    accuracy_bonus: float = 0.0
+    damage_multiplier: float = Field(default=1.0, gt=0)
+
+    @field_validator("consumes", "grants")
+    @classmethod
+    def _optional_key_non_empty(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("combat combo keys must be non-empty")
+        return value
+
+    @field_validator("grant_outcomes")
+    @classmethod
+    def _grant_outcomes_non_empty(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("combat combo grant_outcomes must be non-empty")
+        if any(not outcome.strip() for outcome in value):
+            raise ValueError("combat combo grant_outcomes must be non-empty strings")
+        return value
+
+    @field_validator("accuracy_bonus", "damage_multiplier")
+    @classmethod
+    def _combo_numbers_finite(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("combat combo bonuses must be finite")
+        return value
+
+    @model_validator(mode="after")
+    def _has_combo_effect(self) -> CombatActionCombo:
+        if self.consumes is None and self.grants is None:
+            raise ValueError("combat combo must consume or grant a combo key")
+        return self
+
+
 class CombatActionDef(BaseModel):
     id: str
     channel: str = ACTION_CHANNEL_PRIMARY
@@ -75,6 +112,7 @@ class CombatActionDef(BaseModel):
     timing: CombatActionTiming
     stamina_delta: float | None = None
     tags: list[str] = Field(default_factory=list)
+    combo: CombatActionCombo | None = None
 
     @field_validator(
         "id", "channel", "ruleset_id", "calculator", "resolver", "resolver_version"

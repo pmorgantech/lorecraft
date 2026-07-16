@@ -49,6 +49,7 @@ from lorecraft.features.combat.definitions import (
     RESOLVER_DEFEND,
     RESOLVER_FLEE,
     RESOLVER_OPPOSED_ATTACK,
+    CombatActionCombo,
     CombatActionDef,
     get_action_registry,
 )
@@ -973,6 +974,11 @@ class CombatService:
                 defense_bonus=target_snapshot.defense_bonus + environment.bonus,
             )
         actor_snapshot = self._snapshot(session, actor)
+        actor_snapshot, combo_trace, consumed_combo = self._apply_combo_attack_bonus(
+            actor_snapshot,
+            actor,
+            action_def.combo,
+        )
         actor_snapshot = replace(
             actor_snapshot,
             damage_multiplier=(
@@ -1002,10 +1008,36 @@ class CombatService:
                 **(resolution.random_trace or {}),
                 "ruleset_id": action_def.ruleset_id,
                 "resolver_version": action_def.resolver_version,
+                **combo_trace,
                 **environment.trace,
                 **ruleset_trace,
             },
         )
+        granted_combo = self._apply_combo_result(
+            actor,
+            action_def.combo,
+            outcome=resolution.outcome,
+            consumed_combo=consumed_combo,
+        )
+        if granted_combo is not None:
+            resolution = replace(
+                resolution,
+                random_trace={
+                    **(resolution.random_trace or {}),
+                    "combo_granted": granted_combo,
+                    "combo_ready_after": granted_combo,
+                },
+            )
+        elif consumed_combo is not None:
+            resolution = replace(
+                resolution,
+                random_trace={
+                    **(resolution.random_trace or {}),
+                    "combo_ready_after": None,
+                },
+            )
+        if consumed_combo is not None or granted_combo is not None:
+            repo.add(actor)
         if auto_reaction:
             resolution = replace(
                 resolution,
@@ -1041,6 +1073,58 @@ class CombatService:
             random_trace=random_trace,
             damage_trace=damage_trace,
         )
+
+    def _apply_combo_attack_bonus(
+        self,
+        actor_snapshot: CombatantSnapshot,
+        actor: CombatParticipant,
+        combo: CombatActionCombo | None,
+    ) -> tuple[CombatantSnapshot, JsonObject, str | None]:
+        current_combo = actor.contribution.get("combo_ready")
+        combo_ready = current_combo if isinstance(current_combo, str) else None
+        trace: JsonObject = {
+            "combo_ready_before": combo_ready,
+            "combo_consumed": None,
+            "combo_granted": None,
+            "combo_accuracy_bonus": 0.0,
+            "combo_damage_multiplier": 1.0,
+        }
+        if combo is None or combo.consumes is None or combo_ready != combo.consumes:
+            return actor_snapshot, trace, None
+        trace["combo_consumed"] = combo.consumes
+        trace["combo_accuracy_bonus"] = combo.accuracy_bonus
+        trace["combo_damage_multiplier"] = combo.damage_multiplier
+        return (
+            replace(
+                actor_snapshot,
+                attack_bonus=actor_snapshot.attack_bonus + combo.accuracy_bonus,
+                damage_multiplier=actor_snapshot.damage_multiplier
+                * combo.damage_multiplier,
+            ),
+            trace,
+            combo.consumes,
+        )
+
+    def _apply_combo_result(
+        self,
+        actor: CombatParticipant,
+        combo: CombatActionCombo | None,
+        *,
+        outcome: str,
+        consumed_combo: str | None,
+    ) -> str | None:
+        if combo is None:
+            return None
+        contribution = dict(actor.contribution)
+        if consumed_combo is not None:
+            contribution.pop("combo_ready", None)
+        granted_combo: str | None = None
+        if combo.grants is not None and outcome in combo.grant_outcomes:
+            contribution["combo_ready"] = combo.grants
+            granted_combo = combo.grants
+        if consumed_combo is not None or granted_combo is not None:
+            actor.contribution = contribution
+        return granted_combo
 
     def _record_resolution(
         self,

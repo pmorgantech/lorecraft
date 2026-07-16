@@ -95,6 +95,10 @@ targets a little harder to hit, and builders can author explicit light/partial/h
 room. You do not spend actions to enter cover or track positions; the room environment is applied
 automatically when an attack resolves.
 
+Some authored actions can create a follow-up opening, then another authored action can consume
+that opening for a temporary accuracy or damage bonus. You do not manage a separate combo meter;
+if an action supports a combo hook, the combat feed and admin traces record the result.
+
 ## Reading The Browser Combat Feed
 
 Combat output appears in two forms:

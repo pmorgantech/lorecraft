@@ -11,7 +11,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-16, v0.143.0; Sprints 1–87, 89–91 implemented; Sprint 88 active)
+## Where things stand (2026-07-16, v0.144.0; Sprints 1–87, 89–91 implemented; Sprint 88 active)
 
 `roadmap.md` now tracks remaining work only. The full task-level history for completed Sprints
 1–87 and the 2026-07-16 admin/tooling/body-view tranche lives in
@@ -138,7 +138,8 @@ explicitly out of the active roadmap.
   payloads; no stat penalties yet.
 - [x] 88.2 Terrain & cover as narrow defense modifiers — v0.143.0 applies room terrain/cover as
   target defense-score bonuses and records the contribution in combat traces.
-- [ ] 88.3 Combo systems — only if data-authored actions need follow-up hooks
+- [x] 88.3 Combo systems — v0.144.0 adds opt-in data-authored follow-up hooks that grant or
+  consume an encounter-scoped combo key for temporary accuracy/damage bonuses.
 - [ ] 88.4 Simultaneous-planning encounter mode (optional, arena/boss) — alternate combat_mode
 - [ ] 88.5 Mounted / siege combat — content-specific, not general-purpose formations
 

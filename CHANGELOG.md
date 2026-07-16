@@ -4,6 +4,20 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.144.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 88.3 data-authored combat combo hooks. Opposed-attack actions
+  can now grant or consume encounter-scoped combo keys for temporary accuracy
+  and damage bonuses, with before/after state and applied values recorded in
+  combat traces.
+
+### Changed
+
+- Updated combat docs, in-game help, the player guide, admin/builder guide,
+  and roadmap for combo authoring and player-facing behavior.
+
 ## [0.143.0] - 2026-07-16
 
 ### Added
