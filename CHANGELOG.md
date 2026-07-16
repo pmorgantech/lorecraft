@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.133.0] - 2026-07-16
+
+### Added
+
+- Added filtered audit export from the admin API and Audit tab, with JSON and
+  CSV formats sharing the same actor, room, event type, severity, source, target,
+  time range, and limit filters as the on-screen audit search.
+
 ## [0.132.0] - 2026-07-16
 
 ### Added

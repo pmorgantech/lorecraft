@@ -497,6 +497,57 @@ async def _test_audit_facets() -> None:
     assert {"value": "command_executed", "count": 1} in data["event_types"]
 
 
+def test_audit_export_json_honors_filters() -> None:
+    anyio.run(_test_audit_export_json)
+
+
+async def _test_audit_export_json() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    with Session(audit_engine) as session:
+        session.add(
+            AuditEvent(
+                transaction_id="txn-export",
+                correlation_id="corr-export",
+                actor_id="player-1",
+                event_type="admin_action",
+                source_type="admin",
+                room_id="",
+                game_time=0.0,
+                real_time=time.time(),
+                severity="WARNING",
+                summary="Admin action exported",
+            )
+        )
+        session.add(
+            AuditEvent(
+                transaction_id="txn-export-other",
+                correlation_id="corr-export-other",
+                actor_id="player-2",
+                event_type="command_executed",
+                source_type="player",
+                room_id="village_square",
+                game_time=0.0,
+                real_time=time.time(),
+                severity="INFO",
+                summary="Command executed: look",
+            )
+        )
+        session.commit()
+    async with _lifespan(app):
+        status, body = await _http(
+            app,
+            "GET",
+            "/admin/audit/export?format=json&event_type=admin_action",
+            token=token,
+        )
+    assert status == 200
+    assert [row["summary"] for row in body] == ["Admin action exported"]
+
+
 def test_system_health_and_scheduler_endpoints() -> None:
     anyio.run(_test_system_health_and_scheduler)
 

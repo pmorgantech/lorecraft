@@ -359,6 +359,7 @@
           <div><label style="color:var(--text-dim);font-size:0.75rem;">LIMIT</label><input id="f-limit" value="100" style="width:70px;" /></div>
           <button onclick="loadAudit()">Search</button>
           <button onclick="loadAudit()" title="Refresh">↻ Refresh</button>
+          <button onclick="exportAuditCsv()">Export CSV</button>
           <label style="display:flex;align-items:center;gap:0.3rem;color:var(--text-dim);font-size:0.75rem;white-space:nowrap;" title="Automatically refresh as players act">
             <input type="checkbox" id="f-live" checked style="width:auto;" /> Live
           </label>
@@ -1446,19 +1447,7 @@ function scheduleAuditRefresh() {
 
 async function loadAudit() {
   await ensureAuditFacets();
-  const params = new URLSearchParams();
-  const actor = document.getElementById("f-actor").value.trim();
-  const room  = document.getElementById("f-room").value.trim();
-  const etype = document.getElementById("f-type").value.trim();
-  const severity = document.getElementById("f-severity").value;
-  const source = document.getElementById("f-source").value;
-  const limit = document.getElementById("f-limit").value.trim();
-  if (actor) params.set("actor", actor);
-  if (room)  params.set("room",  room);
-  if (etype) params.set("event_type", etype);
-  if (severity) params.set("severity", severity);
-  if (source) params.set("source_type", source);
-  if (limit) params.set("limit", limit);
+  const params = auditFilterParams();
   const qs = params.size ? "?" + params : "";
   const events = await api("GET", `/admin/audit${qs}`);
   const tbody = document.getElementById("audit-tbody");
@@ -1477,6 +1466,43 @@ async function loadAudit() {
       <td>${esc(e.summary)}</td>`;
     tbody.appendChild(tr);
   }
+}
+
+function auditFilterParams() {
+  const params = new URLSearchParams();
+  const actor = document.getElementById("f-actor").value.trim();
+  const room  = document.getElementById("f-room").value.trim();
+  const etype = document.getElementById("f-type").value.trim();
+  const severity = document.getElementById("f-severity").value;
+  const source = document.getElementById("f-source").value;
+  const limit = document.getElementById("f-limit").value.trim();
+  if (actor) params.set("actor", actor);
+  if (room)  params.set("room",  room);
+  if (etype) params.set("event_type", etype);
+  if (severity) params.set("severity", severity);
+  if (source) params.set("source_type", source);
+  if (limit) params.set("limit", limit);
+  return params;
+}
+
+async function exportAuditCsv() {
+  const params = auditFilterParams();
+  params.set("format", "csv");
+  const headers = state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {};
+  const resp = await fetch(`/admin/audit/export?${params}`, { headers });
+  if (!resp.ok) {
+    showError("Audit export failed.");
+    return;
+  }
+  const blob = await resp.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "audit-export.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 let _auditFacetsReady = false;
