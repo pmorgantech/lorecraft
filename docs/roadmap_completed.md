@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-16, through v0.134.0).** The active, forward-looking
+> **Historical record (last extended 2026-07-16, through v0.135.1).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,14 +9,28 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, **70–84**, and the **2026-07-16 admin
-> UI/tooling tranche**. Layout note: recent completions are
+> cycles, context-attached commands), **56–69**, **70–84**, **85–87 combat**, and the
+> **2026-07-16 admin UI/tooling tranche**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
 >
 > **Not here:** 37.1 (scheduler-commit batching) + 38 (concurrency gate) were deferred to
 > [`wishlist.md`](wishlist.md), not completed; Combat/PvP (former 61–64) likewise set aside there.
 > Do not plan against this file; append newly-completed sprints here as they close.
+
+---
+
+## Sprints 85–87 — Scheduled Intent Combat foundation, tactics, and content power
+
+**Goal:** restore combat from the wishlist into active development as a supporting system, built
+inside `features/combat/` with Scheduled Intent rather than tick-spam combat. These sprints stop
+before speculative advanced depth; Sprint 88 remains deferred pending playtesting evidence.
+
+| # | Task | Status |
+|---|------|--------|
+| 85 | **Combat Phase 1: Foundation.** Encounter aggregate, participant relationships, action submission/resolution pipeline, primary-channel queued action, attack/defend/flee, HP/stamina meters, immutable resolution records, audit-ready events, browser combat state, and NPC counter-intent stub. | [x] v0.109.0 — Scheduled Intent combat foundation shipped with `features/combat/`, scheduler-backed resolution, `CombatResolutionRecord` traces, defeat/downed policy, active-combat cleanup, and structured browser state updates. |
+| 86 | **Combat Phase 2: Tactical Depth.** Stances, guarding, bounded reactions, wind-up interruption, combat status effects, ranged semantics, threat cues, NPC roles, and party assistance metadata. | [x] v0.117.0 — Tactical layer shipped without formations or persistent distance bands; `assist <player>` joins local encounters on the same side and records participation metadata. |
+| 87 | **Combat Phase 3: Content Power.** Data-authored actions, equipment combat descriptors, effect hooks, boss phase resolvers, faction/reputation consequences, resolver/ruleset versioning, simulation reports, live-tunable rulesets, and player-facing combat help/tutorial docs. | [x] v0.126.0 — Combat content and tuning surfaces shipped, including `world_content/combat_actions.yaml`, `python -m lorecraft.tools.combat_balance`, admin combat ruleset tuning, and expanded `help combat` / tutorial docs. |
 
 ---
 

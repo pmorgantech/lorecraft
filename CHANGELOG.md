@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.135.1] - 2026-07-16
+
+### Changed
+
+- Archived completed Scheduled Intent combat Sprints 85-87 into
+  `roadmap_completed.md` and left only the deferred Sprint 88 advanced combat
+  bucket in the active roadmap.
+
 ## [0.135.0] - 2026-07-16
 
 ### Added

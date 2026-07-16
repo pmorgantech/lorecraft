@@ -11,12 +11,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-15, v0.126.0 on combat; Sprints 1–87 implemented; Sprint 88 deferred pending playtesting)
+## Where things stand (2026-07-16, v0.135.1; Sprints 1–87 and 89 implemented; Sprint 88 deferred pending playtesting)
 
-**Everything through Sprint 87 is implemented in the combat branch line** (currently v0.126.0).
-`roadmap.md` now tracks remaining work only; the full task-level history for completed Sprints 1–84 lives in
-[`roadmap_completed.md`](roadmap_completed.md), Sprint 85 is summarized below for review, and
-release-level detail is in
+`roadmap.md` now tracks remaining work only. The full task-level history for completed Sprints
+1–87 and the 2026-07-16 admin/tooling tranche lives in
+[`roadmap_completed.md`](roadmap_completed.md), and release-level detail is in
 [`../CHANGELOG.md`](../CHANGELOG.md).
 
 The latest completed band is archived as Sprints 77–80: the Discipline/Ability replacement for the
@@ -104,11 +103,11 @@ new work.
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used (complete):** 1–85, except for deliberately skipped/deferred numbers below. Full task
+- **Used (complete):** 1–87 and 89, except for deliberately skipped/deferred numbers below. Full task
   detail lives in [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
   (concurrency/threading gate), and 65 (multiplayer trade/transit test pass).
-- **Newly active (2026-07-14):** 86–88 (combat phases 2–4, Scheduled Intent).
+- **Deferred pending playtesting evidence:** 88 (Combat Phase 4 advanced-depth bucket).
 - **Completed and archived (2026-07-16):** 89 (Admin NPC/AI read-only runtime endpoint).
 - **Newly active (2026-07-16):** 90 (Admin observation routing for live session viewer).
 - **Next genuinely free sprint number:** 91. Do not recycle a number that appears here, in
@@ -116,191 +115,12 @@ new work.
 
 ---
 
-## Sprints 85–88 — Combat (Scheduled Intent)
+## Combat (Scheduled Intent)
 
-Combat is now **active** (no longer set-aside). See [`combat_design.md`](combat_design.md) for
-the full design. Built as `features/combat/`, all opinion/data in Tier 2; no Tier 1 edits
-needed beyond what exists.
-
-### Sprint 85 — Combat Phase 1: Foundation (Scheduled Intent core) `[x]`
-
-**Goal:** A player can attack/defend/flee a static NPC through the full intent pipeline; one
-primary channel; encounter graph; downed/defeat; structured events + audit; browser state.
-
-**Depends on:** SchedulerService, EventBus, rules engine, transaction/UoW, MeterService,
-modifier resolver, seeded rng + skill_check, ItemLocationService, audit. All shipped.
-
-**Tier:** Tier 2 (all features/combat/).
-
-- [x] 85.1 Encounter aggregate (CombatEncounter/Participant/Relationship) — multiple sides, start/end rules
-- [x] 85.2 Action submission pipeline (Txn A) — validate, persist, emit started, schedule resolve
-- [x] 85.3 Action resolution pipeline (Txn B) — re-validate, calculate, apply atomically, emit events
-- [x] 85.4 Primary-channel readiness + one queued action — derived readiness, single replaceable queue
-- [x] 85.5 Basic attack/defend/flee — opposed margin, staged damage stack, hybrid armor
-- [x] 85.6 Health + stamina via MeterService; downed/defeat states
-- [x] 85.7 Immutable CombatResolution object — resolver/snapshot boundary
-- [x] 85.8 Structured events + audit resolution record + engaged/unengaged position
-- [x] 85.9 Basic browser combat state over WebSocket — structured updates + prose with sequence numbers
-- [x] 85.10 NPC utility-selection stub — single primary action, same intent pipeline as players
-
-Initial implementation note (v0.106.0): `features/combat/` now owns the Scheduled Intent
-aggregate, `attack`/`defend`/`flee`, scheduled `combat.resolve_action` jobs, HP/stamina meter
-application, immutable `CombatResolution`, one replaceable primary action queue, and an NPC
-counter-intent stub. Remaining Phase 1 work is to deepen the damage stack/armor model, persist
-full audit-resolution rows, and add richer browser combat feed/state resync behavior.
-
-Follow-up implementation note: the basic damage layer now derives weapon and armor profiles from
-equipped item descriptors, applies a staged damage stack (base damage → outcome multiplier →
-flat block adjusted by penetration → resistance factor), and persists a `CombatResolutionRecord`
-with random and damage traces per resolved action. Remaining 85.8 work is richer structured
-event/audit integration beyond the feature-owned resolution record.
-
-Sprint 85 completion note (v0.109.0): combat defeat policy now distinguishes default player
-`downed` from NPC `defeated`, clears player active-combat pointers, cancels a downed/escaped/
-defeated participant's queued primary action, and derives explicit `engaged`/`unengaged`
-participant positions from active relationship edges. Scheduled resolutions persist richer
-`CombatResolutionRecord` payloads, emit audit-ready structured events with resolution record
-ids and traces, and write `AuditEvent` rows when the scheduler is wired with an audit engine.
-Browser-state updates now include inactive participants so downed/defeated/escaped outcomes
-remain visible in structured combat state. Sprint 86 added tactical depth without introducing a
-formation system.
-
-### Sprint 86 — Combat Phase 2: Tactical Depth
-
-**Goal:** Stances, guarding, bounded reactions, wind-up interruption, simple ranged/vantage
-attack semantics, basic status effects, threat/NPC roles, and party assistance metadata.
-
-**Depends on:** Sprint 85; engine timed-effects service hook coverage verification (86.5).
-
-**Tier:** Tier 2 (all features/combat/).
-
-- [x] 86.1 Stances (balanced/aggressive/defensive/mobile) + persistent policies
-- [x] 86.2 Guarding + protect-ally + intercept edges
-- [x] 86.3 Bounded reactions (single window, no recursion) + reaction policy
-- [x] 86.4 Wind-up interruption — resolution-time interrupt outcome
-- [x] 86.5 Status-effect lifecycle + hooks — game-time deadlines, hook coverage verification (Tier 1 if missing)
-- [x] 86.6 Simple ranged/vantage semantics + explicit range traces
-- [x] 86.7 Decaying-attention threat + NPC personality roles — qualitative cues only
-- [x] 86.8 Party assistance contract metadata — assistance counts as participation
-
-Sprint 86 progress note (v0.110.0): players can use `stance <balanced|aggressive|defensive|mobile>`
-while in combat. The stance is persisted on the combat participant, appears in structured combat
-state, feeds immutable resolver snapshots, and contributes modest Tier 2 policy trade-offs for
-attack bonus, defense bonus, damage multiplier, and flee stamina cost. Resolution records and
-structured event payloads include actor/target stance traces for audit and future explanation UI.
-
-Guarding note (v0.111.0): `guard [ally]` is now distinct from `defend`. It queues a defensive
-primary action and persists a supportive `guarding` relationship edge from guardian to protected
-participant. During resolution, an active same-side guardian can intercept an attack against the
-protected participant; the effective target becomes the guardian, while random/damage traces retain
-the original target and interceptor ids.
-
-Reaction note (v0.112.0): participants now persist a `reaction_policy` (`defensive`, `conserve`,
-or `never`) plus reaction readiness bookkeeping. Basic attacks consult the effective target's
-policy once at resolution time and may apply a bounded auto-brace without scheduling a nested
-reaction action. Consumed reactions update `reaction_ready_at` and `last_reaction_action_id`; traces
-record the policy, participant, and whether the reaction fired.
-
-Interruption note (v0.113.0): a pending wind-up action whose actor is no longer active now resolves
-as an explicit `interrupted` outcome with a `CombatResolutionRecord`, structured payload, audit
-payload, and interrupt reason trace instead of silently becoming a cancelled job with no resolution
-artifact.
-
-Status-effect note (v0.114.0): combat now registers feature-owned status effects on the existing
-engine `ActiveEffect` lifecycle. Strong hits can apply non-stacking `combat.off_balance` with a
-game-time expiry, source metadata, tags, potency, and structured `effect_changes`; resolver
-snapshots read active combat effects for defense modifiers and traces. The existing `EffectService`
-expiry sweep removes the effect on `TIME_ADVANCED`, so no Tier 1 hook changes were needed.
-
-Range note (v0.115.0): the planned near/far/formation mechanic was deliberately narrowed. Combat
-now supports a `shoot`/`fire` ranged intent that records `action_range: "ranged"` through action
-payloads, resolution records, damage traces, and audit-ready random traces. Ranged attacks do not
-use guarding interception, which gives authored content room for bows, snipers, and tower guards
-without adding player formation state, advance/retreat verbs, or persistent distance bands.
-
-Threat note (v0.116.0): combat now stores qualitative attention on participants when they take
-damage. Threat entries decay on update/read, expose `aware`/`watching`/`focused` cues in structured
-combat state, and include `threat_changes` in resolution payloads. NPC combat roles come from
-`NPC.ai.combat_role` when authored, falling back to the existing `NPC.behavior`; NPC counter-intents
-can prefer the highest active threat without introducing a larger AI planner.
-
-Sprint 86 completion note (v0.117.0): `assist <player>` lets a player join another local player's
-active encounter on the same side, creates supportive and hostile relationship edges, and records
-`party_assist` contract metadata in participant contribution so assistance counts as participation
-for later reward/audit policy. Duel contracts remain structured metadata only here; full opt-in PvP
-duel consent and stakes are deferred to later combat/PvP work.
-
-### Sprint 87 — Combat Phase 3: Content Power
-
-**Goal:** Data-authored actions, equipment traits, more effect hooks, boss phases,
-crime/faction consequences, versioning, simulation harness, live-tunable config, and player-facing
-combat teaching material.
-
-**Depends on:** Sprints 85–86; features/equipment + features/traits (shipped).
-
-**Tier:** Tier 2 (all features/combat/).
-
-- [x] 87.1 Data-driven action definitions (YAML) + registered calculators/resolvers
-- [x] 87.2 Equipment traits + weapon/armor as effect descriptors
-- [x] 87.3 Extended effect hooks (on_damage_received/on_movement/on_action_admission)
-- [x] 87.4 Boss scripted phases overriding utility AI — registered Python resolver by id
-- [x] 87.5 Crime + faction consequences via rule obligations
-- [x] 87.6 Ruleset/resolver versioning + random-trace persistence
-- [x] 87.7 Simulation & balancing harness + reports — headless runs for balance analysis
-- [x] 87.8 Live-tunable ruleset config (WorldClock pattern) — DB-backed, admin endpoint
-- [x] 87.9 Combat tutorial/help completion — expand docs, in-game help, and browser guidance
-
-Sprint 87.1 completion note (v0.118.0): `world_content/combat_actions.yaml` now authors the core
-combat action ids, primary-channel timing, broad action range (`self`/`engaged`/`ranged`),
-stamina delta where applicable, tags, and registered calculator/resolver ids. The combat service
-loads those definitions at startup with built-in fallback for missing/malformed content. This
-intentionally avoids formation state, persistent near/far bands, and inline combat scripts.
-
-Sprint 87.2 completion note (v0.119.0): equipped item `effects` now support explicit
-`weapon_profile` and `armor_profile` descriptors, while old category/slot/weight/quality heuristics
-remain fallback behavior for existing content. Damage traces include descriptor sources and tags.
-Startup now logs when combat action YAML is missing and `world_cli validate` warns on missing
-combat actions or fails malformed/unknown resolver content.
-
-Sprint 87.3 completion note (v0.120.0): combat active effects can register narrow Tier 2 hooks for
-`on_action_admission`, `on_damage_received`, and `on_movement`. Hook payloads are recorded in
-action random traces and resolution `effect_changes`; hooks are Python registrations by effect key,
-not inline YAML scripts or a general behavior planner.
-
-Sprint 87.4 completion note (v0.121.0): NPCs may opt into a registered boss phase resolver through
-`NPC.ai.combat_phase_resolver`. The resolver can choose a counter-intent action, target, phase id,
-and trace payload at the existing NPC response decision point. This is a narrow override hook for
-authored boss encounters, not a new general-purpose behavior tree.
-
-Sprint 87.5 completion note (v0.122.0): NPCs may author narrow combat consequence obligations under
-`NPC.ai.combat_consequences`. The first supported obligation applies reputation deltas when a player
-damages that NPC, such as reducing standing with a guard faction, and records the applied obligation
-in `CombatResolutionRecord.payload.consequence_changes`. This is not a full crime/law subsystem; it
-is a content-authored bridge from combat outcomes into existing reputation/faction mechanics.
-
-Sprint 87.6 completion note (v0.123.0): data-authored combat actions now carry explicit
-`ruleset_id` and `resolver_version` fields. Resolved actions persist those values on
-`CombatResolutionRecord`, action outcomes, random traces, and scheduler audit payloads so future
-balance reports can group historical outcomes by the exact content/resolver version that produced
-them.
-
-Sprint 87.7 completion note (v0.124.0): `features/combat/simulation.py` now provides a deterministic
-headless balance report for repeated one-action resolver runs, and
-`python -m lorecraft.tools.combat_balance` exposes it as a JSON CLI. Reports include outcome counts,
-damage min/max/average, hit rate, one-shot defeat rate, and the action's ruleset/resolver version.
-The harness is intentionally DB-free and does not add a live-server combat bot or AI planner.
-
-Sprint 87.8 completion note (v0.125.0): `CombatRulesetConfig` now stores live DB-backed balance
-dials per action `ruleset_id`: `damage_multiplier` and `stamina_cost_multiplier`. Combat resolution
-reads that row fresh for each scheduled action, records the applied multipliers in random/damage
-traces, and admin endpoints `GET /admin/combat/rulesets` plus
-`POST /admin/combat/rulesets/{ruleset_id}` allow superadmins to retune without restart or reseed.
-
-Sprint 87 completion note (v0.126.0): player-facing combat documentation now includes the expanded
-`docs/combat_tutorial.md`, the `docs/user_guide.md` combat section, and the in-game `help combat`
-topic. The docs explain scheduled intent, browser combat prose/state, queued action replacement,
-stances/reactions, guard/ranged expectations, downed vs defeated outcomes, and explicitly call out
-that player formations and near/far distance-band management are not part of the current model.
+Sprints 85–87 are complete and archived in
+[`roadmap_completed.md`](roadmap_completed.md#sprints-8587--scheduled-intent-combat-foundation-tactics-and-content-power).
+Combat remains built as `features/combat/`, with opinion/data in Tier 2. The only combat work still
+listed here is the deliberately deferred Sprint 88 advanced-depth bucket below.
 
 ### Sprint 88 — Combat Phase 4: Advanced (defer until justified by playtesting)
 
