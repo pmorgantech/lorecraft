@@ -910,6 +910,14 @@ row with target, body location, severity, damage, status, and HP transition meta
 included in combat resolution/audit payloads and visible from the admin Combat tab, but they do not
 apply stat penalties yet.
 
+Sprint 88.2 adds narrow terrain/cover defense modifiers. The combat resolver reads the encounter
+room at resolution time, adds a small target defense bonus for `forest`, `mountain`, or `swamp`
+terrain, and records the applied values in `random_trace` (`terrain_defense_bonus`,
+`cover_defense_bonus`, `environment_defense_bonus`). Builders can opt a room into explicit cover
+with `flags.combat_cover: light|partial|heavy`, or use `flags.combat_cover_defense_bonus` for a
+numeric override. This is intentionally not a positioning system: no range bands, formations, or
+cover actions are added.
+
 The initial player-facing commands are `attack <npc>`, `shoot <npc>`, `defend`, and `flee`.
 They use the primary action channel only; during recovery a player may queue one replacement
 primary action. Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC

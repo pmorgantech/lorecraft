@@ -207,6 +207,12 @@ margin = attack_score - defense_score
   large-pos → strong hit | exceptional → critical
 ```
 
+Implemented Sprint 88.2 keeps cover deliberately narrow: the resolver reads the encounter room and
+adds only a target defense-score bonus. Default terrain bonuses apply to `forest`, `mountain`, and
+`swamp`; authored cover comes from room flags (`combat_cover` or `combat_cover_defense_bonus`).
+The resolution trace records the terrain, cover, and total environment bonus for audit/admin
+inspection. This is not a range-band, formation, facing, or movement-position system.
+
 Randomness: bounded/bell-shaped (`rng.randint(-10,10)+rng.randint(-10,10)`), through seeded
 `ctx.rng` only. Damage via a **staged modifier stack** (base additions → multiplicative →
 mitigation → post-mitigation → clamp), each modifier **naming its source** (auditability).

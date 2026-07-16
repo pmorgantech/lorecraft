@@ -591,6 +591,9 @@ action is interrupted instead of taking effect. Some strong hits can apply short
 status effects that expire on game time. NPC attention is tracked as broad cues, so enemies may
 keep pressure on the participant who has drawn the most notice. Assisting another player joins
 their active encounter and marks you as a participant for later rewards and audit history.
+Room terrain and authored cover can also help the defender: dense forest, mountain paths, swampy
+ground, or explicit cover in a room can raise the target's defense score. This is ambient and
+automatic; you do not choose cover positions or manage range bands.
 
 In the browser, combat appears as prose in the feed plus structured state updates used to keep
 participants, statuses, stances, attention cues, and recent outcomes current. A committed action

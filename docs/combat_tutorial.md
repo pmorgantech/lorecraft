@@ -90,6 +90,11 @@ Ranged combat is intentionally simple. Lorecraft does not ask you to manage form
 bands, or advance/retreat positioning. A shot records that it was ranged and can support bows,
 crossbows, tower guards, or sniper-like authored encounters later.
 
+Terrain and cover are also simple. Some rooms, such as forests, mountain paths, and swamps, make
+targets a little harder to hit, and builders can author explicit light/partial/heavy cover on a
+room. You do not spend actions to enter cover or track positions; the room environment is applied
+automatically when an attack resolves.
+
 ## Reading The Browser Combat Feed
 
 Combat output appears in two forms:

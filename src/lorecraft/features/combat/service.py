@@ -21,7 +21,7 @@ from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.models.player import Player, PlayerStats
 from lorecraft.engine.models.scheduler import ScheduledJob
-from lorecraft.engine.models.world import Item, NPC
+from lorecraft.engine.models.world import Item, NPC, Room
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.meter_repo import MeterRepo
 from lorecraft.engine.repos.scheduler_repo import SchedulerRepo
@@ -57,6 +57,7 @@ from lorecraft.features.combat.effects import (
     WEAKENED,
     register_combat_effects,
 )
+from lorecraft.features.combat.environment import environmental_defense_for
 from lorecraft.features.combat.effect_hooks import (
     ActionAdmissionContext,
     DamageReceivedContext,
@@ -962,6 +963,15 @@ class CombatService:
         defended = explicit_defend or interceptor is not None or auto_reaction_used
         original_target_snapshot = self._snapshot(session, original_target)
         target_snapshot = self._snapshot(session, target)
+        encounter = repo.encounter(action.encounter_id)
+        environment = environmental_defense_for(
+            session.get(Room, encounter.location_id) if encounter is not None else None
+        )
+        if environment.bonus:
+            target_snapshot = replace(
+                target_snapshot,
+                defense_bonus=target_snapshot.defense_bonus + environment.bonus,
+            )
         actor_snapshot = self._snapshot(session, actor)
         actor_snapshot = replace(
             actor_snapshot,
@@ -992,6 +1002,7 @@ class CombatService:
                 **(resolution.random_trace or {}),
                 "ruleset_id": action_def.ruleset_id,
                 "resolver_version": action_def.resolver_version,
+                **environment.trace,
                 **ruleset_trace,
             },
         )

@@ -11,7 +11,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-16, v0.142.1; Sprints 1–87, 89–91 implemented; Sprint 88 active)
+## Where things stand (2026-07-16, v0.143.0; Sprints 1–87, 89–91 implemented; Sprint 88 active)
 
 `roadmap.md` now tracks remaining work only. The full task-level history for completed Sprints
 1–87 and the 2026-07-16 admin/tooling/body-view tranche lives in
@@ -136,7 +136,8 @@ explicitly out of the active roadmap.
 - [x] 88.1 Wounds + body locations — persist after health recovery. v0.136.0 records active
   `CombatWound` rows for positive combat damage and includes wound metadata in resolution/audit
   payloads; no stat penalties yet.
-- [ ] 88.2 Terrain & cover as narrow defense modifiers — only if authored encounters need it
+- [x] 88.2 Terrain & cover as narrow defense modifiers — v0.143.0 applies room terrain/cover as
+  target defense-score bonuses and records the contribution in combat traces.
 - [ ] 88.3 Combo systems — only if data-authored actions need follow-up hooks
 - [ ] 88.4 Simultaneous-planning encounter mode (optional, arena/boss) — alternate combat_mode
 - [ ] 88.5 Mounted / siege combat — content-specific, not general-purpose formations

@@ -133,6 +133,11 @@ topics:
     participants, statuses, stances, attention cues, and recent outcomes. Downed,
     defeated, and escaped participants may stay visible so the result is clear.
 
+    Room terrain and authored cover can make targets harder to hit. Forest,
+    mountain, and swamp rooms add small defensive friction, and builders can add
+    explicit room cover for stronger protection. This is automatic; players do
+    not manage cover positions.
+
     Lorecraft does not use player formations or near/far positioning bands.
     Ranged attacks are tracked as ranged, but you do not manage distance steps.
     Guarding can intercept melee attacks but does not intercept ranged shots.

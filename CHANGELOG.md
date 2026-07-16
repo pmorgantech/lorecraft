@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.143.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 88.2 terrain/cover combat defense modifiers: room terrain and
+  authored cover flags can raise the target's defense score, with applied
+  bonuses recorded in combat traces.
+
+### Changed
+
+- Updated combat docs, in-game help, the player guide, admin/builder guide,
+  and roadmap for terrain/cover combat behavior.
+
 ## [0.142.1] - 2026-07-16
 
 ### Changed

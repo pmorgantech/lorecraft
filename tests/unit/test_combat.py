@@ -304,6 +304,39 @@ def test_combat_resolution_uses_live_ruleset_config() -> None:
         assert stamina.current == 88.0
 
 
+def test_combat_resolution_applies_room_terrain_and_cover_defense() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        ctx.room.terrain = "forest"
+        ctx.room.flags = {"combat_cover": "partial"}
+        session.add(ctx.room)
+        service.attack("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        record = session.exec(select(CombatResolutionRecord)).one()
+
+        assert record.random_trace["terrain"] == "forest"
+        assert record.random_trace["terrain_defense_bonus"] == 2
+        assert record.random_trace["cover"] == "partial"
+        assert record.random_trace["cover_defense_bonus"] == 2
+        assert record.random_trace["environment_defense_bonus"] == 4
+        assert record.random_trace["target_stance_defense_bonus"] == 4
+
+
 def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
     engine, audit_engine = _engine_pair()
     rng = GameRng(seed=7)
