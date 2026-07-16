@@ -219,6 +219,12 @@ key for temporary accuracy and damage bonuses. The key is stored on the actor's
 `CombatParticipant.contribution["combo_ready"]`, not on permanent player state. Resolution traces
 record before/after combo state and the applied bonus values.
 
+Implemented Sprint 88.4 makes simultaneous planning an opt-in encounter mode, not a replacement
+for scheduled intent. An NPC may declare `ai.combat_mode: simultaneous_planning`; the created
+encounter stores that mode, queues the NPC response immediately when the player commits, and gives
+both actions the same resolve time. The normal auto-continue loop is disabled for that mode so
+arena/boss encounters can ask for explicit planning beats.
+
 Randomness: bounded/bell-shaped (`rng.randint(-10,10)+rng.randint(-10,10)`), through seeded
 `ctx.rng` only. Damage via a **staged modifier stack** (base additions → multiplicative →
 mitigation → post-mitigation → clamp), each modifier **naming its source** (auditability).

@@ -544,6 +544,56 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         assert audit_event.payload_json["resolution"]["wound_changes"][0]["wound_id"]
 
 
+def test_simultaneous_planning_mode_queues_npc_response_with_shared_resolution() -> (
+    None
+):
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        goblin = session.get(NPC, "goblin")
+        assert goblin is not None
+        goblin.ai = {"combat_mode": "simultaneous_planning"}
+        goblin.max_hp = 500
+        session.add(goblin)
+
+        service.attack("goblin", ctx)
+        session.commit()
+
+    with Session(engine) as session:
+        encounter = session.exec(select(CombatEncounter)).one()
+        actions = session.exec(
+            select(CombatAction).order_by(CombatAction.actor_type)
+        ).all()
+        npc_action = next(action for action in actions if action.actor_type == "npc")
+        player_action = next(
+            action for action in actions if action.actor_type == "player"
+        )
+
+        assert encounter.combat_mode == "simultaneous_planning"
+        assert npc_action.state == "pending"
+        assert npc_action.resolve_at == player_action.resolve_at
+        assert npc_action.random_trace["simultaneous_planning"] == {
+            "trigger_action_id": player_action.id,
+            "shared_resolve_at": player_action.resolve_at,
+        }
+
+        service.resolve_action(
+            session,
+            player_action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx_meters(engine),
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        actions = session.exec(select(CombatAction)).all()
+
+        assert len(actions) == 2
+
+
 def test_damage_updates_threat_attention_and_combat_state_cues() -> None:
     engine = _engine()
     service = CombatService()

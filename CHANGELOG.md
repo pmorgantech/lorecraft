@@ -4,6 +4,20 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.145.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 88.4 simultaneous-planning encounter mode. Authored NPCs can
+  opt in with `ai.combat_mode: simultaneous_planning`, which queues the NPC
+  response immediately at the player action's shared resolve time.
+
+### Changed
+
+- Disabled the normal combat auto-continue loop for simultaneous-planning
+  encounters and updated combat docs, help, user guide, admin/builder guide,
+  and roadmap for the new opt-in mode.
+
 ## [0.144.0] - 2026-07-16
 
 ### Added

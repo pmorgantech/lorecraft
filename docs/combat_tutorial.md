@@ -99,6 +99,10 @@ Some authored actions can create a follow-up opening, then another authored acti
 that opening for a temporary accuracy or damage bonus. You do not manage a separate combo meter;
 if an action supports a combo hook, the combat feed and admin traces record the result.
 
+Special arena or boss encounters can opt into simultaneous-planning mode. In that mode, the NPC
+queues its response as soon as you commit, and both actions share the same resolve time. You still
+use the normal combat commands; the authored encounter changes timing.
+
 ## Reading The Browser Combat Feed
 
 Combat output appears in two forms:

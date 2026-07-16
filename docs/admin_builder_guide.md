@@ -947,6 +947,21 @@ actions:
       damage_multiplier: 1.5
 ```
 
+Sprint 88.4 uses the existing `CombatEncounter.combat_mode` column for an opt-in
+simultaneous-planning mode. An NPC can declare `ai.combat_mode: simultaneous_planning`; when a
+player starts that encounter, the NPC response is queued immediately and shares the player's
+resolve time. Normal scheduled-intent encounters remain the default, and simultaneous-planning
+encounters do not auto-continue attacks after each resolution. This mode is intended for authored
+arena/boss beats, not as the default world-combat loop.
+
+```yaml
+npcs:
+  - id: duel_champion
+    name: Duel Champion
+    ai:
+      combat_mode: simultaneous_planning
+```
+
 The initial player-facing commands are `attack <npc>`, `shoot <npc>`, `defend`, and `flee`.
 They use the primary action channel only; during recovery a player may queue one replacement
 primary action. Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC

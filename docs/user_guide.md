@@ -599,6 +599,10 @@ Some authored actions can also set up or spend a combo follow-up. For example, o
 create an opening and another move might consume that opening for a temporary accuracy or damage
 bonus. This is action behavior, not a separate command you have to maintain.
 
+Special arena or boss encounters may use simultaneous-planning mode. In those fights, the NPC
+commits a response as soon as you commit your action, and both actions share the same resolve
+time. You still use the same combat commands; the mode changes encounter pacing, not controls.
+
 In the browser, combat appears as prose in the feed plus structured state updates used to keep
 participants, statuses, stances, attention cues, and recent outcomes current. A committed action
 may appear before it resolves; that delay is the wind-up/recovery model working as intended.

@@ -142,6 +142,10 @@ topics:
     one for a temporary accuracy or damage bonus. Combo hooks are action-defined
     and automatic; there is no separate combo command.
 
+    Some special NPCs can opt into simultaneous-planning combat. In that mode,
+    the NPC chooses its response as soon as you commit, and both actions share
+    the same resolve time. The fight still uses normal combat commands.
+
     Lorecraft does not use player formations or near/far positioning bands.
     Ranged attacks are tracked as ranged, but you do not manage distance steps.
     Guarding can intercept melee attacks but does not intercept ranged shots.

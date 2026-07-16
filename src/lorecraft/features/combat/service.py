@@ -107,6 +107,11 @@ from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
 
 COMBAT_RESOLVE_JOB = "combat.resolve_action"
+COMBAT_MODE_SCHEDULED_INTENT = "scheduled_intent"
+COMBAT_MODE_SIMULTANEOUS_PLANNING = "simultaneous_planning"
+VALID_COMBAT_MODES = frozenset(
+    {COMBAT_MODE_SCHEDULED_INTENT, COMBAT_MODE_SIMULTANEOUS_PLANNING}
+)
 
 _REACTION_RECOVERY = 1.5
 RESPAWN_HP_FRACTION = 0.25
@@ -207,14 +212,22 @@ class CombatService:
         encounter, actor, target_participant = self._ensure_player_vs_npc_encounter(
             ctx, target
         )
+        repo = CombatRepo(ctx.session)
         action = self._submit_action(
-            repo=CombatRepo(ctx.session),
+            repo=repo,
             session=ctx.session,
             encounter=encounter,
             actor=actor,
             action_key=action_key,
             now=self._now(ctx),
             target=target_participant,
+        )
+        self._queue_simultaneous_planning_responses(
+            ctx.session,
+            repo,
+            encounter,
+            action,
+            current_epoch=self._now(ctx),
         )
         ctx.player.active_combat_session_id = encounter.id
         ctx.player_repo.add(ctx.player)
@@ -517,6 +530,7 @@ class CombatService:
             encounter = CombatEncounter(
                 id=str(uuid4()),
                 location_id=ctx.room.id,
+                combat_mode=self._combat_mode_for_npc(npc),
                 started_at_game_time=now,
                 started_at_real_time=time.time(),
                 last_hostile_action_at=now,
@@ -537,6 +551,11 @@ class CombatService:
             repo.add(actor)
         target = repo.participant_for_actor(encounter.id, "npc", npc.id)
         if target is None:
+            target_ready_at = (
+                now
+                if encounter.combat_mode == COMBAT_MODE_SIMULTANEOUS_PLANNING
+                else now + 1.0
+            )
             target = CombatParticipant(
                 id=str(uuid4()),
                 encounter_id=encounter.id,
@@ -544,12 +563,18 @@ class CombatService:
                 actor_id=npc.id,
                 side_id=f"npc:{npc.id}",
                 joined_at=now,
-                primary_ready_at=now + 1.0,
+                primary_ready_at=target_ready_at,
                 reaction_ready_at=now,
             )
             repo.add(target)
         self._ensure_hostile_edges(repo, encounter.id, actor.id, target.id)
         return encounter, actor, target
+
+    def _combat_mode_for_npc(self, npc: NPC) -> str:
+        raw_mode = npc.ai.get("combat_mode")
+        if isinstance(raw_mode, str) and raw_mode in VALID_COMBAT_MODES:
+            return raw_mode
+        return COMBAT_MODE_SCHEDULED_INTENT
 
     def _ensure_hostile_edges(
         self, repo: CombatRepo, encounter_id: str, source_id: str, target_id: str
@@ -788,6 +813,7 @@ class CombatService:
         action_key: str,
         now: float,
         target: CombatParticipant | None = None,
+        shared_resolve_at: float | None = None,
     ) -> CombatAction:
         action_def = self._action_def_for(action_key)
         windup = action_def.timing.windup
@@ -807,10 +833,18 @@ class CombatService:
             target_type=target.actor_type if target is not None else None,
             target_id=target.actor_id if target is not None else None,
             action_key=action_key,
-            state="pending" if starts_at <= now else "queued",
+            state="pending"
+            if shared_resolve_at is not None or starts_at <= now
+            else "queued",
             submitted_at=now,
-            resolve_at=starts_at + windup,
-            recovery_until=starts_at + windup + recovery,
+            resolve_at=shared_resolve_at
+            if shared_resolve_at is not None
+            else starts_at + windup,
+            recovery_until=(
+                shared_resolve_at + recovery
+                if shared_resolve_at is not None
+                else starts_at + windup + recovery
+            ),
         )
         admission_hooks = self._run_action_admission_hooks(
             session,
@@ -831,6 +865,71 @@ class CombatService:
         repo.add(encounter)
         self._schedule_resolution(session, action)
         return action
+
+    def _queue_simultaneous_planning_responses(
+        self,
+        session: Session,
+        repo: CombatRepo,
+        encounter: CombatEncounter,
+        trigger_action: CombatAction,
+        *,
+        current_epoch: float,
+    ) -> None:
+        if (
+            encounter.combat_mode != COMBAT_MODE_SIMULTANEOUS_PLANNING
+            or trigger_action.actor_type != "player"
+        ):
+            return
+        for participant in repo.active_participants(encounter.id):
+            if participant.actor_type != "npc":
+                continue
+            if repo.pending_primary_action(participant.id) is not None:
+                continue
+            target = repo.hostile_target_for(encounter.id, participant.id)
+            if target is None:
+                continue
+            action_key = ACTION_BASIC_ATTACK
+            trace: JsonObject = {
+                "simultaneous_planning": {
+                    "trigger_action_id": trigger_action.id,
+                    "shared_resolve_at": trigger_action.resolve_at,
+                }
+            }
+            phase_decision = self._boss_phase_decision(
+                session,
+                repo,
+                encounter,
+                participant,
+                trigger_action,
+                fallback_target=target,
+                current_epoch=current_epoch,
+            )
+            if phase_decision is not None:
+                phase_target = (
+                    repo.participant(phase_decision.target_participant_id)
+                    if phase_decision.target_participant_id is not None
+                    else None
+                )
+                if (
+                    phase_target is not None
+                    and phase_target.status == STATUS_ACTIVE
+                    and phase_target.side_id != participant.side_id
+                ):
+                    target = phase_target
+                action_key = phase_decision.action_key
+                trace["boss_phase"] = phase_decision.trace()
+            response = self._submit_action(
+                repo=repo,
+                session=session,
+                encounter=encounter,
+                actor=participant,
+                action_key=action_key,
+                now=current_epoch,
+                target=target,
+                shared_resolve_at=trigger_action.resolve_at,
+            )
+            response.random_trace = {**response.random_trace, **trace}
+            repo.add(response)
 
     def _schedule_resolution(self, session: Session, action: CombatAction) -> None:
         SchedulerRepo(session).add(
@@ -1492,6 +1591,8 @@ class CombatService:
         *,
         current_epoch: float,
     ) -> None:
+        if encounter.combat_mode == COMBAT_MODE_SIMULTANEOUS_PLANNING:
+            return
         if encounter.state != "active" or not self._is_attack_action(action.action_key):
             return
         for participant in repo.active_participants(encounter.id):
