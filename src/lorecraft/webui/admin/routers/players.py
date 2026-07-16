@@ -18,20 +18,15 @@ from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.transaction import TransactionContext, TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
-from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.session import PlayerSession
-from lorecraft.engine.models.world import Item
 from lorecraft.engine.repos.audit_repo import AuditRepo
-from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
-from lorecraft.features.combat.models import CombatWound
 from lorecraft.features.equipment.body import (
-    add_wounds_to_body_view,
-    body_equipment_view,
+    player_body_snapshot,
 )
 from lorecraft.observability import bind_transaction_context
 
@@ -61,41 +56,8 @@ def _player_snapshot(player: Player) -> dict[str, Any]:
     }
 
 
-def _player_equipment(session: Session, player_id: str) -> list[tuple[ItemStack, Item]]:
-    item_repo = ItemRepo(session)
-    equipped: list[tuple[ItemStack, Item]] = []
-    for stack in StackRepo(session).stacks_for_owner("player", player_id):
-        if stack.slot is None:
-            continue
-        item = item_repo.get(stack.item_id)
-        if item is not None:
-            equipped.append((stack, item))
-    return equipped
-
-
 def _player_body_snapshot(session: Session, player: Player) -> dict[str, Any]:
-    equipped = _player_equipment(session, player.id)
-    body = body_equipment_view(equipped)
-    wounds = session.exec(
-        select(CombatWound)
-        .where(CombatWound.target_type == "player")
-        .where(CombatWound.target_id == player.id)
-        .where(CombatWound.status == "active")
-    ).all()
-    add_wounds_to_body_view(body, wounds)
-    return {
-        "equipment": [
-            {
-                "slot": stack.slot,
-                "item_id": item.id,
-                "name": item.name,
-                "quantity": stack.quantity,
-                "instance_id": stack.instance_id,
-            }
-            for stack, item in equipped
-        ],
-        "body": body,
-    }
+    return dict(player_body_snapshot(session, player.id))
 
 
 def _meter_snapshot(meter: Any) -> dict[str, Any]:
@@ -352,6 +314,7 @@ async def teleport_player(
             rng=state.rng,
             meters=state.meters,
             effects=state.effects,
+            rules=state.rules,
             clock=RoomRepo(session).world_clock(),
             audit_session=audit_session,
             commit_state=session.commit,
@@ -442,9 +405,10 @@ async def update_player(
             respawn_room_id = body.respawn_room_id.strip()
             if not respawn_room_id:
                 raise HTTPException(status_code=422, detail="Respawn room is required")
-            if RoomRepo(session).resolve_ref(respawn_room_id) is None:
+            respawn_room = RoomRepo(session).resolve_ref(respawn_room_id)
+            if respawn_room is None:
                 raise HTTPException(status_code=404, detail="Respawn room not found")
-            player.respawn_room_id = respawn_room_id
+            player.respawn_room_id = respawn_room.id
 
         if body.pvp_consent is not None:
             player.pvp_consent = body.pvp_consent
@@ -551,7 +515,7 @@ async def revitalize_player(
         player = session.get(Player, player_id)
         if player is None:
             raise HTTPException(status_code=404, detail="Player not found")
-        for key in ("hp", "fatigue", "stamina"):
+        for key in ("hp", "fatigue"):
             change = _set_meter_full(state, session, player_id, key)
             if change is not None:
                 meter_changes.append(change)

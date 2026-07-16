@@ -297,7 +297,7 @@ async def _test_update_player() -> None:
             "/admin/players/player-1",
             body={
                 "username": "edited-player",
-                "respawn_room_id": "market_stalls",
+                "respawn_room_id": "The Market Stalls",
                 "pvp_consent": True,
                 "ghost_state": True,
                 "flags": {"admin_note": "reviewed"},
@@ -450,6 +450,7 @@ async def _test_admin_can_heal_and_revitalize_player() -> None:
         )
         assert revitalize_status == 200
         assert revitalize["status"] == "revitalized"
+        assert {m["key"] for m in revitalize["meters"]} == {"hp", "fatigue"}
         hp = next(m for m in revitalize["meters"] if m["key"] == "hp")
         assert hp["after"]["current"] == hp["after"]["maximum"]
 

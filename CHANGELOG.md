@@ -4,6 +4,20 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.147.0] - 2026-07-16
+
+### Added
+
+- Added `where <room>` to show the shortest known path from the current room.
+- Added `who` to list players currently online across the whole game.
+
+### Changed
+
+- Updated combat stamina ownership to use the existing fatigue meter and
+  centralized player body/wound snapshot assembly.
+- Routed combat action admission/resolution through the rule engine and
+  canonicalized admin player respawn room edits.
+
 ## [0.146.0] - 2026-07-16
 
 ### Added

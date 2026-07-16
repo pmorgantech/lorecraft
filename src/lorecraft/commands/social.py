@@ -52,6 +52,15 @@ def _resolve_emote_target(noun: str | None, ctx: GameContext) -> str | None:
     return text
 
 
+def _online_player_names(ctx: GameContext) -> list[str]:
+    players = [
+        player
+        for player_id in ctx.manager.connected_player_ids()
+        if (player := ctx.player_repo.get(player_id)) is not None
+    ]
+    return sorted(player.username for player in players)
+
+
 def register_social_commands(
     registry: CommandRegistry, dialogue_service: DialogueService | None = None
 ) -> None:
@@ -142,6 +151,20 @@ def register_social_commands(
             f'{ctx.player.username} tells you: "{message}"',
             target_player_id=target.id,
         )
+
+    @registry.register(
+        "who",
+        scope=CommandScope.SOCIAL,
+        help="who — list players currently online",
+    )
+    def who_command(noun: str | None, ctx: GameContext) -> None:
+        del noun
+        names = _online_player_names(ctx)
+        if not names:
+            ctx.say("No players are online.")
+            return
+        label = "player" if len(names) == 1 else "players"
+        ctx.say(f"Online {label}: {', '.join(names)}")
 
     # Verb-per-channel (Sprint 52.4 decision): every registered P2ALL topic
     # channel speaks through a verb named after it — `newbie hello`. The

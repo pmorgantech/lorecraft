@@ -96,6 +96,37 @@ class TestTell:
         assert ctx.chat_outbox == []
 
 
+class TestWho:
+    def test_who_lists_online_players_globally(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        speaker, listener = _seed(session)
+        session.add(Room(id="market", name="Market", description="d", map_x=1, map_y=0))
+        distant = _player(session, "distant", "market")
+        offline = _player(session, "offline", "market")
+        session.commit()
+        manager = ConnectionManager()
+        manager._connections[speaker.id] = object()  # type: ignore[assignment]
+        manager._connections[listener.id] = object()  # type: ignore[assignment]
+        manager._connections[distant.id] = object()  # type: ignore[assignment]
+        ctx = _ctx(session, speaker, manager)
+
+        registry.get("who").handler(None, ctx)
+
+        assert ctx.messages == ["Online players: Distant, Listener, Speaker"]
+        assert offline.username not in ctx.messages[0]
+
+    def test_who_reports_empty_roster(
+        self, session: Session, registry: CommandRegistry
+    ) -> None:
+        speaker, _listener = _seed(session)
+        ctx = _ctx(session, speaker, ConnectionManager())
+
+        registry.get("who").handler(None, ctx)
+
+        assert ctx.messages == ["No players are online."]
+
+
 class TestTopicVerbs:
     def test_newbie_verb_speaks_on_the_channel(
         self, session: Session, registry: CommandRegistry

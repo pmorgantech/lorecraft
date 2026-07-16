@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from typing import TYPE_CHECKING
 
 from lorecraft.features.terrain import definitions as terrain_module
@@ -14,6 +15,8 @@ from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.modifiers import get_registry as get_modifier_registry
 from lorecraft.engine.game.modifiers import resolve_for
 from lorecraft.engine.game.parser import DIRECTION_ALIASES
+from lorecraft.engine.models.world import Exit
+from lorecraft.features.exploration.rules import is_exit_discovered
 from lorecraft.features.disciplines.service import ProficiencyService
 
 if TYPE_CHECKING:
@@ -28,6 +31,18 @@ _LOCKPICK_DISCIPLINE = "subterfuge"
 # Picking a lock is meant to be harder than routine skill use — locked doors are
 # a deliberate obstacle, so a trained picker still isn't guaranteed.
 PICK_DIFFICULTY = 25
+DIRECTION_SHORT_NAMES = {
+    "north": "n",
+    "south": "s",
+    "east": "e",
+    "west": "w",
+    "northeast": "ne",
+    "northwest": "nw",
+    "southeast": "se",
+    "southwest": "sw",
+    "up": "u",
+    "down": "d",
+}
 
 
 def _carries(ctx: GameContext, item_id: str) -> bool:
@@ -43,6 +58,73 @@ class MovementService:
 
     def lock(self, direction: str | None, ctx: GameContext) -> None:
         self._set_locked(direction, ctx, locked=True, verb="lock")
+
+    def where(self, destination_ref: str | None, ctx: GameContext) -> None:
+        if destination_ref is None or not destination_ref.strip():
+            ctx.say("Where are you trying to go?", MessageType.WARNING)
+            return
+
+        destination = ctx.room_repo.resolve_ref(destination_ref)
+        if destination is None:
+            ctx.say("I can't find a unique room by that name.", MessageType.WARNING)
+            return
+        if destination.id == ctx.room.id:
+            ctx.say(f"You are already at {destination.name}.")
+            return
+
+        path = self.path_to_room(ctx, destination.id)
+        if path is None:
+            ctx.say(
+                f"I can't find a known path to {destination.name} from here.",
+                MessageType.WARNING,
+            )
+            return
+
+        short_path = ", ".join(DIRECTION_SHORT_NAMES.get(step, step) for step in path)
+        ctx.say(f"Path to {destination.name}: {short_path}")
+
+    def path_to_room(
+        self, ctx: GameContext, destination_room_id: str
+    ) -> list[str] | None:
+        if destination_room_id == ctx.room.id:
+            return []
+
+        visited = {ctx.room.id}
+        queue: deque[tuple[str, list[str]]] = deque([(ctx.room.id, [])])
+        while queue:
+            room_id, path = queue.popleft()
+            exits = sorted(
+                ctx.room_repo.exits(room_id), key=lambda exit_: exit_.direction
+            )
+            for exit_ in exits:
+                if exit_.target_room_id in visited:
+                    continue
+                if not self._exit_available_for_path(exit_, ctx):
+                    continue
+                next_path = [*path, exit_.direction]
+                if exit_.target_room_id == destination_room_id:
+                    return next_path
+                visited.add(exit_.target_room_id)
+                queue.append((exit_.target_room_id, next_path))
+        return None
+
+    def _exit_available_for_path(self, exit_: Exit, ctx: GameContext) -> bool:
+        if exit_.hidden and not is_exit_discovered(ctx, exit_.room_id, exit_.direction):
+            return False
+        return self._movement_blocked_message(exit_, ctx) is None
+
+    def _movement_blocked_message(self, exit_: Exit, ctx: GameContext) -> str | None:
+        if exit_.condition_flags and not all(
+            ctx.player.flags.get(flag) for flag in exit_.condition_flags
+        ):
+            return "Something prevents you from going that way."
+        if exit_.locked and (
+            exit_.key_item_id is None or not _carries(ctx, exit_.key_item_id)
+        ):
+            return "The way is locked."
+        if ctx.room_repo.active(exit_.target_room_id) is None:
+            return "You can't go that way."
+        return None
 
     def _set_locked(
         self, direction: str | None, ctx: GameContext, *, locked: bool, verb: str
@@ -125,15 +207,9 @@ class MovementService:
         if exit_ is None:
             ctx.say("You can't go that way.", MessageType.WARNING)
             return
-        if exit_.condition_flags and not all(
-            ctx.player.flags.get(flag) for flag in exit_.condition_flags
-        ):
-            ctx.say("Something prevents you from going that way.", MessageType.WARNING)
-            return
-        if exit_.locked and (
-            exit_.key_item_id is None or not _carries(ctx, exit_.key_item_id)
-        ):
-            ctx.say("The way is locked.", MessageType.WARNING)
+        blocked_message = self._movement_blocked_message(exit_, ctx)
+        if blocked_message is not None:
+            ctx.say(blocked_message, MessageType.WARNING)
             return
 
         target_room = ctx.room_repo.active(exit_.target_room_id)

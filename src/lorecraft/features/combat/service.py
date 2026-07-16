@@ -15,6 +15,7 @@ from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
+from lorecraft.engine.game.rules import RuleEngine, RuleResult
 from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.items import ItemInstance, ItemStack
@@ -103,6 +104,7 @@ from lorecraft.features.combat.resolution import (
 )
 from lorecraft.features.combat.rulesets import combat_ruleset_config_for
 from lorecraft.features.combat.wounds import derive_wound
+from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
 
@@ -119,6 +121,9 @@ RESPAWN_HP_FRACTION = 0.25
 
 class CombatService:
     """Owns combat policy and persistence for the Tier 2 combat feature."""
+
+    def __init__(self, rules: RuleEngine | None = None) -> None:
+        self._rules = rules
 
     def attack(self, noun: str | None, ctx: GameContext) -> None:
         self._attack_with_action_key(
@@ -221,7 +226,10 @@ class CombatService:
             action_key=action_key,
             now=self._now(ctx),
             target=target_participant,
+            game_context=ctx,
         )
+        if action is None:
+            return
         self._queue_simultaneous_planning_responses(
             ctx.session,
             repo,
@@ -250,14 +258,17 @@ class CombatService:
         if encounter is None or actor is None:
             ctx.say("You aren't in combat.", MessageType.WARNING)
             return
-        self._submit_action(
+        action = self._submit_action(
             repo=CombatRepo(ctx.session),
             session=ctx.session,
             encounter=encounter,
             actor=actor,
             action_key=ACTION_DEFEND,
             now=self._now(ctx),
+            game_context=ctx,
         )
+        if action is None:
+            return
         ctx.say("You shift into a guarded posture.")
         self._push_combat_update(ctx, encounter.id)
 
@@ -273,15 +284,18 @@ class CombatService:
         if target is None:
             ctx.say("Guard whom?", MessageType.WARNING)
             return
-        self._set_guarding_edge(repo, encounter.id, actor.id, target.id)
-        self._submit_action(
+        action = self._submit_action(
             repo=repo,
             session=ctx.session,
             encounter=encounter,
             actor=actor,
             action_key=ACTION_DEFEND,
             now=self._now(ctx),
+            game_context=ctx,
         )
+        if action is None:
+            return
+        self._set_guarding_edge(repo, encounter.id, actor.id, target.id)
         target_name = self._participant_name(ctx.session, target)
         ctx.say(f"You move to guard {target_name}.")
         self._push_combat_update(ctx, encounter.id)
@@ -336,14 +350,17 @@ class CombatService:
         if encounter is None or actor is None:
             ctx.say("You aren't in combat.", MessageType.WARNING)
             return
-        self._submit_action(
+        action = self._submit_action(
             repo=CombatRepo(ctx.session),
             session=ctx.session,
             encounter=encounter,
             actor=actor,
             action_key=ACTION_FLEE,
             now=self._now(ctx),
+            game_context=ctx,
         )
+        if action is None:
+            return
         ctx.say("You look for an opening to flee.")
         self._push_combat_update(ctx, encounter.id)
 
@@ -381,7 +398,9 @@ class CombatService:
         ctx.say(f"Your reaction policy is now {policy}.")
         self._push_combat_update(ctx, encounter.id)
 
-    def register(self, bus: EventBus) -> None:
+    def register(self, bus: EventBus, rules: RuleEngine | None = None) -> None:
+        if rules is not None:
+            self._rules = rules
         bus.on(GameEvent.SCHEDULED_JOB_DUE, self._on_scheduled_job_due)
 
     def resolve_action(
@@ -440,7 +459,18 @@ class CombatService:
 
         meter_service = meter_service or MeterService(_session_engine(session), rng)
         effect_service = effect_service or EffectService(_session_engine(session), rng)
-        resolution = self._calculate_resolution(session, repo, action, actor, rng=rng)
+        resolution = self._rule_blocked_resolution(
+            session,
+            repo,
+            encounter,
+            action,
+            actor,
+            current_epoch=current_epoch,
+        )
+        if resolution is None:
+            resolution = self._calculate_resolution(
+                session, repo, action, actor, rng=rng
+            )
         record = self._apply_resolution(
             session,
             repo,
@@ -814,8 +844,28 @@ class CombatService:
         now: float,
         target: CombatParticipant | None = None,
         shared_resolve_at: float | None = None,
-    ) -> CombatAction:
+        game_context: GameContext | None = None,
+    ) -> CombatAction | None:
         action_def = self._action_def_for(action_key)
+        rule_result = self._check_combat_rule(
+            "combat.action.admit",
+            game_context,
+            self._combat_rule_payload(
+                encounter=encounter,
+                actor=actor,
+                action_key=action_key,
+                action_def=action_def,
+                current_epoch=now,
+                target=target,
+            ),
+        )
+        if rule_result is not None and not rule_result.allowed:
+            if game_context is not None:
+                game_context.say(
+                    rule_result.reason or "You can't do that.",
+                    MessageType.WARNING,
+                )
+            return None
         windup = action_def.timing.windup
         recovery = action_def.timing.recovery
         starts_at = max(now, actor.primary_ready_at)
@@ -928,6 +978,8 @@ class CombatService:
                 target=target,
                 shared_resolve_at=trigger_action.resolve_at,
             )
+            if response is None:
+                continue
             response.random_trace = {**response.random_trace, **trace}
             repo.add(response)
 
@@ -1372,7 +1424,7 @@ class CombatService:
             actor.queued_action_id = None
         if resolution.stamina_delta:
             stamina = meter_service.get(
-                session, actor.actor_type, actor.actor_id, "stamina"
+                session, actor.actor_type, actor.actor_id, FATIGUE_METER_KEY
             )
             meter_service.adjust(session, stamina, resolution.stamina_delta)
         if resolution.action_key == ACTION_FLEE and resolution.outcome == "escaped":
@@ -1639,6 +1691,8 @@ class CombatService:
                 now=current_epoch,
                 target=target,
             )
+            if next_action is None:
+                continue
             if trace is not None:
                 next_action.random_trace = {**next_action.random_trace, **trace}
                 repo.add(next_action)
@@ -1947,6 +2001,116 @@ class CombatService:
             action is not None
             and action.action_key == ACTION_DEFEND
             and action.submitted_at >= since - 3.0
+        )
+
+    def _check_combat_rule(
+        self,
+        rule_name: str,
+        rule_context: object | None,
+        payload: JsonObject,
+    ) -> RuleResult | None:
+        rules = self._rules
+        if isinstance(rule_context, GameContext) and rule_context.rules is not None:
+            rules = rule_context.rules
+        if rules is None:
+            return None
+        return rules.check(rule_name, rule_context or self, payload)
+
+    def _combat_rule_payload(
+        self,
+        *,
+        encounter: CombatEncounter,
+        actor: CombatParticipant,
+        action_key: str,
+        action_def: CombatActionDef,
+        current_epoch: float,
+        target: CombatParticipant | None = None,
+        action: CombatAction | None = None,
+    ) -> JsonObject:
+        payload: JsonObject = {
+            "encounter_id": encounter.id,
+            "encounter_state": encounter.state,
+            "combat_mode": encounter.combat_mode,
+            "location_id": encounter.location_id,
+            "actor_participant_id": actor.id,
+            "actor_type": actor.actor_type,
+            "actor_id": actor.actor_id,
+            "actor_status": actor.status,
+            "actor_side_id": actor.side_id,
+            "action_key": action_key,
+            "action_range": action_def.action_range,
+            "resolver": action_def.resolver,
+            "ruleset_id": action_def.ruleset_id,
+            "resolver_version": action_def.resolver_version,
+            "current_epoch": current_epoch,
+            "target_participant_id": target.id if target is not None else None,
+            "target_type": target.actor_type if target is not None else None,
+            "target_id": target.actor_id if target is not None else None,
+            "target_status": target.status if target is not None else None,
+            "target_side_id": target.side_id if target is not None else None,
+        }
+        if action is not None:
+            payload.update(
+                {
+                    "action_id": action.id,
+                    "action_state": action.state,
+                    "submitted_at": action.submitted_at,
+                    "resolve_at": action.resolve_at,
+                }
+            )
+        return payload
+
+    def _rule_blocked_resolution(
+        self,
+        session: Session,
+        repo: CombatRepo,
+        encounter: CombatEncounter,
+        action: CombatAction,
+        actor: CombatParticipant,
+        *,
+        current_epoch: float,
+    ) -> CombatResolution | None:
+        action_def = self._action_def_for(action.action_key)
+        target = (
+            repo.participant(action.target_participant_id)
+            if action.target_participant_id is not None
+            else None
+        )
+        rule_result = self._check_combat_rule(
+            "combat.action.resolve",
+            {"session": session, "repo": repo, "service": self},
+            self._combat_rule_payload(
+                encounter=encounter,
+                actor=actor,
+                action_key=action.action_key,
+                action_def=action_def,
+                current_epoch=current_epoch,
+                target=target,
+                action=action,
+            ),
+        )
+        if rule_result is None or rule_result.allowed:
+            return None
+        reason = rule_result.reason or "A combat rule prevents the action."
+        return self._with_action_admission_trace(
+            CombatResolution(
+                action_id=action.id,
+                action_key=action.action_key,
+                actor=self._snapshot(session, actor),
+                target=self._snapshot(session, target) if target is not None else None,
+                outcome="cancelled",
+                ruleset_id=action_def.ruleset_id,
+                resolver_version=action_def.resolver_version,
+                action_range=action_def.action_range,
+                explanation=reason,
+                random_trace={
+                    "rule_blocked": "combat.action.resolve",
+                    "rule_reason": reason,
+                    "ruleset_id": action_def.ruleset_id,
+                    "resolver_version": action_def.resolver_version,
+                },
+            ),
+            action,
         )
 
     def _action_def_for(self, action_key: str) -> CombatActionDef:
@@ -2587,7 +2751,7 @@ class CombatService:
         for participant in repo.participants(encounter_id):
             hp = meters.find(participant.actor_type, participant.actor_id, "hp")
             stamina = meters.find(
-                participant.actor_type, participant.actor_id, "stamina"
+                participant.actor_type, participant.actor_id, FATIGUE_METER_KEY
             )
             participants.append(
                 {

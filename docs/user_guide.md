@@ -150,6 +150,13 @@ Recognized directions (full word or the listed abbreviation): `north`/`n`,
 `south`/`s`, `east`/`e`, `west`/`w`, `up`/`u`, `down`/`d`, `northeast`/`ne`,
 `northwest`/`nw`, `southeast`/`se`, `southwest`/`sw`.
 
+Use `where <room>` to ask for the shortest known path from your current room:
+
+```
+where south gate
+Path to South Gate: s, s, e, s
+```
+
 If an exit is locked, `unlock <direction>` works if you're carrying the right key, and
 `lock <direction>` locks it back up.
 
@@ -489,9 +496,13 @@ and that stage's objective; finished quests are marked completed (or failed).
 say hello           — speak aloud; everyone in the room sees it
 tell <player> <msg> — private message to an online player (alias: whisper)
 newbie <msg>        — speak on the world-wide Newbie channel
+who                 — list players online across the whole game
 wave                — wave to the room; `wave at <someone>` to wave at a target
 point at <target>   — point at a person, creature, or thing (e.g. `point at sign`)
 ```
+
+`who` is global: it lists connected players anywhere in the game. Use `look` or the
+location panel for who is present in your current room.
 
 Chat travels on **channels** with different reach: `say` stays in your room, `tell` goes
 to exactly one online player (offline players can't receive tells — there's no in-game
@@ -573,7 +584,7 @@ Builders can tune the core action timing and broad ranged/melee semantics in
 `world_content/combat_actions.yaml`; players do not need to know those numbers while playing.
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
-older pending one. Combat uses health and stamina meters. The browser combat feed shows each
+older pending one. Combat uses health plus your existing stamina meter. The browser combat feed shows each
 opponent's approximate health band plus current HP after combat updates. At 0 HP, player characters
 die and immediately respawn at their respawn point with a fraction of max HP restored, while NPCs
 are defeated. Death leaves a corpse in the death room holding 20% of carried coins and loose,
@@ -636,6 +647,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | Command | Aliases | What it does |
 |---------|---------|----------------|
 | `go <direction>` | `north`/`south`/`east`/`west` (bare) | Move to an adjacent room |
+| `where <room>` | | Show the shortest known path to a room |
 | `unlock <direction>` | | Unlock an exit if you carry its key |
 | `lock <direction>` | | Lock an exit if you carry its key |
 | `pick <direction>` | | Pick a locked exit without its key (requires the Pick Locks ability) |
@@ -700,6 +712,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `say <message>` | | Speak aloud to the room |
 | `tell <player> <message>` | `whisper` | Private message to an online player |
 | `newbie <message>` | | Speak on the world-wide Newbie channel |
+| `who` | | List players online across the whole game |
 | `news` | `/news` | Show current announcements |
 | `report <description>` | `/report <description>` | Report a bug or issue to the developers |
 | `save [slot]` | | Save your progress |

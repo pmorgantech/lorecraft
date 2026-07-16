@@ -79,7 +79,7 @@ from `primary_ready_at` · ruleset/resolver versioning · simulation harness bui
 
 Fit to engine: `SchedulerService` schedules per-action resolutions/effect ticks/expirations;
 `EventBus` makes combat reactive/auditable; the transaction/unit-of-work layer keeps mutations
-atomic; `MeterService` already provides generic HP/stamina meters; the modifier resolver
+atomic; `MeterService` already provides generic HP plus the fatigue feature's stamina meter; the modifier resolver
 already derives stats; seeded `rng` + `skill_check` give determinism. Combat is where these
 boundaries earn their keep.
 
@@ -243,7 +243,8 @@ dedicated combat panel/resync endpoint remains a later UI refinement.
 
 ## 9. Resources, status effects, wounds
 
-Start with **health + stamina** — not six body resources. Stamina *gates choices*
+Start with **health + stamina** — not six body resources. The existing fatigue meter is the
+stamina resource; combat consumes that same meter instead of registering a parallel one. Stamina *gates choices*
 (heavy actions cost more recovery <60%, disabled <20%, winded at 0), not an invisible penalty.
 Don't give warriors a renamed mana bar.
 
@@ -427,8 +428,8 @@ problem); measure queue delay, resolution latency, transaction duration, WS fano
 ## 22. Tier split (engine mechanism vs. feature policy)
 
 **Tier 1 (`engine/`), all already present** — reused, not combat-specific: `SchedulerService`,
-`EventBus`, rules-engine mechanism, transaction/unit-of-work, `MeterService` (HP + stamina are
-just meter configs), modifier resolver, seeded `rng` + `skill_check`, timed-effects service,
+`EventBus`, rules-engine mechanism, transaction/unit-of-work, `MeterService` (`hp` plus the
+fatigue feature's stamina meter), modifier resolver, seeded `rng` + `skill_check`, timed-effects service,
 `ItemLocationService`, `LedgerService`, audit. Any *new* Tier 1 need is a **generic primitive
 only**: e.g. a staged modifier-stack resolution with source attribution, or effect-lifecycle
 hooks — these must not encode combat's opinion (no "leveling grants coins" leaks).

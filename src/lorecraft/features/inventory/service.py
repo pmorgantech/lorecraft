@@ -7,8 +7,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import TypeVar
 
-from sqlmodel import select
-
 from lorecraft.errors import ConflictError, ValidationError
 from lorecraft.engine.game.command_patterns import (
     ROLE_DESTINATION,
@@ -36,10 +34,9 @@ from lorecraft.engine.services.item_components import (
     get_component_state,
     set_component_state,
 )
-from lorecraft.features.combat.models import CombatWound
 from lorecraft.features.equipment.body import (
-    add_wounds_to_body_view,
-    body_equipment_view,
+    player_body_view,
+    player_equipment,
 )
 from lorecraft.types import JsonObject, JsonValue
 
@@ -603,25 +600,10 @@ class InventoryService:
         )
 
     def _equipped_stacks(self, ctx: GameContext) -> list[tuple[ItemStack, Item]]:
-        result: list[tuple[ItemStack, Item]] = []
-        for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
-            if stack.slot is None:
-                continue
-            item = ctx.item_repo.get(stack.item_id)
-            if item is not None:
-                result.append((stack, item))
-        return result
+        return player_equipment(ctx.session, ctx.player.id)
 
     def _body_view(self, ctx: GameContext) -> list[JsonObject]:
-        view = body_equipment_view(self._equipped_stacks(ctx))
-        wounds = ctx.session.exec(
-            select(CombatWound)
-            .where(CombatWound.target_type == "player")
-            .where(CombatWound.target_id == ctx.player.id)
-            .where(CombatWound.status == "active")
-        ).all()
-        add_wounds_to_body_view(view, wounds)
-        return view
+        return player_body_view(ctx.session, ctx.player.id)
 
     def _body_update_payload(self, ctx: GameContext) -> list[JsonValue]:
         payload: list[JsonValue] = []

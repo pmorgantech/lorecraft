@@ -32,11 +32,13 @@ def test_register_all_commands_adds_meta_and_movement_commands() -> None:
     assert registry.get("load") is not None
     assert registry.get("go") is not None
     assert registry.get("north") is registry.get("go")
+    assert registry.get("where") is not None
     assert registry.get("look") is not None
     assert registry.get("take") is not None
     assert registry.get("drop") is not None
     assert registry.get("examine") is not None
     assert registry.get("inventory") is not None
+    assert registry.get("who") is not None
 
 
 def test_meta_commands_write_context_messages_and_updates() -> None:

@@ -38,6 +38,7 @@ from lorecraft.types import JsonObject, JsonValue
 # services/__init__.py. TYPE_CHECKING-only import for the annotation (deferred by
 # `from __future__ import annotations`); build_game_context() imports it for real.
 if TYPE_CHECKING:
+    from lorecraft.engine.game.rules import RuleEngine
     from lorecraft.engine.services.effects import EffectService
     from lorecraft.engine.services.item_location import ItemLocationService
     from lorecraft.engine.services.ledger import LedgerService
@@ -65,6 +66,7 @@ class GameContext:
     transaction: TransactionContext
     session_id: str
     rng: GameRng
+    rules: RuleEngine | None = None
     commit_state: Callable[[], None] | None = None
     commit_audit: Callable[[], None] | None = None
     rollback_state: Callable[[], None] | None = None
@@ -241,6 +243,7 @@ def build_game_context(
     rng: GameRng,
     meters: MeterService,
     effects: EffectService,
+    rules: RuleEngine | None = None,
     clock: WorldClock | None = None,
     audit_session: Session | None = None,
     commit_state: Callable[[], None] | None = None,
@@ -288,6 +291,7 @@ def build_game_context(
         transaction=transaction,
         session_id=session_id,
         rng=rng,
+        rules=rules,
         commit_state=commit_state,
         commit_audit=commit_audit,
         rollback_state=rollback_state,

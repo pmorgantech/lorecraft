@@ -29,6 +29,14 @@ def register_movement_commands(
         service.move(noun, ctx)
 
     @registry.register(
+        "where",
+        conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
+        help="where <room> — show the shortest known path to a room",
+    )
+    def where_command(noun: str | None, ctx: GameContext) -> None:
+        service.where(noun, ctx)
+
+    @registry.register(
         "unlock",
         conditions=[CommandCondition.NOT_IN_COMBAT],
         help="unlock <direction> — unlock an exit if you carry its key",

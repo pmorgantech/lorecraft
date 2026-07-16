@@ -17,17 +17,15 @@ import time
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session as DBSession, select
+from sqlmodel import Session as DBSession
 
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.services.crash_reports import record_crash
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player
-from lorecraft.features.combat.models import CombatWound
 from lorecraft.features.equipment.body import (
-    add_wounds_to_body_view,
-    body_equipment_view,
+    player_body_view,
 )
 from lorecraft.features.npc.dialogue import _NPC_KEY, dialogue_panel_state
 from lorecraft.observability import bind_transaction_context
@@ -38,7 +36,6 @@ from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.features.quests.repo import QuestRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
-from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.engine.services.save import SessionSafetyService
 from lorecraft.webui.player.auth import (
     InvalidCredentialsError,
@@ -126,22 +123,8 @@ def _carried_snapshot(item_repo: ItemRepo, player_id: str) -> list[tuple[str, in
 
 
 def body_snapshot_for(db: DBSession, player: Player, item_repo: ItemRepo) -> list[dict]:
-    equipped = []
-    for stack in StackRepo(db).stacks_for_owner("player", player.id):
-        if stack.slot is None:
-            continue
-        item = item_repo.get(stack.item_id)
-        if item is not None:
-            equipped.append((stack, item))
-    view = body_equipment_view(equipped)
-    wounds = db.exec(
-        select(CombatWound)
-        .where(CombatWound.target_type == "player")
-        .where(CombatWound.target_id == player.id)
-        .where(CombatWound.status == "active")
-    ).all()
-    add_wounds_to_body_view(view, wounds)
-    return view
+    del item_repo
+    return player_body_view(db, player.id)
 
 
 async def get_current_player(request: Request) -> Player:
@@ -792,6 +775,7 @@ async def handle_command(
                 rng=get_rng(request),
                 meters=get_meters(request),
                 effects=get_effects(request),
+                rules=app_state.rules if app_state is not None else None,
                 clock=room_repo.world_clock(),
                 audit_session=audit_db,
                 commit_state=game_db.commit,

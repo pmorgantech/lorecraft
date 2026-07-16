@@ -279,7 +279,7 @@ def create_app(
             services.marks.register(bus)
         if services.combat is not None:
             _load_combat_action_definitions(resolved_settings.combat_actions_yaml_path)
-            services.combat.register(bus)
+            services.combat.register(bus, rules=rules)
             register_combat_broadcasts(bus, manager)
         if "disciplines" in enabled_set:
             _load_discipline_definitions(resolved_settings.disciplines_yaml_path)
@@ -707,6 +707,7 @@ async def _handle_websocket_command(
                 rng=state.rng,
                 meters=state.meters,
                 effects=state.effects,
+                rules=state.rules,
                 clock=room_repo.world_clock(),
                 audit_session=audit_session,
                 commit_state=game_session.commit,

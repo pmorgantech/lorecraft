@@ -9,12 +9,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
+
+from sqlmodel import Session
 
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.world import Item
+from lorecraft.engine.repos.item_repo import ItemRepo
+from lorecraft.engine.repos.stack_repo import StackRepo
 from lorecraft.features.equipment.slots import ALL_SLOTS, slot_label
-from lorecraft.types import JsonObject
+from lorecraft.types import JsonObject, JsonValue
 
 BodyPartKey = Literal[
     "head",
@@ -116,6 +120,50 @@ def body_equipment_view(equipped: Sequence[tuple[ItemStack, Item]]) -> list[Json
             "slot": stack.slot,
         }
     return view
+
+
+def player_body_snapshot(session: Session, player_id: str) -> JsonObject:
+    equipped = player_equipment(session, player_id)
+    body = body_equipment_view(equipped)
+    add_wounds_to_body_view(body, _active_combat_wounds_for_player(session, player_id))
+    equipment: list[JsonValue] = [
+        {
+            "slot": stack.slot,
+            "item_id": item.id,
+            "name": item.name,
+            "quantity": stack.quantity,
+            "instance_id": stack.instance_id,
+        }
+        for stack, item in equipped
+    ]
+    return {
+        "equipment": equipment,
+        "body": cast(list[JsonValue], body),
+    }
+
+
+def player_body_view(session: Session, player_id: str) -> list[JsonObject]:
+    snapshot = player_body_snapshot(session, player_id)
+    body = snapshot.get("body")
+    return cast(list[JsonObject], body) if isinstance(body, list) else empty_body_view()
+
+
+def player_equipment(session: Session, player_id: str) -> list[tuple[ItemStack, Item]]:
+    item_repo = ItemRepo(session)
+    equipped: list[tuple[ItemStack, Item]] = []
+    for stack in StackRepo(session).stacks_for_owner("player", player_id):
+        if stack.slot is None:
+            continue
+        item = item_repo.get(stack.item_id)
+        if item is not None:
+            equipped.append((stack, item))
+    return equipped
+
+
+def _active_combat_wounds_for_player(session: Session, player_id: str) -> Sequence[Any]:
+    from lorecraft.features.combat.wounds import active_wounds_for_player
+
+    return active_wounds_for_player(session, player_id)
 
 
 def add_wounds_to_body_view(view: list[JsonObject], wounds: Sequence[Any]) -> None:

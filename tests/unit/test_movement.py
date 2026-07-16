@@ -3,7 +3,10 @@ from sqlmodel import Session, create_engine
 from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
 from lorecraft.engine.game.context import GameContext
+from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus, GameEvent
+from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.game.rules import RuleEngine
 from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player, PlayerStats
@@ -23,6 +26,8 @@ from lorecraft.features.fatigue.source import (
     FATIGUE_METER_KEY,
     register as register_fatigue,
 )
+from lorecraft.features.exploration.rules import mark_exit_discovered
+from lorecraft.features.movement.commands import register_movement_commands
 from lorecraft.features.movement.service import MovementService
 
 register_fatigue()
@@ -186,6 +191,128 @@ def test_movement_service_blocks_missing_exit() -> None:
 
     assert ctx.messages == ["You can't go that way."]
     assert ctx.player.current_room_id == "tavern"
+
+
+def test_where_reports_shortest_known_path_to_room() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Room(
+                id="south_gate",
+                name="South Gate",
+                description="A guarded gate.",
+                map_x=1,
+                map_y=1,
+            )
+        )
+        session.add(
+            Exit(room_id="square", direction="south", target_room_id="south_gate")
+        )
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().where("south gate", ctx)
+
+    assert ctx.messages == ["Path to South Gate: e, s"]
+    assert ctx.player.current_room_id == "tavern"
+
+
+def test_where_command_accepts_multi_word_room_reference() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+    registry = CommandRegistry()
+    register_movement_commands(registry)
+    cmd_engine = CommandEngine(registry, RuleEngine())
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Room(
+                id="south_gate",
+                name="South Gate",
+                description="A guarded gate.",
+                map_x=1,
+                map_y=1,
+            )
+        )
+        session.add(
+            Exit(room_id="square", direction="south", target_room_id="south_gate")
+        )
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        cmd_engine.handle_command("where south gate", ctx)
+
+    assert ctx.messages == ["Path to South Gate: e, s"]
+
+
+def test_where_uses_discovered_hidden_exits_but_does_not_reveal_unknown_ones() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Room(
+                id="south_gate",
+                name="South Gate",
+                description="A guarded gate.",
+                map_x=1,
+                map_y=1,
+            )
+        )
+        session.add(
+            Exit(room_id="square", direction="south", target_room_id="south_gate")
+        )
+        session.add(
+            Exit(
+                room_id="tavern",
+                direction="south",
+                target_room_id="south_gate",
+                hidden=True,
+            )
+        )
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().where("south gate", ctx)
+        mark_exit_discovered(ctx, "tavern", "south")
+        MovementService().where("south gate", ctx)
+
+    assert ctx.messages == [
+        "Path to South Gate: e, s",
+        "Path to South Gate: s",
+    ]
+
+
+def test_where_reports_unreachable_room() -> None:
+    engine = create_engine("sqlite://")
+    create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
+
+    with Session(engine) as session:
+        _seed_rooms(session)
+        session.add(
+            Room(
+                id="island",
+                name="Island",
+                description="A lonely island.",
+                map_x=10,
+                map_y=10,
+            )
+        )
+        player = _seed_player(session)
+        session.commit()
+        ctx = _build_context(session, player, ConnectionManager(), EventBus())
+
+        MovementService().where("island", ctx)
+
+    assert ctx.messages == ["I can't find a known path to Island from here."]
 
 
 def test_pick_records_skill_use_for_a_player_without_a_stats_row() -> None:

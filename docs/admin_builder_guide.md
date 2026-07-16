@@ -819,7 +819,7 @@ From the Dashboard (web) or Players screen (TUI, `F1`), select a player to:
 - **Teleport** — move them to a different room
 - **Freeze / unfreeze** — block their commands without disconnecting them
 - **Edit flags** — set/clear quest or state flags directly
-- **Heal / revitalize** — restore HP, or restore HP plus available stamina/fatigue meters
+- **Heal / revitalize** — restore HP, or restore HP plus the fatigue feature's stamina meter
 - **Buff** — apply a registered timed `ActiveEffect` such as `fortified` or `keen_minded`
 - **Bestow** — grant coins through the ledger faucet, spawn item stacks into the player's loose inventory, or both
 - **Message** — send them a system message
@@ -967,7 +967,8 @@ npcs:
 
 The initial player-facing commands are `attack <npc>`, `shoot <npc>`, `defend`, and `flee`.
 They use the primary action channel only; during recovery a player may queue one replacement
-primary action. Health and stamina are ordinary MeterService meters (`hp`, `stamina`), and NPC
+primary action. Health and stamina are ordinary MeterService meters (`hp`, and the fatigue
+feature's `fatigue` meter rendered as stamina), and NPC
 counter-attacks are created as scheduled intents through the same pipeline as player actions.
 
 Core combat actions are authored in `world_content/combat_actions.yaml`. Each entry defines an

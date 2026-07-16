@@ -17,6 +17,7 @@ from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.meters import MeterDef
 from lorecraft.engine.game.meters import get_registry as get_meter_registry
 from lorecraft.engine.game.rng import GameRng
+from lorecraft.engine.game.rules import RuleEngine, RuleResult
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.audit import AuditEvent
@@ -72,6 +73,7 @@ from lorecraft.features.combat.effect_hooks import (
 from lorecraft.features.combat.effects import register_combat_effects
 from lorecraft.features.combat.repo import CombatRepo
 from lorecraft.features.combat.service import COMBAT_RESOLVE_JOB, CombatService
+from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.features.item_components.components import (
     register as register_components,
 )
@@ -97,13 +99,13 @@ def combat_meters() -> Iterator[None]:
     )
     registry.register(
         MeterDef(
-            key="stamina",
+            key=FATIGUE_METER_KEY,
             base_maximum=lambda entity_type, entity_id, session: 100.0,
         )
     )
     yield
     registry._defs.pop("hp", None)  # type: ignore[attr-defined]
-    registry._defs.pop("stamina", None)  # type: ignore[attr-defined]
+    registry._defs.pop(FATIGUE_METER_KEY, None)  # type: ignore[attr-defined]
     hook_registry.clear()
     boss_phase_registry.clear()
 
@@ -132,6 +134,69 @@ def test_attack_submits_intent_and_schedules_resolution() -> None:
         assert jobs[0].job_type == COMBAT_RESOLVE_JOB
         assert jobs[0].payload == {"action_id": actions[0].id}
         assert "combat" in ctx.updates
+
+
+def test_combat_admission_rule_blocks_action_submission() -> None:
+    engine = _engine()
+    rules = RuleEngine()
+    observed_payloads: list[dict] = []
+
+    def block_admission(ctx: object, payload: dict) -> RuleResult:
+        observed_payloads.append(payload)
+        return RuleResult.block("The arena wards flare.")
+
+    rules.register_rule("combat.action.admit", block_admission)
+    service = CombatService(rules)
+
+    with Session(engine) as session:
+        ctx = _context(session, rules=rules)
+        service.attack("goblin", ctx)
+        session.commit()
+
+        assert session.exec(select(CombatAction)).all() == []
+        assert session.exec(select(ScheduledJob)).all() == []
+        assert "The arena wards flare." in ctx.messages
+        assert observed_payloads[0]["action_key"] == "basic_attack"
+        assert observed_payloads[0]["target_id"] == "goblin"
+
+
+def test_combat_resolution_rule_cancels_scheduled_action() -> None:
+    engine = _engine()
+    rules = RuleEngine()
+
+    def block_resolution(ctx: object, payload: dict) -> RuleResult:
+        assert payload["action_key"] == "basic_attack"
+        return RuleResult.block("The target steps behind sanctuary law.")
+
+    rules.register_rule("combat.action.resolve", block_resolution)
+    service = CombatService(rules)
+
+    with Session(engine) as session:
+        ctx = _context(session, rules=rules)
+        service.attack("goblin", ctx)
+        action = session.exec(select(CombatAction)).one()
+        action_id = action.id
+
+        service.resolve_action(
+            session,
+            action_id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        action = session.get(CombatAction, action_id)
+        record = session.exec(select(CombatResolutionRecord)).one()
+        assert action is not None
+        assert action.state == "resolved"
+        assert action.outcome["outcome"] == "cancelled"
+        assert record.outcome == "cancelled"
+        assert record.random_trace["rule_blocked"] == "combat.action.resolve"
+        assert record.random_trace["rule_reason"] == (
+            "The target steps behind sanctuary law."
+        )
 
 
 def test_shoot_submits_ranged_intent_and_records_range_trace() -> None:
@@ -296,7 +361,9 @@ def test_combat_resolution_uses_live_ruleset_config() -> None:
 
     with Session(engine) as session:
         record = session.exec(select(CombatResolutionRecord)).one()
-        stamina = ctx_meters(engine).get(session, "player", "player-1", "stamina")
+        stamina = ctx_meters(engine).get(
+            session, "player", "player-1", FATIGUE_METER_KEY
+        )
 
         assert record.payload["stamina_delta"] == -12.0
         assert record.random_trace["ruleset_damage_multiplier"] == 2.0
@@ -1986,6 +2053,7 @@ def _context(
     *,
     bus: EventBus | None = None,
     rng: GameRng | None = None,
+    rules: RuleEngine | None = None,
 ) -> GameContext:
     room = Room(
         id="arena",
@@ -2046,6 +2114,7 @@ def _context(
             actor_id="player-1", correlation_id="session-1"
         ),
         session_id="session-1",
+        rules=rules,
     )
 
 
