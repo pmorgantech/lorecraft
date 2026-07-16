@@ -7,10 +7,12 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, col, select
 
+from lorecraft.errors import GameError, NotFoundError
 from lorecraft.webui.admin.auth import Moderator, Observer
+from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.events import GameEvent
@@ -24,6 +26,8 @@ from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
+from lorecraft.engine.services.item_location import ItemLocationService
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.features.combat.models import CombatWound
 from lorecraft.features.equipment.body import (
     add_wounds_to_body_view,
@@ -92,6 +96,26 @@ def _player_body_snapshot(session: Session, player: Player) -> dict[str, Any]:
         ],
         "body": body,
     }
+
+
+def _meter_snapshot(meter: Any) -> dict[str, Any]:
+    return {
+        "key": meter.key,
+        "current": meter.current,
+        "maximum": meter.maximum,
+    }
+
+
+def _set_meter_full(
+    state: Any, session: Session, player_id: str, key: str
+) -> dict[str, Any] | None:
+    try:
+        meter = state.meters.get(session, "player", player_id, key)
+    except NotFoundError:
+        return None
+    before = _meter_snapshot(meter)
+    state.meters.set_current(session, meter, meter.maximum)
+    return {"key": key, "before": before, "after": _meter_snapshot(meter)}
 
 
 def _audit_admin_action(
@@ -474,6 +498,210 @@ async def set_player_flags(
 
 class _ReasonBody(BaseModel):
     reason: str | None = None
+
+
+class _HealBody(BaseModel):
+    reason: str | None = None
+    amount: float | None = Field(default=None, gt=0)
+
+
+@router.post("/players/{player_id}/heal")
+async def heal_player(
+    player_id: str, body: _HealBody, request: Request, admin: Moderator
+) -> dict[str, Any]:
+    reason = _require_reason(body.reason)
+    state = _state(request)
+    with Session(state.game_engine) as session:
+        player = session.get(Player, player_id)
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        meter = state.meters.get(session, "player", player_id, "hp")
+        before = _meter_snapshot(meter)
+        if body.amount is None:
+            state.meters.set_current(session, meter, meter.maximum)
+        else:
+            state.meters.adjust(session, meter, body.amount)
+        after = _meter_snapshot(meter)
+        session.commit()
+
+    _audit_admin_action(
+        state,
+        admin_username=admin.username,
+        action="player.heal",
+        target_id=player_id,
+        reason=reason,
+        before={"hp": before},
+        after={"hp": after},
+    )
+    await state.manager.send_to_player(
+        player_id,
+        {"type": "system", "text": "An administrator restores your health."},
+    )
+    return {"status": "healed", "player_id": player_id, "meter": after}
+
+
+@router.post("/players/{player_id}/revitalize")
+async def revitalize_player(
+    player_id: str, body: _ReasonBody, request: Request, admin: Moderator
+) -> dict[str, Any]:
+    reason = _require_reason(body.reason)
+    state = _state(request)
+    meter_changes: list[dict[str, Any]] = []
+    with Session(state.game_engine) as session:
+        player = session.get(Player, player_id)
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        for key in ("hp", "fatigue", "stamina"):
+            change = _set_meter_full(state, session, player_id, key)
+            if change is not None:
+                meter_changes.append(change)
+        session.commit()
+
+    _audit_admin_action(
+        state,
+        admin_username=admin.username,
+        action="player.revitalize",
+        target_id=player_id,
+        reason=reason,
+        before={"meters": [m["before"] for m in meter_changes]},
+        after={"meters": [m["after"] for m in meter_changes]},
+    )
+    await state.manager.send_to_player(
+        player_id,
+        {"type": "system", "text": "An administrator revitalizes you."},
+    )
+    return {"status": "revitalized", "player_id": player_id, "meters": meter_changes}
+
+
+class _BuffBody(BaseModel):
+    effect_key: str
+    reason: str | None = None
+    duration_ticks: float = Field(default=60.0, gt=0)
+    amount: float | None = None
+
+
+@router.post("/players/{player_id}/buff")
+async def buff_player(
+    player_id: str, body: _BuffBody, request: Request, admin: Moderator
+) -> dict[str, Any]:
+    reason = _require_reason(body.reason)
+    effect_key = body.effect_key.strip()
+    if not effect_key:
+        raise HTTPException(status_code=422, detail="effect_key is required")
+    state = _state(request)
+    with Session(state.game_engine) as session:
+        player = session.get(Player, player_id)
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        clock = RoomRepo(session).world_clock()
+        payload: dict[str, Any] = {}
+        if body.amount is not None:
+            payload["amount"] = body.amount
+        try:
+            effect = state.effects.apply(
+                session,
+                "player",
+                player_id,
+                effect_key,
+                duration_ticks=body.duration_ticks,
+                payload=payload,
+                clock_epoch=clock.game_epoch if clock is not None else 0.0,
+            )
+        except GameError as exc:
+            raise HTTPException(status_code=422, detail=exc.message) from exc
+        after = {
+            "effect_id": effect.id,
+            "effect_key": effect.effect_key,
+            "payload": effect.payload,
+            "expires_at_epoch": effect.expires_at_epoch,
+        }
+        session.commit()
+
+    _audit_admin_action(
+        state,
+        admin_username=admin.username,
+        action="player.buff",
+        target_id=player_id,
+        reason=reason,
+        after={"effect": after},
+    )
+    await state.manager.send_to_player(
+        player_id,
+        {"type": "system", "text": f"An administrator bestows {effect_key} on you."},
+    )
+    return {"status": "buffed", "player_id": player_id, "effect": after}
+
+
+class _BestowBody(BaseModel):
+    reason: str | None = None
+    coins: int = Field(default=0, ge=0)
+    item_id: str | None = None
+    quantity: int = Field(default=1, ge=1)
+
+
+@router.post("/players/{player_id}/bestow")
+async def bestow_player(
+    player_id: str, body: _BestowBody, request: Request, admin: Moderator
+) -> dict[str, Any]:
+    reason = _require_reason(body.reason)
+    item_id = body.item_id.strip() if body.item_id is not None else None
+    if body.coins <= 0 and not item_id:
+        raise HTTPException(status_code=422, detail="Bestow coins or an item")
+    state = _state(request)
+    with Session(state.game_engine) as session:
+        player = session.get(Player, player_id)
+        if player is None:
+            raise HTTPException(status_code=404, detail="Player not found")
+        before_balance = LedgerService().balance_of(session, "player", player_id)
+        if body.coins:
+            LedgerService().credit(session, "player", player_id, body.coins)
+        stacks: list[dict[str, Any]] = []
+        if item_id:
+            try:
+                created = ItemLocationService(session).spawn(
+                    item_id,
+                    Location("player", player_id),
+                    quantity=body.quantity,
+                )
+            except GameError as exc:
+                raise HTTPException(status_code=422, detail=exc.message) from exc
+            stacks = [
+                {
+                    "stack_id": stack.id,
+                    "item_id": stack.item_id,
+                    "quantity": stack.quantity,
+                    "instance_id": stack.instance_id,
+                }
+                for stack in created
+            ]
+        after_balance = LedgerService().balance_of(session, "player", player_id)
+        session.commit()
+
+    before = {"coins": before_balance}
+    after = {
+        "coins": after_balance,
+        "coins_granted": body.coins,
+        "items": stacks,
+    }
+    _audit_admin_action(
+        state,
+        admin_username=admin.username,
+        action="player.bestow",
+        target_id=player_id,
+        reason=reason,
+        before=before,
+        after=after,
+    )
+    awarded: list[str] = []
+    if body.coins:
+        awarded.append(f"{body.coins} coins")
+    if item_id:
+        awarded.append(f"{body.quantity} {item_id}")
+    await state.manager.send_to_player(
+        player_id,
+        {"type": "system", "text": f"An administrator gives you {', '.join(awarded)}."},
+    )
+    return {"status": "bestowed", "player_id": player_id, **after}
 
 
 @router.post("/players/{player_id}/freeze")

@@ -266,6 +266,36 @@
             <label>ADMIN REASON</label>
             <input id="pe-reason" placeholder="required audit reason" />
           </div>
+          <div style="margin-top:0.75rem;">
+            <h3 style="margin:0 0 0.4rem 0;">Admin Actions</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.5rem;border:1px solid var(--border);padding:0.5rem;background:rgba(0,0,0,0.12);">
+              <div class="field">
+                <label>RECOVERY</label>
+                <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+                  <button id="pe-heal-btn" onclick="playerHeal()">Heal HP</button>
+                  <button id="pe-revitalize-btn" onclick="playerRevitalize()">Revitalize</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>BUFF</label>
+                <div style="display:grid;grid-template-columns:1fr 70px 70px;gap:0.35rem;">
+                  <input id="pe-buff-key" placeholder="fortified" />
+                  <input id="pe-buff-amount" type="number" step="1" placeholder="+2" />
+                  <input id="pe-buff-duration" type="number" min="1" step="1" value="60" />
+                </div>
+                <button id="pe-buff-btn" style="margin-top:0.35rem;" onclick="playerBuff()">Apply Buff</button>
+              </div>
+              <div class="field">
+                <label>BESTOW</label>
+                <div style="display:grid;grid-template-columns:80px 1fr 70px;gap:0.35rem;">
+                  <input id="pe-bestow-coins" type="number" min="0" step="1" placeholder="coins" />
+                  <input id="pe-bestow-item" placeholder="item id" />
+                  <input id="pe-bestow-qty" type="number" min="1" step="1" value="1" />
+                </div>
+                <button id="pe-bestow-btn" style="margin-top:0.35rem;" onclick="playerBestow()">Bestow</button>
+              </div>
+            </div>
+          </div>
           <div style="display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;">
             <button id="pe-save-btn" onclick="savePlayerRecord()">Save</button>
             <button onclick="observePlayer(state.editingPlayer)">Observe</button>
@@ -1163,7 +1193,11 @@ function renderPlayers() {
 
 function updatePlayerEditUI() {
   const canEdit = ["moderator", "world-builder", "superadmin"].includes(state.role);
-  for (const id of ["pe-username", "pe-respawn-room", "pe-pvp", "pe-ghost", "pe-flags", "pe-reason", "pe-save-btn"]) {
+  for (const id of [
+    "pe-username", "pe-respawn-room", "pe-pvp", "pe-ghost", "pe-flags", "pe-reason", "pe-save-btn",
+    "pe-heal-btn", "pe-revitalize-btn", "pe-buff-key", "pe-buff-amount", "pe-buff-duration",
+    "pe-buff-btn", "pe-bestow-coins", "pe-bestow-item", "pe-bestow-qty", "pe-bestow-btn"
+  ]) {
     const el = document.getElementById(id);
     if (!el) continue;
     el.disabled = !canEdit;
@@ -1217,6 +1251,12 @@ async function openPlayerEditor(playerId) {
   document.getElementById("pe-ghost").checked = Boolean(p.ghost_state);
   document.getElementById("pe-flags").value = JSON.stringify(p.flags || {}, null, 2);
   renderBodyView("pe-body-view", p.body);
+  document.getElementById("pe-buff-key").value = "fortified";
+  document.getElementById("pe-buff-amount").value = "2";
+  document.getElementById("pe-buff-duration").value = "60";
+  document.getElementById("pe-bestow-coins").value = "";
+  document.getElementById("pe-bestow-item").value = "";
+  document.getElementById("pe-bestow-qty").value = "1";
   document.getElementById("pe-reason").value = "";
   document.getElementById("pe-status").textContent = "";
   document.getElementById("player-editor-panel").style.display = "block";
@@ -1277,6 +1317,103 @@ async function savePlayerRecord() {
   } finally {
     updatePlayerEditUI();
   }
+}
+
+function playerActionReason(statusEl) {
+  const reason = document.getElementById("pe-reason").value.trim();
+  if (!reason) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Admin reason is required";
+    return null;
+  }
+  return reason;
+}
+
+async function refreshPlayerEditorAfterAction(message) {
+  const playerId = state.editingPlayer;
+  await loadDashboard();
+  await openPlayerEditor(playerId);
+  const statusEl = document.getElementById("pe-status");
+  statusEl.style.color = "var(--phosphor)";
+  statusEl.textContent = message;
+}
+
+async function playerHeal() {
+  if (!state.editingPlayer) return;
+  const statusEl = document.getElementById("pe-status");
+  const reason = playerActionReason(statusEl);
+  if (!reason) return;
+  const playerId = state.editingPlayer;
+  const result = await api("POST", `/admin/players/${encodeURIComponent(playerId)}/heal`, {reason});
+  if (result.detail) { showError(result.detail); return; }
+  await refreshPlayerEditorAfterAction("Healed.");
+}
+
+async function playerRevitalize() {
+  if (!state.editingPlayer) return;
+  const statusEl = document.getElementById("pe-status");
+  const reason = playerActionReason(statusEl);
+  if (!reason) return;
+  const playerId = state.editingPlayer;
+  const result = await api("POST", `/admin/players/${encodeURIComponent(playerId)}/revitalize`, {reason});
+  if (result.detail) { showError(result.detail); return; }
+  await refreshPlayerEditorAfterAction("Revitalized.");
+}
+
+async function playerBuff() {
+  if (!state.editingPlayer) return;
+  const statusEl = document.getElementById("pe-status");
+  const reason = playerActionReason(statusEl);
+  if (!reason) return;
+  const effectKey = document.getElementById("pe-buff-key").value.trim();
+  const amountRaw = document.getElementById("pe-buff-amount").value.trim();
+  const duration = Number(document.getElementById("pe-buff-duration").value);
+  if (!effectKey || !Number.isFinite(duration) || duration <= 0) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Buff key and positive duration are required";
+    return;
+  }
+  const body = {effect_key: effectKey, duration_ticks: duration, reason};
+  if (amountRaw) {
+    const amount = Number(amountRaw);
+    if (!Number.isFinite(amount)) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = "Buff amount must be numeric";
+      return;
+    }
+    body.amount = amount;
+  }
+  const playerId = state.editingPlayer;
+  const result = await api("POST", `/admin/players/${encodeURIComponent(playerId)}/buff`, body);
+  if (result.detail) { showError(result.detail); return; }
+  await refreshPlayerEditorAfterAction("Buff applied.");
+}
+
+async function playerBestow() {
+  if (!state.editingPlayer) return;
+  const statusEl = document.getElementById("pe-status");
+  const reason = playerActionReason(statusEl);
+  if (!reason) return;
+  const coinsRaw = document.getElementById("pe-bestow-coins").value.trim();
+  const itemId = document.getElementById("pe-bestow-item").value.trim();
+  const quantity = Number(document.getElementById("pe-bestow-qty").value);
+  const coins = coinsRaw ? Number(coinsRaw) : 0;
+  if (!Number.isInteger(coins) || coins < 0 || !Number.isInteger(quantity) || quantity < 1) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Coins must be non-negative and quantity must be positive";
+    return;
+  }
+  if (coins <= 0 && !itemId) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = "Enter coins or an item id";
+    return;
+  }
+  const body = {coins, quantity, reason};
+  if (itemId) body.item_id = itemId;
+  const playerId = state.editingPlayer;
+  const result = await api("POST", `/admin/players/${encodeURIComponent(playerId)}/bestow`, body);
+  if (result.detail) { showError(result.detail); return; }
+  await refreshPlayerEditorAfterAction("Bestowed.");
 }
 
 async function teleportDialog(playerId) {

@@ -134,7 +134,7 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
-| **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; body/equipment/condition snapshots; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `/admin/ws` |
+| **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; body/equipment/condition snapshots; support actions for healing, revitalizing, timed buffs, and bestowing coins/items; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `POST /admin/players/{id}/heal`, `/revitalize`, `/buff`, `/bestow`, `/admin/ws` |
 | **Audit** | Paginated, filterable audit log; row-expand payload; correlation-ID session replay. **Live-updates** as players act (each executed command pushes over `/admin/ws`) — toggle with the **Live** checkbox, or use the **↻ Refresh** button to reload on demand. Command summaries show the full command as typed (e.g. `Command executed: go east`, not just the verb). Severity/source facets are loaded from the audit DB. | `GET /admin/audit`, `GET /admin/audit/facets`, `GET /admin/audit/session/{correlation_id}` |
 | **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **NPC/AI** | Read-only NPC runtime dashboard: current room, behavior, HP, autonomous AI config, schedule count, triggers, context commands, and escort state. Control actions remain intentionally absent until safety/audit gates exist. | `GET /admin/world/npcs` |
@@ -819,6 +819,9 @@ From the Dashboard (web) or Players screen (TUI, `F1`), select a player to:
 - **Teleport** — move them to a different room
 - **Freeze / unfreeze** — block their commands without disconnecting them
 - **Edit flags** — set/clear quest or state flags directly
+- **Heal / revitalize** — restore HP, or restore HP plus available stamina/fatigue meters
+- **Buff** — apply a registered timed `ActiveEffect` such as `fortified` or `keen_minded`
+- **Bestow** — grant coins through the ledger faucet, spawn item stacks into the player's loose inventory, or both
 - **Message** — send them a system message
 
 Every action is written to the audit log (Audit tab / `F2`), searchable by player,

@@ -39,3 +39,27 @@ def test_dashboard_can_edit_player_record(page: Any, admin_server: str) -> None:
     assert page.is_checked("#pe-pvp")
     assert page.is_checked("#pe-ghost")
     assert "edited-player" in page.locator("#players-tbody").inner_text()
+
+
+def test_dashboard_player_tab_can_bestow_coins(page: Any, admin_server: str) -> None:
+    admin_login(page, admin_server)
+    page.wait_for_selector("#players-tbody tr")
+
+    row = page.locator("#players-tbody tr").first
+    row.get_by_role("button", name="Edit").click()
+    page.wait_for_selector("#player-editor-panel", state="visible")
+
+    page.fill("#pe-reason", "support stipend")
+    page.fill("#pe-bestow-coins", "12")
+
+    with page.expect_response(
+        lambda resp: (
+            resp.request.method == "POST"
+            and "/admin/players/" in resp.url
+            and resp.url.endswith("/bestow")
+        )
+    ):
+        page.click("#pe-bestow-btn")
+    page.wait_for_function(
+        "() => document.getElementById('pe-status').textContent.includes('Bestowed')"
+    )

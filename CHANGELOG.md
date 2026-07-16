@@ -4,6 +4,20 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.146.0] - 2026-07-16
+
+### Added
+
+- Added Dashboard Player-tab support actions for admins: heal HP, revitalize
+  available recovery meters, apply registered timed buffs, and bestow coins
+  and/or item stacks. All actions require an admin reason and write structured
+  `admin_action` audit rows.
+
+### Changed
+
+- Updated the admin builder guide and admin/tooling roadmap triage to include
+  the new Player-tab support actions.
+
 ## [0.145.1] - 2026-07-16
 
 ### Changed

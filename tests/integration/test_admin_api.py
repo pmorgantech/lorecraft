@@ -11,13 +11,15 @@ from typing import Any
 
 import anyio
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, create_engine
+from sqlmodel import Session, create_engine, select
 
 from lorecraft.webui.admin.auth import create_token, hash_password
 from lorecraft.config import Settings
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.meters import ActiveEffect
+from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.features.combat.models import CombatWound
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
@@ -407,6 +409,153 @@ async def _test_observer_cannot_update_player() -> None:
             "PATCH",
             "/admin/players/player-1",
             body={"username": "edited-player", "reason": "support request"},
+            token=token,
+        )
+    assert status == 403
+
+
+def test_admin_can_heal_and_revitalize_player() -> None:
+    anyio.run(_test_admin_can_heal_and_revitalize_player)
+
+
+async def _test_admin_can_heal_and_revitalize_player() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        with Session(game_engine) as session:
+            meter = app.state.lorecraft.meters.get(session, "player", "player-1", "hp")
+            app.state.lorecraft.meters.set_current(session, meter, 10.0)
+            session.commit()
+
+        heal_status, heal = await _http(
+            app,
+            "POST",
+            "/admin/players/player-1/heal",
+            body={"amount": 15, "reason": "support recovery"},
+            token=token,
+        )
+        assert heal_status == 200
+        assert heal["status"] == "healed"
+        assert heal["meter"]["current"] == 25.0
+
+        revitalize_status, revitalize = await _http(
+            app,
+            "POST",
+            "/admin/players/player-1/revitalize",
+            body={"reason": "support full restore"},
+            token=token,
+        )
+        assert revitalize_status == 200
+        assert revitalize["status"] == "revitalized"
+        hp = next(m for m in revitalize["meters"] if m["key"] == "hp")
+        assert hp["after"]["current"] == hp["after"]["maximum"]
+
+    with Session(audit_engine) as session:
+        events = session.exec(select(AuditEvent)).all()
+    assert any(e.payload_json["action"] == "player.heal" for e in events)
+    assert any(e.payload_json["action"] == "player.revitalize" for e in events)
+
+
+def test_admin_can_buff_player() -> None:
+    anyio.run(_test_admin_can_buff_player)
+
+
+async def _test_admin_can_buff_player() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/players/player-1/buff",
+            body={
+                "effect_key": "fortified",
+                "duration_ticks": 30,
+                "amount": 4,
+                "reason": "support buff",
+            },
+            token=token,
+        )
+    assert status == 200
+    assert data["status"] == "buffed"
+    assert data["effect"]["effect_key"] == "fortified"
+    assert data["effect"]["payload"] == {"amount": 4.0}
+    with Session(game_engine) as session:
+        effect = session.get(ActiveEffect, data["effect"]["effect_id"])
+    assert effect is not None
+    assert effect.entity_type == "player"
+    assert effect.entity_id == "player-1"
+
+
+def test_admin_can_bestow_coins_and_items() -> None:
+    anyio.run(_test_admin_can_bestow_coins_and_items)
+
+
+async def _test_admin_can_bestow_coins_and_items() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token()
+    with Session(game_engine) as session:
+        session.add(
+            Item(
+                id="admin_test_gift",
+                name="Admin Test Gift",
+                description="A deterministic admin grant item.",
+            )
+        )
+        session.commit()
+
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/players/player-1/bestow",
+            body={
+                "coins": 25,
+                "item_id": "admin_test_gift",
+                "quantity": 2,
+                "reason": "support grant",
+            },
+            token=token,
+        )
+    assert status == 200
+    assert data["status"] == "bestowed"
+    assert data["coins_granted"] == 25
+    assert data["coins"] >= 25
+    assert data["items"][0]["item_id"] == "admin_test_gift"
+    assert data["items"][0]["quantity"] == 2
+    with Session(game_engine) as session:
+        assert LedgerService().balance_of(session, "player", "player-1") >= 25
+        stack = session.get(ItemStack, data["items"][0]["stack_id"])
+    assert stack is not None
+    assert stack.owner_type == "player"
+    assert stack.owner_id == "player-1"
+
+
+def test_observer_cannot_bestow_player() -> None:
+    anyio.run(_test_observer_cannot_bestow_player)
+
+
+async def _test_observer_cannot_bestow_player() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="observer")
+    async with _lifespan(app):
+        status, _ = await _http(
+            app,
+            "POST",
+            "/admin/players/player-1/bestow",
+            body={"coins": 10, "reason": "observer grant attempt"},
             token=token,
         )
     assert status == 403

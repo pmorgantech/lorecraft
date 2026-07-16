@@ -75,8 +75,9 @@ new work.
   `admin-ui` branch surfaces backed by DB/admin endpoints where those live dials exist.
 - ~~System controls for graceful restart, crash reports, trace lookup, analytics, audit~~ —
   restart/crashes/analytics/audit already exist; trace lookup is present on the `admin-ui` branch.
-- ~~Player record editing from the player list~~ — present on the `admin-ui` branch for username,
-  respawn room, PvP consent, ghost state, and flags JSON.
+- ~~Player record editing and support actions from the player list~~ — present on the `admin-ui`
+  branch for username, respawn room, PvP consent, ghost state, flags JSON, heal/revitalize,
+  timed buffs, and bestowing coins/items.
 - ~~Issues, News, Help, Accounts, World room editing, and Changesets~~ — already implemented admin
   tooling; keep improving ergonomics only when specific friction appears.
 
