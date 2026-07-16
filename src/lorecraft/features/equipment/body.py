@@ -8,8 +8,11 @@ onto them belong to the equipment/combat feature layer.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Literal
 
+from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.world import Item
 from lorecraft.features.equipment.slots import ALL_SLOTS, slot_label
 from lorecraft.types import JsonObject
 
@@ -70,6 +73,32 @@ def empty_body_view() -> list[JsonObject]:
         }
         for part in BODY_PARTS
     ]
+
+
+def body_equipment_view(equipped: Sequence[tuple[ItemStack, Item]]) -> list[JsonObject]:
+    view = empty_body_view()
+    slots_by_name = {
+        slot["slot"]: slot
+        for part in view
+        for slot in part["slots"]
+        if isinstance(slot, dict)
+    }
+    for stack, item in equipped:
+        if stack.slot is None:
+            continue
+        slot = slots_by_name.get(stack.slot)
+        if slot is None:
+            continue
+        slot["item"] = {
+            "stack_id": stack.id,
+            "item_id": item.id,
+            "name": item.name,
+            "description": item.description,
+            "quantity": stack.quantity,
+            "wearable": item.wearable,
+            "slot": stack.slot,
+        }
+    return view
 
 
 def validate_body_slots() -> None:

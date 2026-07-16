@@ -152,7 +152,7 @@ equipped or empty, and current body-part condition from persistent combat wounds
 Tier 2 combat contributes wound condition rows; web/admin hosts render the composed view.
 
 - [x] 91.1 Body schema/view model — canonical body parts and equipment slot grouping.
-- [ ] 91.2 Equipment body view — populate every slot with equipped/worn/wielded item state.
+- [x] 91.2 Equipment body view — populate every slot with equipped/worn/wielded item state.
 - [ ] 91.3 Condition body view — group `CombatWound` rows by body part/severity/status.
 - [ ] 91.4 Player UI + command — add browser body panel plus `body` / `condition` command.
 - [ ] 91.5 Admin/player observe integration — show body/equipment/condition in admin Observe.

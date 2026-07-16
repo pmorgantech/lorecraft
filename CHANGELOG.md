@@ -4,6 +4,13 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.138.0] - 2026-07-16
+
+### Added
+
+- Added Sprint 91.2 equipment body view composition: every canonical body slot
+  can now render empty or populated equipped/worn/wielded item state.
+
 ## [0.137.0] - 2026-07-16
 
 ### Added
