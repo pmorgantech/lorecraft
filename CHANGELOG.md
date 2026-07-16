@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.145.1] - 2026-07-16
+
+### Changed
+
+- Archived Sprint 88 into `roadmap_completed.md`, removed completed Sprint 88
+  work from the active roadmap, and moved mounted/siege combat to the wishlist
+  as a future content-specific layer.
+
 ## [0.145.0] - 2026-07-16
 
 ### Added

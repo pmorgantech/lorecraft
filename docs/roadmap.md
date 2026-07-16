@@ -11,10 +11,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 
 ---
 
-## Where things stand (2026-07-16, v0.145.0; Sprints 1–87, 89–91 implemented; Sprint 88 active)
+## Where things stand (2026-07-16, v0.145.1; Sprints 1–91 implemented, with deferred items tracked in wishlist)
 
 `roadmap.md` now tracks remaining work only. The full task-level history for completed Sprints
-1–87 and the 2026-07-16 admin/tooling/body-view tranche lives in
+1–91 and the 2026-07-16 admin/tooling/body-view tranche lives in
 [`roadmap_completed.md`](roadmap_completed.md), and release-level detail is in
 [`../CHANGELOG.md`](../CHANGELOG.md).
 
@@ -38,10 +38,10 @@ wall was fsync serialization on a single SQLite writer, which WAL (37.4) already
 wouldn't help. Revisit the latter only if a *post-WAL* realistic-load test shows a hard
 single-process wall.
 
-**Activated (2026-07-14):** Combat & PvP (Sprints 86–88, see below) — the Scheduled Intent design
-from [`combat_design.md`](combat_design.md). Combat is a **supporting** system (Exploration >
-Trading > Questing > Puzzles) — it serves stories; stealth/persuasion/bribery/flee are first-class
-alternatives. It ships as `features/combat/` with no Tier 1 edits needed.
+**Combat status:** Sprints 85–88 are archived. Combat follows the Scheduled Intent design from
+[`combat_design.md`](combat_design.md) and remains a **supporting** system (Exploration > Trading >
+Questing > Puzzles). PvP consent and tactical-depth ideas that still need playtest evidence remain
+in [`wishlist.md`](wishlist.md).
 
 Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
@@ -103,47 +103,16 @@ new work.
 
 ## Sprint numbering (avoid duplicates)
 
-- **Used (complete):** 1–87 and 89, except for deliberately skipped/deferred numbers below. Full task
+- **Used (complete):** 1–91, except for deliberately skipped/deferred numbers below. Full task
   detail lives in [`roadmap_completed.md`](roadmap_completed.md).
 - **Deferred to [`wishlist.md`](wishlist.md):** 37.1 (scheduler-commit batching), 38
-  (concurrency/threading gate), and 65 (multiplayer trade/transit test pass).
-- **Deferred pending playtesting evidence:** 88 (Combat Phase 4 advanced-depth bucket).
-- **Completed and archived (2026-07-16):** 89 (Admin NPC/AI read-only runtime endpoint).
-- **Newly active (2026-07-16):** 90 (Admin observation routing for live session viewer).
-- **Completed and archived (2026-07-16):** 91 (Body equipment and condition view).
+  (concurrency/threading gate), 65 (multiplayer trade/transit test pass), and 88.5
+  (mounted/siege combat content-specific layer).
+- **Completed and archived (2026-07-16):** 88 (Combat Phase 4 advanced narrow layers), 89
+  (Admin NPC/AI read-only runtime endpoint), 90 (Admin observation routing for live session
+  viewer), and 91 (Body equipment and condition view).
 - **Next genuinely free sprint number:** 92. Do not recycle a number that appears here, in
   [`roadmap_completed.md`](roadmap_completed.md), or in [`wishlist.md`](wishlist.md).
-
----
-
-## Combat (Scheduled Intent)
-
-Sprints 85–87 are complete and archived in
-[`roadmap_completed.md`](roadmap_completed.md#sprints-8587--scheduled-intent-combat-foundation-tactics-and-content-power).
-Combat remains built as `features/combat/`, with opinion/data in Tier 2. Sprint 88 is now being
-handled one narrow layer at a time; speculative control-heavy depth remains deferred.
-
-### Sprint 88 — Combat Phase 4: Advanced
-
-**Goal:** Narrow depth layers gated behind demonstrated need. Do not build speculatively. Formation
-mechanics, near/far tactical bands, grappling, flanking, screening, and full PvP duel rules are
-explicitly out of the active roadmap.
-
-**Depends on:** Sprints 85–87 + playtesting/balance evidence.
-
-**Tier:** Tier 2 (all features/combat/). Each item independently deferrable.
-
-- [x] 88.1 Wounds + body locations — persist after health recovery. v0.136.0 records active
-  `CombatWound` rows for positive combat damage and includes wound metadata in resolution/audit
-  payloads; no stat penalties yet.
-- [x] 88.2 Terrain & cover as narrow defense modifiers — v0.143.0 applies room terrain/cover as
-  target defense-score bonuses and records the contribution in combat traces.
-- [x] 88.3 Combo systems — v0.144.0 adds opt-in data-authored follow-up hooks that grant or
-  consume an encounter-scoped combo key for temporary accuracy/damage bonuses.
-- [x] 88.4 Simultaneous-planning encounter mode — v0.145.0 lets authored NPCs opt into
-  `ai.combat_mode: simultaneous_planning`, queueing NPC responses at the player's shared resolve
-  time and disabling the normal auto-continue loop for that encounter mode.
-- [ ] 88.5 Mounted / siege combat — content-specific, not general-purpose formations
 
 ---
 

@@ -1,6 +1,6 @@
 # Roadmap — completed sprint history
 
-> **Historical record (last extended 2026-07-16, through v0.142.1).** The active, forward-looking
+> **Historical record (last extended 2026-07-16, through v0.145.1).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
 > readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
@@ -9,7 +9,7 @@
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
 > performance & scaling band), **39–55** (timed room effects; admin-console + analytics work;
 > the wishlist-promoted content/UX band — chat/feed split → global channels, marks, celestial
-> cycles, context-attached commands), **56–69**, **70–84**, **85–87 combat**, and the
+> cycles, context-attached commands), **56–69**, **70–84**, **85–88 combat**, and the
 > **2026-07-16 admin UI/tooling/body-view tranche**. Layout note: recent completions are
 > grouped near the top (below), the deep 1–34 archive follows under a second `# Lorecraft — Roadmap`
 > header.
@@ -17,6 +17,26 @@
 > **Not here:** 37.1 (scheduler-commit batching) + 38 (concurrency gate) were deferred to
 > [`wishlist.md`](wishlist.md), not completed; Combat/PvP (former 61–64) likewise set aside there.
 > Do not plan against this file; append newly-completed sprints here as they close.
+
+---
+
+## Sprint 88 — Combat Phase 4: Advanced
+
+**Goal:** add only narrow combat depth layers with demonstrated utility. General-purpose
+formations, persistent near/far tactical bands, grappling, flanking, screening, full PvP duel
+rules, and generic mounted/siege systems remain out of scope.
+
+**Tier split:** Tier 1 remains unchanged. Tier 2 `features/combat/` owns wounds, environment
+modifiers, authored combo hooks, and opt-in encounter modes. Web/admin hosts consume the resulting
+resolution traces and wound rows.
+
+| # | Task | Status |
+|---|------|--------|
+| 88.1 | Wounds + body locations — persist after health recovery. | [x] v0.136.0 — Positive combat damage records active `CombatWound` rows with body location, severity, damage, and HP transition metadata. Wounds are inspection-only and do not apply stat penalties yet. |
+| 88.2 | Terrain & cover as narrow defense modifiers. | [x] v0.143.0 — Room terrain and authored cover flags add target defense-score bonuses at resolution time, with terrain/cover/environment contributions recorded in combat traces. |
+| 88.3 | Combo systems — only if data-authored actions need follow-up hooks. | [x] v0.144.0 — Authored opposed-attack actions can grant or consume encounter-scoped combo keys for temporary accuracy/damage bonuses, with before/after state recorded in traces. |
+| 88.4 | Simultaneous-planning encounter mode (optional, arena/boss). | [x] v0.145.0 — NPCs can opt into `ai.combat_mode: simultaneous_planning`; their response queues immediately at the player's shared resolve time, and that encounter mode disables the normal auto-continue loop. |
+| 88.5 | Mounted / siege combat. | Deferred to [`wishlist.md`](wishlist.md#combatpvp-historical-notes-updated-2026-07-15) — keep this content-specific until world content needs mounts, vehicles, artillery, or siege zones. Do not build a general-purpose formation/range subsystem speculatively. |
 
 ---
 

@@ -280,7 +280,10 @@ Still deferred:
 - Opt-in PvP consent, duel stakes, and player-vs-player simulation coverage.
 - Player formations, persistent near/far bands, grappling/flanking/screening, and other
   multi-player tactical-position systems.
-- Body-part wounds and harsher death consequences beyond the current downed/defeated policy.
+- Mounted/siege combat as a content-specific layer for future mounts, vehicles, artillery, or
+  siege zones. Do not build a generic formation/range subsystem for this until content demands it.
+- Harsher wound penalties and death consequences beyond the current inspection-only wounds,
+  downed/defeated policy, and soft player death loop.
 
 Keep these deferred until NPC combat has enough playtest feedback to show which extra layers are
 actually useful.
