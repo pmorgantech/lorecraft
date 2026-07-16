@@ -6,12 +6,11 @@ checker against the *real* world content and asserts the ``docs/roadmap_world.md
 Success Criteria: every room is reachable from the seed start room, and no room
 is an accidental orphan.
 
-The one legitimate exception is transit vehicle rooms: they are entered only via
-the ``board`` command (which sets ``current_room_id`` directly), never through
-the walkable exit graph, so ``check_room_reachability``'s directed BFS reports
-them as unreachable by design. That exception is derived generically from the
-document's transit lines (``vehicle_room_id``) rather than hard-coded, so a newly
-added *real* orphan room would still fail these tests.
+The legitimate exceptions are rooms entered by non-exit mechanics: transit
+vehicle rooms entered via ``board`` and content-authored one-way destinations
+that mark ``flags.exit_graph_unreachable_ok``. Those exceptions are derived from
+world data rather than hard-coded, so a newly added accidental orphan room still
+fails these tests.
 """
 
 from __future__ import annotations
@@ -50,9 +49,19 @@ def _transit_vehicle_room_ids(document: WorldDocument) -> set[str]:
     }
 
 
+def _non_exit_entry_room_ids(document: WorldDocument) -> set[str]:
+    """Rooms intentionally entered by commands/effects rather than room exits."""
+    return {
+        room.id
+        for room in document.rooms
+        if room.flags.get("exit_graph_unreachable_ok") is True
+    }
+
+
 def test_every_room_reachable_except_transit_vehicles() -> None:
     document = _load_real_world()
     vehicle_rooms = _transit_vehicle_room_ids(document)
+    non_exit_entry_rooms = _non_exit_entry_room_ids(document)
     # The reachability assertion only means something if there IS a known
     # exception to subtract; without one a "no unexpected orphans" check could
     # pass vacuously, so require the transit vehicle set to be non-empty.
@@ -66,8 +75,10 @@ def test_every_room_reachable_except_transit_vehicles() -> None:
         assert match is not None, f"unexpected reachability warning shape: {warning!r}"
         unreachable_ids.add(match.group(1))
 
-    # No room outside the transit vehicle set may be unreachable.
-    unexpected = unreachable_ids - vehicle_rooms
+    expected_unreachable = vehicle_rooms | non_exit_entry_rooms
+
+    # No room outside the known non-exit entry set may be unreachable.
+    unexpected = unreachable_ids - expected_unreachable
     assert not unexpected, (
         f"unexpected unreachable (orphaned) rooms: {sorted(unexpected)}"
     )

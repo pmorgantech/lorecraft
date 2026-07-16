@@ -79,10 +79,13 @@ def register() -> None:
     module-level import side effect). Idempotent (the modifier source is
     appended to a list, so a guard prevents double-registration)."""
     global _registered
-    if _registered:
+    meter_registry = meters_module.get_registry()
+    already_registered = _registered
+    if already_registered and FATIGUE_METER_KEY in meter_registry:
         return
     _registered = True
-    meters_module.get_registry().register(
+    meter_registry.register(
         MeterDef(key=FATIGUE_METER_KEY, base_maximum=fatigue_base_maximum)
     )
-    modifiers_module.get_registry().register(FatigueModifierSource())
+    if not already_registered:
+        modifiers_module.get_registry().register(FatigueModifierSource())

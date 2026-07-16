@@ -131,6 +131,7 @@
     #world-layout { display: flex; gap: 1rem; min-height: 0; flex: 1; }
     #world-layout .room-list { flex: 1; min-height: 0; overflow: auto; }
     #room-editor-panel { width: 320px; flex-shrink: 0; display: none; overflow: auto; }
+    #item-layout { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(320px, 420px); gap: 1rem; align-items: start; }
     #world-danger-zone {
       display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
       background: #2a0000; border: 1px solid var(--danger); border-radius: 4px;
@@ -139,6 +140,13 @@
     #w-reseed-status { font-size: 0.8rem; min-height: 1.2em; margin-bottom: 0.25rem; }
     #room-editor-panel .field { margin-bottom: 0.6rem; }
     #room-editor-panel label { display: block; color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.25rem; }
+    #item-editor-panel .field { margin-bottom: 0.6rem; }
+    #item-editor-panel label { color: var(--text-dim); font-size: 0.75rem; }
+    @media (max-width: 900px) {
+      #world-layout { flex-direction: column; }
+      #room-editor-panel { width: 100%; }
+      #item-layout { grid-template-columns: 1fr; }
+    }
 
     /* ---------- Scan results ---------- */
     #cs-conflicts { display: none; }
@@ -447,7 +455,7 @@
               <option value="port_veridian">port_veridian</option>
             </select>
             <input id="w-search" placeholder="filter by name" style="width:160px;" oninput="renderRooms()" />
-            <button onclick="loadRooms()">↻ Refresh</button>
+            <button onclick="loadWorld()">↻ Refresh</button>
           </div>
         </div>
         <div id="world-danger-zone">
@@ -483,6 +491,59 @@
             <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
               <button onclick="saveRoom()" style="flex:1;">Save</button>
               <button onclick="closeRoomEditor()" style="color:var(--text-dim);">Cancel</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-top:1rem;">
+          <h2 style="display:flex;align-items:baseline;gap:0.5rem;">Items <span id="item-count" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+            <input id="item-search" placeholder="filter items" style="width:180px;" oninput="renderItems()" />
+            <button id="item-new-btn" onclick="newItem()">+ New Item</button>
+          </div>
+        </div>
+        <div id="item-layout">
+          <div class="panel" style="overflow-x:auto;">
+            <table>
+              <thead><tr><th>ID</th><th>Name</th><th>Flags</th><th></th></tr></thead>
+              <tbody id="items-tbody"></tbody>
+            </table>
+          </div>
+          <div id="item-editor-panel" class="panel" style="display:none;">
+            <h2 id="item-editor-title">Edit Item</h2>
+            <div class="field"><label>ID</label><input id="i-id" /></div>
+            <div class="field"><label>NAME</label><input id="i-name" /></div>
+            <div class="field"><label>DESCRIPTION</label><textarea id="i-desc" rows="3" style="width:100%;"></textarea></div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.35rem;margin:0.5rem 0;">
+              <label style="display:flex;align-items:center;gap:0.35rem;"><input id="i-takeable" type="checkbox" style="width:auto;" /> Takeable</label>
+              <label style="display:flex;align-items:center;gap:0.35rem;"><input id="i-tradeable" type="checkbox" style="width:auto;" /> Tradeable</label>
+              <label style="display:flex;align-items:center;gap:0.35rem;"><input id="i-bound" type="checkbox" style="width:auto;" /> Bound</label>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+              <div class="field"><label>QUALITY</label><input id="i-quality" placeholder="common" /></div>
+              <div class="field"><label>CATEGORY</label><input id="i-category" placeholder="supplies" /></div>
+              <div class="field"><label>VALUE</label><input id="i-value" type="number" step="1" /></div>
+              <div class="field"><label>WEIGHT</label><input id="i-weight" type="number" step="0.01" /></div>
+              <div class="field"><label>SLOT</label><input id="i-slot" placeholder="main_hand" /></div>
+              <div class="field"><label>LIGHT</label><input id="i-light" type="number" step="1" /></div>
+              <div class="field"><label>MAX DURABILITY</label><input id="i-max-durability" type="number" step="1" placeholder="blank" /></div>
+              <div class="field"><label>CAPACITY</label><input id="i-capacity" type="number" step="0.01" placeholder="blank" /></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:0.35rem;margin:0.5rem 0;"><input id="i-wearable" type="checkbox" style="width:auto;" /> Wearable</label>
+            <details style="margin-top:0.5rem;">
+              <summary style="cursor:pointer;color:var(--amber);">Advanced JSON</summary>
+              <div class="field"><label>ALIASES JSON</label><textarea id="i-aliases" rows="2" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>USABLE WITH JSON</label><textarea id="i-usable-with" rows="2" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>LOOT TABLE JSON</label><textarea id="i-loot-table" rows="3" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>EFFECTS JSON</label><textarea id="i-effects" rows="3" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>MECHANISM STATES JSON</label><textarea id="i-mechanism-states" rows="2" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>MECHANISM SIDE EFFECTS JSON</label><textarea id="i-mechanism-side-effects" rows="3" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>COMBINATION SIDE EFFECTS JSON</label><textarea id="i-combination-side-effects" rows="3" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+              <div class="field"><label>CONTEXT COMMANDS JSON</label><textarea id="i-context-commands" rows="3" style="width:100%;font-family:monospace;font-size:0.8rem;"></textarea></div>
+            </details>
+            <div id="item-save-error" role="status" aria-live="polite" style="color:var(--danger);font-size:0.8rem;min-height:1.2em;margin-top:0.4rem;"></div>
+            <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+              <button id="item-save-btn" onclick="saveItem()" style="flex:1;">Save Item</button>
+              <button onclick="closeItemEditor()" style="color:var(--text-dim);">Cancel</button>
             </div>
           </div>
         </div>
@@ -940,9 +1001,11 @@ const state = {
   username:    sessionStorage.getItem("lc_admin_user")  || "",
   role:        decodeJwtRole(sessionStorage.getItem("lc_admin_token") || ""),
   editingRoom: null,
+  editingItem: null,
   editingPlayer: null,
   observingPlayer: null,
   allPlayers: [],
+  allItems: [],
   ws: null,
   activeCategory: "overview",
 };
@@ -1099,7 +1162,7 @@ const TAB_TO_CATEGORY = Object.fromEntries(
 
 const TAB_LOADERS = {
   dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
-  crashes: loadCrashes, world: loadRooms,
+  crashes: loadCrashes, world: loadWorld,
   changesets: loadChangesets, clock: loadClock, weather: loadClock,
   combat: loadCombatRulesets, progression: loadProgressionConfig,
   economy: loadEconomyRegions,
@@ -1801,6 +1864,14 @@ async function showCrashDetail(id) {
 
 let allRooms = [];
 
+async function loadWorld() {
+  await Promise.all([loadRooms(), loadItems()]);
+}
+
+function canBuildWorld() {
+  return ["world-builder", "superadmin"].includes(state.role);
+}
+
 async function loadRooms() {
   updateWorldDangerZoneUI();
   const rooms = await api("GET", "/admin/world/rooms");
@@ -1894,6 +1965,222 @@ function renderRooms() {
         <td><button onclick='editRoom(${JSON.stringify(JSON.stringify(r))})'>Edit</button></td>`;
       tbody.appendChild(tr);
     }
+  }
+}
+
+async function loadItems() {
+  const items = await api("GET", "/admin/world/items");
+  state.allItems = Array.isArray(items) ? items : [];
+  renderItems();
+  updateItemEditorUI();
+}
+
+function renderItems() {
+  const tbody = document.getElementById("items-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const q = (document.getElementById("item-search")?.value || "").trim().toLowerCase();
+  const items = q
+    ? state.allItems.filter(item => `${item.id || ""} ${item.name || ""} ${item.category || ""}`.toLowerCase().includes(q))
+    : state.allItems;
+
+  const countEl = document.getElementById("item-count");
+  if (countEl) {
+    const hidden = state.allItems.length - items.length;
+    countEl.textContent = `${items.length} shown` + (hidden > 0 ? ` · ${hidden} hidden` : "");
+  }
+
+  for (const item of items.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""))) {
+    const flags = [
+      item.takeable ? "takeable" : "fixed",
+      item.tradeable ? "tradeable" : "no trade",
+      item.bound ? "bound" : "",
+      item.wearable ? "wearable" : "",
+      item.slot ? `slot:${item.slot}` : "",
+    ].filter(Boolean);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td style="font-family:monospace;color:var(--amber)">${esc(item.id)}</td>
+      <td><strong>${esc(item.name)}</strong><br><span style="color:var(--text-dim);font-size:0.75rem;">${esc(item.category || item.quality || "")}</span></td>
+      <td>${flags.map(flag => badge(flag, flag === "bound" ? "amber" : "gray")).join(" ")}</td>
+      <td><button onclick='editItem(${JSON.stringify(JSON.stringify(item))})'>Edit</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function jsonText(value, fallback) {
+  return JSON.stringify(value ?? fallback, null, 2);
+}
+
+function newItem() {
+  editItem(JSON.stringify({
+    id: "",
+    name: "",
+    description: "",
+    takeable: true,
+    tradeable: true,
+    bound: false,
+    aliases: [],
+    usable_with: [],
+    loot_table: {},
+    slot: null,
+    wearable: false,
+    weight: 0,
+    quality: "common",
+    max_durability: null,
+    light: 0,
+    capacity: null,
+    effects: [],
+    value: 0,
+    category: null,
+    mechanism_states: [],
+    mechanism_side_effects: {},
+    combination_side_effects: {},
+    context_commands: {},
+    __new: true,
+  }));
+}
+
+function editItem(itemJson) {
+  const item = JSON.parse(itemJson);
+  state.editingItem = item;
+  document.getElementById("item-editor-title").textContent = item.__new ? "New Item" : `Edit: ${item.id}`;
+  document.getElementById("i-id").value = item.id || "";
+  document.getElementById("i-id").disabled = !item.__new;
+  document.getElementById("i-name").value = item.name || "";
+  document.getElementById("i-desc").value = item.description || "";
+  document.getElementById("i-takeable").checked = Boolean(item.takeable);
+  document.getElementById("i-tradeable").checked = Boolean(item.tradeable);
+  document.getElementById("i-bound").checked = Boolean(item.bound);
+  document.getElementById("i-quality").value = item.quality || "common";
+  document.getElementById("i-category").value = item.category || "";
+  document.getElementById("i-value").value = item.value ?? 0;
+  document.getElementById("i-weight").value = item.weight ?? 0;
+  document.getElementById("i-slot").value = item.slot || "";
+  document.getElementById("i-light").value = item.light ?? 0;
+  document.getElementById("i-max-durability").value = item.max_durability ?? "";
+  document.getElementById("i-capacity").value = item.capacity ?? "";
+  document.getElementById("i-wearable").checked = Boolean(item.wearable);
+  document.getElementById("i-aliases").value = jsonText(item.aliases, []);
+  document.getElementById("i-usable-with").value = jsonText(item.usable_with, []);
+  document.getElementById("i-loot-table").value = jsonText(item.loot_table, {});
+  document.getElementById("i-effects").value = jsonText(item.effects, []);
+  document.getElementById("i-mechanism-states").value = jsonText(item.mechanism_states, []);
+  document.getElementById("i-mechanism-side-effects").value = jsonText(item.mechanism_side_effects, {});
+  document.getElementById("i-combination-side-effects").value = jsonText(item.combination_side_effects, {});
+  document.getElementById("i-context-commands").value = jsonText(item.context_commands, {});
+  document.getElementById("item-save-error").textContent = "";
+  document.getElementById("item-editor-panel").style.display = "block";
+  updateItemEditorUI();
+}
+
+function closeItemEditor() {
+  state.editingItem = null;
+  document.getElementById("item-editor-panel").style.display = "none";
+}
+
+function updateItemEditorUI() {
+  const canEdit = canBuildWorld();
+  const newBtn = document.getElementById("item-new-btn");
+  if (newBtn) {
+    newBtn.disabled = !canEdit;
+    newBtn.title = canEdit ? "" : "Requires world-builder role";
+  }
+  const ids = [
+    "i-id", "i-name", "i-desc", "i-takeable", "i-tradeable", "i-bound", "i-quality",
+    "i-category", "i-value", "i-weight", "i-slot", "i-light", "i-max-durability",
+    "i-capacity", "i-wearable", "i-aliases", "i-usable-with", "i-loot-table",
+    "i-effects", "i-mechanism-states", "i-mechanism-side-effects",
+    "i-combination-side-effects", "i-context-commands", "item-save-btn"
+  ];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.disabled = !canEdit || (id === "i-id" && state.editingItem && !state.editingItem.__new);
+    el.title = canEdit ? "" : "Requires world-builder role";
+  }
+}
+
+function parseJsonField(id, label, expected) {
+  const raw = document.getElementById(id).value.trim();
+  let value;
+  try {
+    value = JSON.parse(raw || (expected === "array" ? "[]" : "{}"));
+  } catch (_) {
+    throw new Error(`${label} must be valid JSON`);
+  }
+  if (expected === "array" && !Array.isArray(value)) {
+    throw new Error(`${label} must be a JSON array`);
+  }
+  if (expected === "object" && (value === null || Array.isArray(value) || typeof value !== "object")) {
+    throw new Error(`${label} must be a JSON object`);
+  }
+  return value;
+}
+
+function optionalNumber(id, label, integer = false, minimum = null) {
+  const raw = document.getElementById(id).value.trim();
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || (integer && !Number.isInteger(value))) {
+    throw new Error(`${label} must be ${integer ? "an integer" : "a number"}`);
+  }
+  if (minimum !== null && value < minimum) {
+    throw new Error(`${label} must be at least ${minimum}`);
+  }
+  return value;
+}
+
+async function saveItem() {
+  if (!state.editingItem) return;
+  const statusEl = document.getElementById("item-save-error");
+  try {
+    const itemId = document.getElementById("i-id").value.trim();
+    const body = {
+      name: document.getElementById("i-name").value.trim(),
+      description: document.getElementById("i-desc").value.trim(),
+      takeable: document.getElementById("i-takeable").checked,
+      tradeable: document.getElementById("i-tradeable").checked,
+      bound: document.getElementById("i-bound").checked,
+      quality: document.getElementById("i-quality").value.trim() || "common",
+      category: document.getElementById("i-category").value.trim() || null,
+      value: optionalNumber("i-value", "Value", true, 0) ?? 0,
+      weight: optionalNumber("i-weight", "Weight", false, 0) ?? 0,
+      slot: document.getElementById("i-slot").value.trim() || null,
+      light: optionalNumber("i-light", "Light", true, 0) ?? 0,
+      max_durability: optionalNumber("i-max-durability", "Max durability", true, 0),
+      capacity: optionalNumber("i-capacity", "Capacity", false, 0),
+      wearable: document.getElementById("i-wearable").checked,
+      aliases: parseJsonField("i-aliases", "Aliases", "array"),
+      usable_with: parseJsonField("i-usable-with", "Usable with", "array"),
+      loot_table: parseJsonField("i-loot-table", "Loot table", "object"),
+      effects: parseJsonField("i-effects", "Effects", "array"),
+      mechanism_states: parseJsonField("i-mechanism-states", "Mechanism states", "array"),
+      mechanism_side_effects: parseJsonField("i-mechanism-side-effects", "Mechanism side effects", "object"),
+      combination_side_effects: parseJsonField("i-combination-side-effects", "Combination side effects", "object"),
+      context_commands: parseJsonField("i-context-commands", "Context commands", "object"),
+    };
+    if (!itemId || !body.name || !body.description) {
+      statusEl.textContent = "ID, name, and description are required";
+      return;
+    }
+    statusEl.style.color = "var(--text-dim)";
+    statusEl.textContent = "Saving...";
+    const path = state.editingItem.__new
+      ? "/admin/world/items"
+      : `/admin/world/items/${encodeURIComponent(state.editingItem.id)}`;
+    const result = await api(state.editingItem.__new ? "POST" : "PUT", path, state.editingItem.__new ? {id: itemId, ...body} : body);
+    if (result.detail) {
+      statusEl.style.color = "var(--danger)";
+      statusEl.textContent = Array.isArray(result.detail) ? JSON.stringify(result.detail) : result.detail;
+      return;
+    }
+    closeItemEditor();
+    await loadItems();
+  } catch (err) {
+    statusEl.style.color = "var(--danger)";
+    statusEl.textContent = err.message || String(err);
   }
 }
 

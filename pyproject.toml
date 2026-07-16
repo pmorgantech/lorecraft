@@ -1,6 +1,6 @@
 [project]
 name = "lorecraft"
-version = "0.148.1"
+version = "0.149.0"
 description = "Persistent multiplayer text adventure engine."
 requires-python = ">=3.12"
 dependencies = [
@@ -25,7 +25,7 @@ dev = [
   "websockets",
 ]
 admin-tui = ["textual>=0.80.0"]
-e2e = ["playwright>=1.47.0", "pytest"]
+e2e = ["httpx", "playwright>=1.47.0", "pytest", "pytest-xdist"]
 
 [tool.setuptools.package-data]
 lorecraft = [

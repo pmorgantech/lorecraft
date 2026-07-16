@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
 from lorecraft.webui.admin.auth import Observer, Superadmin, WorldBuilder
@@ -215,16 +215,206 @@ async def list_items(request: Request, _: Observer) -> list[dict[str, Any]]:
     state = _state(request)
     with Session(state.game_engine) as session:
         items = session.exec(select(Item)).all()
-    return [
-        {
-            "id": i.id,
-            "name": i.name,
-            "description": i.description,
-            "takeable": i.takeable,
-            "tradeable": i.tradeable,
-        }
-        for i in items
-    ]
+    return [_item_response(i) for i in items]
+
+
+class _CreateItemBody(BaseModel):
+    id: str
+    name: str
+    description: str
+    takeable: bool = True
+    tradeable: bool = True
+    bound: bool = False
+    aliases: list[str] = Field(default_factory=list)
+    usable_with: list[str] = Field(default_factory=list)
+    loot_table: dict[str, Any] = Field(default_factory=dict)
+    slot: str | None = None
+    wearable: bool = False
+    weight: float = Field(default=0.0, ge=0.0)
+    quality: str = "common"
+    max_durability: int | None = Field(default=None, ge=0)
+    light: int = Field(default=0, ge=0)
+    capacity: float | None = Field(default=None, ge=0.0)
+    effects: list[dict[str, Any]] = Field(default_factory=list)
+    value: int = Field(default=0, ge=0)
+    category: str | None = None
+    mechanism_states: list[str] = Field(default_factory=list)
+    mechanism_side_effects: dict[str, Any] = Field(default_factory=dict)
+    combination_side_effects: dict[str, Any] = Field(default_factory=dict)
+    context_commands: dict[str, Any] = Field(default_factory=dict)
+
+
+class _UpdateItemBody(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    takeable: bool | None = None
+    tradeable: bool | None = None
+    bound: bool | None = None
+    aliases: list[str] | None = None
+    usable_with: list[str] | None = None
+    loot_table: dict[str, Any] | None = None
+    slot: str | None = None
+    wearable: bool | None = None
+    weight: float | None = Field(default=None, ge=0.0)
+    quality: str | None = None
+    max_durability: int | None = Field(default=None, ge=0)
+    light: int | None = Field(default=None, ge=0)
+    capacity: float | None = Field(default=None, ge=0.0)
+    effects: list[dict[str, Any]] | None = None
+    value: int | None = Field(default=None, ge=0)
+    category: str | None = None
+    mechanism_states: list[str] | None = None
+    mechanism_side_effects: dict[str, Any] | None = None
+    combination_side_effects: dict[str, Any] | None = None
+    context_commands: dict[str, Any] | None = None
+
+
+def _clean_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
+def _clean_required_text(value: str, field_name: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        raise HTTPException(status_code=422, detail=f"{field_name} is required")
+    return cleaned
+
+
+def _item_response(item: Item) -> dict[str, Any]:
+    return {
+        "id": item.id,
+        "name": item.name,
+        "description": item.description,
+        "takeable": item.takeable,
+        "tradeable": item.tradeable,
+        "bound": item.bound,
+        "aliases": item.aliases,
+        "usable_with": item.usable_with,
+        "loot_table": item.loot_table,
+        "slot": item.slot,
+        "wearable": item.wearable,
+        "weight": item.weight,
+        "quality": item.quality,
+        "max_durability": item.max_durability,
+        "light": item.light,
+        "capacity": item.capacity,
+        "effects": item.effects,
+        "value": item.value,
+        "category": item.category,
+        "mechanism_states": item.mechanism_states,
+        "mechanism_side_effects": item.mechanism_side_effects,
+        "combination_side_effects": item.combination_side_effects,
+        "context_commands": item.context_commands,
+    }
+
+
+@router.post("/world/items")
+async def create_item(
+    body: _CreateItemBody, request: Request, _: WorldBuilder
+) -> dict[str, Any]:
+    item_id = _clean_required_text(body.id, "Item id")
+    state = _state(request)
+    with Session(state.game_engine) as session:
+        if session.get(Item, item_id) is not None:
+            raise HTTPException(
+                status_code=409, detail=f"Item {item_id!r} already exists"
+            )
+        item = Item(
+            id=item_id,
+            name=_clean_required_text(body.name, "Item name"),
+            description=_clean_required_text(body.description, "Item description"),
+            takeable=body.takeable,
+            tradeable=body.tradeable,
+            bound=body.bound,
+            aliases=body.aliases,
+            usable_with=body.usable_with,
+            loot_table=body.loot_table,
+            slot=_clean_optional_text(body.slot),
+            wearable=body.wearable,
+            weight=body.weight,
+            quality=_clean_required_text(body.quality, "Item quality"),
+            max_durability=body.max_durability,
+            light=body.light,
+            capacity=body.capacity,
+            effects=body.effects,
+            value=body.value,
+            category=_clean_optional_text(body.category),
+            mechanism_states=body.mechanism_states,
+            mechanism_side_effects=body.mechanism_side_effects,
+            combination_side_effects=body.combination_side_effects,
+            context_commands=body.context_commands,
+        )
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+        return {"status": "created", **_item_response(item)}
+
+
+@router.put("/world/items/{item_id}")
+async def update_item(
+    item_id: str, body: _UpdateItemBody, request: Request, _: WorldBuilder
+) -> dict[str, Any]:
+    state = _state(request)
+    with Session(state.game_engine) as session:
+        item = session.get(Item, item_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        fields_set = body.model_fields_set
+        if "name" in fields_set:
+            item.name = _clean_required_text(body.name or "", "Item name")
+        if "description" in fields_set:
+            item.description = _clean_required_text(
+                body.description or "", "Item description"
+            )
+        if body.takeable is not None:
+            item.takeable = body.takeable
+        if body.tradeable is not None:
+            item.tradeable = body.tradeable
+        if body.bound is not None:
+            item.bound = body.bound
+        if body.aliases is not None:
+            item.aliases = body.aliases
+        if body.usable_with is not None:
+            item.usable_with = body.usable_with
+        if body.loot_table is not None:
+            item.loot_table = body.loot_table
+        if "slot" in fields_set:
+            item.slot = _clean_optional_text(body.slot)
+        if body.wearable is not None:
+            item.wearable = body.wearable
+        if body.weight is not None:
+            item.weight = body.weight
+        if body.quality is not None:
+            item.quality = _clean_required_text(body.quality, "Item quality")
+        if "max_durability" in fields_set:
+            item.max_durability = body.max_durability
+        if body.light is not None:
+            item.light = body.light
+        if "capacity" in fields_set:
+            item.capacity = body.capacity
+        if body.effects is not None:
+            item.effects = body.effects
+        if body.value is not None:
+            item.value = body.value
+        if "category" in fields_set:
+            item.category = _clean_optional_text(body.category)
+        if body.mechanism_states is not None:
+            item.mechanism_states = body.mechanism_states
+        if body.mechanism_side_effects is not None:
+            item.mechanism_side_effects = body.mechanism_side_effects
+        if body.combination_side_effects is not None:
+            item.combination_side_effects = body.combination_side_effects
+        if body.context_commands is not None:
+            item.context_commands = body.context_commands
+
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+        return {"status": "updated", **_item_response(item)}
 
 
 # ---------------------------------------------------------------------------

@@ -73,6 +73,7 @@ rooms:
     safe_rest: true
     flags:
       vital_recovery_multiplier: 3.0
+      exit_graph_unreachable_ok: true
     exits:
       - direction: up
         target_room_id: village_square

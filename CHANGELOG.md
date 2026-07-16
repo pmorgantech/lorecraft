@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.149.0] - 2026-07-16
+
+### Added
+
+- Added admin World-tab item definition create/edit support with role-gated
+  REST endpoints, JSON field editing, and browser coverage.
+- Documented Dashboard bestow usage for granting player coins and items.
+
+### Fixed
+
+- Added the e2e workflow's parallel pytest dependencies to the `e2e` optional
+  extra and hardened fatigue meter registration against test-suite ordering.
+
 ## [0.148.1] - 2026-07-16
 
 ### Fixed

@@ -59,6 +59,13 @@ START_ROOM_ID = "start"
 DEST_ROOM_ID = "dest"
 
 
+def _register_test_meter_defs() -> None:
+    _register_fatigue()
+    get_meter_registry().register(
+        MeterDef(key="hp", base_maximum=lambda et, eid, s: 100.0)
+    )
+
+
 def _seed(session: Session) -> None:
     session.add(
         Room(
@@ -101,6 +108,7 @@ def _seed(session: Session) -> None:
 
 
 def _build_engine_and_ctx() -> tuple[CommandEngine, GameContext, Session]:
+    _register_test_meter_defs()
     engine = create_engine("sqlite://")
     create_tables(game_engine=engine, audit_engine=create_engine("sqlite://"))
     session = Session(engine)

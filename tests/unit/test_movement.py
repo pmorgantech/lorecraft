@@ -538,6 +538,7 @@ def _build_context(
     manager: ConnectionManager,
     bus: EventBus,
 ) -> GameContext:
+    register_fatigue()
     room = session.get(Room, player.current_room_id)
     assert room is not None
     return GameContext(

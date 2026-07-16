@@ -51,8 +51,6 @@ FREE_TEXT_VERBS = frozenset(
         "/report",
         "say",
         "shout",
-        "tell",
-        "whisper",
         "yell",
     }
 )

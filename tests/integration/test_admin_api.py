@@ -1194,6 +1194,120 @@ async def _test_list_items() -> None:
     assert isinstance(data, list)
 
 
+def test_world_builder_can_create_and_update_items() -> None:
+    anyio.run(_test_world_builder_can_create_and_update_items)
+
+
+async def _test_world_builder_can_create_and_update_items() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="world-builder")
+    _seed_admin(game_engine, role="world-builder")
+
+    create_body = {
+        "id": "admin_test_lantern",
+        "name": "Admin Test Lantern",
+        "description": "A lantern created from the admin item editor.",
+        "takeable": True,
+        "tradeable": True,
+        "bound": False,
+        "aliases": ["lamp"],
+        "usable_with": ["flint"],
+        "loot_table": {"common": [{"item_id": "wick", "quantity": 1}]},
+        "slot": "off_hand",
+        "wearable": False,
+        "weight": 1.5,
+        "quality": "fine",
+        "max_durability": 20,
+        "light": 2,
+        "capacity": None,
+        "effects": [{"type": "warmth", "amount": 1}],
+        "value": 12,
+        "category": "supplies",
+        "mechanism_states": [],
+        "mechanism_side_effects": {},
+        "combination_side_effects": {"flint": {"set_flags": ["lantern_lit"]}},
+        "context_commands": {"polish": {"say": "It gleams."}},
+    }
+
+    async with _lifespan(app):
+        create_status, created = await _http(
+            app, "POST", "/admin/world/items", body=create_body, token=token
+        )
+        duplicate_status, duplicate = await _http(
+            app, "POST", "/admin/world/items", body=create_body, token=token
+        )
+        update_status, updated = await _http(
+            app,
+            "PUT",
+            "/admin/world/items/admin_test_lantern",
+            body={
+                "name": "Updated Lantern",
+                "description": "Updated by the admin item editor.",
+                "slot": None,
+                "max_durability": None,
+                "capacity": 2.5,
+                "aliases": ["lamp", "light"],
+                "context_commands": {},
+            },
+            token=token,
+        )
+        with Session(game_engine) as session:
+            item = session.get(Item, "admin_test_lantern")
+
+    assert create_status == 200
+    assert created["status"] == "created"
+    assert created["id"] == "admin_test_lantern"
+    assert created["aliases"] == ["lamp"]
+    assert created["context_commands"] == {"polish": {"say": "It gleams."}}
+    assert duplicate_status == 409
+    assert "already exists" in duplicate["detail"]
+    assert update_status == 200
+    assert updated["status"] == "updated"
+    assert updated["name"] == "Updated Lantern"
+    assert updated["slot"] is None
+    assert updated["max_durability"] is None
+    assert updated["capacity"] == 2.5
+    assert updated["aliases"] == ["lamp", "light"]
+    assert updated["context_commands"] == {}
+    assert item is not None
+    assert item.name == "Updated Lantern"
+    assert item.slot is None
+    assert item.max_durability is None
+    assert item.capacity == 2.5
+
+
+def test_observer_cannot_create_items() -> None:
+    anyio.run(_test_observer_cannot_create_items)
+
+
+async def _test_observer_cannot_create_items() -> None:
+    game_engine, audit_engine = _make_engines()
+    app = create_app(
+        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
+    )
+    token = _access_token(role="observer")
+    _seed_admin(game_engine, role="observer")
+
+    async with _lifespan(app):
+        status, data = await _http(
+            app,
+            "POST",
+            "/admin/world/items",
+            body={
+                "id": "observer_item",
+                "name": "Observer Item",
+                "description": "Should not be created.",
+            },
+            token=token,
+        )
+
+    assert status == 403
+    assert data["detail"] == "Requires world-builder role"
+
+
 def test_list_npcs_returns_npcs() -> None:
     anyio.run(_test_list_npcs)
 

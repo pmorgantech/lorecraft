@@ -136,7 +136,7 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 |-----|------------------|----------------|
 | **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; body/equipment/condition snapshots; support actions for healing, revitalizing, timed buffs, and bestowing coins/items; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `POST /admin/players/{id}/heal`, `/revitalize`, `/buff`, `/bestow`, `/admin/ws` |
 | **Audit** | Paginated, filterable audit log; row-expand payload; correlation-ID session replay. **Live-updates** as players act (each executed command pushes over `/admin/ws`) — toggle with the **Live** checkbox, or use the **↻ Refresh** button to reload on demand. Command summaries show the full command as typed (e.g. `Command executed: go east`, not just the verb). Severity/source facets are loaded from the audit DB. | `GET /admin/audit`, `GET /admin/audit/facets`, `GET /admin/audit/session/{correlation_id}` |
-| **World** | Room search + inline editor (optimistic locking), item/NPC sub-tabs, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
+| **World** | Room search + inline editor (optimistic locking), item definition list/create/edit form, read-only NPC data, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET/POST/PUT /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **NPC/AI** | Read-only NPC runtime dashboard: current room, behavior, HP, autonomous AI config, schedule count, triggers, context commands, and escort state. Control actions remain intentionally absent until safety/audit gates exist. | `GET /admin/world/npcs` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override. A weather override **announces the change to every player's feed** (e.g. "A light rain begins to fall."); re-setting the current weather is silent | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
@@ -808,6 +808,14 @@ servers. For anything with players connected, use **changesets**: draft your roo
 edits, scan them for conflicts (broken exits, displaced players), and promote atomically
 only when the scan is clean. Rollback is supported.
 
+The World tab's **Items** editor changes canonical `Item` definitions: name,
+description, flags such as takeable/tradeable/bound, equipment/economy fields, and the
+advanced JSON fields used by effects, mechanisms, combinations, loot tables, and
+context commands. Item IDs are immutable once created because rooms, scripts,
+inventories, and world YAML references point at them. The editor does not place item
+instances into rooms or inventories; use world content/changesets for placement, or the
+Dashboard **Bestow** action for support grants to a specific player.
+
 Full lifecycle (DRAFT → SCANNING → CONFLICTS/READY → LIVE → ROLLED_BACK), builder-mode
 DB clones, and ghost sessions are documented in
 **[world_versioning_changesets.md](world_versioning_changesets.md)**.
@@ -823,6 +831,12 @@ From the Dashboard (web) or Players screen (TUI, `F1`), select a player to:
 - **Buff** — apply a registered timed `ActiveEffect` such as `fortified` or `keen_minded`
 - **Bestow** — grant coins through the ledger faucet, spawn item stacks into the player's loose inventory, or both
 - **Message** — send them a system message
+
+To bestow coins in the web admin panel: open **Dashboard**, click **Edit** on the
+player, enter an **Admin reason**, type the amount in **Bestow -> coins**, and press
+**Bestow**. To grant an item at the same time, enter the canonical item ID and
+quantity in the adjacent fields. The backend endpoint is
+`POST /admin/players/{player_id}/bestow`.
 
 Every action is written to the audit log (Audit tab / `F2`), searchable by player,
 command, or correlation ID (for full session replay).
