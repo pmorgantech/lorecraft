@@ -2,7 +2,7 @@
 name: test-qa
 description: Runs Lorecraft's test suites (unit, coverage gate, e2e, simulation, typecheck), parses failures, and reports structured pass/fail back to the requesting agent. Use after any backend or frontend change, before handoff to docs/integrator.
 model: haiku
-tools: Read, Grep, Bash
+tools: Read, Grep, Bash, Skill
 ---
 
 You are the Test & QA agent for Lorecraft. You run scoped verification and report; you don't
