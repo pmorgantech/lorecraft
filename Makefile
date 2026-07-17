@@ -11,15 +11,36 @@ LOAD_TEST_OPEN_HUNT ?= harvest_trinkets
 LOAD_TEST_LATENCY_CEILING_MS ?= 3000
 LOAD_TEST_HISTORY ?= docs/performance/load_test_history.jsonl
 
-.PHONY: test test-cov test-e2e test-simulation load-test-history lint typecheck scripting-docs bootstrap bootstrap-worktree ai-graph
+.PHONY: test test-cov test-e2e test-simulation load-test-history lint typecheck scripting-docs bootstrap bootstrap-worktree ai-graph ai-graph-init ai-graph-rebuild ai-graph-status
 
 # Bootstrap worktree: isolated venv, database, docs (run once per worktree).
 # Agents: create via EnterWorktree, then run make bootstrap from the worktree.
 bootstrap bootstrap-worktree:
 	@bash scripts/bootstrap-worktree.sh
 
+#ai-graph:
+#	./scripts/graphify-refresh.sh
+
+# Incrementally update the existing graph.
+# Safe for scripts, hooks, and explicit manual refreshes.
 ai-graph:
-	./scripts/graphify-refresh.sh
+	@if [ -d .codegraph ]; then \
+		codegraph sync .; \
+	else \
+		codegraph init .; \
+	fi
+
+# Explicit first-time initialization.
+ai-graph-init:
+	codegraph init .
+
+# Discard derived graph contents and rebuild the full index.
+ai-graph-rebuild:
+	codegraph index --force .
+
+# Show index health and statistics.
+ai-graph-status:
+	codegraph status .
 
 # Regenerate the builder-guide scripting vocabulary reference from the live catalog.
 # Run this in the SAME commit that changes any scripting registration (register_spec) —

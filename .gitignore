@@ -218,6 +218,7 @@ __marimo__/
 
 # Ignore the semantic graphs for now
 graphify-out/
+.codegraph/
 
 # Misc documentation in PDF format
 *.pdf
