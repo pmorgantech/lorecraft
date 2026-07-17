@@ -16,7 +16,7 @@
 |---------|---------|-------|
 | **Multi-level rooms** | `Room.map_z` (v0.55.0) | Floors/levels via z-coordinate; minimap filters by current level |
 | **NPCs** | `features/npc/` | Place NPCs in rooms; dialogue trees with pluggable conditions (`actor_reputation_at_least`, `npc_remembers`, flags) and side effects (`give_item`, `start_quest`, `adjust_reputation`, `remember`) |
-| **NPC scheduled teleport** | `NPC.schedule` + `NpcScheduler` (`features/npc/scheduler.py`) | Data-driven `[{game_hour, target_room_id}, ...]`; jumps the NPC's room on `HOUR_CHANGED`. **Instant teleport, not pathed movement** — no interim rooms/narration. |
+| **NPC scheduled state changes** | `NPC.schedule` + `NpcScheduler` (`features/npc/scheduler.py`) | Data-driven `[{game_hour, target_room_id?, behavior?, ai?}, ...]`; on `HOUR_CHANGED`, a row may relocate the NPC, switch disposition, and replace/clear simple autonomous AI. Room jumps remain instant teleports, not pathed movement. |
 | **NPC context-attached verbs** | `NPC.context_commands` (Sprint 55) | Data-driven custom verbs (e.g. `bow`) available only while the NPC is present, each with `{aliases, help, say, side_effects, requires}` |
 | **Weather system** | `features/weather/` | Global weather state, traveling fronts, and per-zone climate rolls; transit lines can block on global weather |
 | **Zone climate** | `features/weather/climate.py` + `weather_fronts.yaml` `climates:` | Daily per-zone climate rolls bias Whisperwood rainy/misty and Cogsworth clear/overcast while preserving the global clock weather |
@@ -24,6 +24,7 @@
 | **Treasure/loot** | `Room.loot_table` + `RoomLootService` | Rooms can declare weighted random treasure entries; rolls are one-shot per player-room and spawn through `ItemLocationService` |
 | **Ambient messages** | `Room.ambient_events` + `RoomAmbientService` | Rooms can declare timed flavor lines with tick intervals and chance, emitted only for occupied rooms |
 | **NPC fixed-route patrol** | `NPC.ai.mode: route` + `NpcRouteLoader` | NPC-specific `RouteHooks` run over `MobileRouteService`, updating `NPC.current_room_id` and broadcasting depart/arrive |
+| **NPC autonomous idle actions** | `NPC.ai.actions` + `NpcBehaviorService` | NPCs can act without moving: deterministic cadence/chance-gated `say`, `emote`, and raw `narrate` room output on `TIME_ADVANCED`, with `NPC_ACTED` events for tests/analytics. |
 | **Item types** | weapon, armor, utility, coin | Color-coded in UI (rarity system available too) |
 | **Shops/stores** | `features/economy/` | Create shops with inventory, NPC shopkeepers, prices |
 | **Quests** | `features/quest/` | Quest givers, objectives, rewards, dialogue conditions |
@@ -34,23 +35,23 @@
 | **Areas/zones** | `Room.zone` + `Room.room_type` | Group rooms by geographic zone for lore/admin/weather/economy and by room kind for content taxonomy |
 | **Safe rest** | `safe_rest: true` flag | Rooms where players can safely sleep |
 | **Indoor/outdoor** | `Room.indoor: bool` | Weather narration and storm fronts skip sheltered interiors; all four shipped zones are tagged |
+| **Day/night NPC behavior** | `NPC.schedule` state changes | NPCs can switch daytime/nighttime room, `behavior`, and simple autonomous `ai` loops at authored game hours. Example: Watchman Holt stands defensive in the grand plaza by day and switches to an alert night patrol between the smithy district and grand plaza. |
 
 ### ⚠️ Partially Supported (needs design/content work)
 
 | Feature | Support | Notes |
 |---------|---------|-------|
 | **Reputation as an NPC behavior gate** | Reputation itself is real; nothing *acts* on it autonomously | `features/reputation` gives per-(player, npc-or-faction) standing with `actor_reputation_at_least` (the one canonical predicate, registered on both the command and dialogue condition registries) and `adjust_reputation` (side effect) — so standing can already gate what a player can *say/do* to an NPC. What's missing is any NPC decision loop that *reads* standing on its own initiative (e.g. to refuse service, flee, or turn hostile without the player first triggering dialogue). |
+| **NPC autonomous behavior beyond movement** | Idle actions supported; decision behaviors remain future work | `features/npc_ai` now supports `wander`, fixed-list `patrol`, route-backed patrols, and non-movement `ai.actions` (`say`, `emote`, `narrate`). Aggro, flee, service-refusal, stealing, and autonomous combat-initiation policies need explicit rules and remain separate future work. |
 
 ### ❌ Not Yet Supported (requires engine work)
 
 | Feature | Blocker | Notes |
 |---------|---------|-------|
-| **NPC autonomous behavior beyond movement** | Partial | `features/npc_ai` now supports `wander`, fixed-list `patrol`, and `route` modes. Aggro/flee/combat behavior remains set aside with combat/PvP. |
 | **[BLOCKED] Combat / attack system (any trigger source)** | Not built — schema stub only | `models/combat.py`'s `CombatSession` is a bare table (`id, room_id, started_at, status, combatants: JSON`) with **no service, repo, command, event, or side-effect handler anywhere in the codebase**. `features/npc/side_effects.py`'s docstring name-drops `combat.start_combat` only as an *illustrative example* of the registration pattern — never implemented. NPC movement agency exists, but NPCs cannot act against a player under any condition (reputation, marks, or otherwise) because there is no combat resolution path for an "attack" to resolve into. Matches `docs/wishlist.md`'s deliberate stance: combat is set aside as "a supporting system, not the centerpiece." |
 | **[BLOCKED] Alignment system** | Doesn't exist | Zero references anywhere in the codebase. `features/marks` are discovery/exploration badges (visited rooms, met NPCs, items found), not a morality/alignment axis — don't conflate the two when scripting "good/evil" NPC reactions. |
 | **[BLOCKED] Dynamic room description rotation** | Needs design | Timed ambient feed lines are supported; rewriting base room descriptions by time/weather remains future scope. |
 | **[BLOCKED] Weather particle effects** | UI-only, not engine** | Can describe weather in text; visual rain/snow is future stretch. |
-| **[BLOCKED] Day/night cycle tied to NPC behavior** | Needs NPC schedule model | NPCs could sleep at night, work during day. The hour-based teleport schedule is a start but isn't behavior-branching (it only relocates). Roadmap future, not critical for testing. |
 
 ---
 
@@ -427,11 +428,11 @@ Build NPC variety; add dialogue, quests, and flavor.
 
 #### P3.4 — NPC Movement (3+ NPCs)
 Room-list/loop **patrol** now has NPC-specific glue on top of `MobileRouteService` (v0.99.0).
-The older scheduled relocation examples remain valid for day/night-style teleports, while
-Scout Wren now uses a visible route-backed patrol. Zone-wide autonomous roam is also available
-through `NPC.ai.mode: wander`.
+The older scheduled relocation examples now also support day/night behavior and simple AI
+branching, while Scout Wren uses a visible route-backed patrol. Zone-wide autonomous roam is
+also available through `NPC.ai.mode: wander`.
 - [x] Dock Worker — `dock_worker_bram` relocates `docks_main` (hr 8) → `warehouse_district` (hr 18)
-- [x] Night Guard — `night_watch_holt` relocates `grand_plaza` (hr 8) → `smithy_district` (hr 20) after dark
+- [x] Night Guard — `night_watch_holt` relocates `grand_plaza` (hr 8) → `smithy_district` (hr 20), switching between daytime defensive posture and an alert night patrol
 - [x] Forest Scout — `forest_scout_wren` loops `whispering_clearing` → `old_oak_grove` → `wildflower_glade` via `ai.mode: route`, broadcasting route departure/arrival through NPC-specific `RouteHooks`.
 
 **Test:** Check NPC location at different game-hours; confirm the room-relocation actually fires on `HOUR_CHANGED`.
@@ -568,11 +569,13 @@ not built; use feed flavor lines for ambient motion and recurring sensory detail
 **Plan:** Phase 3 quests use "complete this quest to progress" rather than standing thresholds.
 
 ### 6. **Day-Night Cycle NPC Behavior**
-**Status:** ❌ Not supported
+**Status:** ✅ Supported for scheduled room/behavior/AI state changes
 **What it is:** NPCs work during day, sleep at night; shops close at evening.
-**Engine work needed:** NPC schedule model + time-based behavior (Tier 1 extension, Roadmap future)
-**Current workaround:** All NPCs available 24/7; no time-based variant behavior.
-**Plan:** Out of scope; noted for future flavor enhancement.
+**Engine work:** `NPC.schedule` now owns hour-based NPC state changes in the Tier 2 NPC
+feature. Schedule rows may set `target_room_id`, `behavior`, and/or `ai`; `ai: {}` clears a
+simple autonomous loop for off hours.
+**Remaining scope:** There is still no first-class shop-hours policy, service-refusal rule,
+or visible walked commute narration; use scheduled relocation/behavior changes for now.
 
 ### 7. **Duplicate room ids (`meadow_clearing`, `cave_entrance`) — ✅ RESOLVED (2026-07-11)**
 **Status:** ✅ Fixed. Whisperwood's two colliding rooms were renamed; no duplicate ids remain in

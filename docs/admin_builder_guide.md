@@ -314,6 +314,47 @@ npcs:
       loop: true
 ```
 
+For non-movement autonomy, add `ai.actions`. Each action has its own cadence, optional
+chance roll, and a room-visible output type:
+
+```yaml
+npcs:
+  - id: vault_forewoman_cassia
+    ai:
+      actions:
+        - type: say             # say | emote | narrate
+          every_ticks: 5
+          chance: 0.6
+          lines:
+            - "No one signs off on a valve repair until the whistle holds pitch."
+        - type: emote
+          every_ticks: 8
+          text: checks a brass clipboard against the nearest pressure dial.
+```
+
+NPC `schedule` entries run on `HOUR_CHANGED`. A row may relocate the NPC, change its
+`behavior`, replace its autonomous `ai` config, or do any combination of those changes. Use
+`ai: {}` to stop a simple autonomous `wander`/`patrol` loop during off hours. Scheduled room
+changes are instant state changes, not visible walked routes.
+
+```yaml
+npcs:
+  - id: night_watch_holt
+    behavior: defensive
+    schedule:
+      - game_hour: 8
+        target_room_id: grand_plaza
+        behavior: defensive
+        ai: {}
+      - game_hour: 20
+        target_room_id: smithy_district
+        behavior: alert
+        ai:
+          mode: patrol
+          move_every: 2
+          route: [smithy_district, grand_plaza]
+```
+
 ### Authoring scavenger hunts (`world_content/hunts.yaml`)
 
 Scavenger hunts are timed world events defined in their own content file, loaded into an

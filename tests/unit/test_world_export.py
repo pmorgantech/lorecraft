@@ -46,6 +46,11 @@ npcs:
     schedule:
       - game_hour: 8
         target_room_id: square
+        behavior: defensive
+        ai:
+          mode: patrol
+          move_every: 2
+          route: [tavern, square]
 dialogue_trees:
   - id: aldric_dialogue
     root_node: start
@@ -89,6 +94,12 @@ quests:
     aldric = document.npcs[0]
     assert len(aldric.schedule) == 1
     assert aldric.schedule[0].target_room_id == "square"
+    assert aldric.schedule[0].behavior == "defensive"
+    assert aldric.schedule[0].ai == {
+        "mode": "patrol",
+        "move_every": 2,
+        "route": ["tavern", "square"],
+    }
 
     assert {t.id for t in document.dialogue_trees} == {"aldric_dialogue"}
     tree = document.dialogue_trees[0]

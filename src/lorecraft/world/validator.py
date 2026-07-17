@@ -114,7 +114,20 @@ class NpcScheduleEntryData(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     game_hour: int
-    target_room_id: str
+    target_room_id: str | None = None
+    behavior: str | None = None
+    ai: dict[str, object] | None = None
+
+    @model_validator(mode="after")
+    def _has_scheduled_change(self) -> "NpcScheduleEntryData":
+        has_target = self.target_room_id is not None and bool(self.target_room_id)
+        has_behavior = self.behavior is not None and bool(self.behavior)
+        has_ai = self.ai is not None
+        if not (has_target or has_behavior or has_ai):
+            raise ValueError(
+                "an NPC schedule entry must set target_room_id, behavior, and/or ai"
+            )
+        return self
 
 
 class ShopStockData(BaseModel):
@@ -471,7 +484,10 @@ def validate_world_document(data: object) -> WorldDocument:
                 f"npc {npc.id} references missing dialogue_tree_id {npc.dialogue_tree_id}"
             )
         for entry in npc.schedule:
-            if entry.target_room_id not in room_ids:
+            if (
+                entry.target_room_id is not None
+                and entry.target_room_id not in room_ids
+            ):
                 errors.append(
                     f"npc {npc.id} schedule references missing room {entry.target_room_id}"
                 )

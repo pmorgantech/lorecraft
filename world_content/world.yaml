@@ -9162,8 +9162,9 @@ npcs:
     behavior: passive
 
   # -------------------------------------------------------------------------
-  # P3.4 — Scheduled-movement NPCs. `schedule` teleports current_room_id to
-  # target_room_id on the world clock's HOUR_CHANGED event (not a walked path).
+  # P3.4 — Scheduled NPC state. `schedule` can relocate an NPC and switch its
+  # behavior/ai on the world clock's HOUR_CHANGED event. Room changes are
+  # instant teleports, not walked paths.
   # -------------------------------------------------------------------------
 
   - id: dock_worker_bram
@@ -9195,8 +9196,15 @@ npcs:
     schedule:
       - game_hour: 8
         target_room_id: grand_plaza
+        behavior: defensive
+        ai: {}
       - game_hour: 20
         target_room_id: smithy_district
+        behavior: alert
+        ai:
+          mode: patrol
+          move_every: 2
+          route: [smithy_district, grand_plaza]
 
   - id: forest_scout_wren
     name: Scout Wren
@@ -9319,6 +9327,17 @@ npcs:
       - on: encounter
         do:
           - narrate_room: "Forewoman Cassia taps her pencil against the job board and adds one more problem to the list."
+    ai:
+      actions:
+        - type: say
+          every_ticks: 5
+          chance: 0.6
+          lines:
+            - "If the pressure gauge stutters, do not tap the glass. Tap the apprentice."
+            - "No one signs off on a valve repair until the whistle holds pitch."
+        - type: emote
+          every_ticks: 8
+          text: checks a brass clipboard against the nearest pressure dial.
 
   - id: brass_patrolman
     name: Brass Patrolman

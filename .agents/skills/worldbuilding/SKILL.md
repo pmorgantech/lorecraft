@@ -106,6 +106,25 @@ npcs:
       move_every: 3                        # ticks between moves
       route: [gate, market_stalls, square] # patrol: ordered room ids (loops)
       # wander uses `area:` to confine roaming instead of `route:`
+      actions:                             # optional non-movement autonomy
+        - type: say                         # say | emote | narrate
+          every_ticks: 5
+          chance: 0.6
+          lines:
+            - "Keep the lane clear."
+        - type: emote
+          every_ticks: 8
+          text: checks the latch on a side gate.
+    schedule:                              # optional hour-based state changes
+      - game_hour: 8
+        behavior: defensive
+        ai: {}
+      - game_hour: 20
+        behavior: alert
+        ai:
+          mode: patrol
+          move_every: 2
+          route: [market_stalls, square]
     context_commands:                      # verbs available only where this NPC is (Sprint 55)
       tip:
         help: leave a small tip at the counter
@@ -179,9 +198,9 @@ Shop authoring checklist:
 - Use `restock_to`/`restock_every_ticks` for finite staples. Leave rare items finite with no
   restock unless repeat availability is intended.
 - Set `buys_categories` narrowly enough that each shop has an identity.
-- There is no first-class shop-hours field yet. If hours are needed without engine work,
-  approximate them by moving the shopkeeper away on an NPC `schedule`; otherwise keep
-  service NPCs stationary.
+- There is no first-class shop-hours field yet. If hours are needed, use NPC `schedule`
+  entries to move the shopkeeper away and/or switch its `behavior`/simple autonomous `ai`;
+  service refusal rules remain future work.
 
 ## Weather fronts (`world_content/weather_fronts.yaml`)
 

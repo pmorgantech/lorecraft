@@ -1,8 +1,8 @@
 """A3 — the autonomous NPC agency loop (features/npc_ai).
 
-NPCs with an `ai` config move on `TIME_ADVANCED` (wander/patrol), emit `NPC_MOVED`, and — when
-one walks into a room where a player stands — fire that NPC's `encounter` triggers. See
-`docs/scripting_engine_design.md` §3.2.
+NPCs with an `ai` config act on `TIME_ADVANCED`: movement modes emit `NPC_MOVED`, idle actions
+emit `NPC_ACTED`, and when a moving NPC walks into a room where a player stands its `encounter`
+triggers fire. See `docs/scripting_engine_design.md` §3.2.
 """
 
 from __future__ import annotations
@@ -136,6 +136,66 @@ def test_patrol_follows_route_and_loops(engine: Engine) -> None:
     assert _npc_room(engine) == ROOM_B
     _tick(bus)
     assert _npc_room(engine) == ROOM_A  # looped back
+
+
+def test_idle_action_emits_without_movement(engine: Engine) -> None:
+    _add_npc(
+        engine,
+        {
+            "actions": [
+                {
+                    "type": "say",
+                    "every_ticks": 2,
+                    "text": "Keep to the market road.",
+                }
+            ]
+        },
+    )
+    bus = EventBus()
+    acted: list[dict[str, object]] = []
+    bus.on(GameEvent.NPC_ACTED, lambda event, ctx: acted.append(event.payload))
+    _service(engine, bus)
+
+    _tick(bus)
+    assert acted == []
+    assert _npc_room(engine) == ROOM_A
+
+    _tick(bus)
+    assert _npc_room(engine) == ROOM_A
+    assert acted == [
+        {
+            "npc_id": "rover",
+            "room_id": ROOM_A,
+            "action_type": "say",
+            "text": "Keep to the market road.",
+            "message": 'Rover says, "Keep to the market road."',
+        }
+    ]
+
+
+def test_idle_action_chance_can_suppress_action(engine: Engine) -> None:
+    _add_npc(
+        engine,
+        {
+            "actions": [
+                {
+                    "type": "emote",
+                    "every_ticks": 1,
+                    "chance": 0.0,
+                    "text": "checks the cobbles.",
+                }
+            ]
+        },
+    )
+    bus = EventBus()
+    acted: list[dict[str, object]] = []
+    bus.on(GameEvent.NPC_ACTED, lambda event, ctx: acted.append(event.payload))
+    _service(engine, bus)
+
+    _tick(bus)
+    _tick(bus)
+
+    assert acted == []
 
 
 def test_wander_confined_to_area(engine: Engine) -> None:

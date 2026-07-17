@@ -268,6 +268,34 @@ def test_world_validator_rejects_missing_exit_target() -> None:
         )
 
 
+def test_world_validator_rejects_empty_npc_schedule_entry() -> None:
+    with pytest.raises(
+        WorldValidationError, match="target_room_id, behavior, and/or ai"
+    ):
+        validate_world_document(
+            {
+                "rooms": [
+                    {
+                        "id": "tavern",
+                        "name": "Tavern",
+                        "description": "A warm room.",
+                        "map_x": 0,
+                        "map_y": 0,
+                    }
+                ],
+                "npcs": [
+                    {
+                        "id": "keeper",
+                        "name": "Keeper",
+                        "description": "A quiet keeper.",
+                        "home_room_id": "tavern",
+                        "schedule": [{"game_hour": 8}],
+                    }
+                ],
+            }
+        )
+
+
 def test_world_validator_rejects_region_with_missing_zone() -> None:
     with pytest.raises(WorldValidationError, match="missing zone"):
         validate_world_document(

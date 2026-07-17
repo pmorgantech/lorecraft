@@ -29,6 +29,7 @@ class GameEvent(StrEnum):
     PLAYER_DIED = "player_died"
     PLAYER_RESPAWNED = "player_respawned"
     NPC_MOVED = "npc_moved"
+    NPC_ACTED = "npc_acted"
     NPC_DIED = "npc_died"
     NPC_FLED = "npc_fled"
     COMBAT_STARTED = "combat_started"

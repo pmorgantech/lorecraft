@@ -1,8 +1,8 @@
 """NPC AI feature: the autonomous agency loop (scripting engine A3).
 
-Wakes an NPC's ``ai`` config (`docs/scripting_engine_design.md` §3.2) so it moves under its own
-initiative — ``wander`` / ``patrol`` — emitting ``NPC_MOVED`` (the first real emitter), which
-the trigger service turns into ``encounter`` for co-located players. Built entirely on existing
+Wakes an NPC's ``ai`` config (`docs/scripting_engine_design.md` §3.2) so it acts under its own
+initiative: ``wander`` / ``patrol`` movement emits ``NPC_MOVED`` for encounter triggers, while
+``ai.actions`` emits room-visible ``NPC_ACTED`` idle behavior. Built entirely on existing
 primitives: the event bus, the seedable RNG, and the actor-less ``StandaloneWorldContext`` (A1).
 
 The service holds the live engine/manager/rng, so it is constructed and bus-registered in

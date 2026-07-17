@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.models.world import NPC
+from lorecraft.types import JsonObject
 
 
 class NpcScheduler:
@@ -27,11 +30,32 @@ class NpcScheduler:
                     continue
                 for entry in npc.schedule:
                     if entry.get("game_hour") == hour:
-                        target_id = str(entry.get("target_room_id", ""))
-                        if target_id and target_id != npc.current_room_id:
-                            npc.current_room_id = target_id
+                        if _apply_schedule_entry(npc, entry):
                             session.add(npc)
                             changed = True
                         break
             if changed:
                 session.commit()
+
+
+def _apply_schedule_entry(npc: NPC, entry: JsonObject) -> bool:
+    changed = False
+
+    target = entry.get("target_room_id")
+    if isinstance(target, str) and target and target != npc.current_room_id:
+        npc.current_room_id = target
+        changed = True
+
+    behavior = entry.get("behavior")
+    if isinstance(behavior, str) and behavior and behavior != npc.behavior:
+        npc.behavior = behavior
+        changed = True
+
+    if "ai" in entry:
+        raw_ai = entry.get("ai")
+        next_ai = cast(JsonObject, dict(raw_ai)) if isinstance(raw_ai, dict) else {}
+        if next_ai != npc.ai:
+            npc.ai = next_ai
+            changed = True
+
+    return changed

@@ -4,6 +4,19 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.150.0] - 2026-07-17
+
+### Added
+
+- Added hour-based NPC schedule state changes for room, behavior, and simple
+  autonomous AI config so authored day/night NPC routines live in one scheduler.
+- Added autonomous non-movement NPC idle actions (`say`, `emote`, `narrate`)
+  under `NPC.ai.actions`, including `NPC_ACTED` events.
+- Updated Watchman Holt to switch from daytime plaza duty to an alert night
+  patrol through data-driven schedule entries.
+- Added Forewoman Cassia room-visible worksite banter as shipped `ai.actions`
+  content.
+
 ## [0.149.0] - 2026-07-16
 
 ### Added
