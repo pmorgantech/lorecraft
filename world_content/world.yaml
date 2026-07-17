@@ -2977,6 +2977,7 @@ items:
       small necessity that follows a person beyond the town gate.
     takeable: true
     tradeable: true
+    slot: off_hand
     weight: 0.7
     value: 14
     category: weapon
@@ -2991,6 +2992,7 @@ items:
       sounds too close.
     takeable: true
     tradeable: true
+    slot: main_hand
     weight: 3.0
     value: 28
     category: weapon
@@ -3004,6 +3006,8 @@ items:
       the teeth of something desperate in the dark.
     takeable: true
     tradeable: true
+    slot: torso
+    wearable: true
     weight: 4.0
     value: 24
     category: armor
@@ -3017,6 +3021,8 @@ items:
       old worries under the fresh oil.
     takeable: true
     tradeable: true
+    slot: head
+    wearable: true
     weight: 2.5
     value: 22
     category: armor
@@ -3450,6 +3456,7 @@ items:
       leather and set with a small brass gear.
     takeable: true
     tradeable: true
+    slot: main_hand
     value: 60
     category: weapon
     quality: fine
@@ -3462,6 +3469,7 @@ items:
       but still deadly in trained hands.
     takeable: true
     tradeable: true
+    slot: off_hand
     value: 25
     category: weapon
     quality: common
@@ -3484,6 +3492,8 @@ items:
       is tooled with geometric patterns reminiscent of clock gears.
     takeable: true
     tradeable: true
+    slot: torso
+    wearable: true
     value: 45
     category: armor
     quality: fine
@@ -3495,6 +3505,8 @@ items:
       or lowered. A small gear-shaped emblem is mounted on the crown.
     takeable: true
     tradeable: true
+    slot: head
+    wearable: true
     value: 35
     category: armor
     quality: fine

@@ -315,6 +315,7 @@
     }
     renderCombatHealth(data);
     refreshVitalsFromCombat(data);
+    refreshBodyFromCombat(data);
     window.dispatchEvent(
       new CustomEvent("lorecraft:combat-update", { detail: data }),
     );
@@ -335,6 +336,23 @@
     if (lines.length) {
       appendToFeed(escapeText(`Combat status: ${lines.join(" · ")}`));
     }
+  }
+
+  function refreshBodyFromCombat(data) {
+    if (!Array.isArray(data.participants)) return;
+    const playerId =
+      document.body.dataset.playerId || window.LORECRAFT_PLAYER_ID;
+    const affectedPlayer = data.participants.some(
+      (p) =>
+        p.actor_type === "player" && (!playerId || p.actor_id === playerId),
+    );
+    if (!affectedPlayer) return;
+    const bodyPanel = document.getElementById("body-panel");
+    if (!bodyPanel || !window.htmx) return;
+    htmx.ajax("GET", "/partials/body", {
+      target: bodyPanel,
+      swap: "outerHTML",
+    });
   }
 
   function refreshVitalsFromCombat(data) {

@@ -1631,6 +1631,54 @@ def test_npc_hp_depletion_marks_defeated_and_unengages_participants() -> None:
         assert record.payload["position_changes"]
 
 
+def test_defeated_npc_rematch_resets_hp_before_new_encounter() -> None:
+    engine = _engine()
+    service = CombatService()
+
+    with Session(engine) as session:
+        ctx = _context(session)
+        goblin = session.get(NPC, "goblin")
+        assert goblin is not None
+        goblin.max_hp = 1
+        session.add(goblin)
+        service.attack("goblin", ctx)
+        first_action = session.exec(select(CombatAction)).one()
+
+        service.resolve_action(
+            session,
+            first_action.id,
+            rng=GameRng(seed=1),
+            current_epoch=10.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+    with Session(engine) as session:
+        hp = ctx_meters(engine).get(session, "npc", "goblin", "hp")
+        assert hp.current == 0
+        ctx = _context_for_existing_player(session, "player-1")
+        service.attack("goblin", ctx)
+
+        assert hp.current == hp.maximum == 1
+        pending = session.exec(
+            select(CombatAction).where(CombatAction.state == "pending")
+        ).all()
+        assert len(pending) == 1
+
+        service.resolve_action(
+            session,
+            pending[0].id,
+            rng=GameRng(seed=1),
+            current_epoch=20.0,
+            meter_service=ctx.meters,
+        )
+        session.commit()
+
+        records = session.exec(select(CombatResolutionRecord)).all()
+        assert len(records) == 2
+        assert records[-1].payload["state_changes"][0]["to_status"] == "defeated"
+
+
 def test_npc_defeat_applies_configured_coin_reward_and_final_prose() -> None:
     engine = _engine()
     service = CombatService()

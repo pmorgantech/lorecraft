@@ -202,6 +202,7 @@ open chest                — open a container
 close chest               — close a container
 put coin in chest         — place a carried item into an open container
 take coin from chest      — take an item out of a container
+loot corpse               — take everything you can from a container, including corpse coins
 wear helm                 — equip a worn item (armor, clothing)
 remove helm               — unequip a worn item
 wield sword               — equip a wielded item (weapon, tool, light)
@@ -678,6 +679,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `close <container>` | | Close a container |
 | `put <item> in <container>` | | Place a carried item into an open container |
 | `take <item> from <container>` | | Take an item out of a container |
+| `loot <container>` | | Take everything you can from an open container |
 | `wear <item>` | | Equip a worn item (armor, clothing) |
 | `remove <item>` | | Unequip a worn item |
 | `wield <item>` | | Equip a wielded item (weapon, tool, light) |

@@ -581,6 +581,7 @@ class CombatService:
             repo.add(actor)
         target = repo.participant_for_actor(encounter.id, "npc", npc.id)
         if target is None:
+            self._reset_defeated_npc_for_new_encounter(ctx, npc)
             target_ready_at = (
                 now
                 if encounter.combat_mode == COMBAT_MODE_SIMULTANEOUS_PLANNING
@@ -599,6 +600,11 @@ class CombatService:
             repo.add(target)
         self._ensure_hostile_edges(repo, encounter.id, actor.id, target.id)
         return encounter, actor, target
+
+    def _reset_defeated_npc_for_new_encounter(self, ctx: GameContext, npc: NPC) -> None:
+        hp = ctx.meters.get(ctx.session, "npc", npc.id, "hp")
+        if hp.current <= 0:
+            ctx.meters.set_current(ctx.session, hp, hp.maximum)
 
     def _combat_mode_for_npc(self, npc: NPC) -> str:
         raw_mode = npc.ai.get("combat_mode")

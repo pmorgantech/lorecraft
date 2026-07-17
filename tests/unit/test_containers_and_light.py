@@ -74,6 +74,13 @@ def _seed(session: Session) -> None:
                 capacity=10.0,
             ),
             ItemData(
+                id="corpse",
+                name="Fallen Body",
+                description="A fallen body.",
+                takeable=False,
+                capacity=200.0,
+            ),
+            ItemData(
                 id="pouch",
                 name="small pouch",
                 description="A pouch.",
@@ -238,6 +245,36 @@ class TestPutTake:
         cmd_engine.handle_command("take coin from chest", ctx)
 
         assert ctx.messages == ["The wooden chest is closed."]
+
+    def test_loot_corpse_takes_contents_and_coins(
+        self, built: tuple[CommandEngine, GameContext, Session]
+    ) -> None:
+        cmd_engine, ctx, _session = built
+        corpse_stack = ctx.item_location.spawn("corpse", Location("room", ROOM_ID))[0]
+        assert corpse_stack.instance_id is not None
+        ctx.item_location.spawn("coin", Location("container", corpse_stack.instance_id))
+        ctx.ledger.credit(ctx.session, "container", corpse_stack.instance_id, 20)
+        ctx.session.commit()
+
+        cmd_engine.handle_command("open corpse", ctx)
+        ctx.messages.clear()
+        cmd_engine.handle_command("loot corpse", ctx)
+
+        assert ctx.messages == ["You loot the Fallen Body: coin, 20 coins."]
+        assert (
+            ctx.stack_repo.quantity_of(Location("player", ctx.player.id), "coin") == 1
+        )
+        assert (
+            ctx.stack_repo.quantity_of(
+                Location("container", corpse_stack.instance_id), "coin"
+            )
+            == 0
+        )
+        assert ctx.ledger.balance_of(ctx.session, "player", ctx.player.id) == 20
+        assert (
+            ctx.ledger.balance_of(ctx.session, "container", corpse_stack.instance_id)
+            == 0
+        )
 
     def test_nesting_beyond_max_depth_rejected(
         self, built: tuple[CommandEngine, GameContext, Session]

@@ -27,6 +27,7 @@ from lorecraft.features.equipment.slots import FINGER_SLOTS, slot_label
 from lorecraft.engine.game.events import GameEvent
 from lorecraft.features.movement.service import visible_exits
 from lorecraft.engine.game.holders import Location
+from lorecraft.engine.services.ledger import ExchangeLeg
 from lorecraft.features.terrain import definitions as terrain_module
 from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.world import Item
@@ -946,6 +947,73 @@ class InventoryService:
             item_id=item.id,
             player_id=ctx.player.id,
         )
+
+    def loot_container(self, name_or_id: str | None, ctx: GameContext) -> None:
+        if name_or_id is None:
+            ctx.say("Loot what?", MessageType.WARNING)
+            return
+
+        container_match = self._resolve_container(name_or_id, ctx, verb="loot")
+        if container_match is None:
+            return
+        container_item, container_instance = container_match
+
+        openable_state = get_component_state(container_instance, "openable")
+        if isinstance(openable_state, dict) and not openable_state.get("open"):
+            ctx.say(f"The {container_item.name} is closed.", MessageType.WARNING)
+            return
+
+        container_location = Location("container", container_instance.id)
+        player_location = Location("player", ctx.player.id)
+        stack_moves: list[tuple[int, int]] = []
+        moved_item_events: list[tuple[str, int]] = []
+        item_labels: list[str] = []
+        skipped_for_weight = False
+        for stack in ctx.stack_repo.stacks_at(container_location):
+            item = ctx.item_repo.get(stack.item_id)
+            if item is None or stack.id is None or stack.quantity <= 0:
+                continue
+            if self._would_overload(ctx, item, stack.quantity):
+                skipped_for_weight = True
+                continue
+            stack_moves.append((stack.id, stack.quantity))
+            moved_item_events.append((item.id, stack.quantity))
+            item_labels.append(format_inventory_entry(item.name, stack.quantity))
+
+        coins = ctx.ledger.balance_of(ctx.session, "container", container_instance.id)
+        if not stack_moves and coins <= 0:
+            ctx.say(
+                f"There is nothing to loot from the {container_item.name}.",
+                MessageType.WARNING,
+            )
+            return
+
+        ctx.ledger.execute_exchange(
+            ctx.session,
+            [
+                ExchangeLeg(
+                    give_from=container_location,
+                    give_to=player_location,
+                    coins=coins,
+                    stacks=tuple(stack_moves),
+                )
+            ],
+        )
+        ctx.push_update(
+            "inventory",
+            inventory_update_entries(ctx.item_repo.stacks_carried_by(ctx.player.id)),
+        )
+
+        labels = list(item_labels)
+        if coins > 0:
+            labels.append(f"{coins} coins")
+        summary = ", ".join(labels)
+        ctx.say(f"You loot the {container_item.name}: {summary}.")
+        ctx.tell_room(f"{ctx.player.username} loots {container_item.name}.")
+        if skipped_for_weight:
+            ctx.say("Some items are too heavy for you to carry.", MessageType.WARNING)
+        for item_id, quantity in moved_item_events:
+            self._emit_item_taken(ctx, item_id, count=quantity)
 
     def _resolve_container(
         self, query: str, ctx: GameContext, *, verb: str

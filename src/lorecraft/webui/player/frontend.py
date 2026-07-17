@@ -100,6 +100,7 @@ log = logging.getLogger(__name__)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="src/lorecraft/webui/player/templates")
+PLAYER_HIDDEN_AUDIT_EVENT_TYPES = {"time_update", "time_advanced"}
 # Single source of truth for the layout -> default-scheme mapping (Sprint 67):
 # injected into base.html as `window.LC_MODE_DEFAULT_THEME` so the top-bar
 # picker's and settings page's client-side "auto" preview read the same data
@@ -113,6 +114,14 @@ templates.env.globals["MODE_DEFAULT_THEME_JSON"] = json.dumps(MODE_DEFAULT_THEME
 # route) to peel the feature back. The settings page keeps its own pickers
 # regardless of this flag.
 APPEARANCE_TOPBAR = True
+
+
+def _is_player_visible_audit_event(event: object) -> bool:
+    event_type = str(getattr(event, "event_type", "") or "")
+    return (
+        "COMMAND" not in event_type.upper()
+        and event_type.lower() not in PLAYER_HIDDEN_AUDIT_EVENT_TYPES
+    )
 
 
 def _carried_snapshot(item_repo: ItemRepo, player_id: str) -> list[tuple[str, int]]:
@@ -493,9 +502,7 @@ async def game_screen(
         if not feed_events:
             feed_events = list(audit_repo.recent_for_actor(player.id, limit=feed_limit))
 
-        feed_events = [
-            e for e in feed_events if "COMMAND" not in (e.event_type or "").upper()
-        ]
+        feed_events = [e for e in feed_events if _is_player_visible_audit_event(e)]
 
         feed_messages = [audit_to_feed(e, player) for e in reversed(feed_events)]
 
@@ -1193,7 +1200,7 @@ async def partial_feed(
         if not events:
             events = list(audit_repo.recent_for_actor(player.id, limit=20))
 
-        events = [e for e in events if "COMMAND" not in (e.event_type or "").upper()]
+        events = [e for e in events if _is_player_visible_audit_event(e)]
 
         if since:
             try:
@@ -1257,6 +1264,43 @@ async def partial_inventory(
             "current_player": player,
             "encumbrance": encumbrance,
         },
+    )
+
+
+@router.get("/partials/vitals", response_class=HTMLResponse)
+async def partial_vitals(
+    request: Request, player: Player = Depends(get_current_player)
+):
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        player = PlayerRepo(db).get(player.id) or player
+        vitals = vitals_snapshot(db, get_meters(request), player.id)
+    html = templates.get_template("partials/vitals.html").render(
+        request=request,
+        vitals=vitals,
+        current_player=player,
+    )
+    return HTMLResponse(f'<div id="vitals" class="mb-1.5 text-xs">{html}</div>')
+
+
+@router.get("/partials/stats-panel", response_class=HTMLResponse)
+async def partial_stats_panel(
+    request: Request, player: Player = Depends(get_current_player)
+):
+    game_engine, _ = get_engines(request)
+    with DBSession(game_engine) as db:
+        repo = PlayerRepo(db)
+        player = repo.get(player.id) or player
+        player_stats = stats_snapshot(
+            db,
+            repo,
+            player.id,
+            get_meters(request),
+        )
+    return templates.TemplateResponse(
+        request,
+        "partials/stats_panel.html",
+        {"request": request, "player_stats": player_stats, "current_player": player},
     )
 
 

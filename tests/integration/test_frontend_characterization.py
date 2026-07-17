@@ -29,6 +29,7 @@ from sqlmodel import Session, create_engine, select
 
 from lorecraft.config import Settings
 from lorecraft.db import create_tables
+from lorecraft.engine.game.events import GameEvent
 from lorecraft.engine.game.holders import Location
 from lorecraft.main import create_app
 from lorecraft.engine.models.audit import AuditEvent
@@ -1906,7 +1907,7 @@ def test_feed_excludes_command_events_from_display() -> None:
 
 
 async def _test_feed_excludes_command_events_from_display() -> None:
-    """Verify COMMAND event types are filtered from feed display."""
+    """Verify noisy audit event types are filtered from feed display."""
     game_engine, audit_engine = _make_engines()
     app = create_app(
         settings=Settings(
@@ -1948,6 +1949,20 @@ async def _test_feed_excludes_command_events_from_display() -> None:
                     summary="west",
                 )
             )
+            db.add(
+                AuditEvent(
+                    transaction_id="txn-time",
+                    correlation_id="corr-time",
+                    actor_id="player-1",
+                    event_type=GameEvent.TIME_ADVANCED.value,
+                    source_type="clock",
+                    room_id="village_square",
+                    game_time=1.0,
+                    real_time=now + 1,
+                    summary="time_update",
+                    payload_json={"hour": 12, "minute": 0},
+                )
+            )
             db.commit()
 
         status, html = await _http_get(
@@ -1957,6 +1972,8 @@ async def _test_feed_excludes_command_events_from_display() -> None:
     assert status == 200
     # COMMAND should not appear in the feed display
     assert "COMMAND" not in html or "command_executed" not in html.lower()
+    assert "time_update" not in html
+    assert "time_advanced" not in html
 
 
 # =============================================================================

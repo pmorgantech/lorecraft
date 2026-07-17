@@ -16,10 +16,12 @@ from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.broadcast import broadcast_command_effects
 from lorecraft.engine.game.context import build_game_context
 from lorecraft.engine.game.events import GameEvent
+from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.transaction import TransactionContext, TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.player import Player
 from lorecraft.engine.models.session import PlayerSession
+from lorecraft.engine.models.world import Item
 from lorecraft.engine.repos.audit_repo import AuditRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
@@ -31,6 +33,7 @@ from lorecraft.features.equipment.body import (
 from lorecraft.observability import bind_transaction_context
 
 router = APIRouter(tags=["admin"])
+PLAYER_AUDIT_HIDDEN_EVENT_TYPES = {"time_update", GameEvent.TIME_ADVANCED.value}
 
 
 def _state(request: Request) -> Any:
@@ -42,6 +45,10 @@ def _require_reason(reason: str | None) -> str:
     if not value:
         raise HTTPException(status_code=422, detail="Admin reason is required")
     return value
+
+
+def _is_visible_player_audit_event(event: AuditEvent) -> bool:
+    return (event.event_type or "").lower() not in PLAYER_AUDIT_HIDDEN_EVENT_TYPES
 
 
 def _player_snapshot(player: Player) -> dict[str, Any]:
@@ -116,6 +123,56 @@ def _audit_admin_action(
             )
         )
         audit_session.commit()
+
+
+def _format_admin_bestow_awards(*, coins: int, items: list[dict[str, Any]]) -> str:
+    labels: list[str] = []
+    if coins:
+        labels.append(f"{coins:,} coin{'s' if coins != 1 else ''}")
+    for item in items:
+        quantity = item.get("quantity")
+        name = item.get("name") or item.get("item_id")
+        if isinstance(quantity, int) and quantity > 1:
+            labels.append(f"{quantity:,} {_plural_label(str(name))}")
+        else:
+            labels.append(str(name))
+    if not labels:
+        return "a gift"
+    if len(labels) == 1:
+        return labels[0]
+    return ", ".join(labels[:-1]) + f" and {labels[-1]}"
+
+
+def _plural_label(label: str) -> str:
+    if label.endswith("s"):
+        return label
+    return f"{label}s"
+
+
+async def _notify_player_admin_update(
+    state: Any,
+    player_id: str,
+    text: str,
+    *,
+    affected_panels: list[str] | None = None,
+) -> None:
+    await state.manager.send_to_player(
+        player_id,
+        {
+            "type": "feed_append",
+            "content": text,
+            "message_type": MessageType.SYSTEM.value,
+        },
+    )
+    if affected_panels:
+        await state.manager.send_to_player(
+            player_id,
+            {
+                "type": "state_change",
+                "affected_panels": affected_panels,
+                "actor_id": "admin",
+            },
+        )
 
 
 @router.get("/players")
@@ -240,9 +297,11 @@ async def observe_player(
             **body_snapshot,
         }
     with Session(state.audit_engine) as audit_session:
+        event_limit = min(limit, 100)
         events = AuditRepo(audit_session).recent_for_actor(
-            player_id, limit=min(limit, 100)
+            player_id, limit=min(event_limit * 3, 300)
         )
+        events = [e for e in events if _is_visible_player_audit_event(e)][:event_limit]
     return {
         "player": snapshot,
         "recent_events": [
@@ -497,9 +556,11 @@ async def heal_player(
         before={"hp": before},
         after={"hp": after},
     )
-    await state.manager.send_to_player(
+    await _notify_player_admin_update(
+        state,
         player_id,
-        {"type": "system", "text": "An administrator restores your health."},
+        "A guardian angel restores your health.",
+        affected_panels=["vitals", "stats-panel"],
     )
     return {"status": "healed", "player_id": player_id, "meter": after}
 
@@ -530,9 +591,11 @@ async def revitalize_player(
         before={"meters": [m["before"] for m in meter_changes]},
         after={"meters": [m["after"] for m in meter_changes]},
     )
-    await state.manager.send_to_player(
+    await _notify_player_admin_update(
+        state,
         player_id,
-        {"type": "system", "text": "An administrator revitalizes you."},
+        "A guardian angel revitalizes you.",
+        affected_panels=["vitals", "stats-panel"],
     )
     return {"status": "revitalized", "player_id": player_id, "meters": meter_changes}
 
@@ -589,9 +652,11 @@ async def buff_player(
         reason=reason,
         after={"effect": after},
     )
-    await state.manager.send_to_player(
+    await _notify_player_admin_update(
+        state,
         player_id,
-        {"type": "system", "text": f"An administrator bestows {effect_key} on you."},
+        f"A guardian angel bestows {effect_key} on you.",
+        affected_panels=["vitals", "stats-panel"],
     )
     return {"status": "buffed", "player_id": player_id, "effect": after}
 
@@ -620,7 +685,10 @@ async def bestow_player(
         if body.coins:
             LedgerService().credit(session, "player", player_id, body.coins)
         stacks: list[dict[str, Any]] = []
+        item_awards: list[dict[str, Any]] = []
         if item_id:
+            item = session.get(Item, item_id)
+            item_name = item.name if item is not None else item_id
             try:
                 created = ItemLocationService(session).spawn(
                     item_id,
@@ -638,6 +706,9 @@ async def bestow_player(
                 }
                 for stack in created
             ]
+            item_awards.append(
+                {"item_id": item_id, "name": item_name, "quantity": body.quantity}
+            )
         after_balance = LedgerService().balance_of(session, "player", player_id)
         session.commit()
 
@@ -656,14 +727,12 @@ async def bestow_player(
         before=before,
         after=after,
     )
-    awarded: list[str] = []
-    if body.coins:
-        awarded.append(f"{body.coins} coins")
-    if item_id:
-        awarded.append(f"{body.quantity} {item_id}")
-    await state.manager.send_to_player(
+    awarded = _format_admin_bestow_awards(coins=body.coins, items=item_awards)
+    await _notify_player_admin_update(
+        state,
         player_id,
-        {"type": "system", "text": f"An administrator gives you {', '.join(awarded)}."},
+        f"A guardian angel gives you {awarded}!",
+        affected_panels=["inventory", "vitals", "stats-panel"],
     )
     return {"status": "bestowed", "player_id": player_id, **after}
 
@@ -696,9 +765,10 @@ async def freeze_player(
         target_id=player_id,
         reason=reason,
     )
-    await state.manager.send_to_player(
+    await _notify_player_admin_update(
+        state,
         player_id,
-        {"type": "system", "text": "Your session has been frozen by an administrator."},
+        "A guardian angel freezes your session.",
     )
     return {"status": "frozen", "player_id": player_id}
 
@@ -729,8 +799,9 @@ async def unfreeze_player(
         target_id=player_id,
         reason=reason,
     )
-    await state.manager.send_to_player(
+    await _notify_player_admin_update(
+        state,
         player_id,
-        {"type": "system", "text": "Your session has been unfrozen."},
+        "A guardian angel unfreezes your session.",
     )
     return {"status": "unfrozen", "player_id": player_id}

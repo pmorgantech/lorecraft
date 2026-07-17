@@ -33,6 +33,14 @@ def register_inventory_commands(
         service.take_from_item(noun, ctx)
 
     @registry.register(
+        "loot",
+        conditions=[CommandCondition.REQUIRES_LIGHT, CommandCondition.NOT_IN_COMBAT],
+        help="loot <container> — take everything you can from an open container",
+    )
+    def loot_command(noun: str | None, ctx: GameContext) -> None:
+        service.loot_container(noun, ctx)
+
+    @registry.register(
         "drop",
         conditions=[CommandCondition.NOT_IN_COMBAT],
         help="drop <item> — put down a carried item",

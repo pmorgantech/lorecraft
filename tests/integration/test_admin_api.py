@@ -381,6 +381,21 @@ async def _test_observe_player() -> None:
                 payload_json={"command": "look"},
             )
         )
+        session.add(
+            AuditEvent(
+                transaction_id="txn-observe-time",
+                correlation_id="corr-observe-time",
+                actor_id="player-1",
+                event_type=GameEvent.TIME_ADVANCED.value,
+                source_type="clock",
+                room_id="village_square",
+                game_time=1.0,
+                real_time=time.time() + 1,
+                severity="INFO",
+                summary="time_update",
+                payload_json={"hour": 12, "minute": 0},
+            )
+        )
         session.commit()
     async with _lifespan(app):
         status, data = await _http(
@@ -391,6 +406,9 @@ async def _test_observe_player() -> None:
     observe_parts = {part["key"]: part for part in data["player"]["body"]}
     assert observe_parts["arms_hands"]["wounds"][0]["id"] == "admin-observe-wound"
     assert data["recent_events"][0]["summary"] == "Command executed: look"
+    assert {event["event_type"] for event in data["recent_events"]} == {
+        "command_executed"
+    }
 
 
 def test_observer_cannot_update_player_record() -> None:
@@ -514,27 +532,46 @@ async def _test_admin_can_bestow_coins_and_items() -> None:
         )
         session.commit()
 
+    observed_messages: list[dict[str, Any]] = []
     async with _lifespan(app):
+        unsubscribe = app.state.lorecraft.manager.observe_player_output(
+            "player-1", observed_messages.append
+        )
         status, data = await _http(
             app,
             "POST",
             "/admin/players/player-1/bestow",
             body={
-                "coins": 25,
+                "coins": 1000,
                 "item_id": "admin_test_gift",
                 "quantity": 2,
                 "reason": "support grant",
             },
             token=token,
         )
+        unsubscribe()
     assert status == 200
     assert data["status"] == "bestowed"
-    assert data["coins_granted"] == 25
-    assert data["coins"] >= 25
+    assert data["coins_granted"] == 1000
+    assert data["coins"] >= 1000
     assert data["items"][0]["item_id"] == "admin_test_gift"
     assert data["items"][0]["quantity"] == 2
+    assert observed_messages == [
+        {
+            "type": "feed_append",
+            "content": (
+                "A guardian angel gives you 1,000 coins and 2 Admin Test Gifts!"
+            ),
+            "message_type": "system",
+        },
+        {
+            "type": "state_change",
+            "affected_panels": ["inventory", "vitals", "stats-panel"],
+            "actor_id": "admin",
+        },
+    ]
     with Session(game_engine) as session:
-        assert LedgerService().balance_of(session, "player", "player-1") >= 25
+        assert LedgerService().balance_of(session, "player", "player-1") >= 1000
         stack = session.get(ItemStack, data["items"][0]["stack_id"])
     assert stack is not None
     assert stack.owner_type == "player"

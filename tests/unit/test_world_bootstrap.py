@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, create_engine, select
 
@@ -27,6 +28,27 @@ def test_resolve_world_yaml_path_accepts_repo_world_directory() -> None:
     path = resolve_world_yaml_path("world_content")
     assert path.is_file()
     assert path.name == "world.yaml"
+
+
+def test_real_weapon_and_armor_content_has_equipment_metadata() -> None:
+    path = resolve_world_yaml_path("world_content/world.yaml")
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    items = document["items"]
+
+    missing_weapon_slots = [
+        item["id"]
+        for item in items
+        if item.get("category") == "weapon" and item.get("slot") is None
+    ]
+    incomplete_armor = [
+        item["id"]
+        for item in items
+        if item.get("category") == "armor"
+        and (item.get("slot") is None or item.get("wearable") is not True)
+    ]
+
+    assert missing_weapon_slots == []
+    assert incomplete_armor == []
 
 
 def test_ensure_world_bootstrapped_imports_yaml_and_seeds_player() -> None:
