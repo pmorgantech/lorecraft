@@ -92,28 +92,6 @@ class CombatResolutionRecord(SQLModel, table=True):
     payload: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
 
 
-class CombatWound(SQLModel, table=True):
-    """Persistent combat injury record.
-
-    Sprint 88 starts with recording and inspection only. Wounds deliberately do
-    not modify stats or meters yet; later slices can consume active rows as
-    narrow Tier 2 policy.
-    """
-
-    id: str = Field(primary_key=True)
-    encounter_id: str = Field(foreign_key="combatencounter.id", index=True)
-    action_id: str = Field(foreign_key="combataction.id", index=True)
-    target_type: str = Field(index=True)
-    target_id: str = Field(index=True)
-    body_location: str = Field(index=True)
-    severity: str = Field(index=True)
-    damage: float
-    status: str = Field(default="active", index=True)
-    created_at_game_time: float
-    healed_at_game_time: float | None = None
-    payload: JsonObject = Field(default_factory=dict, sa_column=Column(JSON))
-
-
 class CombatRulesetConfig(SQLModel, table=True):
     """DB-backed live balance dials for one combat ruleset."""
 

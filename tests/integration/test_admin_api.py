@@ -20,7 +20,6 @@ from lorecraft.engine.models.audit import AuditEvent
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.meters import ActiveEffect
 from lorecraft.engine.services.ledger import LedgerService
-from lorecraft.features.combat.models import CombatWound
 from lorecraft.main import create_app
 from lorecraft.models.admin import AdminUser
 from lorecraft.engine.models.player import Player
@@ -250,19 +249,6 @@ async def _test_player_state() -> None:
                 slot="head",
             )
         )
-        session.add(
-            CombatWound(
-                id="admin-state-wound",
-                encounter_id="encounter-state",
-                action_id="action-state",
-                target_type="player",
-                target_id="player-1",
-                body_location="head",
-                severity="minor",
-                damage=4.0,
-                created_at_game_time=1.0,
-            )
-        )
         session.commit()
     async with _lifespan(app):
         status, data = await _http(
@@ -275,7 +261,6 @@ async def _test_player_state() -> None:
     assert data["equipment"][0]["item_id"] == "admin_test_helm"
     state_parts = {part["key"]: part for part in data["body"]}
     assert state_parts["head"]["slots"][0]["item"]["item_id"] == "admin_test_helm"
-    assert state_parts["head"]["wounds"][0]["id"] == "admin-state-wound"
     assert "visited_rooms" in data
     assert "respawn_room_id" in data
 
@@ -350,21 +335,6 @@ async def _test_observe_player() -> None:
         settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
     )
     token = _access_token()
-    with Session(game_engine) as session:
-        session.add(
-            CombatWound(
-                id="admin-observe-wound",
-                encounter_id="encounter-observe",
-                action_id="action-observe",
-                target_type="player",
-                target_id="player-1",
-                body_location="left_arm",
-                severity="major",
-                damage=12.0,
-                created_at_game_time=2.0,
-            )
-        )
-        session.commit()
     with Session(audit_engine) as session:
         session.add(
             AuditEvent(
@@ -403,8 +373,7 @@ async def _test_observe_player() -> None:
         )
     assert status == 200
     assert data["player"]["username"] == "player-1"
-    observe_parts = {part["key"]: part for part in data["player"]["body"]}
-    assert observe_parts["arms_hands"]["wounds"][0]["id"] == "admin-observe-wound"
+    assert "body" in data["player"]
     assert data["recent_events"][0]["summary"] == "Command executed: look"
     assert {event["event_type"] for event in data["recent_events"]} == {
         "command_executed"
@@ -1565,60 +1534,6 @@ async def _test_get_combat_rulesets() -> None:
             "stamina_cost_multiplier": 1.0,
         }
     ]
-
-
-def test_get_combat_wounds_returns_active_wounds() -> None:
-    anyio.run(_test_get_combat_wounds)
-
-
-async def _test_get_combat_wounds() -> None:
-    game_engine, audit_engine = _make_engines()
-    app = create_app(
-        settings=_SETTINGS, game_engine=game_engine, audit_engine=audit_engine
-    )
-    token = _access_token()
-    with Session(game_engine) as session:
-        session.add(
-            CombatWound(
-                id="wound-1",
-                encounter_id="encounter-1",
-                action_id="action-1",
-                target_type="npc",
-                target_id="goblin",
-                body_location="torso",
-                severity="minor",
-                damage=6.5,
-                created_at_game_time=12.0,
-                payload={"hp_before": 20.0, "hp_after": 13.5},
-            )
-        )
-        session.add(
-            CombatWound(
-                id="wound-2",
-                encounter_id="encounter-1",
-                action_id="action-2",
-                target_type="npc",
-                target_id="goblin",
-                body_location="left_arm",
-                severity="bruise",
-                damage=2.0,
-                status="healed",
-                created_at_game_time=8.0,
-            )
-        )
-        session.commit()
-    async with _lifespan(app):
-        status, data = await _http(
-            app,
-            "GET",
-            "/admin/combat/wounds?target_type=npc&target_id=goblin",
-            token=token,
-        )
-
-    assert status == 200
-    assert [wound["id"] for wound in data] == ["wound-1"]
-    assert data[0]["body_location"] == "torso"
-    assert data[0]["payload"]["hp_after"] == 13.5
 
 
 def test_post_combat_ruleset_updates_live_config() -> None:

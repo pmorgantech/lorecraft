@@ -1,15 +1,15 @@
 """Canonical body/equipment view model.
 
-This is Tier 2 presentation policy for equipment and condition inspection. The
-engine still only knows item locations and meters; body parts and how slots map
-onto them belong to the equipment/combat feature layer.
+This is Tier 2 presentation policy for equipment inspection. The engine still
+only knows item locations and meters; body parts and how slots map onto them
+belong to the equipment feature layer.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 from sqlmodel import Session
 
@@ -60,18 +60,6 @@ def body_part_for_slot(slot: str) -> BodyPartKey | None:
     return None
 
 
-def body_part_for_wound_location(location: str) -> BodyPartKey | None:
-    if location == "head":
-        return "head"
-    if location == "torso":
-        return "torso"
-    if location in {"left_arm", "right_arm"}:
-        return "arms_hands"
-    if location in {"left_leg", "right_leg"}:
-        return "legs_feet"
-    return None
-
-
 def empty_body_view() -> list[JsonObject]:
     return [
         {
@@ -85,7 +73,6 @@ def empty_body_view() -> list[JsonObject]:
                 }
                 for slot in part.slots
             ],
-            "wounds": [],
         }
         for part in BODY_PARTS
     ]
@@ -125,7 +112,6 @@ def body_equipment_view(equipped: Sequence[tuple[ItemStack, Item]]) -> list[Json
 def player_body_snapshot(session: Session, player_id: str) -> JsonObject:
     equipped = player_equipment(session, player_id)
     body = body_equipment_view(equipped)
-    add_wounds_to_body_view(body, _active_combat_wounds_for_player(session, player_id))
     equipment: list[JsonValue] = [
         {
             "slot": stack.slot,
@@ -158,38 +144,6 @@ def player_equipment(session: Session, player_id: str) -> list[tuple[ItemStack, 
         if item is not None:
             equipped.append((stack, item))
     return equipped
-
-
-def _active_combat_wounds_for_player(session: Session, player_id: str) -> Sequence[Any]:
-    from lorecraft.features.combat.wounds import active_wounds_for_player
-
-    return active_wounds_for_player(session, player_id)
-
-
-def add_wounds_to_body_view(view: list[JsonObject], wounds: Sequence[Any]) -> None:
-    parts_by_key = {part["key"]: part for part in view}
-    for wound in wounds:
-        location = str(getattr(wound, "body_location", ""))
-        part_key = body_part_for_wound_location(location)
-        if part_key is None:
-            continue
-        part = parts_by_key.get(part_key)
-        if part is None:
-            continue
-        wounds_list = part.get("wounds")
-        if not isinstance(wounds_list, list):
-            continue
-        wounds_list.append(
-            {
-                "id": getattr(wound, "id", None),
-                "body_location": location,
-                "severity": getattr(wound, "severity", ""),
-                "damage": getattr(wound, "damage", 0.0),
-                "status": getattr(wound, "status", ""),
-                "created_at_game_time": getattr(wound, "created_at_game_time", None),
-                "healed_at_game_time": getattr(wound, "healed_at_game_time", None),
-            }
-        )
 
 
 def validate_body_slots() -> None:

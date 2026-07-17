@@ -208,7 +208,7 @@ remove helm               — unequip a worn item
 wield sword               — equip a wielded item (weapon, tool, light)
 unwield sword             — unequip a wielded item
 equipment                 — list what you're wearing and wielding (also: eq)
-body                      — show every wear slot plus current body condition (also: condition)
+body                      — show every wear slot grouped by body part (also: condition)
 light lantern             — light a light source
 extinguish lantern        — put out a lit light source
 turn dial                — cycle a lever or dial to its next position (also: pull, activate)
@@ -217,8 +217,7 @@ turn dial                — cycle a lever or dial to its next position (also: p
 Worn/wielded gear can grant passive bonuses (stat/skill boosts, extra carry capacity,
 traits) while equipped — check an item's description or `examine` it to see what it does.
 Use the **Body** tab, or type `body` / `condition`, to see every wear/wield slot grouped by
-body part. Empty slots are shown explicitly, equipped items appear in their slot, and active
-combat wounds are listed on the affected body part as a damage assessment.
+body part. Empty slots are shown explicitly, and equipped items appear in their slot.
 Carrying too much weight makes you **burdened** (travel costs more) or, past a hard
 threshold, **overloaded** (you can't pick up anything else until you drop or stow something).
 A room with no ambient light needs an equipped, lit light source (like a lit lantern) or
@@ -597,7 +596,7 @@ Builders can tune the core action timing and broad ranged/melee semantics in
 
 During recovery you can queue one replacement primary action; the newer choice replaces the
 older pending one. Combat uses health plus your existing stamina meter. The browser combat feed shows each
-opponent's approximate health band plus current HP after combat updates. At 0 HP, player characters
+opponent's current HP after combat updates. At 0 HP, player characters
 die and immediately respawn at their respawn point with a fraction of max HP restored, while NPCs
 are defeated. Death leaves a corpse in the death room holding 20% of carried coins and loose,
 unbound carried items; equipped and bound items remain with the player, and a temporary weakened
@@ -691,7 +690,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `flee` | | Commit to an escape attempt from the current encounter |
 | `unwield <item>` | | Unequip a wielded item |
 | `equipment` | `eq` | List what you're wearing and wielding |
-| `body` | `condition` | Show every wear slot and active body-part wounds |
+| `body` | `condition` | Show every wear slot grouped by body part |
 | `light <item>` | | Light a light source |
 | `extinguish <item>` | | Put out a lit light source |
 | `turn <item>` | `pull`, `activate` | Cycle a lever or dial to its next state |

@@ -1294,8 +1294,9 @@ async def partial_stats_panel(
         player_stats = stats_snapshot(
             db,
             repo,
-            player.id,
             get_meters(request),
+            get_effects(request),
+            player.id,
         )
     return templates.TemplateResponse(
         request,

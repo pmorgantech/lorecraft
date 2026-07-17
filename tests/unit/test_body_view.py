@@ -4,14 +4,11 @@ from __future__ import annotations
 
 from lorecraft.features.equipment.body import (
     BODY_SLOT_ORDER,
-    add_wounds_to_body_view,
     body_part_for_slot,
-    body_part_for_wound_location,
     body_equipment_view,
     empty_body_view,
     validate_body_slots,
 )
-from lorecraft.features.combat.models import CombatWound
 from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.models.world import Item
 from lorecraft.features.equipment.slots import ALL_SLOTS
@@ -79,41 +76,3 @@ def test_body_equipment_view_populates_equipped_items() -> None:
     assert slots["head"]["item"]["name"] == "Equippable Helmet"
     assert slots["main_hand"]["item"]["item_id"] == "wrench"
     assert slots["off_hand"]["item"] is None
-
-
-def test_body_view_groups_wounds_by_body_part() -> None:
-    view = empty_body_view()
-    add_wounds_to_body_view(
-        view,
-        [
-            CombatWound(
-                id="wound-arm",
-                encounter_id="encounter",
-                action_id="action",
-                target_type="player",
-                target_id="player-1",
-                body_location="left_arm",
-                severity="minor",
-                damage=6.0,
-                created_at_game_time=10.0,
-            ),
-            CombatWound(
-                id="wound-leg",
-                encounter_id="encounter",
-                action_id="action",
-                target_type="player",
-                target_id="player-1",
-                body_location="right_leg",
-                severity="major",
-                damage=12.0,
-                created_at_game_time=11.0,
-            ),
-        ],
-    )
-    parts = {part["key"]: part for part in view}
-
-    assert body_part_for_wound_location("left_arm") == "arms_hands"
-    assert body_part_for_wound_location("right_leg") == "legs_feet"
-    assert parts["arms_hands"]["wounds"][0]["id"] == "wound-arm"
-    assert parts["legs_feet"]["wounds"][0]["severity"] == "major"
-    assert parts["head"]["wounds"] == []

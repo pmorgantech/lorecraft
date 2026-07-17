@@ -38,7 +38,6 @@ from lorecraft.features.combat.models import (
     CombatParticipant,
     CombatRelationship,
     CombatResolutionRecord,
-    CombatWound,
 )
 from lorecraft.features.combat.boss_phases import (
     BossPhaseContext,
@@ -103,7 +102,6 @@ from lorecraft.features.combat.resolution import (
     resolve_basic_attack,
 )
 from lorecraft.features.combat.rulesets import combat_ruleset_config_for
-from lorecraft.features.combat.wounds import derive_wound
 from lorecraft.features.fatigue.source import FATIGUE_METER_KEY
 from lorecraft.features.reputation.service import ReputationService
 from lorecraft.types import JsonObject, JsonValue
@@ -195,11 +193,8 @@ class CombatService:
             odds = "This looks risky."
         else:
             odds = "You are badly outmatched."
-        health = self._meter_state(hp)
-        health_text = (
-            str(health["state"]) if health is not None else "unknown condition"
-        )
-        ctx.say(f"{target.name} looks {health_text}. {odds}", MessageType.HINT)
+        health_text = f"HP {hp.current:.0f}/{hp.maximum:.0f}"
+        ctx.say(f"{target.name}: {health_text}. {odds}", MessageType.HINT)
 
     def _attack_with_action_key(
         self,
@@ -1378,7 +1373,6 @@ class CombatService:
             effect_changes=[],
             threat_changes=[],
             consequence_changes=[],
-            wound_changes=[],
         )
         record = self._record_resolution(
             repo,
@@ -1396,7 +1390,6 @@ class CombatService:
             effect_changes=[],
             threat_changes=[],
             consequence_changes=[],
-            wound_changes=[],
         )
         record.payload = action.outcome
         repo.add(record)
@@ -1425,7 +1418,6 @@ class CombatService:
         position_changes: list[JsonValue] = []
         threat_changes: list[JsonValue] = []
         consequence_changes: list[JsonValue] = []
-        wound_changes: list[JsonValue] = []
         if actor.queued_action_id == action.id:
             actor.queued_action_id = None
         if resolution.stamina_delta:
@@ -1462,18 +1454,6 @@ class CombatService:
         if target is not None and resolution.damage > 0:
             hp = meter_service.get(session, target.actor_type, target.actor_id, "hp")
             change = meter_service.adjust(session, hp, -resolution.damage)
-            wound_changes.append(
-                self._record_wound(
-                    repo,
-                    encounter,
-                    action,
-                    target,
-                    resolution,
-                    hp_before=change.previous,
-                    hp_after=change.meter.current,
-                    current_epoch=current_epoch,
-                )
-            )
             effect_changes.extend(
                 self._run_damage_received_hooks(
                     session,
@@ -1564,7 +1544,6 @@ class CombatService:
             effect_changes=effect_changes,
             threat_changes=threat_changes,
             consequence_changes=consequence_changes,
-            wound_changes=wound_changes,
         )
         action.outcome = payload
         record = self._record_resolution(
@@ -1583,7 +1562,6 @@ class CombatService:
             effect_changes=effect_changes,
             threat_changes=threat_changes,
             consequence_changes=consequence_changes,
-            wound_changes=wound_changes,
         )
         record.payload = action.outcome
         repo.add(record)
@@ -1591,54 +1569,6 @@ class CombatService:
         repo.add(action)
         repo.add(encounter)
         return record
-
-    def _record_wound(
-        self,
-        repo: CombatRepo,
-        encounter: CombatEncounter,
-        action: CombatAction,
-        target: CombatParticipant,
-        resolution: CombatResolution,
-        *,
-        hp_before: float,
-        hp_after: float,
-        current_epoch: float,
-    ) -> JsonObject:
-        descriptor = derive_wound(
-            action_id=action.id,
-            target_id=target.actor_id,
-            damage=resolution.damage,
-        )
-        payload: JsonObject = {
-            "outcome": resolution.outcome,
-            "action_key": resolution.action_key,
-            "hp_before": hp_before,
-            "hp_after": hp_after,
-        }
-        wound = CombatWound(
-            id=str(uuid4()),
-            encounter_id=encounter.id,
-            action_id=action.id,
-            target_type=target.actor_type,
-            target_id=target.actor_id,
-            body_location=descriptor.body_location,
-            severity=descriptor.severity,
-            damage=resolution.damage,
-            created_at_game_time=current_epoch,
-            payload=payload,
-        )
-        repo.add(wound)
-        return {
-            "wound_id": wound.id,
-            "target_type": target.actor_type,
-            "target_id": target.actor_id,
-            "body_location": wound.body_location,
-            "severity": wound.severity,
-            "damage": wound.damage,
-            "status": wound.status,
-            "hp_before": hp_before,
-            "hp_after": hp_after,
-        }
 
     def _maybe_auto_continue_attacks(
         self,
@@ -2808,16 +2738,7 @@ class CombatService:
     def _meter_state(self, meter) -> JsonObject | None:
         if meter is None:
             return None
-        ratio = meter.current / meter.maximum if meter.maximum else 0.0
-        if ratio <= 0:
-            label = "depleted"
-        elif ratio < 0.35:
-            label = "low"
-        elif ratio < 0.75:
-            label = "steady"
-        else:
-            label = "strong"
-        return {"state": label, "current": meter.current, "maximum": meter.maximum}
+        return {"current": meter.current, "maximum": meter.maximum}
 
     def _resolution_payload(
         self,
@@ -2829,7 +2750,6 @@ class CombatService:
         effect_changes: list[JsonValue],
         threat_changes: list[JsonValue],
         consequence_changes: list[JsonValue],
-        wound_changes: list[JsonValue],
     ) -> JsonObject:
         payload: JsonObject = {
             "action_key": resolution.action_key,
@@ -2846,7 +2766,6 @@ class CombatService:
             "effect_changes": effect_changes,
             "threat_changes": threat_changes,
             "consequence_changes": consequence_changes,
-            "wound_changes": wound_changes,
         }
         if record_id is not None:
             payload["resolution_record_id"] = record_id

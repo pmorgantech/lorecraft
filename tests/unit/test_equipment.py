@@ -39,7 +39,6 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
-from lorecraft.features.combat.models import CombatWound
 from lorecraft.world.loader import import_world
 from lorecraft.world.validator import ItemData, RoomData, WorldDocument
 from lorecraft.features.traits.sources import register as _register_traits
@@ -315,38 +314,21 @@ class TestEquipmentListing:
 
         assert ctx.messages == ["You aren't wearing or wielding anything."]
 
-    def test_body_command_reports_equipment_and_wounds(
+    def test_body_command_reports_equipment(
         self, built: tuple[CommandEngine, GameContext, Session]
     ) -> None:
-        cmd_engine, ctx, session = built
+        cmd_engine, ctx, _session = built
         _carry(ctx, "iron_helm")
         cmd_engine.handle_command("wear iron helm", ctx)
         ctx.messages.clear()
         ctx.updates.clear()
-        session.add(
-            CombatWound(
-                id="wound-head",
-                encounter_id="encounter-1",
-                action_id="action-1",
-                target_type="player",
-                target_id=ctx.player.id,
-                body_location="head",
-                severity="major",
-                damage=9.0,
-                created_at_game_time=12.0,
-            )
-        )
-        session.commit()
 
         cmd_engine.handle_command("body", ctx)
 
-        assert any(
-            "Head:" in m and "iron helm" in m and "major" in m for m in ctx.messages
-        )
+        assert any("Head:" in m and "iron helm" in m for m in ctx.messages)
         assert "body" in ctx.updates
         parts = {part["key"]: part for part in ctx.updates["body"]}
         assert parts["head"]["slots"][0]["item"]["item_id"] == "iron_helm"
-        assert parts["head"]["wounds"][0]["id"] == "wound-head"
 
     def test_condition_alias_uses_body_command(
         self, built: tuple[CommandEngine, GameContext, Session]

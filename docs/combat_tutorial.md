@@ -79,8 +79,7 @@ Use `shoot <target>` for ranged attacks:
 shoot goblin
 ```
 
-Use `consider <target>` before a fight to estimate the opponent's condition and your likely
-odds:
+Use `consider <target>` before a fight to check the opponent's HP and your likely odds:
 
 ```text
 consider goblin
@@ -110,7 +109,7 @@ Combat output appears in two forms:
 - prose in the normal feed, such as who attacked, guarded, fled, or went down
 - structured combat state used by the browser to keep participants, statuses, stances, and
   attention cues current
-- a compact opponent health line after combat updates, showing condition and current HP
+- a compact opponent health line after combat updates, showing current HP
 
 If you see your action committed but not resolved yet, that is normal scheduled intent. The action
 has a short wind-up, then recovery. Once a fight is active, participants keep queuing basic attacks

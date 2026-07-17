@@ -134,13 +134,13 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 
 | Tab | What you can do | Key endpoints |
 |-----|------------------|----------------|
-| **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; body/equipment/condition snapshots; support actions for healing, revitalizing, timed buffs, and bestowing coins/items; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `POST /admin/players/{id}/heal`, `/revitalize`, `/buff`, `/bestow`, `/admin/ws` |
+| **Dashboard** | Live player table, auto-refreshed over `/admin/ws`; search/status filters; player record editing; body/equipment snapshots; support actions for healing, revitalizing, timed buffs, and bestowing coins/items; read-only Observe panel with player snapshot, recent player audit events, and a live outbound message stream. Player-affecting edits require an admin reason and write structured `admin_action` audit rows. | `GET /admin/players`, `GET /admin/players/{id}/state`, `GET /admin/players/{id}/observe`, `PATCH /admin/players/{id}`, `POST /admin/players/{id}/heal`, `/revitalize`, `/buff`, `/bestow`, `/admin/ws` |
 | **Audit** | Paginated, filterable audit log; row-expand payload; correlation-ID session replay. **Live-updates** as players act (each executed command pushes over `/admin/ws`) — toggle with the **Live** checkbox, or use the **↻ Refresh** button to reload on demand. Command summaries show the full command as typed (e.g. `Command executed: go east`, not just the verb). Severity/source facets are loaded from the audit DB. | `GET /admin/audit`, `GET /admin/audit/facets`, `GET /admin/audit/session/{correlation_id}` |
 | **World** | Room search + inline editor (optimistic locking), item definition list/create/edit form, read-only NPC data, NPC spawn/despawn | `GET/PUT/POST /admin/world/rooms`, `GET/POST/PUT /admin/world/items`, `GET /admin/world/npcs`, `POST /admin/npcs/{id}/spawn` |
 | **NPC/AI** | Read-only NPC runtime dashboard: current room, behavior, HP, autonomous AI config, schedule count, triggers, context commands, and escort state. Control actions remain intentionally absent until safety/audit gates exist. | `GET /admin/world/npcs` |
 | **Changesets** | Draft → scan → promote workflow; conflict list | `POST /admin/changesets`, `POST /admin/changesets/{id}/scan`, `POST /admin/changesets/{id}/promote` |
 | **Clock** | Live world-clock readout; pause/resume, time-ratio, weather override. A weather override **announces the change to every player's feed** (e.g. "A light rain begins to fall."); re-setting the current weather is silent | `GET/POST /admin/clock`, `/admin/clock/pause`, `/admin/clock/resume`, `/admin/clock/time-ratio`, `/admin/clock/weather` |
-| **Combat** | Live-tune combat rulesets and inspect active persistent wounds recorded by combat damage. Ruleset editing requires superadmin; wounds are read-only. | `GET /admin/combat/rulesets`, `POST /admin/combat/rulesets/{id}`, `GET /admin/combat/wounds` |
+| **Combat** | Live-tune combat rulesets. Ruleset editing requires superadmin. Combat damage is tracked as HP loss, not body-part wound records. | `GET /admin/combat/rulesets`, `POST /admin/combat/rulesets/{id}` |
 | **Progression** | Live-tune the XP curve (`base`/`step`) and per-level rewards (`coins_per_level`/`skill_points_per_level`) — no restart or reseed. See [Live-tuning progression from the admin console](#live-tuning-progression-from-the-admin-console) | `GET/POST /admin/progression/config` |
 | **Economy** | Live-tune each zone's price multiplier (`region_mult`) and per-item price bias — no restart or reseed. Viewing is open to any admin role; editing requires superadmin. See [Region pricing (Sprint 76)](#region-pricing-sprint-76) | `GET /admin/economy/regions`, `POST /admin/economy/regions/{zone}` |
 | **Issues** | Repo-tracked issue tracker CRUD. **Resolved/deferred are hidden by default** — a "Hide status" checkbox group toggles any status in/out of view; plus a **priority** filter and a **sort** selector (Priority / Recently updated / Recently created). Filter+sort run client-side (hide/sort choices persist per browser); a header count shows `N shown · M hidden`. `component` is a **registered dropdown** (create + filter), served from `GET /admin/issues/components` and validated on write. Table shows opened-by + created/updated dates (🕑 toggles absolute dates ↔ relative ages); rows expand (click) to description, tags, links, assignee, timestamps. Live-refreshes on any change — admin edits **and** in-game player `report`s | `GET/POST/PUT /admin/issues`, `GET /admin/issues/components` |
@@ -154,11 +154,10 @@ Player moderation actions (teleport, flag edit, freeze/unfreeze, message) live u
 player detail view reached from the Dashboard — see
 [Moderating Players](#moderating-players).
 
-The Dashboard's player editor and Observe panel include a **Body / Equipment / Condition**
-section. It groups every canonical wear/wield slot by body part, shows equipped items or
-empty slots, and lists active persistent `CombatWound` rows on the affected body part.
-Use this for support/debugging when a player's inventory says they own an item but the
-slot state or injury state needs inspection.
+The Dashboard's player editor and Observe panel include a **Body / Equipment** section. It
+groups every canonical wear/wield slot by body part and shows equipped items or empty slots.
+Use this for support/debugging when a player's inventory says they own an item but the slot
+state needs inspection.
 
 **Live refresh:** the console keeps an `/admin/ws` push connection open (WS indicator, top-right).
 Beyond the Dashboard's live player table, the **Issues**, **News**, and **Help** tabs auto-reload
@@ -963,10 +962,10 @@ Combat is implemented as the Tier 2 `combat` feature. Its first Scheduled Intent
 encounters, participants, hostile relationships, and pending/resolved actions in feature-owned
 tables, then resolves actions through durable `combat.resolve_action` scheduler jobs.
 
-Sprint 88.1 adds read-only persistent wounds. Positive combat damage creates a `CombatWound`
-row with target, body location, severity, damage, status, and HP transition metadata. Wounds are
-included in combat resolution/audit payloads and visible from the admin Combat tab, but they do not
-apply stat penalties yet.
+Combat damage applies directly to the target's HP meter. The previous persistent body-part
+wound records and qualitative health-status layer were removed to keep combat state simple:
+resolution and audit payloads retain numeric damage, traces, effects, consequences, and HP
+participant snapshots.
 
 Sprint 88.2 adds narrow terrain/cover defense modifiers. The combat resolver reads the encounter
 room at resolution time, adds a small target defense bonus for `forest`, `mountain`, or `swamp`

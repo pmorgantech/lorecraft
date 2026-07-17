@@ -682,13 +682,6 @@
             <tbody id="combat-tbody"></tbody>
           </table>
         </div>
-        <div class="panel" style="overflow-x:auto;">
-          <h3>Active Wounds</h3>
-          <table>
-            <thead><tr><th>Target</th><th>Location</th><th>Severity</th><th>Damage</th><th>Created</th></tr></thead>
-            <tbody id="combat-wounds-tbody"></tbody>
-          </table>
-        </div>
       </div>
 
       <!-- Progression -->
@@ -1278,7 +1271,6 @@ function renderBodyView(targetId, bodyView) {
   }
   target.innerHTML = parts.map(part => {
     const slots = Array.isArray(part.slots) ? part.slots : [];
-    const wounds = Array.isArray(part.wounds) ? part.wounds : [];
     const slotRows = slots.map(slot => {
       const item = slot.item || null;
       return `<div style="display:flex;justify-content:space-between;gap:0.5rem;border-top:1px solid rgba(255,255,255,0.05);padding:0.18rem 0;">
@@ -1286,18 +1278,11 @@ function renderBodyView(targetId, bodyView) {
         <span>${item ? esc(item.name || item.item_id || "equipped") : '<span style="color:var(--text-dim);font-style:italic;">empty</span>'}</span>
       </div>`;
     }).join("");
-    const woundRows = wounds.map(wound => `
-      <div style="display:flex;justify-content:space-between;gap:0.5rem;color:var(--danger);padding:0.18rem 0;">
-        <span>${esc(wound.severity || "")} ${esc(wound.wound_type || "wound")}</span>
-        <span style="color:var(--text-dim);">${esc(wound.status || "")}</span>
-      </div>`).join("");
     return `<section style="margin-bottom:0.6rem;">
       <div style="display:flex;justify-content:space-between;gap:0.5rem;color:var(--phosphor);font-weight:bold;">
         <span>${esc(part.label || part.key || "Body")}</span>
-        <span style="color:${wounds.length ? 'var(--danger)' : 'var(--green)'};">${wounds.length ? `${wounds.length} wound${wounds.length === 1 ? "" : "s"}` : "sound"}</span>
       </div>
       ${slotRows}
-      ${woundRows}
     </section>`;
   }).join("");
 }
@@ -2448,28 +2433,6 @@ async function loadCombatRulesets() {
     tbody.appendChild(tr);
   }
   updateCombatEditUI();
-  loadCombatWounds();
-}
-
-async function loadCombatWounds() {
-  const rows = await api("GET", "/admin/combat/wounds?status=active&limit=50");
-  const tbody = document.getElementById("combat-wounds-tbody");
-  if (!tbody) return;
-  tbody.innerHTML = "";
-  if (!Array.isArray(rows) || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-dim);">No active wounds.</td></tr>`;
-    return;
-  }
-  for (const wound of rows) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${badge(wound.target_type || "?", "gray")} ${esc(wound.target_id || "")}</td>
-      <td>${esc(wound.body_location || "")}</td>
-      <td>${badge(wound.severity || "", wound.severity === "critical" ? "red" : wound.severity === "major" ? "amber" : "gray")}</td>
-      <td>${esc(wound.damage ?? "")}</td>
-      <td>${esc(wound.created_at_game_time ?? "")}</td>`;
-    tbody.appendChild(tr);
-  }
 }
 
 async function saveCombatRuleset(rulesetId, row) {

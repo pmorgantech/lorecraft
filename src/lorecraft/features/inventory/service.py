@@ -638,8 +638,7 @@ class InventoryService:
         ctx.say("Body:")
         for part in view:
             slots_value = part.get("slots")
-            wounds_value = part.get("wounds")
-            if not isinstance(slots_value, list) or not isinstance(wounds_value, list):
+            if not isinstance(slots_value, list):
                 continue
             label = str(part.get("label", "Unknown"))
             slots = [
@@ -647,7 +646,6 @@ class InventoryService:
                 for slot in slots_value
                 if isinstance(slot, dict) and slot.get("item") is not None
             ]
-            wounds = [wound for wound in wounds_value if isinstance(wound, dict)]
             slot_labels: list[str] = []
             for slot in slots:
                 item = slot.get("item")
@@ -656,15 +654,7 @@ class InventoryService:
                         f"{slot.get('label')}: {item.get('name', 'unknown')}"
                     )
             slot_summary = ", ".join(slot_labels) if slot_labels else "nothing equipped"
-            wound_summary = (
-                ", ".join(
-                    f"{wound.get('severity')} {wound.get('wound_type')}"
-                    for wound in wounds
-                )
-                if wounds
-                else "sound"
-            )
-            ctx.say(f"  {label}: {slot_summary}; {wound_summary}.")
+            ctx.say(f"  {label}: {slot_summary}.")
         payload: list[JsonValue] = []
         payload.extend(view)
         ctx.push_update("body", payload)

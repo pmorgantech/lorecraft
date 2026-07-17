@@ -14,11 +14,6 @@
         <section class="border border-border/70 rounded bg-panel/40 overflow-hidden">
             <div class="px-2.5 py-1.5 border-b border-border/70 flex items-center justify-between">
                 <span class="font-semibold text-text">{{ part.label }}</span>
-                {% if part.wounds %}
-                <span class="text-red-400">{{ part.wounds | length }} wound{{ '' if part.wounds | length == 1 else 's' }}</span>
-                {% else %}
-                <span class="text-emerald-500">sound</span>
-                {% endif %}
             </div>
             <div class="divide-y divide-border/50">
                 {% for slot in part.slots %}
@@ -31,16 +26,6 @@
                     {% endif %}
                 </div>
                 {% endfor %}
-                {% if part.wounds %}
-                <div class="px-2.5 py-1.5 space-y-1">
-                    {% for wound in part.wounds %}
-                    <div class="flex items-start justify-between gap-2 text-red-300">
-                        <span>{{ wound.severity }} {{ wound.wound_type }}</span>
-                        <span class="text-text-muted">{{ wound.status }}</span>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
         </section>
         {% endfor %}

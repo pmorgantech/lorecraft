@@ -46,7 +46,6 @@ from lorecraft.features.combat.models import (
     CombatRelationship,
     CombatResolutionRecord,
     CombatRulesetConfig,
-    CombatWound,
 )
 from lorecraft.features.combat.broadcast import broadcast_combat_resolution
 from lorecraft.features.combat.boss_phases import (
@@ -246,7 +245,7 @@ def test_consider_appraises_nearby_npc() -> None:
         service.consider("goblin", ctx)
 
         assert ctx.messages
-        assert "Goblin looks strong." in str(ctx.messages[0])
+        assert "Goblin: HP 40/40." in str(ctx.messages[0])
         assert "clear advantage" in str(ctx.messages[0])
 
 
@@ -558,7 +557,6 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
             select(CombatAction).order_by(CombatAction.submitted_at)
         ).all()
         record = session.exec(select(CombatResolutionRecord)).one()
-        wound = session.exec(select(CombatWound)).one()
         record_id = record.id
         goblin_hp = ctx_meters(engine).get(session, "npc", "goblin", "hp")
 
@@ -571,23 +569,6 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         assert record.random_trace == actions[0].random_trace
         assert record.damage_trace["final_damage"] == actions[0].outcome["damage"]
         assert record.payload["random_trace"] == record.random_trace
-        assert wound.action_id == actions[0].id
-        assert wound.target_type == "npc"
-        assert wound.target_id == "goblin"
-        assert wound.status == "active"
-        assert wound.body_location in {
-            "head",
-            "torso",
-            "left_arm",
-            "right_arm",
-            "left_leg",
-            "right_leg",
-        }
-        assert wound.severity in {"bruise", "minor", "major", "critical"}
-        assert record.payload["wound_changes"][0]["wound_id"] == wound.id
-        assert actions[0].outcome["wound_changes"][0]["body_location"] == (
-            wound.body_location
-        )
         assert goblin_hp.current < goblin_hp.maximum
         assert any(
             action.actor_type == "npc" and action.state == "pending"
@@ -612,7 +593,6 @@ def test_scheduled_resolution_applies_damage_and_npc_counter_intent() -> None:
         assert audit_event.source_type == "SCHEDULER"
         assert audit_event.payload_json["resolution_record_id"] == record_id
         assert audit_event.payload_json["resolution"]["damage_trace"]
-        assert audit_event.payload_json["resolution"]["wound_changes"][0]["wound_id"]
 
 
 def test_simultaneous_planning_mode_queues_npc_response_with_shared_resolution() -> (

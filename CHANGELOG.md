@@ -4,6 +4,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.151.0] - 2026-07-17
+
+### Removed
+
+- Removed persistent combat wound records, body-part damage locations, wound
+  condition views, and qualitative health status labels. Combat damage now
+  remains plain HP loss with numeric HP snapshots in combat updates.
+- Removed the admin active-wounds API/table and simplified player/admin body
+  views to equipment slots only.
+
 ## [0.150.0] - 2026-07-17
 
 ### Added
