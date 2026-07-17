@@ -42,10 +42,28 @@ See [`docs/multi-agent-workflow.md`](docs/multi-agent-workflow.md) for the full 
 ## Context strategy
 
 - Start with local files and tests.
-- Use Graphify for architecture, impact analysis, dependency paths, and unfamiliar subsystems when graphify-out/graph.json exists.
-- After code changes, run `make ai-graph` to refresh graphify-out/graph.json (AST re-extraction, no LLM needed) so the graph doesn't drift.
 - Use Ref before changing code that depends on external APIs, libraries, SDKs, or framework behavior.
 - Create a new branch for any changes which are large in scope or risky.
+
+## Code intelligence
+
+Use CodeGraph before broad repository exploration.
+
+For architecture, execution-flow, dependency, caller/callee, or change-impact
+questions, query CodeGraph before using recursive grep or opening many files.
+
+Useful commands for shell-capable agents:
+
+- `codegraph explore "<question>"`
+- `codegraph node <symbol-or-file>`
+- `codegraph callers <symbol>`
+- `codegraph callees <symbol>`
+- `codegraph impact <symbol>`
+- `codegraph affected <changed-files...>`
+- `codegraph status`
+
+Treat CodeGraph as derived data. Never commit `.codegraph/`.
+Run `make ai-graph` when an explicit incremental refresh is needed.
 
 ## Design principles
 
@@ -65,9 +83,9 @@ See [`docs/multi-agent-workflow.md`](docs/multi-agent-workflow.md) for the full 
 Beyond the import-direction rule in "Codebase structure" above, the tiers also split by
 **who decides what a behavior actually does**:
 
-- **Tier 1 (`engine/`) provides unopinionated functionality and hooks.** It knows *how* to do
+- **Tier 1 (`engine/`) provides unopinionated functionality and hooks.** It knows _how_ to do
   a class of thing — apply a delta to a player's stats, resolve a modifier stack, detect a
-  threshold crossing — but never *what* that thing should be for any particular feature. A
+  threshold crossing — but never _what_ that thing should be for any particular feature. A
   Tier 1 function that hardcodes "leveling grants coins and skill points" has leaked policy
   into the mechanism layer; it should instead expose a generic "apply this delta" primitive
   and let a Tier 2 caller decide the delta's contents.
@@ -91,7 +109,7 @@ balance dial an admin would plausibly want to retune without restarting or resee
 server — reward amounts, pricing multipliers, XP curves — prefer the **live-tunable** pattern
 already established by `WorldClock` (`webui/admin/routers/clock.py`): a DB-backed singleton,
 optionally YAML-seeded for initial authoring, exposed through an admin endpoint that mutates
-the DB row *and* pushes the new value into the running server state in the same call, so the
+the DB row _and_ pushes the new value into the running server state in the same call, so the
 change is live with no restart. Not every config value needs this — static world topology or
 one-time content doesn't — but default to asking "would an admin want to change this live?"
 rather than assuming YAML + reseed is always enough. (`economy.regions` is a known gap here —
@@ -116,9 +134,9 @@ currently reseed-only — flagged in `docs/roadmap.md`'s backlog as a candidate 
   each completed sprint is a minor bump (0.x.0); a bug fix or docs-only change is a patch
   bump (0.x.y). Update `CHANGELOG.md` in lockstep (move `[Unreleased]` content under the new
   dated version heading, per the existing changelog format).
-  *(Planned: once the release GitHub Action from `docs/multi-agent-workflow.md` lands, version
+  _(Planned: once the release GitHub Action from `docs/multi-agent-workflow.md` lands, version
   bumping + CHANGELOG move to merge time and this manual rule is retired. Conventional-commit
-  titles — `feat:`/`fix:`/`docs:` — are what the action will read, so use them now.)*
+  titles — `feat:`/`fix:`/`docs:` — are what the action will read, so use them now.)_
 - Keep commit messages clean: do **not** add `Co-Authored-By:` or `Claude-Session:`
   (or any similar agent/attribution) trailers to commit messages. Strip them if a
   template or tool would otherwise append them.
@@ -129,14 +147,14 @@ currently reseed-only — flagged in `docs/roadmap.md`'s backlog as a candidate 
 Prefer the Makefile targets so agents pick up the repo's parallel pytest setup and invoke
 tools through the active venv (`python -m ...`):
 
-| Target | Command | Notes |
-|--------|---------|-------|
-| Default suite | `make test` | Parallel (`-n auto --dist=loadfile`); excludes e2e and simulation markers |
-| Coverage gate | `make test-cov` | Same parallelism + `--cov=src/lorecraft`; matches CI `quality` job |
-| Lint | `make lint` | `ruff check` + `ruff format --check` |
-| Types | `make typecheck` | `basedpyright` |
-| E2E | `make test-e2e` | Parallel (`-n auto --dist=loadfile`, since `a7f76b4`) — each worker gets its own isolated browser + server (random port, unique `tmp_path` DB); browser tests only |
-| Simulation | `make test-simulation` | Serial; live-server harness only |
+| Target        | Command                | Notes                                                                                                                                                              |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Default suite | `make test`            | Parallel (`-n auto --dist=loadfile`); excludes e2e and simulation markers                                                                                          |
+| Coverage gate | `make test-cov`        | Same parallelism + `--cov=src/lorecraft`; matches CI `quality` job                                                                                                 |
+| Lint          | `make lint`            | `ruff check` + `ruff format --check`                                                                                                                               |
+| Types         | `make typecheck`       | `basedpyright`                                                                                                                                                     |
+| E2E           | `make test-e2e`        | Parallel (`-n auto --dist=loadfile`, since `a7f76b4`) — each worker gets its own isolated browser + server (random port, unique `tmp_path` DB); browser tests only |
+| Simulation    | `make test-simulation` | Serial; live-server harness only                                                                                                                                   |
 
 When you must invoke pytest directly (e.g. a single file or `-k` filter), use the same
 parallelism and module invocation — do **not** run bare `pytest`:
@@ -207,14 +225,14 @@ PYTHONPATH="$PWD/src" python -m pytest -n auto --dist=loadfile path/to/test_file
 
 The primary working tree (repo root, `/home/petem/src/Gamedev/lorecraft`) has exactly **one**
 working-directory checkout, shared by every concurrent agent session that hasn't been given
-its own `.claude/worktrees/<name>` — and even sessions that *have* one will sometimes `cd`
+its own `.claude/worktrees/<name>` — and even sessions that _have_ one will sometimes `cd`
 into the primary tree out of habit to run a `git` command. That checkout's HEAD is mutable
 shared state: another concurrent session can (and, in practice, will) `git checkout` it to a
 different branch between your commands, with no lock and no warning.
 
 **Concretely, this happened:** an agent `cd`'d into the primary tree to commit a
 Cogsworth world-content change on `main`, which succeeded. Between that commit and a later
-`git merge --ff-only <branch>` run the same way, a *different* concurrent session checked out
+`git merge --ff-only <branch>` run the same way, a _different_ concurrent session checked out
 `develop` in that same shared directory. The merge command — still reasoning "I'm on main" —
 silently fast-forwarded whatever branch happened to be checked out at that moment (`develop`),
 not `main`. Nothing errored; `main` was simply left one commit behind, and `develop` gained a
@@ -226,7 +244,7 @@ ref repairs — all avoidable.
 the primary tree's root directory. This applies even for "just a quick fix-up commit" —
 that's exactly the situation that caused the incident above.
 
-**Fix — dedicated scratch worktree.** Any task that needs to read or write a *shared* branch
+**Fix — dedicated scratch worktree.** Any task that needs to read or write a _shared_ branch
 (typically local `main`) — merging multiple agents' branches together, bumping the version,
 moving a `CHANGELOG.md` entry under a dated heading — should do it in its own disposable
 worktree, never the primary tree's checkout:
@@ -245,12 +263,12 @@ elsewhere) without confirming with the user first, since the branch pointer may 
 another concurrent agent is actively relying on.
 
 **The routine case — `main` refuses because it's simply resting in the primary tree, not
-because a concurrent session diverted it.** `main`'s normal resting state *is* checked out in
+because a concurrent session diverted it.** `main`'s normal resting state _is_ checked out in
 the primary tree, so `git worktree add <scratch> main` fails on essentially every integration,
 not just the rare concurrent-session collision above. For exactly this routine case, the user
 has pre-approved (2026-07-13) a standing, narrowly-scoped resolution that does not require
 asking each time: a single atomic, pre/post-verified command run against the primary tree's
-*path*, without `cd`-ing into it and without any other command in between:
+_path_, without `cd`-ing into it and without any other command in between:
 
 ```bash
 git -C <primary-tree-path> branch --show-current   # verify: must print "main"
@@ -261,7 +279,7 @@ git -C <primary-tree-path> symbolic-ref -q HEAD     # verify: prints refs/heads/
 ```
 
 **This is narrowly scoped — it is not a general license to reach for `git -C`/`cd` whenever
-some other command is blocked.** If the refusal instead looks like a *different* concurrent
+some other command is blocked.** If the refusal instead looks like a _different_ concurrent
 session has `main` (or any branch) checked out somewhere unexpected — not simply the primary
 tree's normal resting state — that is still the "stop and confirm with the user" case above,
 not this one. And if a command is denied by the harness's own permission-classifier (a tool-use
@@ -281,7 +299,7 @@ integrates/merges those branches together is the one who discovers and resolves 
 by renumbering one of them. Don't try to pre-empt it by scanning every open branch before every
 bump — just bump against your own branch's ancestry, and expect the integrator to reconcile.
 
-### The shared *designated* worktree race — a second, distinct failure mode (2026-07-12)
+### The shared _designated_ worktree race — a second, distinct failure mode (2026-07-12)
 
 The primary-tree race above is well-known; this is a related but separate trap that bit
 multiple sub-agents across the Sprint 71/72 work: **a session's own `.claude/worktrees/<name>`
@@ -289,12 +307,12 @@ checkout is not automatically safe just because it isn't the primary tree.**
 
 **What happens:** an orchestrator (or a user directly) dispatches several sub-agents in the
 same session — e.g. four parallel Sprint 72 tasks. Each dispatched agent's shell defaults to
-the *same* designated worktree directory unless told otherwise. If two or more of those agents
+the _same_ designated worktree directory unless told otherwise. If two or more of those agents
 run concurrently (or even just interleaved — one finishes a tool call, another's turn runs a
 `git checkout` in between), the directory's checked-out branch gets switched out from under
 whichever agent thinks it's still on its own branch. This happened repeatedly and independently
 across at least three different sub-agents in one session (each noticed its `HEAD`/branch had
-changed mid-task, sometimes multiple times) — not a one-off, but the *default* outcome of
+changed mid-task, sometimes multiple times) — not a one-off, but the _default_ outcome of
 dispatching parallel agents into a shared worktree without explicit isolation.
 
 **Rule for anyone dispatching sub-agents that will edit files or run git commands (Orchestrator,
@@ -312,14 +330,14 @@ git worktree remove /tmp/<task-name>   # clean up once merged/no longer needed
 **Rule for any agent working in a worktree, even one it believes is exclusively its own:**
 verify before trusting it — `pwd` and `git branch --show-current`/`git log -1` — immediately
 before any edit or commit, not just once at the start of the task. A shared directory's branch
-can change *between* your own tool calls, not just between sessions. If it doesn't match what
+can change _between_ your own tool calls, not just between sessions. If it doesn't match what
 you expect, stop and create your own scratch worktree rather than proceeding on an assumption.
 
-**This compounds with venv isolation above.** A `.claude/worktrees/<name>` *session* worktree
+**This compounds with venv isolation above.** A `.claude/worktrees/<name>` _session_ worktree
 already got its `.venv` bootstrapped automatically at session start (see above) — no action
 needed there. A `/tmp/<scratch>` worktree created ad hoc for a git operation does **not** get
 that treatment (`session-start.sh` never fires there); if one of those unusually also needs to
 run Python, run `make bootstrap` in it explicitly rather than reaching for `PYTHONPATH` by
-habit. Confirm the resolved `lorecraft.__file__` path points under *that specific worktree*, not
+habit. Confirm the resolved `lorecraft.__file__` path points under _that specific worktree_, not
 the primary tree or a different worktree, before trusting any test result run there — the
 failure mode ("green/red for the wrong tree") is silent either way.
