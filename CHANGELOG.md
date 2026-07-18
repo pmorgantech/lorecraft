@@ -4,6 +4,22 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.151.2] - 2026-07-18
+
+### Changed
+
+- Rewrote `docs/architecture.md` from a 1780-line historical implementation guide (with
+  retrofitted annotations) into a 337-line current-state architecture/design reference:
+  tier layout with verified metrics, the core Tier 1 primitives (GameContext, command
+  registry, event bus, rule engine, scheduler, modifiers/meters/effects), a full 34-feature
+  catalog grouped by concern, and summaries of combat/disciplines/scripting pointing to
+  their dedicated docs. Dropped all sprint numbering, roadmap references, and "Intentionally
+  Deferred"/"Gaps"/"Build Order" sections — that material belongs in `roadmap.md`/
+  `wishlist.md`, not the architecture reference. Fixed anchor links in
+  `world_versioning_changesets.md`, `disconnect_handling.md`, and `implementation_guides.md`
+  that pointed at the old section structure.
+- EPUB export now 100K (was 171K after the prior pass, 861K originally).
+
 ## [0.151.1] - 2026-07-18
 
 ### Changed

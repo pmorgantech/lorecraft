@@ -127,7 +127,7 @@ When reviewing a PR for a completed feature, reference the corresponding guide (
 New developers should:
 
 1. Read [`README.md`](../README.md) for a high-level project overview
-2. Read [`architecture.md` § 1–5](architecture.md#1-project-identity--philosophy) for foundational concepts (Services, Rules, Transactions, Events, Scheduler)
+2. Read [`architecture.md`](architecture.md) for foundational concepts (Services, Rules, Transactions, Events, Scheduler)
 3. Read [`engine_core.md`](engine_core.md) to understand Tier 1 primitives
 4. Skim [`roadmap.md`](roadmap.md) to understand sprint sequencing and dependencies
 5. Check [`tier_modules.md`](tier_modules.md) to understand the Tier 1/2 split in the actual codebase
