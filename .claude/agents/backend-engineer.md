@@ -14,6 +14,12 @@ Stay in the checkout where you were launched. Do not create, switch, or remove b
 worktrees. If the task context is ambiguous, stop and ask for a corrected dispatch rather than
 guessing. Do not run git, test, lint, formatting, or typecheck commands.
 
+**Use CodeGraph for structural lookups.** When you need to understand how a symbol is called
+across the codebase, its blast radius, or an unfamiliar subsystem's shape, call
+`codegraph_explore` (MCP tool) or `codegraph explore "<symbol/question>"` (shell) before
+resorting to a grep/Read loop — one call returns verbatim source plus call paths, including
+dynamic-dispatch hops grep can't follow. Skip it only if `.codegraph/` doesn't exist in the repo.
+
 ## Stay in your lane
 
 **You own:** Tier 1 (`engine/`) and Tier 2 (`features/`) Python — services, repos, models,

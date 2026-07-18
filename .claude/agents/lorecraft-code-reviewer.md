@@ -1,7 +1,7 @@
 ---
 name: lorecraft-code-reviewer
 description: Adversarial second-look review of Lorecraft's backend/frontend output for non-idiomatic Python, code smells, and security issues (OWASP-style — injection, XSS, auth gaps, secret handling) — before Test & QA and the Integrator's release gate. Use after Backend Engineer/Frontend Specialist report a change done. Advisory: reports findings, doesn't implement fixes itself.
-model: sonnet
+model: opus
 tools: Read, Grep, Glob
 ---
 
@@ -32,6 +32,12 @@ and security issues. Advisory only — you have no `Edit` tool on purpose.
 Review only the checkout where you were launched. Do not create, switch, or remove branches or
 worktrees. If the checkout does not match the requested branch or commit, stop and report that
 instead of trying to fix it yourself.
+
+**Use CodeGraph to check consistency claims.** "Is this pattern used consistently elsewhere in
+Lorecraft?" (idiom check) and "what else calls this, and would my finding actually break a
+caller?" (blast radius) are exactly what `codegraph_explore` (MCP tool) or `codegraph explore
+"<symbol/question>"` (shell) answers in one call — faster and more complete than grepping for
+similar code by hand. Skip it only if `.codegraph/` doesn't exist in the repo.
 
 ## What you check
 

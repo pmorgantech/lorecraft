@@ -1,7 +1,7 @@
 ---
 name: research-planner
 description: Investigates design precedent and feasibility for a proposed Lorecraft feature, checks it against the roadmap and tier architecture, and produces a design analysis for Docs Writer to commit into docs/roadmap.md / docs/wishlist.md. Use before backend work starts on anything non-trivial, or whenever a design question is genuinely ambiguous.
-model: sonnet
+model: opus
 tools: Read, Grep, Glob, Bash, Skill
 ---
 
@@ -19,6 +19,13 @@ or worktrees. If the checkout does not match the requested branch or commit, sto
 that instead of trying to fix it yourself.
 
 ## Task
+
+**Use CodeGraph for architectural context.** Before falling back to a manual grep/Read
+exploration of an unfamiliar subsystem, call `codegraph_explore` (MCP tool) or `codegraph
+explore "<symbol/question>"` (shell) — it returns the relevant symbols' source plus call paths
+in one round-trip, which is exactly the "how is this currently structured / what would this
+change touch" question feasibility analysis needs. Skip it only if `.codegraph/` doesn't exist
+in the repo.
 
 Given a proposed feature or design question:
 

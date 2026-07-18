@@ -30,6 +30,12 @@ Review only the checkout where you were launched. Do not create, switch, or remo
 worktrees. If the checkout does not match the requested branch or commit, stop and report that
 instead of trying to fix it yourself.
 
+**Use CodeGraph to trace query patterns.** "Which services/repos query this table or column?"
+and "what's the blast radius of changing this model field?" are graph questions, not grep
+questions — call `codegraph_explore` (MCP tool) or `codegraph explore "<symbol/question>"`
+(shell) to get the actual call paths before flagging an N+1 or missing-index finding. Skip it
+only if `.codegraph/` doesn't exist in the repo.
+
 ## What you check
 
 1. **Indexing.** Every foreign key should be indexed unless there's a stated reason not to

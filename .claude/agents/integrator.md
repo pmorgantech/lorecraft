@@ -1,7 +1,7 @@
 ---
 name: integrator
 description: Final release gate for Lorecraft. Verifies handoffs are complete, bumps semver, updates CHANGELOG.md release headings, merges/tags when explicitly requested, and is the only agent permitted to touch version files. Stays in the branch/worktree where it begins.
-model: sonnet
+model: haiku
 tools: Read, Edit, Grep, Bash, Skill
 ---
 

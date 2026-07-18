@@ -101,6 +101,25 @@ Agents now have `Skill` tool enabled. Below are **recommended** skill calls by a
 
 ## Part 3: Metrics to Track
 
+**2026-07-17 update: automated capture is live.** `var/audit.log` (gitignored, per-machine) is
+now populated automatically by a `PreToolUse`/`PostToolUse` hook pair
+(`.claude/hooks/audit-log-pre.sh` + `audit-log-post.sh`) — every tool call from every agent
+(main session + subagents) gets one line with timestamp, session, agent (best-effort — see
+below), tool, status, duration_ms, and a truncated detail (file path / command / pattern). Zero
+LLM cost; fires unconditionally, so it can't be forgotten. Sample line:
+
+```
+2026-07-17T21:04:12.501Z session=58b9f32b agent=main tool=Edit status=success duration_ms=226 detail="/path/to/file.py"
+```
+
+**Known limitation:** `agent` attribution is best-effort — the hook payload doesn't reliably
+expose an explicit subagent name across all Claude Code versions, so the field falls back
+through a few plausible keys before defaulting to `"main"`. Treat per-agent breakdowns from this
+log as approximate until that's confirmed reliable; `tool`/`status`/`duration_ms` are accurate
+regardless. The four dimensions below describe what to do with this data once collected — the
+"How to capture" sections now mostly reduce to "grep/awk `var/audit.log`" rather than manual
+logging.
+
 Track these four dimensions to measure agent effectiveness and catch routing issues:
 
 ### 1. Agent Routing Accuracy (Task → Right Agent)
@@ -111,7 +130,9 @@ Track these four dimensions to measure agent effectiveness and catch routing iss
 - Which agent types are most frequently misrouted?
 
 **How to capture:**
-- Tag task dispatch: `@backend-engineer` (dispatched), note if redirected to `@docs-writer` during execution
+- `var/audit.log`'s `Agent` tool calls (dispatches) plus each session's own report text is the
+  raw material — redirects aren't a distinct logged event yet, so cross-reference dispatch
+  entries against agent handoff reports for "redirected to X" language.
 - Monthly sample: review 5-10 random tasks, check if routing matched decision tree above
 
 **Target:** >95% first-dispatch accuracy. <1% of tasks require re-routing due to scope mismatch.
@@ -124,9 +145,9 @@ Track these four dimensions to measure agent effectiveness and catch routing iss
 - Identify slow agents (bottlenecks) vs. quick turnarounds
 
 **How to capture:**
-- Timestamp dispatch, first tool call, and task completion
-- Log format: `Agent=backend-engineer, StartTime=2026-07-17T14:22:00Z, FirstToolTime=+2s, CompleteTime=+45s`
-- Group by task type (e.g., "small feature" vs. "schema refactor")
+- `duration_ms` is logged per tool call in `var/audit.log`; sum by `agent`+session for a rough
+  per-task total: `awk -F'duration_ms=' '{split($2,a," "); sum+=a[1]} END {print sum"ms"}' var/audit.log`
+- Group by task type (e.g., "small feature" vs. "schema refactor") using the session/detail fields
 
 **Target:**
 - Simple code edits: <10 min (including verification)
@@ -142,8 +163,9 @@ Track these four dimensions to measure agent effectiveness and catch routing iss
 - Bash frequency for agents that have it (catch runaway shell usage)
 
 **How to capture:**
-- Log every tool call: `Agent=backend-engineer, Tool=Edit, File=src/lorecraft/engine/services/foo.py`
-- Count tool calls per task: `backend-engineer: Read(8), Edit(3), Write(0), Skill(0), Grep(1)`
+- `var/audit.log` has one line per tool call already — `grep 'tool=Bash' var/audit.log | wc -l`
+  vs. total lines gives Bash share; `grep 'tool=Skill'` gives skill-call frequency
+- Count tool calls per task: `awk -F'tool=' '{split($2,a," "); print a[1]}' var/audit.log | sort | uniq -c`
 - Identify over-used or under-used tools
 
 **Target:**
@@ -159,8 +181,12 @@ Track these four dimensions to measure agent effectiveness and catch routing iss
 - Which redirects are expected (scope discovery) vs. unexpected (routing error)?
 
 **How to capture:**
-- Log permission denials: `Agent=backend-engineer, Tool=Bash, Outcome=DENIED`
-- Log redirects: `Agent=backend-engineer, Redirect=database-specialist, Reason=schema_review_needed`
+- `grep 'status=error' var/audit.log` surfaces tool-level failures, including permission
+  denials the hook payload marked as errored (`tool_response.is_error`); cross-reference the
+  timestamp against the session transcript for the actual denial reason (the audit log doesn't
+  capture *why*, only *that* it failed)
+- Redirects aren't a distinct logged event — cross-reference `tool=Agent` dispatch entries
+  against handoff report text ("route to X") until a dedicated redirect log line is added
 - Flag unexpected: e.g., `frontend-specialist` redirecting to `backend-engineer` for HTML changes
 
 **Target:**
@@ -233,6 +259,76 @@ Run this checklist on the 1st of each month to stay ahead of drift:
 - [ ] **Permission blocks:** Any new blocks? Update agent definition or resolve permissions.
 - [ ] **Skill discovery:** Remind teams of available skills; update Part 2 if new skills land.
 - [ ] **Decision tree:** Update AGENTS.md routing section if agent responsibilities shifted.
+
+---
+
+## Part 6.5: Model Tiers by Agent (2026-07-17)
+
+Not every agent needs the same model — reasoning depth should match the task's actual
+ambiguity, not default uniformly to one tier:
+
+| Agent | Model | Why |
+|-------|-------|-----|
+| `backend-engineer` | Sonnet | Production code, design tradeoffs, edge cases |
+| `frontend-specialist` | Sonnet | Templates + Alpine + accessibility judgment calls |
+| `pytest-writer` | Sonnet | Subtle: reward-hacking prevention, test structure |
+| `docs-writer` | Sonnet | Prose quality + verifying examples against source |
+| `database-specialist` | Sonnet | Schema/index/normalization tradeoffs are genuinely subtle |
+| `lorecraft-code-reviewer` | **Opus** | Adversarial review needs deep reasoning: is this policy leaking into Tier 1? Is this actually idiomatic for this codebase, or just different? |
+| `research-planner` | **Opus** | Design precedent + feasibility + tier classification benefits from the deepest available reasoning — mistakes here propagate into every downstream agent's work |
+| `integrator` | **Haiku** | Mechanical: checklist verification, version arithmetic, CHANGELOG heading moves — doesn't need Sonnet-level reasoning |
+| `test-qa` | Haiku | Reads structured test output, doesn't author code |
+
+**Rationale for the two upgrades:** `lorecraft-code-reviewer` and `research-planner` sit at
+points where a shallow pass costs the most downstream — a review that misses a Tier 1/Tier 2
+policy leak, or a design analysis that misclassifies tunability, produces work for multiple
+other agents to redo. Opus's extra reasoning is worth the token cost specifically at these two
+gates, not everywhere.
+
+**Rationale for the one downgrade:** `integrator`'s job (Pre-merge checklist, version bump
+arithmetic, CHANGELOG heading move) is close to deterministic — Haiku's reasoning is sufficient
+and the higher volume of small release tasks makes the token savings worth it.
+
+---
+
+## Part 7: Automated Hooks (2026-07-17)
+
+Several rules that used to live only in AGENTS.md — and depended on an agent remembering to
+follow them — are now enforced automatically by hooks (`.claude/hooks/`, wired via
+`.claude/settings.json`). Hooks run **outside the token budget entirely**: they're shell
+commands the harness executes directly around a tool call, not something the model reasons
+about or pays for. This means they fire unconditionally, every time, for every agent (main
+session or subagent) — the exact property you want for a "never forgotten" rule.
+
+| Hook | Fires on | Replaces this manual AGENTS.md rule | Script |
+|------|----------|--------------------------------------|--------|
+| Auto-format/lint | `PostToolUse`, any Edit/Write to a `.py` file under `src/`/`tests/` | "run `make lint`" / style consistency | `format-lint.sh` |
+| Audit logging | `PreToolUse` + `PostToolUse`, every tool call | (new capability — see Part 3) | `audit-log-pre.sh` + `audit-log-post.sh` |
+| Scripting-docs regen | `PostToolUse`, any Edit/Write to a `.py` file containing `register_spec(` | "regenerate the builder-guide reference in the same commit: `make scripting-docs`" | `scripting-docs-check.sh` |
+| CodeGraph refresh | `PostToolUse`, any Edit/Write to a `.py` file under `src/` (only if `.codegraph/` already exists) | "After code changes, run `make ai-graph`" | `graph-refresh.sh` |
+
+**Design notes:**
+- All four are **fail-open**: any missing tool, wrong file type, or unexpected error exits 0
+  silently rather than blocking the agent's edit. A hook should never be the reason a legitimate
+  edit fails.
+- `scripting-docs-check.sh` and `graph-refresh.sh` are debounced (5s / 10s) so a burst of edits
+  in one turn triggers one regen, not one per file.
+- `format-lint.sh` only prints output when it actually changed something — silent on a
+  already-clean file, so it doesn't add noise to every edit.
+- AGENTS.md's Workflow section still states these rules in prose — that's intentional
+  documentation of intent, not redundant with the hook. The hook is the enforcement; the prose
+  is why it exists. If the hook and the prose ever disagree, trust the hook (it's what actually
+  ran) and fix the prose.
+
+**What did *not* move to a hook (and why):** version bumps + CHANGELOG updates stay manual
+(Integrator's job) — deciding *whether* a change warrants a minor vs. patch bump requires
+judgment (was this a `feat:` or a `fix:`?) that a shell script can't reliably infer from a diff
+alone. Data-driven-config and Tier 1/Tier 2 boundary rules also stay as agent-definition
+guidance rather than hooks — those are design judgment calls (does this value belong in YAML or
+does it need to be live-tunable? does this Tier 1 function actually encode one feature's
+opinion?), not mechanical checks a script can enforce with confidence. `test_tier_boundaries.py`
+already exists as the mechanical backstop for the one part of that ruleset (import direction)
+that *can* be checked automatically.
 
 ---
 
