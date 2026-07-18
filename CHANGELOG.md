@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.151.3] - 2026-07-18
+
+### Changed
+
+- Regenerated `docs/scripting_api.md` to reflect scripting vocabulary. Fixed stale link
+  to `archive/scripting_engine_design.md` (was pointing to non-existent
+  `scripting_engine_design.md` after docs archive reorganization).
+
 ## [0.151.2] - 2026-07-18
 
 ### Changed
