@@ -307,15 +307,28 @@ session or subagent) — the exact property you want for a "never forgotten" rul
 | Scripting-docs regen | `PostToolUse`, any Edit/Write to a `.py` file containing `register_spec(` | "regenerate the builder-guide reference in the same commit: `make scripting-docs`" | `scripting-docs-check.sh` |
 | CodeGraph refresh | `PostToolUse`, any Edit/Write to a `.py` file under `src/` (only if `.codegraph/` already exists) | "After code changes, run `make ai-graph`" | `graph-refresh.sh` |
 
+**2026-07-18 update — lint/format is now a closed loop, not just automated.** `format-lint.sh`
+originally only auto-fixed and reformatted silently. It now also runs a check-only `ruff check`
+pass after `--fix` and prints anything left over (by definition, non-autofixable — a real
+finding, not a style nit) directly into the hook output the editing agent sees immediately.
+Combined with agent definitions that already prohibit running `ruff`/`make lint` themselves
+(`backend-engineer`, `frontend-specialist` — no Bash tool at all; explicit "don't run lint"
+text), this means **no agent should ever spend a tool call on linting or formatting** — the hook
+produces the fix (free) and the remaining-findings list (free); the agent's only job is to read
+that list and fix what it says. `test-qa.md`'s `make lint` target is now explicitly scoped as a
+pre-merge/CI-parity safety net, not a routine per-task check — see that agent's definition for
+the reasoning (a clean run is now the expected default, not something to proactively verify).
+
 **Design notes:**
 - All four are **fail-open**: any missing tool, wrong file type, or unexpected error exits 0
   silently rather than blocking the agent's edit. A hook should never be the reason a legitimate
   edit fails.
 - `scripting-docs-check.sh` and `graph-refresh.sh` are debounced (5s / 10s) so a burst of edits
   in one turn triggers one regen, not one per file.
-- `format-lint.sh` only prints output when it actually changed something — silent on a
-  already-clean file, so it doesn't add noise to every edit.
-- AGENTS.md's Workflow section still states these rules in prose — that's intentional
+- `format-lint.sh` stays silent on an already-clean file with no remaining findings — it only
+  prints when there's something to act on (a reformat happened, or a non-autofixable finding
+  remains), keeping hook noise low.
+- AGENTS.md's Workflow/Testing sections still state these rules in prose — that's intentional
   documentation of intent, not redundant with the hook. The hook is the enforcement; the prose
   is why it exists. If the hook and the prose ever disagree, trust the hook (it's what actually
   ran) and fix the prose.

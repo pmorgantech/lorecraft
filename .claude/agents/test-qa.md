@@ -33,10 +33,21 @@ reports.
 |---|---|
 | `make test` | Default parallel suite, excludes e2e/simulation |
 | `make test-cov` | Same + coverage gate (`--cov=src/lorecraft`), matches CI |
-| `make typecheck` | basedpyright |
-| `make lint` | ruff check + format check |
+| `make typecheck` | basedpyright — **not** covered by any hook, still the real signal |
+| `make lint` | ruff check + format check — safety net only, see below |
 | `make test-e2e` | xdist-parallel browser tests |
 | `make test-simulation` | Serial, live-server harness |
+
+**`make lint` is a safety net, not the primary lint feedback loop.** A `PostToolUse` hook
+(`format-lint.sh`) already runs `ruff format` + `ruff check --fix` on every Edit/Write to a
+`.py` file in real time, and prints any non-autofixable finding directly back to the editing
+agent in the same turn — that's the loop that actually gets things fixed, at zero token cost.
+By the time you're dispatched, touched files should already be clean. Only dispatch/report on
+`make lint` when explicitly asked for CI-parity confirmation (e.g. the Integrator's pre-merge
+gate) — don't request it as routine per-task verification, and don't be surprised when it comes
+back clean. If it *does* find something, that's a real signal worth flagging clearly: it likely
+means a file was written outside the Edit/Write tool (e.g. via a Bash heredoc, bypassing the
+hook's matcher) or pre-dates this session's changes entirely.
 
 Stay in the checkout where you were launched. Do not create, switch, or remove branches or
 worktrees. If the checkout does not match the requested branch or commit, stop and report that

@@ -156,6 +156,16 @@ tools through the active venv (`python -m ...`):
 | E2E           | `make test-e2e`        | Parallel (`-n auto --dist=loadfile`, since `a7f76b4`) — each worker gets its own isolated browser + server (random port, unique `tmp_path` DB); browser tests only |
 | Simulation    | `make test-simulation` | Serial; live-server harness only                                                                                                                                   |
 
+**Lint/format are hook-owned, not agent-owned (2026-07-18).** A `PostToolUse` hook
+(`.claude/hooks/format-lint.sh`) already runs `ruff format` + `ruff check --fix` on every
+Edit/Write to a `.py` file, in real time, at zero token cost, and prints any remaining
+non-autofixable finding straight back to the editing agent in the same turn. Do not run
+`ruff`/`make lint` yourself mid-task, and do not ask another agent to — fix whatever the hook
+already handed you and move on. `make lint` still exists as a pre-merge/CI-parity safety net
+(Test & QA can be dispatched to it explicitly), but a clean run is the expected default now, not
+something to proactively verify. `make typecheck` (basedpyright) has no hook equivalent and
+stays a real, necessary verification step.
+
 When you must invoke pytest directly (e.g. a single file or `-k` filter), use the same
 parallelism and module invocation — do **not** run bare `pytest`:
 
