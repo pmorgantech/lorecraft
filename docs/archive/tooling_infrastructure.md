@@ -1,3 +1,7 @@
+> **📦 Archived (2026-07-18).** Implementation is complete (Sprint 10.5); this is the
+> historical design/implementation plan. For current tooling, see `docs/admin_builder_guide.md`
+> and `tools/world_cli.py --help`. Kept here only for design-rationale history.
+
 # Tooling Infrastructure — Design & Implementation Plan
 
 **Status:** Implemented (Sprint 10.5 complete)

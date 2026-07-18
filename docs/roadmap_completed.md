@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Roadmap — completed sprint history
 
 > **Historical record (last extended 2026-07-16, through v0.145.1).** The active, forward-looking
@@ -1582,7 +1586,7 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 **Current:** Foundation ([Sprints 4–15](#sprint-4--player-authentication-production-hardening-)) and the **entire pillar-driven feature band ([Sprints 16–30](#sprint-16--item-locationownership--instance-state))** are complete — Tier 1 engine primitives (16–21), item components & equipment (22–23), traits/skills & exploration + UI (24–26), condition/trade/transit (27–29), quests & puzzles (30). **Foundation gate is green.**
 
-Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`tier_split_refactor.md`](tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
+Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
 
 **Current (2026-07-05):** the post-tier-split band (Sprints 31–34) is essentially done — **Sprint 31** (tier split fully complete, v0.31.4–0.32.3), **Sprint 32.2/32.3** (account preferences + accessibility, v0.33.0–0.34.0), **Sprint 33** (guided `/report` + page-length quick-win, v0.35.0), and **Sprint 34** (`help <command>` + `score`, v0.34.0 — both open player reports resolved). **Open roadmap items:** [Sprint 32.1](#sprint-32--player-onboarding--account-ux) (in-game intro walkthrough, deferred pending a product decision on its trigger UX), [Sprint 65](#sprint-65--multiplayer-trade--transit-tests) (multiplayer trade/transit simulation tests), and the new [Performance & scaling band (Sprints 66–69)](#performance--scaling-band-sprints-6669--measure-then-optimize-no-threading-yet). **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept forcing roadmap renumbering; ready-to-restore specs live there. See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
@@ -1632,7 +1636,7 @@ Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0
 
 **Goal:** Phase 7 per `architecture.md` §21 — full account system with password auth, JWT tokens, and signed WebSocket handshake. Foundation for all production deployments.
 
-**See:** [`player_authentication.md`](player_authentication.md) for detailed workflows and code examples.
+**See:** [`archive/player_authentication.md`](archive/player_authentication.md) for detailed workflows and code examples.
 
 | # | Task | Status |
 |---|------|--------|
@@ -1734,7 +1738,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 10.5.4 | Analytics API foundation: metric queries ready (no dashboard yet, driven by [Sprint 13](#sprint-13--observability--ci-quality-gates-) instrumentation) | [x] |
 | 10.5.5 | Content validation & linting: dead references, unreachable rooms, circular quests, etc. | [x] |
 
-**See:** [`tooling_infrastructure.md`](tooling_infrastructure.md) for full architecture and design details. Circular quest dependency checking was scoped out — `QuestStageData` has no quest-to-quest dependency field in the schema today.
+**See:** [`archive/tooling_infrastructure.md`](archive/tooling_infrastructure.md) for full architecture and design details. Circular quest dependency checking was scoped out — `QuestStageData` has no quest-to-quest dependency field in the schema today.
 
 ## Sprint 11 — Browser E2E harness ✅
 
@@ -1917,9 +1921,9 @@ exploration, which it serves.
 > **Design docs:** [`engine_core.md`](engine_core.md) (Tier boundary + Tier 1 primitives — read first),
 > [`inventory_equipment.md`](archive/inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
 > [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
-> [`death_resurrection.md`](death_resurrection.md) (death penalty; combat set aside to [`wishlist.md`](wishlist.md)),
+> [`archive/death_resurrection.md`](archive/death_resurrection.md) (death penalty; combat set aside to [`wishlist.md`](wishlist.md)),
 > [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
-> [`feature-registration.md`](feature-registration.md) (quests/puzzles, pluggable
+> [`archive/feature-registration.md`](archive/feature-registration.md) (quests/puzzles, pluggable
 > registries), [`transit_systems.md`](archive/transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
 > [`trade_economy.md`](archive/trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
 > design docs.
@@ -2035,14 +2039,14 @@ Extends the stage/flag quest system with branch conditions and mechanism puzzles
 > the remaining tier-split follow-ons plus the highest-value UX/wishlist gaps surfaced along the
 > way. **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept
 > forcing roadmap renumbering; ready-to-restore specs live there. See
-> [`tier_split_refactor.md`](tier_split_refactor.md).
+> [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md).
 
 ## Sprint 31 — Finish the tier split: feature-UI seam, toggling & doc refresh ✅
 
 **Goal:** Close out the deliberately-deferred, additive pieces of the tier split and make
 feature toggling real. Everything here is non-breaking (the app ships and passes today).
 **Complete (v0.31.4–0.32.0)** — the tier split is now fully done (all steps 0–13, see
-[`tier_split_refactor.md`](tier_split_refactor.md)).
+[`archive/tier_split_refactor.md`](archive/tier_split_refactor.md)).
 
 | # | Task | Status |
 |---|------|--------|
@@ -2101,4 +2105,4 @@ Earlier same day — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-
 
 Earlier same day — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift).
 
-Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](archive/inventory_equipment.md), [`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md), and [`death_resurrection.md`](death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*
+Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](archive/inventory_equipment.md), [`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md), and [`archive/death_resurrection.md`](archive/death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*

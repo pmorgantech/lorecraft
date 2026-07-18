@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Observability Guide
 
 **Audience:** admins/operators diagnosing a slow command, a bad interaction, or "what actually

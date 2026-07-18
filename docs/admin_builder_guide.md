@@ -839,7 +839,7 @@ python -m lorecraft.tools.world_cli merge --base world_content/world.yaml --thei
 ```
 
 Automated coverage: `pytest tests/tools/test_world_cli.py -v`. Full design rationale:
-**[tooling_infrastructure.md](tooling_infrastructure.md)**.
+**[tooling_infrastructure.md](archive/tooling_infrastructure.md)**.
 
 ## Publishing World Changes Safely (Changesets)
 
@@ -910,7 +910,7 @@ startup and on every admin mutation:
   `help commands`, `help <command>` — is separate and comes from each command's own
   registered help text, not this file.)
 
-Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](tooling_infrastructure.md#design-decisions)**.
+Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](archive/tooling_infrastructure.md#design-decisions)**.
 
 ## Analytics
 
@@ -1103,7 +1103,7 @@ Player HP depletion is the first death/resurrection slice. A player who reaches 
 container in the death room, moves 20% of carried coins plus loose unbound carried items into that
 corpse, moves to `Player.respawn_room_id`, restores HP to 25% of maximum, and receives the temporary
 `weakened` effect. Corpse decay, lost-and-found recovery, and PvP-specific corpse rules remain later
-work from `docs/death_resurrection.md`.
+work from `docs/archive/death_resurrection.md`.
 
 Combat status effects reuse the engine `ActiveEffect` lifecycle. The first status, `combat.off_balance`,
 is applied by strong hits with game-time expiry and source metadata in payload, contributes a
@@ -1258,7 +1258,7 @@ during startup and calls its `register(web)`. A broken `presentation.py` degrade
 - **The engine drives visibility** — a feature refreshes its panel by adding the panel id
   to `ctx.updates`/`affected_panels` from its own handlers, exactly like core panels.
 
-See `docs/tier_split_refactor.md` §1c for the full design and `features/transit/` for a
+See `docs/archive/tier_split_refactor.md` §1c for the full design and `features/transit/` for a
 working example.
 
 ## Troubleshooting
@@ -1299,12 +1299,12 @@ working example.
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | NPC, dialogue tree, and quest YAML schema |
 | [trade_economy.md](archive/trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | Changeset lifecycle, builder mode, optimistic locking |
-| [tooling_infrastructure.md](tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
+| [tooling_infrastructure.md](archive/tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
 | [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, request tracing, crash reports, and SQL query-span logs |
-| [player_authentication.md](player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
+| [player_authentication.md](archive/player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
 | [disconnect_handling.md](disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
 | [architecture.md](architecture.md) | Full system architecture reference |
-| [tier_split_refactor.md](tier_split_refactor.md) | Engine/feature/web-host layout + the `presentation.py` feature-UI design (§1c) |
+| [tier_split_refactor.md](archive/tier_split_refactor.md) | Engine/feature/web-host layout + the `presentation.py` feature-UI design (§1c) |
 | [architecture_tiers.md](architecture_tiers.md) | Tier 1/2/3 model, feature manifests, enabling/disabling features |
 | [roadmap.md](roadmap.md) | Sprint-by-sprint build order and current status |
 | [user_guide.md](user_guide.md) | Player-facing command reference |

@@ -1,3 +1,8 @@
+> **📦 Archived (2026-07-18).** Implementation is complete (Sprint 4); this doc's value was
+> tracking deviations between the original design and the shipped code. For current auth
+> behavior, read `src/lorecraft/webui/player/auth.py` and `src/lorecraft/webui/player/player_auth.py`
+> directly, or `docs/admin_builder_guide.md` for the operator-facing summary.
+
 # Player Authentication Implementation Guide
 
 ## Overview

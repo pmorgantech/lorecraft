@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Lorecraft — Wishlist & Idea Backlog
 
 > **Purpose:** A menu of gaps, unimplemented ideas, and "wouldn't-it-be-cool" features
@@ -202,7 +206,7 @@ Beyond the basic currency→shops→P2P ladder in _Gameplay systems_ below:
 ### Robbers & highway risk 💚 (ties money, travel & death)
 
 NPC (later PvP) threats that make _carrying_ wealth risky — the stick that makes banks and safe
-transit worth using. Shares its whole core with [`death_resurrection.md`](death_resurrection.md):
+transit worth using. Shares its whole core with [`archive/death_resurrection.md`](archive/death_resurrection.md):
 **carried is at risk, banked is safe.**
 
 - **Highwaymen / footpads** — hostile NPCs on wilderness roads or in shady districts who can
@@ -223,7 +227,7 @@ transit worth using. Shares its whole core with [`death_resurrection.md`](death_
   related but distinct risk mechanic — now has its own entry under *PvP* below.)
 
 Design intent noted 2026-07-03 (product owner). No dedicated design doc yet; the money-at-risk
-mechanics are specified in [`death_resurrection.md`](death_resurrection.md) §8. Sprint TBD —
+mechanics are specified in [`archive/death_resurrection.md`](archive/death_resurrection.md) §8. Sprint TBD —
 naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)) and combat ([Sprint 31](roadmap.md#sprint-31--combat-core-services-supporting-system)).
 
 ### Quests & puzzles 💚 ✅ Shipped — Sprint 30 (a few genuine gaps remain)
@@ -399,7 +403,7 @@ combat is a supporting system, not the centerpiece). **NPC combat first, PvP lat
 state machine, lets death/respawn mechanics settle before adding player-vs-player. First real
 consumer of the feature-registration pattern.
 
-**Death penalty: resolved** — see [`death_resurrection.md`](death_resurrection.md) (resurrect,
+**Death penalty: resolved** — see [`archive/death_resurrection.md`](archive/death_resurrection.md) (resurrect,
 lose some carried coins/loot; banked and equipped/bound items are safe).
 
 ### Trading & currency 💚 (on the roadmap)
@@ -439,7 +443,7 @@ bounty is only meaningful if killing the target is actually possible.
   economy sink), or seek protection (a safe-zone flag, guard NPCs) — killing on sight isn't the
   only resolution, consistent with the "combat is optional" stance elsewhere in this doc.
 - **Reward payout & proof-of-kill** — on the marked target's death/defeat, a side effect (same
-  registry `death_resurrection.md` already uses) pays the escrowed reward to whoever landed the
+  registry `archive/death_resurrection.md` already uses) pays the escrowed reward to whoever landed the
   killing blow (or subdued them, if non-lethal outcomes count) and clears the mark flag.
 - **Overlaps existing ideas** — shares its whole risk/reward shape with
   [*Robbers & highway risk*](#robbers--highway-risk--ties-money-travel--death) (carried wealth
@@ -779,7 +783,7 @@ explicit option rather than an accident:
 ### Character creation walkthrough + intro tutorial 💚
 
 **Design intent (2026-07-03):** new players need a guided on-ramp — today `/lobby/create` is
-just a username/password form (see `web/auth.py` and `player_authentication.md`); there's no
+just a username/password form (see `web/auth.py` and `archive/player_authentication.md`); there's no
 in-game character-creation flow or introductory walkthrough once a player is dropped into the
 world.
 

@@ -110,7 +110,7 @@ Every operation in the engine maps to exactly one of these five layers. When in 
 
 ## 4. Project Structure
 
-The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–0.32.0; design in [`tier_split_refactor.md`](tier_split_refactor.md), boundary in [`architecture_tiers.md`](architecture_tiers.md)):
+The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–0.32.0; design in [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md), boundary in [`architecture_tiers.md`](architecture_tiers.md)):
 
 - **Tier 1 — `engine/`**: content-agnostic primitives. Runs headless; imports only `engine.*` and `lorecraft.types` — never `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`).
 - **Tier 2 — `features/`**: 34 optional, self-contained feature packages, each owning its own `models`/`service`/`repo`/`commands`/`conditions`/…, declared by a `FeatureManifest`. Discovered via `discover_features()` and gated by the enabled set. (Verified by calling `discover_features()` directly; the `features/` directory also contains a stale, empty `skills/` — no `__init__.py`, `__pycache__` only — left over from the Sprint 78.6 rename to `disciplines/` and not a registered feature.)
@@ -642,8 +642,8 @@ Converts raw text input to structured commands with semantic **roles** (object, 
 direction, message, …). Supports prepositions, quantities, compounds (`;`), and optional
 `GameContext` entity resolution.
 
-See **[command_parser.md](command_parser.md)** for role keys, command patterns (movement,
-speech, transfer, containers, gestures, …), handler integration guidance, and test
+See **[parser_and_commands.md](parser_and_commands.md)** for role keys, command patterns
+(movement, speech, transfer, containers, gestures, …), handler integration guidance, and test
 conventions.
 
 ```python

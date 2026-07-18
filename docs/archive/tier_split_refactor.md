@@ -1,3 +1,7 @@
+> **📦 Archived (2026-07-18).** Migration is complete (Sprint 31, v0.32.0); this is the
+> historical step-by-step record. For the current tier model see
+> [`architecture_tiers.md`](../architecture_tiers.md) and [`tier_modules.md`](../tier_modules.md).
+
 # Tier 1/Tier 2 Separation Refactor Plan
 
 **Status:** ✅ Complete (Sprint 31, v0.32.0) — all steps 0–13 shipped

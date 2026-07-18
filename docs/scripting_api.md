@@ -4,7 +4,7 @@
 
 The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC
 `behavior:` — generated from the self-describing descriptors registered into the
-engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry
+engine (see [`archive/scripting_engine_design.md`](archive/scripting_engine_design.md) §8). Each entry
 shows its subject role, capability signature, and parameters.
 
 _18 entries._

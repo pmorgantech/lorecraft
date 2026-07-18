@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Lorecraft World — Roadmap & Build Plan
 
 **Goal:** Build a rich, multi-zone test world to exercise the engine's features across all three tiers (Tier 1 primitives, Tier 2 features, Tier 3 content) with particular attention to areas that are high-risk or low-mileage in the current Ashmoore sample.

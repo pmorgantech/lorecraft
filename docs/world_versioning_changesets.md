@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # World Versioning & Changesets Implementation Guide
 
 ## Overview

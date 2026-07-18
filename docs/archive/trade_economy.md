@@ -16,7 +16,7 @@
 > pillar #2, and the signature pairing is *transit network = trade network* — regional price
 > differences only create gameplay because moving goods between towns costs time, fare, and
 > risk ([`transit_systems.md`](transit_systems.md)). Banks and carried-vs-banked money also
-> underpin the death penalty ([`death_resurrection.md`](../death_resurrection.md)).
+> underpin the death penalty ([`death_resurrection.md`](death_resurrection.md)).
 
 ---
 
@@ -54,7 +54,7 @@ class BankAccount(SQLModel, table=True):     # identity/ownership only — balan
 
 This feature registers the `bank_account` and `shop` holder types (and `escrow`, §8) with the
 Tier 1 holder registry. A corpse's dropped coins are `CoinBalance("container", corpse_instance_id)`
-([`death_resurrection.md`](../death_resurrection.md)) — same mechanism, zero special-casing.
+([`death_resurrection.md`](death_resurrection.md)) — same mechanism, zero special-casing.
 
 Single currency ("coins") for now; multi-currency is a non-goal (§13). Coins are a ledger
 scalar, not inventory items, so they don't consume carry weight.
@@ -192,7 +192,7 @@ Banks are economy infrastructure **and** the death/robbery safety valve.
 - Commands: `deposit <amount>`, `withdraw <amount>`, `balance`.
 - `deposit` is one `execute_exchange` leg, `("player", id)` → `("bank_account", account_id)`;
   `withdraw` reverses. Banked money is **immune to death loss and robbery**
-  ([`death_resurrection.md`](../death_resurrection.md)) simply because the death/robbery code
+  ([`death_resurrection.md`](death_resurrection.md)) simply because the death/robbery code
   only ever touches the `("player", id)` holder.
 - **One logical account, many branches** — deposit in Saltmarsh, withdraw in the capital. This
   makes banks a *travel and trade convenience* (carry less cash on dangerous routes), not just a
@@ -283,6 +283,6 @@ without a reseed — see [admin_builder_guide.md § Region pricing](../admin_bui
 ---
 
 *See [`roadmap.md`](../roadmap.md) [Sprint 28](../roadmap.md#sprint-28--trading--economy), [`transit_systems.md`](transit_systems.md) (fares +
-the trade-network pairing), [`death_resurrection.md`](../death_resurrection.md) (banks vs. carried
+the trade-network pairing), [`death_resurrection.md`](death_resurrection.md) (banks vs. carried
 money), and [`inventory_equipment.md`](inventory_equipment.md) (item value/quality). Built on
-[`feature-registration.md`](../feature-registration.md).*
+[`feature-registration.md`](feature-registration.md).*

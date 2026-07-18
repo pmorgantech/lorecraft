@@ -4,6 +4,30 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.151.1] - 2026-07-18
+
+### Changed
+
+- Audited `docs/architecture.md` against current source (v0.151.0): corrected the
+  long-stale claim that Combat was "not built" (it shipped in Sprints 85–88), added a
+  historical-design banner, noted the true ~43-service inventory (was documenting 6),
+  and added codebase LOC/module metrics by tier.
+- Archived 8 pre-implementation design/planning docs for features that have since
+  shipped (`death_resurrection.md`, `scripting_engine_design.md`, `tier_split_refactor.md`,
+  `tooling_infrastructure.md`, `player_authentication.md`, `feature-registration.md`,
+  `command_parser.md`, the old `discipline_ability_system.md`) into `docs/archive/`, each
+  with a banner pointing to its current-state replacement. Fixed all cross-references.
+- Consolidated `command_parser.md` and `parser_and_commands.md` into one canonical
+  parser/command-authoring reference (`parser_and_commands.md`); both were accurate,
+  the split was pure duplication.
+- Rewrote `discipline_ability_system.md` from a 524-line pre-implementation design brief
+  into a ~100-line current-state reference (5 disciplines, 7 abilities, Tier 1/2 split,
+  commands), verified against the shipped `features/disciplines/` package.
+- Added `kindle_doc_weaver: ignore` frontmatter to 18 status/roadmap/planning docs so the
+  Kindle EPUB export only bundles `architecture.md` plus a lean, current appendix
+  (`parser_and_commands.md`, `combat_design.md`, `combat_tutorial.md`,
+  `discipline_ability_system.md`, `scripting_api.md`) — EPUB size dropped 861K → 171K.
+
 ## [0.151.0] - 2026-07-17
 
 ### Removed

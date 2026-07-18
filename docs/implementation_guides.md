@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Implementation Guides Index
 
 This document is a master index of feature design and implementation guides. Guides are organized by status:
@@ -22,14 +26,11 @@ Each guide provides detailed workflows, code examples, testing patterns, and des
 
 ## Set-Aside Guides (Design Preserved, Not Scheduled)
 
-These design specs are **set aside to [`wishlist.md`](wishlist.md)** — kept as ready-to-restore
-references, not on the active queue. The old tick-based combat guide is superseded by the active
-Scheduled Intent design above.
+These design specs are superseded by what actually shipped — kept as archived reference only.
 
 | Guide | Subsystem | Purpose | Status |
 |-------|-----------|---------|--------|
 | [archive/combat_system_tickbased_superseded.md](archive/combat_system_tickbased_superseded.md) | Combat | Superseded tick-based combat, damage, NPC AI, kill credit, loot | Archived reference only; replaced by `combat_design.md`. |
-| [death_resurrection.md](death_resurrection.md) | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn | Set aside → wishlist (combat-adjacent) |
 
 ---
 
@@ -40,16 +41,16 @@ These features are fully implemented. The guides below document the design and i
 | Guide | Sprint | Subsystem | Purpose | Completion |
 |-------|--------|-----------|---------|-------------|
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | 10, 30 | NPCs, Quests, Dialogue | NPC scheduling, dialogue trees, quest branching (now realized via the Phase A scripting engine) | ✅ Complete |
-| [player_authentication.md](player_authentication.md) | 4 | Player Authentication | JWT flow, WebSocket tickets, account creation, OAuth extensibility | ✅ Complete |
+| [archive/player_authentication.md](archive/player_authentication.md) | 4 | Player Authentication | JWT flow, WebSocket tickets, account creation, OAuth extensibility | ✅ Complete — archived (design-vs-actual deviations only) |
 | [disconnect_handling.md](disconnect_handling.md) | 13 | Disconnect Handling | Grace periods, reconnection, system-controlled state | ✅ Complete |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | 11 | World Versioning | Changeset lifecycle, Builder Mode, lazy migration | ✅ Complete |
-| [command_parser.md](command_parser.md) | 2–3 | Command Parsing | Text parsing, command dispatch, grammar rules | ✅ Complete |
-| [parser_and_commands.md](parser_and_commands.md) | 2–3, 9–10 | Parser & Commands | Command registration, conditions, patterns | ✅ Complete |
+| [parser_and_commands.md](parser_and_commands.md) | 2–3, 9–10 | Parser & Commands | Parser output model, role vocabulary, command patterns, disambiguation, authoring checklist | ✅ Complete (canonical parser doc — merged from the former `command_parser.md`) |
 | [inventory_equipment.md](archive/inventory_equipment.md) | 22–23 | Inventory & Equipment | Item stacks, slots, encumbrance, modifiers | ✅ Complete |
-| [tooling_infrastructure.md](tooling_infrastructure.md) | 10.5 | Admin Tooling | World CLI, content validators, analytics queries | ✅ Complete |
+| [archive/tooling_infrastructure.md](archive/tooling_infrastructure.md) | 10.5 | Admin Tooling | World CLI, content validators, analytics queries | ✅ Complete — archived |
 | [trade_economy.md](archive/trade_economy.md) | 28 | Trading & Economy | Shops, currency, player-to-player trading, escrow | ✅ Complete |
 | [transit_systems.md](archive/transit_systems.md) | 29 | Transit & Travel | Routes, waypoints, schedules, position interpolation | ✅ Complete |
-| [discipline_ability_system.md](discipline_ability_system.md) | 77–78 | Disciplines & Abilities | Replaced `features/skills/` + `features/progression/skill_tree.py` with a unified Discipline → Ability model (Tier 1 mechanism in 77, Tier 2 policy/content in 78); data-driven, non-combat seed disciplines, combat-ready seam | ✅ Complete |
+| [archive/death_resurrection.md](archive/death_resurrection.md) | 85–88 | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn (shipped as part of combat) | ✅ Complete — archived design doc |
+| [discipline_ability_system.md](discipline_ability_system.md) | 77–78 | Disciplines & Abilities | Current-state reference: the 5 disciplines, 7 abilities, Tier 1/2 split, commands. Replaced `features/skills/` + `features/progression/skill_tree.py`. | ✅ Complete |
 
 ---
 
@@ -61,7 +62,7 @@ These documents are not feature-specific but provide foundational patterns, APIs
 |----------|---------|
 | [`architecture.md`](architecture.md) | Comprehensive architecture overview; master design reference for the 5-layer model (Services → Rules → Transactions → Events → Scheduler) |
 | [`engine_core.md`](engine_core.md) | Tier 1 primitive specifications (Sprints 16–21); binding reference for schemas, APIs, invariants, and migration blast-radius tables |
-| [`feature-registration.md`](feature-registration.md) | How to build and register Tier 2 features; shows the pluggable architecture pattern all new features should follow |
+| [`archive/feature-registration.md`](archive/feature-registration.md) | How to build and register Tier 2 features; shows the pluggable architecture pattern all new features should follow |
 | [`architecture_tiers.md`](architecture_tiers.md) | Explains the Tier 1/2/3 split, current filesystem layout, and how to disable or extend Tier 2 features |
 | [`tier_modules.md`](tier_modules.md) | File-by-file classification of each module as Tier 1, Tier 2, or mixed; quick reference for understanding the codebase |
 | [`roadmap.md`](roadmap.md) | **Single source of truth** for what's done and what's next — sprint-by-sprint task tables, dependency reference, and current status |
@@ -137,7 +138,7 @@ New developers should:
 If you're building a custom game or disabling Tier 2 features, start with:
 1. [`architecture_tiers.md`](architecture_tiers.md) — Understand Tier 1 vs. Tier 2
 2. [`tier_modules.md`](tier_modules.md) — See which modules you can safely remove
-3. [`feature-registration.md`](feature-registration.md) — Learn how to add your own Tier 2 features
+3. [`archive/feature-registration.md`](archive/feature-registration.md) — Learn how to add your own Tier 2 features
 
 ---
 
@@ -165,7 +166,7 @@ Think of it this way:
 - `user_guide.md`, `admin_builder_guide.md`, `world_building.md` (growing as features ship)
 
 **Historical reference** (snapshot of design at completion):
-- `player_authentication.md` — Sprint 4 complete; design is frozen
+- `archive/player_authentication.md` — Sprint 4 complete; design is frozen
 - `world_versioning_changesets.md` — Sprint 11 complete; design is frozen
 - (Other completed guides) — Reference for "how we built similar features"
 
@@ -175,7 +176,7 @@ Think of it this way:
 
 When adding a new major subsystem:
 
-1. **Design phase:** Update [`roadmap.md`](roadmap.md) to sequence the work and [`engine_core.md`](engine_core.md) or [`feature-registration.md`](feature-registration.md) if it affects Tier 1
+1. **Design phase:** Update [`roadmap.md`](roadmap.md) to sequence the work and [`engine_core.md`](engine_core.md) or [`archive/feature-registration.md`](archive/feature-registration.md) if it affects Tier 1
 2. **Implementation:** Create a focused implementation guide in `docs/` following the pattern above
 3. **After completion:** Move the guide's row into the *Implemented Guides* table in this index
 4. **Update cross-references:** Ensure [`roadmap.md`](roadmap.md) and this index both point to the guide
@@ -191,13 +192,13 @@ When adding a new major subsystem:
 
 **Building a feature?** Refer to:
 - [`engine_core.md`](engine_core.md) — Tier 1 specs you must follow
-- [`feature-registration.md`](feature-registration.md) — How to register your feature
+- [`archive/feature-registration.md`](archive/feature-registration.md) — How to register your feature
 - Related feature guide — From the "Implemented Guides" section above
 
 **Customizing the engine?** Read:
 - [`architecture_tiers.md`](architecture_tiers.md) — Tier 1/2 split
 - [`tier_modules.md`](tier_modules.md) — Which modules are which tier
-- [`feature-registration.md`](feature-registration.md) — How to add custom features
+- [`archive/feature-registration.md`](archive/feature-registration.md) — How to add custom features
 
 ---
 

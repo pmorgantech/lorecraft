@@ -313,7 +313,7 @@ Distinct states: `defeated / downed / unconscious / dying / dead`. Default: at 0
 **downed** (allies can stabilize/revive); hostile behavior depends on personality + encounter
 rules; PvE defeat usually = injury/relocation/resource loss/narrative consequence (bandits rob,
 guards arrest, beasts leave you wounded). Permanent item loss rare and telegraphed. Reuses
-`docs/death_resurrection.md` policy + `LedgerService` for coin loss.
+`docs/archive/death_resurrection.md` policy + `LedgerService` for coin loss.
 
 ## 16. PvP and duels — deferred
 
@@ -461,5 +461,5 @@ balance dials an admin would plausibly retune mid-session.
 
 ---
 
-*See `engine_core.md` (Tier 1 primitives), `death_resurrection.md` (death/respawn),
-`inventory_equipment.md` (weapon/armor descriptors), `feature-registration.md` (module layout).*
+*See `engine_core.md` (Tier 1 primitives), `archive/death_resurrection.md` (death/respawn),
+`inventory_equipment.md` (weapon/armor descriptors), `archive/feature-registration.md` (module layout).*

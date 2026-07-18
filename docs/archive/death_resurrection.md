@@ -1,11 +1,17 @@
+> **📦 Archived (2026-07-18).** Pre-implementation design doc; death/respawn shipped as part
+> of the combat sprints (see `features/combat/service.py::_apply_player_death_respawn` and
+> [`combat_design.md`](../combat_design.md)). Kept here only for design-rationale history.
+> Also note: links below to `combat_system.md` are dead — that doc no longer exists,
+> superseded by `combat_design.md`.
+
 # Death & Resurrection — Design
 
 > **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
 > Resolves the long-standing **death-penalty open question**
-> (roadmap Sprint 31.2, [`wishlist.md`](wishlist.md) decisions table). Referenced by the combat
-> sprints ([`combat_system.md`](combat_system.md), [Sprints 31–33](roadmap.md#sprint-31--combat-core-services-supporting-system)) and PvP ([Sprint 34](roadmap.md#sprint-34--pvp-consent)).
+> (roadmap Sprint 31.2, [`wishlist.md`](../wishlist.md) decisions table). Referenced by the combat
+> sprints ([`combat_system.md`](combat_system.md), [Sprints 31–33](../roadmap.md#sprint-31--combat-core-services-supporting-system)) and PvP ([Sprint 34](../roadmap.md#sprint-34--pvp-consent)).
 >
-> **Tier 1 dependencies ([`engine_core.md`](engine_core.md)):** the death trigger is
+> **Tier 1 dependencies ([`engine_core.md`](../engine_core.md)):** the death trigger is
 > `METER_DEPLETED` with `key == "hp"` (**meters**, §3.3 — there is no `current_hp` column);
 > the corpse is a **container instance** holding **stacks** (§3.1–§3.2); coin/loot penalties
 > are **one `execute_exchange`** (§3.7); the weakened debuff is an **`ActiveEffect`** (§3.4).
@@ -29,13 +35,13 @@ Much of the respawn scaffolding already exists:
 - **hp meter** (engine_core §3.3) — the death module's entrypoint is a `METER_DEPLETED`
   handler filtered to `key == "hp"`, `entity_type == "player"`. Respawn hp is
   `MeterService.set_current(hp_meter, maximum × respawn_hp_fraction)`.
-- **Ledger holders** ([`trade_economy.md`](archive/trade_economy.md), engine_core §3.7) — carried
+- **Ledger holders** ([`trade_economy.md`](trade_economy.md), engine_core §3.7) — carried
   money is `CoinBalance("player", id)`; banked money is a different holder the death code
   never touches. That's the whole carried-vs-banked mechanic: *dodgeable by planning*.
-- **Container instances** ([`inventory_equipment.md`](archive/inventory_equipment.md) §7) — a **corpse
+- **Container instances** ([`inventory_equipment.md`](inventory_equipment.md) §7) — a **corpse
   is a container** holding dropped stacks; reuses the container model, no new mechanism.
 - **`SchedulerService`** — corpse decay timer (`job_type="corpse_decay"`).
-- **Rollback lifecycle** ([Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-)) — death is applied as one auditable transaction.
+- **Rollback lifecycle** ([Sprint 14](../roadmap.md#sprint-14--unify-command-lifecycle-)) — death is applied as one auditable transaction.
 
 ---
 
@@ -70,7 +76,7 @@ Tunable, forgiving defaults; all values world-configurable:
   flat amount — scales with what you're risking.
 - **Banked money is never lost** — structurally: the penalty exchange only names the
   `("player", id)` holder; `("bank_account", …)` is untouchable by construction
-  ([`trade_economy.md`](archive/trade_economy.md) §9). Carry cash on a safe road; bank it before a
+  ([`trade_economy.md`](trade_economy.md) §9). Carry cash on a safe road; bank it before a
   dungeon.
 - Lost coins are **dropped into the corpse** (`CoinBalance("container", corpse_instance_id)`,
   retrievable §4), not deleted — so a fast recovery loses little, a failed one loses it all.
@@ -80,7 +86,7 @@ Tunable, forgiving defaults; all values world-configurable:
   - **Equipped items are kept** — mechanically: only `slot is None` (unequipped) stacks are
     candidates. Avoids the death-spiral of losing your only weapon/light.
   - **`bound` items are kept** (never lost — protects quest integrity, per
-    [`inventory_equipment.md`](archive/inventory_equipment.md); the `Item.bound` field is Sprint 16).
+    [`inventory_equipment.md`](inventory_equipment.md); the `Item.bound` field is Sprint 16).
   - A fraction of the remaining candidates drops (default: all, or a percentage — world-tunable
     via `loot_policy`/`loot_drop_fraction`; the fraction *selection* uses the seeded `rng`).
 
@@ -158,7 +164,7 @@ When the killer is another player (`pvp_consent` duels):
 
 ## 8. Robbers (NPC threat) — see wishlist
 
-Robbers ([`wishlist.md`](wishlist.md)) reuse this exact carried-vs-banked model **without
+Robbers ([`wishlist.md`](../wishlist.md)) reuse this exact carried-vs-banked model **without
 killing you**: a successful robbery skims carried `coins` (and maybe a carried item), banked
 money is safe. Same lesson as death ("don't carry what you can't afford to lose"), lower
 stakes, and a strong incentive to use banks and safe transit. Design lands in a later sprint;
@@ -201,7 +207,7 @@ All on the existing audit trail; the audit-regression harness can diff a scripte
 
 ---
 
-*See [`roadmap.md`](roadmap.md) [Sprints 31](roadmap.md#sprint-31--combat-core-services-supporting-system) (combat death/respawn) & 34 (PvP),
-[`combat_system.md`](combat_system.md), [`trade_economy.md`](archive/trade_economy.md) (banks vs.
-carried money), [`inventory_equipment.md`](archive/inventory_equipment.md) (corpse = container), and
-[`wishlist.md`](wishlist.md) (robbers).*
+*See [`roadmap.md`](../roadmap.md) [Sprints 31](../roadmap.md#sprint-31--combat-core-services-supporting-system) (combat death/respawn) & 34 (PvP),
+[`combat_system.md`](combat_system.md), [`trade_economy.md`](trade_economy.md) (banks vs.
+carried money), [`inventory_equipment.md`](inventory_equipment.md) (corpse = container), and
+[`wishlist.md`](../wishlist.md) (robbers).*

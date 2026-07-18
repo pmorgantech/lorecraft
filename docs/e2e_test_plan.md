@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # E2E Browser Test Plan
 
 Status: proposal (not yet implemented). Scope: expand `tests/e2e/` coverage of

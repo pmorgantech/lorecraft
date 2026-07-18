@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Lorecraft — Roadmap
 
 **A concise list of *remaining* work.** Every **completed** sprint — 1–34 (foundation, the Tier 1

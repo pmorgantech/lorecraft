@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Engine / game-data separation — deep-dive plan
 
 **Status:** planning only (plan-ahead, not scheduled). Deepens the [`wishlist.md`](wishlist.md) →

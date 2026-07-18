@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # MUD World Building and Quest Design Guide
 
 **A Comprehensive Resource for Builders and Creators in Multi-User Dungeons**

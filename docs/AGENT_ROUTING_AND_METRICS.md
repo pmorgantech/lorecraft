@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Agent Routing and Metrics Guide
 
 **Date:** 2026-07-17

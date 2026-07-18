@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Tier Classification — File by File
 
 > **Reference:** See [`architecture_tiers.md`](architecture_tiers.md) for the three-tier model and [`architecture.md`](architecture.md) §4 for the full directory tree. This page is the quick per-module lookup.
@@ -157,7 +161,7 @@ To run *any* game with lorecraft you need `engine/` in full: `game/` (registry, 
 
 ### Feature registration (no more side-effect imports)
 
-Features are no longer enabled by `import lorecraft.game.<x>  # noqa` side effects in `main.py`. Each feature package's `__init__.py` builds a `FeatureManifest` and calls `register_feature(...)`; `discover_features()` imports the packages, `resolve_enabled_features()` picks the enabled set (`enabled_features` arg > `LORECRAFT_FEATURES` env > all), and `wire_features()` calls each manifest's `register_fn`. A feature's service is built only when enabled (`ServiceContainer` + the `main.py` feature-owned schedulables); a manifest's optional `presentation` module is loaded only by the web host. See [`tier_split_refactor.md`](tier_split_refactor.md) and `tests/integration/test_feature_toggling.py`.
+Features are no longer enabled by `import lorecraft.game.<x>  # noqa` side effects in `main.py`. Each feature package's `__init__.py` builds a `FeatureManifest` and calls `register_feature(...)`; `discover_features()` imports the packages, `resolve_enabled_features()` picks the enabled set (`enabled_features` arg > `LORECRAFT_FEATURES` env > all), and `wire_features()` calls each manifest's `register_fn`. A feature's service is built only when enabled (`ServiceContainer` + the `main.py` feature-owned schedulables); a manifest's optional `presentation` module is loaded only by the web host. See [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md) and `tests/integration/test_feature_toggling.py`.
 
 ### Usage tips
 

@@ -1,13 +1,15 @@
 # Parser Output and Command Authoring
 
-This guide explains how to **author new commands** that consume the advanced parser's
-semantic roles, how **item matching and disambiguation** work in practice, and where to
-find test data for similar item names.
+This is the canonical guide to Lorecraft's command parser: the output model, the role
+vocabulary, the command-pattern taxonomy, how to **author new commands** that consume the
+parser's semantic roles, how **item matching and disambiguation** work in practice, and
+where to find test data for similar item names.
 
 Related references:
 
-- [command_parser.md](command_parser.md) — parser output model and pattern taxonomy
+- `src/lorecraft/engine/game/parser.py` — `parse_command()` implementation
 - `src/lorecraft/engine/game/command_patterns.py` — typed role helpers
+- `tools/parser_diag.py` — CLI diagnostics for any input string
 - `tests/fixtures/disambig_fixtures.py` — pytest-only similar-item test room
 
 ---
@@ -30,6 +32,51 @@ Service layer (InventoryService, MovementService, …)
 
 The engine always passes a live `GameContext` into the parser so room items and
 inventory can be considered during resolution.
+
+---
+
+## Role keys (v1)
+
+Roles are a flexible dictionary attached to each `ParsedCommand`. Common keys:
+
+| Role | Typical use |
+|------|-------------|
+| `object` | Item being manipulated (`take sword`, `drop coin`) |
+| `target` | Entity acted upon (`open door`, `attack goblin`) |
+| `instrument` | Tool/weapon (`unlock chest with key`) |
+| `recipient` | Person receiving something (`give coin to Gabriel`) |
+| `source` | Origin container (`take coin from purse`) |
+| `destination` | Destination container/surface (`put apple in backpack`) |
+| `direction` | Movement direction (`north`, `up`) |
+| `quantity` | Numeric amount (`take 2 coin`) |
+| `adjectives` | Leading modifiers (`red` in `take red potion`) |
+| `message` | Spoken text (`say hello`, `whisper "psst" to Mira`) |
+| `topic` | Dialogue subject (`ask Mira about quests`) |
+
+**v1 limitations** (by design):
+
+- No deep nesting (`take coin from purse in chest` is not auto-unpacked).
+- Pronoun carry in compounds is basic (`take lantern; light it`).
+- Role vocabulary may be standardized further in v2.
+
+## Command pattern taxonomy (quick reference)
+
+| Pattern | Verbs (examples) | Roles to read | Handler responsibility |
+|---------|------------------|---------------|------------------------|
+| **Movement** | `go`, `n`, `north` | `direction` | Move player via `MovementService` |
+| **Bare** | `look`, `l`, `inventory`, `i` | _(none)_ | Room summary / inventory panel |
+| **Object manipulation** | `take`, `drop`, `wear`, `remove` | `object`, `quantity`, `adjectives` | Resolve item in room or inventory; honour `all` / `everything` |
+| **Container** | `put`, `open`, `close`, `examine`, `look in` | `object`, `destination` / `source` / `target` | Container graph; `look in chest` → `destination=chest` |
+| **Transfer** | `give` | `object`, `recipient` | Requires **both**; validate recipient is present |
+| **Tool use** | `unlock`, `use`, `lock` | `target` or `object`, `instrument`, `destination` | Tool + target pairing |
+| **Combat** | `attack`, `kill` | `target`, `instrument` | Combat target selection |
+| **Speech** | `say`, `yell`, `whisper`, `shout`, `scream` | `message`, optional `recipient` | Audience routing |
+| **Social gesture** | `wave`, `bow`, `nod`, `smile` | optional `target` / `recipient` | Room-wide if undirected; directed `AT` one entity |
+| **NPC dialogue** | `talk`, `ask`, `choice`, `bye` | `recipient`, `topic` | Dialogue trees / flags |
+| **Meta** | `help`, `quit`, `save`, `load` | varies | Out-of-world or slot IO |
+
+Use `pattern_for_verb(cmd.verb)` and typed helpers (`speech_roles`, `transfer_roles`,
+`container_roles`, `gesture_roles`, …) when implementing handlers.
 
 ---
 
@@ -376,6 +423,21 @@ Add parser tests:
 
 ---
 
+## Compound commands
+
+Semicolon separates sequential commands:
+
+```
+unlock chest with key; open chest; take gem
+```
+
+`CommandEngine` executes each `ParsedCommand` in order. Fail-fast on first parse error.
+
+Basic pronoun carry: `take lantern; light it` substitutes `it` from the previous command's
+object.
+
+---
+
 ## Testing matrix for new verbs
 
 | Test type | File | Assert |
@@ -385,6 +447,32 @@ Add parser tests:
 | Item ambiguity | `tests/unit/test_inventory_disambiguation.py` | prompts + unique takes |
 | Engine integration | `tests/unit/test_inventory_disambiguation.py` | `CommandEngine` → disambig |
 | Regression | `tests/game/test_parser_comprehensive.py` | compounds, edges |
+| Legacy bridge | `tests/unit/test_parser.py` | `parse()` back-compat wrapper |
+
+Run:
+
+```bash
+python -m pytest tests/game/ tests/unit/test_command_patterns.py -q
+python tools/parser_diag.py "give the lead pipe to Gabriel"
+```
+
+When adding a verb:
+
+1. Assign a `CommandPattern` in `VERB_PATTERNS`.
+2. Add parametrized cases to `test_parser_patterns.py`.
+3. Document expected roles in this file.
+4. Implement handler using pattern helpers — not raw string splitting.
+
+---
+
+## Diagnostics
+
+```bash
+python tools/parser_diag.py "take red potion; light it"
+python tools/parser_diag.py --json "whisper \"hi\" to Gabriel"
+```
+
+Shows normalization, tokens, role extraction, and resolution steps.
 
 ---
 

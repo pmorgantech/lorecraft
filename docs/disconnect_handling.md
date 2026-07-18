@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Disconnect Handling Implementation Guide
 
 ## Overview

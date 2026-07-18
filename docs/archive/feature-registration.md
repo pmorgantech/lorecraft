@@ -1,3 +1,9 @@
+> **📦 Archived (2026-07-18).** Predates the tier-split refactor — uses pre-split import
+> paths (`lorecraft.game.*` instead of `lorecraft.engine.game.*`) and describes combat as
+> "planned Sprint 31" (shipped long since). The actual current registration pattern is the
+> `FeatureManifest` + `discover_features()` system — see `AGENTS.md`'s "Codebase structure"
+> section and `src/lorecraft/features/manifest.py` / `loader.py`. Kept here only for history.
+
 # Feature Registration Pattern
 
 **Goal:** Add new gameplay features (combat, trading, PvP) without modifying core engine code.
@@ -222,7 +228,7 @@ register_combat_rules(rules)
 
 ## Example: Combat Feature
 
-See `features/combat/` (planned [Sprint 31](roadmap.md#sprint-31--combat-core-services-supporting-system)) for the first full consumer of this pattern.
+See `features/combat/` (planned [Sprint 31](../roadmap.md#sprint-31--combat-core-services-supporting-system)) for the first full consumer of this pattern.
 
 The pattern ensures:
 - ✅ New features don't touch core engine files

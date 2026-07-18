@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Setting Up Dialogue, NPCs, and Quests
 
 This guide explains how to create dialogue trees, NPCs, and quests in Lorecraft using YAML.

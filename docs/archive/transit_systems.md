@@ -40,7 +40,7 @@ Everything composes engine infrastructure that exists by the end of the Tier 1 b
   `web/static/js/app.js` switch). We add one new type: **`transit_update`** (§9).
 - **`Item`** — tickets are items (gating boarding); fares tie to the [Sprint 28](../roadmap.md#sprint-28--trading--economy) currency model.
 - **Pluggable conditions / side-effects** registries ([Sprint 10](../roadmap.md#sprint-10--extensibility-seams-)) and the
-  [feature-registration pattern](../feature-registration.md) — transit ships as a self-contained
+  [feature-registration pattern](feature-registration.md) — transit ships as a self-contained
   feature module.
 
 ---
@@ -370,4 +370,4 @@ express line has ≥2 boarding stops; `blocking_weather` values are known weathe
 
 *See [`roadmap.md`](../roadmap.md) [Sprint 29](../roadmap.md#sprint-29--transit--travel-systems), [`wishlist.md`](../wishlist.md) → Featured idea, and
 [`inventory_equipment.md`](inventory_equipment.md) (tickets are items). Built on
-[`feature-registration.md`](../feature-registration.md).*
+[`feature-registration.md`](feature-registration.md).*

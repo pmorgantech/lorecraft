@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Engine Core — the framework / game boundary & Tier 1 primitives
 
 > **Status:** Implementation-ready design (2026-07-03, deep-dive revision). Anchor doc for the
@@ -75,7 +79,7 @@ primitives compose with them:
 `allowed=True` (deliberate forward-compat for command definitions). That is fine for *availability*
 gates (a typo just makes a command available) but **dangerous for security-relevant gates** (PvP
 consent, "can't loot while in combat"). Rule of thumb, already implied by
-[`feature-registration.md`](feature-registration.md) §"When Rules Matter":
+[`archive/feature-registration.md`](archive/feature-registration.md) §"When Rules Matter":
 
 - **Availability / UX gate** → a **condition** (fails open, cheap, forward-compatible).
 - **Security / integrity veto** (consent, escrow, anti-dupe) → a **rule** (`RuleEngine` fails
@@ -125,7 +129,7 @@ e.g. the enum already has `PLAYER_DIED`, `PLAYER_RESPAWNED`, `SKILL_IMPROVED`,
 **Registries.** Follow the `game/command_conditions.py` pattern exactly: a module-level
 registry instance, `register(...)` mutators, `get_registry()` accessor. Tier 1 registers
 nothing game-flavored; Tier 2 features register at app lifespan per
-[`feature-registration.md`](feature-registration.md).
+[`archive/feature-registration.md`](archive/feature-registration.md).
 
 **Determinism.** Any randomness goes through `GameRng` (§3.6). Any iteration whose order
 reaches an event payload, audit record, or WS message must be deterministic (explicit
@@ -268,7 +272,7 @@ class HolderRegistry:
 - **Tier 1 registers holder types** `player`, `room`, `container` (a container's `owner_id`
   is an `ItemInstance.id`). Tier 2 registers `shop` and `escrow`
   ([`trade_economy.md`](archive/trade_economy.md)); a corpse is **not** a holder type — it is an
-  ordinary `container` instance ([`death_resurrection.md`](death_resurrection.md)).
+  ordinary `container` instance ([`archive/death_resurrection.md`](archive/death_resurrection.md)).
 - **Move validators** are the mechanical-capacity hook: the Tier 2 container component
   registers one on `container` (capacity, open/closed); the equipment module registers one on
   `player` for `slot is not None` (valid slot key, slot occupancy, wearability). Tier 1 ships
@@ -376,7 +380,7 @@ class MeterService:                          # engine-holding schedulable (regis
 
 **New `GameEvent` members:** `METER_DEPLETED` (`entity_type, entity_id, key`),
 `METER_RECOVERED` (crossing back above 0). Death is then Tier 2: the death module listens for
-`METER_DEPLETED` with `key == "hp"` ([`death_resurrection.md`](death_resurrection.md)).
+`METER_DEPLETED` with `key == "hp"` ([`archive/death_resurrection.md`](archive/death_resurrection.md)).
 
 **HP migration (decided — definitional max stays, runtime current moves):**
 
@@ -847,7 +851,7 @@ and folded into §3 and into the feature docs:
   [`combat_system.md`](combat_system.md) updated to roll through `ctx.rng`.
 - **(c) Coins scalar vs coins-in-corpse** → **resolved** by §3.7: `CoinBalance` on any
   registered holder; no `Player.coins` column; corpse = container instance holder.
-  [`trade_economy.md`](archive/trade_economy.md) + [`death_resurrection.md`](death_resurrection.md)
+  [`trade_economy.md`](archive/trade_economy.md) + [`archive/death_resurrection.md`](archive/death_resurrection.md)
   updated.
 - **(d) Modifier stacking undefined** → **resolved** by §3.5: fixed `add → mult → clamp`
   bucket order; percentages are `mult`; feature caps live in the feature.
@@ -861,7 +865,7 @@ and folded into §3 and into the feature docs:
 - **(g) Fail-open conditions for integrity gates** → **resolved** as the §3.0 two-layer rule:
   primitives = mechanical invariants; features = `RuleEngine` (fail-closed) checked before the
   primitive call.
-- **(h) Event-name drift** (found in this revision): `death_resurrection.md` invented
+- **(h) Event-name drift** (found in this revision): `archive/death_resurrection.md` invented
   `PLAYER_RESURRECTED`; the enum has had `PLAYER_RESPAWNED` since Phase 5. The doc now uses
   the existing member. Rule: check `game/events.py` before naming an event in a design doc.
 
@@ -923,15 +927,15 @@ per-feature docs. That's fine **as long as they stay aligned and cross-linked**.
   **this doc wins**.
 - **`docs/implemented/`** — once a feature's sprints are done *and* the mechanics are described in
   the living guides (`architecture.md`, `user_guide.md`, `admin_builder_guide.md`), move its design
-  doc there to mark it historical (candidates when their sprints close: `player_authentication.md`,
-  `tooling_infrastructure.md`, `world_versioning_changesets.md`, `disconnect_handling.md`). Update
+  doc there to mark it historical (candidates when their sprints close: `archive/player_authentication.md`,
+  `archive/tooling_infrastructure.md`, `world_versioning_changesets.md`, `disconnect_handling.md`). Update
   inbound links on move. **Defer the actual moves until each feature lands** ("clean up afterward"),
   so we don't break links to still-active designs.
 
 ---
 
-*See [`roadmap.md`](roadmap.md) for sequencing, [`feature-registration.md`](feature-registration.md)
+*See [`roadmap.md`](roadmap.md) for sequencing, [`archive/feature-registration.md`](archive/feature-registration.md)
 for the registration pattern these primitives extend, and the per-feature docs
 ([`inventory_equipment.md`](archive/inventory_equipment.md), [`combat_system.md`](combat_system.md),
 [`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md),
-[`death_resurrection.md`](death_resurrection.md)) for the use cases each primitive serves.*
+[`archive/death_resurrection.md`](archive/death_resurrection.md)) for the use cases each primitive serves.*

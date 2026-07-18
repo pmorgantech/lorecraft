@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Multi-Agent Workflow & Scaffolding
 
 This document describes the scaffolding and coordination strategy for parallel agent work in lorecraft.

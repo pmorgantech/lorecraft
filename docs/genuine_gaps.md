@@ -1,3 +1,7 @@
+---
+kindle_doc_weaver: ignore
+---
+
 # Lorecraft — Genuine Gaps: Ready-to-Build Content Features
 
 Generated 2026-07-08. This is a curated subset of [`wishlist.md`](wishlist.md) — the features
@@ -198,7 +202,7 @@ passenger transit (ferry/rail/balloon).
 - A whole quest genre: escort the caravan (pairs with the set-aside combat spec when it
   ships), investigate why it's late, recover stolen cargo.
 - Direct synergy with the **Robbers & highway risk** design (already specified in
-  `death_resurrection.md` §8): a caravan carrying visible cargo is exactly the kind of
+  `archive/death_resurrection.md` §8): a caravan carrying visible cargo is exactly the kind of
   "carried wealth is at risk" target that makes banking/safe-transit choices matter.
 - Commissions: an NPC pays the player to personally escort or expedite a caravan run — reuses
   existing quest reward/currency plumbing.
