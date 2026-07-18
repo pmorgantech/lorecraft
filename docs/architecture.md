@@ -5,6 +5,21 @@
 > **Implementation status:** See [`roadmap.md`](roadmap.md) — the single source of truth for
 > what's done and what's next, with per-sprint task tables and current status.
 
+> **⚠ Historical design guide — frozen at v0.75, repo is now at v0.151.0.** This document
+> captures the engine's design *intent* as of the initial build-out and has not been kept in
+> lockstep with everything shipped since (Sprints 76–91+). Treat it as design history, not a
+> current-state reference. Sections below are annotated with implementation-status notes where
+> reality has since diverged, but for anything load-bearing, go to the current sources instead:
+>
+> - [`roadmap_completed.md`](roadmap_completed.md) — full sprint-by-sprint history of what
+>   actually shipped, with version numbers.
+> - [`combat_design.md`](combat_design.md) — the current Combat design (Scheduled Intent
+>   architecture), superseding §15 below.
+> - [`discipline_ability_system.md`](discipline_ability_system.md) — the current stat/
+>   progression model, superseding the "Dual-Track System" in §15.
+> - Per-subsystem docs (`docs/*.md`) and each feature's own `service.py`/`models.py` for
+>   anything not covered above.
+
 ---
 
 ## Table of Contents
@@ -98,9 +113,28 @@ Every operation in the engine maps to exactly one of these five layers. When in 
 The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–0.32.0; design in [`tier_split_refactor.md`](tier_split_refactor.md), boundary in [`architecture_tiers.md`](architecture_tiers.md)):
 
 - **Tier 1 — `engine/`**: content-agnostic primitives. Runs headless; imports only `engine.*` and `lorecraft.types` — never `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`).
-- **Tier 2 — `features/`**: 33 optional, self-contained feature packages, each owning its own `models`/`service`/`repo`/`commands`/`conditions`/…, declared by a `FeatureManifest`. Discovered via `discover_features()` and gated by the enabled set.
+- **Tier 2 — `features/`**: 34 optional, self-contained feature packages, each owning its own `models`/`service`/`repo`/`commands`/`conditions`/…, declared by a `FeatureManifest`. Discovered via `discover_features()` and gated by the enabled set. (Verified by calling `discover_features()` directly; the `features/` directory also contains a stale, empty `skills/` — no `__init__.py`, `__pycache__` only — left over from the Sprint 78.6 rename to `disciplines/` and not a registered feature.)
 - **Web — `webui/`**: the delivery hosts (`player/` HTMX UI + `admin/` console) that compose an engine + features. A feature may optionally ship a `presentation.py` picked up by the web host.
 - **Composition root** (`main.py`, `commands/`, `services/container.py`, `state.py`) may import features and web; the engine may not import any of them.
+
+### Codebase Metrics (as of v0.75)
+
+| Layer | Files | Lines of Code | Modules |
+|---|---|---|---|
+| **Tier 1 (`engine/`)** | 70 | 8,974 | 8 subsystems (game, models, services, repos, clock) |
+| **Tier 2 (`features/`)** | 159 | 18,150 | 36 feature packages |
+| **Web (`webui/`)** | 33 | 7,680 | Player + Admin hosts |
+| **Composition & Tools** | — | 8,513 | main.py, commands/, services/, content/, world/, tools/ |
+| **Total** | 262+ | 43,317 | Monolithic codebase, single-process, ~15 KLOC per quarter-year |
+
+**Ratios:**
+- Tier 2 is ~2× the size of Tier 1 (feature richness vs. primitives)
+- Feature packages average ~500 LOC each (small, focused)
+- Web layer is ~86% of Tier 1 size (presentation stays relatively lean against primitives)
+
+> Metrics frozen at v0.75; regenerate periodically (the repo is now at v0.151.0 and has grown
+> substantially since — Sprints 76–91+ added Combat, Disciplines/Abilities, and a large admin
+> tooling tranche not reflected in the table above).
 
 ```
 .
@@ -163,7 +197,17 @@ The codebase is organized on **three axes** (the tier split, CHANGELOG 0.15.0–
 └── world_content/                    # world.yaml (rooms/items/npcs/quests/dialogue/…)
 ```
 
-> **Note.** Combat/PvP subsystems (`features/combat`, `npc/combat_ai`, `models/combat`) are **not yet built** — set aside to [`wishlist.md`](wishlist.md) (*Combat, reframed* — ready-to-restore specs) as a supporting system rather than the centerpiece. The stat/equipment/discipline primitives they will consume already exist in `engine/` and the relevant `features/` (see the Discipline/Ability system, Sprints 77–78).
+> **Status (v0.151.0):** Combat was built across Sprints 85–88 (v0.109–v0.145) using the
+> Scheduled Intent architecture (see [`combat_design.md`](combat_design.md)). It is a complete,
+> optional feature (`features/combat/`), consuming the stat/equipment/discipline primitives
+> already present in `engine/` and the relevant `features/` (Discipline/Ability system, Sprints
+> 77–78; see [`discipline_ability_system.md`](discipline_ability_system.md)). The *design*
+> below (§15) predates implementation and describes an earlier tick-based proposal that was
+> **not** what shipped — see `combat_design.md` for the current model (encounter aggregate,
+> action-submission/resolution pipeline; **no wound/body damage as of v0.151.0** — persistent
+> `CombatWound` rows with body location/severity briefly shipped in Sprint 88.1 (v0.136.0) but
+> were removed in v0.151.0, which reverted combat damage to plain numeric HP loss; see
+> `CHANGELOG.md`'s v0.151.0 entry, "simplify combat damage to hp").
 
 ---
 
@@ -706,6 +750,14 @@ Services call `rule_engine.check(...)` before performing any state change. This 
 
 Game rules live in services, not in command handlers. Command handlers translate input into service calls.
 
+> **Incomplete.** The six services documented below are illustrative examples from the original
+> design, not the full inventory. The live system has grown to roughly 43 `*Service` classes
+> (verified by grepping `src/lorecraft` for `^class .*Service`). See `engine/services/` and each
+> feature's `service.py` for the complete, current list. Major undocumented services include:
+> Economy, Banking, Disciplines/Abilities, Exploration, NPC AI, Scripting Triggers, Weather
+> Fronts, Zone Climate, Reputation, Hunts, Marks, Transit, Trading, Traits, Fatigue, Light,
+> Spawn Control, and Character Info, among others.
+
 ### MovementService
 
 ```python
@@ -920,13 +972,42 @@ Quest progression is driven by event subscriptions, not polling. The `QuestServi
 
 ## 15. Subsystem: Combat System
 
-> **Status (2026-07-14):** Combat/PvP is **not built** and has been **set aside to
-> [`wishlist.md`](wishlist.md)** (*Combat, reframed*) as a ready-to-restore spec. The design
-> below is preserved as the reference to restore from. Note that its "Track 2 — Skill
-> Proficiency" progression model has since been **superseded** by the data-driven
+> **Status (v0.151.0):** Combat was built (Sprints 85–88, v0.109–v0.145). **The design below
+> predates implementation and describes a tick-based proposal that was superseded before it was
+> built** — see [`combat_design.md`](combat_design.md) for the actual Scheduled Intent model
+> that shipped. The sections below (Stat Model through Events Emitted) are retained as design
+> history only; do not treat them as a description of current behavior. In particular, its
+> "Track 2 — Skill Proficiency" progression model was superseded by the data-driven
 > **Discipline → Ability** system (Sprints 77–78; see
-> [`discipline_ability_system.md`](discipline_ability_system.md)), which is the seam combat
-> will consume when restored.
+> [`discipline_ability_system.md`](discipline_ability_system.md)), which is what combat actually
+> consumes.
+
+### Actual Combat Design (Scheduled Intent Model)
+
+**See [`combat_design.md`](combat_design.md) — the authoritative, current combat design.** In
+summary, what shipped differs from the tick-based design below in several load-bearing ways:
+
+- **Timing model:** each *action* schedules its own resolution via an individual wind-up +
+  recovery timer (Scheduled Intent), not a shared `combat_tick` re-evaluating every combatant
+  on a fixed rhythm.
+- **Session model:** an **encounter aggregate** (participant relationships + an action
+  submission/resolution pipeline) replaces the `CombatSession` tick-bookkeeping blob described
+  below.
+- **Damage model has changed, and changed again:** health + stamina (reusing the existing
+  fatigue meter, not a separate resource), with immutable `CombatResolutionRecord` resolution
+  traces. Combat wounds (`CombatWound` rows, tracked per body location/severity) shipped in
+  Sprint 88.1 (v0.136.0) but were **removed in v0.151.0** ("simplify combat damage to hp" —
+  dropped persistent wound records, body-part damage locations, and the admin active-wounds
+  API/condition views). As of v0.151.0, combat damage is **plain numeric HP loss** with no
+  wound or body-location tracking at all — note `combat_design.md` §9 still describes wounds as
+  a planned "later layer," which is now doubly stale (they shipped, then were removed).
+- **Additional depth landed in Sprint 88** (v0.143–v0.145, independent of the wounds work above):
+  terrain/cover as narrow defense modifiers, data-authored combo hooks, and an opt-in
+  simultaneous-planning encounter mode for arena/boss fights. Mounted/siege combat and
+  general-purpose formation/range systems remain deliberately deferred (see
+  [`wishlist.md`](wishlist.md)).
+- **NPC behavior stays qualitative** (`NPC.behavior` + optional `NPC.ai.combat_role`), not the
+  `NPCCombatBehavior` enum's decision-tree-per-tick model shown below.
 
 ### Stat Model
 
@@ -1603,16 +1684,34 @@ The simulation harness is also used for **audit log regression testing**: run a 
 
 These are real future concerns. Do not design or build them in the initial implementation. Leave seams (don't actively block them), but don't implement.
 
-- **Party/group system** — following, shared loot, group XP
+> **Status pass (v0.151.0):** several of these have since shipped, at least partially. Kept here
+> for historical context with an implementation note; unmarked items are still genuinely open.
+
+- **Party/group system** — following, shared loot, group XP. **Partial — done/open split:**
+  `follow`/`unfollow` (overt player-to-player following, plus NPC escort quests reusing the same
+  movement cascade) shipped as a lightweight slice of this idea; shared loot and group XP remain
+  unbuilt. See `features/follow/`.
 - **Generic entity/location abstraction** — solve movement/location/visibility once via shared services; shape TBD
 - **Plugin/mod system**
 - **Localization / string tables** — all output text is currently hardcoded English
 - **Content moderation** — player-chosen names, chat content
 - **Horizontal scaling** — single authoritative process for v1; WebSocket affinity becomes a problem at scale
-- **Backup implementation** — backups must cover player state, world state, and audit history; automate before shipping
-- **Monitoring & alerting implementation** — expose connected players, command throughput, scheduler health, DB latency, WebSocket health, world clock status
+- **Backup implementation** — still open. Backups must cover player state, world state, and audit
+  history. The admin console has a "Backups" tab, but it is a disabled shell (verified in
+  `webui/admin/index.html`: "No admin backup endpoint is available yet" — button stays
+  `disabled`); no backup endpoint or automation exists yet.
+- ~~**Monitoring implementation**~~ — **done.** Structured logging with correlation/transaction
+  IDs, a trace-span ring buffer + `GET /admin/trace/<id>`, crash reports, and a database
+  query-observability tool all shipped (Sprints 13, 57, 84; see [`observability.md`](observability.md)).
+- **Alerting implementation** — still open. Expose connected players, command throughput,
+  scheduler health, DB latency, WebSocket health, and world clock status as **alert rules**
+  (distinct from the monitoring/observability data itself, which already exists). The admin
+  console's "Alerts" tab is a disabled shell (verified: "Needs alert rule storage and
+  evaluator."); no rule storage or evaluator exists yet.
 - **Magic resource model** — mana vs. cooldowns; intentionally unresolved
-- **Scripted event sequences** — multi-step cutscenes; not tied to a single command response
+- ~~**Scripted event sequences**~~ — **done.** The Phase A scripting engine (`on`/`when`/`do`
+  triggers, dialogue side effects, weather fronts, NPC behavior) ships multi-step, non-command
+  reactive event sequences; see [`scripting_api.md`](scripting_api.md) and the `worldbuilding` skill.
 - **World reset / seasonal events** — does the world ever fully reset?
 - **PvP griefing prevention** — exit blocking, item hoarding
 - **Anti-cheat** — command rate limiting, exploit detection via audit log
@@ -1637,9 +1736,14 @@ Lower-severity items identified during architecture review. None of these block 
 
 ### Audit Log Retention & Archival Policy
 
-**audit.db grows forever with no stated rotation, compaction, or cold-storage plan.** Needs a policy before it becomes an operational problem.
+**Partially addressed.** Filtered audit **export** shipped (`/admin/audit/export`, v0.133.0 —
+JSON/CSV, same filters as the Audit tab), which covers ad hoc incident/debugging pulls. However,
+`audit.db` still has no stated **rotation, compaction, or automatic cold-storage** plan — export
+is manual/on-demand, not a retention policy. This remains open.
 
-**Action:** Before shipping, define a policy (e.g., archive events older than N days to compressed JSON, keep recent window queryable in audit.db).
+**Action:** Before shipping, define a retention policy (e.g., archive events older than N days
+to compressed JSON, keep recent window queryable in audit.db), reusing the new export path as
+the mechanism.
 
 ### Changeset Staleness & Lifespan Management
 
@@ -1653,11 +1757,18 @@ Lower-severity items identified during architecture review. None of these block 
 
 **Action:** Decide before Builder Mode ships: require explicit acknowledgment of auto-resolvable conflicts, or allow them through silently?
 
-### Engine Code-Schema Migrations
+### ~~Engine Code-Schema Migrations~~ — done
 
-**World Versioning (Section 19) handles content migrations (renamed flags/rooms in world data). It does not cover engine migrations** (e.g., adding a column to Player). A separate tool (Alembic, given the SQLAlchemy stack) is needed and isn't yet specified.
-
-**Action:** Specify a migration strategy for engine-side schema changes (Alembic or equivalent) before any incompatible schema revision.
+**Resolved by Sprint 75** (v0.104.0-era; see `docs/roadmap_completed.md`). Rather than adopting
+Alembic, the engine gained a generic reflection-based **additive-column auto-migration scanner**
+(`db.py`'s `_ensure_additive_columns`): on startup, it diffs each SQLModel's declared columns
+against the live reflected table and issues `ALTER TABLE … ADD COLUMN` for anything missing,
+using the column's actual pydantic field default (not a naive type-zero). It replaced ~14
+hand-written per-column compat shims with one generic mechanism, plus deliberate one-shot data
+migrations for the two cases that don't fit the additive-only contract (a SQLite `PRIMARY KEY`
+column rename via full table rebuild). This covers the additive case load-bearing in practice;
+it deliberately does not cover column drops/renames/type changes, which still require a
+hand-written one-shot migration each (see Sprint 75's `_migrate_room_area_id` for the pattern).
 
 ### Process Supervision
 
