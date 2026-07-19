@@ -4,6 +4,20 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.152.0] - 2026-07-18
+
+### Added
+
+- New `argon_lake` zone: 6 rooms (Northern Shore, The Old Dock, Reed-Thick Shallows, The Pale
+  Isle, Overlook Cliffs, Sunken Hollow) branching south off `whisperwood`'s `flooded_quarry`.
+  Includes a flag-gated first-visit ambient trigger on the Northern Shore and a scenery item
+  (a carved standing stone reading "What is given to Argon is kept.") on the Pale Isle.
+- `docs/wishlist.md`: recorded four deferred Argon Lake mechanics that need new engine
+  primitives before they can be built as content — moon-phase-gated room triggers (the
+  `when:` trigger vocabulary lacks the `moon_phase_is` condition that dialogue/commands
+  already have), a delayed item-reappearance primitive ("the lake keeps what it's given"),
+  an ambient non-combat NPC presence ("The Keeper"), and calendar/event-anchored items.
+
 ## [0.151.4] - 2026-07-18
 
 ### Added

@@ -1994,6 +1994,8 @@ rooms:
     exits:
       - direction: north
         target_room_id: west_trail
+      - direction: south
+        target_room_id: argon_lake_northern_shore
 
   # --- Canopy City (map_z: 1) ---
   - id: elder_tree_hub
@@ -2872,6 +2874,133 @@ rooms:
     exits:
       - direction: east
         target_room_id: old_oak_grove
+
+  # --- Argon Lake (branches south off flooded_quarry) ---
+  - id: argon_lake_northern_shore
+    name: Argon Lake — Northern Shore
+    description: >-
+      A narrow, pebbled shore meets a thick stand of pale willows here, and the lake
+      stretches away to the south, its surface mirror-smooth and faintly luminous under
+      the sky. A thin veil of mist clings to the waterline, carrying the scent of cold
+      metal and wet stone. Even in a stiff breeze, the surface does not stir.
+    map_x: 29
+    map_y: 28
+    map_z: 0
+    zone: argon_lake
+    room_type: wilderness
+    light_level: 1
+    terrain: normal
+    triggers:
+      - on: player_entered
+        when:
+          actor_lacks_flag: [argon_lake_first_visit]
+        do:
+          - narrate_room: "A brief hush passes over the shore, as though the mist itself were listening."
+          - set_flags: [argon_lake_first_visit]
+    exits:
+      - direction: north
+        target_room_id: flooded_quarry
+      - direction: west
+        target_room_id: argon_lake_old_dock
+      - direction: east
+        target_room_id: argon_lake_reed_shallows
+      - direction: south
+        target_room_id: argon_lake_pale_isle
+
+  - id: argon_lake_old_dock
+    name: Argon Lake — The Old Dock
+    description: >-
+      Weathered planks creak underfoot, though the water below stays perfectly still.
+      Rusted iron mooring rings hang empty from the posts, and the far shore is lost in
+      haze. A few feet out, something pale and round floats just beneath the surface —
+      too deep to reach by hand.
+    map_x: 28
+    map_y: 28
+    map_z: 0
+    zone: argon_lake
+    room_type: wilderness
+    light_level: 1
+    terrain: water
+    exits:
+      - direction: east
+        target_room_id: argon_lake_northern_shore
+      - direction: down
+        target_room_id: argon_lake_sunken_hollow
+
+  - id: argon_lake_reed_shallows
+    name: Argon Lake — Reed-Thick Shallows
+    description: >-
+      Tall, silvery reeds crowd the shallows here, their stems swaying even when there is
+      no wind. The water is only knee-deep, but the bottom is soft black mud that pulls at
+      every step. Tiny motes of cold light drift slowly between the stalks like patient
+      fireflies.
+    map_x: 30
+    map_y: 28
+    map_z: 0
+    zone: argon_lake
+    room_type: wilderness
+    light_level: 1
+    terrain: water
+    exits:
+      - direction: west
+        target_room_id: argon_lake_northern_shore
+      - direction: up
+        target_room_id: argon_lake_overlook_cliffs
+
+  - id: argon_lake_pale_isle
+    name: Argon Lake — The Pale Isle
+    description: >-
+      A low, barren islet rises from the lake, its ground littered with pale stones and
+      the broken remains of a fallen standing-stone circle. The mist sits thicker here,
+      and the air feels heavier. At the circle's center, a shallow depression holds water
+      so still it mirrors the sky with unnatural clarity.
+    map_x: 29
+    map_y: 27
+    map_z: 0
+    zone: argon_lake
+    room_type: wilderness
+    light_level: 1
+    terrain: normal
+    exits:
+      - direction: north
+        target_room_id: argon_lake_northern_shore
+
+  - id: argon_lake_overlook_cliffs
+    name: Argon Lake — Overlook Cliffs
+    description: >-
+      A rocky promontory looks down across most of the lake from its eastern edge. The
+      water below appears almost black from this height, broken only by the slow drift of
+      pale motes of light. The wind is stronger up here, yet the lake's surface remains
+      untouched by it.
+    map_x: 30
+    map_y: 28
+    map_z: 1
+    zone: argon_lake
+    room_type: wilderness
+    light_level: 1
+    terrain: normal
+    exits:
+      - direction: down
+        target_room_id: argon_lake_reed_shallows
+
+  - id: argon_lake_sunken_hollow
+    name: Argon Lake — Sunken Hollow
+    description: >-
+      Daylight fades quickly as the lake floor drops into a wide, bowl-shaped hollow.
+      Strange pale shapes lie half-buried in the silt — the curve of what might be bone,
+      the corner of a chest, the fold of old cloth, none of it decayed. Nothing moves, and
+      the silence is absolute.
+    map_x: 28
+    map_y: 28
+    map_z: -1
+    zone: argon_lake
+    room_type: wilderness
+    light_level: 0
+    indoor: true
+    terrain: water
+    exits:
+      - direction: up
+        target_room_id: argon_lake_old_dock
 
 # ---------------------------------------------------------------------------
 # Items
@@ -5954,6 +6083,15 @@ items:
     value: 14
     category: trade_good
 
+  # --- Argon Lake ---
+  - id: argon_lake_carved_stone
+    name: Carved Standing Stone
+    description: >-
+      One of the fallen stones bears an inscription in an old, angular script: "What is
+      given to Argon is kept." The letters are worn smooth but unmistakably deliberate.
+    takeable: false
+    tradeable: false
+
 room_items:
   # Tidal islet (Sprint 54) — reachable only at low tide
   - room_id: tidal_islet
@@ -6645,6 +6783,9 @@ room_items:
     quantity: 1
   - room_id: copper_concourse
     item_id: regulator_boots
+    quantity: 1
+  - room_id: argon_lake_pale_isle
+    item_id: argon_lake_carved_stone
     quantity: 1
 
 dialogue_trees:

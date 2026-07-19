@@ -487,6 +487,39 @@ A "recall" or "known destinations" fast-travel could pair naturally with the tra
 (e.g., a rail pass unlocks quick hops between visited stations). Fits the travel-animation
 idea.
 
+### Argon Lake — deferred zone mechanics 🤔 (2026-07-18)
+
+The `argon_lake` zone (6 rooms branching south off `whisperwood`'s `flooded_quarry`) shipped
+with rooms, exits, and static flavor (a carved standing stone: "What is given to Argon is
+kept."). Four lore hooks from the original design need real mechanics before they can be
+built as content, none of which exist today:
+
+- **Moon-phase room ambience.** `moon_phase_is` already gates dialogue choices and command
+  conditions (Sprint 54), but the room/NPC trigger `when:` vocabulary
+  (`docs/scripting_api.md`) has no equivalent — a room `player_entered` trigger can't
+  currently be gated by moon phase, only by flags/reputation/inventory/presence/combat state.
+  Tier 1: add `moon_phase_is` to the trigger condition registry (small, mirrors the existing
+  celestial condition). Tier 2: an Argon Lake "visions in the water" trigger that only fires
+  under a full moon becomes pure content once that hook exists.
+- **The Memory Effect** (an item or corpse lost in the lake reappears later, unchanged). No
+  engine concept of "an item enters a deferred-return state and re-spawns on a delay" exists;
+  closest primitive today is the scheduler (`SCHEDULED_JOB_DUE`, used by spawns/weather
+  fronts). Tier 1: a generic delayed-reappearance primitive (item id + target room + delay)
+  the scheduler can drive. Tier 2: Argon Lake's rule ("the lake keeps what it's given, then
+  gives it back") is just a policy instance of that primitive.
+- **The Keeper** (an ancient, non-hostile presence in the lake's depths that "collects" rather
+  than hunts). Doesn't fit the existing `behavior` combat-disposition NPC model — it should
+  probably never actually be fought. Needs design work before it's an implementation task:
+  is it an NPC with no combat verbs at all, or a purely narrative/trigger-driven presence with
+  no NPC row?
+- **Time-anchored items** (an item that only reveals its true nature after a specific in-game
+  date or world event). No existing gate does this — `moon_phase_is`/`tide_is` are cyclical,
+  not calendar-date or event-triggered. Would need a new condition keyed off `WorldClock`'s
+  absolute day count or an event-bus flag, in the same family as the moon-phase gap above.
+
+None of these block the zone's static content (already shipped). Revisit once foundation work
+(roadmap Sprints 5–15) clears, per `AGENTS.md`'s "foundation before features" gate.
+
 ### Dynamic area behaviors & spawn policies 💚 (2026-07-08)
 
 Respawn, ecology, and events should be content decisions, not engine constants: one forest
