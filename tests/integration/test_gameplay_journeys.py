@@ -1,5 +1,5 @@
 """Headless integration journeys — the marquee player walkthroughs from
-`docs/feature_testing_guide.md`, driven end-to-end through the real
+`docs/project/feature_testing_guide.md`, driven end-to-end through the real
 `CommandEngine.handle_command` (parse → conditions → rules → handler →
 flush_events → commit) against the shipped `world_content/world.yaml`.
 

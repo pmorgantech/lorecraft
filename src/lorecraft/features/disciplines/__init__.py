@@ -5,7 +5,7 @@ abilities exist, what they cost, and what they grant — feeding the opinion-fre
 Tier 1 mechanism in `engine.game.abilities`. It ultimately replaces both
 `features/skills/` (the flat skill catalog) and
 `features/progression/skill_tree.py`'s node shape with one coherent model — see
-`docs/discipline_ability_system.md`.
+`docs/engine/discipline_ability_system.md`.
 
 Sprint 78 fills in the real feature: the `DisciplineRegistry`/`AbilityRegistry`
 (loaded from `world_content/disciplines.yaml` + `abilities.yaml`), the

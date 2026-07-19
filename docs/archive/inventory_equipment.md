@@ -1,20 +1,20 @@
 # Inventory, Equipment & Item State — Design
 
 > **Status:** Implementation-ready design (2026-07-03; revised same day for Tier 1 alignment).
-> First feature to promote off [`wishlist.md`](../wishlist.md) after the foundation gate.
+> First feature to promote off [`wishlist.md`](../project/wishlist.md) after the foundation gate.
 > Implements the "Inventory & equipment 💚 (foundational)" and the item-state prerequisites for
 > "Character condition", "Exploration depth", and "Quests & puzzles" mechanics.
 >
-> **Tier 1 dependencies (build first — [`engine_core.md`](../engine_core.md)):** this feature is
+> **Tier 1 dependencies (build first — [`engine_core.md`](../engine/engine_core.md)):** this feature is
 > the first Tier 2 consumer of the **item location/ownership model** (`ItemStack` +
 > `ItemLocationService`, engine_core §3.2,
-> [Sprint 16](../roadmap.md#sprint-16--item-locationownership--instance-state)), the **component
+> [Sprint 16](../project/roadmap.md#sprint-16--item-locationownership--instance-state)), the **component
 > registry** (`ItemInstance` + `ComponentDef`, §3.1, Sprint 16), and the **modifier resolver**
-> (§3.5, [Sprint 18](../roadmap.md#sprint-18--modifier-resolution)). Schemas for stacks, instances,
+> (§3.5, [Sprint 18](../project/roadmap.md#sprint-18--modifier-resolution)). Schemas for stacks, instances,
 > holders, and modifiers live in `engine_core.md` and are **not** re-specified here; this doc
 > defines what the inventory/equipment feature *registers and adds on top*.
 >
-> **Pillars this serves** (see [`wishlist.md`](../wishlist.md) → *Design pillars*): equipment
+> **Pillars this serves** (see [`wishlist.md`](../project/wishlist.md) → *Design pillars*): equipment
 > exists to gate **exploration** (light, warmth, carry capacity, skill bonuses) and **trade**
 > (value, quality, containers) at least as much as combat. Design accordingly — combat stat
 > bonuses are one effect among several, not the point.
@@ -47,9 +47,9 @@ Three layers, built in order. Each is independently shippable.
 
 | Layer | Adds | Unblocks |
 |---|---|---|
-| **A. Item definition fields** ([Sprint 22](../roadmap.md#sprint-22--standard-item-components--definition-fields).1) | `slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects` on `Item` | equipment, encumbrance, light |
-| **B. Equipment & encumbrance** ([Sprint 23](../roadmap.md#sprint-23--inventory--equipment).1–.2) | slot-bearing stacks; `wear`/`remove`/`wield`; carry capacity via resolver | passive effects, combat, trade value |
-| **C. Standard components & containers** ([Sprint 22](../roadmap.md#sprint-22--standard-item-components--definition-fields).2 + [Sprint 23](../roadmap.md#sprint-23--inventory--equipment).3) | `durability`/`openable`/`lit`/`container`/`mechanism` components; `open`/`put`/`take from`; nesting | puzzles, durability, lanterns, quest stashes |
+| **A. Item definition fields** ([Sprint 22](../project/roadmap.md#sprint-22--standard-item-components--definition-fields).1) | `slot`, `weight`, `wearable`, `quality`, `max_durability`, `light`, `capacity`, `effects` on `Item` | equipment, encumbrance, light |
+| **B. Equipment & encumbrance** ([Sprint 23](../project/roadmap.md#sprint-23--inventory--equipment).1–.2) | slot-bearing stacks; `wear`/`remove`/`wield`; carry capacity via resolver | passive effects, combat, trade value |
+| **C. Standard components & containers** ([Sprint 22](../project/roadmap.md#sprint-22--standard-item-components--definition-fields).2 + [Sprint 23](../project/roadmap.md#sprint-23--inventory--equipment).3) | `durability`/`openable`/`lit`/`container`/`mechanism` components; `open`/`put`/`take from`; nesting | puzzles, durability, lanterns, quest stashes |
 
 Layer C is the deferred Sprint 2.5 `open`/container/state modeling — the shared prerequisite
 for containers, durability, light-source fuel, and mechanism puzzles.
@@ -77,7 +77,7 @@ class Item(SQLModel, table=True):
 
 `effects` is a list of pluggable **effect descriptors** (registry-driven, mirroring the
 dialogue side-effect registries from
-[Sprint 10](../roadmap.md#sprint-10--extensibility-seams-)), e.g.:
+[Sprint 10](../project/roadmap.md#sprint-10--extensibility-seams-)), e.g.:
 
 ```yaml
 effects:
@@ -181,7 +181,7 @@ Carry capacity is **resolved, never stored** (engine_core §3.5):
 `resolve_for(session, player, "carry_capacity", base=carry_base(strength))` — the equipment
 modifier source contributes `carry_bonus` descriptors automatically. "Cannot pick up more" is
 this feature's move validator on the `player` holder (mechanical, Tier 1 hook); the fatigue
-cost lands with [Sprint 27](../roadmap.md#sprint-27--character-condition-fatigue--sleep) but the
+cost lands with [Sprint 27](../project/roadmap.md#sprint-27--character-condition-fatigue--sleep) but the
 band computation ships here.
 
 ---
@@ -224,7 +224,7 @@ component and stays a fungible quantity-N stack — no instance, no churn.
 
 ---
 
-## 7a. Mechanism & item-combination puzzles ([Sprint 30.2](../roadmap.md#sprint-30--quests--puzzles-depth-))
+## 7a. Mechanism & item-combination puzzles ([Sprint 30.2](../project/roadmap.md#sprint-30--quests--puzzles-depth-))
 
 **Superseded draft note:** the original plan above (an explicit YAML `mechanism:` block with
 arbitrary initial values) shipped simpler — `Item.mechanism_states` (an ordered list of state
@@ -365,12 +365,12 @@ any YAML-declared initial state (engine_core §3.1).
 ## 12. Non-goals (for this design)
 
 - Set bonuses / socketing / enchanting — later, if demand appears.
-- Full crafting/production — see [`wishlist.md`](../wishlist.md) (🤔, deferred).
+- Full crafting/production — see [`wishlist.md`](../project/wishlist.md) (🤔, deferred).
 - Auction house / player shops — trade design, separate.
 - Wear-slot combat balance tuning — deferred to the combat sprints ([`combat_system.md`](../combat_system.md)).
 
 ---
 
-*See [`engine_core.md`](../engine_core.md) §3.1–§3.2/§3.5 for the primitives this feature
-consumes, [`roadmap.md`](../roadmap.md) for the sprint breakdown, and [`wishlist.md`](../wishlist.md)
+*See [`engine_core.md`](../engine/engine_core.md) §3.1–§3.2/§3.5 for the primitives this feature
+consumes, [`roadmap.md`](../project/roadmap.md) for the sprint breakdown, and [`wishlist.md`](../project/wishlist.md)
 for the full mechanics menu this is the first slice of.*

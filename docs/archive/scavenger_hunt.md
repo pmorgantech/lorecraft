@@ -5,7 +5,7 @@ pool of rooms, and players hunt them down for a reward (coins, lore). The simple
 slice of the wishlist's *Instanced minigames / scenarios* idea: pure content on existing
 primitives (scheduler, item spawns, flags/journal, news), **no new engine mechanism**.
 
-Roadmap: [Sprint 48](../roadmap.md#sprint-48--scavenger-hunt-events-design-first).
+Roadmap: [Sprint 48](../project/roadmap.md#sprint-48--scavenger-hunt-events-design-first).
 
 ## What it reuses (nothing new in Tier 1)
 

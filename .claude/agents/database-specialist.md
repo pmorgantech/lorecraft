@@ -52,7 +52,7 @@ only if `.codegraph/` doesn't exist in the repo.
 3. **Query patterns.** N+1 risks in repo methods that loop and query per-item instead of a
    single batched query; missing eager-loading where a caller predictably needs a related
    object; anything that would visibly slow down under the WAL-mode concurrency this project
-   already tuned for (see `docs/roadmap.md`'s performance band, Sprints 35-37) — that
+   already tuned for (see `docs/project/roadmap.md`'s performance band, Sprints 35-37) — that
    investment is wasted if new code reintroduces the same class of problem it fixed.
 4. **Reseed compatibility.** This project has no Alembic — schema changes ship via `world/
    loader.py` + a reseed (`scripts/import_world.py --fresh` / `POST /admin/world/reseed`), not

@@ -1,7 +1,7 @@
 # Traveling weather fronts (scripting engine A5). Loaded by WeatherFrontService, which rolls
 # each dormant storm's `chance` every in-game hour (seeded RNG). On a hit the front applies the
 # `room_effect` across the first zone in `path`, narrates, travels zone->zone every `travel_ticks`
-# hours, and expires after its rolled `duration_ticks`. See docs/scripting_api.md for effects.
+# hours, and expires after its rolled `duration_ticks`. See docs/worldbuilding/scripting_api.md for effects.
 #
 # `climates` adds daily zone-local weather rolls on top of the global clock weather. The
 # weighted seasonal lists below make Whisperwood commonly rainy/misty and Cogsworth mostly

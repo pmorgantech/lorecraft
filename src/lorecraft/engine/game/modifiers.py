@@ -1,6 +1,6 @@
 """Runtime modifier resolution — one resolver for bonuses from many sources.
 
-See docs/engine_core.md §3.5. Generalizes the equipment/traits/terrain/condition/
+See docs/engine/engine_core.md §3.5. Generalizes the equipment/traits/terrain/condition/
 pricing "stack bonuses with a defined order" problem into a single pure function
 plus a pluggable collection registry. Tier 1 registers no sources — the
 active-effect and trait sources (§3.4, Sprint 19) register here once they exist;

@@ -1,6 +1,6 @@
 [project]
 name = "lorecraft"
-version = "0.153.0"
+version = "0.154.0"
 description = "Persistent multiplayer text adventure engine."
 requires-python = ">=3.12"
 dependencies = [
@@ -39,7 +39,7 @@ lorecraft = [
 extend-select = ["TID251"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
-"random".msg = "use GameRng (ctx.rng) — module-level random breaks audit-regression determinism (see docs/engine_core.md §3.6)"
+"random".msg = "use GameRng (ctx.rng) — module-level random breaks audit-regression determinism (see docs/engine/engine_core.md §3.6)"
 
 [tool.ruff.lint.per-file-ignores]
 # The random ban is a src/lorecraft game-determinism invariant (engine_core.md §3.6);

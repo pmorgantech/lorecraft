@@ -7,10 +7,10 @@ primitives every feature builds on, the feature catalog, and the web layer.
 
 > For deep dives beyond this overview: [`combat_design.md`](combat_design.md) (combat),
 > [`discipline_ability_system.md`](discipline_ability_system.md) (progression),
-> [`scripting_api.md`](scripting_api.md) (the `when:`/`do:` vocabulary),
+> [`scripting_api.md`](../worldbuilding/scripting_api.md) (the `when:`/`do:` vocabulary),
 > [`parser_and_commands.md`](parser_and_commands.md) (command parsing and authoring),
-> [`admin_builder_guide.md`](admin_builder_guide.md) (running a server, building content),
-> [`world_building.md`](world_building.md) (YAML authoring reference).
+> [`admin_builder_guide.md`](../worldbuilding/admin_builder_guide.md) (running a server, building content),
+> [`world_building.md`](../worldbuilding/world_building.md) (YAML authoring reference).
 
 ---
 
@@ -270,7 +270,7 @@ exposed to world content as `when:`/`do:` trigger blocks and NPC `behavior:` des
 YAML, plus an actor-less `WorldContext` and a per-tick NPC agency loop (`npc_ai`) so those
 same triggers can fire without a player command. The full, generated vocabulary reference
 (every registered condition/effect, auto-kept in sync with the code) is
-[`scripting_api.md`](scripting_api.md).
+[`scripting_api.md`](../worldbuilding/scripting_api.md).
 
 ---
 
@@ -289,7 +289,7 @@ auth is local username/password with JWT + short-lived WebSocket tickets.
 socket) + an optional Textual TUI, all sharing one auth layer (JWT, role hierarchy:
 observer → moderator → world-builder → superadmin). Routers: `accounts`, `analytics`,
 `audit`, `clock`, `combat`, `economy`, `help`, `issues`, `news`, `observability`, `ops`,
-`players`, `progression`, `world`. See [`admin_builder_guide.md`](admin_builder_guide.md)
+`players`, `progression`, `world`. See [`admin_builder_guide.md`](../worldbuilding/admin_builder_guide.md)
 for the operational tour.
 
 ### WebSocket protocol (player)
@@ -315,7 +315,7 @@ adding a nullable/defaulted column to a model doesn't require a hand-written mig
 
 World versioning uses **changesets**: admins group edits into a named, versioned unit that
 goes through a conflict scan before promotion, so in-flight edits never affect live players
-until explicitly promoted. See [`world_versioning_changesets.md`](world_versioning_changesets.md).
+until explicitly promoted. See [`world_versioning_changesets.md`](../worldbuilding/world_versioning_changesets.md).
 
 Disconnect is not logout — a dropped WebSocket starts a grace period during which the
 character remains in the world (combat pauses for that player's turns); only after the

@@ -1,9 +1,9 @@
 # Split the social/chat feed from the narrative feed — plan (Sprint 45)
 
 **Goal:** chat must never scroll room/quest/action output out of view — the single biggest
-client-UX takeaway ([`wishlist.md`](../wishlist.md) → *Client UI · Separate the communication log from
+client-UX takeaway ([`wishlist.md`](../project/wishlist.md) → *Client UI · Separate the communication log from
 the narrative feed*). Route social/chat messages into their own pane/tab, **as an opt-in player
-preference** (default preserves today's single feed). Roadmap: [Sprint 45](../roadmap.md).
+preference** (default preserves today's single feed). Roadmap: [Sprint 45](../project/roadmap.md).
 
 ## Current state (why there's no signal today)
 

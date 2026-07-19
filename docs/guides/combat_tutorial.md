@@ -216,5 +216,5 @@ Those ideas should only return if playtesting shows a clear need.
 ## Related
 
 - [Player Guide](user_guide.md#combat)
-- [Combat Design](combat_design.md)
-- [Admin Builder Guide](admin_builder_guide.md#combat-implementation-notes)
+- [Combat Design](../engine/combat_design.md)
+- [Admin Builder Guide](../worldbuilding/admin_builder_guide.md#combat-implementation-notes)

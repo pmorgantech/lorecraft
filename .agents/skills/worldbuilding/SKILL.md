@@ -13,10 +13,10 @@ YAML — never hard-code room ids or content into `src/`.
 ## The one rule: the vocabulary is generated — consult it, don't guess
 
 The set of valid `when:` conditions and `do:` effects is **generated from the engine's
-registered descriptors** into [`docs/scripting_api.md`](../../../docs/scripting_api.md).
+registered descriptors** into [`docs/worldbuilding/scripting_api.md`](../../../docs/worldbuilding/scripting_api.md).
 That file is the single source of truth. Before writing a condition or effect name:
 
-1. **Read `docs/scripting_api.md`** and use an exact name from it.
+1. **Read `docs/worldbuilding/scripting_api.md`** and use an exact name from it.
 2. After changing any scripting registration in `src/` (a `register_spec(...)` call),
    regenerate it: `make scripting-docs` (a CI drift-check fails otherwise).
 3. **Validate before shipping:**
@@ -39,7 +39,7 @@ Current vocabulary (verify against the generated doc — this is a snapshot, not
 
 > Some vocabulary registers only when its **feature is enabled** (e.g. reputation's
 > `actor_reputation_at_least`/`adjust_reputation`). If a name is missing from
-> `docs/scripting_api.md`, confirm the owning feature is enabled before assuming it's absent.
+> `docs/worldbuilding/scripting_api.md`, confirm the owning feature is enabled before assuming it's absent.
 
 ## Rooms (`world_content/world.yaml` → `rooms:`)
 
@@ -139,9 +139,9 @@ npcs:
 
 ## World-building quality bars
 
-Use `docs/worldbuilding_guide.md` as the deeper reference when planning zones, shops,
+Use `docs/worldbuilding/worldbuilding_guide.md` as the deeper reference when planning zones, shops,
 quests, or dense room clusters. Naming a new zone? Check
-[`docs/zone_naming.md`](../../../docs/zone_naming.md) first — a bank of evocative names by
+[`docs/worldbuilding/zone_naming.md`](../../../docs/worldbuilding/zone_naming.md) first — a bank of evocative names by
 terrain type in the same register as the shipped zones — before inventing one from scratch.
 The durable rules for Lorecraft content:
 
@@ -244,7 +244,7 @@ in a random area room via the seeded RNG (runs replay faithfully).
 
 ## Workflow for "create an NPC / a scripted event"
 
-1. Read `docs/scripting_api.md` for the exact `when:`/`do:` names you'll use.
+1. Read `docs/worldbuilding/scripting_api.md` for the exact `when:`/`do:` names you'll use.
 2. Add/edit the entry in the right `world_content/*.yaml` (room, npc, dialogue tree, weather,
    spawn). Reuse existing zones (`area_id`) and follow the demo's structure.
 3. `python -m lorecraft.tools.world_cli validate --file world_content/world.yaml` — fix any
@@ -299,7 +299,7 @@ validator won't catch a splice, only a human skim will.
 
 - `src/lorecraft/engine/scripting/` — `vocabulary.py` (descriptors + global catalog),
   `triggers.py` (`on:` event mapping + `TriggerService`), `validator.py` (fail-closed linting),
-  `catalog.py` (renders `docs/scripting_api.md`).
+  `catalog.py` (renders `docs/worldbuilding/scripting_api.md`).
 - `src/lorecraft/features/npc/side_effects.py` + `dialogue_conditions.py` — effect/condition
   registrations (`register_spec` → catalog).
 - `src/lorecraft/features/npc_ai/` (agency), `features/weather/fronts.py` (storms),

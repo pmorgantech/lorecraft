@@ -1,4 +1,4 @@
-> **📦 Archived (2026-07-18).** Merged into [`parser_and_commands.md`](../parser_and_commands.md),
+> **📦 Archived (2026-07-18).** Merged into [`parser_and_commands.md`](../engine/parser_and_commands.md),
 > now the single canonical parser/command-authoring reference. Kept here only for history.
 
 # Command Parser — Integration Guide
@@ -11,7 +11,7 @@ For implementation details and diagnostics, see `src/lorecraft/engine/game/parse
 `tools/parser_diag.py`.
 
 For **authoring new commands**, item disambiguation behaviour, and the Key Gallery test
-room, see **[parser_and_commands.md](../parser_and_commands.md)**.
+room, see **[parser_and_commands.md](../engine/parser_and_commands.md)**.
 
 ---
 

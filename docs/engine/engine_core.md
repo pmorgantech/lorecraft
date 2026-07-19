@@ -7,11 +7,11 @@ kindle_doc_weaver: ignore
 > **Status:** Implementation-ready design (2026-07-03, deep-dive revision). Anchor doc for the
 > question *"where does the engine end and game customization begin?"* — and the **binding
 > specification** for the Tier 1 engine-core band (roadmap
-> [Sprints 16–21](roadmap.md#engine-core-band-tier-1-primitives--sprints-1621)).
+> [Sprints 16–21](../project/roadmap.md#engine-core-band-tier-1-primitives--sprints-1621)).
 >
 > **Directive (product owner, 2026-07-03):** design Tier 1 (engine primitives) now, implement
 > **all or most of Tier 1 before Tier 2** (the opinionated modules). §3 of this doc is the
-> implementation spec; [`roadmap.md`](roadmap.md) sequences the build.
+> implementation spec; [`roadmap.md`](../project/roadmap.md) sequences the build.
 >
 > **How to read this doc as an implementer:** §3.0 gives conventions that apply to every
 > primitive. §3.1–§3.9 are per-primitive specs — schemas, APIs, invariants, migration blast
@@ -50,7 +50,7 @@ it belongs in Tier 1 and should be designed here, not re-invented per sprint.
 
 ## 2. Tier 1 that already exists (foundation band output)
 
-The foundation band ([Sprints 5–15](roadmap.md#sprint-5--error-handling--exception-hierarchy-))
+The foundation band ([Sprints 5–15](../project/roadmap.md#sprint-5--error-handling--exception-hierarchy-))
 already shipped much of the Tier 1 extension surface. **Do not rebuild these** — the new
 primitives compose with them:
 
@@ -65,7 +65,7 @@ primitives compose with them:
   `GameContext` — and filter on `event.payload["job_type"]`. Drives everything time-based
   (combat ticks, restock, corpse decay, transit, meter regen, effect expiry).
 - **Unified command lifecycle + rollback-on-error**
-  ([Sprint 14](roadmap.md#sprint-14--unify-command-lifecycle-)) — one transaction path;
+  ([Sprint 14](../project/roadmap.md#sprint-14--unify-command-lifecycle-)) — one transaction path;
   `GameContext.rollback_state_changes()` undoes half-applied state on a handler crash.
 - **`build_game_context()` factory** (`game/context.py`) — the single `GameContext`
   construction path; both entry points call it.
@@ -79,7 +79,7 @@ primitives compose with them:
 `allowed=True` (deliberate forward-compat for command definitions). That is fine for *availability*
 gates (a typo just makes a command available) but **dangerous for security-relevant gates** (PvP
 consent, "can't loot while in combat"). Rule of thumb, already implied by
-[`archive/feature-registration.md`](archive/feature-registration.md) §"When Rules Matter":
+[`archive/feature-registration.md`](../archive/feature-registration.md) §"When Rules Matter":
 
 - **Availability / UX gate** → a **condition** (fails open, cheap, forward-compatible).
 - **Security / integrity veto** (consent, escrow, anti-dupe) → a **rule** (`RuleEngine` fails
@@ -129,7 +129,7 @@ e.g. the enum already has `PLAYER_DIED`, `PLAYER_RESPAWNED`, `SKILL_IMPROVED`,
 **Registries.** Follow the `game/command_conditions.py` pattern exactly: a module-level
 registry instance, `register(...)` mutators, `get_registry()` accessor. Tier 1 registers
 nothing game-flavored; Tier 2 features register at app lifespan per
-[`archive/feature-registration.md`](archive/feature-registration.md).
+[`archive/feature-registration.md`](../archive/feature-registration.md).
 
 **Determinism.** Any randomness goes through `GameRng` (§3.6). Any iteration whose order
 reaches an event payload, audit record, or WS message must be deterministic (explicit
@@ -152,11 +152,11 @@ unchanged (or updated in the same PR).
 
 ### 3.1 Entity component / instance-state model — Sprint 16 (with §3.2)
 
-*Consumers: [22](roadmap.md#sprint-22--standard-item-components--definition-fields) item state,
-[23](roadmap.md#sprint-23--inventory--equipment) containers/durability,
-[27](roadmap.md#sprint-27--character-condition-fatigue--sleep) condition,
-[30](roadmap.md#sprint-30--quests--puzzles-depth) puzzles,
-[31](roadmap.md#sprint-31--combat-core-services-supporting-system) corpses.*
+*Consumers: [22](../project/roadmap.md#sprint-22--standard-item-components--definition-fields) item state,
+[23](../project/roadmap.md#sprint-23--inventory--equipment) containers/durability,
+[27](../project/roadmap.md#sprint-27--character-condition-fatigue--sleep) condition,
+[30](../project/roadmap.md#sprint-30--quests--puzzles-depth) puzzles,
+[31](../project/roadmap.md#sprint-31--combat-core-services-supporting-system) corpses.*
 
 Per-instance state expressed as **registered components**, not a fixed column set.
 
@@ -173,7 +173,7 @@ class ItemInstance(SQLModel, table=True):
 
 **Decided:** an instance is *identity + state only*. Its **location lives on its `ItemStack`
 row** (§3.2) — never duplicated on the instance. (Supersedes the earlier draft in
-[`inventory_equipment.md`](archive/inventory_equipment.md) §7 that put `owner_type`/`owner_id` and
+[`inventory_equipment.md`](../archive/inventory_equipment.md) §7 that put `owner_type`/`owner_id` and
 typed `durability`/`is_open`/`lit` columns on the instance; those become component state.)
 
 **Component registry** (`game/components.py`):
@@ -196,7 +196,7 @@ def get_registry() -> ComponentRegistry: ...
 ```
 
 - **Tier 1 registers no components.** Durability/openable/lit/container/mechanism are Tier 2
-  ([Sprint 22](roadmap.md#sprint-22--standard-item-components--definition-fields)); a
+  ([Sprint 22](../project/roadmap.md#sprint-22--standard-item-components--definition-fields)); a
   game-specific "rune-charge" registers identically with zero core edits.
 - **Instantiation rule (decided):** an item gets instances iff `requires_instance(item)` at
   spawn time, or a caller explicitly `materialize`s a stack (splitting one unit off a fungible
@@ -271,8 +271,8 @@ class HolderRegistry:
 
 - **Tier 1 registers holder types** `player`, `room`, `container` (a container's `owner_id`
   is an `ItemInstance.id`). Tier 2 registers `shop` and `escrow`
-  ([`trade_economy.md`](archive/trade_economy.md)); a corpse is **not** a holder type — it is an
-  ordinary `container` instance ([`archive/death_resurrection.md`](archive/death_resurrection.md)).
+  ([`trade_economy.md`](../archive/trade_economy.md)); a corpse is **not** a holder type — it is an
+  ordinary `container` instance ([`archive/death_resurrection.md`](../archive/death_resurrection.md)).
 - **Move validators** are the mechanical-capacity hook: the Tier 2 container component
   registers one on `container` (capacity, open/closed); the equipment module registers one on
   `player` for `slot is not None` (valid slot key, slot occupancy, wearability). Tier 1 ships
@@ -337,8 +337,8 @@ unmodified in behavior (single winner, no duplication), plus a two-player give/d
 
 ### 3.3 Meters / vitals — Sprint 19 (with §3.4)
 
-*Consumers: [27](roadmap.md#sprint-27--character-condition-fatigue--sleep) fatigue,
-[31](roadmap.md#sprint-31--combat-core-services-supporting-system) combat HP; latent: hunger,
+*Consumers: [27](../project/roadmap.md#sprint-27--character-condition-fatigue--sleep) fatigue,
+[31](../project/roadmap.md#sprint-31--combat-core-services-supporting-system) combat HP; latent: hunger,
 mana, sanity, warmth.*
 
 Named, bounded resources that drain/restore on the clock — **one primitive**, not one column
@@ -380,7 +380,7 @@ class MeterService:                          # engine-holding schedulable (regis
 
 **New `GameEvent` members:** `METER_DEPLETED` (`entity_type, entity_id, key`),
 `METER_RECOVERED` (crossing back above 0). Death is then Tier 2: the death module listens for
-`METER_DEPLETED` with `key == "hp"` ([`archive/death_resurrection.md`](archive/death_resurrection.md)).
+`METER_DEPLETED` with `key == "hp"` ([`archive/death_resurrection.md`](../archive/death_resurrection.md)).
 
 **HP migration (decided — definitional max stays, runtime current moves):**
 
@@ -399,7 +399,7 @@ class MeterService:                          # engine-holding schedulable (regis
 
 ### 3.4 Timed active effects — Sprint 19
 
-*Consumers: [31](roadmap.md#sprint-31--combat-core-services-supporting-system) "weakened"
+*Consumers: [31](../project/roadmap.md#sprint-31--combat-core-services-supporting-system) "weakened"
 debuff, buffs, temporary traits; latent: potions, spells, weather effects.*
 
 Buffs/debuffs with **clock-driven expiry**. Distinct from equipment effects (last *while
@@ -446,11 +446,11 @@ here, empty by default). Traits contribute their `modifiers` through §3.5.
 
 ### 3.5 Modifier resolution (runtime, stacked, capped) — Sprint 18
 
-*Consumers: [23](roadmap.md#sprint-23--inventory--equipment) equipment effects,
-[24](roadmap.md#sprint-24--traits--skills) traits/skills,
-[25](roadmap.md#sprint-25--exploration-depth) terrain,
-[27](roadmap.md#sprint-27--character-condition-fatigue--sleep) condition,
-[28](roadmap.md#sprint-28--trading--economy) pricing.*
+*Consumers: [23](../project/roadmap.md#sprint-23--inventory--equipment) equipment effects,
+[24](../project/roadmap.md#sprint-24--traits--skills) traits/skills,
+[25](../project/roadmap.md#sprint-25--exploration-depth) terrain,
+[27](../project/roadmap.md#sprint-27--character-condition-fatigue--sleep) condition,
+[28](../project/roadmap.md#sprint-28--trading--economy) pricing.*
 
 One resolver that stacks bonuses from many sources with a **defined order** (resolution of
 §4.d). Generalizes `inventory_equipment.md`'s `EquipmentEffects.resolve()`.
@@ -481,7 +481,7 @@ def resolve(key: str, base: float, modifiers: Iterable[Modifier]) -> float:
 entity_id) -> Iterable[Modifier]`); `resolve_for(session, entity, key, base)` collects from
 all registered sources then calls `resolve`. Tier 1 registers the **active-effect** and
 **trait** sources (§3.4); Tier 2 registers equipment
-([Sprint 23](roadmap.md#sprint-23--inventory--equipment)) and terrain/region sources.
+([Sprint 23](../project/roadmap.md#sprint-23--inventory--equipment)) and terrain/region sources.
 
 **Decided semantics:**
 
@@ -500,10 +500,10 @@ all registered sources then calls `resolve`. Tier 1 registers the **active-effec
 
 ### 3.6 Skill-check + seedable RNG — Sprint 17  ⚠️ audit-regression-critical
 
-*Consumers: [24](roadmap.md#sprint-24--traits--skills) skills,
-[25](roadmap.md#sprint-25--exploration-depth) search,
-[28](roadmap.md#sprint-28--trading--economy) barter/appraise,
-[31–32](roadmap.md#sprint-31--combat-core-services-supporting-system) combat hit/damage.*
+*Consumers: [24](../project/roadmap.md#sprint-24--traits--skills) skills,
+[25](../project/roadmap.md#sprint-25--exploration-depth) search,
+[28](../project/roadmap.md#sprint-28--trading--economy) barter/appraise,
+[31–32](../project/roadmap.md#sprint-31--combat-core-services-supporting-system) combat hit/damage.*
 
 **RNG** (`game/rng.py`):
 
@@ -564,16 +564,16 @@ def skill_check(rng: GameRng, *, base: float, difficulty: int,
 ```
 
 Skill *identity* (which skills exist, use-based improvement) is Tier 2
-([Sprint 24](roadmap.md#sprint-24--traits--skills)); this helper only defines *how a check
+([Sprint 24](../project/roadmap.md#sprint-24--traits--skills)); this helper only defines *how a check
 resolves*, identically for perception, lockpicking, bartering, and combat-to-hit.
 
 ---
 
 ### 3.7 Value / ledger + atomic transfer — Sprint 20
 
-*Consumers: [28](roadmap.md#sprint-28--trading--economy) coins/shops/banks,
-[28](roadmap.md#sprint-28--trading--economy).4 P2P escrow,
-[31](roadmap.md#sprint-31--combat-core-services-supporting-system).2 death coin-loss, robbers.*
+*Consumers: [28](../project/roadmap.md#sprint-28--trading--economy) coins/shops/banks,
+[28](../project/roadmap.md#sprint-28--trading--economy).4 P2P escrow,
+[31](../project/roadmap.md#sprint-31--combat-core-services-supporting-system).2 death coin-loss, robbers.*
 
 A **coin balance as an attribute of any holder** (resolution of §4.c — a corpse holds coins
 with zero special-casing) and one atomic multi-leg exchange for coins *and* items together.
@@ -619,7 +619,7 @@ class LedgerService:
 
 - **Escrow shape (decided):** `offer` moves **nothing** (it records intent); `accept`
   composes ONE `execute_exchange` with both directions as legs — this *is* the accept-time
-  revalidation ([`trade_economy.md`](archive/trade_economy.md) §8). Trade-policy gates (tradeable,
+  revalidation ([`trade_economy.md`](../archive/trade_economy.md) §8). Trade-policy gates (tradeable,
   bound, consent) are rules checked by the trade module **before** the call (§3.0 two-layer
   rule).
 - **Conservation invariant (test as such):** across any `execute_exchange`, the sum of all
@@ -635,7 +635,7 @@ class LedgerService:
 
 ### 3.8 Scheduled mobile entity ("moving room") — Sprint 21
 
-*Consumers: [29](roadmap.md#sprint-29--transit--travel-systems) transit vehicles; latent:
+*Consumers: [29](../project/roadmap.md#sprint-29--transit--travel-systems) transit vehicles; latent:
 wandering NPCs, patrols.*
 
 The generic **route runner**: a state machine advancing an entity along a waypoint route on
@@ -711,7 +711,7 @@ class MobileRouteService:
 
 *Consumers: puzzle timers (a pressure plate opens a gate for 30 s), passive occupant auras
 (slow travel, drain fatigue), weather hazards, lingering zones, farming growth. From
-[`wishlist.md`](wishlist.md) → Timed room effects / auras.*
+[`wishlist.md`](../project/wishlist.md) → Timed room effects / auras.*
 
 **Reuse, don't rebuild.** A room effect is a §3.4 `ActiveEffect` with `entity_type="room"`,
 `entity_id=<room_id>`. `EffectService.apply()` / `active_for()` and the `_on_time_advanced`
@@ -848,17 +848,17 @@ and folded into §3 and into the feature docs:
   not wrapped.
 - **(b) Non-seedable RNG breaks audit-regression** → **resolved** by §3.6: `GameRng` on
   `ctx`/scheduler context, ruff `banned-api` enforcement, determinism contract stated.
-  [`combat_system.md`](combat_system.md) updated to roll through `ctx.rng`.
+  [`combat_system.md`](../combat_system.md) updated to roll through `ctx.rng`.
 - **(c) Coins scalar vs coins-in-corpse** → **resolved** by §3.7: `CoinBalance` on any
   registered holder; no `Player.coins` column; corpse = container instance holder.
-  [`trade_economy.md`](archive/trade_economy.md) + [`archive/death_resurrection.md`](archive/death_resurrection.md)
+  [`trade_economy.md`](../archive/trade_economy.md) + [`archive/death_resurrection.md`](../archive/death_resurrection.md)
   updated.
 - **(d) Modifier stacking undefined** → **resolved** by §3.5: fixed `add → mult → clamp`
   bucket order; percentages are `mult`; feature caps live in the feature.
 - **(e) `equipped_weapon_id` vs `Player.equipment` map** → **resolved** by §3.2: *both*
   drafts are superseded — equipment is a **slot-bearing `ItemStack`**
   (`Location("player", id, slot="main_hand")`); no JSON map, no ad-hoc column.
-  [`combat_system.md`](combat_system.md) + [`inventory_equipment.md`](archive/inventory_equipment.md)
+  [`combat_system.md`](../combat_system.md) + [`inventory_equipment.md`](../archive/inventory_equipment.md)
   updated.
 - **(f) `bound` flag assumed, not designed** → **resolved**: `Item.bound` added in §3.2
   (Sprint 16); enforcement is Tier 2 rules/policy.
@@ -895,16 +895,16 @@ consumer of a primitive stack that 22–29 quietly build. That's the argument fo
 
 ## 6. Build order → sprint mapping (decided 2026-07-03)
 
-The engine-first band is sequenced in [`roadmap.md`](roadmap.md) as:
+The engine-first band is sequenced in [`roadmap.md`](../project/roadmap.md) as:
 
 | Sprint | Spec | Rationale for position |
 |---|---|---|
-| [16](roadmap.md#sprint-16--item-locationownership--instance-state) | §3.1 + §3.2 | highest leverage; most expensive to retrofit; everything item-shaped sits on it |
-| [17](roadmap.md#sprint-17--determinism-seedable-rng--skill-check) | §3.6 | small; keeps audit-regression green for every later random system |
-| [18](roadmap.md#sprint-18--modifier-resolution) | §3.5 | stacking semantics must exist before the first consumer (equipment) |
-| [19](roadmap.md#sprint-19--meters--timed-effects) | §3.3 + §3.4 (+ traits) | HP migration proves the meter primitive; effects need the resolver |
-| [20](roadmap.md#sprint-20--ledger--atomic-transfer) | §3.7 | needs §3.2 locations; before trade/death |
-| [21](roadmap.md#sprint-21--scheduled-moving-entity-moving-room) | §3.8 | most self-contained; only transit consumes it |
+| [16](../project/roadmap.md#sprint-16--item-locationownership--instance-state) | §3.1 + §3.2 | highest leverage; most expensive to retrofit; everything item-shaped sits on it |
+| [17](../project/roadmap.md#sprint-17--determinism-seedable-rng--skill-check) | §3.6 | small; keeps audit-regression green for every later random system |
+| [18](../project/roadmap.md#sprint-18--modifier-resolution) | §3.5 | stacking semantics must exist before the first consumer (equipment) |
+| [19](../project/roadmap.md#sprint-19--meters--timed-effects) | §3.3 + §3.4 (+ traits) | HP migration proves the meter primitive; effects need the resolver |
+| [20](../project/roadmap.md#sprint-20--ledger--atomic-transfer) | §3.7 | needs §3.2 locations; before trade/death |
+| [21](../project/roadmap.md#sprint-21--scheduled-moving-entity-moving-room) | §3.8 | most self-contained; only transit consumes it |
 
 Dependencies within the band: 18 ← nothing; 19 ← 18 (effects emit modifiers); 20 ← 16
 (exchange moves stacks); 21 ← nothing (scheduler only). 17 is independent — it can land
@@ -914,7 +914,7 @@ first or in parallel with 16.
 
 ## 7. Docs organization
 
-The design docs sprawl across [`architecture.md`](architecture.md), [`roadmap.md`](roadmap.md), and
+The design docs sprawl across [`architecture.md`](architecture.md), [`roadmap.md`](../project/roadmap.md), and
 per-feature docs. That's fine **as long as they stay aligned and cross-linked**. Conventions:
 
 - **`roadmap.md` is authoritative for sequencing** and links out to each feature doc from its
@@ -934,8 +934,8 @@ per-feature docs. That's fine **as long as they stay aligned and cross-linked**.
 
 ---
 
-*See [`roadmap.md`](roadmap.md) for sequencing, [`archive/feature-registration.md`](archive/feature-registration.md)
+*See [`roadmap.md`](../project/roadmap.md) for sequencing, [`archive/feature-registration.md`](../archive/feature-registration.md)
 for the registration pattern these primitives extend, and the per-feature docs
-([`inventory_equipment.md`](archive/inventory_equipment.md), [`combat_system.md`](combat_system.md),
-[`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md),
-[`archive/death_resurrection.md`](archive/death_resurrection.md)) for the use cases each primitive serves.*
+([`inventory_equipment.md`](../archive/inventory_equipment.md), [`combat_system.md`](../combat_system.md),
+[`trade_economy.md`](../archive/trade_economy.md), [`transit_systems.md`](../archive/transit_systems.md),
+[`archive/death_resurrection.md`](../archive/death_resurrection.md)) for the use cases each primitive serves.*

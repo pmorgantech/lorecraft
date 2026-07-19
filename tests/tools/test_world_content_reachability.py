@@ -2,7 +2,7 @@
 
 Unlike ``tests/tools/test_validators.py`` (which exercises
 ``check_room_reachability`` against synthetic fixtures), this test runs the
-checker against the *real* world content and asserts the ``docs/roadmap_world.md``
+checker against the *real* world content and asserts the ``docs/worldbuilding/roadmap_world.md``
 Success Criteria: every room is reachable from the seed start room, and no room
 is an accidental orphan.
 

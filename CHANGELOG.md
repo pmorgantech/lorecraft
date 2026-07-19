@@ -4,6 +4,45 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.154.0] - 2026-07-19
+
+### Changed
+
+- Reorganized `docs/` from a 32-file flat directory into type-based subdirectories:
+  `docs/guides/` (player-facing: `user_guide.md`, `combat_tutorial.md`), `docs/engine/`
+  (architecture/implementation references: `architecture.md`, `architecture_tiers.md`,
+  `engine_core.md`, `tier_modules.md`, `combat_design.md`, `discipline_ability_system.md`,
+  `disconnect_handling.md`, `observability.md`, `parser_and_commands.md`,
+  `implementation_guides.md`, the implementation-guide PDF), `docs/worldbuilding/`
+  (world-authoring: `admin_builder_guide.md`, `worldbuilding_guide.md`, `world_building.md`,
+  `dialogue_npcs_quests.md`, `scripting_api.md`, `zone_naming.md`, `windhowl_pass_notes.md`,
+  `lore_ideas.md`, `roadmap_world.md`, `world_versioning_changesets.md`), and `docs/project/`
+  (process/planning: `roadmap.md`, `roadmap_completed.md`, `wishlist.md`, `genuine_gaps.md`,
+  `engine_content_separation.md`, `multi-agent-workflow.md`, `AGENT_ROUTING_AND_METRICS.md`,
+  `e2e_test_plan.md`, `feature_testing_guide.md`, `performance/`). `docs/archive/`,
+  `docs/.archive/`, and the three runtime data files (`issues.yaml`, `news.yaml`,
+  `help_topics.yaml` — referenced by hardcoded path in `config.py`) stay at `docs/` root
+  unchanged.
+- Updated every live cross-reference to the moved files: internal doc-to-doc links (verified
+  by a full link-resolution pass — 439 relative links checked, only 26 pre-existing dead
+  links in already-archived/historical content remain, unchanged from before this move),
+  `AGENTS.md`, 5 skill files, 6 `.claude/agents/*.md` definitions, 4 `.claude/hooks/*.sh`
+  scripts, `README.md` (plus its stale directory-tree diagram and its two links to the
+  already-archived `feature-registration.md`, redirected to the current
+  `FeatureManifest`/`discover_features()` pattern in `AGENTS.md` instead of reviving
+  superseded content), `Makefile` (`scripting-docs` target, `LOAD_TEST_HISTORY`), and ~30
+  `src/`/`tests/`/`world_content/` files with doc-pointer comments. Left `CHANGELOG.md` and
+  `AGENT_IMPROVEMENTS_SUMMARY.md` untouched — dated historical records should keep the paths
+  that were true at the time, not be rewritten to match current layout.
+- Fixed the `kindle-doc-weaver` skill's doc-collection script
+  (`.agents/skills/kindle-doc-weaver/scripts/build_kindle_pdf.py`), which did a non-recursive
+  `docs/*.md` glob — after the subdirectory split that would have silently found zero files.
+  Now walks recursively, explicitly excluding `archive/`/`.archive/` (previously excluded
+  only incidentally, by being unreachable from a flat glob).
+- Regenerated `docs/worldbuilding/scripting_api.md` at its new path and fixed its generator
+  (`engine/scripting/catalog.py`) to link `../archive/scripting_engine_design.md` instead of
+  a same-directory link that no longer resolves.
+
 ## [0.153.0] - 2026-07-18
 
 ### Added

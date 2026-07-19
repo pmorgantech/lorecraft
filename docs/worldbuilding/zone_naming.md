@@ -61,5 +61,5 @@ the existing convention.
 1. Pick (or riff on) a name from the matching terrain group above.
 2. Derive the `zone`/`area_id` key by snake_casing the display name.
 3. Follow `docs/worldbuilding_guide.md` and
-   [`.agents/skills/worldbuilding/SKILL.md`](../.agents/skills/worldbuilding/SKILL.md) for the
+   [`.agents/skills/worldbuilding/SKILL.md`](../../.agents/skills/worldbuilding/SKILL.md) for the
    actual room/NPC/trigger authoring workflow once the zone is named.

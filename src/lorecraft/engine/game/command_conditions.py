@@ -240,7 +240,7 @@ _registry.register_spec(
 # `actor_has_flag`/`actor_lacks_flag` register on BOTH the command and dialogue surfaces with an
 # IDENTICAL descriptor (see features/npc/dialogue_conditions.py) — same capability, so the
 # catalog's idempotent registration keeps one entry. The descriptor must match byte-for-byte on
-# both sides or the generated `docs/scripting_api.md` would depend on import order.
+# both sides or the generated `docs/worldbuilding/scripting_api.md` would depend on import order.
 _registry.register_spec(
     _condition(
         "actor_has_flag",

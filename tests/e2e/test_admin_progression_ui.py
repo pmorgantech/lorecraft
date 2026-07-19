@@ -30,7 +30,7 @@ def test_form_loads_config_seeded_from_world_yaml(page: Any, admin_server: str) 
     admin_login(page, admin_server)
     _open_progression_tab(page)
 
-    # world_content/world.yaml's `progression:` section (see docs/roadmap.md
+    # world_content/world.yaml's `progression:` section (see docs/project/roadmap.md
     # Sprint 73.3) seeds these on world import.
     page.wait_for_function("() => document.getElementById('pg-base').value !== ''")
     assert page.input_value("#pg-base") == "100"

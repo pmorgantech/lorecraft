@@ -9,7 +9,7 @@ LOAD_TEST_PLAYERS ?= 50
 LOAD_TEST_SCENARIO ?= tests/simulation/scenarios/load_world_hunt.json
 LOAD_TEST_OPEN_HUNT ?= harvest_trinkets
 LOAD_TEST_LATENCY_CEILING_MS ?= 3000
-LOAD_TEST_HISTORY ?= docs/performance/load_test_history.jsonl
+LOAD_TEST_HISTORY ?= docs/project/performance/load_test_history.jsonl
 
 .PHONY: test test-cov test-e2e test-simulation load-test-history lint typecheck scripting-docs bootstrap bootstrap-worktree ai-graph ai-graph-init ai-graph-rebuild ai-graph-status
 
@@ -46,7 +46,7 @@ ai-graph-status:
 # Run this in the SAME commit that changes any scripting registration (register_spec) —
 # a CI drift-check (tests/unit/test_scripting_api_doc.py) fails the build if it's stale.
 scripting-docs:
-	$(PYTHON) -m lorecraft.tools.world_cli vocabulary --out docs/scripting_api.md
+	$(PYTHON) -m lorecraft.tools.world_cli vocabulary --out docs/worldbuilding/scripting_api.md
 
 test:
 	$(PYTEST) $(PYTEST_PARALLEL_ARGS)

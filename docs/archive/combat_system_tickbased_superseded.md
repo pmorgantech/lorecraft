@@ -1,13 +1,13 @@
 # Combat System — Design (SUPERSEDED)
 
-> **Status:** SUPERSEDED (2026-07-14 by [`combat_design.md`](../combat_design.md), which adopts
+> **Status:** SUPERSEDED (2026-07-14 by [`combat_design.md`](../engine/combat_design.md), which adopts
 > **Scheduled Intent Combat** instead of tick-based). This document described a **tick-based**
 > model (global `combat_tick` on world-clock rhythm). The new design replaces the core timing
 > model, encounter state structure, and NPC AI approach. Kept for historical reference only.
 >
-> For current combat design, see [`combat_design.md`](../combat_design.md). Roadmap Sprints 85–88.
+> For current combat design, see [`combat_design.md`](../engine/combat_design.md). Roadmap Sprints 85–88.
 >
-> **Tier 1 dependencies ([`engine_core.md`](../engine_core.md)):** hp **meter** (§3.3) — there
+> **Tier 1 dependencies ([`engine_core.md`](../engine/engine_core.md)):** hp **meter** (§3.3) — there
 > are no `current_hp` columns by the time combat lands; **timed effects** (§3.4) for
 > buffs/debuffs; **modifier resolver** (§3.5) for derived attack/defense/armor; **seedable
 > `ctx.rng` + `skill_check`** (§3.6) — module-level `random` is lint-banned; **item
@@ -171,7 +171,7 @@ commands/outcomes of equal rank with `attack`; non-lethal end states set session
 
 - Credit is **participation-based, not last-hit**: each combatant entry accumulated
   `damage_dealt` per target; credit fraction = damage share. XP award (if/when leveling
-  matters — see [`wishlist.md`](../wishlist.md), progression is exploration-led) and loot
+  matters — see [`wishlist.md`](../project/wishlist.md), progression is exploration-led) and loot
   rights both use it.
 - Loot: roll `NPC.loot_table` with `rng`, then `ItemLocationService.spawn()` into the room —
   or into a lootable corpse container if the world enables NPC corpses (same corpse mechanism
@@ -214,8 +214,8 @@ fight, which is why every roll goes through the seeded `rng` and iteration order
 
 ---
 
-*See [`engine_core.md`](../engine_core.md) (primitives), [`death_resurrection.md`](death_resurrection.md)
+*See [`engine_core.md`](../engine/engine_core.md) (primitives), [`death_resurrection.md`](death_resurrection.md)
 (death/respawn policy), [`inventory_equipment.md`](inventory_equipment.md) (weapon/armor as
 effect descriptors), [`feature-registration.md`](feature-registration.md) (module layout), and
-[architecture.md §15](../architecture.md#15-subsystem-combat-system) (original subsystem sketch,
+[architecture.md §15](../engine/architecture.md#15-subsystem-combat-system) (original subsystem sketch,
 superseded where it conflicts with this doc).*

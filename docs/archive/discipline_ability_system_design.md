@@ -1,7 +1,7 @@
 > **📦 Archived (2026-07-18).** Pre-implementation design doc (2026-07-13); Sprints 77–78
 > shipped essentially this design. For the current system — what disciplines/abilities exist,
 > the data schema, the services, and the commands — see
-> [`discipline_ability_system.md`](../discipline_ability_system.md). Kept here for the
+> [`discipline_ability_system.md`](../engine/discipline_ability_system.md). Kept here for the
 > full design rationale (why 5 disciplines, why `skill.<name>` keys were retained, the
 > Tier 1/2 split reasoning) that the current-state doc summarizes but doesn't repeat in full.
 
@@ -9,14 +9,14 @@
 
 > **Status:** Design finalized (2026-07-13), reviewed by Research/Planning, and queued on the
 > roadmap as **Sprint 77** (Tier 1 mechanism) and **Sprint 78** (Tier 2 policy & content) — see
-> those sections in [`roadmap.md`](../roadmap.md). "Finalized" means the design is ready to build,
+> those sections in [`roadmap.md`](../project/roadmap.md). "Finalized" means the design is ready to build,
 > **not** that any of it is implemented yet — all Sprint 77/78 tasks start unchecked.
 > **Origin:** user-provided design brief (2026-07-13) proposing a Discipline → Ability model
 > for MUD progression systems, reworked here to fit Lorecraft's existing Tier 1/2 architecture,
 > data-driven conventions, and **combat-shelved** status.
-> **Companion docs:** [`engine_core.md`](../engine_core.md) (Tier 1/2/3 boundary),
+> **Companion docs:** [`engine_core.md`](../engine/engine_core.md) (Tier 1/2/3 boundary),
 > [`combat_system.md`](combat_system.md) (shelved combat design — see §8, "Combat seam"),
-> [`roadmap.md`](../roadmap.md) §73 design (mechanism/policy split precedent this guide follows),
+> [`roadmap.md`](../project/roadmap.md) §73 design (mechanism/policy split precedent this guide follows),
 > §74 (the skill-tree system this guide replaces).
 
 ---

@@ -228,7 +228,7 @@ register_combat_rules(rules)
 
 ## Example: Combat Feature
 
-See `features/combat/` (planned [Sprint 31](../roadmap.md#sprint-31--combat-core-services-supporting-system)) for the first full consumer of this pattern.
+See `features/combat/` (planned [Sprint 31](../project/roadmap.md#sprint-31--combat-core-services-supporting-system)) for the first full consumer of this pattern.
 
 The pattern ensures:
 - ✅ New features don't touch core engine files

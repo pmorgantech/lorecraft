@@ -8,7 +8,7 @@ kindle_doc_weaver: ignore
 engine-core primitives, the Tier 2 pillar feature band, the tier-split follow-ons), the performance
 & scaling band (35–37), and everything since (39–83) — lives in
 [`roadmap_completed.md`](roadmap_completed.md) with full task-level detail. Per-version detail is in
-[`../CHANGELOG.md`](../CHANGELOG.md); the idea backlog, set-aside combat/PvP specs, and the deferred
+[`../CHANGELOG.md`](../../CHANGELOG.md); the idea backlog, set-aside combat/PvP specs, and the deferred
 multiplayer test pass + concurrency/batching gates are in [`wishlist.md`](wishlist.md).
 
 Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
@@ -20,7 +20,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started.
 `roadmap.md` now tracks remaining work only. The full task-level history for completed Sprints
 1–91 and the 2026-07-16 admin/tooling/body-view tranche lives in
 [`roadmap_completed.md`](roadmap_completed.md), and release-level detail is in
-[`../CHANGELOG.md`](../CHANGELOG.md).
+[`../CHANGELOG.md`](../../CHANGELOG.md).
 
 The latest completed band is archived as Sprints 77–80: the Discipline/Ability replacement for the
 old skills/skill-tree split, the Sprint 79 cleanup pass for its review follow-ups, and the Sprint
@@ -43,11 +43,11 @@ wouldn't help. Revisit the latter only if a *post-WAL* realistic-load test shows
 single-process wall.
 
 **Combat status:** Sprints 85–88 are archived. Combat follows the Scheduled Intent design from
-[`combat_design.md`](combat_design.md) and remains a **supporting** system (Exploration > Trading >
+[`combat_design.md`](../engine/combat_design.md) and remains a **supporting** system (Exploration > Trading >
 Questing > Puzzles). PvP consent and tactical-depth ideas that still need playtest evidence remain
 in [`wishlist.md`](wishlist.md).
 
-Design anchors: [`engine_core.md`](engine_core.md) (the Tier 1/2/3 boundary) and
+Design anchors: [`engine_core.md`](../engine/engine_core.md) (the Tier 1/2/3 boundary) and
 [`wishlist.md`](wishlist.md) (design pillars + idea backlog).
 
 ---

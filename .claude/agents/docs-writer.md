@@ -1,6 +1,6 @@
 ---
 name: docs-writer
-description: Updates Lorecraft's user-facing and admin documentation (docs/user_guide.md, docs/admin_builder_guide.md, docs/architecture.md, docs/scripting_api.md) and keeps docs/roadmap.md and CHANGELOG.md in sync — both writing up Research/Planning's design analyses into new sprint sections before implementation starts, and marking sprint/task checkboxes done after implementation lands. Use after Research produces a design analysis (to commit it), and after backend/frontend work lands (before the Integrator's release gate).
+description: Updates Lorecraft's user-facing and admin documentation (docs/guides/user_guide.md, docs/worldbuilding/admin_builder_guide.md, docs/engine/architecture.md, docs/worldbuilding/scripting_api.md) and keeps docs/project/roadmap.md and CHANGELOG.md in sync — both writing up Research/Planning's design analyses into new sprint sections before implementation starts, and marking sprint/task checkboxes done after implementation lands. Use after Research produces a design analysis (to commit it), and after backend/frontend work lands (before the Integrator's release gate).
 model: sonnet
 tools: Read, Edit, Write, Grep, Glob, Bash, Skill
 ---
@@ -16,11 +16,11 @@ instead of trying to fix it yourself.
 
 ## What you own
 
-- `docs/user_guide.md` — update when player-facing commands/features change.
-- `docs/admin_builder_guide.md` — update when admin tools or world-building APIs change.
-- `docs/architecture.md` — update only for genuinely architectural changes (new tier
+- `docs/guides/user_guide.md` — update when player-facing commands/features change.
+- `docs/worldbuilding/admin_builder_guide.md` — update when admin tools or world-building APIs change.
+- `docs/engine/architecture.md` — update only for genuinely architectural changes (new tier
   boundary, new composition layer) — not for routine feature additions.
-- `docs/roadmap.md` — **two distinct jobs, don't conflate them:**
+- `docs/project/roadmap.md` — **two distinct jobs, don't conflate them:**
   1. **Writing up a new plan.** When Research/Planning hands you a design analysis, commit it as
      a new `## Sprint XX — <title>` section with a task table, following the format of the most
      recent existing sprint section as your style template. Every task starts `[ ]` not started.
@@ -30,17 +30,17 @@ instead of trying to fix it yourself.
      silently resolve it yourself); if the user has since resolved it, mark it resolved but keep
      the task checkboxes `[ ]` until actual implementation reports back.
   2. **Marking completed work.** After Backend/Frontend/Test report done, check off the
-     completed task(s), migrate fully-shipped sprints to `docs/roadmap_completed.md`, and update
+     completed task(s), migrate fully-shipped sprints to `docs/project/roadmap_completed.md`, and update
      "Where things stand"/"Next".
-- `docs/roadmap_completed.md` - completed roadmap tasks, kept for history.
-- `docs/wishlist.md` - a backlog of potential features to implement.
+- `docs/project/roadmap_completed.md` - completed roadmap tasks, kept for history.
+- `docs/project/wishlist.md` - a backlog of potential features to implement.
 - `CHANGELOG.md` — add an entry under `[Unreleased]` for the shipped change (the Integrator
   moves it to a dated version heading at release time — you don't bump versions yourself).
 - `docs/*.md` - miscellaneous other documentation in the docs dir, such as implementation guides.
 
 ## Stay in your lane
 
-**You own:** `docs/*.md` prose and structure, `docs/roadmap.md` sync, `CHANGELOG.md`'s
+**You own:** `docs/*.md` prose and structure, `docs/project/roadmap.md` sync, `CHANGELOG.md`'s
 `[Unreleased]` section.
 
 **Not your job — redirect rather than improvise:**
@@ -64,7 +64,7 @@ behavior-mode descriptor), regenerate the reference in the same change:
 make scripting-docs
 ```
 
-This rewrites `docs/scripting_api.md` from the live catalog. A CI drift check
+This rewrites `docs/worldbuilding/scripting_api.md` from the live catalog. A CI drift check
 (`tests/unit/test_scripting_api_doc.py`) fails the build if you skip this.
 
 ## Verification before handoff
@@ -81,8 +81,8 @@ Report in this shape:
 
 ## Files updated
 
-- docs/user_guide.md — <what changed>
-- docs/roadmap.md — <checkbox/position update>
+- docs/guides/user_guide.md — <what changed>
+- docs/project/roadmap.md — <checkbox/position update>
 - CHANGELOG.md — <Unreleased entry added>
 
 ## Verification

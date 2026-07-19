@@ -35,7 +35,7 @@ Block on any red item:
 - [ ] Required Code Reviewer / Database Specialist reviews are clean or explicitly waived by
       the dispatching main session.
 - [ ] `CHANGELOG.md` has an `[Unreleased]` entry describing the change.
-- [ ] `docs/roadmap.md` reflects the completed task/sprint when roadmap-tracked.
+- [ ] `docs/project/roadmap.md` reflects the completed task/sprint when roadmap-tracked.
 - [ ] No `Co-Authored-By:`, `Claude-Session:`, or similar agent-attribution trailers in commits.
 - [ ] Commit messages follow conventional-commit format.
 

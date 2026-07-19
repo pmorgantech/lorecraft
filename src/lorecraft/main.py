@@ -947,7 +947,7 @@ def _resolve_ws_player_id(websocket: WebSocket, state: AppState) -> str | None:
     an attacker could just send a garbage ticket to bypass them). The legacy
     `?player_id=` param is only consulted when no ticket param was sent at
     all, and only when `Settings.allow_query_player_id` explicitly allows it
-    (default off; see Sprint 4.6 in docs/roadmap.md).
+    (default off; see Sprint 4.6 in docs/project/roadmap.md).
     """
     ticket = websocket.query_params.get("ticket")
     if ticket:

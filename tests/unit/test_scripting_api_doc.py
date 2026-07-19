@@ -1,9 +1,9 @@
 """A0.3 — the generated scripting reference must not drift from the catalog.
 
-`docs/scripting_api.md` is generated from the self-describing descriptors (§8.2). This test is
-the CI drift-check: it re-renders the doc from the live catalog and fails if the committed copy
-differs, so a registration change that forgets to regenerate the doc is caught in CI. Also
-smoke-tests the `vocabulary` CLI command.
+`docs/worldbuilding/scripting_api.md` is generated from the self-describing descriptors
+(§8.2). This test is the CI drift-check: it re-renders the doc from the live catalog and
+fails if the committed copy differs, so a registration change that forgets to regenerate the
+doc is caught in CI. Also smoke-tests the `vocabulary` CLI command.
 """
 
 from __future__ import annotations
@@ -15,14 +15,16 @@ from lorecraft.engine.scripting import catalog
 from lorecraft.engine.scripting.vocabulary import VocabKind
 from lorecraft.tools.world_cli import _load_scripting_vocabulary, main
 
-_DOC = Path(__file__).resolve().parents[2] / "docs" / "scripting_api.md"
+_DOC = (
+    Path(__file__).resolve().parents[2] / "docs" / "worldbuilding" / "scripting_api.md"
+)
 
 
 def test_scripting_api_doc_is_current() -> None:
     expected = catalog.render_markdown(_load_scripting_vocabulary())
     actual = _DOC.read_text(encoding="utf-8")
     assert actual == expected, (
-        "docs/scripting_api.md is stale — run `make scripting-docs` and commit the result."
+        "docs/worldbuilding/scripting_api.md is stale — run `make scripting-docs` and commit the result."
     )
 
 

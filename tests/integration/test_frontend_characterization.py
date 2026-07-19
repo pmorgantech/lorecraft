@@ -10,7 +10,7 @@ Focus areas:
 
 Most tests here construct `Settings(..., allow_query_player_id=True)` — a
 deliberate opt-in to the legacy `?player_id=`/cookie fallback (off by
-default since Sprint 4's login/WS-ticket flow shipped; see docs/roadmap.md
+default since Sprint 4's login/WS-ticket flow shipped; see docs/project/roadmap.md
 4.6), since these tests exercise state resolution directly rather than the
 login UI.
 """

@@ -192,7 +192,7 @@ def simulation_server_factory(
             # VirtualPlayer connects directly with ?player_id= to exercise
             # the raw wire protocol (see virtual_player.py's docstring) —
             # not the login UI, so it needs the legacy fallback explicitly
-            # (off by default since Sprint 4; see docs/roadmap.md 4.6).
+            # (off by default since Sprint 4; see docs/project/roadmap.md 4.6).
             allow_query_player_id=True,
             log_level=os.getenv("LORECRAFT_LOG_LEVEL", "INFO"),
             db_query_log_enabled=_env_bool("LORECRAFT_DB_QUERY_LOG_ENABLED", True),

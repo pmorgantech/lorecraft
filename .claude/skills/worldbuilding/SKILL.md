@@ -11,7 +11,7 @@ Quick orientation (full detail in the canonical file):
 
 - World content is **data** in `world_content/*.yaml`, imported into the game DB. Never bake
   room ids or content into `src/`.
-- The valid `when:` / `do:` vocabulary is **generated** into `docs/scripting_api.md` — consult
+- The valid `when:` / `do:` vocabulary is **generated** into `docs/worldbuilding/scripting_api.md` — consult
   it, use exact names, and `python -m lorecraft.tools.world_cli validate` before committing
   (the validator is fail-closed; the runtime is fail-open, so validation is your safety net).
 - Reactive scripting is the `{on, when?, do}` trigger model on rooms and NPCs
@@ -19,5 +19,5 @@ Quick orientation (full detail in the canonical file):
 - NPCs also support autonomous `ai:` (wander/patrol), dialogue trees with conditional choices,
   and context verbs. Weather lives in `weather_fronts.yaml`, spawns in `spawns.yaml`.
 - After adding a new engine-side descriptor, run `make scripting-docs` in the same commit.
-- Naming a new zone? Check `docs/zone_naming.md` for a bank of evocative names by terrain
+- Naming a new zone? Check `docs/worldbuilding/zone_naming.md` for a bank of evocative names by terrain
   type before inventing one from scratch.

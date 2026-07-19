@@ -29,7 +29,7 @@ capture the before/after picture around a scaling change:
         .venv/bin/python -m pytest -s tests/simulation/test_load.py -m simulation
 
 `-s` surfaces the printed summary; `LORECRAFT_LOAD_TEST_JSON` also writes it as
-machine-readable JSON for a scripted before/after diff. See docs/roadmap.md
+machine-readable JSON for a scripted before/after diff. See docs/project/roadmap.md
 Sprints 37 and 43.
 """
 

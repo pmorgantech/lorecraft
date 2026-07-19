@@ -27,7 +27,7 @@ implementation details.
 - Backend Python logic, API/WebSocket contract design, or fixing a bug in what the endpoint
   returns → **Backend Engineer** (ask for a handoff/contract fix rather than working around it
   in the template).
-- `docs/user_guide.md`/`docs/admin_builder_guide.md` prose → **Docs Writer**.
+- `docs/guides/user_guide.md`/`docs/worldbuilding/admin_builder_guide.md` prose → **Docs Writer**.
 - Dedicated test-authoring as the primary deliverable → **Pytest Writer**.
 - Product scope or design decisions → **Research Planner** or push back to the dispatching main session.
 - Version bumps, `CHANGELOG.md`, merging → **Integrator**.

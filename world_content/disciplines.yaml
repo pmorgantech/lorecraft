@@ -1,6 +1,6 @@
 # Disciplines (Sprint 78) — themed bodies of practice a player specializes in.
 #
-# The non-combat seed taxonomy (docs/discipline_ability_system.md §7): each
+# The non-combat seed taxonomy (docs/engine/discipline_ability_system.md §7): each
 # discipline absorbs the pre-78 skill-tree nodes and flat skills listed below.
 # `governing_stat` mirrors the old SkillDef.governing_stat. `improve_chance` /
 # `max_rank` are the proficiency-growth dials the Tier 1 resolve_proficiency

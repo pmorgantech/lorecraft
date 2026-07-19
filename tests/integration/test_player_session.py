@@ -392,7 +392,7 @@ async def _test_forged_session_cookie_does_not_grant_identity() -> None:
             cookies={PLAYER_SESSION_COOKIE: "not-a-real-token"},
         )
 
-    # allow_query_player_id defaults off since Sprint 4 (docs/roadmap.md
+    # allow_query_player_id defaults off since Sprint 4 (docs/project/roadmap.md
     # 4.6), so an invalid cookie with no legacy fallback available is a
     # hard 401 — not a silent fallback to a dev/test player.
     assert status == 401

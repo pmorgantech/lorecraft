@@ -2,7 +2,7 @@
 # PreToolUse hook (all tools, no matcher). Records a start timestamp keyed to
 # this session so audit-log-post.sh can compute a per-tool-call duration_ms.
 # Paired with audit-log-post.sh — see that script for the log format and the
-# rationale (docs/AGENT_ROUTING_AND_METRICS.md Part 3: metrics baseline for
+# rationale (docs/project/AGENT_ROUTING_AND_METRICS.md Part 3: metrics baseline for
 # free, 0 tokens, fires every time so it's never forgotten).
 #
 # Fail-open by design: never blocks a tool call, never emits permission JSON.

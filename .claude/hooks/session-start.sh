@@ -4,7 +4,7 @@
 # graphify-refresh.sh no-ops cleanly if the `graphify` binary isn't present.
 #
 # Also auto-bootstraps worktrees (isolated venv/db/docs fixtures) in the
-# background — see docs/multi-agent-workflow.md. Launched non-blocking so
+# background — see docs/project/multi-agent-workflow.md. Launched non-blocking so
 # session start never waits on `pip install`; bootstrap-worktree.sh is
 # idempotent, so firing it on every session start is safe and cheap once
 # a worktree is already bootstrapped. Agents poll var/bootstrap-status

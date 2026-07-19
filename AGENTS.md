@@ -6,7 +6,7 @@ The core engine must be very well designed, well tooled, well tested, and intern
 consistent **before** expanding commands or adding combat/trading/PvP. Do not skimp on
 code design and quality.
 
-- `CODE_AUDIT.md` findings + the `docs/roadmap.md` foundation band (Sprints 5–15) are the
+- `CODE_AUDIT.md` findings + the `docs/project/roadmap.md` foundation band (Sprints 5–15) are the
   active work queue. Feature sprints (16+) are gated behind the roadmap's foundation exit criteria.
 - When touching code, leave it more consistent than found: typed errors from
   `lorecraft/errors.py` (once it exists) instead of silent `except Exception`; no new
@@ -21,7 +21,7 @@ The Tier 1/Tier 2/web separation is now physical (branch `tier_split`, CHANGELOG
 - **`src/lorecraft/features/<feature>/`** — Tier 2 optional features (33 packages), each an `__init__.py` exporting a `FeatureManifest` (+ `service.py`/`models.py`/`repo.py`/`commands.py`/`conditions.py`/… as needed). Features may import `engine.*` and each other, **never a web host**. New features: add a package with a manifest; it is auto-discovered by `discover_features()`.
 - **`src/lorecraft/webui/`** — web hosts: `player/` (player UI) + `admin/` (admin console). The third axis, composing engine + features. May import both; the engine may not import web.
 - **Composition layers** (may import both engine and features): `main.py`, `commands/` (shell verbs `meta`/`social`/`news`/`report` + `register_all_commands`), `services/container.py` (`ServiceContainer`).
-- Feature verbs live in `features/<x>/commands.py`; the engine owns the `CommandRegistry` mechanism but provides no verbs. See [`docs/tier_split_refactor.md`](docs/tier_split_refactor.md) — the single source of truth — for the remaining (additive, deliberately deferred) work: the `WebHost`/`presentation.py` feature-UI seam and feature enable/disable tests.
+- Feature verbs live in `features/<x>/commands.py`; the engine owns the `CommandRegistry` mechanism but provides no verbs. See [`docs/archive/tier_split_refactor.md`](docs/archive/tier_split_refactor.md) — the single source of truth — for the remaining (additive, deliberately deferred) work: the `WebHost`/`presentation.py` feature-UI seam and feature enable/disable tests.
 
 ## Multi-agent scaffolding (2026-07-06)
 
@@ -37,7 +37,7 @@ For parallel agent work:
 - **Commits:** Use conventional-commits (`feat:`, `fix:`, `docs:`) — they will feed the automated release workflow.
 - **Version coordination (planned):** A GitHub Action will handle version bumps + CHANGELOG updates on merge to `main`; once it lands, agents stop touching version files. **Until then the manual rule below still applies.**
 
-See [`docs/multi-agent-workflow.md`](docs/multi-agent-workflow.md) for the full design and workflow examples.
+See [`docs/project/multi-agent-workflow.md`](docs/project/multi-agent-workflow.md) for the full design and workflow examples.
 
 ## Context strategy
 
@@ -113,7 +113,7 @@ the DB row _and_ pushes the new value into the running server state in the same 
 change is live with no restart. Not every config value needs this — static world topology or
 one-time content doesn't — but default to asking "would an admin want to change this live?"
 rather than assuming YAML + reseed is always enough. (`economy.regions` is a known gap here —
-currently reseed-only — flagged in `docs/roadmap.md`'s backlog as a candidate for this pattern.)
+currently reseed-only — flagged in `docs/project/roadmap.md`'s backlog as a candidate for this pattern.)
 
 ## Workflow
 
@@ -122,11 +122,11 @@ currently reseed-only — flagged in `docs/roadmap.md`'s backlog as a candidate 
 - Type hint all new features; omit hints only when they would be noisy, brittle, or not easily expressible.
 - Write unit tests for all new features.
 - After new code, run focused verification on modified or new files (see **Testing**).
-- Keep `docs/roadmap.md` updated with current implementation progress (it is the single source of truth for what's done and what's next — mark sprint/task checkboxes and update its "Current position" section rather than a separate status doc).
-- Keep `docs/user_guide.md` and `docs/admin_builder_guide.md` updated.
+- Keep `docs/project/roadmap.md` updated with current implementation progress (it is the single source of truth for what's done and what's next — mark sprint/task checkboxes and update its "Current position" section rather than a separate status doc).
+- Keep `docs/guides/user_guide.md` and `docs/worldbuilding/admin_builder_guide.md` updated.
 - After changing any scripting-vocabulary registration (a `register_spec(...)` call — a new or
   edited condition/effect/behavior-mode descriptor), regenerate the builder-guide reference in
-  the **same commit**: `make scripting-docs` (rewrites `docs/scripting_api.md` from the live
+  the **same commit**: `make scripting-docs` (rewrites `docs/worldbuilding/scripting_api.md` from the live
   catalog). A CI drift-check (`tests/unit/test_scripting_api_doc.py`) fails the build if it's
   stale — same shape as the `make ai-graph` rule.
 - Keep version numbers synchronized in `pyproject.toml` and `src/lorecraft/__init__.py`.
@@ -134,7 +134,7 @@ currently reseed-only — flagged in `docs/roadmap.md`'s backlog as a candidate 
   each completed sprint is a minor bump (0.x.0); a bug fix or docs-only change is a patch
   bump (0.x.y). Update `CHANGELOG.md` in lockstep (move `[Unreleased]` content under the new
   dated version heading, per the existing changelog format).
-  _(Planned: once the release GitHub Action from `docs/multi-agent-workflow.md` lands, version
+  _(Planned: once the release GitHub Action from `docs/project/multi-agent-workflow.md` lands, version
   bumping + CHANGELOG move to merge time and this manual rule is retired. Conventional-commit
   titles — `feat:`/`fix:`/`docs:` — are what the action will read, so use them now.)_
 - Keep commit messages clean: do **not** add `Co-Authored-By:` or `Claude-Session:`

@@ -3,7 +3,7 @@
 Tier 2 registration on top of Sprint 16's ComponentRegistry (engine_core.md
 §3.1). Registers itself at import time — imported for side effects (like
 game/traits.py) from main.py's lifespan. See docs/inventory_equipment.md §7
-and docs/roadmap.md Sprint 30.2 for "mechanism" (levers/dials puzzles).
+and docs/project/roadmap.md Sprint 30.2 for "mechanism" (levers/dials puzzles).
 """
 
 from __future__ import annotations

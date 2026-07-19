@@ -36,7 +36,7 @@ def test_tab_loads_regions_seeded_from_world_yaml(page: Any, admin_server: str) 
     admin_login(page, admin_server)
     _open_economy_tab(page)
 
-    # world_content/world.yaml's `economy.regions:` list (see docs/roadmap.md
+    # world_content/world.yaml's `economy.regions:` list (see docs/project/roadmap.md
     # Sprint 71.2) seeds these four zones on world import, none with a bias.
     assert page.input_value("#eco-mult-ashmoore") == "1"
     assert page.input_value("#eco-mult-cogsworth") == "1.1"

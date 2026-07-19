@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PostToolUse hook (matcher: Write|Edit). Regenerates docs/scripting_api.md
+# PostToolUse hook (matcher: Write|Edit). Regenerates docs/worldbuilding/scripting_api.md
 # immediately after any edit that touches scripting-vocabulary registration
 # (a register_spec(...) call — a new/edited condition, effect, or
 # behavior-mode descriptor), per AGENTS.md's "same commit" rule. Previously
@@ -38,7 +38,7 @@ echo "$now" >"$marker" 2>/dev/null
 
 if command -v make >/dev/null 2>&1 && [ -f "$root/Makefile" ]; then
   if (cd "$root" && make scripting-docs >/dev/null 2>&1); then
-    echo "[scripting-docs] docs/scripting_api.md regenerated (register_spec change in $(basename "$f"))"
+    echo "[scripting-docs] docs/worldbuilding/scripting_api.md regenerated (register_spec change in $(basename "$f"))"
   fi
 fi
 

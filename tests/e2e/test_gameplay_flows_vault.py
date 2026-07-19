@@ -1,7 +1,7 @@
 """Browser e2e test for the locked vault door → key golden path.
 
 Split from test_gameplay_flows.py (2026-07-13) for xdist file-level
-parallelism -- see docs/roadmap.md's playtesting section for the golden path
+parallelism -- see docs/project/roadmap.md's playtesting section for the golden path
 this suite drives (Ashmoore dev world) through a real browser against a real
 live server, to catch regressions ASGI-transport integration tests can't see
 (HTMX swaps, OOB updates, WebSocket-driven panels).

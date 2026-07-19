@@ -18,7 +18,7 @@ Two **independent** axes, deliberately decoupled (2026-07-09 axis split, Sprint 
 - **Color scheme** — colours **only**. Picking a scheme repaints instantly, never reflows
   text. Default `auto` means "use this layout's tuned scheme."
 
-A **Theme** (the term used in `docs/user_guide.md`) is the resolved pair. Never add
+A **Theme** (the term used in `docs/guides/user_guide.md`) is the resolved pair. Never add
 typography rules to a scheme block, and never add colour literals to a layout block —
 that's the one rule this whole architecture exists to enforce.
 
@@ -206,7 +206,7 @@ Three UI entry points, two backing routes:
 4. Add the option to any select loop that iterates `theme_options`/`THEMES` — this is
    automatic (`settings.html` and `topbar_appearance.html` both `{% for opt in
    theme_options %}`), so no template change needed there.
-5. Update the scheme table in `docs/user_guide.md`'s "Themes & Display" section.
+5. Update the scheme table in `docs/guides/user_guide.md`'s "Themes & Display" section.
 6. Test: extend `tests/unit/test_player_preferences.py`'s `TestResolvePreferences`/
    `TestTheme` classes; if it's a rename, add an alias round-trip test like
    `test_legacy_theme_names_alias_to_renamed_schemes`.
@@ -235,7 +235,7 @@ This is the bigger lift — a new arrangement usually means a new bespoke shell 
 6. If it's chronicle-only, verify `frontend.py`'s `mud_layout` guard picks it up via the
    `MUD_CHRONICLE_LAYOUTS` tuple (no separate code path to add).
 7. Add it to any `{% for opt in layout_options %}` loop — automatic, same as schemes.
-8. Update `docs/user_guide.md`'s layout table and `docs/roadmap.md` (a new layout is
+8. Update `docs/guides/user_guide.md`'s layout table and `docs/project/roadmap.md` (a new layout is
    sprint-worthy; see the sprint-numbering convention at the bottom of `roadmap.md`).
 9. Test + verify (see below).
 

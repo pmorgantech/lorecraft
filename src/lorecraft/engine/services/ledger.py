@@ -1,6 +1,6 @@
 """Ledger service — coin balances on any holder + atomic multi-leg exchange.
 
-See docs/engine_core.md §3.7. Stateless per-call (like ItemLocationService):
+See docs/engine/engine_core.md §3.7. Stateless per-call (like ItemLocationService):
 every method takes the caller's Session explicitly. No engine/rng held —
 there is no scheduler-driven sweep for this primitive.
 """

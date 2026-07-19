@@ -77,7 +77,7 @@ Magica's ferries/balloons/rail-with-tickets/travel-animation. **Fully shipped** 
 [`roadmap_completed.md`](roadmap_completed.md#sprint-29--transit--travel-systems)): data-driven
 transit lines (ferry/rail/balloon/caravan) in world YAML, a scheduler-driven vehicle state
 machine (`board`/`disembark`/`schedule`), ticket-item gating, minimap position animation via WS
-push, and weather grounding/delays. Design doc: [`transit_systems.md`](archive/transit_systems.md).
+push, and weather grounding/delays. Design doc: [`transit_systems.md`](../archive/transit_systems.md).
 Remaining gap, if any: more world-content routes — the mechanism itself is done.
 
 ---
@@ -206,7 +206,7 @@ Beyond the basic currency→shops→P2P ladder in _Gameplay systems_ below:
 ### Robbers & highway risk 💚 (ties money, travel & death)
 
 NPC (later PvP) threats that make _carrying_ wealth risky — the stick that makes banks and safe
-transit worth using. Shares its whole core with [`archive/death_resurrection.md`](archive/death_resurrection.md):
+transit worth using. Shares its whole core with [`archive/death_resurrection.md`](../archive/death_resurrection.md):
 **carried is at risk, banked is safe.**
 
 - **Highwaymen / footpads** — hostile NPCs on wilderness roads or in shady districts who can
@@ -214,7 +214,7 @@ transit worth using. Shares its whole core with [`archive/death_resurrection.md`
   carried item); banked money and equipped/bound gear are untouched. Lower stakes than death,
   same lesson.
 - **Avoidance-first, per the pillars** — talk your way out (persuasion), bribe them, sneak past
-  (stealth), or fight ([`combat_system.md`](combat_system.md)) — robbery is an _encounter_, not
+  (stealth), or fight ([`combat_system.md`](../combat_system.md)) — robbery is an _encounter_, not
   an unavoidable tax. Reputation/standing ([Sprint 24](roadmap.md#sprint-24--traits--skills)) can matter (a known friend of the guard,
   or of the thieves).
 - **Risk-tiered geography** — safe roads vs. dangerous shortcuts; the fast route may be the
@@ -227,7 +227,7 @@ transit worth using. Shares its whole core with [`archive/death_resurrection.md`
   related but distinct risk mechanic — now has its own entry under *PvP* below.)
 
 Design intent noted 2026-07-03 (product owner). No dedicated design doc yet; the money-at-risk
-mechanics are specified in [`archive/death_resurrection.md`](archive/death_resurrection.md) §8. Sprint TBD —
+mechanics are specified in [`archive/death_resurrection.md`](../archive/death_resurrection.md) §8. Sprint TBD —
 naturally lands after banks ([Sprint 28](roadmap.md#sprint-28--trading--economy)) and combat ([Sprint 31](roadmap.md#sprint-31--combat-core-services-supporting-system)).
 
 ### Quests & puzzles 💚 ✅ Shipped — Sprint 30 (a few genuine gaps remain)
@@ -275,7 +275,7 @@ it returns:
 #### Combat/PvP historical notes (updated 2026-07-15)
 
 NPC-first combat has moved back onto the active roadmap and now follows
-[`combat_design.md`](combat_design.md): Scheduled Intent actions, health/stamina, stances,
+[`combat_design.md`](../engine/combat_design.md): Scheduled Intent actions, health/stamina, stances,
 guarding, bounded reactions, status effects, simple ranged attacks, qualitative threat, and
 party assistance metadata. The older tick-based combat sketch remains archived for context only.
 
@@ -403,12 +403,12 @@ combat is a supporting system, not the centerpiece). **NPC combat first, PvP lat
 state machine, lets death/respawn mechanics settle before adding player-vs-player. First real
 consumer of the feature-registration pattern.
 
-**Death penalty: resolved** — see [`archive/death_resurrection.md`](archive/death_resurrection.md) (resurrect,
+**Death penalty: resolved** — see [`archive/death_resurrection.md`](../archive/death_resurrection.md) (resurrect,
 lose some carried coins/loot; banked and equipped/bound items are safe).
 
 ### Trading & currency 💚 (on the roadmap)
 
-[Sprint 28](roadmap.md#sprint-28--trading--economy). Designed in [`trade_economy.md`](archive/trade_economy.md): currency (carried `coins` +
+[Sprint 28](roadmap.md#sprint-28--trading--economy). Designed in [`trade_economy.md`](../archive/trade_economy.md): currency (carried `coins` +
 `BankAccount`) → NPC shops → regional pricing → banks → player-to-player trade.
 _Deferred:_ auctions, dynamic global market — until there's real trading volume.
 
@@ -526,7 +526,7 @@ The `windhowl_pass` zone (12 rooms branching east off `ashmoore`'s `ruined_chape
 onward connection yet — "should eventually lead to yet another zone" per the design brief)
 shipped with rooms, 3 NPCs (Elara Voss, Old Man Gale, The Listener), 2 flavor items, and a
 2-stage quest (`windhowl_survivors_crossing`). Full detail and build-status annotations live
-in [`docs/windhowl_pass_notes.md`](windhowl_pass_notes.md); summary of what's blocked:
+in [`docs/windhowl_pass_notes.md`](../worldbuilding/windhowl_pass_notes.md); summary of what's blocked:
 
 - **A wind-intensity system** (Tier 1: an hourly scheduler job + `EventBus` event mirroring
   `WeatherFrontService`'s pattern; Tier 2: the zone's time/weather table — dawn calm through

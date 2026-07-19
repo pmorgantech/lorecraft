@@ -2,7 +2,7 @@
 # PostToolUse hook (all tools, no matcher). Pops the matching start timestamp
 # audit-log-pre.sh pushed (LIFO stack per session), computes duration_ms, and
 # appends one structured line per tool call to var/audit.log. This is the
-# metrics baseline referenced in docs/AGENT_ROUTING_AND_METRICS.md Part 3 —
+# metrics baseline referenced in docs/project/AGENT_ROUTING_AND_METRICS.md Part 3 —
 # zero LLM cost, fires unconditionally so routing/timing data is never
 # missing because an agent forgot to report it.
 #

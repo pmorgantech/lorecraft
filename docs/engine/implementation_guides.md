@@ -6,7 +6,7 @@ kindle_doc_weaver: ignore
 
 This document is a master index of feature design and implementation guides. Guides are organized by status:
 - **Active:** Current implementation guides for work in progress
-- **Set aside:** Design preserved but parked in [`wishlist.md`](wishlist.md) (death/resurrection)
+- **Set aside:** Design preserved but parked in [`wishlist.md`](../project/wishlist.md) (death/resurrection)
 - **Implemented:** Completed sprints with documented implementation patterns (reference/archive)
 - **Foundational:** Architectural docs and patterns for all implementation
 
@@ -30,7 +30,7 @@ These design specs are superseded by what actually shipped — kept as archived 
 
 | Guide | Subsystem | Purpose | Status |
 |-------|-----------|---------|--------|
-| [archive/combat_system_tickbased_superseded.md](archive/combat_system_tickbased_superseded.md) | Combat | Superseded tick-based combat, damage, NPC AI, kill credit, loot | Archived reference only; replaced by `combat_design.md`. |
+| [archive/combat_system_tickbased_superseded.md](../archive/combat_system_tickbased_superseded.md) | Combat | Superseded tick-based combat, damage, NPC AI, kill credit, loot | Archived reference only; replaced by `combat_design.md`. |
 
 ---
 
@@ -40,16 +40,16 @@ These features are fully implemented. The guides below document the design and i
 
 | Guide | Sprint | Subsystem | Purpose | Completion |
 |-------|--------|-----------|---------|-------------|
-| [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | 10, 30 | NPCs, Quests, Dialogue | NPC scheduling, dialogue trees, quest branching (now realized via the Phase A scripting engine) | ✅ Complete |
-| [archive/player_authentication.md](archive/player_authentication.md) | 4 | Player Authentication | JWT flow, WebSocket tickets, account creation, OAuth extensibility | ✅ Complete — archived (design-vs-actual deviations only) |
+| [dialogue_npcs_quests.md](../worldbuilding/dialogue_npcs_quests.md) | 10, 30 | NPCs, Quests, Dialogue | NPC scheduling, dialogue trees, quest branching (now realized via the Phase A scripting engine) | ✅ Complete |
+| [archive/player_authentication.md](../archive/player_authentication.md) | 4 | Player Authentication | JWT flow, WebSocket tickets, account creation, OAuth extensibility | ✅ Complete — archived (design-vs-actual deviations only) |
 | [disconnect_handling.md](disconnect_handling.md) | 13 | Disconnect Handling | Grace periods, reconnection, system-controlled state | ✅ Complete |
-| [world_versioning_changesets.md](world_versioning_changesets.md) | 11 | World Versioning | Changeset lifecycle, Builder Mode, lazy migration | ✅ Complete |
+| [world_versioning_changesets.md](../worldbuilding/world_versioning_changesets.md) | 11 | World Versioning | Changeset lifecycle, Builder Mode, lazy migration | ✅ Complete |
 | [parser_and_commands.md](parser_and_commands.md) | 2–3, 9–10 | Parser & Commands | Parser output model, role vocabulary, command patterns, disambiguation, authoring checklist | ✅ Complete (canonical parser doc — merged from the former `command_parser.md`) |
-| [inventory_equipment.md](archive/inventory_equipment.md) | 22–23 | Inventory & Equipment | Item stacks, slots, encumbrance, modifiers | ✅ Complete |
-| [archive/tooling_infrastructure.md](archive/tooling_infrastructure.md) | 10.5 | Admin Tooling | World CLI, content validators, analytics queries | ✅ Complete — archived |
-| [trade_economy.md](archive/trade_economy.md) | 28 | Trading & Economy | Shops, currency, player-to-player trading, escrow | ✅ Complete |
-| [transit_systems.md](archive/transit_systems.md) | 29 | Transit & Travel | Routes, waypoints, schedules, position interpolation | ✅ Complete |
-| [archive/death_resurrection.md](archive/death_resurrection.md) | 85–88 | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn (shipped as part of combat) | ✅ Complete — archived design doc |
+| [inventory_equipment.md](../archive/inventory_equipment.md) | 22–23 | Inventory & Equipment | Item stacks, slots, encumbrance, modifiers | ✅ Complete |
+| [archive/tooling_infrastructure.md](../archive/tooling_infrastructure.md) | 10.5 | Admin Tooling | World CLI, content validators, analytics queries | ✅ Complete — archived |
+| [trade_economy.md](../archive/trade_economy.md) | 28 | Trading & Economy | Shops, currency, player-to-player trading, escrow | ✅ Complete |
+| [transit_systems.md](../archive/transit_systems.md) | 29 | Transit & Travel | Routes, waypoints, schedules, position interpolation | ✅ Complete |
+| [archive/death_resurrection.md](../archive/death_resurrection.md) | 85–88 | Death & Resurrection | Death mechanics, corpse loot, resurrection spawn (shipped as part of combat) | ✅ Complete — archived design doc |
 | [discipline_ability_system.md](discipline_ability_system.md) | 77–78 | Disciplines & Abilities | Current-state reference: the 5 disciplines, 7 abilities, Tier 1/2 split, commands. Replaced `features/skills/` + `features/progression/skill_tree.py`. | ✅ Complete |
 
 ---
@@ -62,10 +62,10 @@ These documents are not feature-specific but provide foundational patterns, APIs
 |----------|---------|
 | [`architecture.md`](architecture.md) | Comprehensive architecture overview; master design reference for the 5-layer model (Services → Rules → Transactions → Events → Scheduler) |
 | [`engine_core.md`](engine_core.md) | Tier 1 primitive specifications (Sprints 16–21); binding reference for schemas, APIs, invariants, and migration blast-radius tables |
-| [`archive/feature-registration.md`](archive/feature-registration.md) | How to build and register Tier 2 features; shows the pluggable architecture pattern all new features should follow |
+| [`archive/feature-registration.md`](../archive/feature-registration.md) | How to build and register Tier 2 features; shows the pluggable architecture pattern all new features should follow |
 | [`architecture_tiers.md`](architecture_tiers.md) | Explains the Tier 1/2/3 split, current filesystem layout, and how to disable or extend Tier 2 features |
 | [`tier_modules.md`](tier_modules.md) | File-by-file classification of each module as Tier 1, Tier 2, or mixed; quick reference for understanding the codebase |
-| [`roadmap.md`](roadmap.md) | **Single source of truth** for what's done and what's next — sprint-by-sprint task tables, dependency reference, and current status |
+| [`roadmap.md`](../project/roadmap.md) | **Single source of truth** for what's done and what's next — sprint-by-sprint task tables, dependency reference, and current status |
 
 ---
 
@@ -75,10 +75,10 @@ These documents are for players and world builders, not implementers.
 
 | Document | Audience | Purpose |
 |----------|----------|---------|
-| [`user_guide.md`](user_guide.md) | Players | In-game commands, mechanics, how to play |
-| [`admin_builder_guide.md`](admin_builder_guide.md) | World Builders | Admin tools, world design workflow, NPC/quest creation |
-| [`world_building.md`](world_building.md) | World Builders | YAML authoring conventions, schema reference, content patterns |
-| [`wishlist.md`](wishlist.md) | Product Designers | Planned features, design pillars, longer-term ideas |
+| [`user_guide.md`](../guides/user_guide.md) | Players | In-game commands, mechanics, how to play |
+| [`admin_builder_guide.md`](../worldbuilding/admin_builder_guide.md) | World Builders | Admin tools, world design workflow, NPC/quest creation |
+| [`world_building.md`](../worldbuilding/world_building.md) | World Builders | YAML authoring conventions, schema reference, content patterns |
+| [`wishlist.md`](../project/wishlist.md) | Product Designers | Planned features, design pillars, longer-term ideas |
 
 ---
 
@@ -88,9 +88,9 @@ All guides live flat in `docs/`; status is tracked by this index, not by directo
 buckets are:
 
 - **Set aside** — design preserved in the guide, but the feature is parked in
-  [`wishlist.md`](wishlist.md) (combat, death/resurrection).
+  [`wishlist.md`](../project/wishlist.md) (combat, death/resurrection).
 - **Implemented** — the feature has shipped; the guide documents how it was built and stays
-  linked from [`roadmap.md`](roadmap.md) for reference.
+  linked from [`roadmap.md`](../project/roadmap.md) for reference.
 - **Foundational** — architecture/pattern docs that apply to all implementation (below).
 
 ---
@@ -112,7 +112,7 @@ Each implementation guide typically includes:
 
 ### During Implementation
 
-1. **Check [`roadmap.md`](roadmap.md)** — Find which sprint you're working on and its dependencies
+1. **Check [`roadmap.md`](../project/roadmap.md)** — Find which sprint you're working on and its dependencies
 2. **Review [`engine_core.md`](engine_core.md)** — Understand Tier 1 primitives your feature depends on
 3. **Read the feature guide** — Jump to the guide for the sprint you're implementing (linked from this index)
 4. **Follow code examples** — Each guide includes actual Python/SQLModel patterns; adapt them to your implementation
@@ -126,10 +126,10 @@ When reviewing a PR for a completed feature, reference the corresponding guide (
 
 New developers should:
 
-1. Read [`README.md`](../README.md) for a high-level project overview
+1. Read [`README.md`](../../README.md) for a high-level project overview
 2. Read [`architecture.md`](architecture.md) for foundational concepts (Services, Rules, Transactions, Events, Scheduler)
 3. Read [`engine_core.md`](engine_core.md) to understand Tier 1 primitives
-4. Skim [`roadmap.md`](roadmap.md) to understand sprint sequencing and dependencies
+4. Skim [`roadmap.md`](../project/roadmap.md) to understand sprint sequencing and dependencies
 5. Check [`tier_modules.md`](tier_modules.md) to understand the Tier 1/2 split in the actual codebase
 6. Deep-dive into the feature guide for the work you're about to do
 
@@ -138,7 +138,7 @@ New developers should:
 If you're building a custom game or disabling Tier 2 features, start with:
 1. [`architecture_tiers.md`](architecture_tiers.md) — Understand Tier 1 vs. Tier 2
 2. [`tier_modules.md`](tier_modules.md) — See which modules you can safely remove
-3. [`archive/feature-registration.md`](archive/feature-registration.md) — Learn how to add your own Tier 2 features
+3. [`archive/feature-registration.md`](../archive/feature-registration.md) — Learn how to add your own Tier 2 features
 
 ---
 
@@ -149,7 +149,7 @@ If you're building a custom game or disabling Tier 2 features, start with:
 - **[`architecture.md`](architecture.md)** — Master design reference; the "blueprint"
 - **[`engine_core.md`](engine_core.md)** — Tier 1 binding specifications; what never changes
 - **Feature guides** (here) — "Contractor's handbook"; vertical slices with code examples and edge cases
-- **[`roadmap.md`](roadmap.md)** — **Single source of truth**: sprint sequencing, what to build in what order, and what's actually done
+- **[`roadmap.md`](../project/roadmap.md)** — **Single source of truth**: sprint sequencing, what to build in what order, and what's actually done
 
 Think of it this way:
 - Read **architecture.md** to understand *why* the design is structured this way
@@ -176,29 +176,29 @@ Think of it this way:
 
 When adding a new major subsystem:
 
-1. **Design phase:** Update [`roadmap.md`](roadmap.md) to sequence the work and [`engine_core.md`](engine_core.md) or [`archive/feature-registration.md`](archive/feature-registration.md) if it affects Tier 1
+1. **Design phase:** Update [`roadmap.md`](../project/roadmap.md) to sequence the work and [`engine_core.md`](engine_core.md) or [`archive/feature-registration.md`](../archive/feature-registration.md) if it affects Tier 1
 2. **Implementation:** Create a focused implementation guide in `docs/` following the pattern above
 3. **After completion:** Move the guide's row into the *Implemented Guides* table in this index
-4. **Update cross-references:** Ensure [`roadmap.md`](roadmap.md) and this index both point to the guide
+4. **Update cross-references:** Ensure [`roadmap.md`](../project/roadmap.md) and this index both point to the guide
 
 ---
 
 ## Quick Links
 
 **Getting started?** Start here:
-- [`README.md`](../README.md) — Project overview
+- [`README.md`](../../README.md) — Project overview
 - [`architecture.md`](architecture.md) — Design principles
-- [`roadmap.md`](roadmap.md) — What to work on
+- [`roadmap.md`](../project/roadmap.md) — What to work on
 
 **Building a feature?** Refer to:
 - [`engine_core.md`](engine_core.md) — Tier 1 specs you must follow
-- [`archive/feature-registration.md`](archive/feature-registration.md) — How to register your feature
+- [`archive/feature-registration.md`](../archive/feature-registration.md) — How to register your feature
 - Related feature guide — From the "Implemented Guides" section above
 
 **Customizing the engine?** Read:
 - [`architecture_tiers.md`](architecture_tiers.md) — Tier 1/2 split
 - [`tier_modules.md`](tier_modules.md) — Which modules are which tier
-- [`archive/feature-registration.md`](archive/feature-registration.md) — How to add custom features
+- [`archive/feature-registration.md`](../archive/feature-registration.md) — How to add custom features
 
 ---
 

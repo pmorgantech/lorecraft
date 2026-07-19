@@ -1,6 +1,6 @@
 """Scheduled mobile entity ("moving room") — the generic route runner.
 
-See docs/engine_core.md §3.8. A state machine advancing an entity along a
+See docs/engine/engine_core.md §3.8. A state machine advancing an entity along a
 waypoint route on scheduler time, with position interpolation for the
 minimap. Transit line *semantics* (express/local, tickets, doors, weather)
 stay Tier 2 — they plug in via RouteHooks. All timing runs through the

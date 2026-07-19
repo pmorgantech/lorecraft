@@ -135,7 +135,7 @@ AUDIT_TABLE_MODELS: tuple[type[SQLModel], ...] = (AuditEvent, CrashReport)
 logger = logging.getLogger(__name__)
 
 # Sprint 71.2 fold: every legacy ``Room.area_id`` value → the 4-value ``zone``.
-# Read verbatim from docs/roadmap.md §71.2 (the canonical fold table). Ashmoore's
+# Read verbatim from docs/project/roadmap.md §71.2 (the canonical fold table). Ashmoore's
 # three kinds collapse to one zone; connectors fold to the zone they lead toward.
 # Bounded, one-shot historical migration constant (see module docstring).
 _ROOM_AREA_ID_TO_ZONE: Mapping[str, str] = {

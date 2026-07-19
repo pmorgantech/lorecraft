@@ -4,11 +4,11 @@ kindle_doc_weaver: ignore
 
 # Tier 1/Tier 2 Architecture: Current State & Extensibility
 
-> **Status (updated 2026-07-05, Sprint 31.4): the tier split is fully implemented and this document reflects the shipped layout.** Tier 1 lives in `src/lorecraft/engine/` and Tier 2 in `src/lorecraft/features/` (33 feature packages); web hosts are in `src/lorecraft/webui/{player,admin}/`. The engine imports nothing from `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`), features load via manifests / `discover_features()`, and `ServiceContainer` builds conditionally from the enabled set (`tests/integration/test_feature_toggling.py`). See [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md) for the migration history and `CHANGELOG.md` 0.15.0–0.32.0 for what shipped. The layout is summarized in §0 below.
+> **Status (updated 2026-07-05, Sprint 31.4): the tier split is fully implemented and this document reflects the shipped layout.** Tier 1 lives in `src/lorecraft/engine/` and Tier 2 in `src/lorecraft/features/` (33 feature packages); web hosts are in `src/lorecraft/webui/{player,admin}/`. The engine imports nothing from `features/` or `webui/` (enforced by `tests/unit/test_tier_boundaries.py`), features load via manifests / `discover_features()`, and `ServiceContainer` builds conditionally from the enabled set (`tests/integration/test_feature_toggling.py`). See [`archive/tier_split_refactor.md`](../archive/tier_split_refactor.md) for the migration history and `CHANGELOG.md` 0.15.0–0.32.0 for what shipped. The layout is summarized in §0 below.
 >
 > **Purpose:** This document describes how the lorecraft engine is layered into three tiers and how to extend or disable Tier 2 features.
 >
-> **Reference docs:** See [`engine_core.md`](engine_core.md) for authoritative tier definitions and primitive specs; [`archive/feature-registration.md`](archive/feature-registration.md) for the registration pattern; [`tier_modules.md`](tier_modules.md) for a file-by-file tier classification.
+> **Reference docs:** See [`engine_core.md`](engine_core.md) for authoritative tier definitions and primitive specs; [`archive/feature-registration.md`](../archive/feature-registration.md) for the registration pattern; [`tier_modules.md`](tier_modules.md) for a file-by-file tier classification.
 
 ---
 
@@ -87,7 +87,7 @@ register_all_commands(state.registry, state.services, transit=transit_service)  
 wire_features(state, loaded)                                  # each manifest.register_fn(state)
 ```
 
-Each `register_fn(state)` registers that feature's conditions, side effects, modifier/trait sources, holders, and event handlers onto the Tier 1 registries. A feature with only passive definitions (e.g. `weather`) may omit `register_fn`. Because registration is idempotent-by-key for keyed registries and flag-guarded for append registries (see [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md) migration note), the same feature can be wired once per process safely.
+Each `register_fn(state)` registers that feature's conditions, side effects, modifier/trait sources, holders, and event handlers onto the Tier 1 registries. A feature with only passive definitions (e.g. `weather`) may omit `register_fn`. Because registration is idempotent-by-key for keyed registries and flag-guarded for append registries (see [`archive/tier_split_refactor.md`](../archive/tier_split_refactor.md) migration note), the same feature can be wired once per process safely.
 
 **Key point:** enabling/disabling is a single config decision (§5) — the enabled set drives discovery, service construction, command registration, and event wiring together.
 
@@ -148,7 +148,7 @@ What happens when a feature is off:
 
 ## 6. Adding a Custom Tier 2 Feature
 
-**See [`archive/feature-registration.md`](archive/feature-registration.md) for the full pattern.** In brief, create a package under `src/lorecraft/features/<my_feature>/`:
+**See [`archive/feature-registration.md`](../archive/feature-registration.md) for the full pattern.** In brief, create a package under `src/lorecraft/features/<my_feature>/`:
 
 ```python
 # features/my_feature/__init__.py
@@ -225,9 +225,9 @@ See [`tier_modules.md`](tier_modules.md) for a detailed file-by-file breakdown.
 ## 10. References
 
 - **Engine Core Specs:** [`engine_core.md`](engine_core.md) § 1–3 (definitions and Tier 1 primitive specs)
-- **Feature Registration Pattern:** [`archive/feature-registration.md`](archive/feature-registration.md) (how to add Tier 2 features)
+- **Feature Registration Pattern:** [`archive/feature-registration.md`](../archive/feature-registration.md) (how to add Tier 2 features)
 - **Module Classification:** [`tier_modules.md`](tier_modules.md) (file-by-file tier breakdown)
-- **Roadmap:** [`roadmap.md`](roadmap.md) (Tier 1 primitives are Sprints 16–21)
+- **Roadmap:** [`roadmap.md`](../project/roadmap.md) (Tier 1 primitives are Sprints 16–21)
 - **Architecture Overview:** [`architecture.md`](architecture.md) §4 (annotated directory tree, kept in sync with this doc)
 
 ---

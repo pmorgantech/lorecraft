@@ -1,4 +1,4 @@
-"""Warmth resolution (Sprint 27.2, docs/wishlist.md -> Character condition).
+"""Warmth resolution (Sprint 27.2, docs/project/wishlist.md -> Character condition).
 
 Composes the Tier 1 modifier resolver with equipped items' `warmth_bonus`
 effects (game/item_effects.py) -- gives worn clothing a non-combat purpose:

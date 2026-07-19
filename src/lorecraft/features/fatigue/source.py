@@ -4,7 +4,7 @@
 full, drains with travel/encumbrance (services/fatigue.py), restored by
 resting. This module registers the MeterDef and the other half of the
 mechanic -- once stamina runs low it saps every registered skill check via a
-flat `mult` penalty (docs/wishlist.md's "low fatigue penalizes skill
+flat `mult` penalty (docs/project/wishlist.md's "low fatigue penalizes skill
 checks"). Self-registers at import time, imported for side effects from
 main.py, mirroring game/equipment_source.py / game/standard_traits.py.
 """

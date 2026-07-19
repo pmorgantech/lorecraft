@@ -10,7 +10,7 @@
 This checklist tracks implementation progress against `docs/architecture.md` phases.
 The architecture overview remains the design reference; this file is the working status tracker.
 
-**See [`../roadmap.md`](../roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–35).**
+**See [`../roadmap.md`](../project/roadmap.md) for the detailed sprint-by-sprint breakdown (Sprints 1–35).**
 
 > **Current focus (2026-07-03):** Foundation-first, now including production auth.
 > Sprint 4 (player authentication — password login, JWT access/refresh tokens,

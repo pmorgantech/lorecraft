@@ -1,6 +1,6 @@
 """Active-effect service — apply/remove/query plus a scheduler-driven expiry sweep.
 
-See docs/engine_core.md §3.4. Same hybrid shape as MeterService: the class
+See docs/engine/engine_core.md §3.4. Same hybrid shape as MeterService: the class
 holds a game_engine for the expiry sweep, but apply()/remove()/active_for()
 are stateless per-call, taking the caller's Session explicitly.
 """

@@ -1,7 +1,7 @@
 """Browser e2e tests for command-input UX: history recall and error handling.
 
 Split from test_gameplay_flows.py (2026-07-13) for xdist file-level
-parallelism -- see docs/roadmap.md's playtesting section for the golden path
+parallelism -- see docs/project/roadmap.md's playtesting section for the golden path
 this suite drives (Ashmoore dev world) through a real browser against a real
 live server, to catch regressions ASGI-transport integration tests can't see
 (HTMX swaps, OOB updates, WebSocket-driven panels).
@@ -101,7 +101,7 @@ def test_standard_layout_shows_vitals_near_input_and_refreshes_on_command(
     """The compact vitals line (previously classic-layout-only) now renders
     near the command input on every layout, including Standard (the default
     layout create_character lands on) -- and OOB-refreshes after a command,
-    the same as classic already did (see docs/roadmap.md's vitals gap)."""
+    the same as classic already did (see docs/project/roadmap.md's vitals gap)."""
     username = f"e2e_{uuid.uuid4().hex[:8]}"
     create_character(page, live_server, username)
 

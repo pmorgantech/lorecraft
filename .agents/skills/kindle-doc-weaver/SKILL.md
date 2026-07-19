@@ -49,7 +49,7 @@ If no filename is provided, the script creates the next date-based lettered name
 
 ## Master Doc Selection
 
-Treat `docs/roadmap.md` as the current project state: completed and pending sprints. Treat `docs/architecture.md` as the master engine architecture reference. Keep `docs/implementation_guides.md` near the top as the feature implementation guide unless its content is already better represented by roadmap/architecture links.
+Treat `docs/project/roadmap.md` as the current project state: completed and pending sprints. Treat `docs/engine/architecture.md` as the master engine architecture reference. Keep `docs/engine/implementation_guides.md` near the top as the feature implementation guide unless its content is already better represented by roadmap/architecture links.
 
 Ignore player/operator/world-builder guides in the master Kindle bundle. The scanner skips docs with this frontmatter:
 

@@ -1,7 +1,7 @@
 """Password complexity policy for new local-account creation.
 
 Requirements are configuration with defaults (``Settings.password_*``, see
-``docs/wishlist.md`` — Player Creation): length bounds plus optional
+``docs/project/wishlist.md`` — Player Creation): length bounds plus optional
 mixed-case / number / symbol requirements. ``validate_password`` returns a list
 of human-readable failures (empty means the password is acceptable) so both the
 server (as the authoritative backstop) and the browser (for live feedback) can

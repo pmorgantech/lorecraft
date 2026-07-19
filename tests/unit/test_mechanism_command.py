@@ -1,5 +1,5 @@
 """Tests for the "mechanism" component and turn/pull/activate commands
-(Sprint 30.2, docs/roadmap.md Sprint 30)."""
+(Sprint 30.2, docs/project/roadmap.md Sprint 30)."""
 
 from __future__ import annotations
 

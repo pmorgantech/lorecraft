@@ -4,7 +4,7 @@
 > today, not how it was designed. For the full design rationale (why 5 disciplines, why
 > `skill.<name>` modifier keys were retained, the Tier 1/2 split reasoning, the migration from
 > the old flat-skills + skill-tree systems), see the archived
-> [`archive/discipline_ability_system_design.md`](archive/discipline_ability_system_design.md).
+> [`archive/discipline_ability_system_design.md`](../archive/discipline_ability_system_design.md).
 
 Lorecraft's single progression system for non-combat competence: players spend **skill
 points** to train **abilities**, grouped into themed **disciplines**, and grow a

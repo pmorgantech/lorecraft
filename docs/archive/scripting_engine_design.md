@@ -1,6 +1,6 @@
 > **📦 Archived (2026-07-18).** Pre-implementation design proposal; the scripting engine
 > shipped (Phase A). For the current, generated vocabulary reference see
-> [`scripting_api.md`](../scripting_api.md) (`make scripting-docs`). Kept here only for
+> [`scripting_api.md`](../worldbuilding/scripting_api.md) (`make scripting-docs`). Kept here only for
 > design-rationale history.
 
 # Scripting & Behavior Engine — Design Plan
@@ -8,8 +8,8 @@
 **Status:** Design proposal (2026-07-09). Not yet on the roadmap.
 **Scope:** Engine support for scripting NPC behavior and world reactivity (rooms,
 items, containers, zones, weather, ambient events).
-**Companion docs:** [`roadmap_world.md`](../roadmap_world.md) (content that needs this),
-[`engine_core.md`](../engine_core.md) (Tier 1 primitive specs), [`wishlist.md`](../wishlist.md)
+**Companion docs:** [`roadmap_world.md`](../worldbuilding/roadmap_world.md) (content that needs this),
+[`engine_core.md`](../engine/engine_core.md) (Tier 1 primitive specs), [`wishlist.md`](../project/wishlist.md)
 (§ "Scripting layer for builders", § "Dynamic area behaviors").
 
 ---

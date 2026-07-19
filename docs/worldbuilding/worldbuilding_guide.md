@@ -276,7 +276,7 @@ Quests provide narrative depth, problem-solving satisfaction, alternative progre
 - [`docs/zone_naming.md`](zone_naming.md) - Bank of evocative zone names by terrain type
   (forests, lakes/wetlands, deserts, mountains), in the same register as shipped zones
   (`ashmoore`, `whisperwood`, `cogsworth`). Use when naming a new `zone`/`area_id`.
-- [`.agents/skills/worldbuilding/SKILL.md`](../.agents/skills/worldbuilding/SKILL.md) - The
+- [`.agents/skills/worldbuilding/SKILL.md`](../../.agents/skills/worldbuilding/SKILL.md) - The
   authoring workflow: YAML schema, the generated `when:`/`do:` scripting vocabulary, and the
   validator/import loop.
 

@@ -1,6 +1,6 @@
 """Skill-check resolution — one roll-under-d100 helper for every check.
 
-See docs/engine_core.md §3.6. Identical resolution for perception, lockpicking,
+See docs/engine/engine_core.md §3.6. Identical resolution for perception, lockpicking,
 bartering, and combat-to-hit; skill *identity* (which skills exist, use-based
 improvement) is Tier 2 (Sprint 24). This module only defines *how a check
 resolves*, over the seedable GameRng (§3.6) and the modifier resolver (§3.5).

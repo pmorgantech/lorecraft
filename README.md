@@ -2,7 +2,7 @@
 
 A Python-based text adventure engine designed for persistent, multiplayer worlds with a real-time clock, sophisticated world mechanics, and extensible feature system.
 
-**Status:** Foundation and Tier 1 engine primitives complete (Sprints 1–21); Tier 2 feature band in progress (Sprints 22–35). See [`docs/roadmap.md`](docs/roadmap.md) — the single source of truth for what's done and what's next.
+**Status:** Foundation and Tier 1 engine primitives complete (Sprints 1–21); Tier 2 feature band in progress (Sprints 22–35). See [`docs/project/roadmap.md`](docs/project/roadmap.md) — the single source of truth for what's done and what's next.
 
 ---
 
@@ -33,18 +33,18 @@ Lorecraft uses a **three-tier architecture** to separate engine concerns from ga
 
 ### For Implementers: Architecture Documents
 
-- **[`docs/architecture_tiers.md`](docs/architecture_tiers.md)** — Current state of Tier 1/2 split, how features register, how to disable or extend them (START HERE if customizing the engine)
-- **[`docs/tier_modules.md`](docs/tier_modules.md)** — Quick file-by-file classification (Tier 1 vs Tier 2)
-- **[`docs/engine_core.md`](docs/engine_core.md)** — Authoritative specs for Tier 1 primitives and the tier boundary (detailed reference for implementers)
-- **[`docs/feature-registration.md`](docs/feature-registration.md)** — How to add a new Tier 2 feature or extend existing ones
-- **[`docs/architecture.md`](docs/architecture.md)** — Comprehensive subsystem overview (predates tier refactor; still useful reference)
+- **[`docs/engine/architecture_tiers.md`](docs/engine/architecture_tiers.md)** — Current state of Tier 1/2 split, how features register, how to disable or extend them (START HERE if customizing the engine)
+- **[`docs/engine/tier_modules.md`](docs/engine/tier_modules.md)** — Quick file-by-file classification (Tier 1 vs Tier 2)
+- **[`docs/engine/engine_core.md`](docs/engine/engine_core.md)** — Authoritative specs for Tier 1 primitives and the tier boundary (detailed reference for implementers)
+- **[`AGENTS.md`](AGENTS.md)**'s "Codebase structure" section — the current `FeatureManifest` + `discover_features()` pattern for adding a Tier 2 feature
+- **[`docs/engine/architecture.md`](docs/engine/architecture.md)** — Comprehensive subsystem overview (predates tier refactor; still useful reference)
 
 ### For World Builders: User Guides
 
-- **[`docs/user_guide.md`](docs/user_guide.md)** — Player-facing features and commands
-- **[`docs/admin_builder_guide.md`](docs/admin_builder_guide.md)** — How to design worlds in YAML and use the admin tools
-- **[`docs/world_building.md`](docs/world_building.md)** — World authoring conventions
-- **[`docs/feature_testing_guide.md`](docs/feature_testing_guide.md)** — Manual + automated testing reference for implemented features
+- **[`docs/guides/user_guide.md`](docs/guides/user_guide.md)** — Player-facing features and commands
+- **[`docs/worldbuilding/admin_builder_guide.md`](docs/worldbuilding/admin_builder_guide.md)** — How to design worlds in YAML and use the admin tools
+- **[`docs/worldbuilding/world_building.md`](docs/worldbuilding/world_building.md)** — World authoring conventions
+- **[`docs/project/feature_testing_guide.md`](docs/project/feature_testing_guide.md)** — Manual + automated testing reference for implemented features
 
 ---
 
@@ -99,10 +99,11 @@ world_content/
 └── rooms/                   # Room descriptions and layout
 
 docs/
-├── architecture_tiers.md    # Tier 1/2/3 split, extensibility
-├── engine_core.md           # Tier 1 primitives specification
-├── feature-registration.md  # How to build Tier 2 features
-├── roadmap.md               # Sprint breakdown, feature sequence, and current status
+├── engine/                  # architecture_tiers.md, engine_core.md, and other implementation guides
+├── worldbuilding/           # admin_builder_guide.md, world_building.md, scripting_api.md, zone guides
+├── guides/                  # user_guide.md and other player-facing docs
+├── project/                 # roadmap.md, wishlist.md, and process/testing docs
+├── archive/                 # feature-registration.md and other retired/superseded design docs
 └── [many more...]
 ```
 
@@ -118,18 +119,16 @@ To disable a Tier 2 feature (e.g., equipment, trading):
 2. Remove its commands from command registration
 3. Remove its service from `ServiceContainer`
 
-See [`docs/architecture_tiers.md`](docs/architecture_tiers.md) § 5 for detailed guidance.
+See [`docs/engine/architecture_tiers.md`](docs/engine/architecture_tiers.md) § 5 for detailed guidance.
 
 ### Add a Custom Feature
 
-Create a new module that registers with Tier 1 extension points:
-
-1. Define models (if needed)
-2. Create a service and register it
-3. Register commands, conditions, side effects, or rules
-4. Wire it in `main.py`
-
-See [`docs/feature-registration.md`](docs/feature-registration.md) for the complete pattern with examples.
+Add a package under `src/lorecraft/features/<feature>/` exporting a `FeatureManifest`
+(`__init__.py`, plus `service.py`/`models.py`/`repo.py`/`commands.py`/`conditions.py` as
+needed) — it's auto-discovered by `discover_features()`, no manual wiring required. See
+`AGENTS.md`'s "Codebase structure" section and `src/lorecraft/features/manifest.py`/`loader.py`
+for the current registration contract. (`docs/archive/feature-registration.md` documents an
+earlier, now-superseded pre-tier-split pattern — kept for history only, not a how-to.)
 
 ### Customize World Content
 
@@ -139,7 +138,7 @@ Edit `world_content/world.yaml` to define:
 - NPCs (with dialogue trees and behavior)
 - Quests (with stages and conditions)
 
-See [`docs/admin_builder_guide.md`](docs/admin_builder_guide.md) for authoring conventions.
+See [`docs/worldbuilding/admin_builder_guide.md`](docs/worldbuilding/admin_builder_guide.md) for authoring conventions.
 
 ---
 
@@ -209,8 +208,8 @@ See [`LICENSE`](LICENSE).
 - **Tier 2 features (Sprints 22–29):** ✅ Complete. Equipment, traits, skills, exploration, condition (fatigue/sleep), trading, transit.
 - **Remaining (Sprints 30–35):** 📅 Planned. Quests/puzzles depth, combat, PvP.
 
-See [`docs/roadmap.md`](docs/roadmap.md) — the single source of truth for detailed sprint breakdowns and current progress.
+See [`docs/project/roadmap.md`](docs/project/roadmap.md) — the single source of truth for detailed sprint breakdowns and current progress.
 
 ---
 
-**Questions?** Start with [`docs/architecture_tiers.md`](docs/architecture_tiers.md) if customizing the engine, or [`docs/user_guide.md`](docs/user_guide.md) if playing the game.
+**Questions?** Start with [`docs/engine/architecture_tiers.md`](docs/engine/architecture_tiers.md) if customizing the engine, or [`docs/guides/user_guide.md`](docs/guides/user_guide.md) if playing the game.

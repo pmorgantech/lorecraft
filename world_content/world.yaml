@@ -10606,7 +10606,7 @@ quests:
   # --- Windhowl Pass ---
   # Chain 1, "The Survivor's Crossing" — buildable portion only (the escort across
   # High Ridge/Summit Approach/The Crown from the original design needs a wind-event
-  # + escort mechanic that doesn't exist yet; see docs/wishlist.md). This covers
+  # + escort mechanic that doesn't exist yet; see docs/project/wishlist.md). This covers
   # "A Voice in the Wind" and "Read the Wind", ending with Elara handing off the
   # sealed letter rather than an actual escorted crossing.
   - id: windhowl_survivors_crossing

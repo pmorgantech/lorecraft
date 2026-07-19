@@ -118,11 +118,15 @@ def doc_id(path: Path) -> str:
     return slugify(path.stem)
 
 
+EXCLUDED_DIR_NAMES = {"archive", ".archive"}
+
+
 def ordered_docs(docs_dir: Path) -> list[Path]:
     existing = {
         path.name: path
-        for path in docs_dir.glob("*.md")
-        if path.name not in DEFAULT_IGNORED_DOCS
+        for path in docs_dir.rglob("*.md")
+        if not EXCLUDED_DIR_NAMES.intersection(path.relative_to(docs_dir).parts[:-1])
+        and path.name not in DEFAULT_IGNORED_DOCS
         and not ignored_by_frontmatter(read_markdown(path)[0])
     }
     ordered = [existing[name] for name in DEFAULT_DOC_ORDER if name in existing]

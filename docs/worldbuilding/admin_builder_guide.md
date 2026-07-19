@@ -148,7 +148,7 @@ sub-tabs are backed by REST endpoints under `/admin/*`:
 | **Help** | Help-article CRUD (the topics players read via `help topics`/`help <id>`); create form + row-expand inline editor (body/title/category/keywords) + name/title search; every change re-exports `docs/help_topics.yaml` | `GET/POST/PUT/DELETE /admin/help` |
 | **Accounts** | Create/revoke admin accounts, assign roles (superadmin only) | `GET/POST /admin/accounts`, `DELETE /admin/accounts/{username}` |
 | **System** | Request a graceful engine restart (superadmin only, confirm-gated). An **armed?** badge reflects whether the process supervisor is actually watching this instance; if not armed the request is refused (409) rather than silently dropped. The System panel also shows basic health counters and a pending scheduler timeline. See [Restarting the Engine](#restarting-the-engine) | `GET/POST /admin/ops/restart`, `GET /admin/system/health`, `GET /admin/system/scheduler` |
-| **Builder Studio / Console / Alerts** | Scoped destinations for the Admin UI/tooling backlog. These panels are intentionally disabled or link to existing tools until their backend endpoints exist. | See [`roadmap.md`](roadmap.md#admin-ui--tooling-triage-2026-07-16) |
+| **Builder Studio / Console / Alerts** | Scoped destinations for the Admin UI/tooling backlog. These panels are intentionally disabled or link to existing tools until their backend endpoints exist. | See [`roadmap.md`](../project/roadmap.md#admin-ui--tooling-triage-2026-07-16) |
 
 Player moderation actions (teleport, flag edit, freeze/unfreeze, message) live under the
 player detail view reached from the Dashboard — see
@@ -577,7 +577,7 @@ Regional price multipliers and per-item bias (`RegionPricing` —
 `src/lorecraft/features/economy/models.py`, keyed on `Room.zone`) are authored in
 `world_content/world.yaml`'s `economy.regions:` list and YAML-seeded at import — see
 [world_building.md § Regional pricing](world_building.md#regional-pricing) for the full
-authoring format and [trade_economy.md § 5](archive/trade_economy.md#5-regional-pricing-the-transittrade-pairing)
+authoring format and [trade_economy.md § 5](../archive/trade_economy.md#5-regional-pricing-the-transittrade-pairing)
 for how `region_mult`/`bias` feed the buy/sell price formula. Since Sprint 71.2 that table has
 always been read **live** from the DB on every transaction (`features/economy/service.py`); what
 Sprint 76 adds is the missing admin layer to retune it without a reseed, mirroring the
@@ -621,7 +621,7 @@ The skill points a player earns from leveling (above) are spent on **abilities**
 under one of five **disciplines**. This replaced two earlier, separately-vocabularied systems
 (a flat `SkillRegistry` catalog and the Sprint 74 skill tree's `ability.<id>` nodes) with one
 coherent, fully data-driven model — see
-[`discipline_ability_system.md`](discipline_ability_system.md) for the full design. Content
+[`discipline_ability_system.md`](../engine/discipline_ability_system.md) for the full design. Content
 lives in two files, both loaded into in-memory registries at server startup — the same pattern
 as `marks.yaml`/`hunts.yaml`, not the `world.yaml`/DB-import path `ProgressionConfig` uses.
 **No discipline or ability ids are hardcoded in `src/`.**
@@ -839,7 +839,7 @@ python -m lorecraft.tools.world_cli merge --base world_content/world.yaml --thei
 ```
 
 Automated coverage: `pytest tests/tools/test_world_cli.py -v`. Full design rationale:
-**[tooling_infrastructure.md](archive/tooling_infrastructure.md)**.
+**[tooling_infrastructure.md](../archive/tooling_infrastructure.md)**.
 
 ## Publishing World Changes Safely (Changesets)
 
@@ -910,7 +910,7 @@ startup and on every admin mutation:
   `help commands`, `help <command>` — is separate and comes from each command's own
   registered help text, not this file.)
 
-Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](archive/tooling_infrastructure.md#design-decisions)**.
+Design rationale (why YAML, why repo-tracked): **[tooling_infrastructure.md](../archive/tooling_infrastructure.md#design-decisions)**.
 
 ## Analytics
 
@@ -942,7 +942,7 @@ in the structured logs (WARNING over 50 ms) but sit outside the per-command audi
 
 For the logging/correlation-ID side of this (grepping one command's full log trail by
 `transaction_id`, the slow-operation WARNING threshold, and the upcoming per-command trace +
-crash-report tools), see [`observability.md`](observability.md).
+crash-report tools), see [`observability.md`](../engine/observability.md).
 
 **`/quests` vs. `/quest-funnel`:** `quest_completion_counts` (backing `/quests`) reads the audit
 log for `QUEST_COMPLETED` events — but those are only ever queued on the in-process event bus, never
@@ -1284,12 +1284,12 @@ working example.
   row with that player/timestamp — it has the full stack trace. For non-crashing slowness, pull
   the `transaction_id` from a crash row or a structured log line and check
   `GET /admin/trace/<transaction_id>` for the per-operation timing breakdown. Full detail in
-  [`observability.md`](observability.md) (Request tracing / Crash reports sections).
+  [`observability.md`](../engine/observability.md) (Request tracing / Crash reports sections).
 - **Database work feels slow** — inspect the query-span log before adding indexes:
   `python scripts/analyze_query_log.py --log logs/sql_queries.log --database game.db`.
   The report shows slowest statements, most frequent fingerprints, and index candidates from
   observed `WHERE` / `JOIN` / `ORDER BY` clauses. Full detail is in
-  [`observability.md`](observability.md#sql-query-span-logging).
+  [`observability.md`](../engine/observability.md#sql-query-span-logging).
 
 ## Related Docs
 
@@ -1297,14 +1297,14 @@ working example.
 |-----|--------|
 | [world_building.md](world_building.md) | Room/exit/item YAML schema |
 | [dialogue_npcs_quests.md](dialogue_npcs_quests.md) | NPC, dialogue tree, and quest YAML schema |
-| [trade_economy.md](archive/trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
+| [trade_economy.md](../archive/trade_economy.md) | Currency, pricing formula, regional pricing, shops, bartering |
 | [world_versioning_changesets.md](world_versioning_changesets.md) | Changeset lifecycle, builder mode, optimistic locking |
-| [tooling_infrastructure.md](archive/tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
-| [observability.md](observability.md) | Structured logging, correlation IDs, latency instrumentation, request tracing, crash reports, and SQL query-span logs |
-| [player_authentication.md](archive/player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
-| [disconnect_handling.md](disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
-| [architecture.md](architecture.md) | Full system architecture reference |
-| [tier_split_refactor.md](archive/tier_split_refactor.md) | Engine/feature/web-host layout + the `presentation.py` feature-UI design (§1c) |
-| [architecture_tiers.md](architecture_tiers.md) | Tier 1/2/3 model, feature manifests, enabling/disabling features |
-| [roadmap.md](roadmap.md) | Sprint-by-sprint build order and current status |
-| [user_guide.md](user_guide.md) | Player-facing command reference |
+| [tooling_infrastructure.md](../archive/tooling_infrastructure.md) | Design rationale for issues/news/CLI/analytics/linting |
+| [observability.md](../engine/observability.md) | Structured logging, correlation IDs, latency instrumentation, request tracing, crash reports, and SQL query-span logs |
+| [player_authentication.md](../archive/player_authentication.md) | Player session/auth design (JWT cookie, planned full account system) |
+| [disconnect_handling.md](../engine/disconnect_handling.md) | Grace period, reconnect, and scheduler integration details |
+| [architecture.md](../engine/architecture.md) | Full system architecture reference |
+| [tier_split_refactor.md](../archive/tier_split_refactor.md) | Engine/feature/web-host layout + the `presentation.py` feature-UI design (§1c) |
+| [architecture_tiers.md](../engine/architecture_tiers.md) | Tier 1/2/3 model, feature manifests, enabling/disabling features |
+| [roadmap.md](../project/roadmap.md) | Sprint-by-sprint build order and current status |
+| [user_guide.md](../guides/user_guide.md) | Player-facing command reference |

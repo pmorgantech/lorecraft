@@ -14,7 +14,7 @@ Responsibilities:
   *graceful* restart: **SIGTERM the child and wait** for uvicorn's lifespan
   shutdown to run. That clean shutdown is what closes WebSockets with close
   frames so the server's ``begin_grace_period`` fires and players re-attach via
-  the reconnect-grace cushion (docs/roadmap.md Sprint 72.3 design). Then
+  the reconnect-grace cushion (docs/project/roadmap.md Sprint 72.3 design). Then
   **relaunch** — crucially **without** re-running the cold-boot DB reseed, so
   live runtime state survives.
 * On an **unexpected** child exit (a crash), relaunch it too — the general

@@ -31,7 +31,7 @@ commands, conditions, effects.
 - Schema/indexing/normalization decisions for a new or significantly-changed table →
   **Database Specialist**, if that role exists — otherwise flag the tradeoff explicitly in your
   report rather than silently picking an index/normalization strategy.
-- `docs/user_guide.md`/`docs/admin_builder_guide.md` prose → **Docs Writer**.
+- `docs/guides/user_guide.md`/`docs/worldbuilding/admin_builder_guide.md` prose → **Docs Writer**.
 - Any test authoring, coverage backfill, fixture work, or slow-suite split → **Pytest Writer**.
 - Running tests, lint, formatting, typecheck, or reporting pass/fail → **Test & QA**.
 - Version bumps, `CHANGELOG.md`, merging → **Integrator**.

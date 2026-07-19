@@ -2,7 +2,7 @@
 
 This module is the Tier 2 policy home for *what* disciplines and abilities exist —
 the renamed/extended successor to `features/progression/skill_tree.py` (§6.3 of
-`docs/discipline_ability_system.md`). It defines two content records:
+`docs/engine/discipline_ability_system.md`). It defines two content records:
 
 - **`DisciplineDef`** — a themed body of practice (Survival, Subterfuge, …),
   authored in `world_content/disciplines.yaml`. Carries the two proficiency-growth

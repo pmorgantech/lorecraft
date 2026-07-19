@@ -8,7 +8,7 @@ from YAML (`world_content/disciplines.yaml` / `abilities.yaml`); no ability id,
 discipline id, room id, or item id is hardcoded anywhere here. No session, no IO,
 no `GameContext`.
 
-See `docs/discipline_ability_system.md` §2 (the Tier 1 mechanism list) and §5.2
+See `docs/engine/discipline_ability_system.md` §2 (the Tier 1 mechanism list) and §5.2
 (the `usage:` descriptor shape this module's value objects mirror).
 """
 

@@ -1,7 +1,7 @@
 """Render the scripting vocabulary catalog to JSON and a builder-guide Markdown doc.
 
 The catalog is *generated* from the self-describing descriptors so it can never drift from
-the code (``docs/scripting_engine_design.md`` §8.2). These functions are **pure** — they take
+the code (``docs/archive/scripting_engine_design.md`` §8.2). These functions are **pure** — they take
 a :class:`~lorecraft.engine.scripting.vocabulary.Vocabulary` and return text. This module is
 Tier 1 and must not import features; *populating* the global catalog (importing the feature
 registries) is the caller's job — see ``lorecraft.tools.world_cli``'s ``vocabulary`` command,
@@ -65,7 +65,7 @@ def render_markdown(vocab: Vocabulary) -> str:
         "",
         "The declarative vocabulary a builder writes in `when:` / `do:` blocks and NPC",
         "`behavior:` — generated from the self-describing descriptors registered into the",
-        "engine (see [`scripting_engine_design.md`](scripting_engine_design.md) §8). Each entry",
+        "engine (see [`scripting_engine_design.md`](../archive/scripting_engine_design.md) §8). Each entry",
         "shows its subject role, capability signature, and parameters.",
         "",
         f"_{len(entries)} entries._",
@@ -90,7 +90,7 @@ def render_markdown(vocab: Vocabulary) -> str:
             "## ⚠ Capability overlaps",
             "",
             "These names share a capability signature — likely duplicates to reconcile to one",
-            "canonical name (`docs/scripting_engine_design.md` §8.3):",
+            "canonical name (`docs/archive/scripting_engine_design.md` §8.3):",
             "",
         ]
         for group in overlaps:

@@ -5,7 +5,7 @@ across **N simulated players**, or a mix of scenarios concurrently — to drive 
 regression (golden audit-trail diff), load/throughput (p50/p95/p99), and soak/fuzz (surface
 crashes & contention). A consolidation, not new infrastructure: almost every piece already exists.
 
-Roadmap: [Sprint 43](../roadmap.md). Supersedes the Backlog `lorecraft.tools.simulation` CLI note and
+Roadmap: [Sprint 43](../project/roadmap.md). Supersedes the Backlog `lorecraft.tools.simulation` CLI note and
 extends the Sprint 37.3 load test.
 
 ## Why this is mostly a consolidation

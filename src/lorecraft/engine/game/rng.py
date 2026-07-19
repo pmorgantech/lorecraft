@@ -1,6 +1,6 @@
 """The one sanctioned source of randomness in src/lorecraft.
 
-See docs/engine_core.md §3.6: any randomness reaching an event payload, audit
+See docs/engine/engine_core.md §3.6: any randomness reaching an event payload, audit
 record, or WS message must be deterministic when seeded, so the simulation
 harness's audit-regression diff (tests/simulation/test_audit_regression.py)
 stays meaningful. `random` is banned everywhere else in src/ via

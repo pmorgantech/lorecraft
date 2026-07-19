@@ -97,7 +97,7 @@ class Settings:
     # tests/simulation/test_audit_regression.py's determinism contract).
     rng_seed: int | None = None
     # Password complexity policy enforced when a *new* local account credential
-    # is created (docs/wishlist.md — Player Creation). Not applied to logins of
+    # is created (docs/project/wishlist.md — Player Creation). Not applied to logins of
     # existing accounts. Configurable via LORECRAFT_PASSWORD_* env vars.
     password_min_length: int = 8
     password_max_length: int = 32

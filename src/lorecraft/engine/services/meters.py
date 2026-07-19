@@ -1,6 +1,6 @@
 """Meter service — command-path get/adjust API plus a scheduler-driven regen sweep.
 
-See docs/engine_core.md §3.3. Hybrid shape (like SchedulerService): the
+See docs/engine/engine_core.md §3.3. Hybrid shape (like SchedulerService): the
 class holds a game_engine for the regen sweep, but get()/adjust()/
 set_current()/recompute_maximum() are stateless per-call, taking the
 caller's Session explicitly (command-path code, e.g. Sprint 27 fatigue

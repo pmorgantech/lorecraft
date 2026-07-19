@@ -7,7 +7,7 @@ kindle_doc_weaver: ignore
 > **Historical record (last extended 2026-07-16, through v0.145.1).** The active, forward-looking
 > roadmap is [`roadmap.md`](roadmap.md) — a concise list of *remaining* work. This file preserves
 > the full detail of **completed** sprints (first archived 2026-07-05 so the active roadmap stays
-> readable). Per-version detail also lives in [`../CHANGELOG.md`](../CHANGELOG.md).
+> readable). Per-version detail also lives in [`../CHANGELOG.md`](../../CHANGELOG.md).
 >
 > Covers **every completed sprint: 1–34** (foundation hardening, Tier 1 engine-core primitives, the
 > Tier 2 pillar feature band, tier-split follow-ons) **+ the Foundation exit criteria, 35–37** (the
@@ -97,7 +97,7 @@ safe player editing, richer monitoring, and the first read-only world/runtime in
 ## Sprints 70–84 — QoL, admin/world cleanup, progression, disciplines, zone climate, Ashmoore shops, hunts, and database observability (v0.78.0–v0.104.0, archived 2026-07-14)
 
 > Moved here from the active roadmap on 2026-07-14 once Sprint 80 closed. Full task
-> detail preserved below; per-version notes in [`../CHANGELOG.md`](../CHANGELOG.md).
+> detail preserved below; per-version notes in [`../CHANGELOG.md`](../../CHANGELOG.md).
 
 ## Sprint 84 — Database query observability tooling
 
@@ -968,7 +968,7 @@ for this sprint's implementation gate.
 `features/disciplines/` package skeleton), plus the earlier design-finalization commit
 (`1188f99`) already on the branch. **No schema/DB changes this sprint** — pure new Tier 1 module
 plus a manifest-only Tier 2 package stub; `PlayerStats` migration is Sprint 78's job (78.3).
-Full design in [`discipline_ability_system.md`](discipline_ability_system.md)
+Full design in [`discipline_ability_system.md`](../engine/discipline_ability_system.md)
 (added 2026-07-13, user-driven; Research/Planning audit pass completed 2026-07-13 with four
 cautions, all folded into the design — the `resolve_proficiency` parameterization note (§2),
 the new Live-tunability subsection (§3), the seed-discipline mapping-table fix (§7), and the
@@ -1013,7 +1013,7 @@ services, `c225a84` 78.7 relocate `train`/`abilities` verbs to the `disciplines`
 commit (`779d48f`) already on the branch. Builds the opinionated, data-driven policy layer on
 top of Sprint 77's mechanism: registries, YAML content, the `PlayerStats` schema migration,
 content migration, and the command rework. Full detail in
-[`discipline_ability_system.md`](discipline_ability_system.md) §4–§9. **Design correction
+[`discipline_ability_system.md`](../engine/discipline_ability_system.md) §4–§9. **Design correction
 (2026-07-13):** the design doc originally directed a `sharp_eyes` modifier-key remap (78.5,
 below) as part of content migration; that premise was found false and the remap is dropped —
 see §6.1's Option A and 78.5's row for the corrected reasoning.
@@ -1024,7 +1024,7 @@ see §6.1's Option A and 78.5's row for the corrected reasoning.
 | 78.2 | **`AbilityRegistry`.** Loaded from `world_content/abilities.yaml` (split from `disciplines.yaml` per §5.4's rationale — disciplines change rarely, abilities change often), each entry validated into the Tier 1 `AbilityDef` shape plus Tier-2-only display fields. | [x] |
 | 78.3 | **`PlayerStats` schema migration (Database Specialist gate).** `skills: JsonObject` → `discipline_ranks: JsonObject` (same dict shape, different keys); `unlocked_nodes` kept as-is (a "node" is an "ability" now, vocabulary-only). Follow the Sprint 75 generic reflection-scanner pattern, not a hand-written shim (§4, §6.2). | [x] |
 | 78.4 | **Content migration — 5-discipline non-combat seed set.** Survival, Subterfuge, Commerce, Rhetoric, Fortitude, absorbing all 7 existing skill-tree nodes (`forage`, `keen_senses`, `pick_locks`, `mule`, `sharp_eyes`, `haggler`, `silver_tongue`) and all 6 flat skills, zero new combat content (§7). | [x] |
-| 78.5 | ~~`sharp_eyes` modifier-key remap.~~ **Dropped, superseded 2026-07-13 by the Option A namespace-retention decision — see [`discipline_ability_system.md`](discipline_ability_system.md) §6.1.** The original premise (that `skill.perception` was the *only* reference to the flat namespace, and had to be remapped to `discipline_ranks.subterfuge`) was false — a fuller audit found six live `skill.<name>` references across `traits/standard.py`, `consumables/buffs.py`, `items/effects.py`, `marks.yaml`, and `webui/player/frontend.py`, not just `sharp_eyes`. Research/Planning's resolved direction: `skill.<name>` is retained **permanently** as the check/modifier-key namespace (it's orthogonal to the `features/skills/` package's existence, not a back-compat alias); only the flat `SkillRegistry` catalog and `PlayerStats.skills` storage are deleted, with each check's base value re-sourced from `discipline_ranks.<discipline>` instead. No remap needed anywhere — this task is moot. | [ ] dropped |
+| 78.5 | ~~`sharp_eyes` modifier-key remap.~~ **Dropped, superseded 2026-07-13 by the Option A namespace-retention decision — see [`discipline_ability_system.md`](../engine/discipline_ability_system.md) §6.1.** The original premise (that `skill.perception` was the *only* reference to the flat namespace, and had to be remapped to `discipline_ranks.subterfuge`) was false — a fuller audit found six live `skill.<name>` references across `traits/standard.py`, `consumables/buffs.py`, `items/effects.py`, `marks.yaml`, and `webui/player/frontend.py`, not just `sharp_eyes`. Research/Planning's resolved direction: `skill.<name>` is retained **permanently** as the check/modifier-key namespace (it's orthogonal to the `features/skills/` package's existence, not a back-compat alias); only the flat `SkillRegistry` catalog and `PlayerStats.skills` storage are deleted, with each check's base value re-sourced from `discipline_ranks.<discipline>` instead. No remap needed anywhere — this task is moot. | [ ] dropped |
 | 78.6 | **Code migration.** Delete `features/skills/definitions.py` (no back-compat alias, matches the `area_id` disposition precedent); `features/progression/skill_tree.py` → `features/disciplines/abilities.py` (renamed/extended); `engine/game/checks.py::skill_check()` and `engine/game/modifiers.py` unchanged (§6.3). | [x] |
 | 78.7 | **Command rework — `train`/`learn`/`abilities`/`skills` → unified discipline/ability commands.** Driven by the generalized `check_acquisition`, folding in the already-flagged "one `ctx.say()` per command" fix for these commands' listings while their underlying data model changes shape anyway. | [x] |
 | 78.8 | **Retrofit existing verbs onto `check_usage`.** `features/exploration/forage.py`, `sense.py`, movement/lockpicking's `pick` — replace hardcoded Python conditions (e.g. `Room.indoor == False`) with data-driven `usage:` YAML read through `check_usage`, proving the new mechanism actually replaces the old gating, not just duplicates it (§6.3). | [x] |
@@ -1102,7 +1102,7 @@ controllers.
 ## Sprints 56–69 — observability, client themes/layouts, multi-level map, escort quests, scripting world-building (v0.47.0–v0.75.0, archived 2026-07-10)
 
 > Moved here from the active roadmap on 2026-07-10 once Sprint 69 closed. Full task
-> detail preserved below; per-version notes in [`../CHANGELOG.md`](../CHANGELOG.md).
+> detail preserved below; per-version notes in [`../CHANGELOG.md`](../../CHANGELOG.md).
 
 ## Sprint 56 — Structured output-type tagging
 
@@ -1141,13 +1141,13 @@ whatever hits stdout.
 | 57.2 | `GET /admin/trace/<transaction_id>` — returns the captured spans for one recent command (404 once it's aged out of the ring buffer). | [x] `webui/admin/routers/observability.py`. |
 | 57.3 | Crash capture: a handler at both command entry points (`main.py`'s `/ws` loop, `web/frontend.py`'s `POST /command`) that, on an unhandled exception, persists a `CrashReport` row (transaction_id, correlation_id, player_id, command text, stack trace, timestamp) to the audit DB and returns a friendly in-game error instead of a raw disconnect/500. | [x] New `CrashReport` model (`engine/models/audit.py`) + `engine/services/crash_reports.record_crash()` (rolls back both sessions first so a crash report never smuggles in unrelated pending writes); both entry points wrap their command-processing body in try/except. |
 | 57.4 | `GET /admin/crashes` (list) + `GET /admin/crashes/<id>` (detail) endpoints and a Crash Reports tab in the admin console, reusing the Audit tab's table/detail pattern. | [x] Endpoints in `observability.py`; admin console gets a list-table + detail-panel layout (mirrors the World tab's room-list/room-editor split) wired into `TAB_LOADERS`. |
-| 57.5 | Document both features (usage, endpoints, retention) in [`observability.md`](observability.md) and cross-link from the admin guide's Troubleshooting section. | [x] |
+| 57.5 | Document both features (usage, endpoints, retention) in [`observability.md`](../engine/observability.md) and cross-link from the admin guide's Troubleshooting section. | [x] |
 
 ---
 
 ## Sprint 58 — Selectable client themes & layouts
 
-**Goal:** turn the four client design directions in [`Lorecraft Client.dc.html`](Lorecraft%20Client.dc.html)
+**Goal:** turn the four client design directions in [`Lorecraft Client.dc.html`](../Lorecraft%20Client.dc.html)
 — **terminal** (1a), **parchment** (1b), **slate** (1c), **immersive** (1d) — into player-selectable
 **themes** *and* **layouts**, persisted through the same `PlayerPreferences` blob as every other
 display setting. **Why now:** the foundation gate is green and the display-preference seam
@@ -1167,7 +1167,7 @@ with 1d's chronicle" framing. Phase 1 lands first and stands alone; Phase 2 buil
 | 58.1 | **Theme token layer + preference.** Add a semantic CSS-variable token layer (`--lc-bg`, `--lc-panel`, `--lc-accent`, `--lc-text`, `--lc-text-muted`, `--lc-border`, `--lc-font-body`, `--lc-font-head`, …) to `static/css/custom.css`, defaulting to today's zinc/emerald terminal values (**zero visual change**). Point `base.html`'s Tailwind config semantic colours (`panel`/`accent`/`text`/`text-muted`/`feed-bg`/`border`) at those vars. Add a `theme` enum to `PlayerPreferences` (`THEMES = ("terminal","parchment","slate","immersive")`, default `terminal`), emit `theme-<name>` on `<body>` via `body_classes`, and add the theme `<select>` to the settings form. Unit tests for the pref round-trip/validation + the body-class output. | [x] `theme` field on `PlayerPreferences` (default `terminal`, leads `body_classes`); Tailwind semantic colours resolve to `--lc-*`; settings selector; `TestTheme` unit + `test_game_screen_applies_theme_body_class`/`test_settings_renders_and_persists_theme` integration tests. |
 | 58.2 | **Slate & Immersive (dark) themes.** Define the `slate` (1c: `#0a0d15`/`#43c7d8`, Plex Sans) and `immersive` (1d: `#0a0807`/`#e8a13c`, Plex Sans) token sets + the override layer that remaps the raw `zinc-*`/`emerald-*` literals still in the partials (same mechanism as the existing high-contrast block) so both repaint the whole screen. Load the required web fonts. | [x] Shared **`body:not(.theme-terminal)` remap** (one block, specificity 0,2,x — no `!important`) routes every raw literal through the tokens; each theme is just a token block. IBM Plex Sans/Mono + Spectral loaded in `base.html`. |
 | 58.3 | **Parchment (light) theme.** The one light theme (1b: `#e3d7bd`/`#8c3b2e`, Spectral serif body + Plex Mono commands) — inverts background/text, needs its own override set and a WCAG-AA contrast pass. | [x] `body.theme-parchment` token block + serif body / mono commands + softened error-red + lifted feed-hover for the light ground. |
-| 58.4 | **Theme docs & regression tests.** Document the theme picker in [`user_guide.md`](user_guide.md); changelog; a settings test that a chosen theme persists and re-renders selected; a render assertion that `<body>` carries the right `theme-*` class. | [x] Regression tests landed with 58.1; user-guide "Themes" section + CHANGELOG. |
+| 58.4 | **Theme docs & regression tests.** Document the theme picker in [`user_guide.md`](../guides/user_guide.md); changelog; a settings test that a chosen theme persists and re-renders selected; a render assertion that `<body>` carries the right `theme-*` class. | [x] Regression tests landed with 58.1; user-guide "Themes" section + CHANGELOG. |
 
 ### Phase 2 — Layouts (panel arrangement)
 
@@ -1176,7 +1176,7 @@ with 1d's chronicle" framing. Phase 1 lands first and stands alone; Phase 2 buil
 | 58.5 | **Layout preference + collapsible-panel mechanism.** Add a `layout` enum to `PlayerPreferences` (`LAYOUTS = ("standard","ledger","dock","immersive")`, default `standard`), emit `layout-<name>` on `<body>` (independent of `theme-*`), and build the shared building block the other three need: an Alpine-driven **collapsible panel rail** (icon-collapsed ↔ expanded), CSS-only where possible. `standard` reproduces today's three-column grid (**zero visual change**). Settings gets a layout `<select>`; unit tests mirror 58.1. | [x] `layout` field (default `standard`) as a second body-class axis; settings picker; `TestLayout` unit + `test_game_screen_applies_layout_body_class` integration tests. Collapsible rail deferred to 58.8, the only layout that needs it. |
 | 58.6 | **Ledger layout (1b) + shared right-rail Inventory/Quests.** Left column = Location + Map; Chronicle runs wide in the centre; secondary panels collapse into a slim right rail. | [x] Narrow left (Location + Map) + **wide full-width chronicle** (the 72ch cap that starved it was removed after review). **Inventory now moves into the right rail for *every* layout** (per review), paired with Quests as a **mutually-exclusive** pane (both stay in the DOM so `#inventory`/`#quest-tracker` OOB updates fire while hidden). Two UI patterns to compare: **standard = toggle button** (one titlebar, a button flips Inventory⇄Quests); **dock + ledger = window-shade accordion** (stacked titlebars). `test_inventory_and_quests_share_right_rail`. |
 | 58.7 | **Dock layout (1c).** A visible control bar (theme · density · layout · panel toggles surfaced from `/settings` inline) above card-style panels, plus the rarity-coloured **icon-grid inventory** variant. Drag-to-reorder panels is a **stretch** (behind a flag) — the reviewable core is the toolbar + card treatment + icon-grid. | [x] Superseded by the **bespoke Dock rebuild in 59.7** — card shell, rarity **icon-grid** Pack, and Party/Quests are all delivered there; the base-nav Mode/Palette pickers act as the control bar. (Drag-to-reorder remains the deferred stretch.) |
-| 58.8 | **Immersive layout (1d) + docs.** Near-full-bleed Chronicle with a soft vignette; everything else collapses to a slim icon rail (58.5) that expands on demand; floating minimap + floating command bar. Document both axes in [`user_guide.md`](user_guide.md); changelog; render tests asserting the `layout-*` body class and that hidden-by-default rail panels are still reachable. | [x] **Reworked to a focused 2-column view** (per review): a slim left column with **Chat on top + Minimap below** and a dominant Chronicle taking the rest; Room/Inventory/Players/Quests dropped; larger type + soft vignette. Chat routes into the left pane (its `#chat-feed` is what the client keys on); the centre pane is suppressed there to keep the id unique. `test_immersive_layout_puts_chat_in_left_column`. |
+| 58.8 | **Immersive layout (1d) + docs.** Near-full-bleed Chronicle with a soft vignette; everything else collapses to a slim icon rail (58.5) that expands on demand; floating minimap + floating command bar. Document both axes in [`user_guide.md`](../guides/user_guide.md); changelog; render tests asserting the `layout-*` body class and that hidden-by-default rail panels are still reachable. | [x] **Reworked to a focused 2-column view** (per review): a slim left column with **Chat on top + Minimap below** and a dominant Chronicle taking the rest; Room/Inventory/Players/Quests dropped; larger type + soft vignette. Chat routes into the left pane (its `#chat-feed` is what the client keys on); the centre pane is suppressed there to keep the id unique. `test_immersive_layout_puts_chat_in_left_column`. |
 | 58.9 | **Live theme/layout preview.** The Settings **Theme**/**Layout** dropdowns preview immediately (Alpine swaps the `theme-*`/`layout-*` body classes on change); **Save** persists via the existing POST, **Cancel** returns to `/game` and reloads the last-saved prefs (natural revert). | [x] `settings.html` Alpine `applyPreview()`. |
 | 58.10 | **Settings Save→game + [Save][Cancel].** Per review: **Save** uses Post/Redirect/Get to return straight to `/game` (the new look applies immediately, no second click); the button row is just **[Save] [Cancel]** — the top back-to-game link, the saved-banner, and the hint text are removed. | [x] `POST /settings` → 303 `/game`; `settings.html` trimmed; three POST tests updated for the redirect. |
 | 58.11 | **Top-bar quick appearance pickers (experimental, flag-gated).** Small **Theme** + **Layout** dropdowns in the nav (left of the player name/Settings) that take effect immediately — Theme swaps the body class client-side, Layout persists + reloads — via a dedicated `POST /settings/appearance` that updates *only* the posted field(s), merged over current prefs. Gated by `APPEARANCE_TOPBAR` + a self-contained partial so it can be peeled back after testing. The settings page keeps its own pickers. | [x] `partials/topbar_appearance.html`, `lcApplyTheme()`, `/settings/appearance` route, `APPEARANCE_TOPBAR` flag; render + partial-update tests. |
@@ -1297,7 +1297,7 @@ simulated players**, or a mix concurrently — for regression (golden audit-trai
 (p50/p95/p99), and soak/fuzz. Mostly a **consolidation** of pieces that already exist: the audit
 log (recording), the `VirtualPlayer`/`SimulationServer` harness (playback), `test_load.py` (N-player
 fan-out + metrics), and the seeded-`GameRng` audit-regression determinism. **Full plan:
-[`session_replay.md`](archive/session_replay.md).** Supersedes the Backlog `lorecraft.tools.simulation` note.
+[`session_replay.md`](../archive/session_replay.md).** Supersedes the Backlog `lorecraft.tools.simulation` note.
 
 | # | Task | Status |
 |---|------|--------|
@@ -1353,7 +1353,7 @@ for progress, news/feed for announcement). The simplest, *non-instanced* slice o
 
 | # | Task | Status |
 |---|------|--------|
-| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [x] Spec: [`scavenger_hunt.md`](archive/scavenger_hunt.md). Decisions: **flags** for per-player progress (persist via SaveSlot, journal-visible, no new table); **news items** for announcements (synchronous DB — sidesteps the async-from-scheduler broadcast problem, no live feed ping in v1); YAML defs loaded into an in-memory registry (weather/terrain pattern); completion = "find all" (count variant deferred); reuses scheduler / `ItemLocationService.spawn` / `ITEM_TAKEN` / `LedgerService` / `GameRng` — no new Tier 1 mechanism. (v0.40.7) |
+| 48.1 | **Design spec first** — YAML event definition (item/clue set, spawn room pools, cadence or admin trigger, duration, completion rule, reward), announcement surface (news + feed), and per-player progress storage (flags vs. a small table). No implementation until reviewed. | [x] Spec: [`scavenger_hunt.md`](../archive/scavenger_hunt.md). Decisions: **flags** for per-player progress (persist via SaveSlot, journal-visible, no new table); **news items** for announcements (synchronous DB — sidesteps the async-from-scheduler broadcast problem, no live feed ping in v1); YAML defs loaded into an in-memory registry (weather/terrain pattern); completion = "find all" (count variant deferred); reuses scheduler / `ItemLocationService.spawn` / `ITEM_TAKEN` / `LedgerService` / `GameRng` — no new Tier 1 mechanism. (v0.40.7) |
 | 48.2 | Implement as a Tier 2 feature package (`features/…` + manifest, auto-discovered) per the spec; content-lint for event YAML references (item keys, room pools). | [x] `features/hunts/` (auto-discovered): `models.py` (Pydantic `HuntDef`/`HuntsDocument`, registry, `lint_hunts`), `service.py` (`open`/`close`/`ITEM_TAKEN` find + reward/`SCHEDULED_JOB_DUE` open-close), `commands.py` (read-only `hunts` verb). Progress in player flags, announcements as news items, coins via ledger. `LORECRAFT_HUNTS_YAML_PATH` config; loaded into the registry at startup. Wired into `ServiceContainer`/`register_all_commands`/`main`. (v0.40.8) |
 | 48.3 | Ashmoore example hunt + tests: event opens/closes on schedule, item found → progress → reward, audit-regression stays stable. | [x] `world_content/hunts.yaml` — the Harvest Trinket Hunt (3 trinket items added to `world.yaml` as definitions only) across village_square/market/inn. 10 unit tests (open spawns clues, find→progress→reward+lore, no double-reward, close despawns, scheduled open/close, content-lint clean/dirty, dup-id + negative-coin validation, shipped-content lints against the real world). Audit-regression golden **unchanged** (definitions aren't placed by default). |
 
@@ -1476,7 +1476,7 @@ e2e 36 green.
 
 | # | Task | Status |
 |---|------|--------|
-| 39.1 | **Design spec** — room-effect hook interface (`on_apply`/`on_expire` for room-state; auras as a room-scoped `ModifierRegistry` source), written into [`engine_core.md`](engine_core.md) §3.9. | [x] §3.9 spec: room-state effects write the authoritative `Exit` (undo in `payload`, no read-through fork); auras are `RoomAuraModifierSource`; engine gains no exit awareness — "open the gate" is a Tier 2 `EffectDef` hook. Each behavior keeps one owner; no new model/table/scheduler. |
+| 39.1 | **Design spec** — room-effect hook interface (`on_apply`/`on_expire` for room-state; auras as a room-scoped `ModifierRegistry` source), written into [`engine_core.md`](../engine/engine_core.md) §3.9. | [x] §3.9 spec: room-state effects write the authoritative `Exit` (undo in `payload`, no read-through fork); auras are `RoomAuraModifierSource`; engine gains no exit awareness — "open the gate" is a Tier 2 `EffectDef` hook. Each behavior keeps one owner; no new model/table/scheduler. |
 | 39.2 | Room-effect application + expiry on the existing primitive; `on_expire` reverses room-state. | [x] `on_apply`/`on_expire` hooks on `EffectDef`; `apply()` fires `on_apply` after flush; expiry sweep fires `on_expire` before delete, each isolated in a savepoint (failing hook rolls back only itself, row kept for retry). Unit-tested. |
 | 39.3 | Read/gate points: modifier resolution consults `active_for("room", room_id)`; a plate/mechanism applying a timed gate is the first content example. | [x] `RoomAuraModifierSource` (shares `_effect_modifiers`) auto-picks-up a player's room auras; movement unchanged (effect writes the `Exit`). Content: `features/exploration/room_effects.py` `passage_open` EffectDef + `open_timed_passage` mechanism side-effect. Integration-tested. |
 | 39.4 | Tests: expiry closes a gate; aura modifies a resolved value; audit-regression stable; content-lint of room-effect keys + directions. | [x] Gate open→relock, aura modify+lift, `on_expire` savepoint isolation, `on_apply`-raise rollback covered; audit-regression stable; `world/validator._validate_open_timed_passage` shape-lint + tests. |
@@ -1485,7 +1485,7 @@ e2e 36 green.
 
 ## Sprint 45 — Split the social/chat feed from the narrative feed (opt-in) — ✅ complete
 
-**Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output out of view. Split narrative feed from social/channel feed into two panes, as a toggleable player option. **Full plan: [`chat_feed_split.md`](archive/chat_feed_split.md).**
+**Goal:** the single biggest client-UX takeaway — chatter must never scroll room/quest/action output out of view. Split narrative feed from social/channel feed into two panes, as a toggleable player option. **Full plan: [`chat_feed_split.md`](../archive/chat_feed_split.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1586,9 +1586,9 @@ Phases **1–6** are implemented (command dispatch, world/time, inventory, NPCs/
 
 **Current:** Foundation ([Sprints 4–15](#sprint-4--player-authentication-production-hardening-)) and the **entire pillar-driven feature band ([Sprints 16–30](#sprint-16--item-locationownership--instance-state))** are complete — Tier 1 engine primitives (16–21), item components & equipment (22–23), traits/skills & exploration + UI (24–26), condition/trade/transit (27–29), quests & puzzles (30). **Foundation gate is green.**
 
-Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
+Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0–0.31.1, tracked in [`archive/tier_split_refactor.md`](../archive/tier_split_refactor.md), off this roadmap): Tier 1 now lives in `src/lorecraft/engine/` (import-pure — it depends on nothing under `features/` or web, enforced by `tests/unit/test_tier_boundaries.py`), the 24 Tier 2 features each own a package under `src/lorecraft/features/`, and the web hosts moved to `src/lorecraft/webui/{player,admin}/`. Player username/password validation also shipped (v0.31.0).
 
-**Current (2026-07-05):** the post-tier-split band (Sprints 31–34) is essentially done — **Sprint 31** (tier split fully complete, v0.31.4–0.32.3), **Sprint 32.2/32.3** (account preferences + accessibility, v0.33.0–0.34.0), **Sprint 33** (guided `/report` + page-length quick-win, v0.35.0), and **Sprint 34** (`help <command>` + `score`, v0.34.0 — both open player reports resolved). **Open roadmap items:** [Sprint 32.1](#sprint-32--player-onboarding--account-ux) (in-game intro walkthrough, deferred pending a product decision on its trigger UX), [Sprint 65](#sprint-65--multiplayer-trade--transit-tests) (multiplayer trade/transit simulation tests), and the new [Performance & scaling band (Sprints 66–69)](#performance--scaling-band-sprints-6669--measure-then-optimize-no-threading-yet). **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept forcing roadmap renumbering; ready-to-restore specs live there. See [`engine_core.md`](engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
+**Current (2026-07-05):** the post-tier-split band (Sprints 31–34) is essentially done — **Sprint 31** (tier split fully complete, v0.31.4–0.32.3), **Sprint 32.2/32.3** (account preferences + accessibility, v0.33.0–0.34.0), **Sprint 33** (guided `/report` + page-length quick-win, v0.35.0), and **Sprint 34** (`help <command>` + `score`, v0.34.0 — both open player reports resolved). **Open roadmap items:** [Sprint 32.1](#sprint-32--player-onboarding--account-ux) (in-game intro walkthrough, deferred pending a product decision on its trigger UX), [Sprint 65](#sprint-65--multiplayer-trade--transit-tests) (multiplayer trade/transit simulation tests), and the new [Performance & scaling band (Sprints 66–69)](#performance--scaling-band-sprints-6669--measure-then-optimize-no-threading-yet). **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept forcing roadmap renumbering; ready-to-restore specs live there. See [`engine_core.md`](../engine/engine_core.md) for the Tier boundary and [`wishlist.md`](wishlist.md) for the pillars and mechanics menu.
 
 ---
 
@@ -1636,7 +1636,7 @@ Since then, the **Tier 1/Tier 2/web split** shipped as a large refactor (v0.15.0
 
 **Goal:** Phase 7 per `architecture.md` §21 — full account system with password auth, JWT tokens, and signed WebSocket handshake. Foundation for all production deployments.
 
-**See:** [`archive/player_authentication.md`](archive/player_authentication.md) for detailed workflows and code examples.
+**See:** [`archive/player_authentication.md`](../archive/player_authentication.md) for detailed workflows and code examples.
 
 | # | Task | Status |
 |---|------|--------|
@@ -1738,7 +1738,7 @@ Work queue derived from `CODE_AUDIT.md`. Ordering is deliberate: error/type grou
 | 10.5.4 | Analytics API foundation: metric queries ready (no dashboard yet, driven by [Sprint 13](#sprint-13--observability--ci-quality-gates-) instrumentation) | [x] |
 | 10.5.5 | Content validation & linting: dead references, unreachable rooms, circular quests, etc. | [x] |
 
-**See:** [`archive/tooling_infrastructure.md`](archive/tooling_infrastructure.md) for full architecture and design details. Circular quest dependency checking was scoped out — `QuestStageData` has no quest-to-quest dependency field in the schema today.
+**See:** [`archive/tooling_infrastructure.md`](../archive/tooling_infrastructure.md) for full architecture and design details. Circular quest dependency checking was scoped out — `QuestStageData` has no quest-to-quest dependency field in the schema today.
 
 ## Sprint 11 — Browser E2E harness ✅
 
@@ -1803,10 +1803,10 @@ All must be true before combat/trading work starts:
 # Engine core band (Tier 1 primitives) — Sprints 16–21
 
 **Engine-first (2026-07-03).** The eight cross-cutting Tier 1 primitives from
-[`engine_core.md`](engine_core.md) are built here, **before** the Tier 2 feature modules that
+[`engine_core.md`](../engine/engine_core.md) are built here, **before** the Tier 2 feature modules that
 consume them ([Sprints 22](#sprint-22--standard-item-components--definition-fields)+). Rationale: several feature sprints share these primitives; building
 them per-sprint yields N opinionated implementations and blurs the framework/game boundary. Order
-follows dependency + leverage ([`engine_core.md`](engine_core.md) §6) — the two most expensive to
+follows dependency + leverage ([`engine_core.md`](../engine/engine_core.md) §6) — the two most expensive to
 retrofit (unified item location/ownership, and a seedable `ctx.rng` the audit-regression harness
 depends on) go first. These primitives are **content-agnostic**: no named skills, slots, factions,
 or damage formulas live here.
@@ -1815,11 +1815,11 @@ or damage formulas live here.
 
 **Goal:** One way to say where an item lives and to move it atomically; per-instance state via
 registered components. Highest-leverage primitives — they underpin equipment, containers, shop
-stock, corpses, and trade escrow. **See [`engine_core.md`](engine_core.md) §3.1–3.2, §4a/§4f.**
+stock, corpses, and trade escrow. **See [`engine_core.md`](../engine/engine_core.md) §3.1–3.2, §4a/§4f.**
 
 | # | Task | Status |
 |---|------|--------|
-| 16.1 | `ItemStack` + `(owner_type, owner_id, slot?)` location + holder registry; one atomic `ItemLocationService.move()` (rollback-safe); **replace** `Player.inventory`/`RoomItem` outright (column/table deleted — full blast-radius table in [`engine_core.md`](engine_core.md) §3.2) | [x] |
+| 16.1 | `ItemStack` + `(owner_type, owner_id, slot?)` location + holder registry; one atomic `ItemLocationService.move()` (rollback-safe); **replace** `Player.inventory`/`RoomItem` outright (column/table deleted — full blast-radius table in [`engine_core.md`](../engine/engine_core.md) §3.2) | [x] |
 | 16.2 | `ItemInstance` carrier + pluggable component registry (durability/openable/lit/container register like dialogue side-effects); `bound`/soulbound flag | [x] `ComponentRegistry` (`game/components.py`) ships with zero registered components (Tier 1 registers none, per spec); `Item.bound` field added (enforcement deferred to Tier 2). |
 
 **Delivered beyond the two checklist items:** full blast-radius migration (17 files) onto the new
@@ -1840,7 +1840,7 @@ scoped out for now — no production deployment exists yet; the dev flow
 ## Sprint 17 — Determinism: seedable RNG & skill-check ✅
 
 **Goal:** All random resolution reproducible so the [Sprint 12](#sprint-12--simulation-harness-mvp-) audit-regression harness can cover
-combat/skills/trade. **See [`engine_core.md`](engine_core.md) §3.6, §4b.**
+combat/skills/trade. **See [`engine_core.md`](../engine/engine_core.md) §3.6, §4b.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1850,7 +1850,7 @@ combat/skills/trade. **See [`engine_core.md`](engine_core.md) §3.6, §4b.**
 ## Sprint 18 — Modifier resolution ✅
 
 **Goal:** One runtime resolver for bonuses from many sources, with a defined stacking order and
-caps. Generalizes the doc's `EquipmentEffects.resolve()`. **See [`engine_core.md`](engine_core.md) §3.5, §4d.**
+caps. Generalizes the doc's `EquipmentEffects.resolve()`. **See [`engine_core.md`](../engine/engine_core.md) §3.5, §4d.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1859,7 +1859,7 @@ caps. Generalizes the doc's `EquipmentEffects.resolve()`. **See [`engine_core.md
 ## Sprint 19 — Meters & timed effects ✅
 
 **Goal:** Named bounded clock-tickable resources, and expiring buffs/debuffs — one primitive each,
-not one column per resource. **See [`engine_core.md`](engine_core.md) §3.3–3.4.**
+not one column per resource. **See [`engine_core.md`](../engine/engine_core.md) §3.3–3.4.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1876,7 +1876,7 @@ before the session closes). See `CHANGELOG.md` for the full list.
 ## Sprint 20 — Ledger & atomic transfer ✅
 
 **Goal:** A coin balance on any holder + one atomic multi-party transfer for coins *and* items.
-**See [`engine_core.md`](engine_core.md) §3.7, §4c/§4g.**
+**See [`engine_core.md`](../engine/engine_core.md) §3.7, §4c/§4g.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1885,7 +1885,7 @@ before the session closes). See `CHANGELOG.md` for the full list.
 ## Sprint 21 — Scheduled moving entity ("moving room") ✅
 
 **Goal:** The moving-room carrier transit rides on; also serves wandering NPCs/patrols later.
-**See [`engine_core.md`](engine_core.md) §3.8.**
+**See [`engine_core.md`](../engine/engine_core.md) §3.8.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1907,25 +1907,25 @@ Ordering follows dependencies: item state → equipment → traits/skills/explor
 exploration, which it serves.
 
 > **Engine-first (2026-07-03):** the feature band decomposes into **Tier 1 engine primitives →
-> Tier 2 standard modules → Tier 3 content** per [`engine_core.md`](engine_core.md) — the anchor
+> Tier 2 standard modules → Tier 3 content** per [`engine_core.md`](../engine/engine_core.md) — the anchor
 > doc for the framework/game boundary. Directive: **design Tier 1 now, implement most of Tier 1
 > before Tier 2.** Eight cross-cutting primitives (item location/ownership, component state,
 > meters, timed effects, modifier resolver, seedable RNG + skill-check, ledger/atomic transfer,
 > moving-entity) sit underneath [Sprints 22–35](#sprint-22--standard-item-components--definition-fields); building them per-sprint would yield N opinionated
 > implementations and blur the boundary. The two most expensive to retrofit — the unified item
 > location/ownership model and a seedable `ctx.rng` (audit-regression-critical) — go first. See
-> [`engine_core.md`](engine_core.md) §3 (primitives), §4 (cross-doc surprises caught), §6 (build
+> [`engine_core.md`](../engine/engine_core.md) §3 (primitives), §4 (cross-doc surprises caught), §6 (build
 > order). The Tier 1 work is now sequenced as **[Sprints 16–21](#sprint-16--item-locationownership--instance-state)** (the Engine core band below); the
 > Tier 2 feature band shifts to **[Sprints 22–35](#sprint-22--standard-item-components--definition-fields)**.
 
-> **Design docs:** [`engine_core.md`](engine_core.md) (Tier boundary + Tier 1 primitives — read first),
-> [`inventory_equipment.md`](archive/inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
-> [`combat_system.md`](combat_system.md) (stat/skill model + combat sprints),
-> [`archive/death_resurrection.md`](archive/death_resurrection.md) (death penalty; combat set aside to [`wishlist.md`](wishlist.md)),
-> [`dialogue_npcs_quests.md`](dialogue_npcs_quests.md) and
-> [`archive/feature-registration.md`](archive/feature-registration.md) (quests/puzzles, pluggable
-> registries), [`transit_systems.md`](archive/transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
-> [`trade_economy.md`](archive/trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
+> **Design docs:** [`engine_core.md`](../engine/engine_core.md) (Tier boundary + Tier 1 primitives — read first),
+> [`inventory_equipment.md`](../archive/inventory_equipment.md) ([Sprints 22–23](#sprint-22--standard-item-components--definition-fields)),
+> [`combat_system.md`](../combat_system.md) (stat/skill model + combat sprints),
+> [`archive/death_resurrection.md`](../archive/death_resurrection.md) (death penalty; combat set aside to [`wishlist.md`](wishlist.md)),
+> [`dialogue_npcs_quests.md`](../worldbuilding/dialogue_npcs_quests.md) and
+> [`archive/feature-registration.md`](../archive/feature-registration.md) (quests/puzzles, pluggable
+> registries), [`transit_systems.md`](../archive/transit_systems.md) ([Sprint 29](#sprint-29--transit--travel-systems)), and
+> [`trade_economy.md`](../archive/trade_economy.md) ([Sprint 28](#sprint-28--trading--economy)). The signature systems now all have
 > design docs.
 
 ## Sprint 22 — Standard item components & definition fields ✅
@@ -1934,8 +1934,8 @@ exploration, which it serves.
 Sprint 2.5 `open`/container/state prerequisite. The per-instance carrier, item-location model, and
 component registry are **Tier 1 ([Sprint 16](#sprint-16--item-locationownership--instance-state))**; this sprint adds the Layer A `Item` definition
 fields and the *standard components* (durability, light, container, openable) on top, so items can
-be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.md) §3.1–3.2 and
-[`inventory_equipment.md`](archive/inventory_equipment.md) §7.**
+be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](../engine/engine_core.md) §3.1–3.2 and
+[`inventory_equipment.md`](../archive/inventory_equipment.md) §7.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1945,7 +1945,7 @@ be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.
 ## Sprint 23 — Inventory & equipment ✅
 
 **Goal:** Wear/wield slots, encumbrance, containers. Equipment grants **non-combat** effects
-(light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](archive/inventory_equipment.md) §3–6, §9.**
+(light, warmth, carry, skill/trait bonuses) resolved at runtime. **See [`inventory_equipment.md`](../archive/inventory_equipment.md) §3–6, §9.**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1957,7 +1957,7 @@ be worn, burned, opened, and puzzle-wired. **See [`engine_core.md`](engine_core.
 
 **Goal:** Character identity that gates exploration and social play. Use-based skills, a trait
 registry (boons/banes), reputation/NPC-standing. Builds on existing `PlayerStats` (attributes
-+ `skills` dict). **See [`combat_system.md`](combat_system.md) stat model + [`wishlist.md`](wishlist.md).**
++ `skills` dict). **See [`combat_system.md`](../combat_system.md) stat model + [`wishlist.md`](wishlist.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -1999,7 +1999,7 @@ on `SchedulerService` + `TIME_ADVANCED`. **See [`wishlist.md`](wishlist.md) → 
 
 **Goal:** A living economy where *where* you buy/sell matters (pillar #2). Currency → NPC shops
 → regional pricing → banks. **Signature pairing:** the transit network ([Sprint 29](#sprint-29--transit--travel-systems)) is the trade
-network. **See [`trade_economy.md`](archive/trade_economy.md).**
+network. **See [`trade_economy.md`](../archive/trade_economy.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -2013,7 +2013,7 @@ network. **See [`trade_economy.md`](archive/trade_economy.md).**
 **Goal:** The signature Materia-Magica-inspired feature — multiple travel modes between areas
 (ferry, rail, balloon, caravan) that are slow or fast, run end-to-end (express) or make multiple
 stops (local), and animate on the minimap. Built on scheduler + world clock + weather + WS push.
-**See [`transit_systems.md`](archive/transit_systems.md).**
+**See [`transit_systems.md`](../archive/transit_systems.md).**
 
 | # | Task | Status |
 |---|------|--------|
@@ -2039,14 +2039,14 @@ Extends the stage/flag quest system with branch conditions and mechanism puzzles
 > the remaining tier-split follow-ons plus the highest-value UX/wishlist gaps surfaced along the
 > way. **Combat and PvP are set aside to [`wishlist.md`](wishlist.md)** (2026-07-05) — they kept
 > forcing roadmap renumbering; ready-to-restore specs live there. See
-> [`archive/tier_split_refactor.md`](archive/tier_split_refactor.md).
+> [`archive/tier_split_refactor.md`](../archive/tier_split_refactor.md).
 
 ## Sprint 31 — Finish the tier split: feature-UI seam, toggling & doc refresh ✅
 
 **Goal:** Close out the deliberately-deferred, additive pieces of the tier split and make
 feature toggling real. Everything here is non-breaking (the app ships and passes today).
 **Complete (v0.31.4–0.32.0)** — the tier split is now fully done (all steps 0–13, see
-[`archive/tier_split_refactor.md`](archive/tier_split_refactor.md)).
+[`archive/tier_split_refactor.md`](../archive/tier_split_refactor.md)).
 
 | # | Task | Status |
 |---|------|--------|
@@ -2088,8 +2088,8 @@ command wins that improve day-to-day play. Both came in via the in-game `/report
 
 | # | Task | Status |
 |---|------|--------|
-| 34.1 | `help <command>` shows detailed help for one command (usage, aliases, scope) instead of always dumping the full list; bare `help` unchanged ([`issue-7502f412`](issues.yaml)) | [x] `help <verb>` shows that command's help text, aliases, and scope; unknown verb reports not-found; bare `help` unchanged. issue-7502f412 resolved. 3 tests. |
-| 34.2 | `score` command — a player progress report (level/xp, quest completion, coins/net worth, reputation, discoveries) reading existing stats/quest/economy state; no new persistent schema ([`issue-257c6643`](issues.yaml)) | [x] `score` in the character feature aggregates level/xp, quests (completed/active), wealth (carried + banked), reputation count, discoveries (rooms/NPCs). Reads existing tables only; degrades to zeros. issue-257c6643 resolved. 4 tests. |
+| 34.1 | `help <command>` shows detailed help for one command (usage, aliases, scope) instead of always dumping the full list; bare `help` unchanged ([`issue-7502f412`](../issues.yaml)) | [x] `help <verb>` shows that command's help text, aliases, and scope; unknown verb reports not-found; bare `help` unchanged. issue-7502f412 resolved. 3 tests. |
+| 34.2 | `score` command — a player progress report (level/xp, quest completion, coins/net worth, reputation, discoveries) reading existing stats/quest/economy state; no new persistent schema ([`issue-257c6643`](../issues.yaml)) | [x] `score` in the character feature aggregates level/xp, quests (completed/active), wealth (carried + banked), reputation count, discoveries (rooms/NPCs). Reads existing tables only; degrades to zeros. issue-257c6643 resolved. 4 tests. |
 
 ---
 
@@ -2105,4 +2105,4 @@ Earlier same day — **[Sprints 17](#sprint-17--determinism-seedable-rng--skill-
 
 Earlier same day — **[Sprint 16](#sprint-16--item-locationownership--instance-state) complete**: `ItemStack`/`ItemInstance` unified item location/ownership model + `ItemLocationService` (spawn/destroy/materialize/move) ships, replacing `Player.inventory`/`RoomItem` outright across the full 17-file blast radius (see `engine_core.md` §3.2's table). `ComponentRegistry`/`HolderRegistry` scaffolded per spec (Tier 1 registers no components, three built-in holder types). 23 new invariant tests; full unit/integration/e2e/simulation suite green unchanged (no audit-event schema drift).
 
-Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](archive/inventory_equipment.md), [`trade_economy.md`](archive/trade_economy.md), [`transit_systems.md`](archive/transit_systems.md), and [`archive/death_resurrection.md`](archive/death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*
+Earlier same day — **Design docs are now implementation-ready** (deep-dive revision for handoff): [`engine_core.md`](../engine/engine_core.md) §3 carries full Tier 1 specs (schemas, APIs, invariants, migration blast-radius tables, per-sprint tests); [`combat_system.md`](../combat_system.md) rewritten off the pre-Tier-1 code (seeded rng, hp meter, slot-based weapon, real event names); [`inventory_equipment.md`](../archive/inventory_equipment.md), [`trade_economy.md`](../archive/trade_economy.md), [`transit_systems.md`](../archive/transit_systems.md), and [`archive/death_resurrection.md`](../archive/death_resurrection.md) aligned to the primitives (superseded drafts called out inline; engine_core §4 lists every resolution). Earlier same day: inserted an engine-first **Tier 1 primitives band ([Sprints 16–21](#sprint-16--item-locationownership--instance-state))** ahead of the feature modules per [`engine_core.md`](../engine/engine_core.md), and **renumbered the feature band +6 to [Sprints 22–35](#sprint-22--standard-item-components--definition-fields)** (item components 22, equipment 23, traits/skills 24, exploration 25, map/mobile 26, condition 27, trade 28, transit 29, quests/puzzles 30, combat 31–33, PvP 34, multiplayer tests 35). Sprint refs in the feature design docs + `wishlist.md` were updated to match. Earlier same day: added `engine_core.md` (Tier 1/2/3 boundary); re-sequenced the feature band around design pillars (Exploration > Trading > Questing > Puzzles; combat supporting). [Sprints 4–15](#sprint-4--player-authentication-production-hardening-) complete; foundation gate green.*

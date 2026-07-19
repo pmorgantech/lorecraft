@@ -13,7 +13,7 @@ min}` map) — the colon-string→map normalization rides along with A2's load-p
 Sprint 30.1 adds the flip side: an `adjust_reputation` side effect on the
 shared npc/side_effects.py registry, so dialogue choices and quest
 branches can make standing changes a *consequence* ("world-state/standing
-changes" per docs/roadmap.md Sprint 30.1), not just a gate.
+changes" per docs/project/roadmap.md Sprint 30.1), not just a gate.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ _TARGET_PARAMS = (
 # dialogue condition surfaces (same capability, two authoring surfaces — the catalog's
 # idempotent same-capability registration keeps a single entry, mirroring
 # `actor_has_flag`/`actor_lacks_flag`). The descriptor must be identical on both sides so
-# the generated `docs/scripting_api.md` is independent of import order.
+# the generated `docs/worldbuilding/scripting_api.md` is independent of import order.
 _REPUTATION_AT_LEAST_SPEC = VocabEntry(
     name="actor_reputation_at_least",
     kind=VocabKind.CONDITION,
@@ -154,7 +154,7 @@ def register() -> None:
     Uses `register_spec` (not the bare `register`) so both `actor_reputation_at_least`
     and `adjust_reputation` publish a self-describing `VocabEntry` into the shared
     scripting catalog — this is what makes them appear in the generated
-    `docs/scripting_api.md` (§8). The command and dialogue registries both register the
+    `docs/worldbuilding/scripting_api.md` (§8). The command and dialogue registries both register the
     one canonical name `actor_reputation_at_least` (§8.6) with an identical descriptor;
     they're separate registries, so the shared name is not a collision — it's the same
     predicate on two authoring surfaces.

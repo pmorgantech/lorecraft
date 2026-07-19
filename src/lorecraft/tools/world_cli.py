@@ -393,7 +393,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_vocab.add_argument("--json", action="store_true", help="Emit the catalog as JSON")
     p_vocab.add_argument(
         "--out",
-        help="Write the full Markdown reference to this file (e.g. docs/scripting_api.md)",
+        help="Write the full Markdown reference to this file (e.g. docs/worldbuilding/scripting_api.md)",
     )
     p_vocab.set_defaults(func=cmd_vocabulary)
 

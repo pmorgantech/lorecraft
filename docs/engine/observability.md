@@ -128,7 +128,7 @@ GET /admin/analytics/player-hours   — playtime from PlayerSession records
 
 All accept a `range` query param (`24h`, `7d`, `2w`, `30m`; default varies per endpoint). Full
 detail, including the `/quests` vs. `/quest-funnel` gotcha and how to remove a widget, is in
-[`admin_builder_guide.md`](admin_builder_guide.md#analytics) — this doc covers the
+[`admin_builder_guide.md`](../worldbuilding/admin_builder_guide.md#analytics) — this doc covers the
 logging/tracing side; that one covers the dashboard/widget side.
 
 **When to reach for Analytics vs. raw logs vs. tracing:** Analytics answers "is the system slow,
@@ -143,7 +143,7 @@ The audit log (`GET /admin/audit`, the Audit tab, `LORECRAFT_AUDIT_DB_PATH`) is 
 concern: it's the canonical, replayable record of **what game-state-changing actions happened**
 (who did what, to what, when), not a debugging/performance tool. Use it to answer "did this
 happen and who did it," not "why was it slow" or "why did it crash." See
-[`admin_builder_guide.md`](admin_builder_guide.md#troubleshooting).
+[`admin_builder_guide.md`](../worldbuilding/admin_builder_guide.md#troubleshooting).
 
 ---
 
@@ -224,7 +224,7 @@ unrelated pending writes alongside itself. See `engine/services/crash_reports.py
 
 | Doc | Covers |
 |-----|--------|
-| [admin_builder_guide.md](admin_builder_guide.md#analytics) | Analytics tab/widgets, dashboard endpoints |
-| [admin_builder_guide.md](admin_builder_guide.md#troubleshooting) | Audit trail, common startup/config issues |
-| [roadmap.md](roadmap.md#sprint-57--request-tracing--crash-reports) | Sprint 57 task breakdown |
-| [wishlist.md](wishlist.md) | "Operations, security & deployment" — the broader ops idea backlog this was drawn from |
+| [admin_builder_guide.md](../worldbuilding/admin_builder_guide.md#analytics) | Analytics tab/widgets, dashboard endpoints |
+| [admin_builder_guide.md](../worldbuilding/admin_builder_guide.md#troubleshooting) | Audit trail, common startup/config issues |
+| [roadmap.md](../project/roadmap.md#sprint-57--request-tracing--crash-reports) | Sprint 57 task breakdown |
+| [wishlist.md](../project/wishlist.md) | "Operations, security & deployment" — the broader ops idea backlog this was drawn from |

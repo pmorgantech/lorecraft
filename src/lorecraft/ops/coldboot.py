@@ -5,7 +5,7 @@
 *before* launching the server. That wipes all live runtime state (player
 positions, sessions, world mutations) back to seed — exactly what a fresh cold
 boot wants, and exactly what a supervisor-triggered *relaunch* must never do
-(docs/roadmap.md, Sprint 72.3 "the critical footgun").
+(docs/project/roadmap.md, Sprint 72.3 "the critical footgun").
 
 Keeping the reseed here — importable, testable, single-sourced — lets the
 regression guard (72.3c) exercise the *real* reset path and assert the
