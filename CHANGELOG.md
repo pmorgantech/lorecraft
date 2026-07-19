@@ -4,6 +4,30 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.153.0] - 2026-07-18
+
+### Added
+
+- New `windhowl_pass` zone: 12 rooms (Southern Approach, The Howling Narrows, Stonewatch
+  Ruins, The Whispering Crevice, High Ridge, Summit Approach, The Crown, Avalanche Chute,
+  Eastern Wind Caves Entrance, The Breathing Tunnels, The Hollow Chamber, Collapsed Gallery)
+  branching east off `ashmoore`'s `ruined_chapel`. No onward connection yet — stands alone
+  pending a future zone.
+- 3 NPCs: Elara Voss (quest giver, Stonewatch Ruins), Old Man Gale (hermit, Breathing
+  Tunnels), The Listener (cryptic wandering spirit, patrols Crown/Narrows/Hollow Chamber).
+  Each with dialogue trees and a flag-gated first-encounter ambient trigger.
+- 2 flavor scenery items (a carved name-taboo warning in the Narrows, a wind-carved standing
+  stone on the Crown) and 2 functional items (`windworn_token` keepsake,
+  `sealed_letter_for_northern_valleys` quest handoff).
+- `windhowl_survivors_crossing` quest — the buildable first two stages of the original
+  4-stage "Survivor's Crossing" design (find Old Man Gale, learn to read the wind, report
+  back to Elara); the third stage (an escorted crossing with wind-forced choices) is
+  backlogged pending an escort mechanic.
+- `docs/windhowl_pass_notes.md`: full design notes with build-status annotations, and a
+  `docs/wishlist.md` entry summarizing the backlog — a wind-intensity system, an
+  escort/follow mechanic, a spoken-name detection hook, 2 more quest chains, and 8 unbuilt
+  wind/time-themed items.
+
 ## [0.152.0] - 2026-07-18
 
 ### Added

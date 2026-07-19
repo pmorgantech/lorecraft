@@ -520,6 +520,31 @@ built as content, none of which exist today:
 None of these block the zone's static content (already shipped). Revisit once foundation work
 (roadmap Sprints 5–15) clears, per `AGENTS.md`'s "foundation before features" gate.
 
+### Windhowl Pass — deferred zone mechanics 🤔 (2026-07-18)
+
+The `windhowl_pass` zone (12 rooms branching east off `ashmoore`'s `ruined_chapel`, no
+onward connection yet — "should eventually lead to yet another zone" per the design brief)
+shipped with rooms, 3 NPCs (Elara Voss, Old Man Gale, The Listener), 2 flavor items, and a
+2-stage quest (`windhowl_survivors_crossing`). Full detail and build-status annotations live
+in [`docs/windhowl_pass_notes.md`](windhowl_pass_notes.md); summary of what's blocked:
+
+- **A wind-intensity system** (Tier 1: an hourly scheduler job + `EventBus` event mirroring
+  `WeatherFrontService`'s pattern; Tier 2: the zone's time/weather table — dawn calm through
+  night gusts through a rare "Dead Calm"). Almost everything else below depends on this
+  existing first.
+- **An escort/follow mechanic.** The quest's original stage 3 ("The High Crossing" — escort
+  Elara across the exposed ridge with wind-forced choices) has no implementable primitive
+  today; the quest ships ending one stage early (a direct handoff instead of a survived
+  escort) until one exists.
+- **A "spoken name" detection hook**, for the Narrows' "do not speak your name aloud" warning
+  to have a real consequence, and to unlock the backlogged "Name in the Wind" quest chain.
+  Same family of gap as Argon Lake's calendar-anchored items above — both want an event/state
+  hook beyond the existing flag/reputation/moon-phase conditions.
+- **The Hollow Chamber's central pit** is described but unenterable — gated on Dead Calm.
+- Two more full quest chains ("Name in the Wind", "What Sleeps Below") and 8 wind/time-themed
+  items (Galecloak, Howlstone, Stormheart Fragment, etc.) are designed but not built; each
+  item's specific blocker is tabulated in the notes doc.
+
 ### Dynamic area behaviors & spawn policies 💚 (2026-07-08)
 
 Respawn, ecology, and events should be content decisions, not engine constants: one forest

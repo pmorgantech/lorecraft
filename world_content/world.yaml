@@ -495,6 +495,8 @@ rooms:
     exits:
       - direction: west
         target_room_id: creek_crossing
+      - direction: east
+        target_room_id: windhowl_pass_southern_approach
 
   - id: deep_forest
     name: The Deep Forest
@@ -3001,6 +3003,271 @@ rooms:
     exits:
       - direction: up
         target_room_id: argon_lake_old_dock
+
+  # --- Windhowl Pass (branches east off ashmoore's ruined_chapel) ---
+  - id: windhowl_pass_southern_approach
+    name: Windhowl Pass — Southern Approach
+    description: >-
+      The trail climbs steeply between two towering rock walls that funnel the wind into
+      a constant, low roar. Loose stones skitter across the path with every gust. Ahead,
+      the pass narrows into a dark slash between the mountains, and the cold, thin air
+      already tugs at anything not tied down.
+    map_x: 13
+    map_y: 3
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    triggers:
+      - on: player_entered
+        when:
+          actor_lacks_flag: [windhowl_pass_first_visit]
+        do:
+          - narrate_room: "A gust screams down from the heights and past the rocks, as if announcing the trail ahead."
+          - set_flags: [windhowl_pass_first_visit]
+    exits:
+      - direction: west
+        target_room_id: ruined_chapel
+      - direction: north
+        target_room_id: windhowl_pass_howling_narrows
+
+  - id: windhowl_pass_howling_narrows
+    name: Windhowl Pass — The Howling Narrows
+    description: >-
+      The canyon walls close in until they are almost close enough to touch on both
+      sides at once. The wind here is deafening, a high, piercing shriek that swallows
+      conversation whole. Dust and loose pebbles whip through the air, and every strong
+      gust threatens to knock a careless traveler off balance. Something is carved into
+      the western wall, faded and half-buried under grime.
+    map_x: 13
+    map_y: 4
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    exits:
+      - direction: south
+        target_room_id: windhowl_pass_southern_approach
+      - direction: north
+        target_room_id: windhowl_pass_high_ridge
+      - direction: east
+        target_room_id: windhowl_pass_whispering_crevice
+      - direction: west
+        target_room_id: windhowl_pass_stonewatch_ruins
+
+  - id: windhowl_pass_stonewatch_ruins
+    name: Windhowl Pass — Stonewatch Ruins
+    description: >-
+      The crumbling remains of an old stone watchtower cling to a ledge above the trail.
+      Most of the upper structure has collapsed, but the lower level still blocks the
+      worst of the wind. A rusted iron brazier lies overturned at the center of the room,
+      and bones — both human and animal — are scattered across the floor. The wind
+      sounds almost like distant laughter as it moves through the broken stonework.
+    map_x: 12
+    map_y: 4
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    exits:
+      - direction: east
+        target_room_id: windhowl_pass_howling_narrows
+
+  - id: windhowl_pass_whispering_crevice
+    name: Windhowl Pass — The Whispering Crevice
+    description: >-
+      A narrow crack in the mountainside splits off from the main trail. The wind here
+      is strangely muted, reduced to a low, constant whispering, and the walls are
+      covered in wind-smoothed grooves that almost resemble writing. The air is stiller
+      here than anywhere else in the pass — which feels, somehow, more dangerous than
+      the howling outside.
+    map_x: 14
+    map_y: 4
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    exits:
+      - direction: west
+        target_room_id: windhowl_pass_howling_narrows
+
+  - id: windhowl_pass_high_ridge
+    name: Windhowl Pass — High Ridge
+    description: >-
+      A knife-edge ridge exposes the full force of the wind, hitting from every
+      direction at once. The view is staggering — jagged peaks stretching to every
+      horizon — but the exposure is severe. The path along the ridge is barely wide
+      enough for one person, with a sheer drop on either side. Strong gusts here are
+      said to be enough to stagger a grown man off his feet.
+    map_x: 13
+    map_y: 5
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    exits:
+      - direction: south
+        target_room_id: windhowl_pass_howling_narrows
+      - direction: north
+        target_room_id: windhowl_pass_summit_approach
+      - direction: down
+        target_room_id: windhowl_pass_avalanche_chute
+      - direction: east
+        target_room_id: windhowl_pass_eastern_wind_caves_entrance
+
+  - id: windhowl_pass_summit_approach
+    name: Windhowl Pass — Summit Approach
+    description: >-
+      The trail steepens further as it climbs toward the peak, the wind a constant,
+      punishing roar that forces a hard lean just to stay upright. Snow and ice cling to
+      the rocks in wind-sculpted shapes, and the air is thin enough to make breathing an
+      effort.
+    map_x: 13
+    map_y: 6
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    exits:
+      - direction: south
+        target_room_id: windhowl_pass_high_ridge
+      - direction: north
+        target_room_id: windhowl_pass_the_crown
+
+  - id: windhowl_pass_the_crown
+    name: Windhowl Pass — The Crown
+    description: >-
+      The highest point of the pass opens onto a broad, windswept plateau with sheer
+      drops on three sides. The view is staggering — mountain ranges stretching to every
+      horizon — but the wind here is savage, howling with a force that feels less like
+      weather and more like intent. At the center of the plateau stands a single massive
+      standing stone, heavily eroded and carved with deep, wind-cut grooves.
+    map_x: 13
+    map_y: 7
+    map_z: 0
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    triggers:
+      - on: player_entered
+        when:
+          actor_lacks_flag: [windhowl_pass_crown_first_visit]
+        do:
+          - narrate_room: "For a moment the wind seems to hold its breath, and something vast and dark shifts far below the ridgeline before the gale roars back to life."
+          - set_flags: [windhowl_pass_crown_first_visit]
+    exits:
+      - direction: south
+        target_room_id: windhowl_pass_summit_approach
+      - direction: down
+        target_room_id: windhowl_pass_avalanche_chute
+
+  - id: windhowl_pass_avalanche_chute
+    name: Windhowl Pass — Avalanche Chute
+    description: >-
+      A wide, steep slope of loose rock and packed snow crosses the trail here, the
+      mountainside above looking dangerously unstable. The wind is erratic, dying to
+      nothing one moment and exploding into violent bursts the next, sending stones
+      tumbling down the scree. Several large, dark shapes half-buried in the rubble
+      suggest others crossed here less fortunately.
+    map_x: 13
+    map_y: 5
+    map_z: -1
+    zone: windhowl_pass
+    room_type: wilderness
+    light_level: 1
+    terrain: mountain
+    exits:
+      - direction: up
+        target_room_id: windhowl_pass_high_ridge
+
+  - id: windhowl_pass_eastern_wind_caves_entrance
+    name: Windhowl Pass — Eastern Wind Caves Entrance
+    description: >-
+      A dark opening in the cliff face offers the first real shelter from the wind in a
+      long while, wide enough to walk through upright. The air inside moves strangely,
+      sometimes drawing inward, sometimes pushing back out in sudden bursts, and faint
+      whistling sounds echo from somewhere deeper in the rock.
+    map_x: 14
+    map_y: 5
+    map_z: 0
+    zone: windhowl_pass
+    room_type: cave
+    light_level: 1
+    exits:
+      - direction: west
+        target_room_id: windhowl_pass_high_ridge
+      - direction: east
+        target_room_id: windhowl_pass_breathing_tunnels
+
+  - id: windhowl_pass_breathing_tunnels
+    name: Windhowl Pass — The Breathing Tunnels
+    description: >-
+      The tunnels twist deep into the mountain, the air shifting direction without
+      warning — steady in one stretch, reversed entirely around the next bend. The walls
+      are smooth and rippled, as though shaped by centuries of moving air rather than
+      any tool. Small alcoves along the passage hold piles of old bones and tattered
+      cloth, and a constant low moaning makes it hard to tell whether it's the mountain
+      breathing, or something else.
+    map_x: 15
+    map_y: 5
+    map_z: 0
+    zone: windhowl_pass
+    room_type: cave
+    light_level: 0
+    indoor: true
+    exits:
+      - direction: west
+        target_room_id: windhowl_pass_eastern_wind_caves_entrance
+      - direction: east
+        target_room_id: windhowl_pass_hollow_chamber
+      - direction: south
+        target_room_id: windhowl_pass_collapsed_gallery
+
+  - id: windhowl_pass_hollow_chamber
+    name: Windhowl Pass — The Hollow Chamber
+    description: >-
+      A large, roughly circular cavern sits at the heart of the cave system, its ceiling
+      lost somewhere in the darkness overhead. At the center of the floor, a deep,
+      perfectly circular pit drops away into blackness. Wind constantly swirls around
+      its edges without ever seeming to descend into it, and faint lights occasionally
+      flicker somewhere far below. The air here is strangely still compared to the rest
+      of the caves, though the pass's distant howling can still be heard.
+    map_x: 16
+    map_y: 5
+    map_z: 0
+    zone: windhowl_pass
+    room_type: cave
+    light_level: 0
+    indoor: true
+    exits:
+      - direction: west
+        target_room_id: windhowl_pass_breathing_tunnels
+
+  - id: windhowl_pass_collapsed_gallery
+    name: Windhowl Pass — Collapsed Gallery
+    description: >-
+      Part of the tunnel system has given way here, leaving a narrow, unstable passage
+      choked with fallen rock. The trapped wind moves chaotically, producing sudden
+      bursts strong enough to dislodge loose stone from the ceiling. Several skeletons
+      lie crushed beneath the rubble, and the whole passage feels like it could give way
+      further at any moment.
+    map_x: 15
+    map_y: 4
+    map_z: 0
+    zone: windhowl_pass
+    room_type: cave
+    light_level: 0
+    indoor: true
+    exits:
+      - direction: north
+        target_room_id: windhowl_pass_breathing_tunnels
 
 # ---------------------------------------------------------------------------
 # Items
@@ -6092,6 +6359,44 @@ items:
     takeable: false
     tradeable: false
 
+  # --- Windhowl Pass ---
+  - id: windhowl_faded_warning_inscription
+    name: Faded Warning Inscription
+    description: >-
+      A short line of old, angular script carved into the rock, worn nearly smooth by
+      decades of wind-driven grit. It is still just legible: "Do not speak your name
+      aloud."
+    takeable: false
+    tradeable: false
+
+  - id: windhowl_standing_stone
+    name: Windhowl Standing Stone
+    description: >-
+      A massive, heavily eroded standing stone, its surface carved with deep grooves
+      that spiral and branch like the paths of countless winds. It seems to hum very
+      faintly whenever a strong gust blows directly across it.
+    takeable: false
+    tradeable: false
+
+  - id: windworn_token
+    name: Windworn Token
+    description: >-
+      A small charm of bone and weathered cord, worn smooth by years spent against
+      someone's skin. It doesn't do anything obvious, but it's warm to the touch even
+      in the cold.
+    takeable: true
+    tradeable: true
+    weight: 0.1
+
+  - id: sealed_letter_for_northern_valleys
+    name: Sealed Letter
+    description: >-
+      A letter sealed in old wax, the address on the front written in a careful, worried
+      hand and addressed to someone in the valleys beyond the mountains. The paper is
+      soft with handling, as though it has been carried a very long way already.
+    takeable: true
+    tradeable: false
+
 room_items:
   # Tidal islet (Sprint 54) — reachable only at low tide
   - room_id: tidal_islet
@@ -6786,6 +7091,12 @@ room_items:
     quantity: 1
   - room_id: argon_lake_pale_isle
     item_id: argon_lake_carved_stone
+    quantity: 1
+  - room_id: windhowl_pass_howling_narrows
+    item_id: windhowl_faded_warning_inscription
+    quantity: 1
+  - room_id: windhowl_pass_the_crown
+    item_id: windhowl_standing_stone
     quantity: 1
 
 dialogue_trees:
@@ -8478,6 +8789,148 @@ dialogue_trees:
             side_effects:
               end_dialogue: true
 
+  # --- Windhowl Pass ---
+  - id: elara_voss_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          She flinches at the sound of your approach, then sags with relief seeing
+          you're no ghost. "Oh — oh thank every god still listening. Please, I need
+          help crossing this cursed pass."
+        choices:
+          - label: What happened to you?
+            next_node: what_happened
+          - label: I'll help you.
+            next_node: accepted
+            actor_lacks_flag: [elara_plea_heard]
+            side_effects:
+              set_flags: [elara_plea_heard]
+              start_quest: windhowl_survivors_crossing
+          - label: I spoke with Old Man Gale.
+            next_node: report_gale
+            actor_has_flag: [learned_to_read_wind]
+          - label: I can't help you right now.
+            next_node: cant_help
+
+      what_happened:
+        text: >-
+          "Our caravan... the wind took half of it before we even reached the
+          narrows. The others — I don't know. I've been hiding here since, listening
+          for voices that aren't supposed to be there."
+        choices:
+          - label: I'll help you.
+            next_node: accepted
+            actor_lacks_flag: [elara_plea_heard]
+            side_effects:
+              set_flags: [elara_plea_heard]
+              start_quest: windhowl_survivors_crossing
+          - label: I can't help you right now.
+            next_node: cant_help
+
+      accepted:
+        text: >-
+          "There's an old man who lives in the caves to the east — mad as the wind
+          itself, but he's survived here longer than anyone. If anyone knows how to
+          cross safely, it's him."
+        choices:
+          - label: I'll find him.
+            next_node: null
+
+      report_gale:
+        text: >-
+          Elara listens intently as you explain what Gale taught you, some of the
+          fear finally leaving her face. "Then maybe... maybe I really can get
+          through this. Please — take this. If you ever reach the northern valleys,
+          see that it's delivered." She presses a sealed letter into your hands.
+        side_effects:
+          set_flags: [elara_crossing_thanks]
+          give_item: sealed_letter_for_northern_valleys
+        choices:
+          - label: I'll see it delivered.
+            next_node: null
+
+      cant_help:
+        text: '"Please," she says quietly. "I don''t know how much longer I can stay hidden here."'
+        choices:
+          - label: Goodbye.
+            next_node: null
+
+  - id: old_man_gale_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          The old man doesn't look up at first, muttering to the wind as if
+          mid-argument with it. "Not yet," he rasps. "Not yet, not yet." Slowly his
+          eyes focus on you.
+        choices:
+          - label: Who are you?
+            next_node: who_are_you
+          - label: Can you teach me to survive the wind?
+            next_node: teach_wind
+            actor_has_flag: [elara_plea_heard]
+          - label: I'll leave you be.
+            next_node: null
+
+      who_are_you:
+        text: >-
+          "Gale," he says, as though the name itself were an old wound. "I've
+          outlasted better than you in this pass. The wind doesn't kill you — it
+          just... convinces you to stop fighting it."
+        choices:
+          - label: Can you teach me to survive the wind?
+            next_node: teach_wind
+            actor_has_flag: [elara_plea_heard]
+          - label: I'll leave you be.
+            next_node: null
+
+      teach_wind:
+        text: >-
+          He studies you for a long moment, then nods once. "Watch the dust before
+          you watch your feet. The wind tells you where it's going before it goes
+          there — if you're still enough to listen." He presses something small into
+          your hand.
+        side_effects:
+          set_flags: [learned_to_read_wind]
+          give_item: windworn_token
+        choices:
+          - label: Thank you.
+            next_node: null
+
+  - id: the_listener_dialogue
+    root_node: greeting
+    nodes:
+      greeting:
+        text: >-
+          The figure doesn't turn to face you so much as the wind seems to turn it.
+          Its voice arrives sideways, as if carried from somewhere else entirely.
+          "You still have your name," it says. "Careful where you spend it."
+        choices:
+          - label: What are you?
+            next_node: what_are_you
+          - label: What do you mean, careful with my name?
+            next_node: about_names
+          - label: "..."
+            next_node: null
+
+      what_are_you:
+        text: >-
+          "I was a traveler, once. Now I am mostly wind, and a little of what the
+          wind remembers." The shape flickers, thinner for a moment, then steadies.
+        choices:
+          - label: "..."
+            next_node: null
+
+      about_names:
+        text: >-
+          "The narrows remember what's said in them. Say your name where the walls
+          are close, and something besides the echo might answer." It says nothing
+          else on the matter.
+        choices:
+          - label: "..."
+            next_node: null
+
 npcs:
   - id: ashmoore_armsmaster
     name: Armsmaster Seren Vale
@@ -9546,6 +9999,62 @@ npcs:
       move_every: 5
       route: [aetheric_engine_room, pressure_lock, regulator_court, boiler_gallery, sootworks]
 
+  # --- Windhowl Pass ---
+  - id: elara_voss
+    name: Elara Voss
+    description: >-
+      A young woman, half-frozen and clearly exhausted, huddled against a fallen wall
+      for whatever shelter it offers.
+    home_room_id: windhowl_pass_stonewatch_ruins
+    current_room_id: windhowl_pass_stonewatch_ruins
+    dialogue_tree_id: elara_voss_dialogue
+    behavior: passive
+    triggers:
+      - on: encounter
+        when:
+          actor_lacks_flag: [met_elara]
+        do:
+          - narrate_room: "Elara flinches at the sound of footsteps, then relaxes seeing it's no ghost."
+          - set_flags: [met_elara]
+
+  - id: old_man_gale
+    name: Old Man Gale
+    description: >-
+      An ancient, wild-eyed man wrapped in layers of tattered cloaks, his hair and
+      beard long since surrendered to the wind.
+    home_room_id: windhowl_pass_breathing_tunnels
+    current_room_id: windhowl_pass_breathing_tunnels
+    dialogue_tree_id: old_man_gale_dialogue
+    behavior: passive
+    triggers:
+      - on: encounter
+        when:
+          actor_lacks_flag: [met_gale]
+        do:
+          - narrate_room: "The old man mutters something to the wind and doesn't look up right away."
+          - set_flags: [met_gale]
+
+  - id: the_listener
+    name: The Listener
+    description: >-
+      A semi-transparent figure wrapped in a tattered, wind-torn cloak. Its face is
+      never quite visible, and it drifts rather than walks.
+    home_room_id: windhowl_pass_the_crown
+    current_room_id: windhowl_pass_the_crown
+    dialogue_tree_id: the_listener_dialogue
+    behavior: passive
+    triggers:
+      - on: encounter
+        when:
+          actor_lacks_flag: [met_listener]
+        do:
+          - narrate_room: "A shape at the edge of vision resolves into a figure that shouldn't be there, wrapped in a cloak that moves like it's still catching the wind."
+          - set_flags: [met_listener]
+    ai:
+      mode: patrol
+      move_every: 4
+      route: [windhowl_pass_the_crown, windhowl_pass_howling_narrows, windhowl_pass_hollow_chamber]
+
 economy:
   regions:
     # Sprint 71.2: economy pricing keys off `zone`. Ashmoore's former town/
@@ -10093,6 +10602,35 @@ quests:
         rewards:
           items: [pressure_engineers_coat, regulator_boots, copper_coin]
           xp: 75
+
+  # --- Windhowl Pass ---
+  # Chain 1, "The Survivor's Crossing" — buildable portion only (the escort across
+  # High Ridge/Summit Approach/The Crown from the original design needs a wind-event
+  # + escort mechanic that doesn't exist yet; see docs/wishlist.md). This covers
+  # "A Voice in the Wind" and "Read the Wind", ending with Elara handing off the
+  # sealed letter rather than an actual escorted crossing.
+  - id: windhowl_survivors_crossing
+    title: "The Survivor's Crossing"
+    description: >-
+      Elara Voss is trapped in Windhowl Pass and needs help finding safe passage
+      through it.
+    stages:
+      - id: learn_from_gale
+        description: >-
+          Old Man Gale, who has survived the pass for decades, might know how to
+          read the wind. Find him in the caves east of High Ridge.
+        conditions:
+          - type: flag_set
+            flag: learned_to_read_wind
+      - id: report_to_elara
+        description: Return to Elara at Stonewatch Ruins and tell her what you learned.
+        conditions:
+          - type: flag_set
+            flag: elara_crossing_thanks
+        terminal: true
+        rewards:
+          xp: 150
+          coins: 30
 
 # ---------------------------------------------------------------------------
 # Transit lines — scheduled vehicles reached by `board` (not the walk graph)
