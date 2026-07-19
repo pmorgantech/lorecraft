@@ -140,7 +140,10 @@ npcs:
 ## World-building quality bars
 
 Use `docs/worldbuilding_guide.md` as the deeper reference when planning zones, shops,
-quests, or dense room clusters. The durable rules for Lorecraft content:
+quests, or dense room clusters. Naming a new zone? Check
+[`docs/zone_naming.md`](../../../docs/zone_naming.md) first — a bank of evocative names by
+terrain type in the same register as the shipped zones — before inventing one from scratch.
+The durable rules for Lorecraft content:
 
 - Keep areas modular and geographically coherent. Exits should be reciprocal unless the
   one-way route is deliberate and signposted.
@@ -303,4 +306,4 @@ validator won't catch a splice, only a human skim will.
   `features/spawns/` (population), `features/reputation/` (standing gating).
 - `src/lorecraft/world/{validator.py,loader.py}` — the YAML schema + importer. Add a room/NPC
   field here (and to the model + a `db.py` migration) when extending world data.
-- `docs/scripting_engine_design.md` — the design spec (sections §3, §6, §8).
+- `docs/archive/scripting_engine_design.md` — the design spec (sections §3, §6, §8).

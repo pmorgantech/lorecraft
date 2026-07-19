@@ -4,6 +4,23 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.151.4] - 2026-07-18
+
+### Added
+
+- `docs/zone_naming.md`: a bank of evocative zone names by terrain type (forests/groves,
+  lakes/rivers/wetlands, deserts/wastelands, mountains/highlands), in the same atmospheric
+  register as shipped zones (`ashmoore`, `whisperwood`, `cogsworth`). Linked from
+  `docs/worldbuilding_guide.md` and both `worldbuilding` skill files so zone-naming is
+  discoverable before an author invents one from scratch.
+
+### Changed
+
+- Fixed a second stale `docs/scripting_engine_design.md` link (should be
+  `docs/archive/scripting_engine_design.md`) in `.agents/skills/worldbuilding/SKILL.md`,
+  missed by the `docs/scripting_api.md` regeneration in 0.151.3 since it isn't
+  machine-generated.
+
 ## [0.151.3] - 2026-07-18
 
 ### Changed

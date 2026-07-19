@@ -19,3 +19,5 @@ Quick orientation (full detail in the canonical file):
 - NPCs also support autonomous `ai:` (wander/patrol), dialogue trees with conditional choices,
   and context verbs. Weather lives in `weather_fronts.yaml`, spawns in `spawns.yaml`.
 - After adding a new engine-side descriptor, run `make scripting-docs` in the same commit.
+- Naming a new zone? Check `docs/zone_naming.md` for a bank of evocative names by terrain
+  type before inventing one from scratch.

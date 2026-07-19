@@ -73,7 +73,7 @@ Successful MUD worlds balance technical structure with creative storytelling and
 
 ## 2. Planning and Building Process
 
-1. **Choose Theme and Purpose**: Define the "why" (e.g., "infiltrate a thieves' guild," "explore cursed ruins," "defend a village from giants"). Research details for authenticity and flavor.
+1. **Choose Theme and Purpose**: Define the "why" (e.g., "infiltrate a thieves' guild," "explore cursed ruins," "defend a village from giants"). Research details for authenticity and flavor. Pick or riff on a zone name from [`docs/zone_naming.md`](zone_naming.md) to set the tone before drafting rooms.
 2. **Sketch Maps and Plans**: Paper first - overall regional map, then detailed room layout with exits, features, vnum assignments. Use simple graphs or tools like Excel. Plan nonlinear/branching paths, multiple access points, loops, and feature placement (hide explorer rewards; cluster for density).
 3. **Feature and Quest Relationship Diagramming**: List features (shops, secrets, NPCs, puzzles). Map quest dependencies (prerequisites -> outcomes) to avoid bottlenecks, dead-ends, or locked content. Use diagrams for complex quest trees/lattices.
 4. **Write Descriptions and Content**: Draft room text (objective, vivid), extra descriptions, mob/object stats and prose, dialogue trees, programs/scripts.
@@ -270,6 +270,15 @@ Quests provide narrative depth, problem-solving satisfaction, alternative progre
 ---
 
 ## 7. Resources and Further Reading
+
+### Lorecraft-Specific References
+
+- [`docs/zone_naming.md`](zone_naming.md) - Bank of evocative zone names by terrain type
+  (forests, lakes/wetlands, deserts, mountains), in the same register as shipped zones
+  (`ashmoore`, `whisperwood`, `cogsworth`). Use when naming a new `zone`/`area_id`.
+- [`.agents/skills/worldbuilding/SKILL.md`](../.agents/skills/worldbuilding/SKILL.md) - The
+  authoring workflow: YAML schema, the generated `when:`/`do:` scripting vocabulary, and the
+  validator/import loop.
 
 ### Primary Technical/Documentation Sources
 
