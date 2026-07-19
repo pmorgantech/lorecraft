@@ -605,6 +605,103 @@ both `whisperwood_meadow_clearing` and `whisperwood_cave_entrance` are now safe 
 
 ---
 
+## Living Energy & Harvesting System — Engine Gap Analysis (2026-07-19)
+
+**Source:** `docs/worldbuilding/lore_ideas.md`'s "Living Energy & Harvesting System: Complete
+Design" — three energy types (Lumenroot Sap, Dreamveil Mycelium, Emberthorn Vitriol), a
+nighttime "glow" tied to local ecosystem health, depletable harvest nodes, tool crafting with
+quality/affinity, cross-energy volatility, and faction alignment. This is a proposed new-world
+mechanic, not yet part of the Ashmoore/Cogsworth/Whisperwood/Port Veridian build above — logged
+here (rather than a separate file) because it's the same kind of engine-vs-content gap tracking
+this document already does. Not yet scheduled against a sprint; feature work stays gated behind
+the foundation band (Sprints 5–15) per `AGENTS.md`.
+
+**Bottom line:** the atmospheric/reactive half (day/night glow cycles, faction alignment,
+gathering, depletion-and-regen) maps cleanly onto existing Tier 1 primitives. The mechanical
+half (crafting, tool quality/compatibility, persistent numeric region state, machine fuel-typing)
+is genuinely unbuilt and is a large Tier 2 feature stack.
+
+### Reusable primitives already in the engine
+
+| Primitive | Where | Relevance |
+|-----------|-------|-----------|
+| **WorldClock** | `engine/clock/world_clock.py` | Emits `HOUR_CHANGED`/`DAY_CHANGED`/`TIME_ADVANCED`, exposes `current_hour` — drives glow/depletion cycles for free |
+| **Celestial conditions** | `features/celestial/conditions.py:36` (`moon_phase_is`, `tide_for_hour`) | The exact derive-state-from-clock + register-a-condition pattern a day/night "glow phase" needs |
+| **`forage` verb** | `features/exploration/forage.py` | Reference gathering verb: skill-check + terrain-keyed, data-driven YAML yield table, no hardcoded item ids — the harvest verbs are a near-clone of this |
+| **Meters** | `engine/game/meters.py` (`MeterDef.regen_per_tick`) | Regen/decay-on-tick mechanism, but currently scoped to player/NPC entities, not zones |
+| **Modifiers** | `engine/game/modifiers.py:41` (`resolve`) | Ordered add/mult/clamp stack — machine performance buffs/debuffs and tool-quality effects fit this exactly |
+| **Economy restock** | `features/economy/models.py:40`, `restock.py` | `ticks_since_restock` counter is the depletion/regen precedent; region config is currently reseed-only (see Blocked Item §3 above — same gap applies here) |
+| **Reputation** | `features/reputation/service.py` | Faction standing already exists; energy-preference faction alignment is pure content on top |
+| **Item durability** | `features/item_components/components.py`, `Item.max_durability` | Durability is solved; quality/purity/affinity fields are not |
+
+### Gap list
+
+1. **Persistent evolving region/zone state** (glow intensity, depletion level, imbalance)
+   **Status:** ❌ Not supported. Rooms today only have `flags` (JsonObject) + `loot_table`; meters
+   are player/NPC-scoped, not zone-scoped.
+   **Tier:** Both — Tier 1: generalize meters (or a new zone-state store) to a zone/region entity
+   with scheduler-driven decay/regen; Tier 2: per-zone energy-health values.
+   **Tunability:** Should be **live-tunable DB-backed** (the `WorldClock`/admin-dial pattern), not
+   reseed-only YAML — an admin will want to retune depletion/regen rates without a reseed.
+   **Builds on:** `meters.py`, `scheduler.py`.
+   **Scope:** Large.
+
+2. **Harvest verbs with depletion**
+   **Status:** ❌ Not supported. `forage` is infinite/non-depleting; energy harvesting must draw
+   down and regenerate gap #1's state.
+   **Tier:** Both — Tier 1: generic gather-against-a-depletable-node mechanism; Tier 2: the three
+   energy yield/difficulty tables.
+   **Builds on:** `forage.py`.
+   **Scope:** Small–Medium.
+
+3. **Crafting / recipe system**
+   **Status:** ❌ Not supported at all (already flagged deferred in `docs/wishlist.md`; CODE_AUDIT
+   estimates ~7–10 days for a general system).
+   **Tier:** Both — Tier 1: generic consume/produce resolver (can reuse `engine/game/transaction.py`);
+   Tier 2: the three crafting philosophies (traditional/industrial/experimental) + tool recipes.
+   **Scope:** Large.
+
+4. **Tool quality / energy-affinity / compatibility ratings**
+   **Status:** ❌ Not supported. Durability exists; quality, purity, energy-type affinity, and
+   machine-compatibility fields don't exist on `Item`.
+   **Tier:** Both — Tier 1: generic item rating attributes readable by a verb (extend
+   `item_components`); Tier 2: which tools carry which affinity.
+   **Scope:** Small–Medium.
+
+5. **Time-of-day/night-conditional room description (the glow itself)**
+   **Status:** ⚠️ Partially supported. The clock exposes `current_hour` but there's no day/night
+   phase derivation and no night condition in the *room-trigger* `when:` vocabulary (only
+   `moon_phase_is` exists, and that's for dialogue/commands, not room triggers). This is the same
+   underlying gap as the "dynamic room description rotation" blocked item already noted above, and
+   overlaps the Argon Lake moon-phase-ambience note in `docs/wishlist.md`.
+   **Tier:** Both — Tier 1: day-phase derivation + a trigger/description condition mirroring
+   `celestial/conditions.py`; Tier 2: glow text per energy/health state.
+   **Scope:** Small — cheapest win in this list, and delivers the system's signature visual first.
+
+6. **Cross-energy volatility / interaction rules**
+   **Status:** ❌ Not supported. No cross-item/cross-resource-type interaction engine exists.
+   **Tier:** Both — Tier 1: a generic "two typed inputs → outcome table" resolver (overlaps #3's
+   crafting resolver); Tier 2: the compatibility matrix (Lumenroot+Dreamveil stable,
+   Dreamveil+Emberthorn volatile, etc.).
+   **Scope:** Medium.
+
+7. **Machine/NPC fuel-type compatibility affecting behavior**
+   **Status:** ❌ Not supported. `NPC.behavior` is combat-disposition only; there's no fuel field,
+   no behavior modulation by resource type, and "machines" aren't first-class entities yet.
+   **Tier:** Both — Tier 1: a per-entity "consumes resource X, penalty on mismatch" hook feeding
+   `modifiers.py`; Tier 2: per-machine energy needs.
+   **Scope:** Medium–Large — the biggest lift in this list.
+
+### Suggested sequencing
+
+Cheapest-first: #5 (night-glow trigger condition) is nearly free and delivers the visual
+signature immediately. #1 + #2 (region energy state + depletion-aware harvesting) is the next
+real milestone and unlocks everything downstream. Crafting (#3/#4/#6) and machine fuel-typing
+(#7) are the large lifts and are best left until the foundation-band roadmap work
+(`docs/roadmap.md` Sprints 5–15) clears, per the project's "foundation before features" directive.
+
+---
+
 ## Content Writing Guidelines
 
 ### Room Descriptions
