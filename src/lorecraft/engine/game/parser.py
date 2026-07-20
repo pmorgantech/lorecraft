@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
@@ -132,11 +133,8 @@ def parse_command(
         commands: list[ParsedCommand] = []
         last_object: str | None = None
         for part in parts:
-            if " it " in f" {part} " or part.strip() == "it":
-                if last_object:
-                    part = part.replace(" it ", f" {last_object} ").replace(
-                        "it", last_object
-                    )
+            if last_object and re.search(r"\bit\b", part):
+                part = re.sub(r"\bit\b", last_object, part)
             sub_result = parse_command(part, context=context)
             if sub_result.error_message:
                 return sub_result
