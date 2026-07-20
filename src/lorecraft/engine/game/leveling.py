@@ -129,6 +129,20 @@ def award_xp(stats: PlayerStats, amount: int, curve: LevelCurve) -> LevelUpResul
     )
 
 
+# Fields where "below this value" is never a valid state, regardless of what
+# Tier 2 reward/penalty policy asked for — a Tier 1 invariant, not a game-
+# design opinion (a player record can't be level 0, or owe negative XP/skill
+# points). Every other mutable field (strength, agility, ..., max_hp,
+# xp_to_next) is caller-owned: Tier 1 applies the delta as given with no
+# floor, since what's valid there (e.g. can max_hp ever be reduced below 1?)
+# is a Tier 2 policy decision.
+_FLOORED_STAT_FIELDS: Mapping[str, int] = {
+    "level": 1,
+    "skill_points": 0,
+    "xp": 0,
+}
+
+
 def apply_stat_deltas(stats: PlayerStats, deltas: Mapping[str, int]) -> None:
     """Apply integer deltas to whitelisted numeric ``PlayerStats`` fields.
 
@@ -136,6 +150,13 @@ def apply_stat_deltas(stats: PlayerStats, deltas: Mapping[str, int]) -> None:
     policy names the fields and amounts; this mechanism only enforces that each
     key is a known numeric field and applies the delta. Unknown keys raise rather
     than being silently dropped.
+
+    A delta that would push ``level``/``skill_points``/``xp`` below their floor
+    (see ``_FLOORED_STAT_FIELDS``) is clamped at the floor rather than going
+    negative or to zero-level; it does not raise, since a Tier 2 penalty that
+    overshoots a floor (e.g. "lose 5 skill points" when the player has 2) is a
+    normal, expected case, not a bug. Every other whitelisted field is
+    caller-owned and applied unclamped.
     """
     for key in deltas:
         if key not in _MUTABLE_STAT_FIELDS:
@@ -144,4 +165,8 @@ def apply_stat_deltas(stats: PlayerStats, deltas: Mapping[str, int]) -> None:
                 code="validation_unknown_stat",
             )
     for key, delta in deltas.items():
-        setattr(stats, key, getattr(stats, key) + delta)
+        new_value = getattr(stats, key) + delta
+        floor = _FLOORED_STAT_FIELDS.get(key)
+        if floor is not None and new_value < floor:
+            new_value = floor
+        setattr(stats, key, new_value)
