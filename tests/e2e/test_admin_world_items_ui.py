@@ -12,15 +12,15 @@ from tests.e2e.conftest import admin_login
 pytestmark = pytest.mark.e2e
 
 
-def _open_world_tab(page: Any, admin_server: str) -> None:
+def _open_items_tab(page: Any, admin_server: str) -> None:
     admin_login(page, admin_server)
     page.click('.category-tab[data-category="world"]')
-    page.click('.tab[data-tab="world"]')
+    page.click('.tab[data-tab="items"]')
     page.wait_for_selector("#item-new-btn", state="visible")
 
 
 def test_world_tab_can_create_item_definition(page: Any, admin_server: str) -> None:
-    _open_world_tab(page, admin_server)
+    _open_items_tab(page, admin_server)
     item_id = f"e2e_admin_item_{uuid4().hex[:8]}"
 
     page.click("#item-new-btn")
@@ -50,7 +50,7 @@ def test_world_tab_can_create_item_definition(page: Any, admin_server: str) -> N
 def test_item_editor_controls_require_world_builder_role(
     page: Any, admin_server: str
 ) -> None:
-    _open_world_tab(page, admin_server)
+    _open_items_tab(page, admin_server)
     assert page.is_enabled("#item-new-btn")
 
     page.evaluate("() => { state.role = 'observer'; updateItemEditorUI(); }")

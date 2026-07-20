@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.154.1] - 2026-07-19
+
+### Fixed
+
+- Admin console: split the World tab's "Items" section out into its own "Items" tab.
+  Previously Rooms and Items shared one panel with Items stacked below, squeezing the
+  room list into a sliver of the viewport; each now gets the full tab width.
+
 ## [0.154.0] - 2026-07-19
 
 ### Changed

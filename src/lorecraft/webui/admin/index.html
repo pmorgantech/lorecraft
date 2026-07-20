@@ -205,6 +205,7 @@
       <div class="tab" data-category="tuning" data-tab="progression" onclick="showTab('progression')">Progression</div>
       <div class="tab" data-category="tuning" data-tab="economy" onclick="showTab('economy')">Economy</div>
       <div class="tab" data-category="world" data-tab="world" onclick="showTab('world')">Rooms</div>
+      <div class="tab" data-category="world" data-tab="items" onclick="showTab('items')">Items</div>
       <div class="tab" data-category="world" data-tab="changesets" onclick="showTab('changesets')">Changesets</div>
       <div class="tab" data-category="world" data-tab="builder-studio" onclick="showTab('builder-studio')">Builder Studio</div>
       <div class="tab" data-category="world" data-tab="npc-ai" onclick="showTab('npc-ai')">NPC/AI</div>
@@ -455,7 +456,7 @@
               <option value="port_veridian">port_veridian</option>
             </select>
             <input id="w-search" placeholder="filter by name" style="width:160px;" oninput="renderRooms()" />
-            <button onclick="loadWorld()">↻ Refresh</button>
+            <button onclick="loadRooms()">↻ Refresh</button>
           </div>
         </div>
         <div id="world-danger-zone">
@@ -494,10 +495,15 @@
             </div>
           </div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-top:1rem;">
+      </div>
+
+      <!-- Items -->
+      <div id="tab-items" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
           <h2 style="display:flex;align-items:baseline;gap:0.5rem;">Items <span id="item-count" style="color:var(--text-dim);font-size:0.8rem;font-weight:normal;"></span></h2>
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
             <input id="item-search" placeholder="filter items" style="width:180px;" oninput="renderItems()" />
+            <button onclick="loadItems()">↻ Refresh</button>
             <button id="item-new-btn" onclick="newItem()">+ New Item</button>
           </div>
         </div>
@@ -1143,7 +1149,7 @@ function showError(msg) {
 const NAV_CATEGORIES = {
   overview: ["dashboard"],
   tuning: ["clock", "weather", "combat", "progression", "economy"],
-  world: ["world", "changesets", "builder-studio", "npc-ai"],
+  world: ["world", "items", "changesets", "builder-studio", "npc-ai"],
   content: ["news", "help"],
   moderation: ["issues", "accounts"],
   system: ["system", "backups", "crashes", "observability", "analytics", "audit", "admin-console", "alerts"],
@@ -1155,7 +1161,7 @@ const TAB_TO_CATEGORY = Object.fromEntries(
 
 const TAB_LOADERS = {
   dashboard: loadDashboard, analytics: loadAnalytics, audit: loadAudit,
-  crashes: loadCrashes, world: loadWorld,
+  crashes: loadCrashes, world: loadRooms, items: loadItems,
   changesets: loadChangesets, clock: loadClock, weather: loadClock,
   combat: loadCombatRulesets, progression: loadProgressionConfig,
   economy: loadEconomyRegions,
@@ -1848,10 +1854,6 @@ async function showCrashDetail(id) {
 // ────────────────────────────────────────
 
 let allRooms = [];
-
-async function loadWorld() {
-  await Promise.all([loadRooms(), loadItems()]);
-}
 
 function canBuildWorld() {
   return ["world-builder", "superadmin"].includes(state.role);
