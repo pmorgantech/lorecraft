@@ -18,6 +18,7 @@ from lorecraft.engine.game.holders import (
     Location,
     get_registry as get_holder_registry,
 )
+from lorecraft.engine.models.items import ItemStack
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.ledger_repo import LedgerRepo
 from lorecraft.engine.repos.stack_repo import StackRepo
@@ -70,25 +71,37 @@ class LedgerService:
     ) -> ExchangeReceipt:
         """Atomic multi-leg exchange of coins and items.
 
-        Validates every leg first (sufficient balances, every stack present
-        at its give_from with quantity, destination holders exist); only if
-        every leg passes does it apply any mutation. Never commits — the
-        caller's transaction (command lifecycle) makes the whole exchange
-        atomic and rollback-safe.
+        Validates the whole exchange first — every leg's structural shape
+        (non-negative coins, destination holders exist, stacks are actually
+        at their declared give_from), *and* the net coin/quantity effect of
+        all legs combined against each holder/stack's current state — before
+        applying any mutation. Never commits — the caller's transaction
+        (command lifecycle) makes the whole exchange atomic and
+        rollback-safe.
+
+        Validating net effect (not leg-by-leg against a stale snapshot)
+        matters because legs can share a holder or a stack: two legs each
+        debiting the same holder 80 coins from a 100-coin balance would each
+        look individually valid against that same starting balance, even
+        though applying both together overdraws it. Accumulating first and
+        validating the combined delta once catches that up front, so a
+        failure never surfaces after some legs have already mutated session
+        state.
 
         Raises:
             ValidationError: A leg's coins/quantity is negative or zero-invalid.
             NotFoundError: A leg's destination holder or a referenced stack
                 doesn't exist.
-            ConflictError: Insufficient coin balance, a stack isn't actually
-                at its declared give_from, or insufficient stack quantity.
-                The error names the failing leg's index.
+            ConflictError: A stack isn't actually at its declared give_from,
+                or the net coin/quantity effect across all legs would
+                overdraw a holder's balance or a stack's quantity. Balance/
+                quantity errors name the holder/stack, not a single leg
+                index — the shortfall may be the combined effect of several.
         """
         holder_registry = get_holder_registry()
         stack_repo = StackRepo(session)
 
-        for index, leg in enumerate(legs):
-            self._validate_leg(session, leg, index, holder_registry, stack_repo)
+        self._validate_legs(session, legs, holder_registry, stack_repo)
 
         item_location = ItemLocationService(
             session, stack_repo=stack_repo, item_repo=ItemRepo(session)
@@ -117,60 +130,82 @@ class LedgerService:
             total_stacks_moved=total_stacks,
         )
 
-    def _validate_leg(
+    def _validate_legs(
         self,
         session: Session,
-        leg: ExchangeLeg,
-        index: int,
+        legs: Sequence[ExchangeLeg],
         holder_registry: HolderRegistry,
         stack_repo: StackRepo,
     ) -> None:
-        if leg.coins < 0:
-            raise ValidationError(
-                f"Leg {index}: coins must be >= 0", "validation_negative_coins"
-            )
+        """Structural per-leg checks, then one accumulated-delta check per
+        holder/stack across the whole exchange (see execute_exchange)."""
+        coin_deltas: dict[tuple[str, str], int] = {}
+        stack_deltas: dict[int, int] = {}
+        stacks_by_id: dict[int, ItemStack] = {}
 
-        if not holder_registry.holder_exists(
-            leg.give_to.owner_type, session, leg.give_to.owner_id
-        ):
-            raise NotFoundError(
-                f"Leg {index}: destination holder does not exist", "not_found_holder"
-            )
+        for index, leg in enumerate(legs):
+            if leg.coins < 0:
+                raise ValidationError(
+                    f"Leg {index}: coins must be >= 0", "validation_negative_coins"
+                )
 
-        if leg.coins > 0:
-            available = self.balance_of(
-                session, leg.give_from.owner_type, leg.give_from.owner_id
-            )
-            if available < leg.coins:
+            if not holder_registry.holder_exists(
+                leg.give_to.owner_type, session, leg.give_to.owner_id
+            ):
+                raise NotFoundError(
+                    f"Leg {index}: destination holder does not exist",
+                    "not_found_holder",
+                )
+
+            if leg.coins > 0:
+                give_key = (leg.give_from.owner_type, leg.give_from.owner_id)
+                receive_key = (leg.give_to.owner_type, leg.give_to.owner_id)
+                coin_deltas[give_key] = coin_deltas.get(give_key, 0) - leg.coins
+                coin_deltas[receive_key] = coin_deltas.get(receive_key, 0) + leg.coins
+
+            for stack_id, quantity in leg.stacks:
+                if quantity < 1:
+                    raise ValidationError(
+                        f"Leg {index}: stack quantity must be >= 1",
+                        "validation_quantity_underflow",
+                    )
+                stack = stacks_by_id.get(stack_id)
+                if stack is None:
+                    stack = stack_repo.find_stack(stack_id)
+                    if stack is None:
+                        raise NotFoundError(
+                            f"Leg {index}: stack {stack_id} does not exist",
+                            "not_found_stack",
+                        )
+                    stacks_by_id[stack_id] = stack
+                if (
+                    stack.owner_type != leg.give_from.owner_type
+                    or stack.owner_id != leg.give_from.owner_id
+                ):
+                    raise ConflictError(
+                        f"Leg {index}: stack {stack_id} is not at the expected "
+                        "location",
+                        "conflict_stack_location_mismatch",
+                    )
+                stack_deltas[stack_id] = stack_deltas.get(stack_id, 0) + quantity
+
+        for (holder_type, holder_id), delta in coin_deltas.items():
+            if delta >= 0:
+                continue
+            available = self.balance_of(session, holder_type, holder_id)
+            if available + delta < 0:
                 raise ConflictError(
-                    f"Leg {index}: insufficient coin balance "
-                    f"(has {available}, needs {leg.coins})",
+                    f"{holder_type}:{holder_id}: insufficient coin balance across "
+                    f"the exchange (has {available}, needs {-delta})",
                     "conflict_insufficient_coins",
                 )
 
-        for stack_id, quantity in leg.stacks:
-            if quantity < 1:
-                raise ValidationError(
-                    f"Leg {index}: stack quantity must be >= 1",
-                    "validation_quantity_underflow",
-                )
-            stack = stack_repo.find_stack(stack_id)
-            if stack is None:
-                raise NotFoundError(
-                    f"Leg {index}: stack {stack_id} does not exist", "not_found_stack"
-                )
-            if (
-                stack.owner_type != leg.give_from.owner_type
-                or stack.owner_id != leg.give_from.owner_id
-            ):
+        for stack_id, needed in stack_deltas.items():
+            stack = stacks_by_id[stack_id]
+            if stack.quantity < needed:
                 raise ConflictError(
-                    f"Leg {index}: stack {stack_id} is not at the expected location",
-                    "conflict_stack_location_mismatch",
-                )
-            if stack.quantity < quantity:
-                raise ConflictError(
-                    f"Leg {index}: insufficient quantity for stack {stack_id} "
-                    f"(has {stack.quantity}, needs {quantity})",
+                    f"stack {stack_id}: insufficient quantity across the exchange "
+                    f"(has {stack.quantity}, needs {needed})",
                     "conflict_quantity_underflow",
                 )
 
