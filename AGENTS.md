@@ -45,25 +45,38 @@ See [`docs/project/multi-agent-workflow.md`](docs/project/multi-agent-workflow.m
 - Use Ref before changing code that depends on external APIs, libraries, SDKs, or framework behavior.
 - Create a new branch for any changes which are large in scope or risky.
 
-## Code intelligence
+## Code intelligence — CodeGraph-first exploration (2026-07-19)
 
-Use CodeGraph before broad repository exploration.
+**All code exploration queries should use CodeGraph MCP (`codegraph_explore` tool) as the primary strategy, falling back to grep/read only when CodeGraph cannot answer the question.** The index is live (updated on every code change via `graph-refresh.sh` hook) and sub-millisecond — it's faster and more accurate than recursive grep or manual file reads.
 
-For architecture, execution-flow, dependency, caller/callee, or change-impact
-questions, query CodeGraph before using recursive grep or opening many files.
+**When to use `codegraph_explore` (MCP tool):**
+- Multi-file queries: "what functions call X?", "where is Y defined?", "what imports Z?"
+- Architecture questions: "what depends on this module?", "what's the call chain from A to B?"
+- Impact analysis: "if I change X, what breaks?", "who calls this function?"
+- Any question naming symbols, files, or architectural boundaries
 
-Useful commands for shell-capable agents:
+**When grep/read is acceptable (no MCP call needed):**
+- Verifying your own edits or checking a file you just modified
+- Reading test output or logs
+- Reading static documentation or non-code files
+- One-off syntax checks or inline searches within files you already have open
 
-- `codegraph explore "<question>"`
-- `codegraph node <symbol-or-file>`
-- `codegraph callers <symbol>`
-- `codegraph callees <symbol>`
-- `codegraph impact <symbol>`
-- `codegraph affected <changed-files...>`
-- `codegraph status`
+**Useful MCP query patterns:**
+- `codegraph_explore` with natural language: `"Where is the GameContext class used?"`
+- `codegraph_explore` with symbol names: `"parser, execute_command, CommandRegistry"`
+- Shell fallback (if MCP tool unavailable): `codegraph explore "<question>"`
+
+**Shell commands (MCP unavailable fallback):**
+- `codegraph explore "<question>"` — natural language query
+- `codegraph node <symbol-or-file>` — inspect a specific symbol/file
+- `codegraph callers <symbol>` — who calls this?
+- `codegraph callees <symbol>` — what does this call?
+- `codegraph impact <symbol>` — what depends on this?
+- `codegraph affected <changed-files>` — what files are impacted by these changes?
+- `codegraph status` — check index freshness
 
 Treat CodeGraph as derived data. Never commit `.codegraph/`.
-Run `make ai-graph` when an explicit incremental refresh is needed.
+Run `make ai-graph` when an explicit incremental refresh is needed (typically not required — the hook keeps it live).
 
 ## Design principles
 
