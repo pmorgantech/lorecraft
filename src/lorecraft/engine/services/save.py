@@ -14,6 +14,7 @@ from lorecraft.engine.game.holders import Location
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.transaction import TransactionSource
 from lorecraft.engine.models.audit import AuditEvent
+from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.player import Player, PlayerStats, SaveSlot
 from lorecraft.engine.models.session import PlayerSession
 from lorecraft.engine.repos.audit_repo import AuditRepo
@@ -286,25 +287,42 @@ def normalize_save_slot(slot_name: str | None) -> str | None:
 
 
 def _inventory_snapshot(ctx: GameContext) -> list[JsonValue]:
-    """Carried stacks as a save-slot snapshot (v2 shape: one dict per stack)."""
-    return [
-        {
+    """Carried stacks as a save-slot snapshot (v2 shape: one dict per stack).
+
+    Instanced stacks (instance_id set) also capture the ItemInstance's
+    component state (durability, charges, etc.) as an opaque JSON blob, so a
+    restore can reapply it instead of minting a pristine instance. Tier 1
+    stays unopinionated about what the state contains — it just carries it.
+    """
+    entries: list[JsonValue] = []
+    for stack, _item in ctx.item_repo.stacks_carried_by(ctx.player.id):
+        entry: JsonObject = {
             "item_id": stack.item_id,
             "quantity": stack.quantity,
             "instance_id": stack.instance_id,
         }
-        for stack, _item in ctx.item_repo.stacks_carried_by(ctx.player.id)
-    ]
+        if stack.instance_id is not None:
+            instance = ctx.session.get(ItemInstance, stack.instance_id)
+            if instance is not None:
+                entry["instance_state"] = dict(instance.state)
+        entries.append(entry)
+    return entries
 
 
 def _restore_inventory(ctx: GameContext, snapshot: list[JsonValue]) -> None:
     """Replace the player's carried stacks with a save-slot snapshot.
 
-    Accepts both the v2 shape (list of {item_id, quantity, instance_id} dicts)
-    and the pre-Sprint-16 v1 shape (a flat list[str] of item ids, one entry
-    per carried unit) — old saves must not break. v1 entries spawn one unit
-    at a time, which merges into a single fungible stack via spawn()'s
-    existing-stack lookup.
+    Accepts both the v2 shape (list of {item_id, quantity, instance_id,
+    instance_state} dicts) and the pre-Sprint-16 v1 shape (a flat list[str]
+    of item ids, one entry per carried unit) — old saves must not break. v1
+    entries spawn one unit at a time, which merges into a single fungible
+    stack via spawn()'s existing-stack lookup.
+
+    spawn() always mints a fresh ItemInstance (new id, default component
+    state) since the original instance may no longer exist. When the
+    snapshot carries an instance_state blob, it is reapplied onto that fresh
+    instance so per-instance state (a burned torch, a charged wand) survives
+    the round trip instead of resetting to pristine.
     """
     loc = Location("player", ctx.player.id)
     for stack in ctx.stack_repo.stacks_for_owner("player", ctx.player.id):
@@ -317,8 +335,25 @@ def _restore_inventory(ctx: GameContext, snapshot: list[JsonValue]) -> None:
         elif isinstance(entry, dict):
             item_id = entry.get("item_id")
             quantity = entry.get("quantity", 1)
+            instance_state = entry.get("instance_state")
             if isinstance(item_id, str) and isinstance(quantity, int) and quantity > 0:
-                ctx.item_location.spawn(item_id, loc, quantity)
+                stacks = ctx.item_location.spawn(item_id, loc, quantity)
+                if isinstance(instance_state, dict):
+                    for new_stack in stacks:
+                        _restore_instance_state(ctx, new_stack, instance_state)
+
+
+def _restore_instance_state(
+    ctx: GameContext, stack: ItemStack, state: JsonObject
+) -> None:
+    """Reapply a persisted component-state blob onto a freshly spawned instance."""
+    if stack.instance_id is None:
+        return
+    instance = ctx.session.get(ItemInstance, stack.instance_id)
+    if instance is None:
+        return
+    instance.state = dict(state)
+    ctx.session.add(instance)
 
 
 def _stats_snapshot(ctx: GameContext, stats: PlayerStats | None) -> JsonObject:
