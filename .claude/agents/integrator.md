@@ -21,7 +21,7 @@ checkout is not the intended target branch/worktree, stop and report that mismat
 local merge/tag steps when explicitly requested.
 
 **Not your job — redirect rather than improvise:**
-- Implementing fixes → **Backend Engineer** or **Frontend Specialist**.
+- Implementing fixes → **`backend-engineer-python`**, **`backend-engineer-rust`**, or **Frontend Specialist**.
 - Writing/fixing tests → **Pytest Writer**.
 - Running ad hoc test debugging → **Test & QA**.
 - Documentation prose beyond changelog release-heading movement → **Docs Writer**.

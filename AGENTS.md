@@ -9,8 +9,8 @@ code design and quality.
 - `CODE_AUDIT.md` findings + the `docs/project/roadmap.md` foundation band (Sprints 5–15) are the
   active work queue. Feature sprints (16+) are gated behind the roadmap's foundation exit criteria.
 - When touching code, leave it more consistent than found: typed errors from
-  `lorecraft/errors.py` (once it exists) instead of silent `except Exception`; no new
-  `cast(GameContext, ctx)`; one service-wiring style; no new mixed-concern mega-modules.
+  `lorecraft/errors.py` instead of silent `except Exception`; no new `cast(GameContext, ctx)`;
+  one service-wiring style; no new mixed-concern mega-modules.
 - Prefer finishing or removing a half-done seam over adding a new one.
 
 ## Codebase structure (tier split, 2026-07-05)
@@ -178,6 +178,22 @@ already handed you and move on. `make lint` still exists as a pre-merge/CI-parit
 (Test & QA can be dispatched to it explicitly), but a clean run is the expected default now, not
 something to proactively verify. `make typecheck` (basedpyright) has no hook equivalent and
 stays a real, necessary verification step.
+
+### Agent dispatch and lane discipline live in the orchestration skill
+
+Which specialist to dispatch, backend/test-writer/QA lane discipline (including the narrow
+`cargo check`/`--collect-only` compile-sanity carve-outs), Test & QA's lane table (split by
+language: `test-qa-python` for `py-*`, `test-qa-rust` for `rust-*`), when to run a narrow lane vs.
+a full gate, and parallel-dispatch rules are all owned by the `lorecraft-orchestration` skill
+(`.claude/skills/lorecraft-orchestration/SKILL.md`) — that skill is the source of truth for
+orchestration policy, not this file. Invoke it for genuinely multi-domain, risky, or
+multi-specialist work; it also documents when *not* to bother (a small single-file edit doesn't
+need dispatch — just do it).
+
+This file stays general: repo conventions, testing commands/mechanics, and cross-session git
+safety below apply whether or not a task is being orchestrated at all.
+
+### Invoking pytest directly
 
 When you must invoke pytest directly (e.g. a single file or `-k` filter), use the same
 parallelism and module invocation — do **not** run bare `pytest`:

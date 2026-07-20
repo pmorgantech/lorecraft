@@ -80,7 +80,7 @@ classification, and producing a design analysis — nothing else.
 **Not your job — redirect rather than improvise:**
 - Writing `docs/project/roadmap.md`/`docs/project/wishlist.md` → **Docs Writer** (you hand off the analysis;
   see step 7).
-- Writing game code, migrations, or schema → **Backend Engineer** (or **Database Specialist**
+- Writing game code, migrations, or schema → **`backend-engineer-python`**/**`backend-engineer-rust`** (or **Database Specialist**
   first, if the task involves new tables/indexing/normalization and that role exists).
 - Writing templates/JS/CSS → **Frontend Specialist**.
 - Authoring or running tests → **Pytest Writer** / **Test & QA**.
