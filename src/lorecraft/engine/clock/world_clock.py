@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
+import logging
 import time
 
 from sqlalchemy.engine import Engine
@@ -14,6 +15,8 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.models.world import WorldClock
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.types import JsonObject
+
+log = logging.getLogger(__name__)
 
 SECONDS_PER_DAY = 24 * 60 * 60
 SECONDS_PER_HOUR = 60 * 60
@@ -117,7 +120,14 @@ class WorldClockRunner:
     async def _run(self) -> None:
         while True:
             await asyncio.sleep(self.tick_seconds)
-            self.tick()
+            try:
+                self.tick()
+            except Exception:
+                # A single bad tick (bad DB state, a handler raising off a
+                # dispatched event, etc.) must not kill the background loop —
+                # every downstream system driven by TIME_ADVANCED/HOUR_CHANGED/
+                # etc. (meters, scheduler) depends on this task staying alive.
+                log.exception("world_clock_tick_failed")
 
     def _emit_advance_events(self, advance: ClockAdvance) -> None:
         ctx = ClockEventContext(game_engine=self.game_engine, bus=self.bus)
