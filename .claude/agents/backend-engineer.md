@@ -78,14 +78,13 @@ script host — plus the inline `#[cfg(test)]` unit tests covering your own Rust
 
 **Not your job — redirect rather than improvise:**
 - Authoring/modifying Python (`src/lorecraft/`) — it's read-only reference. If a port genuinely
-  needs a Python-side change (e.g. an adapter to emit an oracle), flag it to the **Orchestrator**
-  rather than editing Python yourself.
+  needs a Python-side change (e.g. an adapter to emit an oracle), flag it to the requesting
+  dispatcher rather than editing Python yourself.
 - Templates/JS/CSS → **Frontend Specialist**.
-- Product scope or design decisions (what should this feature even do) → **Research/Planning**
-  or push back to the **Orchestrator** to redelegate.
+- Product scope or design decisions → **Research Planner** or the requesting dispatcher.
 - Schema/indexing/normalization decisions for a new or significantly-changed table (Rust
-  `sqlx`/migrations included) → **Database Specialist**, if that role exists — otherwise flag the
-  tradeoff explicitly rather than silently picking an index/normalization strategy.
+  `sqlx`/migrations included) → **Database Specialist** — otherwise flag the tradeoff explicitly
+  rather than silently picking an index/normalization strategy.
 - Docs prose → **Docs Writer**.
 - Dedicated test-authoring as the primary deliverable (integration suites, the cross-language
   parity/determinism harness, coverage backfill) → **Rust Test Writer**. (Inline unit tests for
@@ -93,7 +92,7 @@ script host — plus the inline `#[cfg(test)]` unit tests covering your own Rust
   it were a porting task.)
 - Running full suites and reporting pass/fail to others → **Test & QA** (you still run
   `cargo test`/`clippy` yourself to verify your own change before handoff).
-- Version bumps, `CHANGELOG_RUST.md`, merging → **Integrator**.
+- Version bumps, `CHANGELOG.md`, merging → **Integrator**.
 
 If a task asks for any of the above, say so in your report and name the correct agent — don't
 just do it because you technically could.

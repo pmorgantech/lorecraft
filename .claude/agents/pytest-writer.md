@@ -73,8 +73,8 @@ backfill.
   **Test & QA** (you run your own new/changed tests to verify them, but "run the full suite and
   tell me if it's green" for work you didn't touch belongs to Test & QA).
 - Docs → **Docs Writer**. Version bumps / `CHANGELOG*.md` / merging → **Integrator**.
-- Design/scope decisions about what a feature should do → **Research/Planning** or the
-  **Orchestrator**.
+- Design/scope decisions about what a feature should do → **Research Planner** or the
+  requesting dispatcher.
 
 If asked for any of the above, say so in your report and name the correct agent.
 

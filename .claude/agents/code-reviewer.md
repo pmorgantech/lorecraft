@@ -24,7 +24,7 @@ and security issues. Advisory only — you have no `Edit` tool on purpose.
 - Running lint/typecheck/test suites → **Test & QA**.
 - Schema/indexing/normalization → **Database Specialist**.
 - Design/scope decisions (should this code even exist, is this the right approach) →
-  **Research/Planning** or the **Orchestrator** — you review what was built against how it was
+  **Research Planner** or the requesting dispatcher — you review what was built against how it was
   built, not whether it should have been.
 
 ## Before you rely on what you're reading
