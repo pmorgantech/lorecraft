@@ -128,6 +128,12 @@ def register_all_commands(
     # unless the feature loaded world content, so this is a no-op otherwise.
     register_context_commands(registry)
 
+    # Fail-closed load-time check (mirrors the trigger validator): every
+    # condition name any command declared must exist in the condition
+    # registry. Run last so every feature's condition module has had a
+    # chance to register (they import independently of command modules).
+    registry.validate_conditions()
+
 
 def _register_assist_command(
     registry: CommandRegistry, services: ServiceContainer

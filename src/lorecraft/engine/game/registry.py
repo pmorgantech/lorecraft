@@ -7,13 +7,29 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from lorecraft.engine.game.command_conditions import ConditionResult, get_registry
+from lorecraft.engine.game.command_conditions import (
+    CommandConditionRegistry,
+    ConditionResult,
+    get_registry,
+)
 from lorecraft.engine.game.context import GameContext
 from lorecraft.types import CommandHandler
 
 # Fallback category for commands registered without one (or outside a
 # `registry.category(...)` block). The help system groups by category.
 DEFAULT_CATEGORY = "general"
+
+
+class UnknownCommandConditionError(Exception):
+    """Raised when a registered command references an unknown condition name.
+
+    Fail-closed load-time check, mirroring the trigger validator
+    (``scripting/triggers.py``'s ``TriggerLoadError``): a typo'd condition name
+    should be caught where it was authored, not silently fail open at
+    ``CommandConditionRegistry.evaluate`` (which stays fail-open at runtime —
+    an unknown name there defaults to "allowed" so forward-compatible command
+    definitions don't break mid-session).
+    """
 
 
 class CommandScope(StrEnum):
@@ -118,3 +134,34 @@ class CommandRegistry:
             if not result.allowed:
                 return result
         return ConditionResult(True)
+
+    def validate_conditions(
+        self, condition_registry: CommandConditionRegistry | None = None
+    ) -> None:
+        """Fail-closed load-time check: every registered command's condition
+        names must exist in the condition registry.
+
+        Call once after all commands are registered (the composition root,
+        ``register_all_commands``), not per-command — condition handlers may
+        be registered by a feature module imported later than the command
+        that references them within the same composition pass. Mirrors the
+        trigger validator's fail-closed load-time check; the runtime
+        evaluator (``CommandConditionRegistry.evaluate``) stays fail-open by
+        design.
+
+        Raises:
+            UnknownCommandConditionError: If any command references a
+                condition name absent from the registry.
+        """
+        registry = condition_registry or get_registry()
+        unknown = [
+            f"{command.verb}: unknown condition '{condition}'"
+            for command in self._order
+            for condition in command.conditions
+            # Condition strings may carry a "name:param" suffix (e.g.
+            # "actor_has_flag:ability.forage", "context_verb:pull") — only the
+            # name half is registered; matches the partition in evaluate().
+            if str(condition).partition(":")[0] not in registry
+        ]
+        if unknown:
+            raise UnknownCommandConditionError("; ".join(unknown))
