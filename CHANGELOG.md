@@ -4,6 +4,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.154.2] - 2026-07-20
+
+### Changed
+
+- Split `tests/integration/test_admin_api.py` (2528 lines/80 tests) and
+  `tests/integration/test_frontend_characterization.py` (2312 lines/55 tests) into 7
+  domain-grouped files to reduce pytest-xdist tail latency — these two files dominated
+  parallel test wall-clock time (90s and 65s respectively vs. ~21s for the next-heaviest
+  file).
+
 ## [0.154.1] - 2026-07-19
 
 ### Fixed
