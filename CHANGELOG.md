@@ -4,6 +4,14 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.157.1] - 2026-07-20
+
+### Changed
+
+- Updated `docs/worldbuilding/roadmap_world.md` to reflect completion of three Living Energy
+  feature gaps (gap #5 v0.155.0 time-of-day conditions, gap #1 v0.156.0 zone energy persistence,
+  gap #2 v0.157.0 harvest verb).
+
 ## [0.157.0] - 2026-07-20
 
 ### Added

@@ -637,22 +637,262 @@ is genuinely unbuilt and is a large Tier 2 feature stack.
 ### Gap list
 
 1. **Persistent evolving region/zone state** (glow intensity, depletion level, imbalance)
-   **Status:** ❌ Not supported. Rooms today only have `flags` (JsonObject) + `loot_table`; meters
-   are player/NPC-scoped, not zone-scoped.
-   **Tier:** Both — Tier 1: generalize meters (or a new zone-state store) to a zone/region entity
-   with scheduler-driven decay/regen; Tier 2: per-zone energy-health values.
-   **Tunability:** Should be **live-tunable DB-backed** (the `WorldClock`/admin-dial pattern), not
-   reseed-only YAML — an admin will want to retune depletion/regen rates without a reseed.
-   **Builds on:** `meters.py`, `scheduler.py`.
+   **Status:** ✅ Implemented (2026-07-20) — Z1-Z6 landed: `ZoneEnergyState` +
+   `ZoneEnergyChannelConfig` mechanism, the `TIME_ADVANCED` drift sweep, the `features/living_energy/`
+   Tier 2 policy package (channel identities, seed values, imbalance calculation), and the
+   live-tunable `webui/admin/routers/zone_energy.py` admin surface are all built and verified
+   green (py-unit, py-typecheck, tier-boundary, world-loader/export round-trip, admin integration
+   tests). Rooms previously only had `flags` (JsonObject) + `loot_table`; meters were
+   player/NPC-scoped, not zone-scoped — this gap is now closed.
+
+   **Decision:** Build a dedicated `ZoneEnergyState` store — do **not** extend `Meter`. `Meter`'s
+   `(entity_type, entity_id, key)` shape is mechanically reusable (`entity_type="zone"`) but its
+   machinery is entity-specific: `base_maximum` resolves from `PlayerStats.max_hp`/`NPC.max_hp`
+   through the modifier stack (zones have no stat sheet); `MeterDef.regen_per_tick` is a frozen
+   Python constant (the gap requires a live-tunable DB-backed rate — bolting that onto `MeterDef`
+   would fork it into two incompatible shapes); and meter dynamics are monotone regen-to-max,
+   while zone energy must drift bidirectionally toward a baseline (deplete down, recover up).
+   Borrow the *shape* of `MeterService` (lazy `get()`, clamped `adjust()`, `TIME_ADVANCED` sweep)
+   and the *live-tunable shape* of `WorldClock` (DB row + admin endpoint that mutates DB and
+   pushes into running state), but as a new, dedicated store.
+
+   **Precedent:** `engine/services/meters.py` (`MeterService`) for the get/adjust/tick-sweep
+   shape; `features/economy/restock.py` (`RestockService`) and `features/weather/climate.py`
+   (`ZoneClimateService`) for the "own `TIME_ADVANCED` sweep, per-`Room.zone` iteration" pattern;
+   `webui/admin/routers/clock.py` (`set_time_ratio`/`set_zone_weather`) for the live-tunable
+   DB-write-plus-push-into-running-state pattern this gap's tunability requirement demands. Zone
+   identity already exists via `Room.zone` — reuse it, no new zone plumbing.
+
+   **Data model:**
+   - `ZoneEnergyState` (Tier 1 table, the live ticked value): `id`, `zone: str` (indexed, from
+     `Room.zone`), `channel: str` (indexed, open string set — Tier 1 doesn't know "lumenroot"
+     exists, exactly as `Meter.key` doesn't know "hp"), `intensity: float`, `updated_epoch: float`.
+     One row per `(zone, channel)`.
+   - `ZoneEnergyChannelConfig` (Tier 1 table, the live-tunable dial): `channel: str` PK,
+     `baseline: float`, `max_intensity: float`, `regen_per_tick: float` (symmetric — decays above
+     baseline, regens below).
+   - Tick math: `intensity += sign(baseline − intensity) · min(regen_per_tick, |baseline −
+     intensity|)`, clamped `[0, max_intensity]` — one symmetric "drift toward baseline" primitive
+     covers both decay and regen.
+   - Derived, never stored: `depletion = max(0, baseline − intensity)`; `imbalance`
+     (spread/variance across a zone's channels) is a Tier 2 read over Tier 1 state.
+   - **OPEN ITEM (flag, don't silently resolve):** rate granularity — per-channel (one config row
+     per energy type, applies to all zones) vs per-`(zone, channel)`. Recommendation: per-channel
+     for v1 (matches admin mental model, keeps the tunable surface small, mirrors WorldClock's
+     singleton shape); a per-zone override table is a clean additive extension later. Database
+     Specialist confirms at the Z6 gate before Z1.
+
+   **Tier split:**
+   - **Tier 1 (mechanism)** — `engine/models/zone_energy.py` (`ZoneEnergyState`,
+     `ZoneEnergyChannelConfig`), `engine/repos/zone_energy_repo.py`,
+     `engine/services/zone_energy.py` (`ZoneEnergyService`: lazy `get()`, clamped `adjust()`
+     returning a `ZoneEnergyChange`, `TIME_ADVANCED` drift sweep, admin-mutation methods that
+     write DB and update in-memory state). Knows how to store/drift per-`(zone,channel)` values at
+     a DB-configured rate; knows nothing of lumenroot/dreamveil/emberthorn or what "imbalance"
+     means. Channel identities must be DB-seeded strings, never a Python enum/constant in
+     `engine/` — that would be the exact policy-leak this split exists to prevent.
+   - **Tier 2 (policy/content)** — new `features/living_energy/` package: the three channel
+     identities (lumenroot/dreamveil/emberthorn) + their seed baseline/rate/max values
+     (YAML-authored initial seed, idempotent seed-if-absent, then live-tunable via admin), the
+     numeric definition of "imbalance," and the `FeatureManifest` wiring (auto-discovered, gated
+     in `main.py` like `RestockService`/`ZoneClimateService`).
+
+   **Hook for gap #2 (harvest verbs) — leave it, don't build it here:** a future harvest verb
+   needs exactly two Tier 1 calls: read `ZoneEnergyService.get(session, zone, channel).intensity`
+   (zone resolved via `Room.zone`), and draw down via
+   `ZoneEnergyService.adjust(session, state, -yield_amount)` (clamped, returns a
+   `ZoneEnergyChange` so the verb can detect "you exhausted this node" without Tier 1 knowing what
+   harvesting is). The `TIME_ADVANCED` sweep then regenerates it over time. That's the entire seam
+   gap #2 builds on — nothing else from gap #1 should anticipate #2's design.
+
+   **Tunability:** the `ZoneEnergyChannelConfig` table *is* the live-tunable surface (WorldClock
+   pattern) — admin can retune baseline/max/regen rate per channel with no restart/reseed.
+   Critical subtlety: the admin mutation must push into running state (mirror `clock.py`'s
+   `state.clock_runner.time_ratio =` push), not just DB-write, or the tick sweep keeps using stale
+   rates until restart — flagged as the primary implementation risk below.
+
+   **Risks:**
+   - Migration: purely additive (two new tables, no ALTER on `Room`/`Meter`) — zero-risk under the
+     existing reflection-based additive-column scanner; the real decisions (uniqueness-constraint
+     mechanism, config granularity) are Database Specialist's Z6 call, not a migration risk per
+     se.
+   - Live-push bug (see Tunability above) — the subtle one, since it fails silently (stale rate,
+     not a crash) until someone notices a rate change isn't taking effect.
+   - Tier boundary: `engine/` code must import nothing from `features/`; channel identities must
+     not leak into `engine/` as constants.
+   - Zone identity: `Room.zone` is nullable/open-set — harmless for gap #1's store itself, but gap
+     #2's harvest verb must fail-closed on `room.zone is None`. Noted for #2, not a gap #1
+     blocker.
+   - Scope discipline: this gap computes `imbalance` but nothing consumes it yet, and does not
+     touch cross-energy volatility (#6) or machine fuel-typing (#7) — intentional, not a gap in
+     this pass.
+
+   **Task breakdown (ordered, each independently reviewable):**
+   - [x] Z6 (gate, runs first) — Database Specialist review: confirm additive-only migration;
+     resolve the per-channel vs per-(zone,channel) config OPEN ITEM; decide DB unique-index
+     enforcement of the one-row-per-(zone,channel) invariant; confirm `(zone, channel)` indexing;
+     confirm float clamp/precision semantics. Must clear before Z1.
+   - [x] Z1 — Tier 1 model + repo (`ZoneEnergyState`, `ZoneEnergyChannelConfig`,
+     `ZoneEnergyRepo`). Unit tests: lazy create, uniqueness invariant, config lookup.
+     `test_tier_boundaries.py` green. Tunable: config table is the live surface.
+   - [x] Z2 — Tier 1 service get/adjust (the gap #2 hook). Lazy `get()` from channel-config
+     baseline; clamped `adjust()` returning `ZoneEnergyChange`. Unit tests mirror meter
+     get/adjust. Tunable: n/a.
+   - [x] Z3 — Tier 1 tick sweep. `register(bus)` on `TIME_ADVANCED`; drift-toward-baseline per
+     channel config; own short-lived session + direct commit (mirror
+     `restock.py`/`services/meters.py`). Unit tests: depleted zone regens up, over-baseline decays
+     down, clamps at bounds, no-op at baseline. Tunable: n/a.
+   - [x] Z4 — Tier 2 `features/living_energy/` package: manifest + YAML seed of the 3 channels'
+     baseline/rate/max + `imbalance(zone)` policy read; idempotent seed-if-absent on startup;
+     wired in `main.py` behind an enabled gate. `test_tier_boundaries.py` green (channel
+     identities are DB-seeded strings, never a Python constant in `engine/`). Tunable:
+     YAML-seeded initial values, then live via Z5.
+   - [x] Z5 — Live-tunable admin surface: new `webui/admin/routers/zone_energy.py` (GET for
+     Observer role, POST rate-change + POST direct-value for Superadmin role, both mutating DB and
+     pushing into running state); registered in `webui/admin/api.py` (mirror the clock router).
+     Endpoint tests mirror the clock router's tests. Frontend/admin-console UI wiring is a
+     separate Frontend Specialist follow-up, out of scope here. Tunable: live.
+
+   **Review gate:** Z1-Z3 unit + typecheck green; Z4 tier-boundary green; Z5 endpoint tests green;
+   full `make test` + `make typecheck`. No scripting-vocabulary change, so `make scripting-docs`
+   is not required (unlike gap #5).
+
    **Scope:** Large.
 
 2. **Harvest verbs with depletion**
-   **Status:** ❌ Not supported. `forage` is infinite/non-depleting; energy harvesting must draw
-   down and regenerate gap #1's state.
-   **Tier:** Both — Tier 1: generic gather-against-a-depletable-node mechanism; Tier 2: the three
-   energy yield/difficulty tables.
-   **Builds on:** `forage.py`.
-   **Scope:** Small–Medium.
+   **Status:** ✅ Complete (2026-07-20) — H1-H6 all done.
+
+   **Headline finding — no new Tier 1 code needed.** The gap text says "Tier 1: generic
+   gather-against-a-depletable-node mechanism," but that mechanism was already delivered by gap
+   #1: `ZoneEnergyService.get(session, zone, channel)` (lazy, raises `NotFoundError` for an
+   unregistered channel) and `ZoneEnergyService.adjust(session, state, delta)` (clamped `[0,
+   max_intensity]`, returns `previous/new/delta/clamped_low/clamped_high`) are the
+   depletable-node primitives; `skill_check` and `item_location.spawn` are the other Tier 1
+   primitives already used by `features/exploration/forage.py`. Forage itself is 100% Tier 2
+   composing Tier 1 primitives — no engine `ForageMechanism` exists. Gap #2 should mirror this
+   exactly: a Tier 2 `HarvestService` composing existing primitives, not a new engine
+   `GatherService`. Building new Tier 1 code here would be premature abstraction (forage doesn't
+   draw down a node, so there's no second consumer to generalize for) and would risk leaking
+   harvesting policy into the engine.
+
+   **Precedent:** `features/exploration/forage.py` — `ForageService.forage(ctx)`: terrain gate
+   → `skill_check(ctx.rng, base=survival_rank, difficulty=..., ...)` → `record_use` →
+   data-driven `ForageRegistry.items_for(terrain)` (loaded from `world_content/forage.yaml`) →
+   `ctx.item_location.spawn(...)`. Zero hardcoded item ids. Command surface gated
+   `actor_has_flag:ability.forage` (`features/exploration/commands.py`,
+   `world_content/abilities.yaml`).
+
+   **Verb design:** one generic `harvest <channel>` verb (Tier 2), not three hardcoded verbs —
+   mirrors forage's single generic verb driven by a data table. The lore's distinct methods
+   (Lumenroot tapping, Dreamveil scraping, Emberthorn acid-collection) are flavor, not distinct
+   mechanics — preserved cheaply as Tier 2 command aliases (`tap`→lumenroot, `scrape`→dreamveil,
+   `bleed`→emberthorn) that pre-fill the channel argument. Lives in a new
+   `features/living_energy/harvest.py` + `commands.py`, giving that package its first command
+   surface.
+
+   **Mechanical flow** (`HarvestService.harvest(ctx, channel)`):
+   - Fail-closed if `room.zone is None` ("There's no living energy to harvest here.") — never
+     call `ZoneEnergyService.get()` with a null zone (it's a composite PK).
+   - Presence gate: channel must be in its `HarvestProfile.zones` allowlist for this zone, else
+     "No lumenroot grows in this region."
+   - Skill check (`skill_check` + `record_use`, mirroring forage). On failure: no draw, flavor
+     message.
+   - Read `ZoneEnergyService.get(session, zone, channel)`; if `intensity <=
+     profile.min_harvestable`, node is exhausted — no draw, no yield, flavor message. This is
+     what makes gap #1's regen sweep matter.
+   - Draw down via `ZoneEnergyService.adjust(session, state, -profile.draw_amount)`. If
+     `change.clamped_low`, grant yield **and** append an exhaustion message (the specific use gap
+     #1 designed the `clamped_low` flag for).
+   - Grant yield: pick from `profile.yields`, filtered by `ctx.item_repo.get(id) is not None`
+     (forage's existence guard); `ctx.item_location.spawn(...)`; narrate to actor + room.
+
+   **Data schema** — new `world_content/harvest.yaml` (mirrors `forage.yaml`), one
+   `HarvestProfile` per channel: `channel`, `discipline`, `check_key`, `difficulty`,
+   `draw_amount`, `min_harvestable` (at/below = exhausted), `yields` (item ids), `zones`
+   (presence allowlist — empty/omitted zones list would wrongly make every zone yield every
+   energy, since `ZoneEnergyService.get()` lazily creates a row at baseline for any `(zone,
+   channel)` touched; this allowlist is what prevents that), `required_tool` (schema field
+   included but unset this pass — see OPEN ITEM below). Loaded via a new
+   `_load_harvest_definitions` in `main.py` (clone of `_load_forage_definitions`) + a
+   `LORECRAFT_HARVEST_YAML_PATH` config knob.
+
+   **Tier split:**
+   - **Tier 1 — none new.** `ZoneEnergyService.get`/`adjust`, `skill_check`,
+     `item_location.spawn`, and the existing `item_in_inventory` command condition are reused
+     as-is.
+   - **Tier 2 — all of it:** `HarvestService`, `HarvestRegistry`/`HarvestProfile`,
+     `world_content/harvest.yaml`, the `harvest` command + aliases + `ability.harvest` gate, the
+     three yield-item defs (`lumenroot_sap_vial`, `dreamveil_gel_flask`,
+     `emberthorn_vitriol_vial`).
+
+   **Tunability:** `yields`/`zones`/`channel`/`discipline`/`check_key` are static content (YAML +
+   reseed). `difficulty`/`draw_amount`/`min_harvestable` are real balance dials — YAML + reseed
+   this pass, but flagged as strong live-tunable candidates for a follow-up: gap #1 already made
+   `regen_per_tick` live-tunable, and `draw_amount` vs `regen_per_tick` is exactly the
+   deplete-vs-recover pair an admin would want to tune together to balance a zone's economy.
+   Having one side live and the other reseed-only is a real asymmetry — noted as a follow-up, not
+   built this pass (keeps scope Small–Medium).
+
+   **OPEN ITEMS (recommendations stated, not silently decided):**
+   - **Tool requirement** (Brass Spile / Mycelial Scraper / Emberthorn Gauntlets from
+     `lore_ideas.md`): deferred this pass. The `required_tool` schema field exists but is unset
+     in the seed data — harvesting tools belong to the unbuilt Tool Crafting System, and gating
+     on uncraftable/unplaced tools would make harvest unusable in v1. Follow-up: tool-gating + an
+     emberthorn "acid damage without protective gear" hazard, as a dedicated later pass.
+   - **Discipline for the skill check:** reuse the existing `survival` discipline (data-driven
+     `check_key` per profile keeps it retunable) rather than inventing a new "attunement"
+     discipline — avoids new taxonomy in a Small–Medium slice.
+   - **Ability gate:** one new `ability.harvest` node (not three per-channel abilities) for v1
+     discoverability parity with forage. **Must NOT copy forage's `terrain:[outdoor]` usage
+     gate** — Dreamveil is explicitly underground/shaded per the lore, so harvest's availability
+     gate is zone-energy presence (the `zones` allowlist above), not outdoor terrain.
+
+   **Risks:**
+   - Primary: resist building a new engine `GatherService` — tier-boundary tests must confirm
+     `living_energy` still imports only `engine.*`, never a web host.
+   - Lazy-create footgun: without the `zones` allowlist, `ZoneEnergyService.get()` silently makes
+     every zone harvestable for every energy. A test must cover "channel not present in this zone
+     → fail, no row sprung."
+   - Must fail-closed on `room.zone is None` before any `ZoneEnergyService.get()` call.
+   - forage's assumptions harvest must NOT inherit: the outdoor-only usage gate, and forage's
+     infinite/non-depleting model (harvest's entire point is the draw-down + regen loop).
+   - forage↔harvest unification: keep them separate for now — the resource models differ
+     fundamentally (infinite terrain table vs. depletable zone pool); premature unification would
+     wrongly couple them. Noted as a possible future consolidation, explicitly out of scope here.
+   - Scope discipline: this pass does not touch cross-energy volatility (#6) or machine
+     fuel-typing (#7) — harvested substances are inert consumable items this pass, not machine
+     fuel.
+
+   **Task breakdown (ordered, each independently reviewable):**
+   - [x] H1 — Add three harvested-substance item defs (`lumenroot_sap_vial`, `dreamveil_gel_flask`,
+     `emberthorn_vitriol_vial`) to world content. Tunable: static content.
+   - [x] H2 — Tier 2 data layer: `HarvestProfile`/`HarvestDocument`/`HarvestRegistry` +
+     `load_harvest_yaml` in `features/living_energy/harvest.py` (clone of `forage.py`'s data
+     layer); `world_content/harvest.yaml`; `_load_harvest_definitions` + config knob. Validation +
+     registry-lookup + `zones`-filter unit tests; world-loader round-trip test. Tunable: see
+     above.
+   - [x] H3 — Tier 2 service: `HarvestService.harvest(ctx, channel)` composing the Tier 1
+     primitives, all fail-closed branches (null zone, channel-not-in-zones, exhausted,
+     `clamped_low`, check-fail). No new Tier 1 code. Unit tests for every branch;
+     `test_tier_boundaries.py` green.
+   - [x] H4 — Tier 2 command surface: `register_living_energy_commands` registering `harvest
+     <channel>` + flavor aliases, gated `actor_has_flag:ability.harvest`, wired into
+     `register_all_commands`. No outdoor-terrain usage gate. Tests: verb hidden until ability
+     held, dispatches correctly, help text present.
+   - [x] H5 — Tier 2 ability wiring: one `harvest` active-ability node in
+     `world_content/abilities.yaml` (discipline `survival`, `unlock.enables_verb: harvest`, no
+     outdoor usage gate). Test: buying the node sets the flag and reveals the verb. (Foldable
+     into H4 if reviewers prefer.)
+   - [x] H6 — Docs + full verification: update `docs/guides/user_guide.md` (new verb) +
+     `docs/worldbuilding/admin_builder_guide.md` (harvest.yaml authoring); full `make test` +
+     `make typecheck`. `make scripting-docs` not required (no new scripting-vocabulary
+     condition/effect — reuses `item_in_inventory`).
+
+   **Review gate:** H2-H3 unit + typecheck green; H4 command + gating tests green; tier-boundary
+   green; world-loader round-trip green; full `make test` + `make typecheck`.
+
+   **Scope:** Small–Medium — genuinely so, since the Tier 1 mechanism already exists from gap #1
+   and this is Tier 2 composition + content only.
 
 3. **Crafting / recipe system**
    **Status:** ❌ Not supported at all (already flagged deferred in `docs/wishlist.md`; CODE_AUDIT
@@ -669,13 +909,109 @@ is genuinely unbuilt and is a large Tier 2 feature stack.
    **Scope:** Small–Medium.
 
 5. **Time-of-day/night-conditional room description (the glow itself)**
-   **Status:** ⚠️ Partially supported. The clock exposes `current_hour` but there's no day/night
-   phase derivation and no night condition in the *room-trigger* `when:` vocabulary (only
-   `moon_phase_is` exists, and that's for dialogue/commands, not room triggers). This is the same
-   underlying gap as the "dynamic room description rotation" blocked item already noted above, and
-   overlaps the Argon Lake moon-phase-ambience note in `docs/wishlist.md`.
-   **Tier:** Both — Tier 1: day-phase derivation + a trigger/description condition mirroring
-   `celestial/conditions.py`; Tier 2: glow text per energy/health state.
+   **Status:** ✅ Mechanism supported (2026-07-20) — G1-G4 landed; G5 (optional backfill)
+   remains open.
+   Still not built: the clock exposes `current_hour` but there's no day/night phase derivation
+   and no night condition in the *room-trigger* `when:` vocabulary (only `moon_phase_is` exists,
+   and that's for dialogue/commands, not room triggers). This is the same underlying gap as the
+   "dynamic room description rotation" blocked item already noted above, and overlaps the Argon
+   Lake moon-phase-ambience note in `docs/wishlist.md`. Scoping this does **not** mean the glow
+   exists in-world yet — task G1 below hasn't landed.
+
+   **Precedent:** `features/celestial/conditions.py` (`moon_phase_is`/`tide_is`) over the Tier 1
+   derivations in `engine/clock/celestial.py` (`moon_phase_for_day`/`tide_for_hour`) is the exact
+   "derive-state-from-clock + register-a-condition" shape to mirror. The effect side already
+   exists: `narrate_room` (`features/npc/side_effects.py:154`) broadcasts a line to a room's
+   occupants — no new `do:` effect is needed.
+
+   **Key mechanism finding:** Room-trigger `when:` blocks are evaluated by the dialogue-condition
+   registry (`TriggerService` wired with `when=dialogue_conditions.get_registry()` at
+   `scripting_wiring.py:62`), but also validated fail-closed at world load
+   (`parse_trigger` → `validate_conditions(when, global_vocabulary(), …)` in
+   `engine/scripting/triggers.py:81`/`104` and `engine/scripting/validator.py:121`). The existing
+   celestial conditions register via plain `.register()`, which does **not** publish to
+   `global_vocabulary()` — that is exactly why `moon_phase_is` works in dialogue/commands but
+   would fail room-trigger load validation today. **Constraint: the new condition must use
+   `register_spec(VocabEntry(...), handler)`, not bare `register`,** to pass trigger-load
+   validation and be usable in room triggers.
+
+   **Tier split** (correcting the original "Tier 1: day-phase derivation + a trigger/description
+   condition" framing below — only the derivation is Tier 1; the condition wrapper is Tier 2,
+   mirroring `celestial/conditions.py`, not `engine/`):
+   - **Tier 1 (mechanism)** — day-phase derivation in `engine/clock/celestial.py`:
+     `DAY_PHASES = ("dawn", "day", "dusk", "night")` tuple + `day_phase_for_hour(hour: int) -> str`,
+     a pure function of `WorldClock.current_hour`, no persisted state. Default hour boundaries
+     (dawn 05:00–07:59, day 08:00–17:59, dusk 18:00–20:59, night 21:00–04:59, `hour % 24`
+     normalized) are a Tier 1 default constant, same category as `HOURS_PER_TIDE`/`MOON_PHASES`.
+   - **Tier 2 (thin wrapper)** — the `time_of_day_is` condition registration in
+     `features/celestial/conditions.py`. Lives in Tier 2 because the engine can't import feature
+     registries, but carries no energy-specific policy — a generic clock gate.
+   - **Tier 2 (policy/content, pure YAML)** — the glow itself: room `player_entered` triggers in
+     `world_content/` using `when: {time_of_day_is: night}` + `narrate_room:` glow text per energy
+     type/health state.
+
+   **Design:**
+   - Single canonical condition `time_of_day_is` (param = phase name: dawn/day/dusk/night),
+     colon-string form for commands (`time_of_day_is:night`) and map form for
+     dialogue/triggers (`{time_of_day_is: night}`). Do **not** add a separate zero-param
+     `is_night` — it would collide with the vocabulary overlap detector (`Vocabulary.overlaps`,
+     `vocabulary.py:204`); `time_of_day_is: night` already covers it.
+   - Register via `register_spec` on both the dialogue registry (required for room triggers) and
+     the command registry (parity with the celestial conditions); `Vocabulary.register` is
+     idempotent on same-name+same-capability, so double-registering across both registries is
+     harmless.
+   - Descriptor: `VocabKind.CONDITION`, `Subject.WORLD`, `category="world_clock"`,
+     `capability=CapabilitySig(WORLD, "world_clock", "day_phase", "is")`,
+     `params=(ParamSpec("phase", "str", doc="Day phase: dawn | day | dusk | night"),)`.
+   - Fail-closed on missing clock (mirrors celestial): `ctx.clock is None` → `False`. Unknown
+     phase name → `False`.
+   - `features/celestial/__init__.py` needs no wiring change — `_wire()` already calls
+     `_register_conditions()`.
+
+   **Tunability:** hour→phase boundaries are static Tier 1 constants (not a live-tunable
+   game-balance dial — fixed world-time semantics, unlike `economy.regions`). Tier 2 glow content
+   is static YAML, reseed to change. Neither surface warrants the `WorldClock` live-tunable
+   DB-singleton pattern.
+
+   **Risks:**
+   - Primary: using bare `register` instead of `register_spec` compiles and passes
+     dialogue/command tests but makes any room-trigger `when: {time_of_day_is: …}` raise
+     `TriggerLoadError` at world load — invisible without a room-trigger load/eval test (task G3
+     is the guard).
+   - Doc-drift CI: `make scripting-docs` must run in the same commit as the `register_spec`
+     addition, or `tests/unit/test_scripting_api_doc.py` fails.
+   - Overlap detector: single canonical condition only; `tests/unit/test_vocabulary.py` gates
+     this.
+   - Tier boundary: the `engine/clock/celestial.py` edit must import nothing from `features` (it
+     won't — it's a pure function); `tests/unit/test_tier_boundaries.py` covers it.
+
+   **Task breakdown (ordered, each independently reviewable):**
+   - [x] G1 — Add `DAY_PHASES` + `day_phase_for_hour(hour)` to `engine/clock/celestial.py`.
+     Tier 1. Unit tests mirroring `tests/unit/test_celestial_calendar.py` (boundaries,
+     midnight-wrap, out-of-range hours); `test_tier_boundaries.py` stays green. Tunable: static.
+   - [x] G2 — Register the canonical `time_of_day_is` condition in
+     `features/celestial/conditions.py` via `register_spec` on the dialogue + command registries;
+     regenerate `docs/worldbuilding/scripting_api.md` via `make scripting-docs` in the same
+     commit. Tier 2 (thin wrapper). Command + dialogue eval tests pass; no `Vocabulary.overlaps`
+     clash; `test_scripting_api_doc.py` green. Tunable: n/a.
+   - [x] G3 — Room-trigger integration test: a `player_entered` trigger with
+     `when: {time_of_day_is: night}` (a) loads without `TriggerLoadError`, (b) fires at a night
+     hour, suppressed at a day hour. Mirror `tests/unit/test_celestial_feature.py`. This is the
+     test that specifically closes the "not usable in room triggers" gap. Tunable: n/a.
+   - [x] G4 — Proof-of-concept glow content: 1–2 `world_content/` room `player_entered` triggers
+     using `when: {time_of_day_is: night}` + `narrate_room:` energy-glow text. Tier 2
+     (policy/content). Tunable: static YAML (reseed). Worldbuilding-skill/content task, not
+     engine code.
+   - [ ] G5 (optional, adjacent — **OPEN ITEM, unresolved**) — Backfill existing
+     `moon_phase_is`/`tide_is` from bare `register` to `register_spec` so they too become usable
+     in room-trigger `when:` blocks (currently silently blocked by the same catalog gap). Tier 2.
+     Regenerate `scripting_api.md`; overlap-clean. Research-planner's recommendation: low-cost and
+     consistent, but beyond gap #5's scope — can be deferred; not resolved here, and the checkbox
+     stays `[ ]` regardless of that recommendation until it's actually implemented.
+
+   **Review gate:** G1+G2 unit/typecheck green, G3 integration test green, `make scripting-docs`
+   regenerated with the CI drift-check green, tier-boundary test green.
+
    **Scope:** Small — cheapest win in this list, and delivers the system's signature visual first.
 
 6. **Cross-energy volatility / interaction rules**
@@ -694,11 +1030,17 @@ is genuinely unbuilt and is a large Tier 2 feature stack.
 
 ### Suggested sequencing
 
-Cheapest-first: #5 (night-glow trigger condition) is nearly free and delivers the visual
-signature immediately. #1 + #2 (region energy state + depletion-aware harvesting) is the next
-real milestone and unlocks everything downstream. Crafting (#3/#4/#6) and machine fuel-typing
+Cheapest-first: #5 (night-glow trigger condition) is now scoped (2026-07-20, see G1–G5 task
+breakdown above) and ready for implementation — still not built, but the design work that made it
+"nearly free" is done. #1 (persistent zone energy state) is now also scoped (2026-07-20, see Z6–Z5
+task breakdown above) — design analysis complete, awaiting the Z6 Database Specialist gate then
+implementation; still not built. #2 (depletion-aware harvesting) is now scoped too (2026-07-20,
+see H1–H6 task breakdown above) — design analysis found the Tier 1 mechanism already exists from
+gap #1 (`ZoneEnergyService.get`/`adjust`), so #2 is Tier 2 composition + content only and ready
+for implementation once #1 lands; still not built. Crafting (#3/#4/#6) and machine fuel-typing
 (#7) are the large lifts and are best left until the foundation-band roadmap work
-(`docs/roadmap.md` Sprints 5–15) clears, per the project's "foundation before features" directive.
+(`docs/roadmap.md` Sprints 5–15) clears, per the project's "foundation before features"
+directive.
 
 ---
 
