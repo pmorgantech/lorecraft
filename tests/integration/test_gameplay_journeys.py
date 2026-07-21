@@ -32,6 +32,7 @@ from lorecraft.commands import register_all_commands
 from lorecraft.config import Settings
 from lorecraft.db import create_tables
 from lorecraft.engine.game.connection_manager import ConnectionManager
+from lorecraft.features.fatigue.source import register as register_fatigue
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.engine import CommandEngine
 from lorecraft.engine.game.events import EventBus
@@ -73,6 +74,14 @@ def _bootstrap_world() -> Engine:
 
 
 def _command_engine() -> CommandEngine:
+    # `ServiceContainer.build()` wires a `FatigueService` into `MovementService`
+    # but does not register the "fatigue" `MeterDef` (that only happens via the
+    # `fatigue` feature manifest's `wire_features()` hook, which this headless
+    # harness never calls) -- so movement's `consume_for_travel` would raise
+    # `NotFoundError` unless some other test in the same xdist worker happened
+    # to trigger it first. Register explicitly and deterministically; `register()`
+    # is idempotent, so this is safe regardless of xdist worker/test ordering.
+    register_fatigue()
     registry = CommandRegistry()
     register_all_commands(registry, ServiceContainer.build())
     return CommandEngine(registry, RuleEngine())

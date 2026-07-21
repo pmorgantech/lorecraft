@@ -4,6 +4,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.157.3] - 2026-07-20
+
+### Fixed
+
+- Test isolation flake in `tests/integration/test_gameplay_journeys.py`: fatigue meter
+  registration now deterministic via explicit `lorecraft.features.fatigue.source.register()`
+  call in `_command_engine()` harness. Previously depended on incidental registration order
+  during xdist worker/test sequencing, causing intermittent test failures; verified fixed
+  across 3 isolated runs (254 tests deterministic each) plus full suite (1727 passed).
+
 ## [0.157.2] - 2026-07-20
 
 ### Fixed
