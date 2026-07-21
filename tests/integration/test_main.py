@@ -67,6 +67,61 @@ async def _test_lifespan_seeds_starter_world_for_empty_database() -> None:
     assert any(room.id == "village_square" for room in rooms)
 
 
+def test_lifespan_loads_feature_gated_room_triggers() -> None:
+    anyio.run(_test_lifespan_loads_feature_gated_room_triggers)
+
+
+async def _test_lifespan_loads_feature_gated_room_triggers() -> None:
+    """Regression: room ``player_entered`` triggers whose ``when:`` uses a
+    feature-owned scripting condition published via ``register_spec`` (celestial's
+    ``time_of_day_is``) must validate at boot. That condition only lands in
+    ``global_vocabulary()`` when ``wire_features()`` runs, so ``build_trigger_service``
+    has to run *after* it — the ordering this test guards. Before the fix,
+    ``build_trigger_service`` ran ~135 lines earlier and the whole app failed to boot
+    with ``TriggerLoadError: unknown condition 'time_of_day_is'`` inside FastAPI's
+    lifespan startup. Booting the real app with the real ``world_content/world.yaml``
+    (which now ships ``soot_sump``/``old_oak_grove`` triggers using this gate) is the
+    key guard: if the ordering regresses, ``async with _lifespan(app)`` raises here."""
+    from lorecraft.engine.scripting.vocabulary import global_vocabulary
+
+    game_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    audit_engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    app = create_app(
+        settings=Settings(database_path=":memory:", audit_database_path=":memory:"),
+        game_engine=game_engine,
+        audit_engine=audit_engine,
+    )
+
+    # The full lifespan startup runs build_trigger_service against the seeded world;
+    # a TriggerLoadError here is exactly the ordering bug this test guards against.
+    async with _lifespan(app):
+        with Session(game_engine) as session:
+            gated_rooms = {
+                room.id: room.triggers
+                for room in session.exec(select(Room)).all()
+                if any(
+                    "time_of_day_is" in str(raw.get("when", ""))
+                    for raw in room.triggers
+                )
+            }
+
+    # Confirm the real world content genuinely exercises the feature-gated path
+    # (otherwise the test would silently pass on an empty/triggerless world).
+    assert "soot_sump" in gated_rooms
+    assert "old_oak_grove" in gated_rooms
+    # And confirm the feature condition really is the register_spec-published one,
+    # i.e. wire_features() had run before trigger validation.
+    assert "time_of_day_is" in global_vocabulary()
+
+
 def test_web_client_assets_expose_minimal_browser_harness() -> None:
     anyio.run(_test_web_client_assets_expose_minimal_browser_harness)
 

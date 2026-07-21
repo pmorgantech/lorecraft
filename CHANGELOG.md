@@ -4,6 +4,16 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.157.2] - 2026-07-20
+
+### Fixed
+
+- Application failed to boot with Living Energy world content due to trigger validation
+  running before feature-owned scripting conditions were registered into the vocabulary.
+  Reordered `main.py` initialization to wire features (including scripting conditions)
+  before loading triggers. Regression test `test_lifespan_loads_feature_gated_room_triggers`
+  added to prevent recurrence.
+
 ## [0.157.1] - 2026-07-20
 
 ### Changed

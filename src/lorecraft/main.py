@@ -300,12 +300,6 @@ def create_app(
         if "context_commands" in enabled_set:
             _load_context_commands(resolved_game_engine)
 
-        # Scripting engine (A2): bind declarative on/when/do triggers loaded from world
-        # content to the live bus. Runs after features register so their conditions/effects
-        # are available; fail-closed on a malformed trigger.
-        with Session(resolved_game_engine) as trigger_session:
-            build_trigger_service(trigger_session, bus)
-
         # Forward key bus events to admin broadcaster
         def _push_player_moved(event: Event, ctx: object) -> None:
             admin_broadcaster.push(
@@ -439,6 +433,17 @@ def create_app(
         # registries). The enabled set was resolved above; command registration
         # for feature-gated services is handled inside register_all_commands.
         wire_features(state, loaded_features)
+
+        # Scripting engine (A2): bind declarative on/when/do triggers loaded from world
+        # content to the live bus. This must run *after* wire_features() above, because
+        # that is what invokes each enabled feature's register_fn — which publishes
+        # feature-owned scripting conditions/effects into global_vocabulary() (via
+        # register_spec) that parse_trigger validates world-content triggers against.
+        # Loading triggers before wire_features() would fail-closed on any world trigger
+        # using a feature-owned condition (e.g. celestial's time_of_day_is). Fail-closed
+        # on a malformed trigger.
+        with Session(resolved_game_engine) as trigger_session:
+            build_trigger_service(trigger_session, bus)
 
         state.clock_runner.initialize()
         # Tide gates must match the tide the world wakes to, not the last

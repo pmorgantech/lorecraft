@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from sqlmodel import Session, create_engine
 
 from lorecraft.db import create_tables
@@ -28,11 +29,24 @@ from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.item_location import ItemLocationService
 from lorecraft.engine.services.ledger import LedgerService
 from lorecraft.engine.services.meters import MeterService
+from lorecraft.features.celestial.conditions import register as register_celestial
 from lorecraft.scripting_wiring import build_trigger_service, load_triggers
 from lorecraft.world.loader import load_world_yaml
 
 _WORLD = Path(__file__).resolve().parents[2] / "world_content" / "world.yaml"
 INN = "wandering_crow_inn"
+
+
+@pytest.fixture(autouse=True)
+def _wire_celestial_conditions() -> None:
+    # The real world.yaml's `soot_sump` night-glow trigger gates on the celestial
+    # feature's `time_of_day_is` condition (gap #5 proof-of-concept). Production wires
+    # every enabled feature (`wire_features`) before loading triggers (see main.py's
+    # `lifespan`); these tests load triggers directly against `global_vocabulary()`
+    # without going through `wire_features`, so they must register it themselves.
+    # `register()` is idempotent (name-keyed registries), so this is safe regardless
+    # of what earlier tests in this xdist worker already registered.
+    register_celestial()
 
 
 def _seeded_session() -> Session:
