@@ -4,6 +4,39 @@ All notable changes to Lorecraft will be documented in this file.
 
 ## [Unreleased]
 
+## [0.157.0] - 2026-07-20
+
+### Added
+
+- New `harvest <channel>` verb (roadmap_world.md gap #2), gated behind the Harvest ability
+  (discipline: Survival) alongside flavor aliases `tap` (lumenroot), `scrape` (dreamveil), and
+  `bleed` (emberthorn). A successful survival check draws down a zone's per-channel living-energy
+  intensity and grants a matching vial (lumenroot sap, dreamveil gel, or emberthorn vitriol); an
+  over-harvested zone reads as exhausted (no yield) until its energy regenerates over subsequent
+  world-clock ticks. Content-authored in `world_content/harvest.yaml`.
+
+## [0.156.0] - 2026-07-20
+
+### Added
+
+- Persistent zone-scoped living-energy state (roadmap_world.md gap #1): new Tier 1 `ZoneEnergyState`
+  model, `ZoneEnergyService` (lazy get/clamped adjust/drift-toward-baseline sweep), and
+  `ZoneEnergyChannelConfig` for live-tunable per-channel regen rates. Tier 2 `living_energy` feature
+  defines three channel identities (lumenroot/dreamveil/emberthorn) with YAML-seeded baselines. Admin
+  endpoint `POST /admin/zone-energy/channels/{channel}` allows live retuning of baseline/max/regen
+  rates with no restart required. Supports round-trip YAML import/export via `zone_energy_channels:`
+  in world content.
+
+## [0.155.0] - 2026-07-20
+
+### Added
+
+- Time-of-day trigger condition (roadmap_world.md gap #5): new Tier 1 `day_phase_for_hour(hour) ->
+  str` derivation and `DAY_PHASES` constant in `engine/clock/celestial.py`, plus Tier 2
+  `time_of_day_is` scripting condition registered on both dialogue and command registries. Enables
+  room triggers to gate room-ambient narration on clock phase (dawn/day/dusk/night), supporting the
+  "night glow" ambient effect for living-energy zones. Regenerated `docs/worldbuilding/scripting_api.md`.
+
 ## [0.154.2] - 2026-07-20
 
 ### Changed

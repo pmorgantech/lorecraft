@@ -150,3 +150,42 @@ class TestConditionGates:
         assert (
             registry.evaluate({"moon_phase_is": "full", "tide_is": "low"}, ctx) is False
         )  # AND logic
+
+    def test_time_of_day_is_command_condition(self, session: Session) -> None:
+        register_conditions()
+        registry = command_registry()
+
+        ctx = self._gated_ctx(session, hour=23)  # night
+        assert registry.evaluate("time_of_day_is:night", ctx).allowed is True
+        assert registry.evaluate("time_of_day_is:day", ctx).allowed is False
+
+        ctx.clock.current_hour = 10  # day
+        assert registry.evaluate("time_of_day_is:day", ctx).allowed is True
+
+    def test_time_of_day_is_dialogue_condition(self, session: Session) -> None:
+        register_conditions()
+        registry = dialogue_registry()
+
+        ctx = self._gated_ctx(session, hour=6)  # dawn
+        assert registry.evaluate({"time_of_day_is": "dawn"}, ctx) is True
+        assert registry.evaluate({"time_of_day_is": "night"}, ctx) is False
+
+    def test_time_of_day_is_fails_closed(self, session: Session) -> None:
+        register_conditions()
+        registry = command_registry()
+
+        ctx = self._gated_ctx(session, hour=23)
+        assert (
+            registry.evaluate("time_of_day_is:midnight", ctx).allowed is False
+        )  # unknown phase
+
+        ctx.clock = None
+        assert registry.evaluate("time_of_day_is:night", ctx).allowed is False
+
+    def test_time_of_day_is_published_to_global_catalog(self, session: Session) -> None:
+        # The whole point of register_spec vs bare register: room-trigger `when:`
+        # load validation reads global_vocabulary(), so the condition must appear there.
+        from lorecraft.engine.scripting.vocabulary import global_vocabulary
+
+        register_conditions()
+        assert "time_of_day_is" in global_vocabulary()

@@ -17,7 +17,7 @@ from lorecraft.engine.game.events import Event, EventBus, GameEvent
 from lorecraft.engine.game.rng import GameRng
 from lorecraft.engine.game.transaction import TransactionContext
 from lorecraft.engine.models.player import Player, PlayerStats
-from lorecraft.engine.models.world import NPC, Room
+from lorecraft.engine.models.world import NPC, Room, WorldClock
 from lorecraft.engine.repos.item_repo import ItemRepo
 from lorecraft.engine.repos.npc_repo import NpcRepo
 from lorecraft.engine.repos.player_repo import PlayerRepo
@@ -37,6 +37,9 @@ from lorecraft.engine.services.meters import MeterService
 
 # Importing these registers the built-in vocabulary (actor_has_flag / set_flags / …) that the
 # triggers below reference and the loader validates against.
+from lorecraft.features.celestial.conditions import (
+    register as register_celestial_conditions,
+)
 from lorecraft.features.npc import dialogue_conditions, side_effects
 
 ROOM = "plaza"
@@ -189,6 +192,60 @@ def test_player_entered_room_trigger_fires(session: Session) -> None:
     )
     _move(bus, ctx)
     assert ctx.player.flags.get("saw_plaza") is True
+
+
+def test_time_of_day_is_room_trigger_loads_without_raising() -> None:
+    """G3: `time_of_day_is` must be published via `register_spec` (not bare `.register()`),
+    so a `when:` block referencing it passes fail-closed load-time validation against
+    `global_vocabulary()` — see `lorecraft.features.celestial.conditions`. Using bare
+    `.register()` here would raise `TriggerLoadError` instead of returning a `Trigger`."""
+    register_celestial_conditions()
+    trigger = parse_trigger(
+        "room",
+        ROOM,
+        {
+            "on": "player_entered",
+            "when": {"time_of_day_is": "night"},
+            "do": {"set_flags": ["saw_plaza_at_night"]},
+        },
+        vocab=global_vocabulary(),
+    )
+    assert trigger.on == "player_entered" and trigger.entity_id == ROOM
+    assert trigger.when == {"time_of_day_is": "night"}
+
+
+def test_time_of_day_is_gates_player_entered_trigger(session: Session) -> None:
+    """G3: the same `time_of_day_is:night` room trigger fires at a night hour and is
+    suppressed at a day hour, driven end to end through `TriggerService`/`WhenEvaluator`
+    (the dialogue-condition registry) with a real `GameContext` + `WorldClock`."""
+    register_celestial_conditions()
+    bus = EventBus()
+    service = _service(bus)
+    ctx = _ctx(session, bus)
+    ctx.clock = WorldClock(
+        game_epoch=0.0, real_epoch=0.0, current_hour=12, current_day=1
+    )
+    service.load(
+        [
+            parse_trigger(
+                "room",
+                ROOM,
+                {
+                    "on": "player_entered",
+                    "when": {"time_of_day_is": "night"},
+                    "do": {"set_flags": ["saw_plaza_at_night"]},
+                },
+                vocab=global_vocabulary(),
+            )
+        ]
+    )
+
+    _move(bus, ctx)  # hour 12 (day): trigger's when-block should suppress the effect
+    assert "saw_plaza_at_night" not in ctx.player.flags
+
+    ctx.clock.current_hour = 22  # night
+    _move(bus, ctx)
+    assert ctx.player.flags.get("saw_plaza_at_night") is True
 
 
 def test_any_group_one_true_member_passes(session: Session) -> None:

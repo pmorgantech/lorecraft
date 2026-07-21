@@ -1107,6 +1107,16 @@ rooms:
     zone: brass_vaults
     room_type: cave
     light_level: 0
+    # roadmap_world.md gap #5 G4: night-glow proof-of-concept. The Brass Vaults carry
+    # the dreamveil channel (world_content/harvest.yaml zones: [brass_vaults]); this
+    # damp, lightless sump is exactly the shaded underground the mycelium favours, and
+    # at night it shows dreamveil's cool blue-white, rippling signature.
+    triggers:
+      - on: player_entered
+        when:
+          time_of_day_is: night
+        do:
+          - narrate_room: "In the greasy dark above the black water, a cool blue-white light kindles among the dripping pipes. Threads of dreamveil mycelium web the damp brass, and their glow shifts and ripples in slow patterns that almost arrange themselves into shapes — a face, a word, a memory — before dissolving back into the dark."
     exits:
       - direction: north
         target_room_id: sootworks
@@ -1742,6 +1752,15 @@ rooms:
     zone: whisperwood
     room_type: wilderness
     light_level: 1
+    # roadmap_world.md gap #5 G4: night-glow proof-of-concept. Whisperwood carries
+    # the lumenroot channel (world_content/harvest.yaml zones: [whisperwood]); at
+    # night the healthy grove shows its signature warm golden-amber pulse.
+    triggers:
+      - on: player_entered
+        when:
+          time_of_day_is: night
+        do:
+          - narrate_room: "As the last grey light drains from the canopy, a warm golden-amber glow wells up out of the ancient roots. The old oaks begin to pulse gently, trunk to trunk falling into slow synchrony until soft waves of gold breathe through the whole grove — the living light of healthy lumenroot, running deep beneath your feet."
     exits:
       - direction: south
         target_room_id: north_trail
@@ -4181,6 +4200,41 @@ items:
     value: 2
     weight: 0.3
     category: food
+
+  # Living-energy harvest yields (roadmap_world.md gap #2). Simple flavor/lore
+  # items for now — carried and traded, but no consumable effects wired yet.
+  - id: lumenroot_sap_vial
+    name: Vial of Lumenroot Sap
+    description: >-
+      A vial of thick, amber sap, warm to the touch and glowing faintly gold.
+      It pulses with a slow, steady light, like a heartbeat kept in glass.
+    takeable: true
+    tradeable: true
+    value: 6
+    weight: 0.3
+    category: reagent
+
+  - id: dreamveil_gel_flask
+    name: Flask of Dreamveil Gel
+    description: >-
+      A flask of cool blue-white gel that ripples with faint, shifting patterns,
+      as though something half-remembered were dreaming just beneath its surface.
+    takeable: true
+    tradeable: true
+    value: 8
+    weight: 0.3
+    category: reagent
+
+  - id: emberthorn_vitriol_vial
+    name: Vial of Emberthorn Vitriol
+    description: >-
+      A sealed vial of red-orange vitriol that flickers like a slow ember and
+      hisses faintly against the glass — an acid best handled with care.
+    takeable: true
+    tradeable: true
+    value: 7
+    weight: 0.3
+    category: reagent
 
   - id: sea_glass_shard
     name: Sea-Glass Shard
@@ -10073,6 +10127,27 @@ economy:
       region_mult: 1.05
     - zone: port_veridian
       region_mult: 0.95
+
+# roadmap_world.md gap #1: living-energy channel dials (Tier 2 policy authored as
+# data). Each row seeds a ZoneEnergyChannelConfig: the initial baseline the zone
+# drifts toward, the ceiling, and how fast it drifts per tick. Seed-if-absent —
+# an admin's live retuning (POST /admin/zone-energy/channels/{channel}) is never
+# clobbered on re-import. Flavour cues from lore_ideas.md ("Living Energy &
+# Harvesting"): lumenroot is steady/reliable, dreamveil delicate/temperamental
+# (slow to recover), emberthorn high-output/volatile (swings fastest).
+zone_energy_channels:
+  - channel: lumenroot
+    baseline: 60.0
+    max_intensity: 100.0
+    regen_per_tick: 2.0
+  - channel: dreamveil
+    baseline: 40.0
+    max_intensity: 100.0
+    regen_per_tick: 1.0
+  - channel: emberthorn
+    baseline: 50.0
+    max_intensity: 100.0
+    regen_per_tick: 4.0
 
 # Sprint 73: XP/leveling policy (data-driven, admin-tunable). `base`/`step` feed
 # the Tier 1 LevelCurve (cost to reach level n+1 = base + step*(n-1)); the reward
