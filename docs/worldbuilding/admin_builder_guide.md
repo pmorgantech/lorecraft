@@ -813,6 +813,111 @@ admin needs to retune mid-session the way per-level coin rewards are. Revisit mo
 a `ProgressionConfig`-style live-tunable DB row only if admins actually ask to retune them
 without a restart.
 
+### Authoring harvest verbs (`world_content/harvest.yaml`)
+
+`harvest <channel>` (roadmap_world.md gap #2) is the second reference active-verb ability, after
+Forage above — but where Forage draws from an *infinite* terrain table, Harvest draws down a
+*depletable* per-`(zone, channel)` **living-energy** node. The node mechanism itself
+(`ZoneEnergyService.get`/`adjust`) is Tier 1 content-agnostic plumbing built for gap #1; this file
+is the Tier 2 policy that tells `harvest` which channels exist where, how hard the check is, how
+much a success draws down, and what it yields. `harvest`'s ability entry
+(`world_content/abilities.yaml`, `id: harvest`) follows the same (A) active-verb pattern as
+`forage` covered above — `unlock.enables_verb: harvest` is documentation-only, and the real gate
+is the command registration's `actor_has_flag:ability.harvest` condition
+(`features/living_energy/commands.py`). Unlike Forage, Harvest has no `usage.terrain` block —
+availability is entirely this file's per-channel `zones` allowlist, since some channels
+(Dreamveil) are underground, not outdoor.
+
+The verb also ships three flavor aliases that pre-fill the channel, matching the lore's own
+harvesting verbs: `tap` (lumenroot), `scrape` (dreamveil), `bleed` (emberthorn). All three share
+the same `ability.harvest` gate as `harvest` itself.
+
+```yaml
+version: 1
+profiles:
+  - channel: lumenroot        # one of the living_energy feature's channel ids —
+                               # lumenroot | dreamveil | emberthorn (features/living_energy/channels.py)
+    discipline: survival      # which DisciplineDef rank the check rolls against
+    check_key: skill.survival # skill.<name> resolver key — reuse an existing
+                               # discipline check_key so fatigue/modifiers already apply
+    difficulty: 15            # skill_check difficulty
+    draw_amount: 8.0          # how much the (zone, channel) energy state drops on a success
+    min_harvestable: 10.0     # floor at/below which the node reads as exhausted (no yield)
+    yields: [lumenroot_sap_vial]  # candidate item ids; one is chosen at random on success
+    zones: [whisperwood]      # Room.zone allowlist — this channel's only availability gate
+    required_tool: null       # reserved for a future tool-crafting pass (gap #4); unenforced today
+```
+
+Fields (`HarvestProfile`, `features/living_energy/harvest.py`):
+
+- `channel` — must name one of the `living_energy` feature's registered channel identities
+  (`lumenroot`/`dreamveil`/`emberthorn` today). This is validated at load time, not just at
+  content-lint time: a profile naming an unknown channel raises `NotFoundError`
+  (`not_found_living_energy_channel`) out of the load loop, which the server-startup loader logs
+  as a warning and swallows rather than crashing boot — but because profiles register one at a
+  time, any profile *before* the bad one in the file is still loaded and any profile *after* it
+  is silently skipped. Stick to the three real channel names to avoid a partially-loaded table.
+- `discipline`/`check_key` — non-empty strings; `discipline` should be a real
+  `world_content/disciplines.yaml` id, and `check_key` should be one of that discipline's
+  `check_keys` so the discipline-rank check and any standing modifiers (e.g. the `fatigue`
+  feature's low-stamina penalty) resolve correctly. Survival's shipped `check_keys` already
+  include `skill.survival`, so all three shipped harvest profiles reuse it — no new discipline
+  content is needed just to add a harvest channel.
+- `difficulty` — passed straight to `skill_check` alongside the player's discipline rank and any
+  collected modifiers.
+- `draw_amount`/`min_harvestable` — both must be `>= 0`. `draw_amount` is what a *success* removes
+  from the `(zone, channel)` energy state (via `ZoneEnergyService.adjust`, clamped at `0`);
+  `min_harvestable` is the floor a node must be *above* to still be harvestable — at or below it,
+  `harvest` reports the node as spent and grants nothing (no draw, no yield). Size these against
+  the channel's `baseline`/`max_intensity` in `world.yaml` (see below) so a node yields a handful
+  of harvests before exhausting and recovers over a stretch of world-clock ticks, not instantly or
+  never.
+- `yields` — a list of item ids; one is chosen at random (`ctx.rng.choice`) among whichever of
+  them actually resolve in the item repo. If none do (a typo, or an id that was never seeded),
+  `harvest` says the draw "slips away" and grants nothing — **without** drawing the node down, so
+  a content typo can never silently deplete a zone. Get the id right and it just works; no
+  content-lint currently cross-checks `yields` against `world.yaml`'s item definitions the way
+  `lint_hunts`/`lint_marks` do for their tables, so a typo here fails at harvest time, not import
+  time.
+- `zones` — the allowlist of `Room.zone` values where this channel can be harvested at all. This
+  *is* Harvest's terrain gate — there's no separate `usage.terrain` block on the ability itself.
+- `required_tool` — present in the schema and reserved for a future tool-crafting pass
+  (roadmap_world.md gap #4, tool ratings); it is not read or enforced by `harvest` today. Leave it
+  `null` until that gap ships.
+
+Like `disciplines.yaml`/`abilities.yaml` above, `harvest.yaml` is read directly into an in-memory
+registry once at **server startup** (`main.py::_load_harvest_definitions`, path configured via
+`Settings.harvest_yaml_path` / `LORECRAFT_HARVEST_YAML_PATH`) — editing it takes effect on the
+**next process restart**, not a `world_cli import` and not live. A missing file is tolerated
+(`harvest` then yields nothing for every channel).
+
+#### The sibling `zone_energy_channels:` section (`world_content/world.yaml`)
+
+The `baseline`/`max_intensity`/`regen_per_tick` a channel drifts toward — the dials gap #1's
+`ZoneEnergyService` actually reads — are a *different* file and a *different* live-tuning story,
+worth knowing about when sizing `draw_amount`/`min_harvestable` above:
+
+```yaml
+zone_energy_channels:
+  - channel: lumenroot
+    baseline: 60.0
+    max_intensity: 100.0
+    regen_per_tick: 2.0
+```
+
+This top-level `world.yaml` block **seeds-if-absent** into DB-backed `ZoneEnergyChannelConfig`
+rows on `world_cli import`: a genuinely new channel's dials get created, but a channel that
+already has a row is left untouched — a re-import deliberately can't clobber an admin's live
+retuning with the stale YAML seed (unlike, say, `RegionPricing`, which a re-import does
+upsert). Once seeded, a channel's dials are **live-tunable with no further restart or reseed** —
+an admin can retune `baseline`/`max_intensity`/`regen_per_tick` per channel via
+`GET`/`POST /admin/zone-energy/channels/{channel}` (there's no dedicated console tab for this yet,
+API only), and the drift sweep picks up the new values on its very next tick since it re-reads
+config fresh from the DB rather than caching it. `GET /admin/zone-energy` also returns every
+`(zone, channel)` node's live `intensity`, and `POST /admin/zone-energy/state/{zone}/{channel}`
+lets an admin directly set one for testing an exhausted-node scenario without waiting for players
+to draw it down.
+
 ## The World CLI
 
 `python -m lorecraft.tools.world_cli {import,export,validate,diff,merge,stats}` — the

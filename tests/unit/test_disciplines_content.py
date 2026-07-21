@@ -3,6 +3,8 @@
 Loads the *real* authored content (not fixtures) to prove the pre-78 skill-tree
 migration is lossless and internally consistent — every ability references a real
 discipline, and the 7 legacy nodes survive with their ids/costs/unlocks intact.
+`harvest` was added later (gap #2 harvest-verb work) as a legitimate 8th ability
+under the `survival` discipline; `_EXPECTED_ABILITY_DISCIPLINE` tracks it too.
 """
 
 from __future__ import annotations
@@ -17,9 +19,11 @@ _ABILITIES = "world_content/abilities.yaml"
 
 # The full §7 seed set.
 _EXPECTED_DISCIPLINES = {"survival", "subterfuge", "commerce", "rhetoric", "fortitude"}
-# The 7 migrated legacy nodes, mapped to their §7 discipline.
+# The 7 migrated legacy nodes plus `harvest` (added later), mapped to their
+# §7 discipline.
 _EXPECTED_ABILITY_DISCIPLINE = {
     "forage": "survival",
+    "harvest": "survival",
     "keen_senses": "subterfuge",
     "pick_locks": "subterfuge",
     "mule": "fortitude",
@@ -34,7 +38,7 @@ def test_disciplines_content_is_the_five_seed_disciplines() -> None:
     assert {d.id for d in doc.disciplines} == _EXPECTED_DISCIPLINES
 
 
-def test_abilities_content_is_the_seven_migrated_nodes() -> None:
+def test_abilities_content_is_the_seven_migrated_nodes_plus_harvest() -> None:
     doc = load_abilities_yaml(_ABILITIES)
     assert {a.id for a in doc.abilities} == set(_EXPECTED_ABILITY_DISCIPLINE)
 

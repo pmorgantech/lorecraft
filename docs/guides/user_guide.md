@@ -400,13 +400,21 @@ reason if it fails — not enough skill points, a missing prerequisite, or you a
 `abilities` (or `abils`) is the read-only counterpart: it lists what you already know alongside
 what you're currently able to train, without spending anything.
 
-The three starter active-verb abilities:
+The four starter active-verb abilities:
 
 | Ability | Verb | What it does |
 |---------|------|----------------|
 | Forage | `forage` | Outdoors only. Rolls a survival check; on success, turns up a consumable item you can `eat`/`drink` later. |
+| Harvest | `harvest <channel>` (also: `tap` for lumenroot, `scrape` for dreamveil, `bleed` for emberthorn) | Draws living energy from a zone that carries that channel. Rolls a survival check; on success, draws down the zone's energy a little and yields a matching vial (lumenroot sap, dreamveil gel, or emberthorn vitriol). |
 | Keen Senses | `sense` (also: `perceive`) | An enhanced search: rolls a perception check to reveal any hidden exits in the room, plus who and what else is present. |
 | Pick Locks | `pick <direction>` | Attempts a locked exit without its key via a lockpicking check — the alternative to `unlock` when you don't have the right key. |
+
+Unlike Forage, Harvest isn't gated by terrain — it's gated by *where that channel is found*: today
+that's Whisperwood (lumenroot), the Brass Vaults (dreamveil), and Windhowl Pass (emberthorn), so
+`harvest dreamveil` works underground even though `forage` never would. Each zone's energy is
+finite and shared by everyone harvesting there: drain it too far and it reads as exhausted (no
+yield) until it regenerates over the following stretch of world-clock ticks, so it pays to spread
+your harvesting across visits rather than working one spot dry.
 
 ## Trading
 
@@ -704,6 +712,7 @@ apply right now, e.g. dialogue-only commands when you're not in a conversation).
 | `train [ability]` | `learn` | Spend skill points to unlock an ability (no arg lists what's trainable) |
 | `abilities` | `abils` | List the abilities you know and what you can currently train |
 | `forage` | | Search the wild outdoors for something edible (requires the Forage ability) |
+| `harvest <channel>` | `tap`/`scrape`/`bleed` (channel-preset) | Draw living energy from an energy-rich zone — lumenroot, dreamveil, or emberthorn (requires the Harvest ability) |
 | `sense` | `perceive` | A keen perception sweep of the room (requires the Keen Senses ability) |
 | `rest` | | Catch your breath and recover a little stamina |
 | `camp` | | Make camp and recover a good deal of stamina |

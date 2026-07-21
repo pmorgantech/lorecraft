@@ -23,6 +23,7 @@ from lorecraft.features.consumables.commands import register_consumable_commands
 from lorecraft.features.economy.commands import register_economy_commands
 from lorecraft.features.exploration.commands import register_exploration_commands
 from lorecraft.features.inventory.commands import register_inventory_commands
+from lorecraft.features.living_energy.commands import register_living_energy_commands
 from lorecraft.features.quests.commands import register_quest_commands
 from lorecraft.features.disciplines.commands import register_discipline_commands
 from lorecraft.commands.meta import register_meta_commands
@@ -35,6 +36,7 @@ from lorecraft.features.transit.commands import register_transit_commands
 from lorecraft.engine.game.context import GameContext
 from lorecraft.engine.game.message_types import MessageType
 from lorecraft.engine.game.registry import CommandRegistry
+from lorecraft.engine.services.zone_energy import ZoneEnergyService
 from lorecraft.services.container import ServiceContainer
 from lorecraft.features.transit.service import TransitService
 
@@ -44,6 +46,7 @@ def register_all_commands(
     services: ServiceContainer | None = None,
     *,
     transit: TransitService | None = None,
+    zone_energy: ZoneEnergyService | None = None,
 ) -> None:
     """Register every command module's verbs, wiring in gameplay services.
 
@@ -54,7 +57,10 @@ def register_all_commands(
     `MeterService`/`MobileRouteService`, it needs the game engine +
     `ConnectionManager` at construction, not just a default no-arg build) --
     omit it to skip registering board/disembark/schedule (fine for tests that
-    don't exercise transit).
+    don't exercise transit). `zone_energy` is threaded the same way: the
+    engine-backed `ZoneEnergyService` singleton (built only when the
+    `living_energy` feature is enabled) so `harvest` shares the instance running
+    the drift sweep; omitting it leaves `harvest` to lazily build one on demand.
     """
     services = services or ServiceContainer.build()
     # Tier 1 shell/engine verbs — always registered. Each module's verbs are
@@ -88,6 +94,12 @@ def register_all_commands(
     # registry, which is simply empty when no ability content is loaded.
     with registry.category("disciplines"):
         register_discipline_commands(registry)
+    # Living-energy harvest verbs — always on (same rationale as disciplines):
+    # they read the harvest registry, which is empty unless the living_energy
+    # feature loaded its content, and are flag-gated on `ability.harvest`, so the
+    # verb is hidden and a graceful "you don't know how to harvest that" otherwise.
+    with registry.category("exploration"):
+        register_living_energy_commands(registry, zone_energy=zone_energy)
     if services.character_info is not None:
         with registry.category("character"):
             register_character_commands(registry, services.character_info)

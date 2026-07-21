@@ -1,0 +1,56 @@
+# Harvest table (roadmap_world.md gap #2) — how the `harvest` verb draws living
+# energy, per channel.
+#
+# The `harvest <channel>` verb (unlocked by the `harvest` skill-tree node) rolls
+# a survival check in a zone where that channel is present (`zones`) and, on
+# success against a non-exhausted node, draws the `(zone, channel)` energy state
+# down by `draw_amount` (clamped at 0) and yields one of `yields`. `min_harvestable`
+# is the floor at or below which the node reads as exhausted. The channel's
+# baseline/max_intensity/regen live in world.yaml's `zone_energy_channels:` and
+# feed gap #1's ZoneEnergyService; `draw_amount`/`min_harvestable` are sized
+# against those (baselines 40-60, max 100) so a node yields a handful of harvests
+# before exhausting and recovers over a stretch of ticks.
+#
+# `check_key` keeps the `skill.<discipline>` resolver namespace so existing
+# survival modifiers apply. `required_tool` is reserved (gap #4, tool ratings) and
+# unenforced for now — all null.
+version: 1
+profiles:
+  # Lumenroot — steady, reliable golden sap tapped from Whisperwood's groves.
+  # baseline 60 / regen 2: a moderate draw of 8 recovers in ~4 ticks; ~6 harvests
+  # from baseline before it drops below the floor.
+  - channel: lumenroot
+    discipline: survival
+    check_key: skill.survival
+    difficulty: 15
+    draw_amount: 8.0
+    min_harvestable: 10.0
+    yields: [lumenroot_sap_vial]
+    zones: [whisperwood]
+    required_tool: null
+
+  # Dreamveil — delicate, temperamental blue-white gel scraped from the
+  # underground Brass Vaults. Harder check (18), small careful draw (5), slow
+  # regen (1/tick) — aggressive harvesting damages the network.
+  - channel: dreamveil
+    discipline: survival
+    check_key: skill.survival
+    difficulty: 18
+    draw_amount: 5.0
+    min_harvestable: 8.0
+    yields: [dreamveil_gel_flask]
+    zones: [brass_vaults]
+    required_tool: null
+
+  # Emberthorn — high-output, volatile vitriol bled from the harsh Windhowl Pass.
+  # Large draw (12) exceeds the low floor (6), so a late harvest can strip the
+  # node to zero in one pull (clamped_low → "the last of it"); fast regen (4/tick).
+  - channel: emberthorn
+    discipline: survival
+    check_key: skill.survival
+    difficulty: 16
+    draw_amount: 12.0
+    min_harvestable: 6.0
+    yields: [emberthorn_vitriol_vial]
+    zones: [windhowl_pass]
+    required_tool: null

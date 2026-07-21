@@ -34,6 +34,24 @@ abilities:
       enables_verb: forage
     tags: [outdoor, gathering]
 
+  - id: harvest
+    name: Harvest
+    description: >-
+      Learn to draw living energy from the wild — tapping lumenroot sap,
+      scraping dreamveil gel, or bleeding emberthorn vitriol from an
+      energy-rich zone. Enables the `harvest` verb (and its `tap`/`scrape`/`bleed`
+      aliases). No terrain gate: availability is the harvest table's per-channel
+      zone allowlist, since some energies (Dreamveil) are underground.
+    discipline: survival
+    ability_type: active
+    activation_type: instant
+    cost: 1
+    prerequisites: []
+    proficiency_model: success_only
+    unlock:
+      enables_verb: harvest
+    tags: [gathering, living_energy]
+
   - id: keen_senses
     name: Keen Senses
     description: >-
