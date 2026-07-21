@@ -58,6 +58,10 @@ from lorecraft.models.issue import Issue
 from lorecraft.engine.models.items import ItemInstance, ItemStack
 from lorecraft.engine.models.ledger import CoinBalance
 from lorecraft.engine.models.meters import ActiveEffect, Meter
+from lorecraft.engine.models.zone_energy import (
+    ZoneEnergyChannelConfig,
+    ZoneEnergyState,
+)
 from lorecraft.engine.models.mobile import MobileRouteState
 from lorecraft.models.news import NewsItem
 from lorecraft.features.npc_memory.models import NpcMemory
@@ -117,6 +121,8 @@ GAME_TABLE_MODELS: tuple[type[SQLModel], ...] = (
     HelpTopic,
     Meter,
     ActiveEffect,
+    ZoneEnergyState,
+    ZoneEnergyChannelConfig,
     CoinBalance,
     MobileRouteState,
     Reputation,

@@ -81,6 +81,7 @@ from lorecraft.engine.repos.player_repo import PlayerRepo
 from lorecraft.engine.repos.room_repo import RoomRepo
 from lorecraft.engine.services.effects import EffectService
 from lorecraft.engine.services.meters import MeterService
+from lorecraft.engine.services.zone_energy import ZoneEnergyService
 from lorecraft.features.light.service import LightFuelService
 from lorecraft.features.economy.restock import RestockService
 from lorecraft.features.npc_ai.service import NpcBehaviorService
@@ -180,7 +181,6 @@ def create_app(
         effect_service.register(bus)
         mobile_route_service = MobileRouteService(resolved_game_engine, scheduler)
         mobile_route_service.register(bus)
-
         # Resolve the enabled Tier 2 feature set up front so services can be
         # built conditionally (docs/tier_split_refactor.md). Discovery imports
         # feature packages so their manifests self-register; the enabled set
@@ -208,6 +208,15 @@ def create_app(
         if "economy" in enabled_set:
             restock_service = RestockService(resolved_game_engine)
             restock_service.register(bus)
+        # The Tier 1 zone-energy drift sweep is the mechanism behind the
+        # living_energy feature (which owns the channel identities + imbalance
+        # policy); gate it on that feature like restock↔economy and
+        # climate↔weather, so the sweep runs only when a feature uses zone energy.
+        zone_energy_service = None
+        if "living_energy" in enabled_set:
+            zone_energy_service = ZoneEnergyService(resolved_game_engine)
+            zone_energy_service.register(bus)
+            _load_harvest_definitions(resolved_settings.harvest_yaml_path)
         quest_timer_service = None
         if "quests" in enabled_set:
             quest_timer_service = QuestTimerService(resolved_game_engine, manager)
@@ -418,7 +427,12 @@ def create_app(
             zone_climate=zone_climate_service,
             web_host=web_host,
         )
-        register_all_commands(state.registry, state.services, transit=transit_service)
+        register_all_commands(
+            state.registry,
+            state.services,
+            transit=transit_service,
+            zone_energy=zone_energy_service,
+        )
 
         # Wire each enabled feature onto `state` (its register_fn registers the
         # feature's conditions/side effects/modifiers/etc. on the shared
@@ -881,6 +895,26 @@ def _load_forage_definitions(forage_yaml_path: str) -> None:
         registry.load_document(load_forage_yaml(forage_yaml_path))
     except Exception as exc:  # malformed forage content shouldn't crash boot
         log.warning("failed to load forage table from %s: %s", forage_yaml_path, exc)
+
+
+def _load_harvest_definitions(harvest_yaml_path: str) -> None:
+    """Load harvest-table definitions (roadmap_world.md gap #2) into the in-memory
+    registry at startup. A missing file is fine — `harvest` then yields nothing."""
+    from pathlib import Path
+
+    from lorecraft.features.living_energy.harvest import (
+        get_registry,
+        load_harvest_yaml,
+    )
+
+    registry = get_registry()
+    registry.clear()
+    if not Path(harvest_yaml_path).exists():
+        return
+    try:
+        registry.load_document(load_harvest_yaml(harvest_yaml_path))
+    except Exception as exc:  # malformed harvest content shouldn't crash boot
+        log.warning("failed to load harvest table from %s: %s", harvest_yaml_path, exc)
 
 
 def _load_combat_action_definitions(combat_actions_yaml_path: str) -> None:

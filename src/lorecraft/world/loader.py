@@ -12,6 +12,7 @@ from lorecraft.features.bank.models import Bank
 from lorecraft.features.npc.models import DialogueTree
 from lorecraft.features.economy.models import RegionPricing, Shop, ShopStock
 from lorecraft.engine.models.items import ItemStack
+from lorecraft.engine.models.zone_energy import ZoneEnergyChannelConfig
 from lorecraft.features.progression.models import ProgressionConfig
 from lorecraft.features.quests.models import Quest
 from lorecraft.features.transit.models import TransitLine, TransitStop
@@ -44,6 +45,7 @@ from lorecraft.world.validator import (
     TransitLineData,
     TransitStopData,
     WorldDocument,
+    ZoneEnergyChannelData,
     validate_world_document,
 )
 
@@ -201,6 +203,34 @@ def import_world(document: WorldDocument, session: Session) -> None:
         _import_progression(session, document.progression)
     if document.transit is not None:
         _import_transit(session, document.transit)
+    if document.zone_energy_channels:
+        _import_zone_energy_channels(session, document.zone_energy_channels)
+
+
+def _import_zone_energy_channels(
+    session: Session, channels: list[ZoneEnergyChannelData]
+) -> None:
+    """Seed `ZoneEnergyChannelConfig` rows from authored YAML — *seed-if-absent*.
+
+    Unlike the `session.merge()`-based upsert used for `RegionPricing`/shops, an
+    existing channel row is left untouched: `ZoneEnergyChannelConfig` is the
+    live-tunable dial (admin retunes `baseline`/`max_intensity`/`regen_per_tick`
+    with no restart), so a re-import must not clobber an admin's live retuning with
+    the stale YAML seed. On a fresh DB there is nothing to preserve, so the seed
+    applies; on a re-import only genuinely new channels are added. (Matches the
+    roadmap_world.md Z4 spec: "idempotent seed-if-absent on startup.")
+    """
+    for channel in channels:
+        if session.get(ZoneEnergyChannelConfig, channel.channel) is not None:
+            continue
+        session.add(
+            ZoneEnergyChannelConfig(
+                channel=channel.channel,
+                baseline=channel.baseline,
+                max_intensity=channel.max_intensity,
+                regen_per_tick=channel.regen_per_tick,
+            )
+        )
 
 
 def _import_progression(session: Session, progression: ProgressionConfigData) -> None:
@@ -575,6 +605,18 @@ def export_world_document(session: Session) -> WorldDocument:
         else None
     )
 
+    zone_energy_channels = [
+        ZoneEnergyChannelData(
+            channel=config.channel,
+            baseline=config.baseline,
+            max_intensity=config.max_intensity,
+            regen_per_tick=config.regen_per_tick,
+        )
+        for config in session.exec(
+            select(ZoneEnergyChannelConfig).order_by(ZoneEnergyChannelConfig.channel)  # type: ignore[arg-type]
+        ).all()
+    ]
+
     return WorldDocument(
         rooms=room_data,
         items=item_data,
@@ -585,4 +627,5 @@ def export_world_document(session: Session) -> WorldDocument:
         economy=economy,
         progression=progression,
         transit=transit,
+        zone_energy_channels=zone_energy_channels,
     )

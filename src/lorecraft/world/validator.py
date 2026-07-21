@@ -345,6 +345,39 @@ class TransitConfigData(BaseModel):
     lines: list[TransitLineData] = Field(default_factory=list)
 
 
+class ZoneEnergyChannelData(BaseModel):
+    """`world.yaml` `zone_energy_channels:` entry — one living-energy channel's
+    seed dial (roadmap_world.md gap #1, Tier 2 policy authored as data).
+
+    Seeds a `ZoneEnergyChannelConfig` row: the initial baseline/ceiling/drift rate
+    for a channel (e.g. `lumenroot`), then live-tunable via the admin surface. The
+    channel string itself is open-set policy owned by `features/living_energy`, so
+    this validator does not constrain *which* channels appear here.
+
+    Bounds mirror the live-tune admin endpoint (`webui/admin/routers/
+    zone_energy.py`) so a `world.yaml` author cannot seed a value the admin UI
+    would reject: intensities are non-negative, the ceiling is at least the
+    baseline (the drift sweep clamps to `[0, max_intensity]`), and the per-tick
+    drift rate is non-negative.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    channel: str
+    baseline: float = Field(ge=0)
+    max_intensity: float = Field(ge=0)
+    regen_per_tick: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def _baseline_within_ceiling(self) -> ZoneEnergyChannelData:
+        if self.baseline > self.max_intensity:
+            raise ValueError(
+                f"zone_energy_channel {self.channel!r} baseline {self.baseline} "
+                f"exceeds max_intensity {self.max_intensity}"
+            )
+        return self
+
+
 class WorldDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -357,6 +390,7 @@ class WorldDocument(BaseModel):
     economy: EconomyConfigData | None = None
     progression: ProgressionConfigData | None = None
     transit: TransitConfigData | None = None
+    zone_energy_channels: list[ZoneEnergyChannelData] = Field(default_factory=list)
 
 
 def _validate_quest_condition(

@@ -21,6 +21,7 @@ from lorecraft.webui.admin.routers.ops import router as ops_router
 from lorecraft.webui.admin.routers.players import router as players_router
 from lorecraft.webui.admin.routers.progression import router as progression_router
 from lorecraft.webui.admin.routers.world import router as world_router
+from lorecraft.webui.admin.routers.zone_energy import router as zone_energy_router
 
 admin_router = APIRouter(tags=["admin"])
 admin_router.include_router(auth_router)
@@ -30,6 +31,7 @@ admin_router.include_router(world_router)
 admin_router.include_router(clock_router)
 admin_router.include_router(combat_router)
 admin_router.include_router(economy_router)
+admin_router.include_router(zone_energy_router)
 admin_router.include_router(progression_router)
 admin_router.include_router(accounts_router)
 admin_router.include_router(issues_router)
